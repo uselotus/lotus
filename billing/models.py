@@ -2,6 +2,7 @@ from operator import mod
 from django.db import models
 import uuid
 from model_utils import Choices
+from djmoney.models.fields import MoneyField
 from django.utils.translation import gettext_lazy as _
 
 
@@ -14,7 +15,7 @@ class Customer(models.Model):
     first_name: self-explanatory
     last_name: self-explanatory
     billing_id: internal billing system identifier
-    system_id: customer's id within the users backend system
+    external_id: customer's id within the users backend system
     billing_address: currently set to null, but we will need to set this to an "address" object later
     email_address: self-explanatory
     phone_number: self-explanatory
@@ -46,22 +47,18 @@ class Customer(models.Model):
     billing_id = models.CharField(
         max_length=100, blank=True, unique=True, default=uuid.uuid4
     )
-    system_id = models.CharField(max_length=100, unique=True)
+    external_id = models.CharField(max_length=100, unique=True)
     # billing_address = null
     email_address = models.CharField(max_length=30)  # 30 chars is arbitrary
     phone_number = models.CharField(max_length=30)
-    # balance = MoneyField(
-    #     decimal_places=2,
-    #     default=0,
-    #     default_currency="USD",
-    #     max_digits=11,
-    # )
+    balance = MoneyField(
+        decimal_places=2,
+        default=0,
+        default_currency="USD",
+        max_digits=11,
+    )
 
     time_created: models.DateField = models.DateTimeField(auto_now_add=True)
-    default_payment_source = models.CharField(
-        max_length=60
-    )  # 60 characters is arbitrary,
-    # discount = null
     invoice_prefix = models.CharField(max_length=30)  # 30 chars is arbitrary
     # invoice_settings = null
     next_invoice_sequence = models.CharField(max_length=30)  # 30 chars arbitrary
@@ -74,17 +71,22 @@ class Customer(models.Model):
 
 
 class Event(models.Model):
-    """ """
+    """
+    Event object. An explanation of the Event's fields follows:
+    event_name: The type of event that occurred.
+    time_created: The time at which the event occurred.
+    customer: The customer that the event occurred to.
+    idempotency_id: A unique identifier for the event.
+    """
 
-    id: models.AutoField = (
+    idempotency_id: models.AutoField = (
         "id",
-        models.AutoField(
-            auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-        ),
+        models.AutoField(primary_key=True, serialize=False, verbose_name="ID"),
     )
     customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     event_name = models.CharField(max_length=200)
-    time_created: models.DateField = models.DateTimeField(auto_now_add=True)
+    time_created: models.CharField = models.CharField(max_length=100)
+    properties: models.JSONField = models.JSONField(default=dict)
 
     def __str__(self):
         return str(self.event_type)
@@ -133,7 +135,6 @@ class BillingPlan(models.Model):
     billing_id = models.CharField(
         max_length=36, blank=True, unique=True, default=uuid.uuid4
     )
-    object = "plan"
     active = models.BooleanField()
     amount = models.IntegerField()
     amount_decimal = models.DecimalField(decimal_places=2, max_digits=11)
