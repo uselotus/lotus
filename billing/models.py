@@ -1,6 +1,8 @@
+from operator import mod
 from django.db import models
 from djmoney.models.fields import MoneyField
 from django.contrib.postgres.fields import ArrayField
+import uuid
 
 # Create your models here.
 
@@ -10,6 +12,8 @@ class Customer(models.Model):
     Customer object. An explanation of the Customer's fields follows: 
     first_name: self-explanatory
     last_name: self-explanatory
+    billing_id: internal billing system identifier
+    system_id: customer's id within the users backend system
     billing_address: currently set to null, but we will need to set this to an "address" object later
     email_address: self-explanatory
     phone_number: self-explanatory
@@ -22,7 +26,6 @@ class Customer(models.Model):
     discount: The discount that applies to this customer, if any. Will need a "discount" object in the future.
     invoice_prefix: A prefix string to put on the customer's invoice, so that we may generate unique invoice numbers
     invoice_settings: The customer's default invoice settings
-    livemode: True if Customer object exists in live mode, False if Customer object exists in test mode
     next_invoice_sequence: Suffix of the customer's next invoice number (i.e. counting number for invoices)
     preferred_locales: Customer's preferred languages, ordered by preference 
     subscriptions: Customer's current subscriptions. Need to make into a list or array of subscription objects
@@ -39,6 +42,8 @@ class Customer(models.Model):
 
     first_name = models.CharField(max_length=30) # 30 characters is arbitrary
     last_name = models.CharField(max_length=30)
+    billing_id = models.CharField(max_length=100, blank=True, unique=True, default=uuid.uuid4)
+    system_id = models.CharField(max_length=100, unique=True)
     billing_address = null
     email_address = models.CharField(max_length=30) # 30 chars is arbitrary
     phone_number = models.CharField(max_length=30) 
@@ -64,3 +69,15 @@ class Customer(models.Model):
     tax_exempt = models.CharField(max_length=30)
     tax_ids = ArrayField(models.CharField(max_length=30))
     test_clock = models.CharField(max_length=30)
+
+
+class Event(models.Model):
+    """
+    """
+    id:models.AutoField = ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'))
+    customer:models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    event_name = models.CharField(max_length=200)
+    time_created: models.DateField =  models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return str(self.event_type)
