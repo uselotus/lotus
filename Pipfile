@@ -6,8 +6,11 @@ name = "pypi"
 [packages]
 django = "*"
 djangorestframework = "*"
+django-loginas = "*"
+django-grappelli = "*"
 
 [dev-packages]
+pylint = "*"
 
 [requires]
 python_version = "3.9"
