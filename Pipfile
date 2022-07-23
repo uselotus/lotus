@@ -9,6 +9,7 @@ djangorestframework = "*"
 django-loginas = "*"
 django-grappelli = "*"
 django-model-utils = "*"
+pre-commit = "*"
 
 [dev-packages]
 pylint = "*"
