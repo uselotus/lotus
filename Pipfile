@@ -10,6 +10,7 @@ django-loginas = "*"
 django-grappelli = "*"
 django-model-utils = "*"
 pre-commit = "*"
+django-money = "*"
 
 [dev-packages]
 pylint = "*"
