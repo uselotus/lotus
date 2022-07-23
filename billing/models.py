@@ -70,7 +70,6 @@ class Customer(models.Model):
     tax_ids = ArrayField(models.CharField(max_length=30))
     test_clock = models.CharField(max_length=30)
 
-
 class Event(models.Model):
     """
     """
@@ -81,3 +80,72 @@ class Event(models.Model):
 
     def __str__(self):
         return str(self.event_type)
+class BillingPlan(models.Model):
+    """
+    id: self-explanatory
+    active: if true, the plan can be used for new purchases, false otherwise
+    aggregate_usage: Specifies a usage aggregation strategy for plans of usage_type=metered. 
+                     Allowed values are: 
+                     sum 
+                     last_during_period 
+                     last_ever 
+                     max.
+
+                     Defaults to sum.
+    amount: The unit amount in cents to be charged, represented as a whole integer if possible. 
+            Only set if billing_scheme=per_unit.
+    amount_decimal: The unit amount in cents to be charged, represented as a decimal string with
+                    at most 12 decimal places. Only set if billing_scheme=per_unit.
+    billing_scheme: Describes how to compute the price per period. Either per_unit or tiered.
+    time_created: Time at which the object was created. Measured in seconds since the Unix epoch.
+    interval: The frequency at which a subscription is billed. One of day, week, month or year.
+    interval_count: The number of intervals (specified in the interval attribute) between subscription billings. For example, interval=month and interval_count=3 bills every 3 months.
+    livemode: True if Customer object exists in live mode, False if Customer object exists in test mode
+    metadata: Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
+    tiers: Each element represents a pricing tier. This parameter requires billing_scheme to be set to tiered. See also the documentation for billing_scheme. This field is not included by default. To include it in the response, expand the tiers field
+    tiers_mode: Defines if the tiering price should be graduated or volume based. In volume-based tiering, the maximum quantity within a period determines the per unit price. In graduated tiering, pricing can change as the quantity grows.
+    transform_usage: Apply a transformation to the reported usage or set quantity before computing the amount billed. Cannot be combined with tiers.
+    trial_period_days: Default number of trial days when subscribing a customer to this plan using trial_from_plan=true.
+    usage_type: Configures how the quantity per period should be determined. Can be either metered or licensed. licensed automatically bills the quantity set when adding it to a subscription. metered aggregates the total usage based on usage records. Defaults to licensed.
+    """
+    id = models.CharField(max_length=30) # 30 characters is arbitrary
+    object = "plan"
+    active = models.BooleanField()
+    aggregate_usage = null
+    amount = models.IntegerField()
+    amount_decimal = models.DecimalField()
+    billing_scheme = models.CharField(max_length=30)
+    time_created = models.TimeField()
+    currency = 'usd'
+
+    class possible_intervals(models.TextChoices):
+        MONTH = 'MO', _('Month')
+        YEAR = 'YR', _('Year')
+        WEEK = 'WK', _('Week')
+        DAY = 'DY', _('Day')
+
+    interval = models.CharField(
+        max_length=1,
+        choices=possible_intervals.choices,
+        default=possible_intervals.MONTH,
+    )
+
+    interval_count = models.IntegerField()
+    livemode = models.BooleanField()
+    metadata = null
+    nickname = models.CharField(max_length=30) # 30 chars is arbitrary
+    product = models.CharField(max_length=30) # 30 chars is arbitrary
+    tiers_mode = models.CharField(max_length=30) # 30 chars is arbitrary
+    transform_usage = null
+    trial_period_days = models.IntegerField()
+    class possible_usage_types(models.TextChoices):
+        LICENSED = 'LI', _('Licensed')
+        METERED = 'ME', _('Metered')
+    
+    usage_type = models.CharField(
+        max_length = 1, 
+        choices=possible_intervals.choices,
+        default=possible_intervals.MONTH,
+    )
+
+    
