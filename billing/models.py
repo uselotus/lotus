@@ -1,15 +1,16 @@
 from operator import mod
 from django.db import models
-from djmoney.models.fields import MoneyField
-from django.contrib.postgres.fields import ArrayField
 import uuid
+from model_utils import Choices
+from django.utils.translation import gettext_lazy as _
+
 
 # Create your models here.
 
 # Customer Model, Attempt 1
 class Customer(models.Model):
     """
-    Customer object. An explanation of the Customer's fields follows: 
+    Customer object. An explanation of the Customer's fields follows:
     first_name: self-explanatory
     last_name: self-explanatory
     billing_id: internal billing system identifier
@@ -27,72 +28,81 @@ class Customer(models.Model):
     invoice_prefix: A prefix string to put on the customer's invoice, so that we may generate unique invoice numbers
     invoice_settings: The customer's default invoice settings
     next_invoice_sequence: Suffix of the customer's next invoice number (i.e. counting number for invoices)
-    preferred_locales: Customer's preferred languages, ordered by preference 
+    preferred_locales: Customer's preferred languages, ordered by preference
     subscriptions: Customer's current subscriptions. Need to make into a list or array of subscription objects
     tax: Tax details for the customer. Will need to expand on later.
-    tax_exempt: String that takes 1 of 3 values: 
+    tax_exempt: String that takes 1 of 3 values:
                 1. none
                 2. exempt
                 3. reverse
-    
+
     tax_ids: Customer's tax IDs.
     test_clock: ID of test_clock this customer belongs to
 
     """
 
-    first_name = models.CharField(max_length=30) # 30 characters is arbitrary
+    first_name = models.CharField(max_length=30)  # 30 characters is arbitrary
     last_name = models.CharField(max_length=30)
-    billing_id = models.CharField(max_length=100, blank=True, unique=True, default=uuid.uuid4)
-    system_id = models.CharField(max_length=100, unique=True)
-    billing_address = null
-    email_address = models.CharField(max_length=30) # 30 chars is arbitrary
-    phone_number = models.CharField(max_length=30) 
-    shipping_address = null
-    balance = MoneyField(
-        decimal_places=2,
-        default=0,
-        default_currency='USD',
-        max_digits=11,
+    billing_id = models.CharField(
+        max_length=100, blank=True, unique=True, default=uuid.uuid4
     )
+    system_id = models.CharField(max_length=100, unique=True)
+    # billing_address = null
+    email_address = models.CharField(max_length=30)  # 30 chars is arbitrary
+    phone_number = models.CharField(max_length=30)
+    # balance = MoneyField(
+    #     decimal_places=2,
+    #     default=0,
+    #     default_currency="USD",
+    #     max_digits=11,
+    # )
 
-    time_created = models.TimeField()
-    default_payment_source = models.CharField(max_length = 60) # 60 characters is arbitrary,  
-    delinquent = models.BooleanField()
-    discount = null
-    invoice_prefix = models.CharField(max_length=30) # 30 chars is arbitrary
-    invoice_settings = null 
-    livemode = models.BooleanField()
-    next_invoice_sequence = models.CharField(max_length=30) # 30 chars arbitrary
-    preferred_locales = ArrayField(models.CharField(max_length=30), blank=True, size = 3) # I think 3 is the number of languages, not sure 
-    subscriptions = ArrayField(null, size = 10)
-    tax = null
+    time_created: models.DateField = models.DateTimeField(auto_now_add=True)
+    default_payment_source = models.CharField(
+        max_length=60
+    )  # 60 characters is arbitrary,
+    # discount = null
+    invoice_prefix = models.CharField(max_length=30)  # 30 chars is arbitrary
+    # invoice_settings = null
+    next_invoice_sequence = models.CharField(max_length=30)  # 30 chars arbitrary
+    # preferred_locales = ArrayField(
+    #     models.CharField(max_length=30), blank=True, size=3
+    # )  # I think 3 is the number of languages, not sure
+    # subscriptions = ArrayField(null, size=10)
+    # tax = null
     tax_exempt = models.CharField(max_length=30)
-    tax_ids = ArrayField(models.CharField(max_length=30))
-    test_clock = models.CharField(max_length=30)
+
 
 class Event(models.Model):
-    """
-    """
-    id:models.AutoField = ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID'))
-    customer:models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    """ """
+
+    id: models.AutoField = (
+        "id",
+        models.AutoField(
+            auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+        ),
+    )
+    customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     event_name = models.CharField(max_length=200)
-    time_created: models.DateField =  models.DateTimeField(auto_now_add=True)
+    time_created: models.DateField = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return str(self.event_type)
+
+
 class BillingPlan(models.Model):
     """
     id: self-explanatory
     active: if true, the plan can be used for new purchases, false otherwise
-    aggregate_usage: Specifies a usage aggregation strategy for plans of usage_type=metered. 
-                     Allowed values are: 
-                     sum 
-                     last_during_period 
-                     last_ever 
+    aggregate_usage: Specifies a usage aggregation strategy for plans of usage_type=metered.
+                     Allowed values are:
+                     sum
+                     last_during_period
+                     last_ever
                      max.
 
                      Defaults to sum.
-    amount: The unit amount in cents to be charged, represented as a whole integer if possible. 
+    amount: The unit amount in cents to be charged, represented as a whole integer if possible.
             Only set if billing_scheme=per_unit.
     amount_decimal: The unit amount in cents to be charged, represented as a decimal string with
                     at most 12 decimal places. Only set if billing_scheme=per_unit.
@@ -108,44 +118,55 @@ class BillingPlan(models.Model):
     trial_period_days: Default number of trial days when subscribing a customer to this plan using trial_from_plan=true.
     usage_type: Configures how the quantity per period should be determined. Can be either metered or licensed. licensed automatically bills the quantity set when adding it to a subscription. metered aggregates the total usage based on usage records. Defaults to licensed.
     """
-    id = models.CharField(max_length=30) # 30 characters is arbitrary
+
+    class AGGREGATION_TYPES(object):
+        COUNT = "count"
+        SUM = "sum"
+        MAX = "max"
+
+    AGGREGATION_CHOICES = Choices(
+        (AGGREGATION_TYPES.COUNT, _("Count")),
+        (AGGREGATION_TYPES.SUM, _("Sum")),
+        (AGGREGATION_TYPES.MAX, _("Max")),
+    )
+
+    billing_id = models.CharField(
+        max_length=36, blank=True, unique=True, default=uuid.uuid4
+    )
     object = "plan"
     active = models.BooleanField()
-    aggregate_usage = null
     amount = models.IntegerField()
-    amount_decimal = models.DecimalField()
+    amount_decimal = models.DecimalField(decimal_places=2, max_digits=11)
     billing_scheme = models.CharField(max_length=30)
     time_created = models.TimeField()
-    currency = 'usd'
+    currency = "usd"
 
-    class possible_intervals(models.TextChoices):
-        MONTH = 'MO', _('Month')
-        YEAR = 'YR', _('Year')
-        WEEK = 'WK', _('Week')
-        DAY = 'DY', _('Day')
+    INTERVAL_CHOICES = Choices(
+        ("week", _("Week")),
+        ("month", _("Month")),
+        ("year", _("Year")),
+    )
 
     interval = models.CharField(
-        max_length=1,
-        choices=possible_intervals.choices,
-        default=possible_intervals.MONTH,
+        max_length=5,
+        choices=INTERVAL_CHOICES,
+        default=INTERVAL_CHOICES.month,
     )
 
     interval_count = models.IntegerField()
-    livemode = models.BooleanField()
-    metadata = null
-    nickname = models.CharField(max_length=30) # 30 chars is arbitrary
-    product = models.CharField(max_length=30) # 30 chars is arbitrary
-    tiers_mode = models.CharField(max_length=30) # 30 chars is arbitrary
-    transform_usage = null
+    # metadata = null
+    nickname = models.CharField(max_length=30)  # 30 chars is arbitrary
+    product = models.CharField(max_length=30)  # 30 chars is arbitrary
+    tiers_mode = models.CharField(max_length=30)  # 30 chars is arbitrary
+    # transform_usage = null
     trial_period_days = models.IntegerField()
-    class possible_usage_types(models.TextChoices):
-        LICENSED = 'LI', _('Licensed')
-        METERED = 'ME', _('Metered')
-    
-    usage_type = models.CharField(
-        max_length = 1, 
-        choices=possible_intervals.choices,
-        default=possible_intervals.MONTH,
-    )
 
-    
+    class possible_usage_types(models.TextChoices):
+        LICENSED = "LI", _("Licensed")
+        METERED = "ME", _("Metered")
+
+    usage_type = models.CharField(
+        max_length=2,
+        choices=possible_usage_types.choices,
+        default=possible_usage_types.METERED,
+    )

@@ -8,6 +8,7 @@ django = "*"
 djangorestframework = "*"
 django-loginas = "*"
 django-grappelli = "*"
+django-model-utils = "*"
 
 [dev-packages]
 pylint = "*"
