@@ -54,7 +54,7 @@ def ingest_event(request, data: dict, user: User) -> None:
 
 
 @csrf_exempt
-@permission_classes((IsAuthenticated,))
+@permission_classes((IsAuthenticated))
 def track_event(request):
     print(request.headers)
     data = load_event(request)

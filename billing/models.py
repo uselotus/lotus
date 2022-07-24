@@ -28,8 +28,8 @@ class Customer(models.Model):
 
     company_name = models.CharField(max_length=30)
 
-    def __init__(self: _Self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    # def __init__(self: _Self, *args, **kwargs) -> None:
+    #     super().__init__(*args, **kwargs)
 
 
 class Event(models.Model):
