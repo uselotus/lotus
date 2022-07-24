@@ -1,3 +1,4 @@
+from re import S
 from .models import Event, Customer, BillingPlan
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
 from django.contrib.auth.models import User
@@ -8,8 +9,9 @@ import json
 import base64
 from urllib.parse import urlparse
 from typing import Dict, Union, List
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
+from rest_framework_api_key.permissions import HasAPIKey
+from rest_framework.permissions import IsAuthenticated
 
 
 def load_event(request: HttpRequest) -> Union[None, Dict]:
@@ -19,12 +21,17 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
     if request.method != "POST":
         event_data = request.GET.get("data")
     else:
+
         if request.content_type == "application/json":
             event_data = request.body
         else:
-            event_data = request.POST.get("data")
+            event_data = request.POST
+
     if event_data is None:
         return None
+
+    if not isinstance(event_data, str):
+        return event_data
 
     try:
         event_data = json.loads(event_data)
@@ -38,30 +45,27 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
     return event_data
 
 
-def ingest_event(request, data: dict, user: User) -> None:
-
-    customer_id = data["customer_id"]
-    customer = Customer.objects.get(system_id=customer_id)
+def ingest_event(request, data: dict, customer: Customer) -> None:
 
     db_event = Event.objects.create(
         event_name=data["event_name"],
         idempotency_id=data["idempotency_id"],
         properties=data["properties"],
-        customer=customer.id,
+        customer=customer,
         time_created=data["time_created"],
     )
     db_event.save()
 
 
 @csrf_exempt
-@permission_classes((IsAuthenticated))
+@permission_classes((IsAuthenticated, HasAPIKey))
 def track_event(request):
-    print(request.headers)
+    print(request.keys())
     data = load_event(request)
     if not data:
         return HttpResponseBadRequest("No data provided")
     # token = _get_token(data, request)
-    # if not token:
+    # if not token  :
     #     return HttpResponseBadRequest("No api_key set")
 
     if not isinstance(data, list) and data.get(
@@ -69,13 +73,16 @@ def track_event(request):
     ):  # posthog-python and posthog-ruby
         data = data["batch"]
 
-    if "engage" in request.path_info:  # JS identify call
-        data["event"] = "$identify"  # make sure it has an event name
+    customer_id = data["customer_id"]
+    try:
+        customer = Customer.objects.get(external_id=customer_id)
+    except Customer.DoesNotExist:
+        return HttpResponseBadRequest("Customer does not exist")
 
     if isinstance(data, list):
         for i in data:
             try:
-                ingest_event(request=request, data=i, ser=request.user)
+                ingest_event(request=request, data=i, customer=customer)
             except KeyError:
                 return JsonResponse(
                     {
@@ -86,6 +93,6 @@ def track_event(request):
                     status=400,
                 )
     else:
-        ingest_event(request=request, data=data, user=request.user)
+        ingest_event(request=request, data=data, customer=customer)
 
-    return JsonResponse({"status": 1}, status=200)
+    return JsonResponse({"status": "Success"}, status=200)

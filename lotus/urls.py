@@ -18,7 +18,7 @@ from django.urls import path
 from django.conf.urls import include
 from rest_framework import routers
 from billing.views import EventViewSet
-from billing.track import track_event
+from billing import track
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
@@ -27,6 +27,6 @@ urlpatterns = [
     path("grappelli/", include("grappelli.urls")),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
-    path("track/", track_event),
-    path("track", track_event),
+    path("track/", track.track_event),
+    path("track", track.track_event),
 ]
