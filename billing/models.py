@@ -108,3 +108,29 @@ class BillingPlan(models.Model):
     billable_metrics = jsonfield.JSONField(default=list)
 
     description = models.CharField(max_length=256, default=" ")
+
+
+class Subscription(models.Model):
+    """
+    Subscription object. An explanation of the Subscription's fields follows:
+    customer: The customer that the subscription belongs to.
+    plan_name: The name of the plan that the subscription is for.
+    start_date: The date at which the subscription started.
+    end_date: The date at which the subscription will end.
+    """
+
+    STATUSES = Choices(
+        ("active", _("Active")),
+        ("ended", _("Ended")),
+    )
+
+    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
+
+    customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
+    start_date = models.DateTimeField(max_length=100, auto_now=True)
+    end_date = models.DateTimeField(max_length=100, auto_now=True)
+    status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
+
+    def __str__(self):
+        return str(self.customer) + " " + str(self.billingplan)
