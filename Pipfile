@@ -12,6 +12,7 @@ django-model-utils = "*"
 pre-commit = "*"
 django-money = "*"
 django-cors-headers = "*"
+jsonfield = "*"
 
 [dev-packages]
 pylint = "*"
