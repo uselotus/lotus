@@ -2,6 +2,7 @@ from operator import mod
 from django.db import models
 import uuid
 from model_utils import Choices
+from djmoney.models.fields import MoneyField
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
 import jsonfield
@@ -14,6 +15,9 @@ class Customer(models.Model):
     Customer object. An explanation of the Customer's fields follows:
     first_name: self-explanatory
     last_name: self-explanatory
+    billing_id: internal billing system identifier
+    external_id: customer's id within the users backend system
+    billing_address: currently set to null, but we will need to set this to an "address" object later
     company_name: self-explanatory
     email_address: self-explanatory
     phone_number: self-explanatory
@@ -21,6 +25,7 @@ class Customer(models.Model):
 
     first_name = models.CharField(max_length=30)  # 30 characters is arbitrary
     last_name = models.CharField(max_length=30)
+
     company_name = models.CharField(max_length=30, default=" ")
 
     # # auto generated when I typed "__init__, not sure what all this stuff is"
@@ -31,17 +36,22 @@ class Customer(models.Model):
 
 
 class Event(models.Model):
-    """ """
+    """
+    Event object. An explanation of the Event's fields follows:
+    event_name: The type of event that occurred.
+    time_created: The time at which the event occurred.
+    customer: The customer that the event occurred to.
+    idempotency_id: A unique identifier for the event.
+    """
 
-    id: models.AutoField = (
+    idempotency_id: models.AutoField = (
         "id",
-        models.AutoField(
-            auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
-        ),
+        models.AutoField(primary_key=True, serialize=False, verbose_name="ID"),
     )
     customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     event_name = models.CharField(max_length=200)
-    time_created: models.DateField = models.DateTimeField(auto_now_add=True)
+    time_created: models.CharField = models.CharField(max_length=100)
+    properties: models.JSONField = models.JSONField(default=dict)
 
     def __str__(self):
         return str(self.event_type)
