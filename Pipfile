@@ -13,6 +13,7 @@ pre-commit = "*"
 django-money = "*"
 django-cors-headers = "*"
 jsonfield = "*"
+djangorestframework-api-key = "==2.*"
 
 [dev-packages]
 pylint = "*"
