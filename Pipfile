@@ -11,6 +11,7 @@ django-grappelli = "*"
 django-model-utils = "*"
 pre-commit = "*"
 django-money = "*"
+jsonfield = "*"
 
 [dev-packages]
 pylint = "*"
