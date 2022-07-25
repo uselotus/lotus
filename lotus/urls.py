@@ -27,6 +27,6 @@ urlpatterns = [
     path("grappelli/", include("grappelli.urls")),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
-    path("track/", track.track_event),
-    path("track", track.track_event),
+    path("track/", track.track_event, name="track_event"),
+    path("track", track.track_event, name="track_event"),
 ]

@@ -3,6 +3,7 @@ from django.db import models
 import uuid
 from model_utils import Choices
 from djmoney.models.fields import MoneyField
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
 import jsonfield
