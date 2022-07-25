@@ -29,19 +29,20 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
 
     if event_data is None:
         return None
-
     if not isinstance(event_data, str):
         return event_data
 
     try:
-        event_data = json.loads(event_data)
+        event_data = json.load(event_data)
+
     except json.JSONDecodeError:
         # if not, it's probably base64 encoded from other libraries
-        event_data = json.loads(
+        event_data = json.load(
             base64.b64decode(event_data + "===")
             .decode("utf8", "surrogatepass")
             .encode("utf-16", "surrogatepass")
         )
+    print(type(event_data))
     return event_data
 
 
@@ -58,21 +59,16 @@ def ingest_event(request, data: dict, customer: Customer) -> None:
 
 
 @csrf_exempt
-@permission_classes((IsAuthenticated, HasAPIKey))
+@permission_classes((HasAPIKey))
 def track_event(request):
-    print(request.keys())
+    print(request.headers)
     data = load_event(request)
     if not data:
         return HttpResponseBadRequest("No data provided")
     # token = _get_token(data, request)
     # if not token  :
     #     return HttpResponseBadRequest("No api_key set")
-
-    if not isinstance(data, list) and data.get(
-        "batch"
-    ):  # posthog-python and posthog-ruby
-        data = data["batch"]
-
+    print(data)
     customer_id = data["customer_id"]
     try:
         customer = Customer.objects.get(external_id=customer_id)
