@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Event
+from .models import Event, Subscription
 
 
 class EventSerializer(serializers.HyperlinkedModelSerializer):
@@ -12,4 +12,17 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
             "time_created",
             "properties",
             "idempotency_id",
+        )
+
+
+class SubscriptionSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = (
+            "customer",
+            "billing_plan",
+            "time_created",
+            "time_ended",
+            "id",
+            "status",
         )
