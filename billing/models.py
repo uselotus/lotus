@@ -3,6 +3,7 @@ from django.db import models
 import uuid
 from model_utils import Choices
 from djmoney.models.fields import MoneyField
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
 import jsonfield
@@ -23,10 +24,10 @@ class Customer(models.Model):
     phone_number: self-explanatory
     """
 
-    first_name = models.CharField(max_length=30)  # 30 characters is arbitrary
-    last_name = models.CharField(max_length=30)
-
+    name = models.CharField(max_length=100)  # 30 characters is arbitrary
     company_name = models.CharField(max_length=30, default=" ")
+    external_id = models.CharField(max_length=40, default=" ")
+    billing_id = models.CharField(max_length=40, default=uuid.uuid4)
 
     # # auto generated when I typed "__init__, not sure what all this stuff is"
 
@@ -44,17 +45,19 @@ class Event(models.Model):
     idempotency_id: A unique identifier for the event.
     """
 
-    idempotency_id: models.AutoField = (
-        "id",
-        models.AutoField(primary_key=True, serialize=False, verbose_name="ID"),
+    customer: models.ForeignKey = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, null=False
     )
-    customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    event_name = models.CharField(max_length=200)
+    event_name = models.CharField(max_length=200, null=False)
     time_created: models.CharField = models.CharField(max_length=100)
     properties: models.JSONField = models.JSONField(default=dict)
+    idempotency_id: models.CharField = models.CharField(max_length=255, unique=True)
+
+    class Meta:
+        ordering = ["idempotency_id"]
 
     def __str__(self):
-        return str(self.event_type)
+        return str(self.event_name) + "-" + str(self.idempotency_id)
 
 
 class BillingPlan(models.Model):
@@ -117,6 +120,8 @@ class Subscription(models.Model):
     plan_name: The name of the plan that the subscription is for.
     start_date: The date at which the subscription started.
     end_date: The date at which the subscription will end.
+    status: The status of the subscription, active or ended.
+
     """
 
     STATUSES = Choices(
@@ -134,3 +139,15 @@ class Subscription(models.Model):
 
     def __str__(self):
         return str(self.customer) + " " + str(self.billingplan)
+
+class Invoice(models.Model):
+
+    cost_due = MoneyField(
+        max_digits=10, decimal_places=2, null=True, default_currency=None
+    )
+    currency = models.CharField(max_length=10, default="USD")
+    time_created = models.DateTimeField(max_length=100, auto_now=True)
+
+    due_date = models.DateTimeField(max_length=100)
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)

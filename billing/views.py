@@ -3,6 +3,8 @@ from django.forms.models import model_to_dict
 from .models import Customer, Event, Subscription
 from .serializers import EventSerializer, SubscriptionSerializer
 from rest_framework import viewsets
+from rest_framework_api_key.permissions import HasAPIKey
+
 
 # Create your views here.
 
