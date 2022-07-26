@@ -18,7 +18,7 @@ from django.urls import path
 from django.conf.urls import include
 from rest_framework import routers
 from billing.views import EventViewSet, SubscriptionViewSet
-from billing.track import track_event
+from billing import track
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
