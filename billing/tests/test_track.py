@@ -5,7 +5,7 @@ import json
 from django.urls import reverse
 from rest_framework import status
 from django.core.serializers.json import DjangoJSONEncoder
-
+from rest_framework_api_key.models import APIKey
 
 from ..track import track_event
 
@@ -18,6 +18,10 @@ class TrackEventTest(TestCase):
     def setUp(self):
 
         Customer.objects.create(external_id="7fa09280-957c-4a5f-925a-6a3498a1d299")
+        api_key, key = APIKey.objects.create_key(name="test-api-ke")
+        self.authorization_header = {
+            "Authorization": "Api-key" + " " + key,
+        }
 
         self.client = Client()
         idempotency_id = uuid.uuid4()
@@ -45,8 +49,9 @@ class TrackEventTest(TestCase):
             reverse("track_event"),
             data=json.dumps(self.invalid_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
+            **self.authorization_header,
         )
-        self.assertEqual(response.message, "Customer does not exist")
+        self.assertEqual(response.content, b"Customer does not exist")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
