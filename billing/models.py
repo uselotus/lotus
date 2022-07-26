@@ -121,6 +121,7 @@ class Subscription(models.Model):
     start_date: The date at which the subscription started.
     end_date: The date at which the subscription will end.
     status: The status of the subscription, active or ended.
+
     """
 
     STATUSES = Choices(
@@ -138,7 +139,6 @@ class Subscription(models.Model):
 
     def __str__(self):
         return str(self.customer) + " " + str(self.billingplan)
-
 
 class Invoice(models.Model):
 
