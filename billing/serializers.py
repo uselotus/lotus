@@ -3,7 +3,6 @@ from rest_framework import serializers
 from .models import Event, Customer, Subscription
 
 
-
 class EventSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Event
@@ -16,7 +15,6 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-
 class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Customer
@@ -25,6 +23,8 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
             "company_name",
             "external_id",
             "billing_id",
+        )
+
 
 class SubscriptionSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -36,4 +36,4 @@ class SubscriptionSerializer(serializers.HyperlinkedModelSerializer):
             "time_ended",
             "id",
             "status",
-
+        )
