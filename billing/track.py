@@ -25,7 +25,6 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
 
         if request.content_type == "application/json":
             try:
-                print(event_data)
                 event_data = json.load(request)
             except json.JSONDecodeError:
                 # if not, it's probably base64 encoded from other libraries

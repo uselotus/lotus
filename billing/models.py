@@ -24,9 +24,7 @@ class Customer(models.Model):
     phone_number: self-explanatory
     """
 
-    first_name = models.CharField(max_length=30)  # 30 characters is arbitrary
-    last_name = models.CharField(max_length=30)
-
+    name = models.CharField(max_length=100)  # 30 characters is arbitrary
     company_name = models.CharField(max_length=30, default=" ")
     external_id = models.CharField(max_length=40, default=" ")
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)

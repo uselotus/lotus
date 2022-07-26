@@ -1,9 +1,10 @@
-from django.test import TestCase, Client
+from django.test import TestCase
 from ..models import Customer, Event
 import uuid
 import json
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.test import APIClient
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework_api_key.models import APIKey
 
@@ -20,10 +21,11 @@ class TrackEventTest(TestCase):
         Customer.objects.create(external_id="7fa09280-957c-4a5f-925a-6a3498a1d299")
         api_key, key = APIKey.objects.create_key(name="test-api-ke")
         self.authorization_header = {
-            "Authorization": "Api-key" + " " + key,
+            "Authorization": "Api-Key" + " " + key,
         }
 
-        self.client = Client()
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION="Api-Key" + " " + key)
         idempotency_id = uuid.uuid4()
 
         self.valid_payload = {
