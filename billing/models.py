@@ -11,7 +11,7 @@ import jsonfield
 
 # Create your models here.
 
-# Customer Model, Attempt 1
+
 class Customer(models.Model):
 
     """
@@ -88,7 +88,6 @@ class BillableMetric(models.Model):
 
 class BillingPlan(models.Model):
     """
-    AGGREGATION_CHOICES: TODO
     Billing_ID: Id for this specific plan
     time_created: self-explanatory
     currency: self-explanatory
@@ -120,11 +119,10 @@ class BillingPlan(models.Model):
         decimal_places=2, max_digits=8, default_currency="USD", default=0.0
     )
     pay_in_advance = models.BooleanField(default=False)
-    # we may need to specify that the json will contain
-    # BillableMetrics objects, but I'm not sure
+    # Need to figure out how to make this a list of BillableMetrics
     billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
+    starter_metric_quatity = models.IntegerField(default=0)
     metric_amount = MoneyField(decimal_places=10, max_digits=14, default_currency="USD")
-
     name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ")
 

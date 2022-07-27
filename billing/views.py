@@ -93,7 +93,7 @@ class CustomerView(APIView):
         return Response(serializer.errors, status=400)
 
 
-class GetUsageView(APIView):
+class UsageView(APIView):
 
     permission_classes = [HasUserAPIKey]
 
