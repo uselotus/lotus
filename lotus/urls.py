@@ -22,6 +22,7 @@ from billing.views import (
     SubscriptionViewSet,
     CustomerView,
     SubscriptionView,
+    UsageView,
 )
 from billing import track
 
@@ -38,4 +39,5 @@ urlpatterns = [
     path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
     path("track/", track.track_event, name="track_event"),
     path("track", track.track_event, name="track_event"),
+    path("api/usage", UsageView.as_view(), name="usage"),
 ]
