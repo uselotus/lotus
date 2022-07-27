@@ -5,6 +5,7 @@ from model_utils import Choices
 from djmoney.models.fields import MoneyField
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
+from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
 import jsonfield
 
@@ -64,17 +65,7 @@ class Event(models.Model):
         return str(self.event_name) + "-" + str(self.idempotency_id)
 
 
-class BillingPlan(models.Model):
-    """
-    AGGREGATION_CHOICES: TODO
-    Billing_ID: Id for this specific plan
-    time_created: self-explanatory
-    currency: self-explanatory
-    interval: determines whether plan charges weekly, monthly, or yearly
-    base_rate: amount to charge every week, month, or year (depending on choice of interval)
-    billable_metrics: a json containing a list of billable_metrics objects
-    """
-
+class BillableMetric(models.Model):
     class AGGREGATION_TYPES(object):
         COUNT = "count"
         SUM = "sum"
@@ -85,6 +76,26 @@ class BillingPlan(models.Model):
         (AGGREGATION_TYPES.SUM, _("Sum")),
         (AGGREGATION_TYPES.MAX, _("Max")),
     )
+
+    event_name = models.CharField(max_length=200, null=False)
+    property_name = models.CharField(max_length=200, null=True)
+    aggregation_type = models.CharField(
+        max_length=10,
+        choices=AGGREGATION_CHOICES,
+        default=AGGREGATION_CHOICES.count,
+    )
+
+
+class BillingPlan(models.Model):
+    """
+    AGGREGATION_CHOICES: TODO
+    Billing_ID: Id for this specific plan
+    time_created: self-explanatory
+    currency: self-explanatory
+    interval: determines whether plan charges weekly, monthly, or yearly
+    base_rate: amount to charge every week, month, or year (depending on choice of interval)
+    billable_metrics: a json containing a list of billable_metrics objects
+    """
 
     billing_id = models.CharField(
         max_length=36, blank=True, unique=True, default=uuid.uuid4
@@ -105,14 +116,14 @@ class BillingPlan(models.Model):
         default=INTERVAL_CHOICES.month,
     )
 
-    # these are somewhat arbitrary, gotta look into these later
     base_rate = MoneyField(
         decimal_places=2, max_digits=8, default_currency="USD", default=0.0
     )
-
+    pay_in_advance = models.BooleanField(default=False)
     # we may need to specify that the json will contain
     # BillableMetrics objects, but I'm not sure
-    billable_metrics = jsonfield.JSONField(default=list)
+    billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
+    metric_amount = MoneyField(decimal_places=10, max_digits=14, default_currency="USD")
 
     name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ")
