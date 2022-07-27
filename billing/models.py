@@ -5,7 +5,6 @@ from model_utils import Choices
 from djmoney.models.fields import MoneyField
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
-from djmoney.models.fields import MoneyField
 from rest_framework_api_key.models import AbstractAPIKey
 import jsonfield
 
@@ -13,28 +12,32 @@ import jsonfield
 
 # Customer Model, Attempt 1
 class Customer(models.Model):
+
     """
-    Customer object. An explanation of the Customer's fields follows:
-    first_name: self-explanatory
-    last_name: self-explanatory
-    billing_id: internal billing system identifier
-    external_id: customer's id within the users backend system
-    billing_address: currently set to null, but we will need to set this to an "address" object later
-    company_name: self-explanatory
-    email_address: self-explanatory
-    phone_number: self-explanatory
+    Customer Model
+
+    This model represents a customer.
+
+    Attributes:
+        name (str): The name of the customer.
+        company_name (str): The company name of the customer.
+        customer_id (str): The external id of the customer in the backend system.
+        billing_id (str): The billing id of the customer, internal to Lotus.
     """
 
-    name = models.CharField(max_length=100)  # 30 characters is arbitrary
+    name = models.CharField(max_length=100)
     company_name = models.CharField(max_length=30, default=" ")
-    external_id = models.CharField(max_length=40, default=" ")
+    customer_id = models.CharField(max_length=40, default=" ", unique=True)
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
+    billing_configuration = models.JSONField(default=dict, blank=True)
 
-    # # auto generated when I typed "__init__, not sure what all this stuff is"
+    balance = MoneyField(
+        default=0, max_digits=10, decimal_places=2, default_currency="USD"
+    )  # balance in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
+    currency = models.CharField(max_length=3, default="USD")
 
-
-#    def __init__(self: _Self, *args, **kwargs) -> None:
-#        super().__init__(*args, **kwargs)
+    def __str__(self) -> str:
+        return str(self.name) + " " + str(self.billing_id)
 
 
 class Event(models.Model):
@@ -50,7 +53,7 @@ class Event(models.Model):
         Customer, on_delete=models.CASCADE, null=False
     )
     event_name = models.CharField(max_length=200, null=False)
-    time_created: models.CharField = models.CharField(max_length=100)
+    time_created: models.DateTimeField = models.DateTimeField()
     properties: models.JSONField = models.JSONField(default=dict)
     idempotency_id: models.CharField = models.CharField(max_length=255, unique=True)
 
@@ -87,7 +90,7 @@ class BillingPlan(models.Model):
         max_length=36, blank=True, unique=True, default=uuid.uuid4
     )
 
-    time_created = models.TimeField()
+    time_created: models.DateTimeField = models.DateTimeField()
     currency = models.CharField(max_length=30, default="USD")  # 30 is arbitrary
 
     INTERVAL_CHOICES = Choices(
@@ -135,8 +138,8 @@ class Subscription(models.Model):
 
     customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
-    start_date = models.DateTimeField(max_length=100, auto_now=True)
-    end_date = models.DateTimeField(max_length=100, auto_now=True)
+    start_date = models.DateTimeField(auto_now=True)
+    end_date = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
 
     def __str__(self):
@@ -146,7 +149,7 @@ class Subscription(models.Model):
 class Invoice(models.Model):
 
     cost_due = MoneyField(
-        max_digits=10, decimal_places=2, null=True, default_currency=None
+        max_digits=10, decimal_places=2, null=True, default_currency="USD"
     )
     currency = models.CharField(max_length=10, default="USD")
     time_created = models.DateTimeField(max_length=100, auto_now=True)
