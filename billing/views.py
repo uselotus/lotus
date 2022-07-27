@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.forms.models import model_to_dict
-from .models import Customer, Event, Subscription
+from .models import Customer, Event, Subscription, BillingPlan
 from .serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
 
@@ -91,3 +91,52 @@ class CustomerView(APIView):
             serializer.save()
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
+
+
+class GetUsageView(APIView):
+
+    permission_classes = [HasUserAPIKey]
+
+    def get(self, request, format=None):
+        """
+        Return current usage for a customer during a given billing period.
+        """
+        customer_id = request.query_params["customer_id"]
+        customer = Customer.objects.get(customer_id=customer_id)
+
+        customer_subscriptions = Subscription.objects.filter(
+            customer=customer, status="active"
+        )
+
+        usage_summary = {}
+
+        for subscription in customer_subscriptions:
+
+            # TODO put these gets in the models
+            plan = subscription.billing_plan
+            plan_start_timestamp = plan.start_timestamp
+            plan_end_timestamp = plan.end_timestamp
+            event_name = plan.billable_metric.event_name
+            aggregation_type = plan.billable_metric.aggregation_type
+
+            events = Event.objects.filter(
+                event_name=event_name,
+                time_created__gte=plan_start_timestamp,
+                time_created__lte=plan_end_timestamp,
+            )
+
+            subtotal_usage = 0.0
+            if aggregation_type == "count":
+                subtotal_usage = len(events)
+            elif aggregation_type == "sum":
+                property_name = plan.billable_metric.property_name
+                for event in events:
+                    subtotal_usage += float(event.properties[property_name])
+
+            usage_summary[plan.name] = {
+                "subtotal_usage": subtotal_usage,
+                "billing_start_date": plan_start_timestamp,
+                "billing_end_date": plan_end_timestamp,
+            }
+
+        return Response(usage_summary)
