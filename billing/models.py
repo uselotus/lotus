@@ -120,9 +120,13 @@ class BillingPlan(models.Model):
     )
     pay_in_advance = models.BooleanField(default=False)
     # Need to figure out how to make this a list of BillableMetrics
-    billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
-    starter_metric_quatity = models.IntegerField(default=0)
-    metric_amount = MoneyField(decimal_places=10, max_digits=14, default_currency="USD")
+    billable_metric = models.ForeignKey(
+        BillableMetric, on_delete=models.CASCADE, null=True
+    )
+    starter_metric_quatity = models.IntegerField(default=0, null=True)
+    metric_amount = MoneyField(
+        decimal_places=10, max_digits=14, default_currency="USD", null=True
+    )
     name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ")
 
