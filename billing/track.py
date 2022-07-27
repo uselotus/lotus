@@ -71,7 +71,7 @@ def track_event(request):
         return HttpResponseBadRequest("No data provided")
     customer_id = data["customer_id"]
     try:
-        customer = Customer.objects.get(external_id=customer_id)
+        customer = Customer.objects.get(customer_id=customer_id)
     except Customer.DoesNotExist:
         return HttpResponseBadRequest("Customer does not exist")
 
