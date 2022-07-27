@@ -1,5 +1,5 @@
 from re import S
-from .models import Event, Customer, BillingPlan
+from .models import Event, Customer, BillingPlan, APIToken
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
@@ -11,7 +11,7 @@ import base64
 from urllib.parse import urlparse
 from typing import Dict, Union, List
 from rest_framework.decorators import permission_classes
-from rest_framework_api_key.permissions import HasAPIKey
+from .permissions import HasUserAPIKey
 from rest_framework.permissions import IsAuthenticated
 
 
@@ -43,6 +43,12 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
 
 def ingest_event(request, data: dict, customer: Customer) -> None:
 
+    idepotency_id_query = (
+        Event.objects.all().filter(idempotency_id=data["idempotency_id"]).count()
+    )
+    if idepotency_id_query > 0:
+        return HttpResponseBadRequest("An event record already exists", status=409)
+
     db_event = Event.objects.create(
         event_name=data["event_name"],
         idempotency_id=data["idempotency_id"],
@@ -56,7 +62,7 @@ def ingest_event(request, data: dict, customer: Customer) -> None:
 @csrf_exempt
 def track_event(request):
     # Check Permissions
-    permissions = HasAPIKey()
+    permissions = HasUserAPIKey()
     if not (permissions.has_permission(request, "track_event")):
         return HttpResponseBadRequest("Invalid API Key or No API Key provided")
 

@@ -6,6 +6,7 @@ from djmoney.models.fields import MoneyField
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
+from rest_framework_api_key.models import AbstractAPIKey
 import jsonfield
 
 # Create your models here.
@@ -110,6 +111,7 @@ class BillingPlan(models.Model):
     # BillableMetrics objects, but I'm not sure
     billable_metrics = jsonfield.JSONField(default=list)
 
+    name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ")
 
 
@@ -140,6 +142,7 @@ class Subscription(models.Model):
     def __str__(self):
         return str(self.customer) + " " + str(self.billingplan)
 
+
 class Invoice(models.Model):
 
     cost_due = MoneyField(
@@ -151,3 +154,20 @@ class Invoice(models.Model):
     due_date = models.DateTimeField(max_length=100)
 
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
+
+
+class User(AbstractUser):
+
+    company_name = models.CharField(max_length=200, default=" ")
+
+
+class APIToken(AbstractAPIKey):
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return str(self.name) + " " + str(self.user)
+
+    class Meta:
+        verbose_name = "API Token"
+        verbose_name_plural = "API Tokens"
