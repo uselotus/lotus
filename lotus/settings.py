@@ -77,6 +77,8 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 
+AUTH_USER_MODEL = "billing.User"
+
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
