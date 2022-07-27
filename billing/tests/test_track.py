@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework_api_key.models import APIKey
+from billing.models import User, APIToken
 
 from ..track import track_event
 
@@ -18,8 +19,9 @@ class TrackEventTest(TestCase):
 
     def setUp(self):
 
+        user_object = User.objects.create_user(username="test", email="")
         Customer.objects.create(external_id="7fa09280-957c-4a5f-925a-6a3498a1d299")
-        api_key, key = APIKey.objects.create_key(name="test-api-ke")
+        api_key, key = APIToken.objects.create_key(name="test-api-ke", user=user_object)
         self.authorization_header = {
             "Authorization": "Api-Key" + " " + key,
         }
@@ -66,6 +68,41 @@ class TrackEventTest(TestCase):
             .filter(idempotency_id=self.valid_payload["idempotency_id"])
             .count(),
             0,
+        )
+        response = self.client.post(
+            reverse("track_event"),
+            data=json.dumps(self.valid_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            Event.objects.all()
+            .filter(idempotency_id=self.valid_payload["idempotency_id"])
+            .count(),
+            1,
+        )
+
+    def test_idempotency_duplicate_does_not_create_multiple_events(self):
+        """
+        Test that track_event does not create multiple events in the database if the idempotency_id is duplicated.
+        """
+        self.assertEqual(
+            Event.objects.all()
+            .filter(idempotency_id=self.valid_payload["idempotency_id"])
+            .count(),
+            0,
+        )
+        response = self.client.post(
+            reverse("track_event"),
+            data=json.dumps(self.valid_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            Event.objects.all()
+            .filter(idempotency_id=self.valid_payload["idempotency_id"])
+            .count(),
+            1,
         )
         response = self.client.post(
             reverse("track_event"),
