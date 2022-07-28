@@ -28,7 +28,6 @@ from billing import track
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
-router.register(r"subscription", SubscriptionViewSet)
 
 urlpatterns = [
     path("grappelli/", include("grappelli.urls")),
