@@ -7,6 +7,8 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
+from dateutil.relativedelta import relativedelta
+from dateutil.parser import isoparse
 import jsonfield
 
 # Create your models here.
@@ -28,7 +30,7 @@ class Customer(models.Model):
 
     name = models.CharField(max_length=100)
     company_name = models.CharField(max_length=30, default=" ")
-    customer_id = models.CharField(max_length=40, default=" ", unique=True)
+    customer_id = models.CharField(max_length=40, unique=True)
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
     billing_configuration = models.JSONField(default=dict, blank=True)
 
@@ -96,7 +98,7 @@ class BillingPlan(models.Model):
     billable_metrics: a json containing a list of billable_metrics objects
     """
 
-    billing_id = models.CharField(
+    plan_id = models.CharField(
         max_length=36, blank=True, unique=True, default=uuid.uuid4
     )
 
@@ -121,14 +123,25 @@ class BillingPlan(models.Model):
     pay_in_advance = models.BooleanField(default=False)
     # Need to figure out how to make this a list of BillableMetrics
     billable_metric = models.ForeignKey(
-        BillableMetric, on_delete=models.CASCADE, null=True
+        BillableMetric, on_delete=models.CASCADE, null=True, blank=True
     )
-    starter_metric_quatity = models.IntegerField(default=0, null=True)
+    starter_metric_quatity = models.IntegerField(default=0, null=True, blank=True)
     metric_amount = MoneyField(
-        decimal_places=10, max_digits=14, default_currency="USD", null=True
+        decimal_places=10, max_digits=14, default_currency="USD", null=True, blank=True
     )
     name = models.CharField(max_length=200, default=" ")
-    description = models.CharField(max_length=256, default=" ")
+    description = models.CharField(max_length=256, default=" ", blank=True)
+
+    def subscription_end_date(self, start_date):
+        start_date_parsed = isoparse(start_date)
+        if self.interval == "week":
+            return start_date_parsed + relativedelta(weeks=+1)
+        elif self.interval == "month":
+            return start_date_parsed + relativedelta(months=+1)
+        elif self.interval == "year":
+            return start_date_parsed + relativedelta(years=+1)
+        else:
+            return None
 
 
 class Subscription(models.Model):
@@ -151,7 +164,7 @@ class Subscription(models.Model):
 
     customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
-    start_date = models.DateTimeField(auto_now=True)
+    start_date = models.DateTimeField()
     end_date = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
 

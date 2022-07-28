@@ -1,5 +1,5 @@
-from django.shortcuts import render
 from django.forms.models import model_to_dict
+import dateutil.parser
 from .models import Customer, Event, Subscription, BillingPlan
 from .serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
@@ -59,15 +59,34 @@ class SubscriptionView(APIView):
             )
         else:
             customer = customer_qs[0]
+        plan_qs = BillingPlan.objects.filter(plan_id=data["plan_id"])
+        if len(plan_qs) < 1:
+            return Response(
+                {
+                    "error": "Plan with plan_id {} does not exist".format(
+                        data["plan_id"]
+                    )
+                },
+                status=400,
+            )
+        else:
+            plan = plan_qs[0]
+            end_date = plan.subscription_end_date(data["start_date"])
+
         subscription = Subscription.objects.create(
             customer=customer,
-            billing_plan=data["billing_plan"],
+            start_date=data["start_date"],
+            end_date=end_date,
+            billing_plan=plan,
             status="active",
-            time_created=data["time_created"],
         )
         subscription.save()
-        serializer = SubscriptionSerializer(subscription)
-        return Response(serializer.data)
+
+        serializer_context = {
+            "request": request,
+        }
+
+        return Response("Subscription Created")
 
 
 class CustomerView(APIView):
@@ -86,6 +105,7 @@ class CustomerView(APIView):
         """
         Create a new customer.
         """
+
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -138,5 +158,7 @@ class UsageView(APIView):
                 "billing_start_date": plan_start_timestamp,
                 "billing_end_date": plan_end_timestamp,
             }
+
+        usage_summary["# of Active Subscriptions"] = len(usage_summary)
 
         return Response(usage_summary)

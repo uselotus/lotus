@@ -28,14 +28,13 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class SubscriptionSerializer(serializers.HyperlinkedModelSerializer):
+class SubscriptionSerializer(serializers.ModelField):
     class Meta:
         model = Subscription
         fields = (
             "customer",
             "billing_plan",
-            "time_created",
-            "time_ended",
-            "id",
+            "start_date",
+            "end_date",
             "status",
         )
