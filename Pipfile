@@ -17,6 +17,7 @@ djangorestframework-api-key = "==2.*"
 celery = "*"
 redis = "*"
 psycopg2 = "*"
+python-dateutil = "*"
 
 [dev-packages]
 pylint = "*"

@@ -20,7 +20,7 @@ class TrackEventTest(TestCase):
     def setUp(self):
 
         user_object = User.objects.create_user(username="test", email="")
-        Customer.objects.create(external_id="7fa09280-957c-4a5f-925a-6a3498a1d299")
+        Customer.objects.create(customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299")
         api_key, key = APIToken.objects.create_key(name="test-api-ke", user=user_object)
         self.authorization_header = {
             "Authorization": "Api-Key" + " " + key,
@@ -47,7 +47,7 @@ class TrackEventTest(TestCase):
 
     def test_track_event_if_customer_does_not_exist(self):
         """
-        Test that track_event returns bad request with message "Customer does not exist" if the customer's external_id does not exist in the database.
+        Test that track_event returns bad request with message "Customer does not exist" if the customer's customer_id does not exist in the database.
         """
         response = self.client.post(
             reverse("track_event"),
