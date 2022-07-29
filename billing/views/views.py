@@ -1,13 +1,14 @@
 from django.forms.models import model_to_dict
 import dateutil.parser
-from .models import Customer, Event, Subscription, BillingPlan
-from .serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
+from ..models import Customer, Event, Subscription, BillingPlan
+from ..serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
+from django_q.tasks import async_task
+from ..tasks import generate_invoice
 
 from rest_framework import viewsets
-from .permissions import HasUserAPIKey
+from ..permissions import HasUserAPIKey
 from rest_framework.response import Response
-
 
 # Create your views here.
 

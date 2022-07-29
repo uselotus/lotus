@@ -14,7 +14,11 @@ django-money = "*"
 django-cors-headers = "*"
 jsonfield = "*"
 djangorestframework-api-key = "==2.*"
+celery = "5.2"
+redis = "*"
+psycopg2 = "*"
 python-dateutil = "*"
+django-q = "*"
 
 [dev-packages]
 pylint = "*"

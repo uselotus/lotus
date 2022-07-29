@@ -9,8 +9,9 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
-
+import os
 from pathlib import Path
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +21,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-q&t0uoz(b(^la!u2bpj@t3l4jl(=v!7(etlp!t7wb(u)xk-#th"
+SECRET_KEY = "q&t0uoz(b(^la!u2bpj@t3l4jl(=v!7(etlp!t7wb(u)xk-#th"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+try:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+except KeyError:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
 # Application definition
 
@@ -89,6 +92,26 @@ DATABASES = {
     }
 }
 
+# DATABASES = {
+
+#     'default': {
+
+#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+
+#         'NAME': ‘<db_name>’,
+
+#         'USER': '<db_username>',
+
+#         'PASSWORD': '<password>',
+
+#         'HOST': '<db_hostname_or_ip>',
+
+#         'PORT': '<db_port>',
+
+#     }
+
+# }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -107,6 +130,15 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+
+# Celery Settings
+CELERY_BROKER_URL = "redis://localhost:6379"
+CELERY_RESULT_BACKEND = "redis://localhost:6379"
+CELERY_ACCEPT_CONTENT = ["application/json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "America/New_York"
 
 
 # Internationalization
@@ -140,3 +172,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
+
+
+CELERY_BEAT_SCHEDULE = {
+    "calculate_invoice": {
+        "task": "billing.tasks.calculate_invoice",
+        "schedule": crontab(hour="0"),
+    },
+}
