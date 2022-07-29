@@ -12,4 +12,11 @@ def calculate_invoice(subscription):
         status="active", end_date__lte=datetime.now()
     )
     for subscription in ending_subscriptions:
+        # Generate the invoice
         generate_invoice(subscription)
+        # Renew the subscription
+        subscription.start_date = datetime.now()
+        subscription.end_date = subscription.billing_plan.subscription_end_date(
+            subscription.start_date
+        )
+        subscription.save()
