@@ -1,5 +1,5 @@
-# using official Docker Python BaseImage 
-FROM python:3
+# using official Docker Python BaseImage
+FROM python:3.9
 
 WORKDIR /usr/src/app
 
@@ -10,8 +10,8 @@ COPY Pipfile Pipfile.lock ./
 RUN pip install -U pipenv
 
 # install the packages/dependencies required for the project
-# NOTE: i'm not entirely sure what the '--system' flag does here, might need to get rid of it?  
-RUN pipenv install --system 
+# NOTE: i'm not entirely sure what the '--system' flag does here, might need to get rid of it?
+RUN pipenv install --system
 
 # copy all files from the <src> directory to the <dest> directory
 COPY . .
