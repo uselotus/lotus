@@ -12,8 +12,8 @@ services:
       sh -c "python3 manage.py migrate &&
              python3 manage.py wait_for_db &&
              python3 manage.py runserver 0.0.0.0:8000"
-    environment:
-    - DOPPLER_TOKEN
+    env_file:
+    - ./.env.dev
     depends_on:
       - db
 
@@ -32,8 +32,8 @@ services:
     command: celery -A app worker -l info
     volumes:
       - ./app:/app
-    environment:
-    - DOPPLER_TOKEN
+    env_file:
+      - ./.env.dev
     depends_on:
       - db
       - redis
