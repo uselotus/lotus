@@ -18,6 +18,7 @@ celery = "*"
 redis = "*"
 psycopg2 = "*"
 python-dateutil = "*"
+django-q = "*"
 
 [dev-packages]
 pylint = "*"
