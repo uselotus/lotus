@@ -1,6 +1,12 @@
 from rest_framework import serializers
 
-from .models import Event, Customer, Subscription
+from .models import Event, Customer, Subscription, Invoice
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = "__all__"
 
 
 class EventSerializer(serializers.HyperlinkedModelSerializer):
