@@ -11,24 +11,33 @@ def generate_invoice(subscription):
     # Get the billing plan
     billing_plan = subscription.billing_plan
 
+    billable_metric = billing_plan.billable_metric
+    aggregation_type = billable_metric.get_aggregation_type()
+
     # Get the events for the subscription
-    events = Event.objects.filter(subscription=subscription)
+    events = Event.objects.filter(event_name=billable_metric.event_name)
+
+    if aggregation_type == "count":
+        # Get the total number of events
+        num_events = len(events)
+        usage_cost = billing_plan.get_usage_cost_count_aggregation(num_events)
+
+    else:
+        usage_cost = 0.0
 
     # Get the total cost of the subscription
-    total_cost = billing_plan.cost_per_month * subscription.months_remaining
+    total_cost = billing_plan.base_rate + usage_cost
 
     # Create the invoice
     invoice = Invoice(
         cost_due=total_cost,
         currency=billing_plan.currency,
-        due_date=subscription.end_date,
+        issue_date=subscription.end_date,
         subscription=subscription,
+        customer_name=customer_obj.name,
+        customer_billing_id=customer_obj.billing_id,
     )
     invoice.save()
 
     # Create the events for the invoice
-    for event in events:
-        event.invoice = invoice
-        event.save()
-
     return invoice
