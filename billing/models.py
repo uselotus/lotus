@@ -1,3 +1,4 @@
+from email.mime import base
 from operator import mod
 from django.db import models
 import uuid
@@ -9,6 +10,7 @@ from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import isoparse
+from django.contrib.postgres.fields import ArrayField
 import jsonfield
 
 # Create your models here.
@@ -87,6 +89,9 @@ class BillableMetric(models.Model):
         default=AGGREGATION_CHOICES.count,
     )
 
+    def get_aggregation_type(self):
+        return self.aggregation_type
+
 
 class BillingPlan(models.Model):
     """
@@ -143,6 +148,9 @@ class BillingPlan(models.Model):
         else:
             return None
 
+    def get_usage_cost_count_aggregation(self, num_events):
+        return max(0, self.metric_amount * (self.starter_metric_quantity - num_events))
+
 
 class Subscription(models.Model):
     """
@@ -164,8 +172,8 @@ class Subscription(models.Model):
 
     customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField(auto_now=True)
+    start_date = models.DateField()
+    end_date = models.DateField(auto_now=True)
     status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
 
     def __str__(self):
@@ -174,15 +182,21 @@ class Subscription(models.Model):
 
 class Invoice(models.Model):
 
+    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
     cost_due = MoneyField(
         max_digits=10, decimal_places=2, null=True, default_currency="USD"
     )
     currency = models.CharField(max_length=10, default="USD")
-    time_created = models.DateTimeField(max_length=100, auto_now=True)
+    issue_date = models.DateTimeField(max_length=100, auto_now=True)
 
-    due_date = models.DateTimeField(max_length=100)
+    customer_name = models.CharField(max_length=100)
+    customer_billing_id = models.CharField(max_length=40)
+
+    invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
 
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
+
+    line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
 
 
 class User(AbstractUser):
