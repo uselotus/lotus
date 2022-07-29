@@ -13,7 +13,12 @@ def calculate_invoice(subscription):
     )
     for subscription in ending_subscriptions:
         # Generate the invoice
-        generate_invoice(subscription)
+        try:
+            generate_invoice(subscription)
+        except Exception as e:
+            print(e)
+            print("Error generating invoice for subscription {}".format(subscription))
+            continue
         # Renew the subscription
         subscription.start_date = datetime.now()
         subscription.end_date = subscription.billing_plan.subscription_end_date(
