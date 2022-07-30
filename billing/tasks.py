@@ -1,5 +1,4 @@
 from __future__ import absolute_import, unicode_literals
-from webbrowser import get
 from celery import shared_task
 from datetime import datetime
 from .models import Subscription
