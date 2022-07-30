@@ -25,11 +25,15 @@ services:
       - pgdata:/var/lib/postgresql/data
   redis:
     image: redis:alpine
+    command: redis-server
+    ports:
+      - '6379:6379'
+
   celery:
     restart: always
     build:
       context: .
-    command: celery -A app worker -l info
+    command: celery -A lotus worker -l info
     volumes:
       - ./app:/app
     env_file:
@@ -38,5 +42,15 @@ services:
       - db
       - redis
       - app
+  celery-beat:
+    build:
+      context: .
+    command: celery -A lotus beat -l info
+    volumes:
+      - ./app:/app
+    environment:
+      - ./.env.dev
+    depends_on:
+      - redis
 volumes:
   pgdata:

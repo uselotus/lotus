@@ -27,7 +27,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 DEBUG = True
 
 try:
-    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+    ALLOWED_HOSTS = ["*"]
 except KeyError:
     ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
@@ -91,8 +91,8 @@ DATABASES = {
         "NAME": os.getenv("DATABASE_NAME"),
         "USER": os.getenv("DATABASE_USER"),
         "PASSWORD": os.getenv("DATABASE_PASSWORD"),
-        "HOST": "localhost",
-        "PORT": "",
+        "HOST": os.getenv("DATABASE_HOST"),
+        "PORT": os.getenv("DATABASE_PORT"),
     }
 }
 
@@ -124,6 +124,8 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "America/New_York"
 
+REDIS_HOST = "localhost"
+REDIS_PORT = 6379
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
