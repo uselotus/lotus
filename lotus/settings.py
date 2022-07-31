@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 import os
 from pathlib import Path
 from celery.schedules import crontab
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,9 +91,9 @@ AUTH_USER_MODEL = "billing.User"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "lotus",
-        "USER": "db_user",
-        "PASSWORD": "postgres",
+        "NAME": os.getenv("POSTGRES_NAME", "lotus"),
+        "USER": os.getenv("POSTGRES_USER", "db_user"),
+        "PASSWORD": "password",
         "HOST": "db",
         "PORT": 5432,
     }

@@ -19,6 +19,7 @@ redis = "*"
 psycopg2 = "*"
 python-dateutil = "*"
 django-q = "*"
+python-dotenv = "*"
 
 [dev-packages]
 pylint = "*"
