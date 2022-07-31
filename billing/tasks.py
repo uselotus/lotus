@@ -6,7 +6,7 @@ from .generate_invoice import generate_invoice
 
 
 @shared_task
-def calculate_invoice(subscription):
+def calculate_invoice():
     ending_subscriptions = Subscription.objects.filter(
         status="active", end_date__lte=datetime.now()
     )
