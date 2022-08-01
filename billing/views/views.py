@@ -1,5 +1,5 @@
 from django.forms.models import model_to_dict
-import dateutil.parser
+import dateutil.parser as parser
 from ..models import Customer, Event, Subscription, BillingPlan
 from ..serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
@@ -49,6 +49,8 @@ class SubscriptionView(APIView):
         """
         data = request.data
         customer_qs = Customer.objects.filter(customer_id=data["customer_id"])
+        start_date = parser.parse(data["start_date"])
+
         if len(customer_qs) < 1:
             return Response(
                 {
@@ -72,11 +74,11 @@ class SubscriptionView(APIView):
             )
         else:
             plan = plan_qs[0]
-            end_date = plan.subscription_end_date(data["start_date"])
+            end_date = plan.subscription_end_date(start_date)
 
         subscription = Subscription.objects.create(
             customer=customer,
-            start_date=data["start_date"],
+            start_date=start_date,
             end_date=end_date,
             billing_plan=plan,
             status="active",
@@ -133,7 +135,6 @@ class UsageView(APIView):
 
         for subscription in customer_subscriptions:
 
-            # TODO put these gets in the models
             plan = subscription.billing_plan
             plan_start_timestamp = plan.start_timestamp
             plan_end_timestamp = plan.end_timestamp
