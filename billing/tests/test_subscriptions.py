@@ -27,7 +27,7 @@ class SubscriptionTest(TestCase):
             event_name="Emails", property_name="amount", aggregation_type="count"
         )
         BillingPlan.objects.create(
-            BillableMetric=metric, metric_amount=1, name="Standard", plan_id="1"
+            billable_metric=metric, metric_amount=1, name="Standard", plan_id="1"
         )
 
         self.client = APIClient()
@@ -49,9 +49,12 @@ class SubscriptionTest(TestCase):
         Test that subscription post view works correctly.
         """
         response = self.client.post(
-            reverse("api/subscriptions"),
+            reverse("subscription"),
             data=json.dumps(self.valid_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
             **self.authorization_header,
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        subscription = Subscription.objects.all().filter(billing_plan="1")
+        self.assertEqual(len(subscription), 1)
