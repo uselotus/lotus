@@ -1,10 +1,9 @@
-version: '3'
 
 services:
 
 
   db:
-    image: postgres:latest
+    image: postgres:14
     environment:
       - POSTGRES_PASSWORD=password
       - POSTGRES_USER=db_user
@@ -30,7 +29,7 @@ services:
     depends_on:
       - db
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     command: redis-server
 
   celery:

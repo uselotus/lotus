@@ -1,10 +1,6 @@
 # using official Docker Python BaseImage
-FROM python:3.9
+FROM python:3.9-bullseye
 
-# updating docker host or host machine
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
 
@@ -12,12 +8,10 @@ WORKDIR /usr/src/app
 COPY Pipfile Pipfile.lock ./
 
 # install pipenv in container
-RUN pip install -U pipenv
+RUN pip install -U --no-cache-dir --disable-pip-version-check pipenv
 
 # install the packages/dependencies required for the project
-# NOTE: i'm not entirely sure what the '--system' flag does here, might need to get rid of it?
-RUN pipenv install --system
-
+RUN pipenv install --system --deploy --ignore-pipfile
 # copy all files from the <src> directory to the <dest> directory
 COPY . .
 
