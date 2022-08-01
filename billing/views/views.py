@@ -89,7 +89,7 @@ class SubscriptionView(APIView):
             "request": request,
         }
 
-        return Response("Subscription Created")
+        return Response("Subscription Created", status=201)
 
 
 class CustomerView(APIView):

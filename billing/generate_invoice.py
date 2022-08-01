@@ -15,7 +15,7 @@ def generate_invoice(subscription):
     aggregation_type = billable_metric.get_aggregation_type()
 
     # Get the events for the subscription
-    events = Event.objects.filter(event_name=billable_metric.event_name)
+    events = Event.objects.all().filter(event_name=billable_metric.event_name)
 
     if aggregation_type == "count":
         # Get the total number of events
