@@ -16,5 +16,4 @@ class Command(BaseCommand):
                 db_connection = connections["default"]
             except OperationalError:
                 time.sleep(1)
-                pass
         print("Database is available")
