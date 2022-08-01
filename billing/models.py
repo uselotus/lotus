@@ -42,7 +42,7 @@ class Customer(models.Model):
     currency = models.CharField(max_length=3, default="USD")
 
     def __str__(self) -> str:
-        return str(self.name) + " " + str(self.billing_id)
+        return str(self.name) + " " + str(self.customer_id)
 
 
 class Event(models.Model):
@@ -107,7 +107,7 @@ class BillingPlan(models.Model):
         max_length=36, blank=True, unique=True, default=uuid.uuid4
     )
 
-    time_created: models.DateTimeField = models.DateTimeField()
+    time_created: models.DateTimeField = models.DateTimeField(auto_now=True)
     currency = models.CharField(max_length=30, default="USD")  # 30 is arbitrary
 
     INTERVAL_CHOICES = Choices(
@@ -138,7 +138,7 @@ class BillingPlan(models.Model):
     description = models.CharField(max_length=256, default=" ", blank=True)
 
     def subscription_end_date(self, start_date):
-        start_date_parsed = isoparse(start_date)
+        start_date_parsed = start_date
         if self.interval == "week":
             return start_date_parsed + relativedelta(weeks=+1)
         elif self.interval == "month":
@@ -150,6 +150,9 @@ class BillingPlan(models.Model):
 
     def get_usage_cost_count_aggregation(self, num_events):
         return max(0, self.metric_amount * (self.starter_metric_quantity - num_events))
+
+    def __str__(self) -> str:
+        return str(self.name) + ":" + str(self.plan_id)
 
 
 class Subscription(models.Model):
@@ -177,7 +180,7 @@ class Subscription(models.Model):
     status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
 
     def __str__(self):
-        return str(self.customer) + " " + str(self.billingplan)
+        return str(self.customer) + " " + str(self.billing_plan)
 
 
 class Invoice(models.Model):
@@ -207,6 +210,7 @@ class User(AbstractUser):
 class APIToken(AbstractAPIKey):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, default="latest_token")
 
     def __str__(self):
         return str(self.name) + " " + str(self.user)

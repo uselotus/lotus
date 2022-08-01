@@ -34,7 +34,7 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class SubscriptionSerializer(serializers.ModelField):
+class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = (

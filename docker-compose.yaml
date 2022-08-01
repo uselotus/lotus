@@ -1,0 +1,60 @@
+
+services:
+
+
+  db:
+    image: postgres:14
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_USER=db_user
+      - POSTGRES_DB=lotus
+      - POSTGRES_HOST=db
+
+  lotus:
+    container_name: lotus_django
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./lotus:/lotus
+    command: >
+      sh -c "python3 manage.py wait_for_db &&
+             python3 manage.py migrate &&
+             python3 manage.py initadmin &&
+             python3 manage.py runserver 0.0.0.0:8000
+             "
+    env_file:
+    - .env
+    depends_on:
+      - db
+  redis:
+    image: redis:7-alpine
+    command: redis-server
+
+  celery:
+    restart: always
+    build:
+      context: .
+    command: celery -A lotus worker -l info
+    volumes:
+      - ./lotus:/lotus
+    env_file:
+      - ./.env
+    depends_on:
+      - db
+      - redis
+      - lotus
+  celery-beat:
+    build:
+      context: .
+    command: celery -A lotus beat -l info
+    volumes:
+      - ./lotus:/lotus
+    environment:
+      - ./.env
+    depends_on:
+      - redis
+      - db
+volumes:
+  pgdata:
