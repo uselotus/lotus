@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db import connections
 from django.db.utils import OperationalError
-from ...models import User
+from tenant.models import User
 from dotenv import load_dotenv
 import os
 

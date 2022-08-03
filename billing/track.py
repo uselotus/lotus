@@ -1,7 +1,7 @@
 from re import S
-from .models import Event, Customer, BillingPlan, APIToken
+from .models import Event, Customer, BillingPlan
+from tenant.models import APIToken, Tenant
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
-from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from rest_framework.parsers import JSONParser
 from django.db import IntegrityError

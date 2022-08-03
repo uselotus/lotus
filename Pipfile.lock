@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9b8b73479244ae19b98170c7bc912f06f39ac3e11836546318b3083f06ccb437"
+            "sha256": "60a68ef3b9aa16fa1d76d6aa65347cc72a8df229bd9b03170a64a7398db48213"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -188,6 +188,13 @@
             "index": "pypi",
             "version": "==1.3.9"
         },
+        "django-tenants": {
+            "hashes": [
+                "sha256:397a2f6ca7120edb5bab47c93f863d8681632c237a5a0f12e929b27740780719"
+            ],
+            "index": "pypi",
+            "version": "==3.4.3"
+        },
         "djangorestframework": {
             "hashes": [
                 "sha256:0c33407ce23acc68eca2a6e46424b008c9c02eceb8cf18581921d0092bc1f2ee",
@@ -373,11 +380,11 @@
         },
         "setuptools": {
             "hashes": [
-                "sha256:273b6847ae61f7829c1affcdd9a32f67aa65233be508f4fbaab866c5faa4e408",
-                "sha256:d5340d16943a0f67057329db59b564e938bb3736c6e50ae16ea84d5e5d9ba6d0"
+                "sha256:d36f579e989a90e8106b9061599c707d912e9cd296b30d62cb6b4dd3567a5ddc",
+                "sha256:db49784825568c9340e45e3322b8b8aed4ca598ce9bbf5277dcae95cc04dc469"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==63.3.0"
+            "version": "==63.4.0"
         },
         "six": {
             "hashes": [
@@ -394,6 +401,14 @@
             ],
             "markers": "python_version >= '3.5'",
             "version": "==0.4.2"
+        },
+        "tenant-schemas-celery": {
+            "hashes": [
+                "sha256:7947f46b39036272a376728e6d877956a3582bb7a55c91b67ad3b3182bb972b2",
+                "sha256:fbc0356cedab22e5f3c4f3ab219f463f4c9160a2e063edea63fcc3834b7e4e2f"
+            ],
+            "index": "pypi",
+            "version": "==2.0.0"
         },
         "toml": {
             "hashes": [
@@ -537,11 +552,11 @@
         },
         "setuptools": {
             "hashes": [
-                "sha256:273b6847ae61f7829c1affcdd9a32f67aa65233be508f4fbaab866c5faa4e408",
-                "sha256:d5340d16943a0f67057329db59b564e938bb3736c6e50ae16ea84d5e5d9ba6d0"
+                "sha256:d36f579e989a90e8106b9061599c707d912e9cd296b30d62cb6b4dd3567a5ddc",
+                "sha256:db49784825568c9340e45e3322b8b8aed4ca598ce9bbf5277dcae95cc04dc469"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==63.3.0"
+            "version": "==63.4.0"
         },
         "tomli": {
             "hashes": [
