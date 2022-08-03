@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework_api_key.models import APIKey
-from billing.models import User, APIToken
+from tenant.models import User, APIToken
 
 
 class SubscriptionTest(TestCase):

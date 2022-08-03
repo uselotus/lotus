@@ -21,6 +21,8 @@ python-dateutil = "*"
 django-q = "*"
 python-dotenv = "*"
 sentry-sdk = "*"
+django-tenants = "*"
+tenant-schemas-celery = "*"
 
 [dev-packages]
 pylint = "*"

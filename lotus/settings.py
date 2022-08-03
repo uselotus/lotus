@@ -54,7 +54,7 @@ except KeyError:
 
 # Application definition
 
-INSTALLED_APPS = [
+SHARED_APPS = [
     "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -63,14 +63,25 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "rest_framework_api_key",
-    "billing",
-    "djmoney",
-    "corsheaders",
+    "django_tenants",
+    "tenant",
 ]
+
+TENANT_APPS = [
+    "billing",
+    "rest_framework_api_key",
+]
+
+INSTALLED_APPS = list(SHARED_APPS) + [
+    app for app in TENANT_APPS if app not in SHARED_APPS
+]
+
+TENANT_MODEL = "tenant.Tenant"
+TENANT_DOMAIN_MODEL = "tenant.Domain"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django_tenants.middleware.main.TenantMainMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -81,6 +92,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "lotus.urls"
+PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
+SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
 TEMPLATES = [
     {
@@ -101,14 +114,14 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 
-AUTH_USER_MODEL = "billing.User"
+AUTH_USER_MODEL = "tenant.User"
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "ENGINE": "django_tenants.postgresql_backend",
         "NAME": os.getenv("POSTGRES_NAME", "lotus"),
         "USER": os.getenv("POSTGRES_USER", "db_user"),
         "PASSWORD": "",
@@ -116,6 +129,7 @@ DATABASES = {
         "PORT": 5432,
     }
 }
+DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 
 # Password validation
