@@ -1,6 +1,6 @@
 # using official Docker Python BaseImage
 #!/bin/bash
-FROM python:3.9-bullseye
+FROM --platform=linux/amd64 python:3.9-bullseye
 
 
 WORKDIR /usr/src/app
