@@ -11,7 +11,6 @@ from rest_framework_api_key.models import AbstractAPIKey
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import isoparse
 from django.contrib.postgres.fields import ArrayField
-import jsonfield
 
 # Create your models here.
 
@@ -200,21 +199,3 @@ class Invoice(models.Model):
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
 
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
-
-
-class User(AbstractUser):
-
-    company_name = models.CharField(max_length=200, default=" ")
-
-
-class APIToken(AbstractAPIKey):
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200, default="latest_token")
-
-    def __str__(self):
-        return str(self.name) + " " + str(self.user)
-
-    class Meta:
-        verbose_name = "API Token"
-        verbose_name_plural = "API Tokens"
