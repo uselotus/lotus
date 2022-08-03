@@ -10,8 +10,6 @@ from rest_framework import viewsets
 from ..permissions import HasUserAPIKey
 from rest_framework.response import Response
 
-# Create your views here.
-
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
@@ -136,8 +134,8 @@ class UsageView(APIView):
         for subscription in customer_subscriptions:
 
             plan = subscription.billing_plan
-            plan_start_timestamp = plan.start_timestamp
-            plan_end_timestamp = plan.end_timestamp
+            plan_start_timestamp = subscription.start_date
+            plan_end_timestamp = subscription.end_date
             event_name = plan.billable_metric.event_name
             aggregation_type = plan.billable_metric.aggregation_type
 

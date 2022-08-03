@@ -41,6 +41,9 @@ class Customer(models.Model):
     )  # balance in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
     currency = models.CharField(max_length=3, default="USD")
 
+    payment_provider = models.CharField(max_length=20, default="stripe")
+    payment_provider_id = models.CharField(max_length=100, default="", blank=True)
+
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
 
@@ -202,14 +205,32 @@ class Invoice(models.Model):
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
 
 
+class Team(models.Model):
+    """
+    Team object. An explanation of the Team's fields follows:
+    name: The name of the team.
+    description: The description of the team.
+    """
+
+    name = models.CharField(max_length=200, default=" ")
+    description = models.CharField(max_length=256, default=" ", blank=True)
+    stripe_api_key = models.CharField(
+        max_length=100, default=" ", null=True, blank=True
+    )
+
+    def __str__(self):
+        return str(self.name)
+
+
 class User(AbstractUser):
 
     company_name = models.CharField(max_length=200, default=" ")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
 
 
 class APIToken(AbstractAPIKey):
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
     name = models.CharField(max_length=200, default="latest_token")
 
     def __str__(self):
