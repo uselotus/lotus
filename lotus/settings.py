@@ -65,6 +65,8 @@ SHARED_APPS = [
     "rest_framework",
     "django_tenants",
     "tenant",
+    "djmoney",
+    "django_extensions",
 ]
 
 TENANT_APPS = [
