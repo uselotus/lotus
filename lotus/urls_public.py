@@ -25,6 +25,7 @@ from billing.views.views import (
     UsageView,
 )
 from billing import track
+from billing.views.stripe_views import InitializeStripeView
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
@@ -39,4 +40,5 @@ urlpatterns = [
     path("track/", track.track_event, name="track_event"),
     path("track", track.track_event, name="track_event"),
     path("api/usage", UsageView.as_view(), name="usage"),
+    path("stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
 ]
