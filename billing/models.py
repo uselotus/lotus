@@ -24,21 +24,21 @@ class Customer(models.Model):
 
     Attributes:
         name (str): The name of the customer.
-        company_name (str): The company name of the customer.
         customer_id (str): The external id of the customer in the backend system.
         billing_id (str): The billing id of the customer, internal to Lotus.
     """
 
     name = models.CharField(max_length=100)
-    company_name = models.CharField(max_length=30, default=" ")
     customer_id = models.CharField(max_length=40, unique=True)
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
     billing_configuration = models.JSONField(default=dict, blank=True)
 
     balance = MoneyField(
-        default=0, max_digits=10, decimal_places=2, default_currency="USD"
+        default=0.00, max_digits=10, decimal_places=2, default_currency="USD"
     )  # balance in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
     currency = models.CharField(max_length=3, default="USD")
+
+    payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
@@ -197,5 +197,7 @@ class Invoice(models.Model):
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
 
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
+
+    status = models.CharField(max_length=10, default="pending")
 
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)

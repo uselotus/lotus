@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-django = "*"
+django = "==4.0.5"
 djangorestframework = "*"
 django-loginas = "*"
 django-grappelli = "*"
@@ -23,6 +23,7 @@ python-dotenv = "*"
 sentry-sdk = "*"
 django-tenants = "*"
 tenant-schemas-celery = "*"
+stripe = "*"
 
 [dev-packages]
 pylint = "*"
