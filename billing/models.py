@@ -98,7 +98,7 @@ class BillingPlan(models.Model):
     time_created: self-explanatory
     currency: self-explanatory
     interval: determines whether plan charges weekly, monthly, or yearly
-    base_rate: amount to charge every week, month, or year (depending on choice of interval)
+    flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
     """
 
@@ -121,18 +121,11 @@ class BillingPlan(models.Model):
         default=INTERVAL_CHOICES.month,
     )
 
-    base_rate = MoneyField(
+    flat_rate = MoneyField(
         decimal_places=2, max_digits=8, default_currency="USD", default=0.0
     )
     pay_in_advance = models.BooleanField(default=False)
-    # Need to figure out how to make this a list of BillableMetrics
-    billable_metric = models.ForeignKey(
-        BillableMetric, on_delete=models.CASCADE, null=True, blank=True
-    )
-    starter_metric_quatity = models.IntegerField(default=0, null=True, blank=True)
-    metric_amount = MoneyField(
-        decimal_places=10, max_digits=14, default_currency="USD", null=True, blank=True
-    )
+
     name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ", blank=True)
 
@@ -152,6 +145,16 @@ class BillingPlan(models.Model):
 
     def __str__(self) -> str:
         return str(self.name) + ":" + str(self.plan_id)
+
+
+class PlanComponent(models.Model):
+    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
+    billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
+
+    free_metric_quantity = models.IntegerField(default=0)
+    cost_per_metric = MoneyField(
+        decimal_places=10, max_digits=14, default_currency="USD"
+    )
 
 
 class Subscription(models.Model):

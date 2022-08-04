@@ -1,6 +1,6 @@
 from django.forms.models import model_to_dict
 import dateutil.parser as parser
-from ..models import Customer, Event, Subscription, BillingPlan
+from ..models import Customer, Event, Subscription, BillingPlan, PlanComponent
 from ..serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
 from django_q.tasks import async_task
@@ -132,31 +132,46 @@ class UsageView(APIView):
         )
 
         usage_summary = {}
-
         for subscription in customer_subscriptions:
 
             plan = subscription.billing_plan
             plan_start_timestamp = subscription.start_date
             plan_end_timestamp = subscription.end_date
-            event_name = plan.billable_metric.event_name
-            aggregation_type = plan.billable_metric.aggregation_type
 
-            events = Event.objects.filter(
-                event_name=event_name,
-                time_created__gte=plan_start_timestamp,
-                time_created__lte=plan_end_timestamp,
-            )
+            plan_components_qs = PlanComponent.objects.filter(billing_plan=plan.id)
+            subtotal_cost = 0
+            plan_components_summary = {}
+            # For each component of the plan, calculate usage/cost
+            for plan_component in plan_components_qs:
+                billable_metric = plan_component.billable_metric
+                event_name = billable_metric.event_name
+                aggregation_type = billable_metric.aggregation_type
+                subtotal_usage = 0.0
 
-            subtotal_usage = 0.0
-            if aggregation_type == "count":
-                subtotal_usage = len(events)
-            elif aggregation_type == "sum":
-                property_name = plan.billable_metric.property_name
-                for event in events:
-                    subtotal_usage += float(event.properties[property_name])
+                events = Event.objects.filter(
+                    event_name=event_name,
+                    time_created__gte=plan_start_timestamp,
+                    time_created__lte=plan_end_timestamp,
+                )
+
+                if aggregation_type == "count":
+                    subtotal_usage = len(events)
+                elif aggregation_type == "sum":
+                    property_name = plan.billable_metric.property_name
+                    for event in events:
+                        subtotal_usage += float(event.properties[property_name])
+
+                subtotal_cost += subtotal_usage * plan_component.cost_per_metric
+
+                plan_components_summary[event_name] = {
+                    "subtotal_cost": subtotal_cost,
+                    "subtotal_usage": subtotal_usage,
+                }
 
             usage_summary[plan.name] = {
-                "subtotal_usage": subtotal_usage,
+                "total_usage_cost": subtotal_usage,
+                "components": plan_components_summary,
+                "current_amount_due": subtotal_cost,
                 "billing_start_date": plan_start_timestamp,
                 "billing_end_date": plan_end_timestamp,
             }
