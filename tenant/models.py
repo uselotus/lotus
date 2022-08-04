@@ -20,7 +20,7 @@ PAYMENT_PLANS = Choices(
 
 class Tenant(TenantMixin):
     company_name = models.CharField(max_length=100, default=" ")
-    stripe_api_key = models.CharField(max_length=100, default="", blank=True)
+    stripe_api_key = models.CharField(max_length=110, default="", blank=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )

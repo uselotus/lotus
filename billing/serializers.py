@@ -26,10 +26,8 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
         model = Customer
         fields = (
             "name",
-            "company_name",
             "customer_id",
             "billing_id",
-            "balance",
             "billing_configuration",
         )
 
