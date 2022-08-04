@@ -24,6 +24,8 @@ sentry-sdk = "*"
 django-tenants = "*"
 tenant-schemas-celery = "*"
 stripe = "*"
+django-extensions = "*"
+django-cryptography = "*"
 
 [dev-packages]
 pylint = "*"

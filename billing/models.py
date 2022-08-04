@@ -4,7 +4,6 @@ from django.db import models
 import uuid
 from model_utils import Choices
 from djmoney.models.fields import MoneyField
-from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
@@ -33,9 +32,10 @@ class Customer(models.Model):
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
     billing_configuration = models.JSONField(default=dict, blank=True)
 
+    # balance (in cents) in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
     balance = MoneyField(
-        default=0.00, max_digits=10, decimal_places=2, default_currency="USD"
-    )  # balance in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
+        default=0, max_digits=10, decimal_places=2, default_currency="USD"
+    )
     currency = models.CharField(max_length=3, default="USD")
 
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
@@ -138,6 +138,7 @@ class BillingPlan(models.Model):
         elif self.interval == "year":
             return start_date_parsed + relativedelta(years=+1)
         else:
+            print("none")
             return None
 
     def get_usage_cost_count_aggregation(self, num_events):
@@ -178,8 +179,14 @@ class Subscription(models.Model):
     customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
     start_date = models.DateField()
-    end_date = models.DateField(auto_now=True)
+    end_date = models.DateField()
     status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
+
+    class Meta:
+        unique_together = (
+            "start_date",
+            "end_date",
+        )
 
     def __str__(self):
         return str(self.customer) + " " + str(self.billing_plan)

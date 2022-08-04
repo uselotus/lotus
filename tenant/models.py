@@ -11,6 +11,7 @@ from dateutil.parser import isoparse
 from django.contrib.postgres.fields import ArrayField
 from django_tenants.models import TenantMixin, DomainMixin
 
+
 PAYMENT_PLANS = Choices(
     ("self_hosted_free", _("Self-Hosted Free")),
     ("cloud", _("Cloud")),
