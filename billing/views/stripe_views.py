@@ -26,7 +26,7 @@ def import_stripe_customers(tenant):
 
     customer_list = stripe_customers_response.data
 
-    for stripe_customer in customer_list:
+    for stripe_customer in customer_list.auto_paging_iter():
         try:
             customer = Customer.objects.get(name=stripe_customer["name"])
             customer.payment_provider_id = stripe_customer["id"]
@@ -39,7 +39,7 @@ def issue_stripe_payment_intent(tenant, invoice):
 
     stripe.api_key = tenant.stripe_api_key
 
-    cost_due = float(invoice.cost_due)
+    cost_due = int(invoice.cost_due)
     currency = invoice.currency
 
     stripe.PaymentIntent.create(

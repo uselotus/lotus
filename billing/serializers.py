@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Event, Customer, Subscription, Invoice
+from .models import Event, Customer, Subscription, Invoice, BillingPlan
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -43,3 +43,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "end_date",
             "status",
         )
+
+
+class BillingPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillingPlan
+        fields = "__all__"

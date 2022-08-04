@@ -6,6 +6,7 @@ from .models import (
     Subscription,
     BillableMetric,
     Invoice,
+    PlanComponent,
 )
 
 # Register your models here.
@@ -15,3 +16,4 @@ admin.site.register(BillingPlan)
 admin.site.register(Subscription)
 admin.site.register(Invoice)
 admin.site.register(BillableMetric)
+admin.site.register(PlanComponent)
