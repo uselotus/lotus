@@ -26,7 +26,7 @@ def generate_invoice(subscription):
         usage_cost = 0.0
 
     # Get the total cost of the subscription
-    total_cost = billing_plan.base_rate + usage_cost
+    total_cost = billing_plan.flat_rate + usage_cost
 
     # Create the invoice
     invoice = Invoice(
