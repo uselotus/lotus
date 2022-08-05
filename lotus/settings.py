@@ -15,6 +15,7 @@ from celery.schedules import crontab
 from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+import dj_database_url
 
 load_dotenv()
 
@@ -68,6 +69,7 @@ SHARED_APPS = [
     "tenant",
     "djmoney",
     "django_extensions",
+    "whitenoise.runserver_nostatic",
 ]
 
 TENANT_APPS = [
@@ -92,6 +94,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = "lotus.urls"
@@ -132,6 +135,8 @@ DATABASES = {
         "PORT": 5432,
     }
 }
+db_from_env = dj_database_url.config(conn_max_age=600)
+DATABASES["default"].update(db_from_env)
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 
@@ -182,6 +187,8 @@ USE_TZ = True
 
 STATIC_URL = "/staticfiles/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
 
 MEDIA_URL = "/mediafiles/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
