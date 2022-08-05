@@ -1,1 +1,1 @@
-web: gunicorn lotus.wspipengi --log-file -
+web: gunicorn lotus.wsgi
