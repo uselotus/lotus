@@ -26,6 +26,9 @@ tenant-schemas-celery = "*"
 stripe = "*"
 django-extensions = "*"
 django-cryptography = "*"
+gunicorn = "*"
+whitenoise = "*"
+dj-database-url = "*"
 
 [dev-packages]
 pylint = "*"

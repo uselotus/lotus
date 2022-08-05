@@ -18,6 +18,15 @@ class SubscriptionTest(TenantTestCase):
     Testcases for the subscription views.
     """
 
+    @classmethod
+    def setup_tenant(cls, tenant):
+        """
+        Add any additional setting to the tenant before it get saved. This is required if you have
+        required fields.
+        """
+        tenant.company_name = "Test"
+        return tenant
+
     def setUp(self):
         super().setUp()
         self.client = TenantClient(self.tenant)
@@ -31,14 +40,12 @@ class SubscriptionTest(TenantTestCase):
             event_name="Emails", property_name="amount", aggregation_type="count"
         )
 
-        plan = BillingPlan.objects.create(
-            billable_metric=metric, metric_amount=1, name="Standard", plan_id="1"
-        )
+        plan = BillingPlan.objects.create(name="Standard", plan_id="1")
         plan_component = PlanComponent.objects.create(
             billable_metric=metric, billing_plan=plan, cost_per_metric=1
         )
 
-        self.client.credentials(HTTP_AUTHORIZATION="Api-Key" + " " + key)
+        # self.client.credentials(HTTP_AUTHORIZATION="Api-Key" + " " + key)
 
         self.valid_payload = {
             "plan_id": "1",
