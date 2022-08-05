@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 import dj_database_url
+import django_heroku
 
 load_dotenv()
 
@@ -125,18 +126,15 @@ AUTH_USER_MODEL = "tenant.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django_tenants.postgresql_backend",
-        "NAME": os.environ["POSTGRES_NAME"],
-        "USER": os.environ["POSTGRES_USER"],
-        "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-        "HOST": os.environ["POSTGRES_HOST"],
-        "PORT": 5432,
-    }
+DDATABASES = {
+    "default": dj_database_url.parse(
+        os.environ["DATABASE_URL"],
+        engine="django_tenants.postgresql_backend",
+        conn_max_age=600,
+        ssl_require=True,
+    )
 }
-db_from_env = dj_database_url.config(conn_max_age=600)
-DATABASES["default"].update(db_from_env)
+django_heroku.settings(locals(), databases=False)
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 
@@ -215,3 +213,5 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour="0"),
     },
 }
+
+django_heroku.settings(locals(), databases=False)

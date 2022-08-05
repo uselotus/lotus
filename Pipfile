@@ -29,6 +29,7 @@ django-cryptography = "*"
 gunicorn = "*"
 whitenoise = "*"
 dj-database-url = "*"
+django-heroku = "*"
 
 [dev-packages]
 pylint = "*"
