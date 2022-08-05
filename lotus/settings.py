@@ -125,9 +125,9 @@ AUTH_USER_MODEL = "tenant.User"
 DATABASES = {
     "default": {
         "ENGINE": "django_tenants.postgresql_backend",
-        "NAME": os.getenv("POSTGRES_NAME", "lotus"),
-        "USER": os.getenv("POSTGRES_USER", "db_user"),
-        "PASSWORD": "",
+        "NAME": os.environ["POSTGRES_NAME"],
+        "USER": os.environ["POSTGRES_USER"],
+        "PASSWORD": os.environ["POSTGRES_PASSWORD"],
         "HOST": os.environ["DATABASE_HOST"],
         "PORT": 5432,
     }
@@ -180,7 +180,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/staticfiles/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+MEDIA_URL = "/mediafiles/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [

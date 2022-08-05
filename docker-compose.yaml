@@ -1,13 +1,12 @@
 
 services:
 
-
   db:
     image: postgres:14
     environment:
       - POSTGRES_PASSWORD=password
       - POSTGRES_USER=db_user
-      - POSTGRES_DB=lotus
+      - POSTGRES_DB=lotus2
       - POSTGRES_HOST=db
 
   lotus:
@@ -20,7 +19,8 @@ services:
       - ./lotus:/lotus
     command: >
       sh -c "python3 manage.py wait_for_db &&
-             python3 manage.py migrate_schema &&
+             python3 manage.py migrate_schemas &&
+             python manage.py collectstatic --no-input &&
              python3 manage.py initadmin &&
              python3 manage.py runserver 0.0.0.0:8000
              "
