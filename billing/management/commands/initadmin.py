@@ -12,7 +12,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         if not Tenant.objects.filter(schema_name="public"):
-            tenant = Tenant(
+            print("30")
+            tenant = Tenant.objects.create(
                 schema_name="public",
                 company_name="Lotus Public",
             )
