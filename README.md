@@ -29,10 +29,11 @@
     <img src="images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">project_title</h3>
+<h3 align="center">Lotus: OSS Billing and Price Optimization</h3>
 
   <p align="center">
-    project_description
+    Lotus is the open-core billing and price optimization software. We enable SaaS companies to manage and experiment in real-time with custom subscription and usage based billing. 
+
     <br />
     <a href="https://github.com/github_username/repo_name"><strong>Explore the docs »</strong></a>
     <br />
