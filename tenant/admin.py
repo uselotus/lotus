@@ -12,7 +12,9 @@ class UserAPIKeyModelAdmin(APIKeyModelAdmin):
     pass
 
 
-@admin.register(Domain)
+admin.register(Domain)
+
+
 @admin.register(Tenant)
 class TenantAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ("company_name", "id")
