@@ -18,7 +18,10 @@ from sentry_sdk.integrations.django import DjangoIntegration
 import dj_database_url
 import django_heroku
 
-load_dotenv()
+BASE_DIR = Path(".")
+DOT_ENV = BASE_DIR / ".env"
+
+load_dotenv(DOT_ENV, override=True)
 
 
 sentry_sdk.init(
@@ -126,15 +129,27 @@ AUTH_USER_MODEL = "tenant.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-DDATABASES = {
-    "default": dj_database_url.parse(
-        os.environ["DATABASE_URL"],
-        engine="django_tenants.postgresql_backend",
-        conn_max_age=600,
-        ssl_require=True,
-    )
-}
-django_heroku.settings(locals(), databases=False)
+try:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            os.environ["DATABASE_URL"],
+            engine="django_tenants.postgresql_backend",
+            conn_max_age=600,
+            ssl_require=True,
+        )
+    }
+    django_heroku.settings(locals(), databases=False)
+except:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django_tenants.postgresql_backend",
+            "NAME": os.environ["POSTGRES_NAME"],
+            "USER": os.environ["POSTGRES_USER"],
+            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+            "HOST": os.environ["POSTGRES_HOST"],
+            "PORT": 5432,
+        }
+    }
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 
