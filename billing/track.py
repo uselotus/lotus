@@ -1,7 +1,7 @@
 from re import S
-from .models import Event, Customer, BillingPlan, APIToken
+from .models import Event, Customer, BillingPlan
+from tenant.models import APIToken, Tenant
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
-from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from rest_framework.parsers import JSONParser
 from django.db import IntegrityError
@@ -13,28 +13,28 @@ from typing import Dict, Union, List
 from rest_framework.decorators import permission_classes
 from .permissions import HasUserAPIKey
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view
 
 
 def load_event(request: HttpRequest) -> Union[None, Dict]:
     """
     Loads an event from the request body.
     """
-    if request.method != "POST":
-        event_data = request.GET.get("data")
-    else:
 
-        if request.content_type == "application/json":
-            try:
-                event_data = json.load(request)
-            except json.JSONDecodeError:
-                # if not, it's probably base64 encoded from other libraries
-                event_data = json.load(
-                    base64.b64decode(event_data + "===")
-                    .decode("utf8", "surrogatepass")
-                    .encode("utf-16", "surrogatepass")
-                )
-        else:
-            event_data = request.POST
+    if request.content_type == "application/json":
+        try:
+            event_data = json.loads(request.body)
+            return event_data
+        except json.JSONDecodeError as e:
+            print(e)
+            # if not, it's probably base64 encoded from other libraries
+            event_data = json.loads(
+                base64.b64decode(request + "===")
+                .decode("utf8", "surrogatepass")
+                .encode("utf-16", "surrogatepass")
+            )
+    else:
+        event_data = request.body.decode("utf8")
     if event_data is None:
         return None
 
@@ -49,6 +49,7 @@ def ingest_event(request, data: dict, customer: Customer) -> None:
     if idepotency_id_query > 0:
         return HttpResponseBadRequest("An event record already exists", status=409)
 
+    print(type(data["properties"]))
     db_event = Event.objects.create(
         event_name=data["event_name"],
         idempotency_id=data["idempotency_id"],

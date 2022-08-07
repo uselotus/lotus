@@ -4,14 +4,12 @@ from django.db import models
 import uuid
 from model_utils import Choices
 from djmoney.models.fields import MoneyField
-from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.utils.translation import gettext_lazy as _
 from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import isoparse
 from django.contrib.postgres.fields import ArrayField
-import jsonfield
 
 # Create your models here.
 
@@ -25,21 +23,22 @@ class Customer(models.Model):
 
     Attributes:
         name (str): The name of the customer.
-        company_name (str): The company name of the customer.
         customer_id (str): The external id of the customer in the backend system.
         billing_id (str): The billing id of the customer, internal to Lotus.
     """
 
     name = models.CharField(max_length=100)
-    company_name = models.CharField(max_length=30, default=" ")
     customer_id = models.CharField(max_length=40, unique=True)
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
     billing_configuration = models.JSONField(default=dict, blank=True)
 
+    # balance (in cents) in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
     balance = MoneyField(
         default=0, max_digits=10, decimal_places=2, default_currency="USD"
-    )  # balance in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
+    )
     currency = models.CharField(max_length=3, default="USD")
+
+    payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
@@ -99,7 +98,7 @@ class BillingPlan(models.Model):
     time_created: self-explanatory
     currency: self-explanatory
     interval: determines whether plan charges weekly, monthly, or yearly
-    base_rate: amount to charge every week, month, or year (depending on choice of interval)
+    flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
     """
 
@@ -122,18 +121,11 @@ class BillingPlan(models.Model):
         default=INTERVAL_CHOICES.month,
     )
 
-    base_rate = MoneyField(
+    flat_rate = MoneyField(
         decimal_places=2, max_digits=8, default_currency="USD", default=0.0
     )
     pay_in_advance = models.BooleanField(default=False)
-    # Need to figure out how to make this a list of BillableMetrics
-    billable_metric = models.ForeignKey(
-        BillableMetric, on_delete=models.CASCADE, null=True, blank=True
-    )
-    starter_metric_quatity = models.IntegerField(default=0, null=True, blank=True)
-    metric_amount = MoneyField(
-        decimal_places=10, max_digits=14, default_currency="USD", null=True, blank=True
-    )
+
     name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ", blank=True)
 
@@ -146,6 +138,7 @@ class BillingPlan(models.Model):
         elif self.interval == "year":
             return start_date_parsed + relativedelta(years=+1)
         else:
+            print("none")
             return None
 
     def get_usage_cost_count_aggregation(self, num_events):
@@ -153,6 +146,16 @@ class BillingPlan(models.Model):
 
     def __str__(self) -> str:
         return str(self.name) + ":" + str(self.plan_id)
+
+
+class PlanComponent(models.Model):
+    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
+    billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
+
+    free_metric_quantity = models.IntegerField(default=0)
+    cost_per_metric = MoneyField(
+        decimal_places=10, max_digits=14, default_currency="USD"
+    )
 
 
 class Subscription(models.Model):
@@ -176,8 +179,14 @@ class Subscription(models.Model):
     customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
     start_date = models.DateField()
-    end_date = models.DateField(auto_now=True)
+    end_date = models.DateField()
     status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
+
+    class Meta:
+        unique_together = (
+            "start_date",
+            "end_date",
+        )
 
     def __str__(self):
         return str(self.customer) + " " + str(self.billing_plan)
@@ -199,22 +208,6 @@ class Invoice(models.Model):
 
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
 
+    status = models.CharField(max_length=10, default="pending")
+
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
-
-
-class User(AbstractUser):
-
-    company_name = models.CharField(max_length=200, default=" ")
-
-
-class APIToken(AbstractAPIKey):
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200, default="latest_token")
-
-    def __str__(self):
-        return str(self.name) + " " + str(self.user)
-
-    class Meta:
-        verbose_name = "API Token"
-        verbose_name_plural = "API Tokens"
