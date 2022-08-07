@@ -24,19 +24,22 @@ DOT_ENV = BASE_DIR / ".env.dev"
 load_dotenv(DOT_ENV, override=True)
 
 
-sentry_sdk.init(
-    dsn=os.environ["SENTRY_DSN"],
-    integrations=[
-        DjangoIntegration(),
-    ],
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    # We recommend adjusting this value in production.
-    traces_sample_rate=1.0,
-    # If you wish to associate users to errors (assuming you are using
-    # django.contrib.auth) you may enable sending PII data.
-    send_default_pii=True,
-)
+try:
+    sentry_sdk.init(
+        dsn=os.environ["SENTRY_DSN"],
+        integrations=[
+            DjangoIntegration(),
+        ],
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        # We recommend adjusting this value in production.
+        traces_sample_rate=1.0,
+        # If you wish to associate users to errors (assuming you are using
+        # django.contrib.auth) you may enable sending PII data.
+        send_default_pii=True,
+    )
+except KeyError:
+    pass
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -206,7 +209,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/mediafiles/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
-
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "billing.permissions.HasUserAPIKey",
