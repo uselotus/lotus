@@ -18,8 +18,8 @@ from sentry_sdk.integrations.django import DjangoIntegration
 import dj_database_url
 import django_heroku
 
-BASE_DIR = Path(".")
-DOT_ENV = BASE_DIR / ".env"
+BASE_DIR = Path("./env")
+DOT_ENV = BASE_DIR / ".env.dev"
 
 load_dotenv(DOT_ENV, override=True)
 
@@ -74,6 +74,7 @@ SHARED_APPS = [
     "djmoney",
     "django_extensions",
     "whitenoise.runserver_nostatic",
+    "django_celery_beat",
 ]
 
 TENANT_APPS = [
@@ -173,8 +174,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Celery Settings
-CELERY_BROKER_URL = "redis://redis:6379"
-CELERY_RESULT_BACKEND = "redis://redis:6379"
+CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
+CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -221,12 +222,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 
-
 CELERY_BEAT_SCHEDULE = {
-    "calculate_invoice": {
+    "calculate_invoice_schedule": {
         "task": "billing.tasks.calculate_invoice",
-        "schedule": crontab(hour="0"),
+        "schedule": 60,
     },
 }
-
-django_heroku.settings(locals(), databases=False)

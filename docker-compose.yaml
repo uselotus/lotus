@@ -4,13 +4,15 @@ services:
   db:
     image: postgres:14
     environment:
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_USER=db_user
-      - POSTGRES_DB=lotus2
-      - POSTGRES_HOST=db
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_NAME}
+      - POSTGRES_HOST=${POSTGRES_HOST}
 
   lotus:
     container_name: lotus_django
+    env_file:
+      - ./env/.env
     build:
       context: .
     ports:
@@ -24,35 +26,34 @@ services:
              python3 manage.py initadmin &&
              python3 manage.py runserver 0.0.0.0:8000
              "
-    env_file:
-    - .env
     depends_on:
       - db
   redis:
     image: redis:7-alpine
     command: redis-server
+    env_file:
+      - ./env/.env
 
   celery:
-    restart: always
+    env_file:
+     - ./env/.env
     build:
       context: .
     command: celery -A lotus worker -l info
     volumes:
       - ./lotus:/lotus
-    env_file:
-      - ./.env
     depends_on:
       - db
       - redis
       - lotus
   celery-beat:
+    env_file:
+      - ./env/.env
     build:
       context: .
-    command: celery -A lotus beat -l info
+    command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - ./lotus:/lotus
-    environment:
-      - ./.env
     depends_on:
       - redis
       - db
