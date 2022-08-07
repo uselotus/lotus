@@ -1,10 +1,12 @@
 from django.forms.models import model_to_dict
 import dateutil.parser as parser
-from ..models import Customer, Event, Subscription, BillingPlan
+from ..models import Customer, Event, Subscription, BillingPlan, PlanComponent
 from ..serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
 from django_q.tasks import async_task
 from ..tasks import generate_invoice
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
+import json
 
 from rest_framework import viewsets
 from ..permissions import HasUserAPIKey
@@ -32,7 +34,10 @@ class SubscriptionView(APIView):
         """
         if "customer_id" in request.query_params:
             customer_id = request.query_params["customer_id"]
-            customer = Customer.objects.get(customer_id=customer_id)
+            try:
+                customer = Customer.objects.get(customer_id=customer_id)
+            except Customer.DoesNotExist:
+                return HttpResponseBadRequest("Customer does not exist")
             subscriptions = Subscription.objects.filter(
                 customer=customer, status="active"
             )
@@ -132,35 +137,55 @@ class UsageView(APIView):
         )
 
         usage_summary = {}
-
         for subscription in customer_subscriptions:
 
             plan = subscription.billing_plan
-            plan_start_timestamp = plan.start_timestamp
-            plan_end_timestamp = plan.end_timestamp
-            event_name = plan.billable_metric.event_name
-            aggregation_type = plan.billable_metric.aggregation_type
+            flat_rate = int(plan.flat_rate.amount)
+            plan_start_timestamp = subscription.start_date
+            plan_end_timestamp = subscription.end_date
 
-            events = Event.objects.filter(
-                event_name=event_name,
-                time_created__gte=plan_start_timestamp,
-                time_created__lte=plan_end_timestamp,
-            )
+            plan_components_qs = PlanComponent.objects.filter(billing_plan=plan.id)
+            subtotal_cost = 0
+            plan_components_summary = {}
+            # For each component of the plan, calculate usage/cost
+            for plan_component in plan_components_qs:
+                billable_metric = plan_component.billable_metric
+                event_name = billable_metric.event_name
+                aggregation_type = billable_metric.aggregation_type
+                subtotal_usage = 0.0
+                print(plan_start_timestamp, plan_end_timestamp)
 
-            subtotal_usage = 0.0
-            if aggregation_type == "count":
-                subtotal_usage = len(events)
-            elif aggregation_type == "sum":
-                property_name = plan.billable_metric.property_name
-                for event in events:
-                    subtotal_usage += float(event.properties[property_name])
+                events = Event.objects.filter(
+                    event_name=event_name,
+                    time_created__gte=plan_start_timestamp,
+                    time_created__lte=plan_end_timestamp,
+                )
+
+                if aggregation_type == "count":
+                    subtotal_usage = len(events)
+                elif aggregation_type == "sum":
+                    property_name = billable_metric.property_name
+                    for event in events:
+                        properties_dict = event.properties
+                        subtotal_usage += float(properties_dict[property_name])
+
+                subtotal_cost += int(
+                    (subtotal_usage * plan_component.cost_per_metric).amount
+                )
+
+                plan_components_summary[event_name] = {
+                    "subtotal_cost": subtotal_cost,
+                    "subtotal_usage": subtotal_usage,
+                }
 
             usage_summary[plan.name] = {
-                "subtotal_usage": subtotal_usage,
+                "total_usage_cost": subtotal_cost,
+                "flat_rate_cost": flat_rate,
+                "components": plan_components_summary,
+                "current_amount_due": subtotal_cost + flat_rate,
                 "billing_start_date": plan_start_timestamp,
                 "billing_end_date": plan_end_timestamp,
             }
 
         usage_summary["# of Active Subscriptions"] = len(usage_summary)
-
         return Response(usage_summary)

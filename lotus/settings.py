@@ -15,23 +15,31 @@ from celery.schedules import crontab
 from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+import dj_database_url
+import django_heroku
 
-load_dotenv()
+BASE_DIR = Path("./env")
+DOT_ENV = BASE_DIR / ".env.dev"
+
+load_dotenv(DOT_ENV, override=True)
 
 
-sentry_sdk.init(
-    dsn=os.environ["SENTRY_DSN"],
-    integrations=[
-        DjangoIntegration(),
-    ],
-    # Set traces_sample_rate to 1.0 to capture 100%
-    # of transactions for performance monitoring.
-    # We recommend adjusting this value in production.
-    traces_sample_rate=1.0,
-    # If you wish to associate users to errors (assuming you are using
-    # django.contrib.auth) you may enable sending PII data.
-    send_default_pii=True,
-)
+try:
+    sentry_sdk.init(
+        dsn=os.environ["SENTRY_DSN"],
+        integrations=[
+            DjangoIntegration(),
+        ],
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        # We recommend adjusting this value in production.
+        traces_sample_rate=1.0,
+        # If you wish to associate users to errors (assuming you are using
+        # django.contrib.auth) you may enable sending PII data.
+        send_default_pii=True,
+    )
+except KeyError:
+    pass
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -44,6 +52,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ["SECRET_KEY"]
 
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
@@ -54,7 +63,7 @@ except KeyError:
 
 # Application definition
 
-INSTALLED_APPS = [
+SHARED_APPS = [
     "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -63,14 +72,29 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "rest_framework_api_key",
-    "billing",
+    "django_tenants",
+    "tenant",
     "djmoney",
-    "corsheaders",
+    "django_extensions",
+    "whitenoise.runserver_nostatic",
+    "django_celery_beat",
 ]
+
+TENANT_APPS = [
+    "billing",
+    "rest_framework_api_key",
+]
+
+INSTALLED_APPS = list(SHARED_APPS) + [
+    app for app in TENANT_APPS if app not in SHARED_APPS
+]
+
+TENANT_MODEL = "tenant.Tenant"
+TENANT_DOMAIN_MODEL = "tenant.Domain"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django_tenants.middleware.main.TenantMainMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -78,9 +102,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = "lotus.urls"
+PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
+SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
 TEMPLATES = [
     {
@@ -101,21 +128,33 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 
-AUTH_USER_MODEL = "billing.User"
+AUTH_USER_MODEL = "tenant.User"
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": os.getenv("POSTGRES_NAME", "lotus"),
-        "USER": os.getenv("POSTGRES_USER", "db_user"),
-        "PASSWORD": "",
-        "HOST": os.environ["DATABASE_HOST"],
-        "PORT": 5432,
+try:
+    DATABASES = {
+        "default": dj_database_url.parse(
+            os.environ["DATABASE_URL"],
+            engine="django_tenants.postgresql_backend",
+            conn_max_age=600,
+            ssl_require=True,
+        )
     }
-}
+    django_heroku.settings(locals(), databases=False)
+except:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django_tenants.postgresql_backend",
+            "NAME": os.environ["POSTGRES_NAME"],
+            "USER": os.environ["POSTGRES_USER"],
+            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+            "HOST": os.environ["POSTGRES_HOST"],
+            "PORT": 5432,
+        }
+    }
+DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 
 # Password validation
@@ -138,8 +177,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Celery Settings
-CELERY_BROKER_URL = "redis://redis:6379"
-CELERY_RESULT_BACKEND = "redis://redis:6379"
+CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
+CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -163,8 +202,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/staticfiles/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
+
+MEDIA_URL = "/mediafiles/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "billing.permissions.HasUserAPIKey",
@@ -180,10 +224,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 
-
 CELERY_BEAT_SCHEDULE = {
-    "calculate_invoice": {
+    "calculate_invoice_schedule": {
         "task": "billing.tasks.calculate_invoice",
-        "schedule": crontab(hour="0"),
+        "schedule": 60,
     },
 }

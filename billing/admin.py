@@ -4,13 +4,10 @@ from .models import (
     Customer,
     Event,
     Subscription,
-    User,
-    APIToken,
     BillableMetric,
     Invoice,
+    PlanComponent,
 )
-from rest_framework_api_key.admin import APIKeyModelAdmin
-
 
 # Register your models here.
 admin.site.register(Customer)
@@ -19,11 +16,4 @@ admin.site.register(BillingPlan)
 admin.site.register(Subscription)
 admin.site.register(Invoice)
 admin.site.register(BillableMetric)
-admin.site.register(
-    User,
-)
-
-
-@admin.register(APIToken)
-class UserAPIKeyModelAdmin(APIKeyModelAdmin):
-    pass
+admin.site.register(PlanComponent)
