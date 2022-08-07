@@ -30,6 +30,7 @@ gunicorn = "*"
 whitenoise = "*"
 dj-database-url = "*"
 django-heroku = "*"
+django-celery-beat = "*"
 
 [dev-packages]
 pylint = "*"
