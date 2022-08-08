@@ -46,12 +46,10 @@ We provide a flexible and modular approach to every step of the billing experien
 2. [Getting Started](#getting-started)
     * [Prerequisites](#prerequisites)
     * [Installation](#installation)
-3. [Usage](#usage)
-4. [Roadmap](#roadmap)
-5. [Contributing](#contributing)
-6. [License](#license)
-7. [Contact](#contact)
-7. [Acknowledgments](#acknowledgements)
+3. [Examples](#usage)
+4. [Contributing](#contributing)
+5. [License](#license)
+6. [Contact](#contact)
 
 
 <!-- ABOUT THE PROJECT -->
@@ -101,7 +99,7 @@ Here are the packages you'll need to install before getting set up with your loc
 From here, you can either interact with Lotus using the UI, or integrate + test our extensive APIs.
 
 ### Lotus UI
-This is what you'll see in the UI's homepage:
+This is what you'll see in the Django UI's homepage. v0 of Lotus is simply an API so Django's built in frontend works as a substitude for our v1 which will be launching soon:
 <br/>
 <img src="./design_resources/lotus_ui_home.png" alt="drawing" width="200"/>
 <br/>
@@ -122,9 +120,7 @@ The workflow is as follows:
 
 
 <!-- USAGE EXAMPLES -->
-## Usage
-
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+## Examples
 
 _For more examples, please refer to the [Documentation](https://uselotus.stoplight.io/)_
 
@@ -132,18 +128,6 @@ _For more examples, please refer to the [Documentation](https://uselotus.stoplig
 
 
 
-<!-- ROADMAP -->
-## Roadmap
-*Updated: Aug 08 2022*
-
-| Status | Milestone | Goals | ETA |
-| :---: | :--- | :---: | :---: |
-| 🚀 | **[Invoice Generation]()** | 0 / 1 | Sep 03 2022 |
-| 🚀 | **[Functioning Frontend]()** | 0 / 3 | Sep 03 2022 |
-
-See the [open issues](https://github.com/uselotus/lotus/issues) for a full list of proposed features (and known issues).
-
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
 
 
@@ -162,7 +146,7 @@ Don't forget to give the project a star! Thanks again!
 <!-- LICENSE -->
 ## License
 
-Distributed under the AGPLv3 License. See `LICENSE.txt` for more information.
+Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
@@ -171,18 +155,9 @@ Distributed under the AGPLv3 License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Founders - founders@uselotus.io
+Lotus founders - founders@uselotus.io
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
-
-
-
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
-
-* []()
-* []()
-* []()
+Or visit lotus.env
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
