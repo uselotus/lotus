@@ -180,16 +180,17 @@ class UsageView(APIView):
                     (subtotal_usage * plan_component.cost_per_metric).amount
                 )
 
+                subtotal_cost_string = "$" + str(subtotal_cost)
                 plan_components_summary[str(plan_component)] = {
-                    "subtotal_cost": "$" + subtotal_cost,
-                    "subtotal_usage": subtotal_usage,
+                    "subtotal_cost": subtotal_cost_string,
+                    "subtotal_usage": str(subtotal_usage),
                 }
 
             usage_summary[plan.name] = {
-                "total_usage_cost": subtotal_cost,
-                "flat_rate_cost": flat_rate,
+                "total_usage_cost": str(subtotal_cost),
+                "flat_rate_cost": str(flat_rate),
                 "components": plan_components_summary,
-                "current_amount_due": subtotal_cost + flat_rate,
+                "current_amount_due": "$" + str(subtotal_cost + flat_rate),
                 "billing_start_date": plan_start_timestamp,
                 "billing_end_date": plan_end_timestamp,
             }
