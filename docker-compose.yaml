@@ -2,12 +2,13 @@
 services:
 
   db:
-    image: postgres:14
+    image: postgres:14-alpine
+    restart: on-failure
     environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}}
-      - POSTGRES_USER=${POSTGRES_USER:-db_user}}
-      - POSTGRES_DB=${POSTGRES_NAME:-postgres}}
-      - POSTGRES_HOST=${POSTGRES_HOST:db}}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_USER=${POSTGRES_USER:-db_user}
+      - POSTGRES_DB=${POSTGRES_NAME:-newdb}
+      - POSTGRES_HOST=${POSTGRES_HOST:-db}
 
   lotus:
     container_name: lotus_django
@@ -49,13 +50,16 @@ services:
   celery-beat:
     env_file:
       - ./env/.env
+    restart: on-failure
     build:
       context: .
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - ./lotus:/lotus
     depends_on:
+      - celery
       - redis
+      - lotus
       - db
 volumes:
   pgdata:
