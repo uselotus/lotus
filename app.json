@@ -2,6 +2,7 @@
     "name": "Lotus - Open Source Metering Billing and Pricing",
     "website": "https://www.uselotus.io",
     "repository": "https://github.com/uselotus/lotus",
+    "success_url": "/admin",
     "environments": {
       "review": {
         "scripts": {
@@ -29,9 +30,8 @@
           {"url": "heroku/nodejs"},
           {"url": "https://github.com/timgl/heroku-buildpack-python.git"}
     ],
-    "addons": [
-        "heroku-postgresql"
-    ],
+    "image": "heroku/python",
+    "addons": ["heroku-postgresql:in-dyno"],
     "env": {
         "SECRET_KEY": {
             "generator": "secret"
