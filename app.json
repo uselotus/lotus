@@ -8,7 +8,7 @@
     "heroku-postgresql:in-dyno"
   ],
   "buildpacks": [
-    "heroku/python"
+    {"url": "https://github.com/heroku/heroku-buildpack-python"}
   ],
   "env": {
     "SECRET_KEY": {
