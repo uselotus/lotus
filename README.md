@@ -37,7 +37,7 @@ We provide a flexible and modular approach to every step of the billing experien
 
 <br/>
 
-[Website]("https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://uselotus.stoplight.io/) · [Request a Feature]() 
+· [Website]("https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/lotus-docs) · [Contact Us](founders@uselotus.io) 
 
 <br/>
 
@@ -57,14 +57,13 @@ We provide a flexible and modular approach to every step of the billing experien
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Here's a blank template to get started: To avoid retyping too much info. Do a search and replace with your text editor for the following: `github_username`, `repo_name`, `twitter_handle`, `linkedin_username`, `email_client`, `email`, `project_title`, `project_description`
+Lotus is the quickest way to start billing flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our metering and billing solutions are open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time. 
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-This is an example of how you may give instructions on setting up your project locally.
 To get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
@@ -169,9 +168,7 @@ Distributed under the AGPLv3 License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Mikael Nida - [@mikaelnida](https://www.linkedin.com/in/mikaelnida/) - mikael@lotus.io
-
-Diego Escobedo - [@diegoesc](https://www.linkedin.com/in/diegoesc) - diego@lotus.io
+Founders - founders@uselotus.io
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
