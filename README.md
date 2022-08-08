@@ -69,27 +69,51 @@ To get a local copy up and running follow these simple example steps.
 
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
+Here are the packages you'll need to install before getting set up with your local instance of Lotus:
+* docker
   ```sh
-  npm install npm@latest -g
+  brew install docker
+  ```
+* docker-compose
+  ```sh
+  brew install docker-compose
   ```
 
 ### Installation
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. Clone the repo
    ```sh
-   git clone https://github.com/github_username/repo_name.git
+   git clone https://github.com/uselotus/lotus.git
    ```
-3. Install NPM packages
+2. Navigate to the correct directory
    ```sh
-   npm install
+   cd lotus
    ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
+3. Build the docker container. This can take a few minutes, so be patient. 
+   ```sh
+   docker-compose up --build
    ```
+4. Navigate to [local.localhost:8000/admin/](http://local.localhost:8000/admin/). This is an experimental, early-stage UI, from which you can track various different stages of the billing process. Sign in using
+5. Navigate to [local.localhost:8000/admin/tenant/apitoken/](http://local.localhost:8000/admin/tenant/apitoken/), click on [add an API token](http://local.localhost:8000/admin/tenant/apitoken/add/), and save the generated API token somewhere safe (you won't see it again!).
+
+From here, you can either interact with Lotus using the UI, or integrate + test our extensive APIs. 
+
+### Lotus UI
+This is what you'll see in the UI's homepage: 
+<br/>
+<img src="./design_resources/lotus_ui_home.png" alt="drawing" width="200"/>
+<br/>
+The workflow is as follows:
+1. Go into the [Customers tab](http://local.localhost:8000/admin/billing/customer/) and create a new customer. Don't worry about the `billing_id`, it's been auto-generated! Just name them, give them a unique id, and decide whether to give them an initial balance on their account.
+2. Create a [billing plan](http://local.localhost:8000/admin/billing/billingplan/add/) for your customer. Don't worry about what you're billing them _for_ yet, this simply defines how often you'll be billing them and whether there's a flat fee associated with their plan.
+3. Start logging discrete events in the [Events tab](http://local.localhost:8000/admin/billing/event/). This could be something like an API call, an hourly log of storage usage, or anything you can think of. The `properties` is a fully-customizable json for your own use. Track whetever you think is useful that you might want to group, aggregate, or filter by, such as the geography of origin of the request, number of bytes used, or uptime. 
+    * Note that it's compeltely impractical to log events manually in the UI. To use the system at scale, you definitely want to use the API for this step, but this works for testing purposes.
+4. Start creating [billable metrics](http://local.localhost:8000/admin/billing/billablemetric/). Every event can have any amount of billing metrics associated with it, whether that's a simple `count` over the number of events, or a `sum` or `max` over some of the properties you defined in your event type. 
+5. Now, we have to connect these billable metrics with specific customers. The way we do this is using [plan components](http://local.localhost:8000/admin/billing/plancomponent/), which allow you to match one of these metrics with a customer's billing plan. Here's where you set the price of the billable metric, and have the ability to tier prices by setting a certain amount of free units of this metric. 
+
+
+
+
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
