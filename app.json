@@ -1,28 +1,18 @@
 {
-    "name": "Lotus - Open Source Metering Billing and Pricing",
-    "website": "https://www.uselotus.io",
-    "repository": "https://github.com/uselotus/lotus",
-    "success_url": "/admin",
-    "environments": {
-      "review": {
-        "scripts": {
-          "postdeploy": ""
-        },
-        "env": {
-          "DEBUG": true
-        },
-        "buildpacks": [
-          {"url": "heroku/python"}
-        ]
-      }
-    },
-    "buildpacks": [
-          {"url": "heroku/python"}
-    ],
-    "addons": ["heroku-postgresql:in-dyno"],
-    "env": {
-        "SECRET_KEY": {
-            "generator": "secret"
-        }
+  "name": "Lotus",
+  "description": "Open Source Metering Billing and Pricing",
+  "website": "https://www.uselotus.io",
+  "repository": "https://github.com/uselotus/lotus",
+  "success_url": "/admin",
+  "addons": [
+    "heroku-postgresql:in-dyno"
+  ],
+  "buildpacks": [
+    "heroku/python"
+  ],
+  "env": {
+    "SECRET_KEY": {
+      "generator": "secret"
     }
   }
+}

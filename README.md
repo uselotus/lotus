@@ -64,7 +64,8 @@ Lotus is the quickest way to start billing flexibly and experiment with pricing.
 <!-- GETTING STARTED -->
 ## Getting Started
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/uselotus/lotus)
+
 
 To get a local copy up and running follow these simple example steps.
 
