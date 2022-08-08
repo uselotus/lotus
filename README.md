@@ -62,7 +62,7 @@ Lotus is the quickest way to start billing flexibly and experiment with pricing.
 <!-- GETTING STARTED -->
 ## Getting Started
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)]
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 
 For docker use this method:
