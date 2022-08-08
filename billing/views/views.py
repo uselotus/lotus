@@ -173,7 +173,7 @@ class UsageView(APIView):
                 )
 
                 if aggregation_type == "count":
-                    subtotal_usage = len(events) - plan_component.free_metric_quanity
+                    subtotal_usage = len(events) - plan_component.free_metric_quantity
                 elif aggregation_type == "sum":
                     property_name = billable_metric.property_name
                     for event in events:
