@@ -130,8 +130,19 @@ class UsageView(APIView):
         Return current usage for a customer during a given billing period.
         """
         customer_id = request.query_params["customer_id"]
-        customer = Customer.objects.get(customer_id=customer_id)
+        customer_qs = Customer.objects.filter(customer_id=customer_id)
 
+        if len(customer_qs) < 1:
+            return Response(
+                {
+                    "error": "Customer with customer_id {} does not exist".format(
+                        customer_id
+                    )
+                },
+                status=400,
+            )
+        else:
+            customer = customer_qs[0]
         customer_subscriptions = Subscription.objects.filter(
             customer=customer, status="active"
         )
@@ -145,7 +156,7 @@ class UsageView(APIView):
             plan_end_timestamp = subscription.end_date
 
             plan_components_qs = PlanComponent.objects.filter(billing_plan=plan.id)
-            subtotal_cost = 0
+            subscription_cost = 0
             plan_components_summary = {}
             # For each component of the plan, calculate usage/cost
             for plan_component in plan_components_qs:
@@ -153,6 +164,7 @@ class UsageView(APIView):
                 event_name = billable_metric.event_name
                 aggregation_type = billable_metric.aggregation_type
                 subtotal_usage = 0.0
+                subtotal_cost = 0.0
 
                 events = Event.objects.filter(
                     event_name=event_name,
@@ -166,6 +178,7 @@ class UsageView(APIView):
                     property_name = billable_metric.property_name
                     for event in events:
                         properties_dict = event.properties
+                        print(properties_dict)
                         if property_name in properties_dict:
                             subtotal_usage += float(properties_dict[property_name])
                     subtotal_usage -= plan_component.free_metric_quantity
@@ -178,19 +191,23 @@ class UsageView(APIView):
                             subtotal_usage = max(
                                 subtotal_usage, float(properties_dict[property_name])
                             )
-                subtotal_cost += int(
+                subtotal_cost = int(
                     (subtotal_usage * plan_component.cost_per_metric).amount
                 )
+                subscription_cost += subtotal_cost
 
                 subtotal_cost_string = "$" + str(subtotal_cost)
                 plan_components_summary[str(plan_component)] = {
-                    "subtotal_cost": subtotal_cost_string,
-                    "subtotal_usage": str(subtotal_usage),
+                    "cost": subtotal_cost_string,
+                    "usage": str(subtotal_usage),
+                    "free_usage_left": str(
+                        max(plan_component.free_metric_quantity - subtotal_usage, 0)
+                    ),
                 }
 
             usage_summary[plan.name] = {
-                "total_usage_cost": str(subtotal_cost),
-                "flat_rate_cost": str(flat_rate),
+                "total_usage_cost": "$" + str(subscription_cost),
+                "flat_rate_cost": "$" + str(flat_rate),
                 "components": plan_components_summary,
                 "current_amount_due": "$" + str(subtotal_cost + flat_rate),
                 "billing_start_date": plan_start_timestamp,
