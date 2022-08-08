@@ -12,14 +12,13 @@
           "DEBUG": true
         },
         "buildpacks": [
-          {"url": "https://github.com/timgl/heroku-buildpack-python.git"}
+          {"url": "heroku/python"}
         ]
       }
     },
     "buildpacks": [
-          {"url": "https://github.com/timgl/heroku-buildpack-python.git"}
+          {"url": "heroku/python"}
     ],
-    "image": "heroku/python",
     "addons": ["heroku-postgresql:in-dyno"],
     "env": {
         "SECRET_KEY": {
