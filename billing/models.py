@@ -88,6 +88,15 @@ class BillableMetric(models.Model):
         default=AGGREGATION_CHOICES.count,
     )
 
+    def __str__(self):
+        return (
+            str(self.aggregation_type)
+            + " of "
+            + str(self.property_name)
+            + " : "
+            + str(self.event_name)
+        )
+
     def get_aggregation_type(self):
         return self.aggregation_type
 
@@ -156,6 +165,9 @@ class PlanComponent(models.Model):
     cost_per_metric = MoneyField(
         decimal_places=10, max_digits=14, default_currency="USD"
     )
+
+    def __str__(self) -> str:
+        return str(self.billable_metric)
 
 
 class Subscription(models.Model):

@@ -153,7 +153,6 @@ class UsageView(APIView):
                 event_name = billable_metric.event_name
                 aggregation_type = billable_metric.aggregation_type
                 subtotal_usage = 0.0
-                print(plan_start_timestamp, plan_end_timestamp)
 
                 events = Event.objects.filter(
                     event_name=event_name,
@@ -162,19 +161,27 @@ class UsageView(APIView):
                 )
 
                 if aggregation_type == "count":
-                    subtotal_usage = len(events)
+                    subtotal_usage = len(events) - plan_component.free_metric_quanity
                 elif aggregation_type == "sum":
                     property_name = billable_metric.property_name
                     for event in events:
                         properties_dict = event.properties
                         subtotal_usage += float(properties_dict[property_name])
+                    subtotal_usage -= plan_component.free_metric_quantity
 
+                elif aggregation_type == "max":
+                    property_name = billable_metric.property_name
+                    for event in events:
+                        properties_dict = event.properties
+                        subtotal_usage = max(
+                            subtotal_usage, float(properties_dict[property_name])
+                        )
                 subtotal_cost += int(
                     (subtotal_usage * plan_component.cost_per_metric).amount
                 )
 
-                plan_components_summary[event_name] = {
-                    "subtotal_cost": subtotal_cost,
+                plan_components_summary[str(plan_component)] = {
+                    "subtotal_cost": "$" + subtotal_cost,
                     "subtotal_usage": subtotal_usage,
                 }
 

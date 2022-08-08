@@ -11,17 +11,21 @@ load_dotenv()
 
 
 def create_local_tenant():
-    tenant = Tenant.objects.create(
-        company_name="Local",
-        schema_name="local",
-    )
-    tenant.save()
-    domain = Domain.objects.create(
-        tenant=tenant,
-        domain="local.localhost",
-        is_primary=True,
-    )
-    domain.save()
+    if not Tenant.objects.filter(schema_name="local").exists():
+
+        tenant = Tenant.objects.create(
+            company_name="Local",
+            schema_name="local",
+        )
+        tenant.save()
+        domain = Domain.objects.create(
+            tenant=tenant,
+            domain="local.localhost",
+            is_primary=True,
+        )
+        domain.save()
+    else:
+        tenant = Tenant.objects.get(schema_name="local")
     return tenant
 
 
