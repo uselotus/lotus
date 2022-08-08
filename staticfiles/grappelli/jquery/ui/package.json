@@ -60,7 +60,7 @@
 		"grunt-contrib-csslint": "2.0.0",
 		"grunt-contrib-qunit": "5.0.1",
 		"grunt-contrib-requirejs": "1.0.0",
-		"grunt-contrib-uglify": "5.0.1",
+		"grunt-contrib-uglify": "5.2.2",
 		"grunt-eslint": "23.0.0",
 		"grunt-git-authors": "3.2.0",
 		"grunt-html": "14.5.0",
