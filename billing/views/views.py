@@ -209,7 +209,7 @@ class UsageView(APIView):
                 "total_usage_cost": "$" + str(subscription_cost),
                 "flat_rate_cost": "$" + str(flat_rate),
                 "components": plan_components_summary,
-                "current_amount_due": "$" + str(subtotal_cost + flat_rate),
+                "current_amount_due": "$" + str(subscription_cost + flat_rate),
                 "billing_start_date": plan_start_timestamp,
                 "billing_end_date": plan_end_timestamp,
             }
