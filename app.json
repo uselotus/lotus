@@ -1,40 +1,27 @@
 {
-    "name": "Lotus - Open Source Metering Billing and Pricing",
-    "website": "https://www.uselotus.io",
-    "repository": "https://github.com/uselotus/lotus",
-    "environments": {
-      "review": {
-        "scripts": {
-          "postdeploy": ""
-        },
-        "env": {
-          "DEBUG": true
-        },
-        "buildpacks": [
-          {"url": "heroku/nodejs"},
-          {"url": "https://github.com/timgl/heroku-buildpack-python.git"}
-        ]
-      },
-      "test": {
-        "addons": ["heroku-postgresql:in-dyno"],
-        "scripts": {
-          "test": "python manage.py test --keepdb -v 2"
-        },
-        "buildpacks": [
-          {"url": "https://github.com/timgl/heroku-buildpack-python.git"}
-        ]
-      }
+  "name": "Lotus",
+  "description": "Open Source Metering Billing and Pricing",
+  "website": "https://www.uselotus.io",
+  "repository": "https://github.com/uselotus/lotus",
+  "success_url": "/admin",
+  "addons": [
+    "heroku-postgresql:in-dyno"
+  ],
+  "buildpacks": [
+    "heroku/python"
+  ],
+  "env": {
+    "SECRET_KEY": {
+      "generator": "secret"
     },
-    "buildpacks": [
-          {"url": "heroku/nodejs"},
-          {"url": "https://github.com/timgl/heroku-buildpack-python.git"}
-    ],
-    "addons": [
-        "heroku-postgresql"
-    ],
-    "env": {
-        "SECRET_KEY": {
-            "generator": "secret"
-        }
-    }
+    "CELERY_BROKER_URL": {
+      "value": "redis://redis:6379/"
+    },
+    "CELERY_RESULT_BACKEND": {
+        "value": "redis://redis:6379/"
+      },
+      "DISABLE_COLLECTSTATIC": {
+        "value": "1"
+      }
   }
+}
