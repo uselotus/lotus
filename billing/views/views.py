@@ -166,16 +166,18 @@ class UsageView(APIView):
                     property_name = billable_metric.property_name
                     for event in events:
                         properties_dict = event.properties
-                        subtotal_usage += float(properties_dict[property_name])
+                        if property_name in properties_dict:
+                            subtotal_usage += float(properties_dict[property_name])
                     subtotal_usage -= plan_component.free_metric_quantity
 
                 elif aggregation_type == "max":
                     property_name = billable_metric.property_name
                     for event in events:
                         properties_dict = event.properties
-                        subtotal_usage = max(
-                            subtotal_usage, float(properties_dict[property_name])
-                        )
+                        if property_name in properties_dict:
+                            subtotal_usage = max(
+                                subtotal_usage, float(properties_dict[property_name])
+                            )
                 subtotal_cost += int(
                     (subtotal_usage * plan_component.cost_per_metric).amount
                 )
