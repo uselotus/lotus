@@ -29,7 +29,6 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
             "customer_id",
             "billing_id",
             "balance",
-            "billing_configuration",
         )
 
 
