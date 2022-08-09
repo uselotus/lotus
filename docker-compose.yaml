@@ -7,7 +7,7 @@ services:
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_USER=${POSTGRES_USER:-db_user}
-      - POSTGRES_DB=${POSTGRES_NAME:-newdb}
+      - POSTGRES_DB=${POSTGRES_NAME:-postgres}
       - POSTGRES_HOST=${POSTGRES_HOST:-db}
 
   lotus:
