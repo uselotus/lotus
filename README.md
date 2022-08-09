@@ -29,7 +29,7 @@
 
 <br/>
 
-Lotus is an open-core billing and price optimization software. We enable SaaS companies to manage and experiment in real-time with custom subscription and usage based billing.
+Lotus is an open-core billing and price optimization software. We enable SaaS companies to manage and experiment in real-time with custom subscription and usage-based billing.
 
 <br/>
 
@@ -37,7 +37,7 @@ We provide a flexible and modular approach to every step of the billing experien
 
 <br/>
 
-[Website]("https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/lotus-docs) · [Contact Us](founders@uselotus.io)
+[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/lotus-docs) · [Contact Us](founders@uselotus.io)
 
 <br/>
 
@@ -62,8 +62,10 @@ Lotus is the quickest way to start billing flexibly and experiment with pricing.
 <!-- GETTING STARTED -->
 ## Getting Started
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/uselotus/lotus)
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
+
+For docker use this method:
 
 To get a local copy up and running follow these simple example steps.
 
