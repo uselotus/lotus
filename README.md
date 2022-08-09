@@ -29,7 +29,7 @@
 
 <br/>
 
-Lotus is an open-core billing and price optimization software. We enable SaaS companies to manage and experiment in real-time with custom subscription and usage based billing.
+Lotus is an open-core billing and price optimization software. We enable SaaS companies to manage and experiment in real-time with custom subscription and usage-based billing.
 
 <br/>
 
