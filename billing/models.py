@@ -30,7 +30,6 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     customer_id = models.CharField(max_length=40, unique=True)
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
-    billing_configuration = models.JSONField(default=dict, blank=True)
 
     # balance (in cents) in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
     balance = MoneyField(
