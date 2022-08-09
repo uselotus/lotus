@@ -22,9 +22,18 @@
       },
       "DISABLE_COLLECTSTATIC": {
         "value": "1"
-      }
+      },
+    "DJANGO_SUPERUSER_PASSWORD":{
+        "generator": "secret"
   },
-  "scripts":{
+  "DJANGO_SUPERUSER_USERNAME":{
+      "value": "admin"
+  },
+  "DJANGO_SUPERUSER_EMAIL":{
+    "value": "example@example.com"
+    }
+  
+    },"scripts":{
     "postdeploy":"python manage.py makemigrations home --noinput; python manage.py migrate_schemas; python3 manage.py initadmin"
   }
 }
