@@ -57,7 +57,7 @@ class Event(models.Model):
     )
     event_name = models.CharField(max_length=200, null=False)
     time_created: models.DateTimeField = models.DateTimeField()
-    properties: models.JSONField = models.JSONField(default=dict)
+    properties: models.JSONField = models.JSONField(default=dict, blank = True, null = True)
     idempotency_id: models.CharField = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -164,6 +164,7 @@ class PlanComponent(models.Model):
     cost_per_metric = MoneyField(
         decimal_places=10, max_digits=14, default_currency="USD"
     )
+    metric_amount_per_cost = models.IntegerField(default=1)
 
     def __str__(self) -> str:
         return str(self.billable_metric)

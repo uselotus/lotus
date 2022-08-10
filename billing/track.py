@@ -43,21 +43,22 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
 
 def ingest_event(request, data: dict, customer: Customer) -> None:
 
-    idepotency_id_query = (
-        Event.objects.all().filter(idempotency_id=data["idempotency_id"]).count()
-    )
+    idepotency_id_query = Event.objects.filter(idempotency_id=data["idempotency_id"]).count()
+    print(idepotency_id_query)
     if idepotency_id_query > 0:
-        return HttpResponseBadRequest("An event record already exists", status=409)
+        return JsonResponse({"detail": "This event record already exists", "status": "Failure"}, status=409)
 
-    print(type(data["properties"]))
+
     db_event = Event.objects.create(
         event_name=data["event_name"],
         idempotency_id=data["idempotency_id"],
-        properties=data["properties"],
         customer=customer,
         time_created=data["time_created"],
     )
+    if "properties" in data:
+        db_event.properties = data["properties"]
     db_event.save()
+    return JsonResponse({"status": "Success"}, status=200)
 
 
 @csrf_exempt
@@ -79,7 +80,7 @@ def track_event(request):
     if isinstance(data, list):
         for i in data:
             try:
-                ingest_event(request=request, data=i, customer=customer)
+                return ingest_event(request=request, data=i, customer=customer)
             except KeyError:
                 return JsonResponse(
                     {
@@ -90,6 +91,5 @@ def track_event(request):
                     status=400,
                 )
     else:
-        ingest_event(request=request, data=data, customer=customer)
+        return ingest_event(request=request, data=data, customer=customer)
 
-    return JsonResponse({"status": "Success"}, status=200)

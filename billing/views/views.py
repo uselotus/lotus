@@ -7,6 +7,7 @@ from django_q.tasks import async_task
 from ..tasks import generate_invoice
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
 import json
+import math
 
 from rest_framework import viewsets
 from ..permissions import HasUserAPIKey
@@ -174,14 +175,15 @@ class UsageView(APIView):
 
                 if aggregation_type == "count":
                     subtotal_usage = len(events) - plan_component.free_metric_quantity
+                    metric_batches = math.ceil(subtotal_usage/plan_component.metric_amount_per_cost)
                 elif aggregation_type == "sum":
                     property_name = billable_metric.property_name
                     for event in events:
                         properties_dict = event.properties
-                        print(properties_dict)
                         if property_name in properties_dict:
                             subtotal_usage += float(properties_dict[property_name])
                     subtotal_usage -= plan_component.free_metric_quantity
+                    metric_batches = math.ceil(subtotal_usage/plan_component.metric_amount_per_cost)
 
                 elif aggregation_type == "max":
                     property_name = billable_metric.property_name
@@ -191,8 +193,9 @@ class UsageView(APIView):
                             subtotal_usage = max(
                                 subtotal_usage, float(properties_dict[property_name])
                             )
+                        metric_batches = subtotal_usage
                 subtotal_cost = int(
-                    (subtotal_usage * plan_component.cost_per_metric).amount
+                    (metric_batches * plan_component.cost_per_metric).amount
                 )
                 subscription_cost += subtotal_cost
 
