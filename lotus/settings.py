@@ -64,7 +64,7 @@ except KeyError:
 # Application definition
 
 SHARED_APPS = [
-    "grappelli",
+    # "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -81,6 +81,12 @@ SHARED_APPS = [
 ]
 
 TENANT_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     "billing",
     "rest_framework_api_key",
 ]
@@ -92,9 +98,11 @@ INSTALLED_APPS = list(SHARED_APPS) + [
 TENANT_MODEL = "tenant.Tenant"
 TENANT_DOMAIN_MODEL = "tenant.Domain"
 
+TENANT_SUBFOLDER_PREFIX = "client"
+
 MIDDLEWARE = [
+    "django_tenants.middleware.TenantSubfolderMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django_tenants.middleware.main.TenantMainMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -107,7 +115,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "lotus.urls"
 PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
-SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
 TEMPLATES = [
     {

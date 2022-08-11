@@ -31,14 +31,6 @@ router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
 
 urlpatterns = [
-    path("grappelli/", include("grappelli.urls")),
+    # path("grappelli/", include("grappelli.urls")),
     path("admin/", admin.site.urls),
-    path("api/", include(router.urls)),
-    path("api/customers", CustomerView.as_view(), name="customer"),
-    path("api/customers/", CustomerView.as_view(), name="customer"),
-    path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
-    path("track/", track.track_event, name="track_event"),
-    path("track", track.track_event, name="track_event"),
-    path("api/usage", UsageView.as_view(), name="usage"),
-    path("stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
 ]
