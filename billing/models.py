@@ -30,7 +30,6 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     customer_id = models.CharField(max_length=40, unique=True)
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
-    billing_configuration = models.JSONField(default=dict, blank=True)
 
     # balance (in cents) in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
     balance = MoneyField(
@@ -58,7 +57,7 @@ class Event(models.Model):
     )
     event_name = models.CharField(max_length=200, null=False)
     time_created: models.DateTimeField = models.DateTimeField()
-    properties: models.JSONField = models.JSONField(default=dict)
+    properties: models.JSONField = models.JSONField(default=dict, blank = True, null = True)
     idempotency_id: models.CharField = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -87,6 +86,15 @@ class BillableMetric(models.Model):
         choices=AGGREGATION_CHOICES,
         default=AGGREGATION_CHOICES.count,
     )
+
+    def __str__(self):
+        return (
+            str(self.aggregation_type)
+            + " of "
+            + str(self.property_name)
+            + " : "
+            + str(self.event_name)
+        )
 
     def get_aggregation_type(self):
         return self.aggregation_type
@@ -156,6 +164,10 @@ class PlanComponent(models.Model):
     cost_per_metric = MoneyField(
         decimal_places=10, max_digits=14, default_currency="USD"
     )
+    metric_amount_per_cost = models.IntegerField(default=1)
+
+    def __str__(self) -> str:
+        return str(self.billable_metric)
 
 
 class Subscription(models.Model):

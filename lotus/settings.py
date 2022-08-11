@@ -19,7 +19,7 @@ import dj_database_url
 import django_heroku
 
 BASE_DIR = Path("./env")
-DOT_ENV = BASE_DIR / ".env.dev"
+DOT_ENV = BASE_DIR / ".env"
 
 load_dotenv(DOT_ENV, override=True)
 
