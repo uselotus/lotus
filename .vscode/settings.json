@@ -2,5 +2,8 @@
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": false,
     "editor.defaultFormatter": "ms-python.black-formatter",
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      },
     "editor.formatOnSave": true
 }
