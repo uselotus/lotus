@@ -1,7 +1,7 @@
 import React, { FC, useEffect, useState } from "react";
 import CustomerTable from "../components/CustomerTable";
-import axios from "axios";
-
+import { CustomerType } from "../types/customer-type";
+import { Customer } from "../api/api";
 const customer_data = [
   {
     customer_id: "1",
@@ -18,17 +18,18 @@ const customer_data = [
 ];
 
 const ViewCustomers: FC = () => {
-  const [data, setData] = useState(customer_data);
+  const [customers, setCustomers] = useState<CustomerType[]>([]);
 
   useEffect(() => {
-    axios.get(`/api/customers`).then((res) => {
-      setData(res.data);
+    Customer.getCustomers().then((data) => {
+      console.log(data);
+      setCustomers(data);
     });
   }, []);
 
   return (
     <div>
-      <CustomerTable customerArray={data} />
+      <CustomerTable customerArray={customers} />
     </div>
   );
 };

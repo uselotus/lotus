@@ -1,6 +1,6 @@
-import React, { FC, useState } from "react";
+import React, { FC, useState, useEffect } from "react";
 import { Table } from "antd";
-
+import { CustomerType } from "../types/customer-type";
 const columns = [
   {
     key: "customer_id",
@@ -13,26 +13,25 @@ const columns = [
     dataIndex: "name",
   },
   {
-    key: "plans",
-    title: "Plans",
-    dataIndex: "plans",
+    key: "balance",
+    title: "Balance",
+    dataIndex: "balance",
   },
 ];
 
 interface Props {
-  customerArray: {
-    customer_id: string;
-    name: string;
-    plans: number;
-  }[];
+  customerArray: CustomerType[];
 }
 
 const ViewCustomers: FC<Props> = ({ customerArray }) => {
-  const [data, setData] = useState(customerArray);
   return (
     <div>
       <div className="table">
-        <Table dataSource={data} columns={columns} pagination={false} />
+        <Table
+          dataSource={customerArray}
+          columns={columns}
+          pagination={false}
+        />
       </div>
     </div>
   );

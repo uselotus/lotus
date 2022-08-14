@@ -7,17 +7,17 @@ const Dashboard: FC = () => {
       <Row gutter={16}>
         <Col span={8}>
           <Card title="Card title" bordered={false}>
-            Card content
+            Starter Plan
           </Card>
         </Col>
         <Col span={8}>
           <Card title="Card title" bordered={false}>
-            Card content
+            Starter Plan
           </Card>
         </Col>
         <Col span={8}>
           <Card title="Card title" bordered={false}>
-            Card content
+            Pro Plan
           </Card>
         </Col>
       </Row>
