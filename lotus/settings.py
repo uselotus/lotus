@@ -54,7 +54,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get("DEBUG", False)
 
 try:
     ALLOWED_HOSTS = ["*"]
@@ -119,7 +119,7 @@ PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -209,9 +209,22 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = "/staticfiles/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+DJANGO_VITE_DEV_SERVER_PORT = 5173
+
+STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+INTERNAL_IPS = ["127.0.0.1"]
+
+DJANGO_VITE_DEV_MODE = True
+
+VITE_APP_DIR = BASE_DIR / "src"
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static/dist"),
+    os.path.join(VITE_APP_DIR, "dist"),
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 
 MEDIA_URL = "/mediafiles/"
