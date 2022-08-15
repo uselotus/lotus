@@ -10,6 +10,8 @@ from rest_framework_api_key.models import AbstractAPIKey
 from dateutil.relativedelta import relativedelta
 from dateutil.parser import isoparse
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.auth.models import AbstractUser, BaseUserManager
+
 
 # Create your models here.
 
@@ -57,7 +59,7 @@ class Event(models.Model):
     )
     event_name = models.CharField(max_length=200, null=False)
     time_created: models.DateTimeField = models.DateTimeField()
-    properties: models.JSONField = models.JSONField(default=dict, blank = True, null = True)
+    properties: models.JSONField = models.JSONField(default=dict, blank=True, null=True)
     idempotency_id: models.CharField = models.CharField(max_length=255, unique=True)
 
     class Meta:
@@ -223,3 +225,41 @@ class Invoice(models.Model):
     status = models.CharField(max_length=10, default="pending")
 
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
+
+
+PAYMENT_PLANS = Choices(
+    ("self_hosted_free", _("Self-Hosted Free")),
+    ("cloud", _("Cloud")),
+    ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
+)
+
+
+class User(AbstractUser):
+
+    company_name = models.CharField(max_length=200, default=" ")
+
+
+class Organization(models.Model):
+    users = models.ManyToManyField(User, blank=True)
+    company_name = models.CharField(max_length=100, default=" ")
+    stripe_api_key = models.CharField(max_length=110, default="", blank=True)
+    payment_plan = models.CharField(
+        max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
+    )
+    id = models.CharField(
+        max_length=40, unique=True, default=uuid.uuid4, primary_key=True
+    )
+    created_on = models.DateField(auto_now_add=True)
+
+
+class APIToken(AbstractAPIKey):
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200, default="latest_token")
+
+    def __str__(self):
+        return str(self.name) + " " + str(self.user)
+
+    class Meta:
+        verbose_name = "API Token"
+        verbose_name_plural = "API Tokens"
