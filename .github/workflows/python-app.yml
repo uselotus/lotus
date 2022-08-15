@@ -53,9 +53,21 @@ jobs:
       run: pipenv install --dev
       if: steps.pipenv-cache.outputs.cache-hit != 'true'
     - name: Run migrations
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
       run: python manage.py migrate
     - name: Run tests
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
       run: python manage.py test
     - name: Test with black
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
       run: |
         python -m black --check .
