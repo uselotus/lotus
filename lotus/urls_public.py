@@ -17,28 +17,19 @@ from django.contrib import admin
 from django.urls import path
 from django.conf.urls import include
 from rest_framework import routers
-from billing.views.views import (
-    EventViewSet,
-    SubscriptionViewSet,
-    CustomerView,
-    SubscriptionView,
-    UsageView,
-)
+from django.shortcuts import render
+
 from billing import track
 from billing.views.stripe_views import InitializeStripeView
+from django.views.generic import TemplateView
 
-router = routers.DefaultRouter()
-router.register(r"event", EventViewSet)
+
+def index(request):
+    return render(request, "index.html")
+
 
 urlpatterns = [
-    path("grappelli/", include("grappelli.urls")),
+    # path("grappelli/", include("grappelli.urls")),
     path("admin/", admin.site.urls),
-    path("api/", include(router.urls)),
-    path("api/customers", CustomerView.as_view(), name="customer"),
-    path("api/customers/", CustomerView.as_view(), name="customer"),
-    path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
-    path("track/", track.track_event, name="track_event"),
-    path("track", track.track_event, name="track_event"),
-    path("api/usage", UsageView.as_view(), name="usage"),
-    path("stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
+    path("", TemplateView.as_view(template_name="index.html")),
 ]

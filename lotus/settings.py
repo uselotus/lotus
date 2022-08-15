@@ -54,7 +54,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get("DEBUG", False)
 
 try:
     ALLOWED_HOSTS = ["*"]
@@ -64,7 +64,7 @@ except KeyError:
 # Application definition
 
 SHARED_APPS = [
-    "grappelli",
+    # "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -81,6 +81,12 @@ SHARED_APPS = [
 ]
 
 TENANT_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     "billing",
     "rest_framework_api_key",
 ]
@@ -92,9 +98,11 @@ INSTALLED_APPS = list(SHARED_APPS) + [
 TENANT_MODEL = "tenant.Tenant"
 TENANT_DOMAIN_MODEL = "tenant.Domain"
 
+TENANT_SUBFOLDER_PREFIX = "client"
+
 MIDDLEWARE = [
+    "django_tenants.middleware.TenantSubfolderMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django_tenants.middleware.main.TenantMainMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -107,12 +115,11 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "lotus.urls"
 PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
-SHOW_PUBLIC_IF_NO_TENANT_FOUND = True
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -202,9 +209,22 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-STATIC_URL = "/staticfiles/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+DJANGO_VITE_DEV_SERVER_PORT = 5173
+
+STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+INTERNAL_IPS = ["127.0.0.1"]
+
+DJANGO_VITE_DEV_MODE = True
+
+VITE_APP_DIR = BASE_DIR / "src"
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static/dist"),
+    os.path.join(VITE_APP_DIR, "dist"),
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 
 MEDIA_URL = "/mediafiles/"
