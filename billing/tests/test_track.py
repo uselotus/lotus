@@ -9,7 +9,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework_api_key.models import APIKey
 from tenant.models import User, APIToken
 
-from ..track import track_event
+from ...metering_billing.track import track_event
 
 
 class TrackEventTest(TestCase):

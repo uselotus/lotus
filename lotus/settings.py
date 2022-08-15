@@ -23,7 +23,6 @@ DOT_ENV = BASE_DIR / ".env"
 
 load_dotenv(DOT_ENV, override=True)
 
-
 try:
     sentry_sdk.init(
         dsn=os.environ["SENTRY_DSN"],
@@ -76,7 +75,7 @@ INSTALLED_APPS = [
     "django_extensions",
     "whitenoise.runserver_nostatic",
     "django_celery_beat",
-    "billing",
+    "metering_billing",
     "rest_framework_api_key",
 ]
 
@@ -113,7 +112,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 
-AUTH_USER_MODEL = "billing.User"
+AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -206,7 +205,7 @@ MEDIA_URL = "/mediafiles/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "billing.permissions.HasUserAPIKey",
+        "metering_billing.permissions.HasUserAPIKey",
     ]
 }
 
@@ -221,7 +220,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 CELERY_BEAT_SCHEDULE = {
     "calculate_invoice_schedule": {
-        "task": "billing.tasks.calculate_invoice",
+        "task": "metering_billing.tasks.calculate_invoice",
         "schedule": 60,
     },
 }

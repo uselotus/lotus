@@ -1,6 +1,5 @@
 from re import S
-from .models import Event, Customer, BillingPlan
-from tenant.models import APIToken, Tenant
+from metering_billing.models import Event, Customer, BillingPlan
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
 from rest_framework.authtoken.models import Token
 from rest_framework.parsers import JSONParser
