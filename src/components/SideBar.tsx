@@ -8,7 +8,7 @@ import {
 import { useNavigate } from "react-router";
 
 const SideBar: FC = () => {
-  let navigate = useNavigate();
+  const navigate = useNavigate();
 
   const handleCustomersClick = () => {
     navigate("/customers");
