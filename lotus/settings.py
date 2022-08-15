@@ -70,8 +70,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "metering_billing",
     "rest_framework",
+    "metering_billing",
     "djmoney",
     "django_extensions",
     "whitenoise.runserver_nostatic",
@@ -105,6 +105,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
+            "libraries": {
+                "render_vite_bundle": "metering_billing.template_tags.render_vite_bundle",
+            },
         },
     },
 ]

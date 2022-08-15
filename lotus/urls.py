@@ -24,7 +24,8 @@ from metering_billing.views import (
     CustomerView,
     SubscriptionView,
     UsageView,
-    InitializeStripeView
+    InitializeStripeView,
+    PlansView,
 )
 from metering_billing import track
 from django.views.generic import TemplateView
@@ -47,6 +48,7 @@ urlpatterns = [
     path("track/", track.track_event, name="track_event"),
     path("track", track.track_event, name="track_event"),
     path("api/usage", UsageView.as_view(), name="usage"),
-    path("stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
+    path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
+    path("api/plans", PlansView.as_view(), name="plans"),
     path("", TemplateView.as_view(template_name="index.html")),
 ]

@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from "axios";
 import { CustomerType } from "../types/customer-type";
 import { PlanType } from "../types/plan-type";
+import { StripeConnectType, StripeStatusType } from "../types/stripe-type";
 
 const instance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -33,4 +34,11 @@ export const Plan = {
     requests.get(`posts/${id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
     requests.post("posts", post),
+};
+
+export const StripeConnect = {
+  getStripeConnectionStatus: (): Promise<StripeStatusType[]> =>
+    requests.get("api/stripe"),
+  connectStripe: (): Promise<StripeConnectType[]> =>
+    requests.post("api/stripe", {}),
 };

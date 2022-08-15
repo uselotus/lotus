@@ -32,7 +32,7 @@ const SideBar: FC = () => {
           margin: "16px",
         }}
       >
-        <img src={"../public/"} />
+        <img src={"../assets/image/s/logo_small.svg"} />
       </div>
       <Menu theme="dark" mode="vertical" defaultSelectedKeys={["1"]}>
         <Menu.Item key="1" onClick={handleDashboardClick}>

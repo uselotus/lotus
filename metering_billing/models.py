@@ -26,7 +26,7 @@ class User(AbstractUser):
 class Organization(models.Model):
     users = models.ManyToManyField(User, blank=True)
     company_name = models.CharField(max_length=100, default=" ")
-    stripe_api_key = models.CharField(max_length=110, default="", blank=True)
+    stripe_id = models.CharField(max_length=110, default="", blank=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
@@ -34,6 +34,7 @@ class Organization(models.Model):
         max_length=40, unique=True, default=uuid.uuid4, primary_key=True
     )
     created_on = models.DateField(auto_now_add=True)
+
 
 class Customer(models.Model):
 
@@ -47,6 +48,7 @@ class Customer(models.Model):
         customer_id (str): The external id of the customer in the backend system.
         billing_id (str): The billing id of the customer, internal to Lotus.
     """
+
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
     customer_id = models.CharField(max_length=40, unique=True)
@@ -72,6 +74,7 @@ class Event(models.Model):
     customer: The customer that the event occurred to.
     idempotency_id: A unique identifier for the event.
     """
+
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
 
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
@@ -129,6 +132,7 @@ class BillingPlan(models.Model):
     flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
     """
+
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     plan_id = models.CharField(
         max_length=36, blank=True, unique=True, default=uuid.uuid4
@@ -199,6 +203,7 @@ class Subscription(models.Model):
     end_date: The date at which the subscription will end.
     status: The status of the subscription, active or ended.
     """
+
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     STATUSES = Choices(
         ("active", _("Active")),
@@ -243,6 +248,7 @@ class Invoice(models.Model):
 
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
 
+
 class APIToken(AbstractAPIKey):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
@@ -254,6 +260,3 @@ class APIToken(AbstractAPIKey):
     class Meta:
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
-
-
-

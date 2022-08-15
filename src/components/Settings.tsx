@@ -1,10 +1,26 @@
 import React, { FC } from "react";
 import connectwithstripe from "../assets/images/connectwithstripe.svg";
 import "./Settings.css";
+import { StripeStatusType } from "../types/stripe-type";
+import { useQuery, UseQueryResult } from "react-query";
+import { StripeConnect } from "../api/api";
+import axios from "axios";
 
 const Settings: FC = () => {
+  const fetchStripeConnect = async (): Promise<StripeStatusType | void> => {
+    StripeConnect.connectStripe().then((data) => {
+      console.log(data);
+      return data;
+    });
+  };
+
+  const { status, error, data } = useQuery<StripeStatusType | void>(
+    "stripeConnect",
+    fetchStripeConnect
+  );
+
   const handleConnectWithStripeClick = () => {
-    console.log(3);
+    //reroute to url
   };
   return (
     <div>

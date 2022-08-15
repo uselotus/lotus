@@ -1,6 +1,14 @@
 from django.forms.models import model_to_dict
 import dateutil.parser as parser
-from metering_billing.models import Customer, Event, Subscription, BillingPlan, PlanComponent
+from metering_billing.models import (
+    Customer,
+    Event,
+    Subscription,
+    BillingPlan,
+    PlanComponent,
+    Organization,
+    User,
+)
 from .serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
 from django_q.tasks import async_task
@@ -14,6 +22,8 @@ from rest_framework import viewsets
 from .permissions import HasUserAPIKey
 from rest_framework.response import Response
 import stripe
+import os
+from rest_framework.permissions import AllowAny
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -26,8 +36,52 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     serializer_class = SubscriptionSerializer
 
 
+class PlansView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, format=None):
+        plans = BillingPlan.objects.all()
+
+        plans_list = []
+
+        for plan in plans:
+            plan_breakdown = {}
+            plan_breakdown["name"] = plan.name
+
+            components = PlanComponent.objects.filter(billing_plan=plan)
+
+            components_list = []
+            for component in components:
+                component_breakdown = {}
+                component_breakdown[
+                    "free_metric_quantity"
+                ] = component.free_metric_quantity
+                component_breakdown["cost_per_metric"] = component.cost_per_metric
+                component_breakdown["unit_per_cost"] = component.metric_amount_per_cost
+                component_breakdown[
+                    "metric_name"
+                ] = component.billable_metric.event_name
+                component_breakdown[
+                    "aggregation_type"
+                ] = component.billable_metric.aggregation_type
+                component_breakdown[
+                    "property_name"
+                ] = component.billable_metric.property_name
+
+                components_list.append(component_breakdown)
+            plan_breakdown["components"] = components_list
+            plan_breakdown["billing_interval"] = plan.interval
+
+            plans_list.append(plan_breakdown)
+
+        return JsonResponse(plans_list)
+
+    def post(self, request, format=None):
+        pass
+
+
 class SubscriptionView(APIView):
-    permission_classes = [HasUserAPIKey]
+    permission_classes = [AllowAny]
 
     def get(self, request, format=None):
         """
@@ -100,7 +154,7 @@ class SubscriptionView(APIView):
 
 class CustomerView(APIView):
 
-    permission_classes = [HasUserAPIKey]
+    permission_classes = [AllowAny]
 
     def get(self, request, format=None):
         """
@@ -175,7 +229,9 @@ class UsageView(APIView):
 
                 if aggregation_type == "count":
                     subtotal_usage = len(events) - plan_component.free_metric_quantity
-                    metric_batches = math.ceil(subtotal_usage/plan_component.metric_amount_per_cost)
+                    metric_batches = math.ceil(
+                        subtotal_usage / plan_component.metric_amount_per_cost
+                    )
                 elif aggregation_type == "sum":
                     property_name = billable_metric.property_name
                     for event in events:
@@ -183,7 +239,9 @@ class UsageView(APIView):
                         if property_name in properties_dict:
                             subtotal_usage += float(properties_dict[property_name])
                     subtotal_usage -= plan_component.free_metric_quantity
-                    metric_batches = math.ceil(subtotal_usage/plan_component.metric_amount_per_cost)
+                    metric_batches = math.ceil(
+                        subtotal_usage / plan_component.metric_amount_per_cost
+                    )
 
                 elif aggregation_type == "max":
                     property_name = billable_metric.property_name
@@ -220,12 +278,14 @@ class UsageView(APIView):
         usage_summary["# of Active Subscriptions"] = len(usage_summary)
         return Response(usage_summary)
 
-def import_stripe_customers(tenant):
+
+stripe_api_key = os.environ["STRIPE_API_KEY"]
+
+
+def import_stripe_customers(organization):
     """
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
-
-    stripe.api_key = tenant.stripe_api_key
 
     stripe_customers_response = stripe.Customer.list()
 
@@ -240,9 +300,7 @@ def import_stripe_customers(tenant):
             pass
 
 
-def issue_stripe_payment_intent(tenant, invoice):
-
-    stripe.api_key = tenant.stripe_api_key
+def issue_stripe_payment_intent(invoice):
 
     cost_due = int(invoice.cost_due)
     currency = invoice.currency
@@ -255,18 +313,45 @@ def issue_stripe_payment_intent(tenant, invoice):
 
 
 class InitializeStripeView(APIView):
-    permission_classes = [HasUserAPIKey]
+    permission_classes = [AllowAny]
+
+    def get(self, request, format=None):
+        """
+        Check to see if user has connected their Stripe account.
+        """
+
+        # Hardcoded for now
+        organization = Organization.objects.get(id=1)
+
+        stripe_id = organization.stripe_id
+
+        if stripe_id and len(stripe_id) > 0:
+            return JsonResponse({"connected": True})
+        else:
+            return JsonResponse({"connected": False})
 
     def post(self, request, format=None):
         """
         Initialize Stripe after user inputs an API key.
         """
-        schema_name = connection.schema_name
-        tenant = Tenant.objects.get(schema_name=schema_name)
+
         data = request.data
-        tenant.stripe_api_key = data["stripe-api-key"]
-        tenant.save()
+        stripe_code = data["authorization_code"]
 
-        import_stripe_customers(tenant)
+        response = stripe.OAuth.token(
+            grant_type="authorization_code",
+            code=stripe_code,
+        )
 
-        return Response({"Success": True})
+        if "error" in response:
+            return JsonResponse(
+                {"success": False, "Error": response["error"]}, status=400
+            )
+
+        connected_account_id = response["stripe_user_id"]
+
+        organization.stripe_id = connected_account_id
+
+        import_stripe_customers(organization)
+
+        return JsonResponse({"Success": True})
