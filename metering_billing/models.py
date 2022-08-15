@@ -12,9 +12,28 @@ from dateutil.parser import isoparse
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 
-
+PAYMENT_PLANS = Choices(
+    ("self_hosted_free", _("Self-Hosted Free")),
+    ("cloud", _("Cloud")),
+    ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
+)
 # Create your models here.
+class User(AbstractUser):
 
+    company_name = models.CharField(max_length=200, default=" ")
+
+
+class Organization(models.Model):
+    users = models.ManyToManyField(User, blank=True)
+    company_name = models.CharField(max_length=100, default=" ")
+    stripe_api_key = models.CharField(max_length=110, default="", blank=True)
+    payment_plan = models.CharField(
+        max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
+    )
+    id = models.CharField(
+        max_length=40, unique=True, default=uuid.uuid4, primary_key=True
+    )
+    created_on = models.DateField(auto_now_add=True)
 
 class Customer(models.Model):
 
@@ -28,7 +47,7 @@ class Customer(models.Model):
         customer_id (str): The external id of the customer in the backend system.
         billing_id (str): The billing id of the customer, internal to Lotus.
     """
-
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
     customer_id = models.CharField(max_length=40, unique=True)
     billing_id = models.CharField(max_length=40, default=uuid.uuid4)
@@ -53,10 +72,9 @@ class Event(models.Model):
     customer: The customer that the event occurred to.
     idempotency_id: A unique identifier for the event.
     """
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
 
-    customer: models.ForeignKey = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=False
-    )
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
     time_created: models.DateTimeField = models.DateTimeField()
     properties: models.JSONField = models.JSONField(default=dict, blank=True, null=True)
@@ -80,7 +98,7 @@ class BillableMetric(models.Model):
         (AGGREGATION_TYPES.SUM, _("Sum")),
         (AGGREGATION_TYPES.MAX, _("Max")),
     )
-
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
     property_name = models.CharField(max_length=200, null=True)
     aggregation_type = models.CharField(
@@ -111,7 +129,7 @@ class BillingPlan(models.Model):
     flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
     """
-
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     plan_id = models.CharField(
         max_length=36, blank=True, unique=True, default=uuid.uuid4
     )
@@ -180,9 +198,8 @@ class Subscription(models.Model):
     start_date: The date at which the subscription started.
     end_date: The date at which the subscription will end.
     status: The status of the subscription, active or ended.
-
     """
-
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     STATUSES = Choices(
         ("active", _("Active")),
         ("ended", _("Ended")),
@@ -214,7 +231,7 @@ class Invoice(models.Model):
     )
     currency = models.CharField(max_length=10, default="USD")
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
-
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer_name = models.CharField(max_length=100)
     customer_billing_id = models.CharField(max_length=40)
 
@@ -226,40 +243,17 @@ class Invoice(models.Model):
 
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
 
-
-PAYMENT_PLANS = Choices(
-    ("self_hosted_free", _("Self-Hosted Free")),
-    ("cloud", _("Cloud")),
-    ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
-)
-
-
-class User(AbstractUser):
-
-    company_name = models.CharField(max_length=200, default=" ")
-
-
-class Organization(models.Model):
-    users = models.ManyToManyField(User, blank=True)
-    company_name = models.CharField(max_length=100, default=" ")
-    stripe_api_key = models.CharField(max_length=110, default="", blank=True)
-    payment_plan = models.CharField(
-        max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
-    )
-    id = models.CharField(
-        max_length=40, unique=True, default=uuid.uuid4, primary_key=True
-    )
-    created_on = models.DateField(auto_now_add=True)
-
-
 class APIToken(AbstractAPIKey):
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     name = models.CharField(max_length=200, default="latest_token")
 
     def __str__(self):
-        return str(self.name) + " " + str(self.user)
+        return str(self.name) + " " + str(self.organization)
 
     class Meta:
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
+
+
+

@@ -23,7 +23,6 @@ DOT_ENV = BASE_DIR / ".env"
 
 load_dotenv(DOT_ENV, override=True)
 
-
 try:
     sentry_sdk.init(
         dsn=os.environ["SENTRY_DSN"],
@@ -63,7 +62,7 @@ except KeyError:
 
 # Application definition
 
-SHARED_APPS = [
+INSTALLED_APPS = [
     # "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -72,36 +71,15 @@ SHARED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "django_tenants",
-    "tenant",
     "djmoney",
     "django_extensions",
     "whitenoise.runserver_nostatic",
     "django_celery_beat",
-]
-
-TENANT_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    "billing",
+    "metering_billing",
     "rest_framework_api_key",
 ]
 
-INSTALLED_APPS = list(SHARED_APPS) + [
-    app for app in TENANT_APPS if app not in SHARED_APPS
-]
-
-TENANT_MODEL = "tenant.Tenant"
-TENANT_DOMAIN_MODEL = "tenant.Domain"
-
-TENANT_SUBFOLDER_PREFIX = "client"
-
 MIDDLEWARE = [
-    "django_tenants.middleware.TenantSubfolderMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -114,7 +92,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "lotus.urls"
-PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
 
 TEMPLATES = [
     {
@@ -135,8 +112,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 
-AUTH_USER_MODEL = "tenant.User"
-
+AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -144,7 +120,7 @@ try:
     DATABASES = {
         "default": dj_database_url.parse(
             os.environ["DATABASE_URL"],
-            engine="django_tenants.postgresql_backend",
+            engine="django.db.backends.postgresql_psycopg2",
             conn_max_age=600,
             ssl_require=True,
         )
@@ -153,7 +129,7 @@ try:
 except:
     DATABASES = {
         "default": {
-            "ENGINE": "django_tenants.postgresql_backend",
+            "ENGINE": "django.db.backends.postgresql_psycopg2",
             "NAME": os.environ["POSTGRES_NAME"],
             "USER": os.environ["POSTGRES_USER"],
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
@@ -161,8 +137,6 @@ except:
             "PORT": 5432,
         }
     }
-DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -231,7 +205,7 @@ MEDIA_URL = "/mediafiles/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "billing.permissions.HasUserAPIKey",
+        "metering_billing.permissions.HasUserAPIKey",
     ]
 }
 
@@ -246,7 +220,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 CELERY_BEAT_SCHEDULE = {
     "calculate_invoice_schedule": {
-        "task": "billing.tasks.calculate_invoice",
+        "task": "metering_billing.tasks.calculate_invoice",
         "schedule": 60,
     },
 }

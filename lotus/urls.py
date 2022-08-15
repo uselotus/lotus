@@ -18,15 +18,15 @@ from django.urls import path
 from django.conf.urls import include
 from rest_framework import routers
 from django.shortcuts import render
-from billing.views.views import (
+from metering_billing.views import (
     EventViewSet,
     SubscriptionViewSet,
     CustomerView,
     SubscriptionView,
     UsageView,
+    InitializeStripeView
 )
-from billing import track
-from billing.views.stripe_views import InitializeStripeView
+from metering_billing import track
 from django.views.generic import TemplateView
 
 router = routers.DefaultRouter()

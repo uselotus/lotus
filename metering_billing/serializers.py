@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Event, Customer, Subscription, Invoice, BillingPlan
+from metering_billing.models import Event, Customer, Subscription, Invoice, BillingPlan
 
 
 class InvoiceSerializer(serializers.ModelSerializer):

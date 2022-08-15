@@ -1,4 +1,4 @@
-from .models import Event, Customer, Subscription, Invoice
+from metering_billing.models import Event, Customer, Subscription, Invoice
 
 
 def generate_invoice(subscription):
