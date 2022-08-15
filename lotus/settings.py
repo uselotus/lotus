@@ -16,7 +16,6 @@ from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 import dj_database_url
-import django_heroku
 
 BASE_DIR = Path("./env")
 DOT_ENV = BASE_DIR / ".env"
@@ -163,6 +162,17 @@ except:
     }
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
+if os.environ.get('GITHUB_WORKFLOW'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'github_actions',
+            'USER': 'postgres',
+            'PASSWORD': 'postgres',
+            'HOST': '127.0.0.1',
+            'PORT': '5432',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
