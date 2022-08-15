@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 import dj_database_url
+import django_heroku
 
 BASE_DIR = Path("./env")
 DOT_ENV = BASE_DIR / ".env"
