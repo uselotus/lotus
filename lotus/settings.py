@@ -93,7 +93,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "lotus.urls"
-PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
 
 TEMPLATES = [
     {
@@ -114,6 +113,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 
+AUTH_USER_MODEL = "billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -121,7 +121,7 @@ try:
     DATABASES = {
         "default": dj_database_url.parse(
             os.environ["DATABASE_URL"],
-            engine="django.db.backends.postgresql",
+            engine="django.db.backends.postgresql_psycopg2",
             conn_max_age=600,
             ssl_require=True,
         )
@@ -130,7 +130,7 @@ try:
 except:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
+            "ENGINE": "django.db.backends.postgresql_psycopg2",
             "NAME": os.environ["POSTGRES_NAME"],
             "USER": os.environ["POSTGRES_USER"],
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
