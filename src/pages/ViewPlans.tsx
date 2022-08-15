@@ -1,7 +1,7 @@
 import React, { FC } from "react";
 import { Card, Col, Row } from "antd";
 
-const Dashboard: FC = () => {
+const ViewPlans: FC = () => {
   return (
     <div className="site-card-wrapper">
       <Row gutter={16}>
@@ -25,4 +25,4 @@ const Dashboard: FC = () => {
   );
 };
 
-export default Dashboard;
+export default ViewPlans;

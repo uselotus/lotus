@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "../components/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
+import ViewSettings from "../pages/ViewSettings";
 
 // import MainContent from "./components/MainContent";
 import SideBar from "../components/SideBar";
@@ -54,6 +55,7 @@ const AppRoutes: FC = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/plans" element={<ViewPlans />} />
               <Route path="/customers" element={<ViewCustomers />} />
+              <Route path="/settings" element={<ViewSettings />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Content>

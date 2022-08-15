@@ -19,17 +19,22 @@ const SideBar: FC = () => {
   const handleDashboardClick = () => {
     navigate("/dashboard");
   };
+  const handleSettingsClick = () => {
+    navigate("/settings");
+  };
 
   return (
     <div>
       <div
         style={{
           height: "32px",
-          background: "rgba(255, 255, 255, 0.2)",
+          background: "#fff",
           margin: "16px",
         }}
-      ></div>
-      <Menu theme="dark" mode="inline" defaultSelectedKeys={["1"]}>
+      >
+        <img src={"../public/"} />
+      </div>
+      <Menu theme="dark" mode="vertical" defaultSelectedKeys={["1"]}>
         <Menu.Item key="1" onClick={handleDashboardClick}>
           <UserOutlined />
           <span> Dashboard</span>
@@ -41,6 +46,9 @@ const SideBar: FC = () => {
         <Menu.Item key="3" onClick={handlePlansClick}>
           <UploadOutlined />
           <span> Plans</span>
+        </Menu.Item>
+        <Menu.Item title="Settings" onClick={handleSettingsClick}>
+          <span> Settings</span>
         </Menu.Item>
       </Menu>
     </div>
