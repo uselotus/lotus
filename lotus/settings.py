@@ -70,12 +70,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "metering_billing",
     "rest_framework",
     "djmoney",
     "django_extensions",
     "whitenoise.runserver_nostatic",
     "django_celery_beat",
-    "metering_billing",
     "rest_framework_api_key",
 ]
 
