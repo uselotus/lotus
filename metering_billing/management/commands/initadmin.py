@@ -13,14 +13,6 @@ load_dotenv()
 class Command(BaseCommand):
     def handle(self, *args, **options):
 
-        # try:
-        #     organization = Organization.objects.get_or_create(
-        #         company_name="Lotus",
-        #         stripe_id="",
-        #     )
-        # except OperationalError:
-        #     pass
-
         username = os.getenv("DJANGO_SUPERUSER_USERNAME")
         email = os.getenv("DJANGO_SUPERUSER_EMAIL")
         password = os.getenv("DJANGO_SUPERUSER_PASSWORD")
@@ -30,10 +22,10 @@ class Command(BaseCommand):
             admin = User.objects.create_superuser(
                 email=email, username=username, password=password
             )
-            api_token = APIToken.objects.create(
-                user=admin,
-                name="local_token",
-            )
-            api_token.save()
+
+            org = Organization.objects.create(company_name="Lotus Default")
+            org.save()
+
+            org.users.add(admin)
         else:
             print("Admin account has already been initialized.")

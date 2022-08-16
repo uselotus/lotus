@@ -5,8 +5,10 @@ import { StripeStatusType } from "../types/stripe-type";
 import { useQuery, UseQueryResult } from "react-query";
 import { StripeConnect } from "../api/api";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Settings: FC = () => {
+  const navigate = useNavigate();
   const fetchStripeConnect = async (): Promise<StripeStatusType | void> => {
     StripeConnect.connectStripe().then((data) => {
       console.log(data);
@@ -20,7 +22,11 @@ const Settings: FC = () => {
   );
 
   const handleConnectWithStripeClick = () => {
-    //reroute to url
+    let path: string =
+      "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=" +
+      import.meta.env.VITE_STRIPE_CLIENT +
+      "&scope=read_write";
+    location.href = path;
   };
   return (
     <div>

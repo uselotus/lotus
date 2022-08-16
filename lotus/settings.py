@@ -62,6 +62,7 @@ except KeyError:
 
 # Application definition
 
+APPEND_SLASH = False
 INSTALLED_APPS = [
     # "grappelli",
     "django.contrib.admin",
@@ -220,6 +221,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_COOKIE_SAMESITE = "Strict"
+SESSION_COOKIE_SAMESITE = "Strict"
+CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_HTTPONLY = True
 
 CELERY_BEAT_SCHEDULE = {
     "calculate_invoice_schedule": {
