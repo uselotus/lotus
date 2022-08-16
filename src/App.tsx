@@ -1,12 +1,9 @@
 import React from "react";
 import AppRoutes from "./config/Routes";
 import "./App.css";
-import Cookies from "universal-cookie";
 import { Authentication } from "./api/api";
 import { useQuery, UseQueryResult } from "react-query";
 import Login from "./pages/Login";
-
-const cookies = new Cookies();
 
 function App() {
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>

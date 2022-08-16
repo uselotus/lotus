@@ -62,6 +62,7 @@ except KeyError:
 
 # Application definition
 
+APPEND_SLASH = False
 INSTALLED_APPS = [
     # "grappelli",
     "django.contrib.admin",
@@ -223,7 +224,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 CSRF_COOKIE_SAMESITE = "Strict"
 SESSION_COOKIE_SAMESITE = "Strict"
-CSRF_COOKIE_HTTPONLY = False  # False since we will grab it via universal-cookies
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
 
 CELERY_BEAT_SCHEDULE = {

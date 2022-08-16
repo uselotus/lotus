@@ -2,21 +2,24 @@ import axios, { AxiosResponse } from "axios";
 import { CustomerType } from "../types/customer-type";
 import { PlanType } from "../types/plan-type";
 import { StripeConnectType, StripeStatusType } from "../types/stripe-type";
+import Cookies from "universal-cookie";
+
+const cookies = new Cookies();
+
+axios.defaults.headers.common["X-CSRFToken"] = cookies.get("csrftoken");
 
 const instance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   timeout: 15000,
   withCredentials: true,
-  headers: {
-    Authorization: "Api-Key " + import.meta.env.VITE_API_TOKEN,
-  },
 });
 
 const responseBody = (response: AxiosResponse) => response.data;
 
 const requests = {
   get: (url: string) => instance.get(url).then(responseBody),
-  post: (url: string, body: {}) => instance.post(url, body).then(responseBody),
+  post: (url: string, body: {}, headers?: {}) =>
+    instance.post(url, body, headers).then(responseBody),
   put: (url: string, body: {}) => instance.put(url, body).then(responseBody),
   delete: (url: string) => instance.delete(url).then(responseBody),
 };
@@ -46,5 +49,10 @@ export const StripeConnect = {
 
 export const Authentication = {
   getSession: (): Promise<{ isAuthenticated: boolean }> =>
-    requests.get("api/session"),
+    requests.get("api/session/"),
+  login: (
+    username: string,
+    password: string
+  ): Promise<{ username: string; password: string }> =>
+    requests.post("api/login/", { username, password }),
 };
