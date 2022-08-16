@@ -45,5 +45,6 @@ export const StripeConnect = {
 };
 
 export const Authentication = {
-  getSession: (): Promise<any> => requests.get("api/session"),
+  getSession: (): Promise<{ isAuthenticated: boolean }> =>
+    requests.get("api/session"),
 };

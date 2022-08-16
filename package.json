@@ -17,6 +17,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-query": "^3.39.2",
+    "react-query-devtools": "^2.6.3",
     "react-router-dom": "6",
     "universal-cookie": "^4.0.4",
     "vite-tsconfig-paths": "^3.5.0"

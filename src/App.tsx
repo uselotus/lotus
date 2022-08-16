@@ -9,26 +9,22 @@ import Login from "./pages/Login";
 const cookies = new Cookies();
 
 function App() {
-  const fetchSessionInfo = async (): Promise<{
-    isAuthenticated: boolean;
-  } | void> => {
+  const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
     Authentication.getSession().then((res) => {
-      return res.data;
+      console.log(res);
+      return res;
     });
-  };
 
   const { data: sessionData, isLoading } = useQuery<{
     isAuthenticated: boolean;
-  } | void>(["session"], () => fetchSessionInfo(), {
-    // select: (data) => data.isAuthenticated,
-    onSuccess: (data) => {},
-  });
+  }>(["session"], fetchSessionInfo);
 
-  const isAuthenticated = isLoading ? false : false;
+  const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
+  console.log(sessionData);
   if (isLoading) {
     return <div>Loading...</div>;
   } else {
-    if (!isAuthenticated) {
+    if (isAuthenticated) {
       return <AppRoutes />;
     } else {
       console.log(sessionData, isLoading);
