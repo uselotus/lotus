@@ -4,11 +4,17 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+from .serializers import CurrentUserSerializer
 
 
 @require_POST
 def login_view(request):
+
     data = json.loads(request.body)
+
+    if data is None:
+        return JsonResponse({"detail": "No data provided."}, status=400)
+
     username = data.get("username")
     password = data.get("password")
 

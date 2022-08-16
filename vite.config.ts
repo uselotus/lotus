@@ -11,9 +11,6 @@ export default defineConfig({
   },
   base: process.env.mode === "production" ? "/static/" : "/",
   root: "./src",
-  server: {
-    origin: "http://localhost:3000",
-  },
 
   plugins: [
     react(),

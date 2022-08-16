@@ -234,13 +234,12 @@ class Subscription(models.Model):
 class Invoice(models.Model):
 
     id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
-    cost_due = MoneyField(
-        max_digits=10, decimal_places=2, null=True, default_currency="USD"
-    )
+    cost_due = models.IntegerField(default=0)
     currency = models.CharField(max_length=10, default="USD")
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer_name = models.CharField(max_length=100)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     customer_billing_id = models.CharField(max_length=40)
 
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)

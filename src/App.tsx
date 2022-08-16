@@ -8,7 +8,6 @@ import Login from "./pages/Login";
 function App() {
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
     Authentication.getSession().then((res) => {
-      console.log(res);
       return res;
     });
 
@@ -17,14 +16,15 @@ function App() {
   }>(["session"], fetchSessionInfo);
 
   const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
-  console.log(sessionData);
   if (isLoading) {
     return <div>Loading...</div>;
   } else {
     if (isAuthenticated) {
       return <AppRoutes />;
     } else {
-      console.log(sessionData, isLoading);
+      {
+        console.log(import.meta.env.VITE_STRIPE_CLIENT);
+      }
       return <Login />;
     }
   }

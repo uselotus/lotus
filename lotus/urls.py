@@ -56,5 +56,4 @@ urlpatterns = [
     path("api/session/", auth_views.session_view, name="api-session"),
     path("api/whoami", auth_views.whoami_view, name="api-whoami"),
     path("", TemplateView.as_view(template_name="index.html")),
-    path(r"^*/$", TemplateView.as_view(template_name="index.html")),
 ]

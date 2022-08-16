@@ -18,7 +18,6 @@ class Command(BaseCommand):
         password = os.getenv("DJANGO_SUPERUSER_PASSWORD")
 
         if not User.objects.filter(username=username).exists():
-            print("Creating account for %s (%s)" % (username, email))
             admin = User.objects.create_superuser(
                 email=email, username=username, password=password
             )

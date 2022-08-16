@@ -29,7 +29,7 @@ from .permissions import HasUserAPIKey
 from rest_framework.response import Response
 import stripe
 import os
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -301,7 +301,9 @@ def import_stripe_customers(organization):
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
 
-    stripe_customers_response = stripe.Customer.list()
+    stripe_customers_response = stripe.Customer.list(
+        stripe_account=organization.stripe_id
+    )
 
     customer_list = stripe_customers_response.data
 
@@ -316,18 +318,27 @@ def import_stripe_customers(organization):
 
 def issue_stripe_payment_intent(invoice):
 
-    cost_due = int(invoice.cost_due)
-    currency = invoice.currency
+    cost_due = int(invoice.cost_due * 100)
+    currency = (invoice.currency).lower()
 
     stripe.PaymentIntent.create(
         amount=cost_due,
         currency=currency,
         payment_method_types=["card"],
+        stripe_account=invoice.organization.stripe_id,
     )
 
 
+def retrive_stripe_payment_intent(invoice):
+    payment_intent = stripe.PaymentIntent.retrieve(
+        invoice.payment_intent_id,
+        stripe_account=invoice.organization.stripe_id,
+    )
+    return payment_intent
+
+
 class InitializeStripeView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -335,7 +346,8 @@ class InitializeStripeView(APIView):
         """
 
         # Hardcoded for now
-        organization = Organization.objects.get(id=1)
+
+        organization = request.user.organization_set.first()
 
         stripe_id = organization.stripe_id
 
@@ -350,6 +362,12 @@ class InitializeStripeView(APIView):
         """
 
         data = request.data
+
+        if data is None:
+            return JsonResponse({"details": "No data provided"}, status=400)
+
+        user = request.user
+        organization = user.organization_set.first()
         stripe_code = data["authorization_code"]
 
         response = stripe.OAuth.token(
@@ -367,5 +385,7 @@ class InitializeStripeView(APIView):
         organization.stripe_id = connected_account_id
 
         import_stripe_customers(organization)
+
+        organization.save()
 
         return JsonResponse({"Success": True})

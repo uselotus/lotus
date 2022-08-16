@@ -8,7 +8,6 @@ const ViewPlans: FC = () => {
 
   useEffect(() => {
     Plan.getPlans().then((data) => {
-      console.log(data);
       setPlans(data);
     });
   }, []);

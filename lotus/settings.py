@@ -62,7 +62,6 @@ except KeyError:
 
 # Application definition
 
-APPEND_SLASH = False
 INSTALLED_APPS = [
     # "grappelli",
     "django.contrib.admin",

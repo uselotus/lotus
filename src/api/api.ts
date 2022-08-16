@@ -1,7 +1,11 @@
 import axios, { AxiosResponse } from "axios";
 import { CustomerType } from "../types/customer-type";
 import { PlanType } from "../types/plan-type";
-import { StripeConnectType, StripeStatusType } from "../types/stripe-type";
+import {
+  StripeConnectType,
+  StripeOauthType,
+  StripeStatusType,
+} from "../types/stripe-type";
 import Cookies from "universal-cookie";
 
 const cookies = new Cookies();
@@ -9,7 +13,6 @@ const cookies = new Cookies();
 axios.defaults.headers.common["X-CSRFToken"] = cookies.get("csrftoken");
 
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
   timeout: 15000,
   withCredentials: true,
 });
@@ -39,8 +42,8 @@ export const Plan = {
 export const StripeConnect = {
   getStripeConnectionStatus: (): Promise<StripeStatusType[]> =>
     requests.get("api/stripe"),
-  connectStripe: (): Promise<StripeConnectType[]> =>
-    requests.post("api/stripe", {}),
+  connectStripe: (authorization_code: string): Promise<StripeOauthType> =>
+    requests.post("api/stripe", { authorization_code }),
 };
 
 export const Authentication = {

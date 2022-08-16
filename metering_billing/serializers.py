@@ -7,6 +7,7 @@ from metering_billing.models import (
     Invoice,
     BillingPlan,
     PlanComponent,
+    User,
 )
 
 
@@ -61,3 +62,9 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
         fields = "__all__"
+
+
+class CurrentUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "password")
