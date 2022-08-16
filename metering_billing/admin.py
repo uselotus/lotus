@@ -1,6 +1,8 @@
 from django.contrib import admin
+from rest_framework_api_key.admin import APIKeyModelAdmin
+from rest_framework_api_key.models import APIKey
 
-from django.contrib import admin
+
 from .models import (
     BillingPlan,
     Customer,
@@ -11,7 +13,9 @@ from .models import (
     Invoice,
     PlanComponent,
     User,
+    APIToken,
 )
+
 
 # Register your models here.
 admin.site.register(Customer)
@@ -23,3 +27,10 @@ admin.site.register(BillableMetric)
 admin.site.register(PlanComponent)
 admin.site.register(User)
 admin.site.register(Organization)
+
+admin.site.unregister(APIKey)
+
+
+@admin.register(APIToken)
+class UserAPIKeyModelAdmin(APIKeyModelAdmin):
+    pass

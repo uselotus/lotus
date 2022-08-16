@@ -6,6 +6,7 @@ import { StripeConnectType, StripeStatusType } from "../types/stripe-type";
 const instance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   timeout: 15000,
+  withCredentials: true,
   headers: {
     Authorization: "Api-Key " + import.meta.env.VITE_API_TOKEN,
   },
@@ -41,4 +42,8 @@ export const StripeConnect = {
     requests.get("api/stripe"),
   connectStripe: (): Promise<StripeConnectType[]> =>
     requests.post("api/stripe", {}),
+};
+
+export const Authentication = {
+  getSession: (): Promise<any> => requests.get("api/session"),
 };

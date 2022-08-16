@@ -11,6 +11,9 @@ from dateutil.relativedelta import relativedelta
 from dateutil.parser import isoparse
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.db.models.signals import post_save, pre_delete
+from django.dispatch import receiver
+
 
 PAYMENT_PLANS = Choices(
     ("self_hosted_free", _("Self-Hosted Free")),
@@ -260,3 +263,9 @@ class APIToken(AbstractAPIKey):
     class Meta:
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
+
+
+@receiver(post_save, sender=Organization)
+def create_token(sender, instance, created=False, **kwargs):
+    if created:
+        APIToken.objects.create(organization=instance)

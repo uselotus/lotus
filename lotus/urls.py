@@ -29,6 +29,7 @@ from metering_billing.views import (
 )
 from metering_billing import track
 from django.views.generic import TemplateView
+import metering_billing.auth_views as auth_views
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
@@ -50,5 +51,9 @@ urlpatterns = [
     path("api/usage", UsageView.as_view(), name="usage"),
     path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
     path("api/plans", PlansView.as_view(), name="plans"),
+    path("api/login/", auth_views.login_view, name="api-login"),
+    path("api/logout/", auth_views.logout_view, name="api-logout"),
+    path("api/session/", auth_views.session_view, name="api-session"),
+    path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
     path("", TemplateView.as_view(template_name="index.html")),
 ]
