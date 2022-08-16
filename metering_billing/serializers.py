@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from metering_billing.models import Event, Customer, Subscription, Invoice, BillingPlan
+from metering_billing.models import (
+    Event,
+    Customer,
+    Subscription,
+    Invoice,
+    BillingPlan,
+    PlanComponent,
+)
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -47,4 +54,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 class BillingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillingPlan
+        fields = "__all__"
+
+
+class PlanComponentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanComponent
         fields = "__all__"

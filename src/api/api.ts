@@ -27,17 +27,13 @@ const requests = {
 export const Customer = {
   getCustomers: (): Promise<CustomerType[]> => requests.get("api/customers"),
   getACustomer: (id: number): Promise<CustomerType> =>
-    requests.get(`posts/${id}`),
+    requests.get(`api/customers/${id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
-    requests.post("posts", post),
+    requests.post("api/customers", post),
 };
 
 export const Plan = {
-  getCustomers: (): Promise<CustomerType[]> => requests.get("api/customers"),
-  getACustomer: (id: number): Promise<CustomerType> =>
-    requests.get(`posts/${id}`),
-  createCustomer: (post: CustomerType): Promise<CustomerType> =>
-    requests.post("posts", post),
+  getPlans: (): Promise<PlanType[]> => requests.get("api/plans"),
 };
 
 export const StripeConnect = {

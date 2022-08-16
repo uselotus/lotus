@@ -9,7 +9,13 @@ from metering_billing.models import (
     Organization,
     User,
 )
-from .serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
+from .serializers import (
+    EventSerializer,
+    SubscriptionSerializer,
+    CustomerSerializer,
+    BillingPlanSerializer,
+    PlanComponentSerializer,
+)
 from rest_framework.views import APIView
 from django_q.tasks import async_task
 from .tasks import generate_invoice
@@ -46,35 +52,43 @@ class PlansView(APIView):
 
         for plan in plans:
             plan_breakdown = {}
-            plan_breakdown["name"] = plan.name
+            plan_data = BillingPlanSerializer(plan).data
+            plan_breakdown["name"] = plan_data["name"]
 
             components = PlanComponent.objects.filter(billing_plan=plan)
 
             components_list = []
             for component in components:
                 component_breakdown = {}
-                component_breakdown[
-                    "free_metric_quantity"
-                ] = component.free_metric_quantity
-                component_breakdown["cost_per_metric"] = component.cost_per_metric
-                component_breakdown["unit_per_cost"] = component.metric_amount_per_cost
+                component_data = PlanComponentSerializer(component).data
+                component_breakdown["free_metric_quantity"] = int(
+                    component_data["free_metric_quantity"]
+                )
+                component_breakdown["cost_per_metric"] = component_data[
+                    "cost_per_metric"
+                ]
+                component_breakdown["unit_per_cost"] = component_data[
+                    "metric_amount_per_cost"
+                ]
                 component_breakdown[
                     "metric_name"
                 ] = component.billable_metric.event_name
                 component_breakdown[
                     "aggregation_type"
-                ] = component.billable_metric.aggregation_type
+                ] = component.billable_metric.aggregation_type.upper()
                 component_breakdown[
                     "property_name"
                 ] = component.billable_metric.property_name
 
                 components_list.append(component_breakdown)
             plan_breakdown["components"] = components_list
-            plan_breakdown["billing_interval"] = plan.interval
+            plan_breakdown["billing_interval"] = plan_data["interval"]
+            plan_breakdown["description"] = plan_data["description"]
+            plan_breakdown["flat_rate"] = plan_data["flat_rate"]
 
             plans_list.append(plan_breakdown)
 
-        return JsonResponse(plans_list)
+        return JsonResponse(plans_list, safe=False)
 
     def post(self, request, format=None):
         pass
