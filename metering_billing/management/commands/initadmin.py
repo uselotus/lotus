@@ -1,11 +1,12 @@
-from django.core.management.base import BaseCommand
-from django.db import connections
-from django.db.utils import OperationalError
-from metering_billing.models import User, Organization, APIToken
-from django.core.management import call_command
-from dotenv import load_dotenv
-from django.db import connection
 import os
+
+from django.core.management import call_command
+from django.core.management.base import BaseCommand
+from django.db import connection, connections
+from django.db.utils import OperationalError
+from dotenv import load_dotenv
+
+from metering_billing.models import APIToken, Organization, User
 
 load_dotenv()
 

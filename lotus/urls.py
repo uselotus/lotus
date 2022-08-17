@@ -14,22 +14,24 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from metering_billing.auth_views import auth_views
 from django.urls import path, re_path
 from django.conf.urls import include
-from rest_framework import routers
+from django.contrib import admin
 from django.shortcuts import render
+from django.urls import path
+from django.views.generic import TemplateView
+from metering_billing import track
 from metering_billing.views import (
-    EventViewSet,
-    SubscriptionViewSet,
     CustomerView,
-    SubscriptionView,
-    UsageView,
+    EventViewSet,
     InitializeStripeView,
     PlansView,
+    SubscriptionView,
+    SubscriptionViewSet,
+    UsageView,
 )
-from metering_billing import track
-from django.views.generic import TemplateView
-import metering_billing.auth_views as auth_views
+from rest_framework import routers
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
@@ -44,10 +46,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/customers", CustomerView.as_view(), name="customer"),
-    path("api/customers/", CustomerView.as_view(), name="customer"),
     path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
     path("track/", track.track_event, name="track_event"),
-    path("track", track.track_event, name="track_event"),
     path("api/usage", UsageView.as_view(), name="usage"),
     path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
     path("api/plans", PlansView.as_view(), name="plans"),

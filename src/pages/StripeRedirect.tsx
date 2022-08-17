@@ -7,24 +7,17 @@ import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
 const StripeRedirect: FC = () => {
-  let [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-
-  if (searchParams.get("error")) {
-    return <div>{searchParams.get("error")}</div>;
-  }
-  const code = searchParams.get("code") || "";
+  let { code, error } = useParams();
 
   const connectStripe = async (): Promise<StripeOauthType> =>
     StripeConnect.connectStripe(code).then((res) => {
-      console.log(res);
       return res;
     });
 
-  const { data: sessionData, isLoading } = useQuery<StripeOauthType>(
-    ["session"],
-    connectStripe
-  );
+  // const { data: sessionData, isLoading } = useQuery<StripeOauthType>(
+  //   ["session"],
+  //   connectStripe
+  // );
 
   return (
     <div>
