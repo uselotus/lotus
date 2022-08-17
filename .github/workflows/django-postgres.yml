@@ -36,27 +36,12 @@ jobs:
       with:
         python-version: "3.9"
 
-    - name: Install pipenv
-      uses: dschep/install-pipenv-action@v1
+    - name: Install dependencies with pipenv
+      run: |
+        pip install pipenv
+        pipenv install --deploy --dev
 
-    - name: Cache Pipenv virtualenv
-      uses: actions/cache@v1
-      id: pipenv-cache
-      with:
-        path: ~/.pipenv
-        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pipenv-v2-
-
-    - name: Install Dependencies
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
-      run: pipenv install --dev
-      if: steps.pipenv-cache.outputs.cache-hit != 'true'
-
-    - name: Migrate + Tests
+    - name: Migrations
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
@@ -69,9 +54,8 @@ jobs:
         DJANGO_DEBUG: 'False'
       run: |
         pipenv run python manage.py migrate --noinput
-        pipenv run python manage.py test 
 
-    - name: Codstyle
+    - name: Tests
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
@@ -83,4 +67,18 @@ jobs:
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
       run: |
-        pipenv run python -m black --check .
+        pipenv run python manage.py test 
+
+    - name: Codestyle
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_HOST: localhost
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
+        DJANGO_SECRET_KEY: 'KEY'
+        DJANGO_SETTINGS_MODULE: CONFIG'
+        PYTHONPATH: '.'
+        DJANGO_DEBUG: 'False'
+      run: |
+        pipenv run black --check .
