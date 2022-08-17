@@ -31,7 +31,7 @@ const Login: FC = () => {
   };
 
   const redirectDashboard = () => {
-    navigate("/");
+    navigate("/dashboard");
   };
 
   const handleLogin = (event: React.FormEvent<FormElements>) => {
@@ -45,6 +45,7 @@ const Login: FC = () => {
     return (
       <>
         <div className="container mt-3">
+          <img src="../assets/images/logo_small.svg" alt="logo" />
           <h2>Login</h2>
           <form onSubmit={handleLogin}>
             <div className="form-group">

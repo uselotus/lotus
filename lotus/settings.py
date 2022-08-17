@@ -193,7 +193,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-DJANGO_VITE_DEV_MODE = True
+DJANGO_VITE_DEV_MODE = DEBUG
 
 VITE_APP_DIR = BASE_DIR / "src"
 STATICFILES_DIRS = [

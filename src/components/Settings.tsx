@@ -1,5 +1,4 @@
 import React, { FC } from "react";
-import connectwithstripe from "../assets/images/connectwithstripe.svg";
 import "./Settings.css";
 import { StripeStatusType } from "../types/stripe-type";
 import { useQuery, UseQueryResult } from "react-query";
@@ -22,13 +21,14 @@ const Settings: FC = () => {
   );
 
   const handleConnectWithStripeClick = () => {
-    const client_id: string = import.meta.env.VITES_STRIPE_CLIENT;
+    const client_id: string = import.meta.env.VITE_STRIPE_CLIENT;
     console.log(import.meta.env.NODE_ENV);
     let path: string =
       "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=" +
       client_id +
-      "&scope=read_write&redirect_uri=https://" +
-      import.meta.env.VITE;
+      "&scope=read_write&redirect_uri=" +
+      import.meta.env.VITE_API_URL +
+      "redirectstripe";
     console.log(path);
     location.href = path;
   };

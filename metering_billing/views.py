@@ -31,6 +31,8 @@ import stripe
 import os
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
@@ -293,9 +295,6 @@ class UsageView(APIView):
         return Response(usage_summary)
 
 
-stripe_api_key = os.environ["STRIPE_API_KEY"]
-
-
 def import_stripe_customers(organization):
     """
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
@@ -344,8 +343,6 @@ class InitializeStripeView(APIView):
         """
         Check to see if user has connected their Stripe account.
         """
-
-        # Hardcoded for now
 
         organization = request.user.organization_set.first()
 

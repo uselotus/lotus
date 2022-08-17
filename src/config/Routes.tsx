@@ -57,11 +57,8 @@ const AppRoutes: FC = () => {
               <Route path="/plans" element={<ViewPlans />} />
               <Route path="/customers" element={<ViewCustomers />} />
               <Route path="/settings" element={<ViewSettings />} />
-              <Route
-                path="/redirectstripe/:code/:error"
-                element={<StripeRedirect />}
-              />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/redirectstripe" element={<StripeRedirect />} />
+              {/* <Route path="*" element={<Navigate to="/dashboard" replace />} /> */}
             </Routes>
           </Content>
           <Footer style={{ textAlign: "center" }}>Lotus @2022</Footer>

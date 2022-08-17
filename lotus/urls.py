@@ -14,7 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
 from django.conf.urls import include
 from rest_framework import routers
 from django.shortcuts import render
@@ -55,5 +55,5 @@ urlpatterns = [
     path("api/logout", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
     path("api/whoami", auth_views.whoami_view, name="api-whoami"),
-    path("", TemplateView.as_view(template_name="index.html")),
+    re_path(".*", TemplateView.as_view(template_name="index.html")),
 ]

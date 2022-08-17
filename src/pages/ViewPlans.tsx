@@ -16,7 +16,6 @@ const ViewPlans: FC = () => {
     <div>
       <h1 className="bg-grey1">Plans</h1>
       <br />
-      {plans.length === 0 && <p>No Plans</p>}
       <div className="site-card-wrapper">
         <Row gutter={18}>
           {plans.map((plan, k) => (

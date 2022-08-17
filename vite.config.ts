@@ -14,6 +14,7 @@ export default defineConfig({
 
   plugins: [
     react(),
+    // reactRefresh(),
     splitVendorChunkPlugin(),
     tsconfigPaths(),
     vitePluginImp({
