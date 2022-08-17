@@ -36,7 +36,7 @@ jobs:
       with:
         python-version: "3.9"
     - name: Install pipenv
-        run: pip install pipenv
+      run: pip install pipenv
     - name: Install Dependencies
       run: pipenv install --dev
       if: steps.pipenv-cache.outputs.cache-hit != 'true'
