@@ -42,7 +42,7 @@ jobs:
         pipenv install --deploy --dev
 
     - name: Install pipenv
-        uses: dschep/install-pipenv-action@v1
+      uses: dschep/install-pipenv-action@v1
 
     - name: Cache Pipenv virtualenv
       uses: actions/cache@v1
