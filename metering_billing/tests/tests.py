@@ -87,7 +87,7 @@ class SubscriptionTest(TestCase):
             "customer_id": "7fa09280-957c-3w5f-925a-6a3498a1d299",
             "organization_id": self.organization_id,
         }
-        # self.client.force_authenticate(user=user_object)
+        self.client.force_authenticate(user=user_object)
 
     def test_subscription_create_success(self):
         """
@@ -138,7 +138,6 @@ class SubscriptionTest(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.body, 1)
 
 class TrackEventTest(TestCase):
     """
@@ -166,7 +165,6 @@ class TrackEventTest(TestCase):
             )
 
         self.client = APIClient()
-        # self.client.credentials(HTTP_AUTHORIZATION="Api-Key" + " " + key)
         self.authorization_header = {
             "Authorization": "Api-Key" + " " + key,
         }

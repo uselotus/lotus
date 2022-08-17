@@ -15,9 +15,10 @@ from pathlib import Path
 import dj_database_url
 import django_heroku
 import sentry_sdk
-from celery.schedules import crontab
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
+
+from celery.schedules import crontab
 
 BASE_DIR = Path("./env")
 DOT_ENV = BASE_DIR / ".env"

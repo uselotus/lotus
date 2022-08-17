@@ -45,7 +45,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
 
 class PlansView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
 
@@ -99,7 +99,7 @@ class PlansView(APIView):
 
 
 class SubscriptionView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -188,7 +188,7 @@ class SubscriptionView(APIView):
 
 class CustomerView(APIView):
 
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -212,7 +212,7 @@ class CustomerView(APIView):
 
 class UsageView(APIView):
 
-    permission_classes = [HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
