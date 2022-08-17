@@ -7,15 +7,15 @@ import { useQuery, UseQueryResult } from "react-query";
 const StripeRedirect: FC = () => {
   let { code, error } = useParams();
 
-  const connectStripe = async (): Promise<StripeOauthType> =>
-    StripeConnect.connectStripe(code).then((res) => {
-      return res;
-    });
+  // const connectStripe = async (): Promise<StripeOauthType> =>
+  //   StripeConnect.connectStripe(code).then((res) => {
+  //     return res;
+  //   });
 
-  const { data: sessionData, isLoading } = useQuery<StripeOauthType>(
-    ["session"],
-    connectStripe
-  );
+  // const { data: sessionData, isLoading } = useQuery<StripeOauthType>(
+  //   ["session"],
+  //   connectStripe
+  // );
 
   return (
     <div>

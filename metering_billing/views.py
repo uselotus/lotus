@@ -46,7 +46,9 @@ class PlansView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, format=None):
-        plans = BillingPlan.objects.all()
+
+        organization = request.user.organization_set.first()
+        plans = BillingPlan.objects.filter(organization=organization)
 
         plans_list = []
 

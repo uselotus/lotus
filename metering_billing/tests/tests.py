@@ -1,6 +1,16 @@
 from django.test import TestCase
 from stripe import Plan
-from ..models import Customer, Subscription, BillingPlan, BillableMetric, PlanComponent, User, APIToken, Event, Organization
+from ..models import (
+    Customer,
+    Subscription,
+    BillingPlan,
+    BillableMetric,
+    PlanComponent,
+    User,
+    APIToken,
+    Event,
+    Organization,
+)
 import uuid
 import json
 from django.urls import reverse
@@ -18,25 +28,23 @@ class SubscriptionTest(TestCase):
     def setUp(self):
         super().setUp()
         self.client = APIClient()
-        organization_object = Organization.objects.create_user(
-            username="test", 
-            email=""
-            )
-        user_object = User.objects.create_user(
-            username="test", 
-            email=""
-            )
-        customer = Customer.objects.create(
-            customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299"
+        organization_object = Organization.objects.create(
+            company_name="Test Company",
         )
-        api_key, key = APIToken.objects.create_key(name="test-api-key", user=user_object)
+        user_object = User.objects.create_user(username="test", email="")
+        organization_object.save()
+
+        organization_object.users.add(user_object)
+        customer = Customer.objects.create(
+            customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299",
+            organization=organization_object,
+        )
+        api_key, key = APIToken.objects.create(name="test-api-key", user=user_object)
         self.authorization_header = {
             "Authorization": "Api-Key" + " " + key,
         }
         metric = BillableMetric.objects.create(
-            event_name="Emails", 
-            property_name="amount", 
-            aggregation_type="count"
+            event_name="Emails", property_name="amount", aggregation_type="count"
         )
 
         plan = BillingPlan.objects.create(name="Standard", plan_id="1")
