@@ -13,19 +13,23 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import metering_billing.auth_views as auth_views
 from django.conf.urls import include
 from django.contrib import admin
 from django.shortcuts import render
 from django.urls import path
 from django.views.generic import TemplateView
-from rest_framework import routers
-
-import metering_billing.auth_views as auth_views
 from metering_billing import track
-from metering_billing.views import (CustomerView, EventViewSet,
-                                    InitializeStripeView, PlansView,
-                                    SubscriptionView, SubscriptionViewSet,
-                                    UsageView)
+from metering_billing.views import (
+    CustomerView,
+    EventViewSet,
+    InitializeStripeView,
+    PlansView,
+    SubscriptionView,
+    SubscriptionViewSet,
+    UsageView,
+)
+from rest_framework import routers
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
@@ -40,10 +44,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/customers", CustomerView.as_view(), name="customer"),
-    path("api/customers/", CustomerView.as_view(), name="customer"),
     path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
     path("track/", track.track_event, name="track_event"),
-    path("track", track.track_event, name="track_event"),
     path("api/usage", UsageView.as_view(), name="usage"),
     path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
     path("api/plans", PlansView.as_view(), name="plans"),

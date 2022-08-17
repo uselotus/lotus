@@ -5,8 +5,7 @@ from typing import Dict, List, Union
 from urllib.parse import urlparse
 
 from django.db import IntegrityError
-from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest,
-                         JsonResponse)
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
@@ -45,17 +44,18 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
 
 def ingest_event(request, data: dict, customer: Customer) -> None:
 
-    idepotency_id_query = Event.objects.filter(
+    idempotency_id_query = Event.objects.filter(
         idempotency_id=data["idempotency_id"]
     ).count()
-    print(idepotency_id_query)
-    if idepotency_id_query > 0:
+
+    if idempotency_id_query > 0:
         return JsonResponse(
             {"detail": "This event record already exists", "status": "Failure"},
             status=409,
         )
 
     db_event = Event.objects.create(
+        organization_id=data["organization_id"],
         event_name=data["event_name"],
         idempotency_id=data["idempotency_id"],
         customer=customer,
@@ -70,10 +70,10 @@ def ingest_event(request, data: dict, customer: Customer) -> None:
 @csrf_exempt
 def track_event(request):
     # Check Permissions
-    permissions = HasUserAPIKey()
-    if not (permissions.has_permission(request, "track_event")):
-        return HttpResponseBadRequest("Invalid API Key or No API Key provided")
-
+    # permissions = HasUserAPIKey()
+    # if not (permissions.has_permission(request, "track_event")):
+    #     return HttpResponseBadRequest("Invalid API Key or No API Key provided")
+    x = 1
     data = load_event(request)
     if not data:
         return HttpResponseBadRequest("No data provided")

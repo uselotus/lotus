@@ -218,6 +218,7 @@ class UsageView(APIView):
         """
         Return current usage for a customer during a given billing period.
         """
+        x=1
         customer_id = request.query_params["customer_id"]
         customer_qs = Customer.objects.filter(customer_id=customer_id)
 
