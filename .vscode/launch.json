@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Lotus Debug",
+            "name": "Lotus Free-Roam",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/manage.py",
@@ -15,6 +15,18 @@
             "console":"internalConsole",
             "django": true,
             "justMyCode": false
-        }
+        },
+        {
+            "name": "Lotus Debug Tests",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/manage.py",
+            "args": [
+                "test"
+            ],
+            "console":"internalConsole",
+            "django": true,
+            "justMyCode": false
+        },
     ]
 }

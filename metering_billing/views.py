@@ -1,6 +1,6 @@
 from django.forms.models import model_to_dict
 import dateutil.parser as parser
-from metering_billing.models import Customer, Event, Subscription, BillingPlan, PlanComponent
+from metering_billing.models import Customer, Event, Subscription, BillingPlan, PlanComponent, Organization
 from .serializers import EventSerializer, SubscriptionSerializer, CustomerSerializer
 from rest_framework.views import APIView
 from django_q.tasks import async_task
@@ -55,6 +55,7 @@ class SubscriptionView(APIView):
         """
         data = request.data
         customer_qs = Customer.objects.filter(customer_id=data["customer_id"])
+        organization_qs = Organization.objects.filter(organization_id=data["organization_id"])
         start_date = parser.parse(data["start_date"])
 
         if len(customer_qs) < 1:
@@ -68,6 +69,17 @@ class SubscriptionView(APIView):
             )
         else:
             customer = customer_qs[0]
+        if len(organization_qs) < 1:
+            return Response(
+                {
+                    "error": "Organization with organization_id {} does not exist".format(
+                        data["organization_id"]
+                    )
+                },
+                status=400,
+            )
+        else:
+            organization = organization_qs[0]
         plan_qs = BillingPlan.objects.filter(plan_id=data["plan_id"])
         if len(plan_qs) < 1:
             return Response(
@@ -88,6 +100,7 @@ class SubscriptionView(APIView):
             end_date=end_date,
             billing_plan=plan,
             status="active",
+            organization=organization,
         )
         subscription.save()
 

@@ -5,5 +5,14 @@
     "[typescript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
       },
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        ".",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true
 }

@@ -9,7 +9,6 @@ from rest_framework.test import APIClient
 from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework_api_key.models import APIKey
 
-
 class SubscriptionTest(TestCase):
     """
     Testcases for the subscription views.
@@ -17,31 +16,46 @@ class SubscriptionTest(TestCase):
 
     def setUp(self):
         super().setUp()
+        
         self.client = APIClient()
-        organization_object = Organization.objects.create_user(
-            username="test", 
-            email=""
+        organization_object = Organization.objects.create(
+            company_name = 'test_company',
+            stripe_api_key = 'test_stripe_api_key',
+            payment_plan = 'cloud',
+            id = 'test_id'
             )
         user_object = User.objects.create_user(
-            username="test", 
-            email=""
+            username="test_username", 
+            email="",
+            organization=organization_object,
             )
         customer = Customer.objects.create(
+            organization=organization_object,
             customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299"
         )
-        api_key, key = APIToken.objects.create_key(name="test-api-key", user=user_object)
+        api_key, key = APIToken.objects.create_key(
+            name="test-api-key", 
+            organization=organization_object
+        )
         self.authorization_header = {
             "Authorization": "Api-Key" + " " + key,
         }
         metric = BillableMetric.objects.create(
+            organization=organization_object,
             event_name="Emails", 
             property_name="amount", 
             aggregation_type="count"
         )
 
-        plan = BillingPlan.objects.create(name="Standard", plan_id="1")
+        plan = BillingPlan.objects.create(
+            organization=organization_object,
+            name="Standard", 
+            plan_id="1"
+        )
         plan_component = PlanComponent.objects.create(
-            billable_metric=metric, billing_plan=plan, cost_per_metric=1
+            billable_metric=metric, 
+            billing_plan=plan, 
+            cost_per_metric=1
         )
 
         # self.client.credentials(HTTP_AUTHORIZATION="Api-Key" + " " + key)
@@ -50,12 +64,16 @@ class SubscriptionTest(TestCase):
             "plan_id": "1",
             "start_date": "2022-07-25T01:11:42.535Z",
             "customer_id": "7fa09280-957c-4a5f-925a-6a3498a1d299",
+            "organization_id": "test_id",
         }
         self.invalid_payload_start_date = {
             "plan_id": "1",
             "start_date": "2022-07-25T01:11:42.535Z",
             "customer_id": "7fa09280-957c-3w5f-925a-6a3498a1d299",
+            "organization_id": "test_id",
         }
+
+        self.client.force_authenticate(user=user_object)
 
     def test_subscription_create_success(self):
         """
@@ -66,6 +84,7 @@ class SubscriptionTest(TestCase):
             data=json.dumps(self.valid_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
             **self.authorization_header,
+            follow=True
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -80,11 +99,12 @@ class SubscriptionTest(TestCase):
         payload = {
             "event_name": "Emails",
             "properties": {"count": 1},
-            "idempotency_id": uuid.uuid4,
+            "idempotency_id": uuid.uuid4(),
             "time_created": "2022-07-26T01:11:42.535Z",
             "customer_id": "7fa09280-957c-4a5f-925a-6a3498a1d299",
         }
 
+        json_data = json.dumps(payload, cls=DjangoJSONEncoder)
         response = self.client.post(
             reverse("track_event"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
@@ -113,9 +133,13 @@ class TrackEventTest(TestCase):
 
     def setUp(self):
 
-        user_object = User.objects.create_user(username="test", email="")
-        Customer.objects.create(customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299")
-        api_key, key = APIToken.objects.create_key(name="test-api-ke", user=user_object)
+        organization_object = Organization.objects.create(
+            company_name = 'test_company',
+            stripe_api_key = 'test_stripe_api_key',
+            payment_plan = 'cloud',
+            id = 'test_id'
+            )
+        api_key, key = APIToken.objects.create_key(name="test-api-key", organization=organization_object)
         self.authorization_header = {
             "Authorization": "Api-Key" + " " + key,
         }

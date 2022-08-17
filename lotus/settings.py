@@ -70,17 +70,18 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "metering_billing",
+    "whitenoise.runserver_nostatic",
     "rest_framework",
+    "rest_framework_api_key",
+    "metering_billing",
     "djmoney",
     "django_extensions",
-    "whitenoise.runserver_nostatic",
     "django_celery_beat",
-    "rest_framework_api_key",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -88,7 +89,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = "lotus.urls"
@@ -135,6 +135,9 @@ except:
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
             "HOST": os.environ["POSTGRES_HOST"],
             "PORT": 5432,
+            'TEST': {
+                'NAME': f'test_{os.environ["POSTGRES_NAME"]}',
+            }    
         }
     }
 

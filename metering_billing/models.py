@@ -18,22 +18,20 @@ PAYMENT_PLANS = Choices(
     ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
 )
 # Create your models here.
-class User(AbstractUser):
-
-    company_name = models.CharField(max_length=200, default=" ")
-
 
 class Organization(models.Model):
-    users = models.ManyToManyField(User, blank=True)
     company_name = models.CharField(max_length=100, default=" ")
     stripe_api_key = models.CharField(max_length=110, default="", blank=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
     id = models.CharField(
-        max_length=40, unique=True, default=uuid.uuid4, primary_key=True
+        max_length=40, unique=True, default=uuid.uuid4(), primary_key=True
     )
     created_on = models.DateField(auto_now_add=True)
+
+class User(AbstractUser):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
 
 class Customer(models.Model):
 
@@ -225,7 +223,7 @@ class Subscription(models.Model):
 
 class Invoice(models.Model):
 
-    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
+    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4())
     cost_due = MoneyField(
         max_digits=10, decimal_places=2, null=True, default_currency="USD"
     )
@@ -244,14 +242,13 @@ class Invoice(models.Model):
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
 
 class APIToken(AbstractAPIKey):
-
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="api_keys")
     name = models.CharField(max_length=200, default="latest_token")
 
     def __str__(self):
         return str(self.name) + " " + str(self.organization)
 
-    class Meta:
+    class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
 
