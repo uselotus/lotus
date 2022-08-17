@@ -6,22 +6,31 @@ import dateutil.parser as parser
 import stripe
 from django.db import connection
 from django.forms.models import model_to_dict
-from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest,
-                         JsonResponse)
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django_q.tasks import async_task
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from metering_billing.models import (BillingPlan, Customer, Event,
-                                     Organization, PlanComponent, Subscription,
-                                     User)
+from metering_billing.models import (
+    BillingPlan,
+    Customer,
+    Event,
+    Organization,
+    PlanComponent,
+    Subscription,
+    User,
+)
 
 from .permissions import HasUserAPIKey
-from .serializers import (BillingPlanSerializer, CustomerSerializer,
-                          EventSerializer, PlanComponentSerializer,
-                          SubscriptionSerializer)
+from .serializers import (
+    BillingPlanSerializer,
+    CustomerSerializer,
+    EventSerializer,
+    PlanComponentSerializer,
+    SubscriptionSerializer,
+)
 from .tasks import generate_invoice
 
 
@@ -117,20 +126,35 @@ class SubscriptionView(APIView):
         Create a new subscription, joining a customer and a plan.
         """
         data = request.data
+
         customer_qs = Customer.objects.filter(customer_id=data["customer_id"])
         start_date = parser.parse(data["start_date"])
-
         if len(customer_qs) < 1:
             return Response(
                 {
-                    "error": "Customer with customer_id {} does not exist".format(
-                        data["customer_id"]
+                    "error": "Customer with custmer_id {} does not exist".format(
+                        data["custmer_id"]
+                    )
+                },
+                status=400,
+            ) 
+        else:
+            customer = customer_qs[0]
+
+        organization_qs = Organization.objects.filter(id=data["organization_id"])
+        if len(organization_qs) < 1:
+            return Response(
+                {
+                    "error": "Organization with organization_id {} does not exist".format(
+                        data["organization_id"]
                     )
                 },
                 status=400,
             )
         else:
-            customer = customer_qs[0]
+            organization = organization_qs[0]
+        
+
         plan_qs = BillingPlan.objects.filter(plan_id=data["plan_id"])
         if len(plan_qs) < 1:
             return Response(
@@ -146,6 +170,7 @@ class SubscriptionView(APIView):
             end_date = plan.subscription_end_date(start_date)
 
         subscription = Subscription.objects.create(
+            organization=organization,
             customer=customer,
             start_date=start_date,
             end_date=end_date,

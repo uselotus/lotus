@@ -31,44 +31,60 @@ class SubscriptionTest(TestCase):
         super().setUp()
         self.client = APIClient()
 
-        user_object = User.objects.create_user(username="test", email="")
-
-        organization_object = Organization.objects.create(
-            users=[user_object],
-            company_name="Test Company",
+        user_object = User.objects.create_user(
+            username="test", 
+            email=""
         )
 
+        organization_object = Organization.objects.create(
+            company_name="Test Company",
+        )
         organization_object.users.add(user_object)
+
         customer = Customer.objects.create(
             customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299",
             organization=organization_object,
         )
-        api_key, key = APIToken.objects.create(
-            name="test-api-key", organization=organization_object
-        )
-        self.authorization_header = {
-            "Authorization": "Api-Key" + " " + key,
-        }
-        metric = BillableMetric.objects.create(
-            event_name="Emails", property_name="amount", aggregation_type="count"
+
+        api_key, key = APIToken.objects.create_key(
+            name="test-api-key", 
+            organization=organization_object
         )
 
-        plan = BillingPlan.objects.create(name="Standard", plan_id="1")
+        metric = BillableMetric.objects.create(
+            organization=organization_object,
+            event_name="Emails", 
+            property_name="amount", 
+            aggregation_type="count"
+        )
+
+        plan = BillingPlan.objects.create(
+            organization=organization_object,
+            name="Standard", 
+            plan_id="1"
+        )
+
         plan_component = PlanComponent.objects.create(
-            billable_metric=metric, billing_plan=plan, cost_per_metric=1
+            billable_metric=metric, 
+            billing_plan=plan, 
+            cost_per_metric=1
         )
 
         # self.client.credentials(HTTP_AUTHORIZATION="Api-Key" + " " + key)
-
+        self.authorization_header = {
+            "Authorization": "Api-Key" + " " + key,
+        }
         self.valid_payload = {
             "plan_id": "1",
             "start_date": "2022-07-25T01:11:42.535Z",
             "customer_id": "7fa09280-957c-4a5f-925a-6a3498a1d299",
+            "organization_id": getattr(organization_object, 'id'),
         }
         self.invalid_payload_start_date = {
             "plan_id": "1",
             "start_date": "2022-07-25T01:11:42.535Z",
             "customer_id": "7fa09280-957c-3w5f-925a-6a3498a1d299",
+            "organization_id": getattr(organization_object, 'id'),
         }
 
     def test_subscription_create_success(self):
@@ -94,7 +110,7 @@ class SubscriptionTest(TestCase):
         payload = {
             "event_name": "Emails",
             "properties": {"count": 1},
-            "idempotency_id": uuid.uuid4,
+            "idempotency_id": uuid.uuid4(),
             "time_created": "2022-07-26T01:11:42.535Z",
             "customer_id": "7fa09280-957c-4a5f-925a-6a3498a1d299",
         }

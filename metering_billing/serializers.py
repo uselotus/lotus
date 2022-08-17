@@ -1,7 +1,14 @@
 from rest_framework import serializers
 
-from metering_billing.models import (BillingPlan, Customer, Event, Invoice,
-                                     PlanComponent, Subscription, User)
+from metering_billing.models import (
+    BillingPlan,
+    Customer,
+    Event,
+    Invoice,
+    PlanComponent,
+    Subscription,
+    User,
+)
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -14,6 +21,7 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Event
         fields = (
+            "organization",
             "customer",
             "event_name",
             "time_created",
@@ -26,6 +34,7 @@ class CustomerSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Customer
         fields = (
+            "organization",
             "name",
             "customer_id",
             "billing_id",
@@ -37,6 +46,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = (
+            "organization",
             "customer",
             "billing_plan",
             "start_date",
