@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  test:
 
     runs-on: ubuntu-latest
     
@@ -35,15 +35,52 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.9"
+
     - name: Install pipenv
-      run: python -m pip install pipenv
+      uses: dschep/install-pipenv-action@v1
+
+    - name: Cache Pipenv virtualenv
+      uses: actions/cache@v1
+      id: pipenv-cache
+      with:
+        path: ~/.pipenv
+        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pipenv-v2-
+
     - name: Install Dependencies
-      run: python -m pipenv install --dev
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
+      run: pipenv install --dev
       if: steps.pipenv-cache.outputs.cache-hit != 'true'
-    - name: Run migrations
-      run: python manage.py migrate
-    - name: Run tests
-      run: python manage.py test
-    - name: Test with black
+
+    - name: Migrate + Tests
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_HOST: localhost
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
+        DJANGO_SECRET_KEY: 'KEY'
+        DJANGO_SETTINGS_MODULE: CONFIG'
+        PYTHONPATH: '.'
+        DJANGO_DEBUG: 'False'
       run: |
-        python -m black --check .
+        pipenv run python manage.py migrate --noinput
+        pipenv run python manage.py test 
+
+    - name: Codstyle
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_HOST: localhost
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
+        DJANGO_SECRET_KEY: 'KEY'
+        DJANGO_SETTINGS_MODULE: CONFIG'
+        PYTHONPATH: '.'
+        DJANGO_DEBUG: 'False'
+      run: |
+        pipenv run python -m black --check .
