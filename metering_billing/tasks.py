@@ -1,7 +1,10 @@
 from __future__ import absolute_import, unicode_literals
-from lotus.celery import app
+
 from datetime import datetime
+
+from lotus.celery import app
 from metering_billing.models import Subscription
+
 from .generate_invoice import generate_invoice
 
 

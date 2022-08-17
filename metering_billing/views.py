@@ -1,35 +1,28 @@
-from django.forms.models import model_to_dict
-import dateutil.parser as parser
-from metering_billing.models import (
-    Customer,
-    Event,
-    Subscription,
-    BillingPlan,
-    PlanComponent,
-    Organization,
-    User,
-)
-from .serializers import (
-    EventSerializer,
-    SubscriptionSerializer,
-    CustomerSerializer,
-    BillingPlanSerializer,
-    PlanComponentSerializer,
-)
-from rest_framework.views import APIView
-from django_q.tasks import async_task
-from .tasks import generate_invoice
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
 import json
 import math
-from django.db import connection
-
-from rest_framework import viewsets
-from .permissions import HasUserAPIKey
-from rest_framework.response import Response
-import stripe
 import os
+
+import dateutil.parser as parser
+import stripe
+from django.db import connection
+from django.forms.models import model_to_dict
+from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest,
+                         JsonResponse)
+from django_q.tasks import async_task
+from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from metering_billing.models import (BillingPlan, Customer, Event,
+                                     Organization, PlanComponent, Subscription,
+                                     User)
+
+from .permissions import HasUserAPIKey
+from .serializers import (BillingPlanSerializer, CustomerSerializer,
+                          EventSerializer, PlanComponentSerializer,
+                          SubscriptionSerializer)
+from .tasks import generate_invoice
 
 
 class EventViewSet(viewsets.ModelViewSet):

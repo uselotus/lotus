@@ -1,19 +1,19 @@
+import uuid
 from email.mime import base
 from operator import mod
-from django.db import models
-import uuid
-from model_utils import Choices
-from djmoney.models.fields import MoneyField
-from django.utils.translation import gettext_lazy as _
-from moneyed import Money
-from rest_framework_api_key.models import AbstractAPIKey
-from dateutil.relativedelta import relativedelta
+
 from dateutil.parser import isoparse
-from django.contrib.postgres.fields import ArrayField
+from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.postgres.fields import ArrayField
+from django.db import models
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
-
+from django.utils.translation import gettext_lazy as _
+from djmoney.models.fields import MoneyField
+from model_utils import Choices
+from moneyed import Money
+from rest_framework_api_key.models import AbstractAPIKey
 
 PAYMENT_PLANS = Choices(
     ("self_hosted_free", _("Self-Hosted Free")),
@@ -22,7 +22,6 @@ PAYMENT_PLANS = Choices(
 )
 # Create your models here.
 class User(AbstractUser):
-
     company_name = models.CharField(max_length=200, default=" ")
 
 
@@ -252,14 +251,15 @@ class Invoice(models.Model):
 
 
 class APIToken(AbstractAPIKey):
-
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="api_keys"
+    )
     name = models.CharField(max_length=200, default="latest_token")
 
     def __str__(self):
         return str(self.name) + " " + str(self.organization)
 
-    class Meta:
+    class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
 

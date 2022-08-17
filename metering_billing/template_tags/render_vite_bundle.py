@@ -1,8 +1,8 @@
 # This template tag is needed for production
 # Add it to one of your django apps (/appdir/templatetags/render_vite_bundle.py, for example)
 
-import os
 import json
+import os
 
 from django import template
 from django.conf import settings

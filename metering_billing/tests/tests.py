@@ -1,23 +1,25 @@
-from django.test import TestCase
-from stripe import Plan
-from ..models import (
-    Customer,
-    Subscription,
-    BillingPlan,
-    BillableMetric,
-    PlanComponent,
-    User,
-    APIToken,
-    Event,
-    Organization,
-)
-import uuid
 import json
+import uuid
+
+from django.core.serializers.json import DjangoJSONEncoder
+from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
-from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework_api_key.models import APIKey
+from stripe import Plan
+
+from ..models import (
+    APIToken,
+    BillableMetric,
+    BillingPlan,
+    Customer,
+    Event,
+    Organization,
+    PlanComponent,
+    Subscription,
+    User,
+)
 
 
 class SubscriptionTest(TestCase):
@@ -28,18 +30,22 @@ class SubscriptionTest(TestCase):
     def setUp(self):
         super().setUp()
         self.client = APIClient()
+
+        user_object = User.objects.create_user(username="test", email="")
+
         organization_object = Organization.objects.create(
+            users=[user_object],
             company_name="Test Company",
         )
-        user_object = User.objects.create_user(username="test", email="")
-        organization_object.save()
 
         organization_object.users.add(user_object)
         customer = Customer.objects.create(
             customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299",
             organization=organization_object,
         )
-        api_key, key = APIToken.objects.create(name="test-api-key", user=user_object)
+        api_key, key = APIToken.objects.create(
+            name="test-api-key", organization=organization_object
+        )
         self.authorization_header = {
             "Authorization": "Api-Key" + " " + key,
         }

@@ -1,18 +1,21 @@
-from re import S
-from metering_billing.models import Event, Customer, BillingPlan
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse, HttpRequest
-from rest_framework.authtoken.models import Token
-from rest_framework.parsers import JSONParser
-from django.db import IntegrityError
-from django.views.decorators.csrf import csrf_exempt
-import json
 import base64
+import json
+from re import S
+from typing import Dict, List, Union
 from urllib.parse import urlparse
-from typing import Dict, Union, List
-from rest_framework.decorators import permission_classes
-from .permissions import HasUserAPIKey
+
+from django.db import IntegrityError
+from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest,
+                         JsonResponse)
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view
+
+from metering_billing.models import BillingPlan, Customer, Event
+
+from .permissions import HasUserAPIKey
 
 
 def load_event(request: HttpRequest) -> Union[None, Dict]:
@@ -42,11 +45,15 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
 
 def ingest_event(request, data: dict, customer: Customer) -> None:
 
-    idepotency_id_query = Event.objects.filter(idempotency_id=data["idempotency_id"]).count()
+    idepotency_id_query = Event.objects.filter(
+        idempotency_id=data["idempotency_id"]
+    ).count()
     print(idepotency_id_query)
     if idepotency_id_query > 0:
-        return JsonResponse({"detail": "This event record already exists", "status": "Failure"}, status=409)
-
+        return JsonResponse(
+            {"detail": "This event record already exists", "status": "Failure"},
+            status=409,
+        )
 
     db_event = Event.objects.create(
         event_name=data["event_name"],
@@ -91,4 +98,3 @@ def track_event(request):
                 )
     else:
         return ingest_event(request=request, data=data, customer=customer)
-
