@@ -36,38 +36,14 @@ jobs:
       with:
         python-version: "3.9"
     - name: Install pipenv
-      uses: dschep/install-pipenv-action@v1
-    - name: Cache Pipenv virtualenv
-      uses: actions/cache@v1
-      id: pipenv-cache
-      with:
-        path: ~/.pipenv
-        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pipenv-v2-
+        run: pip install pipenv
     - name: Install Dependencies
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
       run: pipenv install --dev
       if: steps.pipenv-cache.outputs.cache-hit != 'true'
     - name: Run migrations
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
       run: python manage.py migrate
     - name: Run tests
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
       run: python manage.py test
     - name: Test with black
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
       run: |
         python -m black --check .
