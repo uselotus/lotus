@@ -79,7 +79,6 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django_celery_beat",
     "rest_framework_api_key",
-    "django_vite",
 ]
 
 MIDDLEWARE = [
