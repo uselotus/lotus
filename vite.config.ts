@@ -28,28 +28,14 @@ export default defineConfig({
       disableGlobbing: false,
     },
   },
-  base: process.env.mode === "production" ? "/static/" : "/",
+  base: process.env.mode === "production" ? "./" : "./",
   publicDir: "public",
   root: "./src/",
   resolve: {
     extensions: [".js", ".json", ".jsx", ".ts", ".tsx"],
   },
 
-  plugins: [
-    react(),
-    splitVendorChunkPlugin(),
-    tsconfigPaths(),
-    vitePluginImp({
-      optimize: true,
-      libList: [
-        {
-          libName: "antd",
-          libDirectory: "es",
-          style: (name) => `antd/es/${name}/style`,
-        },
-      ],
-    }),
-  ],
+  plugins: [react()],
   css: {
     preprocessorOptions: {
       less: {

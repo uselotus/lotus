@@ -30,6 +30,7 @@ dj-database-url = "*"
 django-heroku = "*"
 django-celery-beat = "*"
 django-vite = "*"
+django-environ = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"
