@@ -14,7 +14,7 @@
     "@tanstack/react-query-devtools": "^4.2.1",
     "@types/node": "^18.7.3",
     "antd": "^4.22.4",
-    "axios": "0.21.1",
+    "axios": "0.27.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-query": "^3.39.2",
