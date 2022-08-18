@@ -1,3 +1,4 @@
+from ast import Or
 import base64
 import json
 from re import S
@@ -12,7 +13,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 
-from metering_billing.models import BillingPlan, Customer, Event
+from metering_billing.models import BillingPlan, Customer, Event, Organization, APIToken
 
 from .permissions import HasUserAPIKey
 
@@ -42,7 +43,7 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
     return event_data
 
 
-def ingest_event(request, data: dict, customer: Customer) -> None:
+def ingest_event(request, data: dict, customer: Customer, organization) -> None:
 
     idempotency_id_query = Event.objects.filter(
         idempotency_id=data["idempotency_id"]
@@ -55,7 +56,7 @@ def ingest_event(request, data: dict, customer: Customer) -> None:
         )
 
     db_event = Event.objects.create(
-        organization_id=data["organization_id"],
+        organization=organization,
         event_name=data["event_name"],
         idempotency_id=data["idempotency_id"],
         customer=customer,
@@ -68,12 +69,14 @@ def ingest_event(request, data: dict, customer: Customer) -> None:
 
 
 @csrf_exempt
+@permission_classes((HasUserAPIKey))
 def track_event(request):
-    # Check Permissions
-    # permissions = HasUserAPIKey()
-    # if not (permissions.has_permission(request, "track_event")):
-    #     return HttpResponseBadRequest("Invalid API Key or No API Key provided")
-    x = 1
+    # Find the associated organization, need to move to middleware/auth
+    validator = HasUserAPIKey()
+    key = validator.get_key(request)
+    api_key = APIToken.objects.get_from_key(key)
+    organization = api_key.organization
+
     data = load_event(request)
     if not data:
         return HttpResponseBadRequest("No data provided")
@@ -86,7 +89,12 @@ def track_event(request):
     if isinstance(data, list):
         for i in data:
             try:
-                return ingest_event(request=request, data=i, customer=customer)
+                return ingest_event(
+                    request=request,
+                    data=i,
+                    customer=customer,
+                    organization=organization,
+                )
             except KeyError:
                 return JsonResponse(
                     {
@@ -97,4 +105,6 @@ def track_event(request):
                     status=400,
                 )
     else:
-        return ingest_event(request=request, data=data, customer=customer)
+        return ingest_event(
+            request=request, data=data, customer=customer, organization=organization
+        )

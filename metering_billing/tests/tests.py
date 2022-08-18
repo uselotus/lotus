@@ -31,15 +31,13 @@ class SubscriptionTest(TestCase):
         super().setUp()
         self.client = APIClient()
 
-        user_object = User.objects.create_user(
-            username="test", 
-            email=""
-        )
+        user_object = User.objects.create_user(username="test", email="")
 
         organization_object = Organization.objects.create(
             company_name="Test Company",
         )
         organization_object.users.add(user_object)
+        organization_object.save()
 
         customer = Customer.objects.create(
             customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299",
@@ -47,34 +45,28 @@ class SubscriptionTest(TestCase):
         )
 
         api_key, key = APIToken.objects.create_key(
-            name="test-api-key", 
-            organization=organization_object
+            name="test-api-key", organization=organization_object
         )
 
         metric = BillableMetric.objects.create(
             organization=organization_object,
-            event_name="Emails", 
-            property_name="amount", 
-            aggregation_type="count"
+            event_name="Emails",
+            property_name="amount",
+            aggregation_type="count",
         )
 
         plan = BillingPlan.objects.create(
-            organization=organization_object,
-            name="Standard", 
-            plan_id="1"
+            organization=organization_object, name="Standard", plan_id="1"
         )
 
         plan_component = PlanComponent.objects.create(
-            billable_metric=metric, 
-            billing_plan=plan, 
-            cost_per_metric=1
+            billable_metric=metric, billing_plan=plan, cost_per_metric=1
         )
 
         # self.client.credentials(HTTP_AUTHORIZATION="Api-Key" + " " + key)
-        self.organization_id = getattr(organization_object, 'id')
-        self.authorization_header = {
-            "Authorization": "Api-Key" + " " + key,
-        }
+        self.organization_id = getattr(organization_object, "id")
+        self.client.credentials(HTTP_AUTHORIZATION="Api-Key " + key)
+
         self.valid_payload = {
             "plan_id": "1",
             "start_date": "2022-07-25T01:11:42.535Z",
@@ -97,7 +89,6 @@ class SubscriptionTest(TestCase):
             reverse("subscription"),
             data=json.dumps(self.valid_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
-            **self.authorization_header,
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
@@ -122,7 +113,6 @@ class SubscriptionTest(TestCase):
             reverse("track_event"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
-            **self.authorization_header,
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -134,10 +124,10 @@ class SubscriptionTest(TestCase):
         response = self.client.get(
             reverse("usage"),
             data=usage_payload,
-            **self.authorization_header,
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
 
 class TrackEventTest(TestCase):
     """
@@ -146,28 +136,22 @@ class TrackEventTest(TestCase):
 
     def setUp(self):
 
-        user_object = User.objects.create_user(
-            username="test", 
-            email=""
-        )
+        user_object = User.objects.create_user(username="test", email="")
         organization_object = Organization.objects.create(
             company_name="Test Company",
         )
-        self.organization_id = getattr(organization_object, 'id')
+        self.organization_id = getattr(organization_object, "id")
         organization_object.users.add(user_object)
         Customer.objects.create(
             customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299",
             organization=organization_object,
         )
         api_key, key = APIToken.objects.create_key(
-            name="test-api-key", 
-            organization=organization_object
-            )
+            name="test-api-key", organization=organization_object
+        )
 
         self.client = APIClient()
-        self.authorization_header = {
-            "Authorization": "Api-Key" + " " + key,
-        }
+        self.client.credentials(HTTP_AUTHORIZATION="Api-Key " + key)
 
         idempotency_id = uuid.uuid4()
         self.valid_payload = {
@@ -191,12 +175,10 @@ class TrackEventTest(TestCase):
         """
         Test that track_event returns bad request with message "Customer does not exist" if the customer's customer_id does not exist in the database.
         """
-        x = 1
         response = self.client.post(
             reverse("track_event"),
             data=json.dumps(self.invalid_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
-            **self.authorization_header,
         )
         self.assertEqual(response.content, b"Customer does not exist")
 
@@ -229,14 +211,14 @@ class TrackEventTest(TestCase):
         """
         Test that track_event does not create multiple events in the database if the idempotency_id is duplicated.
         """
-        #first, ensure that the event_id we are sending is not cuirrently present
+        # first, ensure that the event_id we are sending is not cuirrently present
         self.assertEqual(
             Event.objects.all()
-                        .filter(idempotency_id=self.valid_payload["idempotency_id"])
-                        .count(),
-            0
+            .filter(idempotency_id=self.valid_payload["idempotency_id"])
+            .count(),
+            0,
         )
-        #then send event, and expect success
+        # then send event, and expect success
         response = self.client.post(
             reverse("track_event"),
             data=json.dumps(self.valid_payload, cls=DjangoJSONEncoder),
@@ -250,7 +232,7 @@ class TrackEventTest(TestCase):
             1,
         )
 
-        #send the same event again, ennsure we get a bad request + no insertion
+        # send the same event again, ennsure we get a bad request + no insertion
         response = self.client.post(
             reverse("track_event"),
             data=json.dumps(self.valid_payload, cls=DjangoJSONEncoder),

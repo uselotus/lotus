@@ -12,6 +12,7 @@ from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from lotus.settings import STRIPE_SECRET_KEY
 
 from metering_billing.models import (
     BillingPlan,
@@ -33,7 +34,7 @@ from .serializers import (
 )
 from .tasks import generate_invoice
 
-stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+stripe.api_key = STRIPE_SECRET_KEY
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -139,7 +140,7 @@ class SubscriptionView(APIView):
                     )
                 },
                 status=400,
-            ) 
+            )
         else:
             customer = customer_qs[0]
 
@@ -155,7 +156,6 @@ class SubscriptionView(APIView):
             )
         else:
             organization = organization_qs[0]
-        
 
         plan_qs = BillingPlan.objects.filter(plan_id=data["plan_id"])
         if len(plan_qs) < 1:
@@ -190,13 +190,14 @@ class SubscriptionView(APIView):
 
 class CustomerView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get(self, request, format=None):
         """
         Return a list of all customers.
         """
-        customers = Customer.objects.all()
+        organization = request.user.organization_set.first()
+        customers = Customer.objects.filter(organization=organization)
         serializer = CustomerSerializer(customers, many=True)
         return Response(serializer.data)
 
@@ -204,7 +205,8 @@ class CustomerView(APIView):
         """
         Create a new customer.
         """
-
+        organization = request.user.organization_set.first()
+        request.data["organization"] = organization
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -214,7 +216,7 @@ class CustomerView(APIView):
 
 class UsageView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get(self, request, format=None):
         """
@@ -324,9 +326,7 @@ def import_stripe_customers(organization):
         stripe_account=organization.stripe_id
     )
 
-    customer_list = stripe_customers_response.data
-
-    for stripe_customer in customer_list.auto_paging_iter():
+    for stripe_customer in stripe_customers_response.auto_paging_iter():
         try:
             customer = Customer.objects.get(name=stripe_customer["name"])
             customer.payment_provider_id = stripe_customer["id"]
@@ -387,14 +387,19 @@ class InitializeStripeView(APIView):
         organization = user.organization_set.first()
         stripe_code = data["authorization_code"]
 
-        response = stripe.OAuth.token(
-            grant_type="authorization_code",
-            code=stripe_code,
-        )
+        try:
+            response = stripe.OAuth.token(
+                grant_type="authorization_code",
+                code=stripe_code,
+            )
+        except:
+            return JsonResponse(
+                {"success": False, "details": "Invalid authorization code"}, status=400
+            )
 
         if "error" in response:
             return JsonResponse(
-                {"success": False, "Error": response["error"]}, status=400
+                {"success": False, "details": response["error"]}, status=400
             )
 
         connected_account_id = response["stripe_user_id"]
