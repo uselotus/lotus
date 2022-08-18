@@ -2,8 +2,7 @@ import React, { FC, useEffect, useState } from "react";
 import CustomerTable from "../components/CustomerTable";
 import { CustomerType } from "../types/customer-type";
 import { Customer } from "../api/api";
-import * as Toast from '@radix-ui/react-toast';
-
+import * as Toast from "@radix-ui/react-toast";
 
 const customer_data = [
   {
@@ -25,7 +24,6 @@ const ViewCustomers: FC = () => {
 
   useEffect(() => {
     Customer.getCustomers().then((data) => {
-      console.log(data);
       setCustomers(data);
     });
   }, []);

@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/manage.py",
             "args": [
-                "runserver"
+                "test"
             ],
             "console":"internalConsole",
             "django": true,

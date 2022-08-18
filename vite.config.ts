@@ -8,11 +8,31 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   build: {
     manifest: true,
+    outDir: "./static/dist",
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: "./src/main.tsx",
+      },
+      output: {
+        chunkFileNames: undefined,
+      },
+    },
+  },
+  server: {
+    host: "localhost",
+    port: 3000,
+    open: false,
+    watch: {
+      usePolling: true,
+      disableGlobbing: false,
+    },
   },
   base: process.env.mode === "production" ? "/static/" : "/",
-  root: "./src",
-  server: {
-    origin: "http://localhost:3000",
+  publicDir: "public",
+  root: "./src/",
+  resolve: {
+    extensions: [".js", ".json", ".jsx", ".ts", ".tsx"],
   },
 
   plugins: [
