@@ -17,8 +17,8 @@ import django_heroku
 import sentry_sdk
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
+import django_heroku
 
-from celery.schedules import crontab
 
 BASE_DIR = Path("./env")
 DOT_ENV = BASE_DIR / ".env"
@@ -234,9 +234,5 @@ SESSION_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
 
-CELERY_BEAT_SCHEDULE = {
-    "calculate_invoice_schedule": {
-        "task": "metering_billing.tasks.calculate_invoice",
-        "schedule": 60,
-    },
-}
+# Heroku
+django_heroku.settings(locals())
