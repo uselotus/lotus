@@ -8,7 +8,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   build: {
     manifest: true,
-    outDir: "./static/dist",
+    outDir: "../static/dist",
     emptyOutDir: true,
     rollupOptions: {
       input: {
