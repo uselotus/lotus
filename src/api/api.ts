@@ -40,7 +40,7 @@ export const Plan = {
 };
 
 export const StripeConnect = {
-  getStripeConnectionStatus: (): Promise<StripeStatusType[]> =>
+  getStripeConnectionStatus: (): Promise<StripeStatusType> =>
     requests.get("api/stripe"),
   connectStripe: (authorization_code: string): Promise<StripeOauthType> =>
     requests.post("api/stripe", { authorization_code }),

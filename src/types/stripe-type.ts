@@ -9,5 +9,6 @@ export interface StripeStatusType {
 }
 
 export interface StripeOauthType {
-  authorization_code: string;
+  details: string;
+  success: boolean;
 }

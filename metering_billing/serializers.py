@@ -30,7 +30,7 @@ class EventSerializer(serializers.HyperlinkedModelSerializer):
         )
 
 
-class CustomerSerializer(serializers.HyperlinkedModelSerializer):
+class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (

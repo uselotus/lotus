@@ -22,9 +22,6 @@ function App() {
     if (isAuthenticated) {
       return <AppRoutes />;
     } else {
-      {
-        console.log(import.meta.env.VITE_STRIPE_CLIENT);
-      }
       return <Login />;
     }
   }

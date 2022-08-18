@@ -108,10 +108,14 @@ class SubscriptionView(APIView):
         """
         List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
         """
+
+        organization = request.user.organization_set.first()
         if "customer_id" in request.query_params:
             customer_id = request.query_params["customer_id"]
             try:
-                customer = Customer.objects.get(customer_id=customer_id)
+                customer = Customer.objects.get(
+                    customer_id=customer_id, organization=organization
+                )
             except Customer.DoesNotExist:
                 return HttpResponseBadRequest("Customer does not exist")
             subscriptions = Subscription.objects.filter(
@@ -129,8 +133,11 @@ class SubscriptionView(APIView):
         Create a new subscription, joining a customer and a plan.
         """
         data = request.data
+        organization = request.user.organization_set.first()
 
-        customer_qs = Customer.objects.filter(customer_id=data["customer_id"])
+        customer_qs = Customer.objects.filter(
+            customer_id=data["customer_id"], organization=organization
+        )
         start_date = parser.parse(data["start_date"])
         if len(customer_qs) < 1:
             return Response(
@@ -157,7 +164,9 @@ class SubscriptionView(APIView):
         else:
             organization = organization_qs[0]
 
-        plan_qs = BillingPlan.objects.filter(plan_id=data["plan_id"])
+        plan_qs = BillingPlan.objects.filter(
+            plan_id=data["plan_id"], organization=organization
+        )
         if len(plan_qs) < 1:
             return Response(
                 {

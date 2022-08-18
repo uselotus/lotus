@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
     "django_celery_beat",
     "rest_framework_api_key",
+    "django_vite",
 ]
 
 MIDDLEWARE = [
@@ -161,6 +162,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Stripe Settings
+STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
 
 # Celery Settings
 CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
@@ -192,16 +195,19 @@ DJANGO_VITE_DEV_SERVER_PORT = 5173
 
 STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
 
 INTERNAL_IPS = ["127.0.0.1"]
 
 DJANGO_VITE_DEV_MODE = DEBUG
 
 VITE_APP_DIR = BASE_DIR / "src"
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static/dist"),
-    os.path.join(VITE_APP_DIR, "dist"),
-]
+DJANGO_VITE_ASSETS_PATH = BASE_DIR / "static" / "dist"
+
+STATICFILES_DIRS = [str(BASE_DIR / "static"), DJANGO_VITE_ASSETS_PATH]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 

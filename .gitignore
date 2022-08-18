@@ -169,3 +169,5 @@ typings/
 
 # Yarn Integrity file
 .yarn-integrity
+
+.DS_Store
