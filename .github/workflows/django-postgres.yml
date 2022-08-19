@@ -33,8 +33,6 @@ jobs:
 
     env:
         REDIS_HOST: localhost
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
@@ -77,6 +75,8 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
       run: |
         pipenv run python manage.py migrate --noinput
 
@@ -84,6 +84,8 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
       run: |
         pipenv run python manage.py test 
 
@@ -91,5 +93,7 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
       run: |
         pipenv run black --check .
