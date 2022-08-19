@@ -192,9 +192,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-DJANGO_VITE_DEV_SERVER_PORT = 3000
 
-STATIC_URL = "./"
+STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
@@ -203,7 +202,9 @@ STATICFILES_FINDERS = [
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-DJANGO_VITE_DEV_MODE = DEBUG
+DJANGO_VITE_DEV_MODE = env("DEBUG")
+DJANGO_VITE_DEV_SERVER_HOST = "localhost"
+DJANGO_VITE_DEV_SERVER_PORT = 3000
 
 VITE_APP_DIR = BASE_DIR / "src"
 

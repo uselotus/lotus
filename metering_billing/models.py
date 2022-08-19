@@ -15,6 +15,7 @@ from model_utils import Choices
 from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
 
+
 PAYMENT_PLANS = Choices(
     ("self_hosted_free", _("Self-Hosted Free")),
     ("cloud", _("Cloud")),
@@ -22,10 +23,12 @@ PAYMENT_PLANS = Choices(
 )
 # Create your models here.
 class User(AbstractUser):
+
     company_name = models.CharField(max_length=200, default=" ")
 
 
 class Organization(models.Model):
+
     users = models.ManyToManyField(User, blank=True)
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, default="", blank=True)
@@ -63,6 +66,8 @@ class Customer(models.Model):
     currency = models.CharField(max_length=3, default="USD")
 
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
+
+    properties = models.JSONField(default=dict, blank=True, null=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
