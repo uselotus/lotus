@@ -142,6 +142,7 @@ except:
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
             "HOST": os.environ["POSTGRES_HOST"],
             "PORT": 5432,
+            "SSL_REQUIRE": ssl_require,
         }
     }
 
