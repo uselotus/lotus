@@ -32,6 +32,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - run: echo "${{ secrets.SECRET_KEY }}" 
+
     - name: Set up Python 3.9
       uses: actions/setup-python@v3
       with:
