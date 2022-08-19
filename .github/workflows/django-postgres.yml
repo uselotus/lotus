@@ -69,9 +69,9 @@ jobs:
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
-        SECRET_KEY: "${{ secrets.SECRET_KEY }}"
-        CELERY_RESULT_BACKEND: "${{ secrets.CELERY_RESULT_BACKEND }}"
-        CELERY_BROKER_URL: "${{ secrets.CELERY_BROKER_URL }}"
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
+        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
       run: |
         pipenv run python manage.py migrate --noinput
 
@@ -85,9 +85,9 @@ jobs:
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
-        SECRET_KEY: "${{ secrets.SECRET_KEY }}"
-        CELERY_RESULT_BACKEND: "${{ secrets.CELERY_RESULT_BACKEND }}"
-        CELERY_BROKER_URL: "${{ secrets.CELERY_BROKER_URL }}"
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
+        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
       run: |
         pipenv run python manage.py test 
 
@@ -101,8 +101,8 @@ jobs:
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
-        SECRET_KEY: "${{ secrets.SECRET_KEY }}"
-        CELERY_RESULT_BACKEND: "${{ secrets.CELERY_RESULT_BACKEND }}"
-        CELERY_BROKER_URL: "${{ secrets.CELERY_BROKER_URL }}"
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
+        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
       run: |
         pipenv run black --check .
