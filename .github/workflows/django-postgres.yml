@@ -24,6 +24,8 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: github_actions
+          SSL_REQUIRE: 'False'
+
         ports:
           - 5432:5432
         # needed because the postgres container does not provide a healthcheck
@@ -39,7 +41,6 @@ jobs:
         SECRET_KEY: ${{ secrets.SECRET_KEY }}
         CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
         CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
-        SSL_REQUIRE: False
 
     steps:
     - uses: actions/checkout@v3
@@ -93,7 +94,51 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
+      run: |
+        pipenv run black --check .
+
+  codestyle:
+
+    runs-on: ubuntu-latest
+
+    environment: Development
+
+    env:
+        PYTHONPATH: '.'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies with pipenv
+      run: |
+        pip install pipenv
+        pipenv install --deploy --dev
+
+    - name: Cache Pipenv virtualenv
+      uses: actions/cache@v1
+      id: pipenv-cache
+      with:
+        path: ~/.pipenv
+        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pipenv-v2-
+
+    - name: Install Dependencies
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
+      run: pipenv install --deploy --dev
+      if: steps.pipenv-cache.outputs.cache-hit != 'true'
+
+    - name: Codestyle Check
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
       run: |
         pipenv run black --check .
