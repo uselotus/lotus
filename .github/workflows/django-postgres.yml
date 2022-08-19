@@ -34,16 +34,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: debug 1
-      env:
-        AYOUUUU: 'debug'
-      run:  echo ${{ secrets.DEBUG_VAR }}
-
-    - name: debug 2
-      env:
-        AYOUUUU: 'debug'
-      run:  echo "${{ env.AYOUUUU }}" 
-
     - name: Set up Python 3.9
       uses: actions/setup-python@v3
       with:
