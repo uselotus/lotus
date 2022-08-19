@@ -66,7 +66,7 @@ jobs:
         REDIS_HOST: localhost
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
         DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
-        DJANGO_SETTINGS_MODULE: 'settings'
+        DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
       run: |
@@ -79,7 +79,7 @@ jobs:
         REDIS_HOST: localhost
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
         DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
-        DJANGO_SETTINGS_MODULE: 'settings'
+        DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
       run: |
@@ -92,7 +92,7 @@ jobs:
         REDIS_HOST: localhost
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
         DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
-        DJANGO_SETTINGS_MODULE: 'settings'
+        DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
       run: |
