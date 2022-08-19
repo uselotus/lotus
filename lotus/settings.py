@@ -11,12 +11,14 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
 from pathlib import Path
-from celery.schedules import crontab
-from dotenv import load_dotenv
-import sentry_sdk
-from sentry_sdk.integrations.django import DjangoIntegration
+
 import dj_database_url
 import django_heroku
+import sentry_sdk
+from dotenv import load_dotenv
+from sentry_sdk.integrations.django import DjangoIntegration
+
+from celery.schedules import crontab
 
 BASE_DIR = Path("./env")
 DOT_ENV = BASE_DIR / ".env"
@@ -50,7 +52,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!

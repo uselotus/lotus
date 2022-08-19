@@ -12,6 +12,17 @@ on:
 permissions:
   contents: read
 
+env:
+  REDIS_HOST: localhost
+  REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+  DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
+  DJANGO_SETTINGS_MODULE: 'lotus.settings'
+  PYTHONPATH: '.'
+  DJANGO_DEBUG: 'False'
+  SECRET_KEY: ${{ secrets.SECRET_KEY }}
+  CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
+  CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
+
 jobs:
   test:
 
@@ -63,15 +74,6 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
-        REDIS_HOST: localhost
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
-        DJANGO_SETTINGS_MODULE: 'lotus.settings'
-        PYTHONPATH: '.'
-        DJANGO_DEBUG: 'False'
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
-        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
       run: |
         pipenv run python manage.py migrate --noinput
 
@@ -79,15 +81,6 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
-        REDIS_HOST: localhost
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
-        DJANGO_SETTINGS_MODULE: 'lotus.settings'
-        PYTHONPATH: '.'
-        DJANGO_DEBUG: 'False'
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
-        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
       run: |
         pipenv run python manage.py test 
 
@@ -95,14 +88,5 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
-        REDIS_HOST: localhost
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/test_db'
-        DJANGO_SETTINGS_MODULE: 'lotus.settings'
-        PYTHONPATH: '.'
-        DJANGO_DEBUG: 'False'
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
-        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
       run: |
         pipenv run black --check .
