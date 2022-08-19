@@ -122,14 +122,12 @@ AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-ssl_require = os.environ.get("SSL_REQUIRE", True)
 try:
     DATABASES = {
         "default": dj_database_url.parse(
             os.environ["DATABASE_URL"],
             engine="django.db.backends.postgresql",
             conn_max_age=600,
-            ssl_require=ssl_require,
         )
     }
     django_heroku.settings(locals(), databases=False)
@@ -142,7 +140,6 @@ except:
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
             "HOST": os.environ["POSTGRES_HOST"],
             "PORT": 5432,
-            "SSL_REQUIRE": ssl_require,
         }
     }
 
