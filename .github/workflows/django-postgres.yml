@@ -5,9 +5,9 @@ name: Django/Postgres CI
 
 on:
   push:
-    branches: [ "main", "wokflows" ]
+    branches: [ "main", "workflows" ]
   pull_request:
-    branches: [ "main", "wokflows" ]
+    branches: [ "main", "workflows" ]
 
 permissions:
   contents: read
