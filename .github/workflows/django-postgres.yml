@@ -37,7 +37,7 @@ jobs:
     - name: Install Dependencies
       env:
         AYOUUUU: 'true'
-      run:  echo "${{ AYOUUUU }}" 
+      run:  echo "${{ env.AYOUUUU }}" 
 
     - name: Set up Python 3.9
       uses: actions/setup-python@v3
