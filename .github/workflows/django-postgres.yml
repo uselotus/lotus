@@ -5,15 +5,15 @@ name: Django/Postgres CI
 
 on:
   push:
-    branches: [ "main", "workflows" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main", "workflows" ]
+    branches: ["main"]
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  tests:
 
     runs-on: ubuntu-latest
     
