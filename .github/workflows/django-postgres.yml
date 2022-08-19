@@ -25,6 +25,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: github_actions
           SSL_REQUIRE: 'False'
+          SSLMODE: DISABLE
 
         ports:
           - 5432:5432
