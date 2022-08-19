@@ -69,6 +69,7 @@ jobs:
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
       run: |
         pipenv run python manage.py migrate --noinput
 
@@ -82,6 +83,7 @@ jobs:
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
       run: |
         pipenv run python manage.py test 
 
@@ -95,5 +97,6 @@ jobs:
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
         DJANGO_DEBUG: 'False'
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
       run: |
         pipenv run black --check .
