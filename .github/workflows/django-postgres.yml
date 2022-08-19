@@ -32,11 +32,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - run: echo "${{ secrets.SECRET_KEY }}" 
-
-    - name: Install Dependencies
+    - name: debug 1
+      using: development
       env:
-        AYOUUUU: 'true'
+        AYOUUUU: 'debug'
+      run:  echo "${{ secrets.SECRET_KEY }}" 
+
+    - name: debug 2
+      env:
+        AYOUUUU: 'debug'
       run:  echo "${{ env.AYOUUUU }}" 
 
     - name: Set up Python 3.9
