@@ -37,7 +37,7 @@ jobs:
     - name: debug 1
       env:
         AYOUUUU: 'debug'
-      run:  echo "${{ secrets.SECRET_KEY }}" 
+      run:  echo ${{ secrets.DEBUG_VAR }}
 
     - name: debug 2
       env:
