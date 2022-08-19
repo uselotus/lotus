@@ -23,8 +23,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: github_actions
-          SSL_REQUIRE: 'False'
+          POSTGRES_DB: postgres
           SSLMODE: DISABLE
 
         ports:
