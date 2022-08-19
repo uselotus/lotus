@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "../components/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
+import ViewSettings from "../pages/ViewSettings";
+import StripeRedirect from "../pages/StripeRedirect";
 
 // import MainContent from "./components/MainContent";
 import SideBar from "../components/SideBar";
@@ -54,12 +56,11 @@ const AppRoutes: FC = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/plans" element={<ViewPlans />} />
               <Route path="/customers" element={<ViewCustomers />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/settings" element={<ViewSettings />} />
+              <Route path="/redirectstripe" element={<StripeRedirect />} />
             </Routes>
           </Content>
-          <Footer style={{ textAlign: "center" }}>
-            Ant Design ©2018 Created by Ant UED
-          </Footer>
+          <Footer style={{ textAlign: "center" }}>Lotus @2022</Footer>
         </Layout>
       </Layout>
     </div>

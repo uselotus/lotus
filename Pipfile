@@ -24,7 +24,6 @@ python-dotenv = ">=0.20.0,<0.21"
 redis = ">=3.5.3,<4.0"
 sentry-sdk = ">=1.9.0,<1.10"
 stripe = ">=4.0.2,<4.1"
-tenant-schemas-celery = ">=2.0.0,<2.1"
 gunicorn = "*"
 whitenoise = "*"
 dj-database-url = "*"
@@ -34,6 +33,9 @@ django-vite = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"
+black = "*"
+platformdirs = "*"
+isort = "*"
 
 [requires]
 python_version = "3.9"

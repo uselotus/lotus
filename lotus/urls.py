@@ -14,20 +14,22 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from metering_billing import auth_views
+from django.urls import path, re_path
 from django.conf.urls import include
-from rest_framework import routers
 from django.shortcuts import render
-from billing.views.views import (
-    EventViewSet,
-    SubscriptionViewSet,
+from django.views.generic import TemplateView
+from metering_billing import track
+from metering_billing.views import (
     CustomerView,
+    EventViewSet,
+    InitializeStripeView,
+    PlansView,
     SubscriptionView,
+    SubscriptionViewSet,
     UsageView,
 )
-from billing import track
-from billing.views.stripe_views import InitializeStripeView
-from django.views.generic import TemplateView
+from rest_framework import routers
 
 router = routers.DefaultRouter()
 router.register(r"event", EventViewSet)
@@ -42,11 +44,14 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/customers", CustomerView.as_view(), name="customer"),
-    path("api/customers/", CustomerView.as_view(), name="customer"),
     path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
-    path("track/", track.track_event, name="track_event"),
     path("track", track.track_event, name="track_event"),
     path("api/usage", UsageView.as_view(), name="usage"),
-    path("stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
-    path("", TemplateView.as_view(template_name="index.html")),
+    path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
+    path("api/plans", PlansView.as_view(), name="plans"),
+    path("api/login/", auth_views.login_view, name="api-login"),
+    path("api/logout", auth_views.logout_view, name="api-logout"),
+    path("api/session/", auth_views.session_view, name="api-session"),
+    path("api/whoami", auth_views.whoami_view, name="api-whoami"),
+    re_path(".*", TemplateView.as_view(template_name="index.html")),
 ]

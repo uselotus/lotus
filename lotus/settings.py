@@ -25,7 +25,6 @@ DOT_ENV = BASE_DIR / ".env"
 
 load_dotenv(DOT_ENV, override=True)
 
-
 try:
     sentry_sdk.init(
         dsn=os.environ["SENTRY_DSN"],
@@ -65,7 +64,7 @@ except KeyError:
 
 # Application definition
 
-SHARED_APPS = [
+INSTALLED_APPS = [
     # "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
@@ -74,35 +73,16 @@ SHARED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "tenant",
+    "metering_billing",
     "djmoney",
     "django_extensions",
     "whitenoise.runserver_nostatic",
     "django_celery_beat",
-]
-
-TENANT_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    "billing",
     "rest_framework_api_key",
+    "django_vite",
 ]
-
-INSTALLED_APPS = list(SHARED_APPS) + [
-    app for app in TENANT_APPS if app not in SHARED_APPS
-]
-
-TENANT_MODEL = "tenant.Tenant"
-TENANT_DOMAIN_MODEL = "tenant.Domain"
-
-TENANT_SUBFOLDER_PREFIX = "client"
 
 MIDDLEWARE = [
-    "django_tenants.middleware.TenantSubfolderMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -115,7 +95,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "lotus.urls"
-PUBLIC_SCHEMA_URLCONF = "lotus.urls_public"
 
 TEMPLATES = [
     {
@@ -129,6 +108,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
+            "libraries": {
+                "render_vite_bundle": "metering_billing.template_tags.render_vite_bundle",
+            },
         },
     },
 ]
@@ -136,8 +118,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 
-AUTH_USER_MODEL = "tenant.User"
-
+AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -162,7 +143,6 @@ except:
             "PORT": 5432,
         }
     }
-DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -182,6 +162,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Stripe Settings
+STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
 
 # Celery Settings
 CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
@@ -213,16 +195,19 @@ DJANGO_VITE_DEV_SERVER_PORT = 5173
 
 STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-DJANGO_VITE_DEV_MODE = True
+DJANGO_VITE_DEV_MODE = DEBUG
 
 VITE_APP_DIR = BASE_DIR / "src"
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static/dist"),
-    os.path.join(VITE_APP_DIR, "dist"),
-]
+DJANGO_VITE_ASSETS_PATH = BASE_DIR / "static" / "dist"
+
+STATICFILES_DIRS = [str(BASE_DIR / "static"), DJANGO_VITE_ASSETS_PATH]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
@@ -231,7 +216,7 @@ MEDIA_URL = "/mediafiles/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "billing.permissions.HasUserAPIKey",
+        "metering_billing.permissions.HasUserAPIKey",
     ]
 }
 
@@ -244,9 +229,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 
+CSRF_COOKIE_SAMESITE = "Strict"
+SESSION_COOKIE_SAMESITE = "Strict"
+CSRF_COOKIE_HTTPONLY = False
+SESSION_COOKIE_HTTPONLY = True
+
 CELERY_BEAT_SCHEDULE = {
     "calculate_invoice_schedule": {
-        "task": "billing.tasks.calculate_invoice",
+        "task": "metering_billing.tasks.calculate_invoice",
         "schedule": 60,
     },
 }
