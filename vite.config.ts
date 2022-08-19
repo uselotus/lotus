@@ -35,7 +35,21 @@ export default defineConfig({
     extensions: [".js", ".json", ".jsx", ".ts", ".tsx"],
   },
 
-  plugins: [react()],
+  plugins: [
+    react(),
+    splitVendorChunkPlugin(),
+    tsconfigPaths(),
+    vitePluginImp({
+      optimize: true,
+      libList: [
+        {
+          libName: "antd",
+          libDirectory: "es",
+          style: (name) => `antd/es/${name}/style`,
+        },
+      ],
+    }),
+  ],
   css: {
     preprocessorOptions: {
       less: {
