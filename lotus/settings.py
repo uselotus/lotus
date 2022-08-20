@@ -163,7 +163,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Stripe Settings
-STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+try:
+    STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+except KeyError:
+    STRIPE_SECRET_KEY = ""
 
 # Celery Settings
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")
