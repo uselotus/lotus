@@ -37,6 +37,8 @@ pylint = ">=2.14.5,<2.15"
 black = "*"
 platformdirs = "*"
 isort = "*"
+model-bakery = "*"
+pytest-django = "*"
 
 [requires]
 python_version = "3.9"
