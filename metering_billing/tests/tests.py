@@ -4,6 +4,7 @@ import uuid
 from django.core.serializers.json import DjangoJSONEncoder
 from django.test import TestCase
 from django.urls import reverse
+from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_api_key.models import APIKey
@@ -25,6 +26,25 @@ from ..models import (
 class SubscriptionTest(TestCase):
     """
     Testcases for the subscription views.
+
+    (GET) Partitions:
+    
+    (POST) Partitions:
+    plan_id: exists, doesn't exist
+    start_date: before (invalid), before (valid), now, after(valid), after(invalid)
+    customer_id: exists, doesn't exist
+
+    idempotency_id: id already in db, id not yet in db
+    time_created: /
+    
+    api_key: valid, invalid
+
+
+    customer: The customer that the subscription belongs to.
+    plan_name: The name of the plan that the subscription is for.
+    start_date: The date at which the subscription started.
+    end_date: The date at which the subscription will end.
+    status: The status of the subscription, active or ended.
     """
 
     def setUp(self):
@@ -132,6 +152,14 @@ class SubscriptionTest(TestCase):
 class TrackEventTest(TestCase):
     """
     Testcases for the track_event function view.
+
+    Partitions:
+    event_name: exists, doesn't exist
+    properties: empty, 1 item, lots of items
+    idempotency_id: id already in db, id not yet in db
+    time_created: before (invalid), before (valid), now, after(valid), after(invalid)
+    customer_id: exists, doesn't exist
+    api_key: valid, invalid
     """
 
     def setUp(self):
