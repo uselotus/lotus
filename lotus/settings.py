@@ -96,31 +96,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "lotus.urls"
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
-        },
-    },
-    'loggers': {
-        'django_auth_adfs': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-        },
-    },
-}
-
-SESSION_COOKIE_SECURE = False
-
-
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -142,26 +117,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "lotus.wsgi.application"
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': '/tmp/debug.log',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['file'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-    },
-}
-
-
 AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -169,10 +124,9 @@ AUTH_USER_MODEL = "metering_billing.User"
 try:
     DATABASES = {
         "default": dj_database_url.parse(
-            os.environ["DATABASE_URL"],
+            os.environ.get("DATABASE_URL"),
             engine="django.db.backends.postgresql_psycopg2",
             conn_max_age=600,
-            ssl_require=True,
         )
     }
     django_heroku.settings(locals(), databases=False)
