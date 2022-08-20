@@ -20,7 +20,7 @@ class Command(BaseCommand):
 
         if not User.objects.filter(username=username).exists():
             admin = User.objects.create_superuser(
-                email=email, username=username, password=password
+                email=email, username=username, password=password, company_name="Lotus"
             )
 
             org = Organization.objects.create(company_name="Lotus Default")
