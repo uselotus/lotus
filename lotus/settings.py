@@ -126,17 +126,16 @@ AUTH_USER_MODEL = "metering_billing.User"
 try:
     DATABASES = {
         "default": dj_database_url.parse(
-            env.db(),
-            engine="django.db.backends.postgresql_psycopg2",
+            os.environ["DATABASE_URL"],
+            engine="django.db.backends.postgresql",
             conn_max_age=600,
-            ssl_require=True,
         )
     }
     django_heroku.settings(locals(), databases=False)
 except:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql_psycopg2",
+            "ENGINE": "django.db.backends.postgresql",
             "NAME": env("POSTGRES_NAME"),
             "USER": env("POSTGRES_USER"),
             "PASSWORD": env("POSTGRES_PASSWORD"),
@@ -169,6 +168,7 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
 # Celery Settings
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
