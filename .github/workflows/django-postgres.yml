@@ -1,0 +1,137 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Django/Postgres CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+          SSLMODE: PREFER
+
+        ports:
+          - 5432:5432
+        # needed because the postgres container does not provide a healthcheck
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    environment: Development
+
+    env:
+        REDIS_HOST: localhost
+        DJANGO_SETTINGS_MODULE: 'lotus.settings'
+        PYTHONPATH: '.'
+        DJANGO_DEBUG: 'False'
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
+        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies with pipenv
+      run: |
+        pip install pipenv
+        pipenv install --deploy --dev
+
+    - name: Cache Pipenv virtualenv
+      uses: actions/cache@v1
+      id: pipenv-cache
+      with:
+        path: ~/.pipenv
+        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pipenv-v2-
+
+    - name: Install Dependencies
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
+      run: pipenv install --deploy --dev
+      if: steps.pipenv-cache.outputs.cache-hit != 'true'
+
+    - name: Migrations
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
+      run: |
+        pipenv run python manage.py migrate --noinput
+
+    - name: Tests
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
+      run: |
+        pipenv run python manage.py test 
+
+  codestyle:
+
+    runs-on: ubuntu-latest
+
+    environment: Development
+
+    env:
+        PYTHONPATH: '.'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+
+    - name: Install dependencies with pipenv
+      run: |
+        pip install pipenv
+        pipenv install --deploy --dev
+
+    - name: Cache Pipenv virtualenv
+      uses: actions/cache@v1
+      id: pipenv-cache
+      with:
+        path: ~/.pipenv
+        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pipenv-v2-
+
+    - name: Install Dependencies
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
+      run: pipenv install --deploy --dev
+      if: steps.pipenv-cache.outputs.cache-hit != 'true'
+
+    - name: Codestyle Check
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+      run: |
+        pipenv run black --check .
