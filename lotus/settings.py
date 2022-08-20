@@ -117,7 +117,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "lotus.wsgi.application"
 
-
 AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -125,7 +124,7 @@ AUTH_USER_MODEL = "metering_billing.User"
 try:
     DATABASES = {
         "default": dj_database_url.parse(
-            os.environ["DATABASE_URL"],
+            os.environ.get("DATABASE_URL"),
             engine="django.db.backends.postgresql",
             conn_max_age=600,
         )
