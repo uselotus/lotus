@@ -72,6 +72,12 @@ class Customer(models.Model):
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
 
+    def get_billing_plan_name(self) -> str:
+        subscription_object = Subscription.objects.filter(customer=self).first()
+        if subscription_object is None:
+            return "None"
+        return subscription_object.billing_plan.get_plan_name()
+
 
 class Event(models.Model):
     """
@@ -182,6 +188,9 @@ class BillingPlan(models.Model):
 
     def get_usage_cost_count_aggregation(self, num_events):
         return max(0, self.metric_amount * (self.starter_metric_quantity - num_events))
+
+    def get_plan_name(self):
+        return self.name
 
     def __str__(self) -> str:
         return str(self.name) + ":" + str(self.plan_id)

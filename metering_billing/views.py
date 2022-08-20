@@ -208,7 +208,17 @@ class CustomerView(APIView):
         organization = request.user.organization_set.first()
         customers = Customer.objects.filter(organization=organization)
         serializer = CustomerSerializer(customers, many=True)
-        return Response(serializer.data)
+        customer_list = []
+        for customer in customers:
+            serializer = CustomerSerializer(customer)
+            cust_data = serializer.data
+            cust_data["plan"] = {
+                "name": customer.get_billing_plan_name(),
+                "color": "green",
+            }
+            del cust_data["organization"]
+            customer_list.append(cust_data)
+        return Response(customer_list)
 
     def post(self, request, format=None):
         """

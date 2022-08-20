@@ -29,7 +29,7 @@ export default defineConfig({
   publicDir: "/public",
   root: "./src",
   resolve: {
-    extensions: [".js", ".json", ".jsx", ".ts", ".tsx"],
+    alias: [{ find: /^~/, replacement: "" }],
   },
 
   plugins: [

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/pro-components": "^1.1.16",
     "@radix-ui/react-popover": "1.0.0",
     "@radix-ui/react-toast": "^1.0.0",
     "@tanstack/react-query-devtools": "^4.2.1",

@@ -6,7 +6,8 @@ import {
   UploadOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router";
-import logo_large from "../assets/images/logo_large.png";
+import logo from "../assets/images/corner_logo.svg";
+import "./SideBar.css";
 
 const SideBar: FC = () => {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ const SideBar: FC = () => {
           margin: "16px",
         }}
       >
-        {/* <img src={logo_large} alt="lotus" /> */}
+        <img src={logo} alt="lotus" />
       </div>
       <Menu theme="dark" mode="vertical" defaultSelectedKeys={["1"]}>
         <Menu.Item key="1" onClick={handleDashboardClick}>
