@@ -57,7 +57,7 @@ There's a few ways to use Lotus. After you set it up, head over to the [Docs](ht
 
 Best for convenience and fast deployment. 
 
-Sign up for our `alpha` (here)[https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io] or email us at founders@uselotus.io for more details. 
+Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details. 
 
 ### :computer: Self-Hosted Version
 
@@ -72,11 +72,11 @@ Best if you want to keep your data local or want full control and extensibility.
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-2. Use (pipenv)[https://pipenv.pypa.io/en/latest/] to install the requried packages. 
+2. Use [pipenv](https://pipenv.pypa.io/en/latest/) to install the requried packages. 
    ```sh
    pipenv sync
    ```
-3. Create the necessary environment variables by following (this guide in our docs)[https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env].
+3. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
 4. Run the project! 
    ```sh
    python manage.py runserver
@@ -116,7 +116,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 
 <!-- CONTACT -->
-## Contact
+## Get in Touch
 
 Lotus founders - founders@uselotus.io
 
