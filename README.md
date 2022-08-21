@@ -81,7 +81,7 @@ Best if you want to keep your data local or want full control and extensibility.
    ```sh
    python manage.py runserver
    ```
-You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/).
+You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD` you defined.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
