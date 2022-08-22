@@ -102,6 +102,9 @@ Contributions are what make the open source community such an amazing place to l
 If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply [request a feature]().
 Don't forget to give the project a star! Thanks again!
 
+## :bar_chart: Repo Activity
+![Alt](https://repobeats.axiom.co/api/embed/e391efcc5bf8afd6a5107400eea3b1f5f6be2b56.svg "Repobeats analytics image")
+
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
 
