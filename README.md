@@ -41,13 +41,6 @@ We provide a flexible and modular approach to every step of the billing experien
 
 <br/>
 
-<!-- ABOUT THE PROJECT -->
-## About The Project
-
-Lotus is the quickest way to start billing flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our metering and billing solutions are open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time.
-
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
-
 <!-- GETTING STARTED -->
 ## Getting Started
 
@@ -85,8 +78,6 @@ You should now be able to access the homepage at [localhost:8000/](http://localh
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
-
-
 <!-- USAGE EXAMPLES -->
 ## Examples
 
@@ -102,12 +93,19 @@ Contributions are what make the open source community such an amazing place to l
 If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply [request a feature]().
 Don't forget to give the project a star! Thanks again!
 
+<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+
+<!-- ABOUT THE PROJECT -->
+## About The Project
+
+Lotus is the quickest way to start billing flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our metering and billing solutions are open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time.
+
+<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+
 ## :bar_chart: Repo Activity
 ![Alt](https://repobeats.axiom.co/api/embed/e391efcc5bf8afd6a5107400eea3b1f5f6be2b56.svg "Repobeats analytics image")
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
-
-
 
 <!-- LICENSE -->
 ## License
@@ -115,8 +113,6 @@ Don't forget to give the project a star! Thanks again!
 Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
-
-
 
 <!-- CONTACT -->
 ## Get in Touch
