@@ -103,7 +103,7 @@ Lotus is the quickest way to start billing flexibly and experiment with pricing.
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
 ## :bar_chart: Repo Activity
-![Alt](https://repobeats.axiom.co/api/embed/e391efcc5bf8afd6a5107400eea3b1f5f6be2b56.svg "Repobeats analytics image")
+![Alt](https://repobeats.axiom.co/api/embed/408c31cc31b6650e1e5c00414ec4a77b0277cf99.svg "Repobeats analytics image")
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
