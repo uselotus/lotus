@@ -10,8 +10,10 @@
     },
     "editor.formatOnSave": true,
     "python.testing.pytestArgs": [
-      "metering_billing"
+      "${workspaceFolder}/metering_billing"
     ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.unitTest.unittestEnabled": false,
+    "python.unitTest.nosetestsEnabled": false,
+    "python.unitTest.pyTestEnabled": true,
+    "python.envFile":   "${workspaceFolder}/env/.env",
 }
