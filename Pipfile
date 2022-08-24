@@ -39,6 +39,7 @@ platformdirs = "*"
 isort = "*"
 model-bakery = "*"
 pytest-django = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.9"
