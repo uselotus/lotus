@@ -8,11 +8,11 @@ from django.db import connection
 from django.forms.models import model_to_dict
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django_q.tasks import async_task
+from lotus.settings import STRIPE_SECRET_KEY
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from lotus.settings import STRIPE_SECRET_KEY
 
 from metering_billing.models import (
     BillingPlan,
@@ -151,7 +151,7 @@ class SubscriptionView(APIView):
         else:
             customer = customer_qs[0]
 
-        organization_qs = Organization.objects.filter(id=data["organization_id"])
+        organization_qs = Organization.objects.filter(customer__id=customer.pk)
         if len(organization_qs) < 1:
             return Response(
                 {
