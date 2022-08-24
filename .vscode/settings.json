@@ -10,7 +10,7 @@
     },
     "editor.formatOnSave": true,
     "python.testing.pytestArgs": [
-      "metering_billing/tests"
+      "metering_billing"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true
