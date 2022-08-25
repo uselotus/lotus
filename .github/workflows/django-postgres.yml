@@ -81,7 +81,7 @@ jobs:
         WORKON_HOME: ~/.pipenv/virtualenvs
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
       run: |
-        pipenv run pytest 
+        pipenv run python manage.py test 
 
   codestyle:
 
