@@ -126,15 +126,15 @@ AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-if os.environ.get('GITHUB_WORKFLOW'):
+if os.environ.get("GITHUB_WORKFLOW"):
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'gh_actions_db',
-            'USER': 'gh_actions_user',
-            'PASSWORD': 'gh_actions_user',
-            'HOST': '127.0.0.1',
-            'PORT': '5432',
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "gh_actions_db",
+            "USER": "gh_actions_user",
+            "PASSWORD": "gh_actions_user",
+            "HOST": "127.0.0.1",
+            "PORT": "5432",
         }
     }
 else:

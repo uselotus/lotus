@@ -67,13 +67,21 @@ jobs:
       run: pipenv install --deploy --dev
       if: steps.pipenv-cache.outputs.cache-hit != 'true'
 
-    - name: Migrate + Test
+    - name: Migrate
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
       run: |
-        pipenv run python manage.py migrate --noinput && pipenv run python manage.py test 
+        pipenv run python manage.py migrate --noinput
+    
+    - name: Test
+      env:
+        PIPENV_NOSPIN: 'true'
+        WORKON_HOME: ~/.pipenv/virtualenvs
+        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+      run: |
+        pipenv run pytest 
 
   codestyle:
 
