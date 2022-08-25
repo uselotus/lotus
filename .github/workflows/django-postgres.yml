@@ -21,11 +21,10 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
+          POSTGRES_USER: gh_actions_user
+          POSTGRES_PASSWORD: gh_actions_user
+          POSTGRES_DB: gh_actions_db
           SSLMODE: PREFER
-
         ports:
           - 5432:5432
         # needed because the postgres container does not provide a healthcheck
@@ -72,23 +71,13 @@ jobs:
       run: pipenv install --deploy --dev
       if: steps.pipenv-cache.outputs.cache-hit != 'true'
 
-    - name: Migrations
+    - name: Migrate + Test
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
       run: |
-        pipenv run python manage.py migrate --noinput
-
-    - name: Tests
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
-      run: |
-        pipenv run python manage.py test 
+        pipenv run python manage.py migrate --noinput && pipenv run python manage.py test 
 
   codestyle:
 

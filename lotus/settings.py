@@ -126,26 +126,38 @@ AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-try:
+if os.environ.get('GITHUB_WORKFLOW'):
     DATABASES = {
-        "default": dj_database_url.parse(
-            os.environ["DATABASE_URL"],
-            engine="django.db.backends.postgresql",
-            conn_max_age=600,
-        )
-    }
-    django_heroku.settings(locals(), databases=False)
-except:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ["POSTGRES_NAME"],
-            "USER": os.environ["POSTGRES_USER"],
-            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-            "HOST": os.environ["POSTGRES_HOST"],
-            "PORT": 5432,
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'gh_actions_db',
+            'USER': 'gh_actions_user',
+            'PASSWORD': 'gh_actions_user',
+            'HOST': '127.0.0.1',
+            'PORT': '5432',
         }
     }
+else:
+    try:
+        DATABASES = {
+            "default": dj_database_url.parse(
+                os.environ["DATABASE_URL"],
+                engine="django.db.backends.postgresql",
+                conn_max_age=600,
+            )
+        }
+        django_heroku.settings(locals(), databases=False)
+    except:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": os.environ["POSTGRES_NAME"],
+                "USER": os.environ["POSTGRES_USER"],
+                "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+                "HOST": os.environ["POSTGRES_HOST"],
+                "PORT": 5432,
+            }
+        }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
