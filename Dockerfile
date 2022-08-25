@@ -20,4 +20,4 @@ EXPOSE 8000
 
 # Run Server
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["gunicorn", "--bind", ":8000", "--workers", "3", "lotus.wsgi:application"]
