@@ -37,10 +37,10 @@ jobs:
         REDIS_HOST: localhost
         DJANGO_SETTINGS_MODULE: 'lotus.settings'
         PYTHONPATH: '.'
-        DJANGO_DEBUG: 'False'
         SECRET_KEY: ${{ secrets.SECRET_KEY }}
         CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
         CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
+        DEBUG: False
 
     steps:
     - uses: actions/checkout@v3
