@@ -27,7 +27,7 @@ class Organization(models.Model):
 
     users = models.ManyToManyField(User, blank=True)
     company_name = models.CharField(max_length=100, default=" ")
-    stripe_id = models.CharField(max_length=110, default="", blank=True)
+    stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
