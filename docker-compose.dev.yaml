@@ -3,7 +3,7 @@ services:
     image: postgres:14-alpine
     restart: on-failure
     env_file:
-      - ./env/.env
+      - ./env/.env.dev
     environment:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
       - POSTGRES_USER=${POSTGRES_USER:-db_user}
@@ -13,7 +13,7 @@ services:
   lotus:
     container_name: lotus_django
     env_file:
-      - ./env/.env
+      - ./env/.env.dev
     build:
       context: .
     ports:
@@ -23,22 +23,34 @@ services:
     command: >
       sh -c "python3 manage.py wait_for_db &&
              python3 manage.py migrate &&
-             python manage.py collectstatic --no-input &&
              python3 manage.py initadmin &&
              python3 manage.py setup_tasks &&
              python3 manage.py runserver 0.0.0.0:8000
              "
     depends_on:
       - db
+
+  frontend:
+    restart: always
+    command: yarn dev
+    container_name: front
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    stdin_open: true
+    depends_on:
+      - lotus
   redis:
     image: redis:7-alpine
     command: redis-server
     env_file:
-      - ./env/.env
+      - ./env/.env.dev
 
   celery:
     env_file:
-      - ./env/.env
+      - ./env/.env.dev
     build:
       context: .
     command: celery -A lotus worker -l info
@@ -50,7 +62,7 @@ services:
       - lotus
   celery-beat:
     env_file:
-      - ./env/.env
+      - ./env/.env.dev
     restart: on-failure
     build:
       context: .

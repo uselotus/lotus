@@ -1,14 +1,18 @@
 {
   "name": "Lotus",
-  "description": "Open Source Metering Billing and Pricing",
+  "description": "Open Source Metering, Billing and Pricing",
   "website": "https://www.uselotus.io",
   "repository": "https://github.com/uselotus/lotus",
+  "logo": "https://uploads-ssl.webflow.com/62e1ba3ad04d5942990d1f50/62e1bb93f43aa65fce59c887_Lotus-Brandmark-Logo-RGB-Black-Large%20(1).svg",
   "success_url": "/admin",
-  "addons": [
-    "heroku-postgresql"
+  "addons":[
+    {
+        "plan":"heroku-postgresql"
+    }
   ],
   "buildpacks": [
-    {"url": "https://github.com/heroku/heroku-buildpack-python"}
+    {"url": "heroku/nodejs"},
+    {"url": "heroku/python"}
   ],
   "env": {
     "SECRET_KEY": {
@@ -18,22 +22,25 @@
       "value": "redis://redis:6379/"
     },
     "CELERY_RESULT_BACKEND": {
-        "value": "redis://redis:6379/"
-      },
-      "DISABLE_COLLECTSTATIC": {
-        "value": "1"
-      },
+      "value": "redis://redis:6379/"
+    },
     "DJANGO_SUPERUSER_PASSWORD":{
-        "generator": "secret"
-  },
-  "DJANGO_SUPERUSER_USERNAME":{
+      "value": "password"
+    },
+    "DJANGO_SUPERUSER_USERNAME":{
       "value": "admin"
-  },
-  "DJANGO_SUPERUSER_EMAIL":{
-    "value": "example@example.com"
+    },
+    "DJANGO_SUPERUSER_EMAIL":{
+      "value": "example@example.com"
+    },
+    "STRIPE_API_KEY":{
+      "value": "123"
+    },
+    "STRIPE_SECRET_KEY":{
+      "value": "1234"
     }
-  
-    },"scripts":{
-    "postdeploy":"python manage.py makemigrations home --noinput; python manage.py migrate_schemas; python3 manage.py initadmin"
+  },
+  "scripts":{
+    "postdeploy": ""
   }
 }

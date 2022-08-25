@@ -5,6 +5,7 @@ import { Customer } from "../api/api";
 import * as Toast from "@radix-ui/react-toast";
 import { useNavigate } from "react-router-dom";
 import { Authentication } from "../api/api";
+import "./Login.css";
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;
@@ -45,7 +46,7 @@ const Login: FC = () => {
     return (
       <>
         <div className="container mt-3">
-          <img src="../assets/images/logo_small.svg" alt="logo" />
+          <img src="../assets/images/logo_large.jpg" alt="logo" />
           <h2>Login</h2>
           <form onSubmit={handleLogin}>
             <div className="form-group">

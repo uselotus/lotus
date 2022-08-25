@@ -10,20 +10,25 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
+import re
 from pathlib import Path
 
 import dj_database_url
 import django_heroku
+import environ
 import sentry_sdk
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 
-from celery.schedules import crontab
+env = environ.Env(
+    # set casting, default value
+    DEBUG=(bool, False)
+)
 
-BASE_DIR = Path("./env")
-DOT_ENV = BASE_DIR / ".env"
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+environ.Env.read_env(os.path.join(BASE_DIR, "env/.env"))
 
-load_dotenv(DOT_ENV, override=True)
 
 try:
     sentry_sdk.init(
@@ -43,24 +48,25 @@ except KeyError:
     pass
 
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = env("SECRET_KEY")
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", False)
+DEBUG = env("DEBUG")
 
-try:
+if DEBUG:
     ALLOWED_HOSTS = ["*"]
-except KeyError:
-    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+else:
+    ALLOWED_HOSTS = [
+        "*uselotus.app",
+        "www.uselotus.app",
+        "uselotus.app",
+        ".herokuapp.com",
+    ]
 
 # Application definition
 
@@ -76,7 +82,6 @@ INSTALLED_APPS = [
     "metering_billing",
     "djmoney",
     "django_extensions",
-    "whitenoise.runserver_nostatic",
     "django_celery_beat",
     "rest_framework_api_key",
     "django_vite",
@@ -84,6 +89,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -91,7 +97,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
 ROOT_URLCONF = "lotus.urls"
@@ -121,26 +126,38 @@ AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-try:
-    DATABASES = {
-        "default": dj_database_url.parse(
-            os.environ.get("DATABASE_URL"),
-            engine="django.db.backends.postgresql",
-            conn_max_age=600,
-        )
-    }
-    django_heroku.settings(locals(), databases=False)
-except:
+if os.environ.get("GITHUB_WORKFLOW"):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ["POSTGRES_NAME"],
-            "USER": os.environ["POSTGRES_USER"],
-            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-            "HOST": os.environ["POSTGRES_HOST"],
-            "PORT": 5432,
+            "NAME": "postgres",
+            "USER": "postgres",
+            "PASSWORD": "postgres",
+            "HOST": "127.0.0.1",
+            "PORT": "5432",
         }
     }
+else:
+    try:
+        DATABASES = {
+            "default": dj_database_url.parse(
+                os.environ["DATABASE_URL"],
+                engine="django.db.backends.postgresql",
+                conn_max_age=600,
+            )
+        }
+        django_heroku.settings(locals(), databases=False)
+    except:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": os.environ["POSTGRES_NAME"],
+                "USER": os.environ["POSTGRES_USER"],
+                "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+                "HOST": os.environ["POSTGRES_HOST"],
+                "PORT": 5432,
+            }
+        }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -161,11 +178,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Stripe Settings
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
+try:
+    STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
+except KeyError:
+    STRIPE_SECRET_KEY = ""
 
 # Celery Settings
-CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL")
-CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND")
+CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
+CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -189,7 +209,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-DJANGO_VITE_DEV_SERVER_PORT = 5173
 
 STATIC_URL = "/static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
@@ -200,12 +219,15 @@ STATICFILES_FINDERS = [
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-DJANGO_VITE_DEV_MODE = DEBUG
+DJANGO_VITE_DEV_MODE = os.environ["DEBUG"]
+DJANGO_VITE_DEV_SERVER_HOST = "localhost"
+DJANGO_VITE_DEV_SERVER_PORT = 3000
 
 VITE_APP_DIR = BASE_DIR / "src"
+
 DJANGO_VITE_ASSETS_PATH = BASE_DIR / "static" / "dist"
 
-STATICFILES_DIRS = [str(BASE_DIR / "static"), DJANGO_VITE_ASSETS_PATH]
+STATICFILES_DIRS = [DJANGO_VITE_ASSETS_PATH]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
@@ -232,9 +254,17 @@ SESSION_COOKIE_SAMESITE = "Strict"
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
 
-CELERY_BEAT_SCHEDULE = {
-    "calculate_invoice_schedule": {
-        "task": "metering_billing.tasks.calculate_invoice",
-        "schedule": 60,
-    },
-}
+# Heroku
+django_heroku.settings(locals())
+
+# Vite generates files with 8 hash digits
+# http://whitenoise.evans.io/en/stable/django.html#WHITENOISE_IMMUTABLE_FILE_TEST
+
+
+def immutable_file_test(path, url):
+    # Match filename with 12 hex digits before the extension
+    # e.g. app.db8f2edc0c8a.js
+    return re.match(r"^.+\.[0-9a-f]{8,12}\..+$", url)
+
+
+WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test

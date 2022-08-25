@@ -5,7 +5,7 @@ const Dashboard: FC = () => {
   return (
     <div>
       <h1 className="bg-grey1">Dashboard</h1>
-      <img src={logo_large} alt="lotus" />
+      <img src={logo_large} alt="lotus" height="500" width="auto" />
     </div>
   );
 };

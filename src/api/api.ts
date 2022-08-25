@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import { CustomerType } from "../types/customer-type";
+import { CustomerTableItem, CustomerType } from "../types/customer-type";
 import { PlanType } from "../types/plan-type";
 import {
   StripeConnectType,
@@ -28,7 +28,8 @@ const requests = {
 };
 
 export const Customer = {
-  getCustomers: (): Promise<CustomerType[]> => requests.get("api/customers"),
+  getCustomers: (): Promise<CustomerTableItem[]> =>
+    requests.get("api/customers"),
   getACustomer: (id: number): Promise<CustomerType> =>
     requests.get(`api/customers/${id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>

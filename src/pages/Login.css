@@ -3,7 +3,3 @@ img {
   max-height: 100%;
   object-fit: contain;
 }
-.landscape {
-  height: 32px;
-  width: 16px;
-}

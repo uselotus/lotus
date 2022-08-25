@@ -8,7 +8,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   build: {
     manifest: true,
-    outDir: "./static/dist",
+    outDir: "../static/dist",
     emptyOutDir: true,
     rollupOptions: {
       input: {
@@ -23,16 +23,13 @@ export default defineConfig({
     host: "localhost",
     port: 3000,
     open: false,
-    watch: {
-      usePolling: true,
-      disableGlobbing: false,
-    },
+    middlewareMode: false,
   },
-  base: process.env.mode === "production" ? "/static/" : "/",
-  publicDir: "public",
-  root: "./src/",
+  base: process.env.mode === "production" ? "./" : "/static/",
+  publicDir: "/public",
+  root: "./src",
   resolve: {
-    extensions: [".js", ".json", ".jsx", ".ts", ".tsx"],
+    alias: [{ find: /^~/, replacement: "" }],
   },
 
   plugins: [

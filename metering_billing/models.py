@@ -15,6 +15,7 @@ from model_utils import Choices
 from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
 
+
 PAYMENT_PLANS = Choices(
     ("self_hosted_free", _("Self-Hosted Free")),
     ("cloud", _("Cloud")),
@@ -22,10 +23,12 @@ PAYMENT_PLANS = Choices(
 )
 # Create your models here.
 class User(AbstractUser):
+
     company_name = models.CharField(max_length=200, default=" ")
 
 
 class Organization(models.Model):
+
     users = models.ManyToManyField(User, blank=True)
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, default="", blank=True)
@@ -64,8 +67,16 @@ class Customer(models.Model):
 
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
 
+    properties = models.JSONField(default=dict, blank=True, null=True)
+
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
+
+    def get_billing_plan_name(self) -> str:
+        subscription_object = Subscription.objects.filter(customer=self).first()
+        if subscription_object is None:
+            return "None"
+        return subscription_object.billing_plan.get_plan_name()
 
 
 class Event(models.Model):
@@ -177,6 +188,9 @@ class BillingPlan(models.Model):
 
     def get_usage_cost_count_aggregation(self, num_events):
         return max(0, self.metric_amount * (self.starter_metric_quantity - num_events))
+
+    def get_plan_name(self):
+        return self.name
 
     def __str__(self) -> str:
         return str(self.name) + ":" + str(self.plan_id)
