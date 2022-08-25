@@ -61,7 +61,12 @@ DEBUG = env("DEBUG")
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 else:
-    ALLOWED_HOSTS = ["*uselotus.app", "www.uselotus.app", "uselotus.app", '.herokuapp.com']
+    ALLOWED_HOSTS = [
+        "*uselotus.app",
+        "www.uselotus.app",
+        "uselotus.app",
+        ".herokuapp.com",
+    ]
 
 # Application definition
 
@@ -138,8 +143,9 @@ except:
             "USER": os.environ["POSTGRES_USER"],
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
             "HOST": os.environ["POSTGRES_HOST"],
-            "PORT": 5432 }
+            "PORT": 5432,
         }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators

@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0004_alter_apitoken_options_alter_apitoken_organization'),
+        ("metering_billing", "0004_alter_apitoken_options_alter_apitoken_organization"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customer',
-            name='properties',
+            model_name="customer",
+            name="properties",
             field=models.JSONField(blank=True, default=dict, null=True),
         ),
     ]
