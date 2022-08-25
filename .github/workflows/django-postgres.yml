@@ -72,7 +72,6 @@ jobs:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
       run: |
         pipenv run python manage.py migrate --noinput
     
@@ -81,7 +80,6 @@ jobs:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
-        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
       run: |
         pipenv run python manage.py test 
 
