@@ -17,9 +17,9 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: gh_actions_user
-          POSTGRES_PASSWORD: gh_actions_user
-          POSTGRES_DB: gh_actions_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
           SSLMODE: PREFER
         ports:
           - 5432:5432
@@ -72,6 +72,7 @@ jobs:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
       run: |
         pipenv run python manage.py migrate --noinput
     
@@ -80,6 +81,7 @@ jobs:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
         REDIS_PORT: ${{ job.services.redis.ports[6379] }}
+        DATABASE_URL: 'postgres://postgres:postgres@localhost:${{ job.services.postgres.ports[5432] }}/postgres'
       run: |
         pipenv run python manage.py test 
 
