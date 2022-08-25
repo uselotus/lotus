@@ -61,7 +61,12 @@ DEBUG = env("DEBUG")
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 else:
-    ALLOWED_HOSTS = ["*uselotus.app", "www.uselotus.app", "uselotus.app", '.herokuapp.com']
+    ALLOWED_HOSTS = [
+        "*uselotus.app",
+        "www.uselotus.app",
+        "uselotus.app",
+        ".herokuapp.com",
+    ]
 
 # Application definition
 
@@ -138,8 +143,9 @@ except:
             "USER": os.environ["POSTGRES_USER"],
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
             "HOST": os.environ["POSTGRES_HOST"],
-            "PORT": 5432 }
+            "PORT": 5432,
         }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -161,13 +167,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Stripe Settings
 try:
-    STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY")
+    STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
 except KeyError:
     STRIPE_SECRET_KEY = ""
 
 # Celery Settings
-CELERY_BROKER_URL = env("CELERY_BROKER_URL")
-CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
+CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
+CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -201,7 +207,7 @@ STATICFILES_FINDERS = [
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-DJANGO_VITE_DEV_MODE = env("DEBUG")
+DJANGO_VITE_DEV_MODE = os.environ["DEBUG"]
 DJANGO_VITE_DEV_SERVER_HOST = "localhost"
 DJANGO_VITE_DEV_SERVER_PORT = 3000
 
