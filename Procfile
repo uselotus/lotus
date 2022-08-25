@@ -1,2 +1,2 @@
-release: python manage.py migrate
+release: chmod u+x build.sh && ./build.sh
 web: gunicorn lotus.wsgi

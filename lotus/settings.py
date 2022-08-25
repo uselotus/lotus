@@ -10,16 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
-import environ
 import re
 from pathlib import Path
 
 import dj_database_url
 import django_heroku
+import environ
 import sentry_sdk
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
-import django_heroku
 
 env = environ.Env(
     # set casting, default value
@@ -62,7 +61,7 @@ DEBUG = env("DEBUG")
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 else:
-    ALLOWED_HOSTS = ["*uselotus.app", "www.uselotus.app", "uselotus.app"]
+    ALLOWED_HOSTS = ["*uselotus.app", "www.uselotus.app", "uselotus.app", '.herokuapp.com']
 
 # Application definition
 
@@ -118,7 +117,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "lotus.wsgi.application"
 
-
 AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -136,13 +134,12 @@ except:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": env("POSTGRES_NAME"),
-            "USER": env("POSTGRES_USER"),
-            "PASSWORD": env("POSTGRES_PASSWORD"),
-            "HOST": env("POSTGRES_HOST"),
-            "PORT": 5432,
+            "NAME": os.environ["POSTGRES_NAME"],
+            "USER": os.environ["POSTGRES_USER"],
+            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+            "HOST": os.environ["POSTGRES_HOST"],
+            "PORT": 5432 }
         }
-    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -171,7 +168,6 @@ except KeyError:
 # Celery Settings
 CELERY_BROKER_URL = env("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND")
-
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
