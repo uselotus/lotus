@@ -25,7 +25,7 @@
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.jpg#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing and Billing, Your Way
+# Lotus: Pricing and Billing On Any Metric
 
 <br/>
 
@@ -41,85 +41,42 @@ We provide a flexible and modular approach to every step of the billing experien
 
 <br/>
 
-## Table of Contents
-1. [About the Project](#about-the-project)
-2. [Getting Started](#getting-started)
-    * [Prerequisites](#prerequisites)
-    * [Installation](#installation)
-3. [Examples](#usage)
-4. [Contributing](#contributing)
-5. [License](#license)
-6. [Contact](#contact)
-
-
-<!-- ABOUT THE PROJECT -->
-## About The Project
-
-Lotus is the quickest way to start billing flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our metering and billing solutions are open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time.
-
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
-
 <!-- GETTING STARTED -->
 ## Getting Started
 
+There's a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/lotus-docs) to learn how to use Lotus!
+
+### :cloud: Cloud Version
+
+Best for convenience and fast deployment. 
+
+Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details. 
+
+### :computer: Self-Hosted Version
+
+Best if you want to keep your data local or want full control and extensibility.
+
+#### One-click Deploy with Heroku
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
+#### Set up locally
 
-For docker use this method:
-
-To get a local copy up and running follow these simple example steps.
-
-### Prerequisites
-
-Here are the packages you'll need to install before getting set up with your local instance of Lotus:
-* docker
-  ```sh
-  brew install docker
-  ```
-* docker-compose
-  ```sh
-  brew install docker-compose
-  ```
-
-### Installation
-
-1. Clone the repo
+1. Clone the repo and navigate to the project
    ```sh
-   git clone https://github.com/uselotus/lotus.git
+   git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-2. Navigate to the correct directory
+2. Use [pipenv](https://pipenv.pypa.io/en/latest/) to install the requried packages. 
    ```sh
-   cd lotus
+   pipenv sync
    ```
-3. Build the docker container. This can take a few minutes, so be patient.
+3. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
+4. Run the project! 
    ```sh
-   docker-compose up --build
+   python manage.py runserver
    ```
-4. Navigate to [local.localhost:8000/admin/](http://local.localhost:8000/admin/). This is an experimental, early-stage UI, from which you can track various different stages of the billing process. Sign in using the DJANGO_SUPERUSER_USERNAME and DJANGO_SUPERUSER_PASSWORD in your .env file.
-5. Navigate to [local.localhost:8000/admin/tenant/apitoken/](http://local.localhost:8000/admin/tenant/apitoken/), click on [add an API token](http://local.localhost:8000/admin/tenant/apitoken/add/), and save the generated API token somewhere safe (**you won't see it again!**).
-
-From here, you can either interact with Lotus using the UI, or integrate + test our extensive APIs.
-
-### Lotus UI
-This is what you'll see in the Django UI's homepage. v0 of Lotus is simply an API so Django's built in frontend works as a substitude for our v1 which will be launching soon:
-<br/>
-<img src="./design_resources/lotus_ui_home.png" alt="drawing" width="200"/>
-<br/>
-The workflow is as follows:
-1. Go into the [Customers tab](http://local.localhost:8000/admin/billing/customer/) and create a new customer. Don't worry about the `billing_id`, it's been auto-generated! Just name them, give them a unique id, and decide whether to give them an initial balance on their account.
-2. Create a [billing plan](http://local.localhost:8000/admin/billing/billingplan/add/) for your customer. Don't worry about what you're billing them for _yet_, this simply defines how often you'll be billing them and whether there's a flat fee associated with their plan.
-3. Start logging discrete events in the [Events tab](http://local.localhost:8000/admin/billing/event/). This could be something like an API call, an hourly log of storage usage, or anything you can think of. The `properties` is a fully-customizable json for your own use. Track whetever you think is useful that you might want to group, aggregate, or filter by, such as the geography of origin of the request, number of bytes used, or uptime.
-    * Note that it's compeltely impractical to log events manually in the UI. To use the system at scale, you definitely want to use the API for this step, but this works for testing purposes.
-4. Start creating [billable metrics](http://local.localhost:8000/admin/billing/billablemetric/). Every event can have any amount of billing metrics associated with it, whether that's a simple `count` over the number of events, or a `sum` or `max` over some of the properties you defined in your event type.
-5. Now, we have to connect these billable metrics with specific customers. The way we do this is using [plan components](http://local.localhost:8000/admin/billing/plancomponent/), which allow you to match one of these metrics with a customer's billing plan. Here's where you set the price of the billable metric, and have the ability to tier prices by setting a certain amount of free units of this metric.
-
-
-
-
+You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `DJANGO_SUPERUSER_USERNAME` and `DJANGO_SUPERUSER_PASSWORD` you defined.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
-
-
 
 <!-- USAGE EXAMPLES -->
 ## Examples
@@ -127,11 +84,6 @@ The workflow is as follows:
 _For more examples, please refer to the [Documentation](https://uselotus.stoplight.io/)_
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
-
-
-
-
-
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -143,7 +95,17 @@ Don't forget to give the project a star! Thanks again!
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
+<!-- ABOUT THE PROJECT -->
+## About The Project
 
+Lotus is the quickest way to start billing flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our metering and billing solutions are open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time.
+
+<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+
+## :bar_chart: Repo Activity
+![Alt](https://repobeats.axiom.co/api/embed/408c31cc31b6650e1e5c00414ec4a77b0277cf99.svg "Repobeats analytics image")
+
+<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
 <!-- LICENSE -->
 ## License
@@ -152,10 +114,8 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
-
-
 <!-- CONTACT -->
-## Contact
+## Get in Touch
 
 Lotus founders - founders@uselotus.io
 
