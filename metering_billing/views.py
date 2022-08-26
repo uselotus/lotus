@@ -15,13 +15,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from metering_billing.models import (
+    APIToken,
     BillingPlan,
     Customer,
     Event,
     Organization,
     PlanComponent,
     Subscription,
-    User,
 )
 
 from .permissions import HasUserAPIKey
@@ -205,7 +205,19 @@ class CustomerView(APIView):
         """
         Return a list of all customers.
         """
-        organization = request.user.organization_set.first()
+        organization_user = request.user.organization_set.first()
+        key = request.META["HTTP_AUTHORIZATION"].split()[1]
+        api_token = APIToken.objects.get_from_key(key)
+        organization_api_token = getattr(api_token, "organization")
+        if organization_user is None:
+            return Response(
+                {"error": "User does not have an organization"}, status=403
+            )
+        elif organization_user.pk != organization_api_token.pk:
+            return Response("User organization and API Key organization do not match", status=400)
+        else:
+            organization = organization_user
+
         customers = Customer.objects.filter(organization=organization)
         serializer = CustomerSerializer(customers, many=True)
         customer_list = []
@@ -224,7 +236,18 @@ class CustomerView(APIView):
         """
         Create a new customer.
         """
-        organization = request.user.organization_set.first()
+        organization_user = request.user.organization_set.first()
+        key = request.META["HTTP_AUTHORIZATION"].split()[1]
+        api_token = APIToken.objects.get_from_key(key)
+        organization_api_token = getattr(api_token, "organization")
+        if organization_user is None:
+            return Response(
+                {"error": "User does not have an organization"}, status=403
+            )
+        elif organization_user.pk != organization_api_token.pk:
+            return Response("User organization and API Key organization do not match", status=400)
+        else:
+            organization = organization_user
         request.data["organization"] = organization.pk
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():

@@ -23,7 +23,7 @@ class TestGetCustomers():
     def test_user_in_org_valid_org_api_key_can_access_customers_empty(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
         #covers num customers = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_mismatch=false, authenticated=true
         num_customers = 5
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         user, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth(key)
@@ -38,7 +38,7 @@ class TestGetCustomers():
     def test_user_in_org_valid_org_api_key_can_access_customers_multiple(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
         #covers num customers > 0
         num_customers = 5
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         user, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth(key)
@@ -53,7 +53,7 @@ class TestGetCustomers():
     def test_user_not_in_org_but_valid_org_api_key_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
         #covers user_in_org = false
         num_customers = 5
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         user, = baker.make(User, _quantity=1)
         client = api_client_with_api_key_auth(key)
@@ -67,7 +67,7 @@ class TestGetCustomers():
     def test_user_in_org_but_invalid_org_api_key_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
         #covers has_org_api_key = false
         num_customers = 5
-        org, _ = generate_org_and_api_key
+        org, _ = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         user, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth("bogus-key")
@@ -81,8 +81,8 @@ class TestGetCustomers():
     def test_user_org_and_api_key_different_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
         #covers user_org_and_api_key_org_mismatch = false
         num_customers = 5
-        org1, _ = generate_org_and_api_key
-        org2, key2 = generate_org_and_api_key
+        org1, _ = generate_org_and_api_key()
+        org2, key2 = generate_org_and_api_key()
         add_customers_to_org(org1, n=num_customers)
         add_customers_to_org(org2, n=num_customers)
         user, = add_users_to_org(org1, n=1)
@@ -92,12 +92,12 @@ class TestGetCustomers():
         payload = {}
         response = client.get(reverse("customer"), payload)
         
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_user_not_authenticated_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
         #covers authenticated = false
         num_customers = 5
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         _, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth(key)
@@ -122,7 +122,7 @@ class TestInsertCustomer():
     """
     def test_user_in_org_valid_org_api_key_can_create_customer_empty_before(self, generate_org_and_api_key, add_users_to_org, api_client_with_api_key_auth, get_customers_in_org):
         #covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_mismatch=false, authenticated=true
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         user, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth(key)
         client.force_authenticate(user=user)
@@ -149,7 +149,7 @@ class TestInsertCustomer():
     def test_user_in_org_valid_org_api_key_can_create_customer_nonempty_before(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth, get_customers_in_org):
         #covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_mismatch=false, authenticated=true
         num_customers = 5
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         user, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth(key)
@@ -177,7 +177,7 @@ class TestInsertCustomer():
     def test_user_not_in_org_but_valid_org_api_key_reject_insert(self, generate_org_and_api_key, add_customers_to_org, api_client_with_api_key_auth, get_customers_in_org):
         #covers user_in_org = false
         num_customers = 5
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         user, = baker.make(User, _quantity=1)
         client = api_client_with_api_key_auth(key)
@@ -204,7 +204,7 @@ class TestInsertCustomer():
     def test_user_in_org_but_invalid_org_api_key_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth, get_customers_in_org):
         #covers has_org_api_key = false
         num_customers = 5
-        org, _ = generate_org_and_api_key
+        org, _ = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         user, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth("bogus-key")
@@ -231,8 +231,8 @@ class TestInsertCustomer():
     def test_user_org_and_api_key_different_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth, get_customers_in_org):
         #covers user_org_and_api_key_org_mismatch = false
         num_customers = 5
-        org1, _ = generate_org_and_api_key
-        org2, key2 = generate_org_and_api_key
+        org1, _ = generate_org_and_api_key()
+        org2, key2 = generate_org_and_api_key()
         add_customers_to_org(org1, n=num_customers)
         add_customers_to_org(org2, n=num_customers)
         user, = add_users_to_org(org1, n=1)
@@ -254,14 +254,14 @@ class TestInsertCustomer():
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert len(get_customers_in_org(org1)) == num_customers
         assert len(get_customers_in_org(org2)) == num_customers
 
     def test_user_not_authenticated_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
         #covers authenticated = false
         num_customers = 5
-        org, key = generate_org_and_api_key
+        org, key = generate_org_and_api_key()
         add_customers_to_org(org, n=num_customers)
         _, = add_users_to_org(org, n=1)
         client = api_client_with_api_key_auth(key)

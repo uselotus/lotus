@@ -258,7 +258,7 @@ class APIToken(AbstractAPIKey):
         verbose_name_plural = "API Tokens"
 
 
-@receiver(post_save, sender=Organization)
-def create_token(sender, instance, created=False, **kwargs):
-    if created:
-        APIToken.objects.create(organization=instance)
+# @receiver(post_save, sender=Organization)
+# def create_token(sender, instance, created=False, **kwargs):
+#     if created:
+#         APIToken.objects.create(organization=instance)

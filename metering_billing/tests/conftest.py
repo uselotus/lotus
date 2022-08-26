@@ -16,12 +16,13 @@ def api_client_with_api_key_auth():
 @pytest.fixture
 def generate_org_and_api_key():
     from metering_billing.models import APIToken, Organization
-
-    organization = baker.make(Organization)
-    _, key = APIToken.objects.create_key(
-            name="test-api-key", organization=organization
-        )
-    return organization, key
+    def do_generate_org_and_api_key():
+        organization = baker.make(Organization)
+        _, key = APIToken.objects.create_key(
+                name="test-api-key", organization=organization
+            )
+        return organization, key
+    return do_generate_org_and_api_key
 
 @pytest.fixture
 def add_customers_to_org():
