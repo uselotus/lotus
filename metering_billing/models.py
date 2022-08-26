@@ -24,20 +24,10 @@ class User(AbstractUser):
 
 
 class Organization(models.Model):
-
     users = models.ManyToManyField(User, blank=True)
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
-    payment_plan = models.CharField(
-        max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
-    )
-    id = models.CharField(
-        max_length=40, unique=True, default=uuid.uuid4, primary_key=True
-    )
     created = models.DateField(auto_now=True)
-    users = models.ManyToManyField(User, blank=True, null=True)
-    company_name = models.CharField(max_length=100, default=" ")
-    stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
@@ -223,7 +213,6 @@ class Subscription(models.Model):
         ("active", _("Active")),
         ("ended", _("Ended")),
     )
-    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
@@ -242,8 +231,6 @@ class Subscription(models.Model):
 
 
 class Invoice(models.Model):
-
-    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
     cost_due = models.IntegerField(default=0)
     currency = models.CharField(max_length=10, default="USD")
     issue_date = models.DateTimeField(max_length=100, auto_now=True)

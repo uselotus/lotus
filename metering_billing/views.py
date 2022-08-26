@@ -199,7 +199,7 @@ class SubscriptionView(APIView):
 
 class CustomerView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated & HasUserAPIKey]
 
     def get(self, request, format=None):
         """
@@ -225,7 +225,7 @@ class CustomerView(APIView):
         Create a new customer.
         """
         organization = request.user.organization_set.first()
-        request.data["organization"] = organization
+        request.data["organization"] = organization.pk
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
