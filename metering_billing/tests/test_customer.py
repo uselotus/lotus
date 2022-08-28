@@ -94,19 +94,6 @@ class TestGetCustomers():
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_user_not_authenticated_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
-        #covers authenticated = false
-        num_customers = 5
-        org, key = generate_org_and_api_key()
-        add_customers_to_org(org, n=num_customers)
-        _, = add_users_to_org(org, n=1)
-        client = api_client_with_api_key_auth(key)
-
-        payload = {}
-        response = client.get(reverse("customer"), payload)
-        
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
 @pytest.mark.django_db
 class TestInsertCustomer():
     """Testing the POST of Customer endpoint:
@@ -257,28 +244,3 @@ class TestInsertCustomer():
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert len(get_customers_in_org(org1)) == num_customers
         assert len(get_customers_in_org(org2)) == num_customers
-
-    def test_user_not_authenticated_reject_access(self, generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
-        #covers authenticated = false
-        num_customers = 5
-        org, key = generate_org_and_api_key()
-        add_customers_to_org(org, n=num_customers)
-        _, = add_users_to_org(org, n=1)
-        client = api_client_with_api_key_auth(key)
-
-        payload = {
-            "name":"test_customer",
-            "customer_id":"test_customer_id",
-            "billing_id":"test_billing_id",
-            "balance":30,
-            "currency":"USD",
-            "payment_provider_id":"test_payment_provider_id",
-            "properties": {}
-        }
-        response = client.post(
-            reverse("customer"),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
