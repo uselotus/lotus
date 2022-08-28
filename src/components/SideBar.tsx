@@ -5,12 +5,13 @@ import {
   VideoCameraOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import logo from "../assets/images/corner_logo.svg";
 import "./SideBar.css";
 
 const SideBar: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleCustomersClick = () => {
     navigate("/customers");
@@ -36,20 +37,25 @@ const SideBar: FC = () => {
       >
         <img src={logo} alt="lotus" />
       </div>
-      <Menu theme="dark" mode="vertical" defaultSelectedKeys={["1"]}>
-        <Menu.Item key="1" onClick={handleDashboardClick}>
+      <Menu theme="dark" mode="vertical" selectedKeys={[location.pathname]}>
+        <Menu.Item key="/dashboard" onClick={handleDashboardClick}>
           <UserOutlined />
           <span> Dashboard</span>
         </Menu.Item>
-        <Menu.Item key="2" onClick={handleCustomersClick}>
+        <Menu.Item key="/customers" onClick={handleCustomersClick}>
           <VideoCameraOutlined />
           <span> Customers</span>
         </Menu.Item>
-        <Menu.Item key="3" onClick={handlePlansClick}>
+        <Menu.Item key="/plans" onClick={handlePlansClick}>
           <UploadOutlined />
           <span> Plans</span>
         </Menu.Item>
-        <Menu.Item title="Settings" onClick={handleSettingsClick}>
+        <Menu.Item
+          key="/settings"
+          title="Settings"
+          onClick={handleSettingsClick}
+          className="absolute bottom-0"
+        >
           <span> Settings</span>
         </Menu.Item>
       </Menu>

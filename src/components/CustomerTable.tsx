@@ -46,24 +46,27 @@ const ViewCustomers: FC<Props> = ({ customerArray }) => {
     navigate("/customers/create");
   };
   return (
-    <ProTable<CustomerTableItem>
-      columns={columns}
-      dataSource={customerArray}
-      rowKey="customer_id"
-      search={false}
-      pagination={{
-        showTotal: (total, range) => (
-          <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-        ),
-      }}
-      headerTitle="Customer Table"
-      options={false}
-      toolBarRender={() => [
-        <Button key="primary" type="primary" onClick={navigateCreateCustomer}>
-          Create Customer
-        </Button>,
-      ]}
-    />
+    <React.Fragment>
+      <h1 className="text-3xl font-main">Customers</h1>
+
+      <ProTable<CustomerTableItem>
+        columns={columns}
+        dataSource={customerArray}
+        rowKey="customer_id"
+        search={false}
+        pagination={{
+          showTotal: (total, range) => (
+            <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
+          ),
+        }}
+        options={false}
+        toolBarRender={() => [
+          <Button key="primary" type="primary" onClick={navigateCreateCustomer}>
+            Create Customer
+          </Button>,
+        ]}
+      />
+    </React.Fragment>
   );
 };
 

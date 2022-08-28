@@ -1,8 +1,7 @@
-import React from "react";
 import AppRoutes from "./config/Routes";
 import "./App.css";
 import { Authentication } from "./api/api";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery } from "react-query";
 import Login from "./pages/Login";
 
 function App() {

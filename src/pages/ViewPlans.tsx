@@ -1,7 +1,9 @@
 import React, { FC, useEffect, useState } from "react";
-import { Card, Col, Row, List } from "antd";
+import { Avatar, Divider, List, Skeleton } from "antd";
+import InfiniteScroll from "react-infinite-scroll-component";
 import { Plan } from "../api/api";
 import { PlanType } from "../types/plan-type";
+import PlanDisplayBasic from "../components/PlanDisplayBasic";
 
 const ViewPlans: FC = () => {
   const [plans, setPlans] = useState<PlanType[]>([]);
@@ -12,54 +14,29 @@ const ViewPlans: FC = () => {
     });
   }, []);
 
+  const [loading, setLoading] = useState(false);
+
   return (
     <div>
-      <h1 className="bg-grey1">Plans</h1>
+      <h1 className="text-3xl font-main">Plans</h1>
       <br />
-      <div className="site-card-wrapper">
-        <Row gutter={18}>
-          {plans.map((plan, k) => (
-            <Col key={k} span={6}>
-              <Card title={plan.name} bordered={true}>
-                <p>{plan.description}</p>
-                <p>Billing Interval: {plan.billing_interval}</p>
-                <p>
-                  Subscription Rate: ${plan.flat_rate}/{plan.billing_interval}
-                </p>
-                <List
-                  bordered={true}
-                  itemLayout="horizontal"
-                  dataSource={plan.components}
-                  renderItem={(item) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        title={item.metric_name}
-                        description={
-                          <div>
-                            <p>
-                              Aggregation type: {item.aggregation_type} over{" "}
-                              {item.property_name}
-                            </p>
-                            <p>
-                              Included Initial Amount:
-                              <b>{item.free_metric_quantity}</b>
-                            </p>
-                            <p>
-                              Then <b>${item.cost_per_metric}</b> per{" "}
-                              <b>
-                                {item.unit_per_cost} {item.metric_name}
-                              </b>
-                            </p>
-                          </div>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
-              </Card>
-            </Col>
-          ))}
-        </Row>
+      <div
+        id="scrollableDiv"
+        style={{
+          overflow: "auto",
+          padding: "0 16px",
+          border: "1px solid rgba(140, 140, 140, 0.35)",
+        }}
+      >
+        <List
+          bordered={false}
+          dataSource={plans}
+          renderItem={(item) => (
+            <List.Item key={item.name}>
+              <PlanDisplayBasic plan={item} />
+            </List.Item>
+          )}
+        />
       </div>
     </div>
   );

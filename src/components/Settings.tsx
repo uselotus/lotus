@@ -1,11 +1,9 @@
 import React, { FC, useState } from "react";
 import "./Settings.css";
 import { StripeStatusType } from "../types/stripe-type";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery } from "react-query";
 import { StripeConnect } from "../api/api";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { loadEnv } from "vite";
 
 const Settings: FC = () => {
   const navigate = useNavigate();
