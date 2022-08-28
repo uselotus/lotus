@@ -222,7 +222,7 @@ class CustomerView(APIView):
         Return a list of all customers.
         """
         coalesced = coalesce_api_org_user_org(request)
-        if type(coalesced) == type(Response):
+        if type(coalesced) == Response:
             return coalesced
         else:
             organization = coalesced
@@ -246,7 +246,7 @@ class CustomerView(APIView):
         Create a new customer.
         """
         coalesced = coalesce_api_org_user_org(request)
-        if type(coalesced) == type(Response):
+        if type(coalesced) == Response:
             return coalesced
         else:
             organization = coalesced
