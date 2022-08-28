@@ -9,8 +9,8 @@ from rest_framework import status
 
 
 @pytest.fixture
-def customer_test_common_workflow(generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
-    def do_customer_test_common_workflow(*, num_customers, has_org_api_key, user_in_org, user_org_and_api_key_org_different):
+def customer_test_common_setup(generate_org_and_api_key, add_customers_to_org, add_users_to_org, api_client_with_api_key_auth):
+    def do_customer_test_common_setup(*, num_customers, has_org_api_key, user_in_org, user_org_and_api_key_org_different):
         #set up organizations and api keys
         org, key = generate_org_and_api_key()
         org2, key2 = generate_org_and_api_key()
@@ -46,7 +46,7 @@ def customer_test_common_workflow(generate_org_and_api_key, add_customers_to_org
         client.force_authenticate(user=user)
 
         return return_dict
-    return do_customer_test_common_workflow
+    return do_customer_test_common_setup
 
 @pytest.mark.django_db
 class TestGetCustomers():
@@ -59,10 +59,10 @@ class TestGetCustomers():
         user_org_and_api_key_org_different: true, false
     """
 
-    def test_user_in_org_valid_org_api_key_can_access_customers_empty(self, customer_test_common_workflow):
+    def test_user_in_org_valid_org_api_key_can_access_customers_empty(self, customer_test_common_setup):
         #covers num customers = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
         num_customers = 0
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=True,
@@ -76,10 +76,10 @@ class TestGetCustomers():
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == num_customers
 
-    def test_user_in_org_valid_org_api_key_can_access_customers_multiple(self, customer_test_common_workflow):
+    def test_user_in_org_valid_org_api_key_can_access_customers_multiple(self, customer_test_common_setup):
         #covers num customers > 0
         num_customers = 5
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=True,
@@ -93,10 +93,10 @@ class TestGetCustomers():
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == num_customers
 
-    def test_user_not_in_org_but_valid_org_api_key_reject_access(self, customer_test_common_workflow):
+    def test_user_not_in_org_but_valid_org_api_key_reject_access(self, customer_test_common_setup):
         #covers user_in_org = false
         num_customers = 1
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=False,
@@ -109,10 +109,10 @@ class TestGetCustomers():
         
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_user_in_org_but_invalid_org_api_key_reject_access(self, customer_test_common_workflow):
+    def test_user_in_org_but_invalid_org_api_key_reject_access(self, customer_test_common_setup):
         #covers has_org_api_key = false
         num_customers = 2
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=False,
             user_in_org=True,
@@ -125,10 +125,10 @@ class TestGetCustomers():
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_user_org_and_api_key_different_reject_access(self, customer_test_common_workflow):
+    def test_user_org_and_api_key_different_reject_access(self, customer_test_common_setup):
         #covers user_org_and_api_key_org_different = true
         num_customers = 3
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=True,
@@ -165,10 +165,10 @@ class TestInsertCustomer():
         num_customers_before_insert = 0, >0
     """
 
-    def test_user_in_org_valid_org_api_key_can_create_customer_empty_before(self, customer_test_common_workflow, insert_customer_payload, get_customers_in_org):
+    def test_user_in_org_valid_org_api_key_can_create_customer_empty_before(self, customer_test_common_setup, insert_customer_payload, get_customers_in_org):
         #covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
         num_customers = 0
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=True,
@@ -187,10 +187,10 @@ class TestInsertCustomer():
         assert len(response.data) > 0 #check that the response is not empty
         assert len(get_customers_in_org(org)) == 1
 
-    def test_user_in_org_valid_org_api_key_can_create_customer_nonempty_before(self, customer_test_common_workflow, insert_customer_payload, get_customers_in_org):
+    def test_user_in_org_valid_org_api_key_can_create_customer_nonempty_before(self, customer_test_common_setup, insert_customer_payload, get_customers_in_org):
         #covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false, authenticated=true
         num_customers = 5
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=True,
@@ -209,10 +209,10 @@ class TestInsertCustomer():
         assert len(response.data) > 0
         assert len(get_customers_in_org(org)) == num_customers+1
 
-    def test_user_not_in_org_but_valid_org_api_key_reject_insert(self, customer_test_common_workflow, insert_customer_payload, get_customers_in_org):
+    def test_user_not_in_org_but_valid_org_api_key_reject_insert(self, customer_test_common_setup, insert_customer_payload, get_customers_in_org):
         #covers user_in_org = false
         num_customers = 0
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=False,
@@ -230,10 +230,10 @@ class TestInsertCustomer():
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert len(get_customers_in_org(org)) == num_customers
 
-    def test_user_in_org_but_invalid_org_api_key_reject_access(self, customer_test_common_workflow, insert_customer_payload, get_customers_in_org):
+    def test_user_in_org_but_invalid_org_api_key_reject_access(self, customer_test_common_setup, insert_customer_payload, get_customers_in_org):
         #covers has_org_api_key = false
         num_customers = 5
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=False,
             user_in_org=True,
@@ -251,10 +251,10 @@ class TestInsertCustomer():
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert len(get_customers_in_org(org)) == num_customers
 
-    def test_user_org_and_api_key_different_reject_access(self, customer_test_common_workflow, insert_customer_payload, get_customers_in_org):
+    def test_user_org_and_api_key_different_reject_access(self, customer_test_common_setup, insert_customer_payload, get_customers_in_org):
         #covers user_org_and_api_key_org_different = True
         num_customers = 3
-        return_dict = customer_test_common_workflow(
+        return_dict = customer_test_common_setup(
             num_customers=num_customers,
             has_org_api_key=True,
             user_in_org=True,
