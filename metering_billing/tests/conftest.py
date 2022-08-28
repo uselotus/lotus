@@ -49,8 +49,6 @@ def add_users_to_org():
 
     def do_add_users_to_org(organization, n):
         user_set = baker.make(User, _quantity=n, organization=organization)
-        organization.users.add(*user_set)
-        organization.save()
         return user_set
     
     return do_add_users_to_org
