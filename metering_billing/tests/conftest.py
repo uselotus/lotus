@@ -54,3 +54,33 @@ def add_users_to_org():
         return user_set
     
     return do_add_users_to_org
+
+@pytest.fixture
+def create_events_with_org_customer():
+    from metering_billing.models import Event
+
+    def do_create_events_with_org_customer(organization, customer, n):
+        event_set = baker.make(Event, _quantity=n, organization=organization, customer=customer)
+        return event_set
+    
+    return do_create_events_with_org_customer
+
+@pytest.fixture
+def get_events_with_org_customer_id():
+    from metering_billing.models import Event
+
+    def do_get_events_with_org_customer_id(organization, customer_id):
+        event_set = Event.objects.filter(organization=organization, customer__customer_id=customer_id)
+        return event_set
+    
+    return do_get_events_with_org_customer_id
+
+@pytest.fixture
+def get_events_with_org():
+    from metering_billing.models import Event
+
+    def do_get_events_with_org(organization):
+        event_set = Event.objects.filter(organization=organization)
+        return event_set
+    
+    return do_get_events_with_org
