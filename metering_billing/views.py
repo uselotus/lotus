@@ -64,11 +64,15 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
 
 class PlansView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & HasUserAPIKey]
 
     def get(self, request, format=None):
 
-        organization = request.user.organization
+        coalesced = coalesce_api_org_user_org(request)
+        if type(coalesced) == Response:
+            return coalesced
+        else:
+            organization = coalesced
         plans = BillingPlan.objects.filter(organization=organization)
 
         plans_list = []
