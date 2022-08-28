@@ -37,7 +37,7 @@ from .tasks import generate_invoice
 stripe.api_key = STRIPE_SECRET_KEY
 
 def coalesce_api_org_user_org(request):
-    organization_user = request.user.organization_set.first()
+    organization_user = request.user.organization
     key = request.META["HTTP_AUTHORIZATION"].split()[1]
     api_token = APIToken.objects.get_from_key(key)
     organization_api_token = getattr(api_token, "organization")
@@ -68,7 +68,7 @@ class PlansView(APIView):
 
     def get(self, request, format=None):
 
-        organization = request.user.organization_set.first()
+        organization = request.user.organization
         plans = BillingPlan.objects.filter(organization=organization)
 
         plans_list = []
@@ -125,7 +125,7 @@ class SubscriptionView(APIView):
         List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
         """
 
-        organization = request.user.organization_set.first()
+        organization = request.user.organization
         if "customer_id" in request.query_params:
             customer_id = request.query_params["customer_id"]
             try:
@@ -149,7 +149,7 @@ class SubscriptionView(APIView):
         Create a new subscription, joining a customer and a plan.
         """
         data = request.data
-        organization = request.user.organization_set.first()
+        organization = request.user.organization
 
         customer_qs = Customer.objects.filter(
             customer_id=data["customer_id"], organization=organization
@@ -408,7 +408,7 @@ class InitializeStripeView(APIView):
         Check to see if user has connected their Stripe account.
         """
 
-        organization = request.user.organization_set.first()
+        organization = request.user.organization
 
         stripe_id = organization.stripe_id
 
