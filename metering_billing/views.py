@@ -22,6 +22,7 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
     User,
+    APIToken,
 )
 
 from .permissions import HasUserAPIKey
@@ -35,6 +36,14 @@ from .serializers import (
 from .tasks import generate_invoice
 
 stripe.api_key = STRIPE_SECRET_KEY
+
+
+def get_organization_from_key(request):
+    validator = HasUserAPIKey()
+    key = validator.get_key(request)
+    api_key = APIToken.objects.get_from_key(key)
+    organization = api_key.organization
+    return organization
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -205,7 +214,7 @@ class CustomerView(APIView):
         """
         Return a list of all customers.
         """
-        organization = request.user.organization_set.first()
+        organization = get_organization_from_key(request)
         customers = Customer.objects.filter(organization=organization)
         serializer = CustomerSerializer(customers, many=True)
         customer_list = []
@@ -224,8 +233,7 @@ class CustomerView(APIView):
         """
         Create a new customer.
         """
-        organization = request.user.organization_set.first()
-        request.data["organization"] = organization
+        request.data["organization"] = get_organization_from_key(request)
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
