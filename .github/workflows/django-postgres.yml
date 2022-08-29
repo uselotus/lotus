@@ -3,7 +3,12 @@
 
 name: Django/Postgres CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: ["main", "tests-revamp"]
+  pull_request:
+    branches: ["main", "tests-revamp"]
+
 
 permissions:
   contents: read
@@ -71,7 +76,6 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
       run: |
         pipenv run python manage.py migrate --noinput
     
@@ -79,9 +83,8 @@ jobs:
       env:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
-        REDIS_PORT: ${{ job.services.redis.ports[6379] }}
       run: |
-        pipenv run python manage.py test 
+        pipenv run pytest 
 
   codestyle:
 
