@@ -1,4 +1,3 @@
-from ast import Or
 import base64
 import json
 from re import S
@@ -13,7 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 
-from metering_billing.models import BillingPlan, Customer, Event, Organization, APIToken
+from metering_billing.models import APIToken, BillingPlan, Customer, Event, Organization
 
 from .permissions import HasUserAPIKey
 
@@ -22,7 +21,6 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
     """
     Loads an event from the request body.
     """
-
     if request.content_type == "application/json":
         try:
             event_data = json.loads(request.body)
@@ -65,7 +63,7 @@ def ingest_event(request, data: dict, customer: Customer, organization) -> None:
     if "properties" in data:
         db_event.properties = data["properties"]
     db_event.save()
-    return JsonResponse({"status": "Success"}, status=200)
+    return JsonResponse({"status": "Success"}, status=201)
 
 
 @csrf_exempt

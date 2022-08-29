@@ -1,44 +1,37 @@
 import uuid
-from email.mime import base
-from operator import mod
 
 from dateutil.parser import isoparse
 from dateutil.relativedelta import relativedelta
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
-from django.db.models.signals import post_save, pre_delete
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
 from model_utils import Choices
-from moneyed import Money
 from rest_framework_api_key.models import AbstractAPIKey
-
 
 PAYMENT_PLANS = Choices(
     ("self_hosted_free", _("Self-Hosted Free")),
     ("cloud", _("Cloud")),
     ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
 )
-# Create your models here.
-class User(AbstractUser):
-
-    company_name = models.CharField(max_length=200, default=" ")
 
 
 class Organization(models.Model):
-
-    users = models.ManyToManyField(User, blank=True)
     company_name = models.CharField(max_length=100, default=" ")
-    stripe_id = models.CharField(max_length=110, default="", blank=True)
+    stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
+    created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
-    id = models.CharField(
-        max_length=40, unique=True, default=uuid.uuid4, primary_key=True
+
+
+class User(AbstractUser):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True
     )
-    created_on = models.DateField(auto_now_add=True)
 
 
 class Customer(models.Model):
@@ -89,15 +82,14 @@ class Event(models.Model):
     """
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
-    time_created: models.DateTimeField = models.DateTimeField()
-    properties: models.JSONField = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id: models.CharField = models.CharField(max_length=255, unique=True)
+    time_created = models.DateTimeField()
+    properties = models.JSONField(default=dict, blank=True, null=True)
+    idempotency_id = models.CharField(max_length=255, unique=True)
 
     class Meta:
-        ordering = ["idempotency_id"]
+        ordering = ["time_created", "idempotency_id"]
 
     def __str__(self):
         return str(self.event_name) + "-" + str(self.idempotency_id)
@@ -116,11 +108,13 @@ class BillableMetric(models.Model):
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
-    property_name = models.CharField(max_length=200, null=True)
+    property_name = models.CharField(max_length=200, blank=True, null=True)
     aggregation_type = models.CharField(
         max_length=10,
         choices=AGGREGATION_CHOICES,
         default=AGGREGATION_CHOICES.count,
+        blank=False,
+        null=False,
     )
 
     def __str__(self):
@@ -146,31 +140,27 @@ class BillingPlan(models.Model):
     billable_metrics: a json containing a list of billable_metrics objects
     """
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-    plan_id = models.CharField(
-        max_length=36, blank=True, unique=True, default=uuid.uuid4
-    )
-
-    time_created: models.DateTimeField = models.DateTimeField(auto_now=True)
-    currency = models.CharField(max_length=30, default="USD")  # 30 is arbitrary
-
     INTERVAL_CHOICES = Choices(
         ("week", _("Week")),
         ("month", _("Month")),
         ("year", _("Year")),
     )
 
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    plan_id = models.CharField(
+        max_length=36, blank=True, unique=True, default=uuid.uuid4
+    )
+    time_created = models.DateTimeField(auto_now=True)
+    currency = models.CharField(max_length=30, default="USD")  # 30 is arbitrary
     interval = models.CharField(
         max_length=5,
         choices=INTERVAL_CHOICES,
         default=INTERVAL_CHOICES.month,
     )
-
     flat_rate = MoneyField(
         decimal_places=2, max_digits=8, default_currency="USD", default=0.0
     )
     pay_in_advance = models.BooleanField(default=False)
-
     name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ", blank=True)
 
@@ -182,7 +172,7 @@ class BillingPlan(models.Model):
             return start_date_parsed + relativedelta(months=+1)
         elif self.interval == "year":
             return start_date_parsed + relativedelta(years=+1)
-        else:
+        else:  # fix!!! should not work
             print("none")
             return None
 
@@ -220,15 +210,12 @@ class Subscription(models.Model):
     status: The status of the subscription, active or ended.
     """
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     STATUSES = Choices(
         ("active", _("Active")),
         ("ended", _("Ended")),
     )
-
-    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
-
-    customer: models.ForeignKey = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
     start_date = models.DateField()
     end_date = models.DateField()
@@ -245,8 +232,6 @@ class Subscription(models.Model):
 
 
 class Invoice(models.Model):
-
-    id = models.CharField(primary_key=True, max_length=36, default=uuid.uuid4)
     cost_due = models.IntegerField(default=0)
     currency = models.CharField(max_length=10, default="USD")
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
@@ -254,13 +239,9 @@ class Invoice(models.Model):
     customer_name = models.CharField(max_length=100)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     customer_billing_id = models.CharField(max_length=40)
-
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
-
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
-
     status = models.CharField(max_length=10, default="pending")
-
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
 
 
@@ -278,7 +259,7 @@ class APIToken(AbstractAPIKey):
         verbose_name_plural = "API Tokens"
 
 
-@receiver(post_save, sender=Organization)
-def create_token(sender, instance, created=False, **kwargs):
-    if created:
-        APIToken.objects.create(organization=instance)
+# @receiver(post_save, sender=Organization)
+# def create_token(sender, instance, created=False, **kwargs):
+#     if created:
+#         APIToken.objects.create(organization=instance)
