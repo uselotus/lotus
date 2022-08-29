@@ -230,6 +230,8 @@ class SubscriptionView(APIView):
         }
         if data.get("auto_renew"):
             subscription_kwargs["auto_renew"] = data.get("auto_renew")
+        if data.get("next_plan"):
+            subscription_kwargs["next_plan"] = data.get("next_plan")
         if end_date < datetime.now():
             subscription_kwargs["status"] = "ended"
         elif start_date < datetime.now():

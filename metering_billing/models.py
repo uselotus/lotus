@@ -220,18 +220,21 @@ class Subscription(models.Model):
     class STATUS_TYPES(object):
         ACTIVE = "active"
         ENDED = "ended"
+        NOT_STARTED = "not_started"
 
     STATUS_CHOICES = Choices(
         (STATUS_TYPES.ACTIVE, _("Active")),
         (STATUS_TYPES.ENDED, _("Ended")),
+        (STATUS_TYPES.next_plan, _("Not Started")),
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    status = models.CharField(max_length=6, choices=STATUS_CHOICES, default=STATUS_CHOICES.active)
+    status = models.CharField(max_length=6, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_started)
     auto_renew = models.BooleanField(default=True)
+    next_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
         unique_together = (
@@ -240,6 +243,12 @@ class Subscription(models.Model):
             "start_date",
             "end_date",
         )
+    
+    def save(self,*args,**kwargs): 
+        if not self.next_plan:
+            self.next_plan = self.billing_plan   
+        
+        super(Subscription,self).save(*args,**kwargs) 
 
     def __str__(self):
         return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
@@ -261,7 +270,6 @@ class Invoice(models.Model):
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
-    customer_billing_id = models.CharField(max_length=40)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent)
