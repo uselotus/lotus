@@ -1,43 +1,30 @@
+import json
+
 from metering_billing.models import Customer, Event, Invoice, Subscription
+from metering_billing.views import get_subscription_usage
 
 
 def generate_invoice(subscription):
     """
     Generate an invoice for a subscription.
     """
+
+    usage_dict = get_subscription_usage(subscription)
+    
     # Get the customer
-    customer_obj = subscription.customer
-
-    # Get the billing plan
+    customer = subscription.customer
     billing_plan = subscription.billing_plan
-
-    billable_metric = billing_plan.billable_metric
-    aggregation_type = billable_metric.get_aggregation_type()
-
-    # Get the events for the subscription
-    events = Event.objects.all().filter(event_name=billable_metric.event_name)
-
-    if aggregation_type == "count":
-        # Get the total number of events
-        num_events = len(events)
-        usage_cost = billing_plan.get_usage_cost_count_aggregation(num_events)
-
-    else:
-        usage_cost = 0.0
-
-    # Get the total cost of the subscription
-    total_cost = billing_plan.flat_rate + usage_cost
-
+    print("LINE ITEMS", usage_dict["plan_components_summary"])
     # Create the invoice
-    invoice = Invoice(
-        cost_due=total_cost,
+    invoice = Invoice.objects.create(
+        cost_due=usage_dict["current_amount_due"],
         currency=billing_plan.currency,
         issue_date=subscription.end_date,
+        organization=subscription.organization,
+        customer_name=customer.name,
+        customer=customer,
+        customer_billing_id=customer.billing_id,
         subscription=subscription,
-        customer_name=customer_obj.name,
-        customer_billing_id=customer_obj.billing_id,
     )
-    invoice.save()
 
-    # Create the events for the invoice
     return invoice

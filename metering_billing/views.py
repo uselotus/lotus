@@ -23,16 +23,14 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
 )
-
-from .permissions import HasUserAPIKey
-from .serializers import (
+from metering_billing.permissions import HasUserAPIKey
+from metering_billing.serializers import (
     BillingPlanSerializer,
     CustomerSerializer,
     EventSerializer,
     PlanComponentSerializer,
     SubscriptionSerializer,
 )
-from .tasks import generate_invoice
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -113,9 +111,6 @@ class PlansView(APIView):
             plan_breakdown["billing_interval"] = plan_data["interval"]
             plan_breakdown["description"] = plan_data["description"]
             plan_breakdown["flat_rate"] = plan_data["flat_rate"]
-
-            plans_list.append(plan_breakdown)
-
         return JsonResponse(plans_list, safe=False)
 
     def post(self, request, format=None):
@@ -262,17 +257,120 @@ class CustomerView(APIView):
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
+def get_subscription_usage(subscription):
+    plan = subscription.billing_plan
+    flat_rate = int(plan.flat_rate.amount)
+    plan_start_timestamp = subscription.start_date
+    plan_end_timestamp = subscription.end_date
+
+    plan_components_qs = PlanComponent.objects.filter(billing_plan=plan.id)
+    subscription_cost = 0
+    plan_components_summary = {}
+    # For each component of the plan, calculate usage/cost
+    for plan_component in plan_components_qs:
+        billable_metric = plan_component.billable_metric
+        event_name = billable_metric.event_name
+        aggregation_type = billable_metric.aggregation_type
+        subtotal_usage = 0.0
+        subtotal_cost = 0.0
+
+        events = Event.objects.filter(
+            organization=subscription.customer.organization,
+            customer=subscription.customer,
+            event_name=event_name,
+            time_created__gte=plan_start_timestamp,
+            time_created__lte=plan_end_timestamp,
+        )
+
+        if aggregation_type == "count":
+            subtotal_usage = len(events) - plan_component.free_metric_quantity
+            metric_batches = math.ceil(
+                subtotal_usage / plan_component.metric_amount_per_cost
+            )
+        elif aggregation_type == "sum":
+            property_name = billable_metric.property_name
+            for event in events:
+                properties_dict = event.properties
+                if property_name in properties_dict:
+                    subtotal_usage += float(properties_dict[property_name])
+            subtotal_usage -= plan_component.free_metric_quantity
+            metric_batches = math.ceil(
+                subtotal_usage / plan_component.metric_amount_per_cost
+            )
+
+        elif aggregation_type == "max":
+            property_name = billable_metric.property_name
+            for event in events:
+                properties_dict = event.properties
+                if property_name in properties_dict:
+                    subtotal_usage = max(
+                        subtotal_usage, float(properties_dict[property_name])
+                    )
+                metric_batches = subtotal_usage
+        subtotal_cost = int(
+            (metric_batches * plan_component.cost_per_metric).amount
+        )
+        subscription_cost += subtotal_cost
+
+        subtotal_cost_string = "$" + str(subtotal_cost)
+        plan_components_summary[str(plan_component)] = {
+            "cost": subtotal_cost_string,
+            "usage": str(subtotal_usage),
+            "free_usage_left": str(
+                max(plan_component.free_metric_quantity - subtotal_usage, 0)
+            ),
+        }
+        usage_dict = {
+            "subscription_cost": subscription_cost,
+            "flat_rate": flat_rate,
+            "plan_components_summary": plan_components_summary,
+            "current_amount_due": subscription_cost + flat_rate,
+            "plan_start_timestamp": plan_start_timestamp,
+            "plan_end_timestamp": plan_end_timestamp,
+        }
+
+    return usage_dict
+
+def get_customer_usage(customer):
+    customer_subscriptions = Subscription.objects.filter(
+        customer=customer, 
+        status="active", 
+        organization=customer.organization
+    )
+
+    usage_summary = {}
+    for subscription in customer_subscriptions:
+        
+        usage_dict = get_subscription_usage(subscription)
+        subscription_usage_dict = {
+            "total_usage_cost": "$" + str(usage_dict["subscription_cost"]),
+            "flat_rate_cost": "$" + str(usage_dict["flat_rate"]),
+            "components": usage_dict["plan_components_summary"],
+            "current_amount_due": "$" + str(usage_dict["current_amount_due"]),
+            "billing_start_date": usage_dict["plan_start_timestamp"],
+            "billing_end_date": usage_dict["plan_end_timestamp"],
+        }
+
+        usage_summary[subscription.billing_plan.name] = subscription_usage_dict
+    
+    return usage_summary
 
 class UsageView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated & HasUserAPIKey]
 
     def get(self, request, format=None):
         """
         Return current usage for a customer during a given billing period.
         """
+        coalesced = coalesce_api_org_user_org(request)
+        if type(coalesced) == Response:
+            return coalesced
+        else:
+            organization = coalesced
+
         customer_id = request.query_params["customer_id"]
-        customer_qs = Customer.objects.filter(customer_id=customer_id)
+        customer_qs = Customer.objects.filter(organization=organization, customer_id=customer_id)
 
         if len(customer_qs) < 1:
             return Response(
@@ -285,82 +383,8 @@ class UsageView(APIView):
             )
         else:
             customer = customer_qs[0]
-        customer_subscriptions = Subscription.objects.filter(
-            customer=customer, status="active"
-        )
 
-        usage_summary = {}
-        for subscription in customer_subscriptions:
-
-            plan = subscription.billing_plan
-            flat_rate = int(plan.flat_rate.amount)
-            plan_start_timestamp = subscription.start_date
-            plan_end_timestamp = subscription.end_date
-
-            plan_components_qs = PlanComponent.objects.filter(billing_plan=plan.id)
-            subscription_cost = 0
-            plan_components_summary = {}
-            # For each component of the plan, calculate usage/cost
-            for plan_component in plan_components_qs:
-                billable_metric = plan_component.billable_metric
-                event_name = billable_metric.event_name
-                aggregation_type = billable_metric.aggregation_type
-                subtotal_usage = 0.0
-                subtotal_cost = 0.0
-
-                events = Event.objects.filter(
-                    event_name=event_name,
-                    time_created__gte=plan_start_timestamp,
-                    time_created__lte=plan_end_timestamp,
-                )
-
-                if aggregation_type == "count":
-                    subtotal_usage = len(events) - plan_component.free_metric_quantity
-                    metric_batches = math.ceil(
-                        subtotal_usage / plan_component.metric_amount_per_cost
-                    )
-                elif aggregation_type == "sum":
-                    property_name = billable_metric.property_name
-                    for event in events:
-                        properties_dict = event.properties
-                        if property_name in properties_dict:
-                            subtotal_usage += float(properties_dict[property_name])
-                    subtotal_usage -= plan_component.free_metric_quantity
-                    metric_batches = math.ceil(
-                        subtotal_usage / plan_component.metric_amount_per_cost
-                    )
-
-                elif aggregation_type == "max":
-                    property_name = billable_metric.property_name
-                    for event in events:
-                        properties_dict = event.properties
-                        if property_name in properties_dict:
-                            subtotal_usage = max(
-                                subtotal_usage, float(properties_dict[property_name])
-                            )
-                        metric_batches = subtotal_usage
-                subtotal_cost = int(
-                    (metric_batches * plan_component.cost_per_metric).amount
-                )
-                subscription_cost += subtotal_cost
-
-                subtotal_cost_string = "$" + str(subtotal_cost)
-                plan_components_summary[str(plan_component)] = {
-                    "cost": subtotal_cost_string,
-                    "usage": str(subtotal_usage),
-                    "free_usage_left": str(
-                        max(plan_component.free_metric_quantity - subtotal_usage, 0)
-                    ),
-                }
-
-            usage_summary[plan.name] = {
-                "total_usage_cost": "$" + str(subscription_cost),
-                "flat_rate_cost": "$" + str(flat_rate),
-                "components": plan_components_summary,
-                "current_amount_due": "$" + str(subscription_cost + flat_rate),
-                "billing_start_date": plan_start_timestamp,
-                "billing_end_date": plan_end_timestamp,
-            }
+        usage_summary = get_customer_usage(customer)
 
         usage_summary["# of Active Subscriptions"] = len(usage_summary)
         return Response(usage_summary)
