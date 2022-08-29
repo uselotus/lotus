@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { Card } from "antd";
+import { Card, Divider } from "antd";
 import RevenueDisplay from "./RevenueDisplay";
 import SubscriptionStatistics from "./SubscriptionStatistics";
 import MetricBarGraph from "./MetricBarGraph";
@@ -16,7 +16,8 @@ const Dashboard: FC = () => {
           <SubscriptionStatistics />
         </Card>
       </div>
-      <div>
+      <Divider />
+      <div className="my-10">
         <MetricBarGraph />
       </div>
     </div>

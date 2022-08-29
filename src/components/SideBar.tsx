@@ -1,10 +1,13 @@
 import React, { FC } from "react";
 import { Menu } from "antd";
 import {
+  BarChartOutlined,
   UserOutlined,
-  VideoCameraOutlined,
   UploadOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
+import { GearIcon, ImageIcon, SunIcon } from "@radix-ui/react-icons";
+
 import { useNavigate, useLocation } from "react-router";
 import logo from "../assets/images/corner_logo.svg";
 import "./SideBar.css";
@@ -37,13 +40,17 @@ const SideBar: FC = () => {
       >
         <img src={logo} alt="lotus" />
       </div>
-      <Menu theme="dark" mode="vertical" selectedKeys={[location.pathname]}>
+      <Menu
+        mode="vertical"
+        selectedKeys={[location.pathname]}
+        className="min-h-screen"
+      >
         <Menu.Item key="/dashboard" onClick={handleDashboardClick}>
-          <UserOutlined />
+          <BarChartOutlined />
           <span> Dashboard</span>
         </Menu.Item>
         <Menu.Item key="/customers" onClick={handleCustomersClick}>
-          <VideoCameraOutlined />
+          <UserOutlined />
           <span> Customers</span>
         </Menu.Item>
         <Menu.Item key="/plans" onClick={handlePlansClick}>
@@ -52,10 +59,10 @@ const SideBar: FC = () => {
         </Menu.Item>
         <Menu.Item
           key="/settings"
-          title="Settings"
           onClick={handleSettingsClick}
-          className="absolute bottom-0"
+          className="flex flex-row"
         >
+          <SettingOutlined />
           <span> Settings</span>
         </Menu.Item>
       </Menu>

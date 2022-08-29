@@ -61,7 +61,12 @@ const ViewCustomers: FC<Props> = ({ customerArray }) => {
         }}
         options={false}
         toolBarRender={() => [
-          <Button key="primary" type="primary" onClick={navigateCreateCustomer}>
+          <Button
+            key="primary"
+            type="primary"
+            disabled={true}
+            onClick={navigateCreateCustomer}
+          >
             Create Customer
           </Button>,
         ]}

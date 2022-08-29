@@ -1,12 +1,14 @@
 import React, { FC, useEffect, useState } from "react";
-import { Avatar, Divider, List, Skeleton } from "antd";
+import { Avatar, Divider, List, Skeleton, Button } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { Plan } from "../api/api";
 import { PlanType } from "../types/plan-type";
 import PlanDisplayBasic from "../components/PlanDisplayBasic";
+import { useNavigate } from "react-router-dom";
 
 const ViewPlans: FC = () => {
   const [plans, setPlans] = useState<PlanType[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     Plan.getPlans().then((data) => {
@@ -14,11 +16,24 @@ const ViewPlans: FC = () => {
     });
   }, []);
 
+  const navigateCreatePlan = () => {
+    navigate("/create-plan");
+  };
+
   const [loading, setLoading] = useState(false);
 
   return (
     <div>
-      <h1 className="text-3xl font-main">Plans</h1>
+      <div className="flex flex-row w-full">
+        <h1 className="text-3xl font-main">Plans</h1>
+        <Button
+          type="primary"
+          className="ml-auto bg-info"
+          onClick={navigateCreatePlan}
+        >
+          Create Plan
+        </Button>
+      </div>
       <br />
       <div
         id="scrollableDiv"
@@ -31,6 +46,7 @@ const ViewPlans: FC = () => {
         <List
           bordered={false}
           dataSource={plans}
+          className="w-"
           renderItem={(item) => (
             <List.Item key={item.name}>
               <PlanDisplayBasic plan={item} />

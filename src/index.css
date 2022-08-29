@@ -1,7 +1,15 @@
 @tailwind base;
+
+@layer base {
+  h1 {
+    @apply text-3xl font-main;
+  }
+}
+
 @tailwind components;
 @tailwind utilities;
 @import url("https://rsms.me/inter/inter.css");
+
 html {
   font-family: "Inter", sans-serif;
 }

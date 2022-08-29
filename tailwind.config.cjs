@@ -11,6 +11,7 @@ module.exports = {
     colors: {
       // custom color palette
       primary: "#441151",
+      darkgold: "#CCA43B",
       secondary: "#EE85B5",
       violet: "#883677",
       congo: "##FF958C",

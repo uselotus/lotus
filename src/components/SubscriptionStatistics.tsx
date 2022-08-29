@@ -4,8 +4,8 @@ import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 
 function SubscriptionStatistics() {
   const defaultData = {
-    active_subscriptions: 34234,
-    cancelled_subscriptions: 324,
+    active_subscriptions: 234,
+    cancelled_subscriptions: 6,
   };
   const [subscriptions, setSubscriptions] = useState<any>(defaultData);
 
@@ -27,10 +27,10 @@ function SubscriptionStatistics() {
               fontSize: "1.875rem",
               lineHeight: "2.25rem",
             }}
-            precision={2}
+            precision={0}
             className="text-3xl"
           />
-          <h1>Active Subscriptions</h1>
+          <p>Active Subscriptions</p>
         </div>
 
         <div className="flex flex-col items-center">
@@ -40,10 +40,9 @@ function SubscriptionStatistics() {
               fontSize: "1.875rem",
               lineHeight: "2.25rem",
             }}
-            precision={2}
-            suffix="%"
+            precision={0}
           />
-          <h1>Cancelled Subscriptions</h1>
+          <p>Cancelled Subscriptions</p>
         </div>
       </div>
     </div>
