@@ -5,9 +5,9 @@ name: Django/Postgres CI
 
 on:
   push:
-    branches: ["main", "tests-revamp"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "tests-revamp"]
+    branches: ["main"]
 
 
 permissions:
