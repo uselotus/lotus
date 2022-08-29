@@ -146,11 +146,15 @@ class BillingPlan(models.Model):
     flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
     """
+    class INTERVAL_TYPES(object):
+        WEEK = "week"
+        MONTH = "month"
+        YEAR = "year"
 
     INTERVAL_CHOICES = Choices(
-        ("week", _("Week")),
-        ("month", _("Month")),
-        ("year", _("Year")),
+        (INTERVAL_TYPES.WEEK, _("Week")),
+        (INTERVAL_TYPES.MONTH, _("Month")),
+        (INTERVAL_TYPES.YEAR, _("Year")),
     )
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
@@ -183,9 +187,6 @@ class BillingPlan(models.Model):
             print("none")
             return None
 
-    def get_usage_cost_count_aggregation(self, num_events):
-        return max(0, self.metric_amount * (self.starter_metric_quantity - num_events))
-
     def get_plan_name(self):
         return self.name
 
@@ -203,7 +204,7 @@ class PlanComponent(models.Model):
     )
     metric_amount_per_cost = models.IntegerField(default=1)
 
-    def __str__(self) -> str:
+    def __str__(self):
         return str(self.billable_metric)
 
 
@@ -216,41 +217,55 @@ class Subscription(models.Model):
     end_date: The date at which the subscription will end.
     status: The status of the subscription, active or ended.
     """
+    class STATUS_TYPES(object):
+        ACTIVE = "active"
+        ENDED = "ended"
 
-    STATUSES = Choices(
-        ("active", _("Active")),
-        ("ended", _("Ended")),
+    STATUS_CHOICES = Choices(
+        (STATUS_TYPES.ACTIVE, _("Active")),
+        (STATUS_TYPES.ENDED, _("Ended")),
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
+    status = models.CharField(max_length=6, choices=STATUS_CHOICES, default=STATUS_CHOICES.active)
+    auto_renew = models.BooleanField(default=True)
 
     class Meta:
         unique_together = (
+            "customer",
+            "billing_plan",
             "start_date",
             "end_date",
         )
 
     def __str__(self):
-        return str(self.customer) + " " + str(self.billing_plan)
+        return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
 
 
 class Invoice(models.Model):
+    class STATUS_TYPES(object):
+        ISSUED = "issued"
+        NOT_SENT = "not_sent"
+        FULFILLED = "fulfilled"
+
+    STATUS_CHOICES = Choices(
+        (STATUS_TYPES.ISSUED, _("Issued")),
+        (STATUS_TYPES.FULFILLED, _("Fullfilled")),
+        (STATUS_TYPES.NOT_SENT, _("Not Sent")),
+    )
+
     cost_due = models.IntegerField(default=0)
-    currency = models.CharField(max_length=10, default="USD")
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-    customer_name = models.CharField(max_length=100)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     customer_billing_id = models.CharField(max_length=40)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
-    status = models.CharField(max_length=10, default="pending")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent)
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
-
 
 class APIToken(AbstractAPIKey):
     organization = models.ForeignKey(
@@ -259,14 +274,8 @@ class APIToken(AbstractAPIKey):
     name = models.CharField(max_length=200, default="latest_token")
 
     def __str__(self):
-        return str(self.name) + " " + str(self.organization)
+        return str(self.name) + " " + str(self.organization.name)
 
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
-
-
-# @receiver(post_save, sender=Organization)
-# def create_token(sender, instance, created=False, **kwargs):
-#     if created:
-#         APIToken.objects.create(organization=instance)
