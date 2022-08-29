@@ -7,21 +7,26 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0001_initial'),
+        ("metering_billing", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='organization',
-            name='users',
+            model_name="organization",
+            name="users",
         ),
         migrations.RemoveField(
-            model_name='user',
-            name='company_name',
+            model_name="user",
+            name="company_name",
         ),
         migrations.AddField(
-            model_name='user',
-            name='organization',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='metering_billing.organization'),
+            model_name="user",
+            name="organization",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="metering_billing.organization",
+            ),
         ),
     ]

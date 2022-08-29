@@ -18,6 +18,7 @@ PAYMENT_PLANS = Choices(
     ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
 )
 
+
 class Organization(models.Model):
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
@@ -26,8 +27,11 @@ class Organization(models.Model):
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
 
+
 class User(AbstractUser):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True
+    )
 
 
 class Customer(models.Model):

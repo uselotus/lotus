@@ -93,7 +93,7 @@ class SubscriptionTest(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        subscription = Subscription.objects.all().filter(billing_plan='1')
+        subscription = Subscription.objects.all().filter(billing_plan="1")
         self.assertEqual(len(subscription), 1)
 
     def test_usage_get_for_subscription(self):
@@ -259,13 +259,15 @@ class CustomerTest(TestCase):
 
         user = baker.make(User)
 
-        organization = baker.make(Organization,
+        organization = baker.make(
+            Organization,
             company_name="Test Company",
         )
         organization.users.add(user)
         organization.save()
 
-        customer = baker.make(Customer,
+        customer = baker.make(
+            Customer,
             customer_id="7fa09280-957c-4a5f-925a-6a3498a1d299",
             organization=organization,
         )
@@ -274,15 +276,17 @@ class CustomerTest(TestCase):
             name="test-api-key", organization=organization
         )
 
-        metric = baker.make(BillableMetric,
+        metric = baker.make(
+            BillableMetric,
             organization=organization,
             # event_name="Emails",
             # property_name="amount",
             # aggregation_type="count",
         )
 
-        plan = baker.make(BillingPlan,
-            organization=organization, 
+        plan = baker.make(
+            BillingPlan,
+            organization=organization,
         )
 
         plan_component = PlanComponent.objects.create(
@@ -293,7 +297,6 @@ class CustomerTest(TestCase):
         self.organization_id = getattr(organization, "id")
         self.plan_name = getattr(organization, "id")
         self.client.credentials(HTTP_AUTHORIZATION="Api-Key " + key)
-
 
         self.valid_payload = {
             "plan_id": "1",

@@ -83,7 +83,7 @@ def track_event(request):
         customer = Customer.objects.get(customer_id=customer_id)
     except Customer.DoesNotExist:
         return HttpResponseBadRequest("Customer does not exist")
-    
+
     if isinstance(data, list):
         for i in data:
             try:

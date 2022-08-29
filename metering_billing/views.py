@@ -36,22 +36,23 @@ from .tasks import generate_invoice
 
 stripe.api_key = STRIPE_SECRET_KEY
 
+
 def coalesce_api_org_user_org(request):
     organization_user = request.user.organization
     key = request.META["HTTP_AUTHORIZATION"].split()[1]
     api_token = APIToken.objects.get_from_key(key)
     organization_api_token = getattr(api_token, "organization")
     if organization_user is None:
-            return Response(
-                {"error": "User does not have an organization"}, status=403
-            )
+        return Response({"error": "User does not have an organization"}, status=403)
     elif organization_user.pk != organization_api_token.pk:
         return Response(
-            {"error": "User organization and API Key organization do not match"}, status=400
+            {"error": "User organization and API Key organization do not match"},
+            status=400,
         )
     else:
         organization = organization_user
         return organization
+
 
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all()
