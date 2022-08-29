@@ -1,6 +1,7 @@
 import json
 import math
 import os
+from datetime import datetime
 
 import dateutil.parser as parser
 import stripe
@@ -174,7 +175,6 @@ class SubscriptionView(APIView):
         customer_qs = Customer.objects.filter(
             customer_id=data["customer_id"], organization=organization
         )
-        start_date = parser.parse(data["start_date"])
         if len(customer_qs) < 1:
             return Response(
                 {
@@ -201,15 +201,41 @@ class SubscriptionView(APIView):
             )
         else:
             plan = plan_qs[0]
-            end_date = plan.subscription_end_date(start_date)
+            
 
-        subscription = Subscription.objects.create(
+        start_date = parser.parse(data["start_date"])
+        end_date = plan.subscription_end_date(start_date)
+
+        overlapping_subscriptions = Subscription.objects.filter(
             organization=organization,
             customer=customer,
-            start_date=start_date,
-            end_date=end_date,
+            start_date__lte=end_date,
+            end_date__gte=start_date, 
             billing_plan=plan,
             status="active",
+        )
+        if len(overlapping_subscriptions) != 0:
+            return Response(
+                {
+                    "error": f"A subscription for customer {customer.name}, plan {plan.name} overlaps with specified date ranges {start_date} to {end_date}"
+                },
+                status=409,
+            )
+        subscription_kwargs = {
+            "organization":organization,
+            "customer":customer,
+            "start_date":start_date,
+            "end_date":end_date,
+            "billing_plan":plan,
+        }
+        if data.get("auto_renew"):
+            subscription_kwargs["auto_renew"] = data.get("auto_renew")
+        if end_date < datetime.now():
+            subscription_kwargs["status"] = "ended"
+        elif start_date < datetime.now():
+            subscription_kwargs["status"] = "active"
+        subscription = Subscription.objects.create(
+            **subscription_kwargs
         )
         serializer = SubscriptionSerializer(subscription)
 
