@@ -217,8 +217,8 @@ class Subscription(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
     status = models.CharField(max_length=6, choices=STATUSES, default=STATUSES.active)
 
     class Meta:

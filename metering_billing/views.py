@@ -178,27 +178,14 @@ class SubscriptionView(APIView):
         if len(customer_qs) < 1:
             return Response(
                 {
-                    "error": "Customer with custmer_id {} does not exist".format(
-                        data["custmer_id"]
+                    "error": "Customer with customer_id {} does not exist".format(
+                        data["customer_id"]
                     )
                 },
                 status=400,
             )
         else:
             customer = customer_qs[0]
-
-        organization_qs = Organization.objects.filter(customer__id=customer.pk)
-        if len(organization_qs) < 1:
-            return Response(
-                {
-                    "error": "Organization with organization_id {} does not exist".format(
-                        data["organization_id"]
-                    )
-                },
-                status=400,
-            )
-        else:
-            organization = organization_qs[0]
 
         plan_qs = BillingPlan.objects.filter(
             plan_id=data["plan_id"], organization=organization
@@ -224,13 +211,9 @@ class SubscriptionView(APIView):
             billing_plan=plan,
             status="active",
         )
-        subscription.save()
+        serializer = SubscriptionSerializer(subscription)
 
-        serializer_context = {
-            "request": request,
-        }
-
-        return Response("Subscription Created", status=201)
+        return Response(serializer.data, status=201)
 
 
 class CustomerView(APIView):
@@ -270,8 +253,9 @@ class CustomerView(APIView):
             return parsed_org
         else:
             organization = parsed_org
-        request.data["organization"] = organization.pk
-        serializer = CustomerSerializer(data=request.data)
+        customer_data = request.data.copy()
+        customer_data["organization"] = organization.pk
+        serializer = CustomerSerializer(data=customer_data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=201)
@@ -285,6 +269,13 @@ def get_subscription_usage(subscription):
     plan_end_timestamp = subscription.end_date
 
     plan_components_qs = PlanComponent.objects.filter(billing_plan=plan.id)
+    if len(plan_components_qs) < 1:
+            return Response(
+                {
+                    "error": "There are no components for this plan"
+                },
+                status=409,
+            )
     subscription_cost = 0
     plan_components_summary = {}
     # For each component of the plan, calculate usage/cost
