@@ -17,10 +17,7 @@ def customer_test_common_setup(
     api_client_with_api_key_auth,
 ):
     def do_customer_test_common_setup(
-        *,
-        num_customers,
-        auth_method,
-        user_org_and_api_key_org_different
+        *, num_customers, auth_method, user_org_and_api_key_org_different
     ):
         # set up organizations and api keys
         org, key = generate_org_and_api_key()
@@ -39,7 +36,7 @@ def customer_test_common_setup(
             (user,) = add_users_to_org(org, n=1)
             client.force_authenticate(user=user)
             setup_dict["user"] = user
-        else: 
+        else:
             client = api_client_with_api_key_auth(key)
             if user_org_and_api_key_org_different:
                 (user,) = add_users_to_org(org2, n=1)
@@ -69,15 +66,13 @@ class TestGetCustomers:
         user_org_and_api_key_org_different: true, false
     """
 
-    def test_api_key_can_access_customers_empty(
-        self, customer_test_common_setup
-    ):
+    def test_api_key_can_access_customers_empty(self, customer_test_common_setup):
         # covers num_customers=0, auth_method=api_key, user_org_and_api_key_org_different=false
         num_customers = 0
         setup_dict = customer_test_common_setup(
             num_customers=0,
             auth_method="api_key",
-            user_org_and_api_key_org_different=False
+            user_org_and_api_key_org_different=False,
         )
 
         payload = {}
@@ -94,14 +89,14 @@ class TestGetCustomers:
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
             auth_method="session_auth",
-            user_org_and_api_key_org_different=False
+            user_org_and_api_key_org_different=False,
         )
 
         payload = {}
         response = setup_dict["client"].get(reverse("customer"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == num_customers  
+        assert len(response.data) == num_customers
 
     def test_user_org_and_api_key_different_reject_access(
         self, customer_test_common_setup
@@ -111,7 +106,7 @@ class TestGetCustomers:
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
             auth_method="both",
-            user_org_and_api_key_org_different=True
+            user_org_and_api_key_org_different=True,
         )
 
         payload = {}
@@ -152,7 +147,7 @@ class TestInsertCustomer:
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
             auth_method="api_key",
-            user_org_and_api_key_org_different=False
+            user_org_and_api_key_org_different=False,
         )
 
         response = setup_dict["client"].post(
@@ -173,7 +168,7 @@ class TestInsertCustomer:
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
             auth_method="session_auth",
-            user_org_and_api_key_org_different=False
+            user_org_and_api_key_org_different=False,
         )
 
         response = client = setup_dict["client"].post(
@@ -194,7 +189,7 @@ class TestInsertCustomer:
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
             auth_method="both",
-            user_org_and_api_key_org_different=True
+            user_org_and_api_key_org_different=True,
         )
 
         response = setup_dict["client"].post(

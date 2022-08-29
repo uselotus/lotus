@@ -34,12 +34,14 @@ from metering_billing.serializers import (
 
 stripe.api_key = STRIPE_SECRET_KEY
 
+
 def get_organization_from_key(request):
     validator = HasUserAPIKey()
     key = validator.get_key(request)
     api_key = APIToken.objects.get_from_key(key)
     organization = api_key.organization
     return organization
+
 
 def parse_organization(request):
     is_authenticated = request.user.is_authenticated
@@ -49,7 +51,9 @@ def parse_organization(request):
         organization_user = request.user.organization
         if organization_user.pk != organization_api_token.pk:
             return Response(
-                {"error": "Provided both API key and session authentication but organization didn't match"}, 
+                {
+                    "error": "Provided both API key and session authentication but organization didn't match"
+                },
                 status=406,
             )
         else:
