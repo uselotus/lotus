@@ -6,6 +6,7 @@ from django.urls import reverse
 from metering_billing.models import User
 from model_bakery import baker
 from rest_framework import status
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
@@ -18,8 +19,7 @@ def customer_test_common_setup(
     def do_customer_test_common_setup(
         *,
         num_customers,
-        has_org_api_key,
-        user_in_org,
+        auth_method,
         user_org_and_api_key_org_different
     ):
         # set up organizations and api keys
@@ -32,29 +32,27 @@ def customer_test_common_setup(
             "key2": key2,
         }
         # set up the client with the appropriate api key spec
-        if has_org_api_key:
+        if auth_method == "api_key":
             client = api_client_with_api_key_auth(key)
-        else:
-            client = api_client_with_api_key_auth("bogus-key")
-        setup_dict["client"] = client
-
-        # set up the user with the appropriate org spec
-        if user_in_org:
-            if not user_org_and_api_key_org_different:
-                (user,) = add_users_to_org(org, n=1)
-            else:
+        elif auth_method == "session_auth":
+            client = APIClient()
+            (user,) = add_users_to_org(org, n=1)
+            client.force_authenticate(user=user)
+            setup_dict["user"] = user
+        else: 
+            client = api_client_with_api_key_auth(key)
+            if user_org_and_api_key_org_different:
                 (user,) = add_users_to_org(org2, n=1)
-        else:
-            (user,) = baker.make(User, _quantity=1)
-        setup_dict["user"] = user
+            else:
+                (user,) = add_users_to_org(org, n=1)
+            client.force_authenticate(user=user)
+            setup_dict["user"] = user
+        setup_dict["client"] = client
 
         # set up number of customers
         if num_customers > 0:
             add_customers_to_org(org, n=num_customers)
             add_customers_to_org(org2, n=num_customers)
-
-        # authenticare user
-        client.force_authenticate(user=user)
 
         return setup_dict
 
@@ -66,22 +64,20 @@ class TestGetCustomers:
     """Testing the GET of Customer endpoint:
     GET: Return list of customers associated with the organization with API key.
         partitions:
-        has_org_api_key: true, false
-        user_in_org: true, false
+        auth_method: api_key, session_auth, both
         num_customers: 0, >0
         user_org_and_api_key_org_different: true, false
     """
 
-    def test_user_in_org_valid_org_api_key_can_access_customers_empty(
+    def test_api_key_can_access_customers_empty(
         self, customer_test_common_setup
     ):
-        # covers num customers = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
+        # covers num_customers=0, auth_method=api_key, user_org_and_api_key_org_different=false
         num_customers = 0
         setup_dict = customer_test_common_setup(
-            num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=True,
-            user_org_and_api_key_org_different=False,
+            num_customers=0,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False
         )
 
         payload = {}
@@ -90,57 +86,22 @@ class TestGetCustomers:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == num_customers
 
-    def test_user_in_org_valid_org_api_key_can_access_customers_multiple(
+    def test_session_auth_can_access_customers_multiple(
         self, customer_test_common_setup
     ):
-        # covers num customers > 0
+        # covers num customers > 0, auth_method=session_auth
         num_customers = 5
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=True,
-            user_org_and_api_key_org_different=False,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False
         )
 
         payload = {}
         response = setup_dict["client"].get(reverse("customer"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == num_customers
-
-    def test_user_not_in_org_but_valid_org_api_key_reject_access(
-        self, customer_test_common_setup
-    ):
-        # covers user_in_org = false
-        num_customers = 1
-        setup_dict = customer_test_common_setup(
-            num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=False,
-            user_org_and_api_key_org_different=False,
-        )
-
-        payload = {}
-        response = setup_dict["client"].get(reverse("customer"), payload)
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-
-    def test_user_in_org_but_invalid_org_api_key_reject_access(
-        self, customer_test_common_setup
-    ):
-        # covers has_org_api_key = false
-        num_customers = 2
-        setup_dict = customer_test_common_setup(
-            num_customers=num_customers,
-            has_org_api_key=False,
-            user_in_org=True,
-            user_org_and_api_key_org_different=False,
-        )
-
-        payload = {}
-        response = setup_dict["client"].get(reverse("customer"), payload)
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert len(response.data) == num_customers  
 
     def test_user_org_and_api_key_different_reject_access(
         self, customer_test_common_setup
@@ -149,15 +110,14 @@ class TestGetCustomers:
         num_customers = 3
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=True,
-            user_org_and_api_key_org_different=True,
+            auth_method="both",
+            user_org_and_api_key_org_different=True
         )
 
         payload = {}
         response = setup_dict["client"].get(reverse("customer"), payload)
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
 
 
 @pytest.fixture
@@ -179,22 +139,20 @@ class TestInsertCustomer:
     """Testing the POST of Customer endpoint:
     POST: Return list of customers associated with the organization with API key / user.
     partitions:
-        has_org_api_key: true, false
-        user_in_org: true, false
+        auth_method: api_key, session_auth, both
+        num_customers_before_insert: 0, >0
         user_org_and_api_key_org_different: true, false
-        num_customers_before_insert = 0, >0
     """
 
-    def test_user_in_org_valid_org_api_key_can_create_customer_empty_before(
+    def test_api_key_can_create_customer_empty_before(
         self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
     ):
         # covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
         num_customers = 0
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=True,
-            user_org_and_api_key_org_different=False,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False
         )
 
         response = setup_dict["client"].post(
@@ -207,16 +165,15 @@ class TestInsertCustomer:
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_customers_in_org(setup_dict["org"])) == 1
 
-    def test_user_in_org_valid_org_api_key_can_create_customer_nonempty_before(
+    def test_session_auth_can_create_customer_nonempty_before(
         self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
     ):
         # covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false, authenticated=true
         num_customers = 5
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=True,
-            user_org_and_api_key_org_different=False,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False
         )
 
         response = client = setup_dict["client"].post(
@@ -229,58 +186,15 @@ class TestInsertCustomer:
         assert len(response.data) > 0
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers + 1
 
-    def test_user_not_in_org_but_valid_org_api_key_reject_insert(
-        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
-    ):
-        # covers user_in_org = false
-        num_customers = 0
-        setup_dict = customer_test_common_setup(
-            num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=False,
-            user_org_and_api_key_org_different=False,
-        )
-
-        response = setup_dict["client"].post(
-            reverse("customer"),
-            data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert len(get_customers_in_org(setup_dict["org"])) == num_customers
-
-    def test_user_in_org_but_invalid_org_api_key_reject_access(
-        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
-    ):
-        # covers has_org_api_key = false
-        num_customers = 5
-        setup_dict = customer_test_common_setup(
-            num_customers=num_customers,
-            has_org_api_key=False,
-            user_in_org=True,
-            user_org_and_api_key_org_different=False,
-        )
-
-        response = setup_dict["client"].post(
-            reverse("customer"),
-            data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert len(get_customers_in_org(setup_dict["org"])) == num_customers
-
-    def test_user_org_and_api_key_different_reject_access(
+    def test_user_org_and_api_key_different_reject_creation(
         self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
     ):
         # covers user_org_and_api_key_org_different = True
         num_customers = 3
         setup_dict = customer_test_common_setup(
             num_customers=num_customers,
-            has_org_api_key=True,
-            user_in_org=True,
-            user_org_and_api_key_org_different=True,
+            auth_method="both",
+            user_org_and_api_key_org_different=True
         )
 
         response = setup_dict["client"].post(
@@ -289,6 +203,6 @@ class TestInsertCustomer:
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers

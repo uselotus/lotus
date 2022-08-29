@@ -10,7 +10,7 @@ from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonR
 from django_q.tasks import async_task
 from lotus.settings import STRIPE_SECRET_KEY
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -34,22 +34,33 @@ from metering_billing.serializers import (
 
 stripe.api_key = STRIPE_SECRET_KEY
 
+def get_organization_from_key(request):
+    validator = HasUserAPIKey()
+    key = validator.get_key(request)
+    api_key = APIToken.objects.get_from_key(key)
+    organization = api_key.organization
+    return organization
 
-def coalesce_api_org_user_org(request):
-    organization_user = request.user.organization
-    key = request.META["HTTP_AUTHORIZATION"].split()[1]
-    api_token = APIToken.objects.get_from_key(key)
-    organization_api_token = getattr(api_token, "organization")
-    if organization_user is None:
-        return Response({"error": "User does not have an organization"}, status=403)
-    elif organization_user.pk != organization_api_token.pk:
-        return Response(
-            {"error": "User organization and API Key organization do not match"},
-            status=400,
-        )
-    else:
-        organization = organization_user
-        return organization
+def parse_organization(request):
+    is_authenticated = request.user.is_authenticated
+    has_api_key = request.META.get("HTTP_AUTHORIZATION") is not None
+    if has_api_key and is_authenticated:
+        organization_api_token = get_organization_from_key(request)
+        organization_user = request.user.organization
+        if organization_user.pk != organization_api_token.pk:
+            return Response(
+                {"error": "Provided both API key and session authentication but organization didn't match"}, 
+                status=406,
+            )
+        else:
+            return organization_api_token
+    elif has_api_key:
+        return get_organization_from_key(request)
+    elif is_authenticated:
+        organization_user = request.user.organization
+        if organization_user is None:
+            return Response({"error": "User does not have an organization"}, status=403)
+        return organization_user
 
 
 class EventViewSet(viewsets.ModelViewSet):
@@ -63,15 +74,15 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
 
 
 class PlansView(APIView):
-    permission_classes = [IsAuthenticated & HasUserAPIKey]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get(self, request, format=None):
 
-        coalesced = coalesce_api_org_user_org(request)
-        if type(coalesced) == Response:
-            return coalesced
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
         else:
-            organization = coalesced
+            organization = parsed_org
         plans = BillingPlan.objects.filter(organization=organization)
 
         plans_list = []
@@ -113,19 +124,20 @@ class PlansView(APIView):
             plan_breakdown["flat_rate"] = plan_data["flat_rate"]
         return JsonResponse(plans_list, safe=False)
 
-    def post(self, request, format=None):
-        pass
-
 
 class SubscriptionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get(self, request, format=None):
         """
         List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
         """
 
-        organization = request.user.organization
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
+        else:
+            organization = parsed_org
         if "customer_id" in request.query_params:
             customer_id = request.query_params["customer_id"]
             try:
@@ -149,7 +161,11 @@ class SubscriptionView(APIView):
         Create a new subscription, joining a customer and a plan.
         """
         data = request.data
-        organization = request.user.organization
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
+        else:
+            organization = parsed_org
 
         customer_qs = Customer.objects.filter(
             customer_id=data["customer_id"], organization=organization
@@ -215,17 +231,17 @@ class SubscriptionView(APIView):
 
 class CustomerView(APIView):
 
-    permission_classes = [IsAuthenticated & HasUserAPIKey]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get(self, request, format=None):
         """
         Return a list of all customers.
         """
-        coalesced = coalesce_api_org_user_org(request)
-        if type(coalesced) == Response:
-            return coalesced
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
         else:
-            organization = coalesced
+            organization = parsed_org
 
         customers = Customer.objects.filter(organization=organization)
         serializer = CustomerSerializer(customers, many=True)
@@ -245,11 +261,11 @@ class CustomerView(APIView):
         """
         Create a new customer.
         """
-        coalesced = coalesce_api_org_user_org(request)
-        if type(coalesced) == Response:
-            return coalesced
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
         else:
-            organization = coalesced
+            organization = parsed_org
         request.data["organization"] = organization.pk
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
@@ -356,17 +372,17 @@ def get_customer_usage(customer):
 
 class UsageView(APIView):
 
-    permission_classes = [IsAuthenticated & HasUserAPIKey]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get(self, request, format=None):
         """
         Return current usage for a customer during a given billing period.
         """
-        coalesced = coalesce_api_org_user_org(request)
-        if type(coalesced) == Response:
-            return coalesced
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
         else:
-            organization = coalesced
+            organization = parsed_org
 
         customer_id = request.query_params["customer_id"]
         customer_qs = Customer.objects.filter(
@@ -439,6 +455,8 @@ class InitializeStripeView(APIView):
         """
 
         organization = request.user.organization
+        if organization is None:
+            return Response({"error": "User does not have an organization"}, status=403)
 
         stripe_id = organization.stripe_id
 
@@ -457,8 +475,9 @@ class InitializeStripeView(APIView):
         if data is None:
             return JsonResponse({"details": "No data provided"}, status=400)
 
-        user = request.user
-        organization = user.organization_set.first()
+        organization = request.user.organization
+        if organization is None:
+            return Response({"error": "User does not have an organization"}, status=403)
         stripe_code = data["authorization_code"]
 
         try:
