@@ -118,13 +118,20 @@ class BillableMetric(models.Model):
     )
 
     def __str__(self):
-        return (
-            str(self.aggregation_type)
-            + " of "
-            + str(self.property_name)
-            + " : "
-            + str(self.event_name)
-        )
+        if self.aggregation_type == self.AGGREGATION_TYPES.COUNT:
+            return (
+                str(self.aggregation_type)
+                + " of "
+                + str(self.event_name)
+            )
+        else:
+            return (
+                str(self.aggregation_type)
+                + " of "
+                + str(self.property_name)
+                + " : "
+                + str(self.event_name)
+            )
 
     def get_aggregation_type(self):
         return self.aggregation_type
