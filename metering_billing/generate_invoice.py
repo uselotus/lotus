@@ -10,7 +10,7 @@ def generate_invoice(subscription):
     """
 
     usage_dict = get_subscription_usage(subscription)
-    
+
     # Get the customer
     customer = subscription.customer
     billing_plan = subscription.billing_plan

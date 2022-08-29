@@ -257,6 +257,7 @@ class CustomerView(APIView):
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
+
 def get_subscription_usage(subscription):
     plan = subscription.billing_plan
     flat_rate = int(plan.flat_rate.amount)
@@ -307,9 +308,7 @@ def get_subscription_usage(subscription):
                         subtotal_usage, float(properties_dict[property_name])
                     )
                 metric_batches = subtotal_usage
-        subtotal_cost = int(
-            (metric_batches * plan_component.cost_per_metric).amount
-        )
+        subtotal_cost = int((metric_batches * plan_component.cost_per_metric).amount)
         subscription_cost += subtotal_cost
 
         subtotal_cost_string = "$" + str(subtotal_cost)
@@ -331,16 +330,15 @@ def get_subscription_usage(subscription):
 
     return usage_dict
 
+
 def get_customer_usage(customer):
     customer_subscriptions = Subscription.objects.filter(
-        customer=customer, 
-        status="active", 
-        organization=customer.organization
+        customer=customer, status="active", organization=customer.organization
     )
 
     usage_summary = {}
     for subscription in customer_subscriptions:
-        
+
         usage_dict = get_subscription_usage(subscription)
         subscription_usage_dict = {
             "total_usage_cost": "$" + str(usage_dict["subscription_cost"]),
@@ -352,8 +350,9 @@ def get_customer_usage(customer):
         }
 
         usage_summary[subscription.billing_plan.name] = subscription_usage_dict
-    
+
     return usage_summary
+
 
 class UsageView(APIView):
 
@@ -370,7 +369,9 @@ class UsageView(APIView):
             organization = coalesced
 
         customer_id = request.query_params["customer_id"]
-        customer_qs = Customer.objects.filter(organization=organization, customer_id=customer_id)
+        customer_qs = Customer.objects.filter(
+            organization=organization, customer_id=customer_id
+        )
 
         if len(customer_qs) < 1:
             return Response(
