@@ -19,14 +19,13 @@ from djmoney.models.fields import MoneyField
 from model_utils import Choices
 from rest_framework_api_key.models import AbstractAPIKey
 
-PAYMENT_PLANS = Choices(
-    ("self_hosted_free", _("Self-Hosted Free")),
-    ("cloud", _("Cloud")),
-    ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
-)
-
 
 class Organization(models.Model):
+    PAYMENT_PLANS = Choices(
+        ("self_hosted_free", _("Self-Hosted Free")),
+        ("cloud", _("Cloud")),
+        ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
+    )
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
     created = models.DateField(auto_now=True)
@@ -126,11 +125,7 @@ class BillableMetric(models.Model):
 
     def __str__(self):
         if self.aggregation_type == self.AGGREGATION_TYPES.COUNT:
-            return (
-                str(self.aggregation_type)
-                + " of "
-                + str(self.event_name)
-            )
+            return str(self.aggregation_type) + " of " + str(self.event_name)
         else:
             return (
                 str(self.aggregation_type)
@@ -153,6 +148,7 @@ class BillingPlan(models.Model):
     flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
     """
+
     class INTERVAL_TYPES(object):
         WEEK = "week"
         MONTH = "month"
@@ -216,8 +212,9 @@ class PlanComponent(models.Model):
 
 
 class TsTzRange(Func):
-    function = 'TSTZRANGE'
+    function = "TSTZRANGE"
     output_field = DateTimeRangeField()
+
 
 class Subscription(models.Model):
     """
@@ -228,6 +225,7 @@ class Subscription(models.Model):
     end_date: The date at which the subscription will end.
     status: The status of the subscription, active or ended.
     """
+
     class STATUS_TYPES(object):
         ACTIVE = "active"
         ENDED = "ended"
@@ -240,33 +238,44 @@ class Subscription(models.Model):
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
-    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, related_name='current_plan', null=False)
+    billing_plan = models.ForeignKey(
+        BillingPlan, on_delete=models.CASCADE, related_name="current_plan", null=False
+    )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_started)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_started
+    )
     auto_renew = models.BooleanField(default=True)
-    next_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, null=True, blank=True, related_name='next_plan')
+    next_plan = models.ForeignKey(
+        BillingPlan,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="next_plan",
+    )
 
     class Meta:
         constraints = [
             ExclusionConstraint(
-                name='exclude_overlapping_subscriptions',
+                name="exclude_overlapping_subscriptions",
                 expressions=(
-                    (TsTzRange('start_date', 'end_date', RangeBoundary()), RangeOperators.OVERLAPS),
-                    ('organization', RangeOperators.EQUAL),
-                    ('customer', RangeOperators.EQUAL),
-                    ('billing_plan', RangeOperators.EQUAL),
-                ),
-                condition=Q(cancelled=False),
+                    (
+                        TsTzRange("start_date", "end_date", RangeBoundary()),
+                        RangeOperators.OVERLAPS,
+                    ),
+                    ("organization", RangeOperators.EQUAL),
+                    ("customer", RangeOperators.EQUAL),
+                    ("billing_plan", RangeOperators.EQUAL),
+                )
             ),
         ]
 
-    
-    def save(self,*args,**kwargs): 
+    def save(self, *args, **kwargs):
         if not self.next_plan:
-            self.next_plan = self.billing_plan   
-        
-        super(Subscription,self).save(*args,**kwargs) 
+            self.next_plan = self.billing_plan
+
+        super(Subscription, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
@@ -290,8 +299,11 @@ class Invoice(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent)
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent
+    )
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
+
 
 class APIToken(AbstractAPIKey):
     organization = models.ForeignKey(
