@@ -8,5 +8,12 @@
     "[python]": {
       "editor.defaultFormatter": "ms-python.black-formatter",
     },
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "python.testing.pytestArgs": [
+      "${workspaceFolder}/metering_billing"
+    ],
+    "python.unitTest.unittestEnabled": false,
+    "python.unitTest.nosetestsEnabled": false,
+    "python.unitTest.pyTestEnabled": true,
+    "python.envFile":   "${workspaceFolder}/env/.env",
 }

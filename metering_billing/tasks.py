@@ -2,13 +2,13 @@ from __future__ import absolute_import, unicode_literals
 
 from datetime import datetime
 
-from lotus.celery import app
+from celery import shared_task
+
+from metering_billing.generate_invoice import generate_invoice
 from metering_billing.models import Subscription
 
-from .generate_invoice import generate_invoice
 
-
-@app.task
+@shared_task
 def calculate_invoice():
     ending_subscriptions = Subscription.objects.filter(
         status="active", end_date__lte=datetime.now()
