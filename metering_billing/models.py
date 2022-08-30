@@ -3,8 +3,15 @@ import uuid
 from dateutil.parser import isoparse
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
-from django.contrib.postgres.fields import ArrayField
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import (
+    ArrayField,
+    DateTimeRangeField,
+    RangeBoundary,
+    RangeOperators,
+)
 from django.db import models
+from django.db.models import Func, Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
@@ -208,6 +215,10 @@ class PlanComponent(models.Model):
         return str(self.billable_metric)
 
 
+class TsTzRange(Func):
+    function = 'TSTZRANGE'
+    output_field = DateTimeRangeField()
+
 class Subscription(models.Model):
     """
     Subscription object. An explanation of the Subscription's fields follows:
@@ -225,24 +236,31 @@ class Subscription(models.Model):
     STATUS_CHOICES = Choices(
         (STATUS_TYPES.ACTIVE, _("Active")),
         (STATUS_TYPES.ENDED, _("Ended")),
-        (STATUS_TYPES.next_plan, _("Not Started")),
+        (STATUS_TYPES.NOT_STARTED, _("Not Started")),
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
-    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
+    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, related_name='current_plan', null=False)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    status = models.CharField(max_length=6, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_started)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_started)
     auto_renew = models.BooleanField(default=True)
-    next_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, null=True, blank=True)
+    next_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, null=True, blank=True, related_name='next_plan')
 
     class Meta:
-        unique_together = (
-            "customer",
-            "billing_plan",
-            "start_date",
-            "end_date",
-        )
+        constraints = [
+            ExclusionConstraint(
+                name='exclude_overlapping_subscriptions',
+                expressions=(
+                    (TsTzRange('start_date', 'end_date', RangeBoundary()), RangeOperators.OVERLAPS),
+                    ('organization', RangeOperators.EQUAL),
+                    ('customer', RangeOperators.EQUAL),
+                    ('billing_plan', RangeOperators.EQUAL),
+                ),
+                condition=Q(cancelled=False),
+            ),
+        ]
+
     
     def save(self,*args,**kwargs): 
         if not self.next_plan:
@@ -272,7 +290,7 @@ class Invoice(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent)
     line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
 
 class APIToken(AbstractAPIKey):
