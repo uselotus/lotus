@@ -19,6 +19,7 @@ from django.shortcuts import render
 from django.urls import path, re_path
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, track
+from metering_billing.views.internal_views import OrganizationRevenueView
 from metering_billing.views.views import (
     CustomerView,
     InitializeStripeView,
@@ -43,6 +44,7 @@ urlpatterns = [
     path("track", track.track_event, name="track_event"),
     path("api/usage", UsageView.as_view(), name="usage"),
     path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
+    path("api/org_period_revenue", OrganizationRevenueView.as_view(), name="organization_revenue"),
     path("api/plans", PlansView.as_view(), name="plans"),
     path("api/login/", auth_views.login_view, name="api-login"),
     path("api/logout", auth_views.logout_view, name="api-logout"),

@@ -267,7 +267,7 @@ class Subscription(models.Model):
                     ("organization", RangeOperators.EQUAL),
                     ("customer", RangeOperators.EQUAL),
                     ("billing_plan", RangeOperators.EQUAL),
-                )
+                ),
             ),
         ]
 
