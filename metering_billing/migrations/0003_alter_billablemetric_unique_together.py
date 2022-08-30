@@ -6,12 +6,14 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0002_subscription_is_new'),
+        ("metering_billing", "0002_subscription_is_new"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='billablemetric',
-            unique_together={('organization', 'event_name', 'property_name', 'aggregation_type')},
+            name="billablemetric",
+            unique_together={
+                ("organization", "event_name", "property_name", "aggregation_type")
+            },
         ),
     ]

@@ -72,10 +72,10 @@ class Customer(models.Model):
         return str(self.name) + " " + str(self.customer_id)
 
     def get_billing_plan_name(self) -> str:
-        subscription_object = Subscription.objects.filter(customer=self).first()
-        if subscription_object is None:
+        subscription_set = Subscription.objects.filter(customer=self, status="active")
+        if subscription_set is None:
             return "None"
-        return subscription_object.billing_plan.get_plan_name()
+        return [sub.billing_plan.get_plan_name() for sub in subscription_set]
 
 
 class Event(models.Model):
@@ -134,9 +134,14 @@ class BillableMetric(models.Model):
                 + " : "
                 + str(self.event_name)
             )
-    
+
     class Meta:
-        unique_together = ('organization', 'event_name', 'property_name', 'aggregation_type')
+        unique_together = (
+            "organization",
+            "event_name",
+            "property_name",
+            "aggregation_type",
+        )
 
     def get_aggregation_type(self):
         return self.aggregation_type

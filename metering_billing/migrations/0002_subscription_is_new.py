@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0001_initial'),
+        ("metering_billing", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='subscription',
-            name='is_new',
+            model_name="subscription",
+            name="is_new",
             field=models.BooleanField(default=True),
         ),
     ]

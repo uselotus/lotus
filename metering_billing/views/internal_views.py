@@ -172,6 +172,7 @@ class OrganizationSubscriptionsInPeriodView(APIView):
             }
         )
 
+
 class OrganizationMetricsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -192,5 +193,7 @@ class OrganizationMetricsView(APIView):
                 metrics_dict[metric.event_name] = {}
             if metric.property_name not in metrics_dict[metric.event_name]:
                 metrics_dict[metric.event_name][metric.property_name] = {}
-            metrics_dict[metric.event_name][metric.property_name][metric.aggregation_type] = str(metric)
+            metrics_dict[metric.event_name][metric.property_name][
+                metric.aggregation_type
+            ] = str(metric)
         return JsonResponse(metrics_dict)
