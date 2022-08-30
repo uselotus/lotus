@@ -34,6 +34,7 @@ def calculate_invoice():
                 "billing_plan": old_subscription.next_plan,
                 "start_date": old_subscription.end_date,
                 "auto_renew": True,
+                "is_new": False,
             }
             subscription_kwargs["end_date"] = subscription_kwargs[
                 "billing_plan"

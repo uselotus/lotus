@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import dateutil.parser as parser
 import stripe
 from django.db import connection
+from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django_q.tasks import async_task
@@ -21,13 +22,6 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.permissions import HasUserAPIKey
-from metering_billing.serializers import (
-    BillingPlanSerializer,
-    CustomerSerializer,
-    EventSerializer,
-    PlanComponentSerializer,
-    SubscriptionSerializer,
-)
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -36,7 +30,7 @@ from rest_framework.views import APIView
 from ..utils import get_customer_usage, parse_organization
 
 
-class OrganizationRevenueView(APIView):
+class OrganizationRevenueInPeriodView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
@@ -62,10 +56,10 @@ class OrganizationRevenueView(APIView):
         )
         # calculate total theoretical revenue
         recent_period_invoices = list(
-            filter(lambda invoice: invoice.issue_date >= query_mid_date), list(invoices)
+            filter(lambda invoice: invoice.issue_date >= query_mid_date, list(invoices))
         )
         older_period_invoices = list(
-            filter(lambda invoice: invoice.issue_date < query_mid_date), list(invoices)
+            filter(lambda invoice: invoice.issue_date < query_mid_date, list(invoices))
         )
         recent_period_total_rev = sum(
             map(lambda invoice: invoice.total, recent_period_invoices)
@@ -76,11 +70,12 @@ class OrganizationRevenueView(APIView):
 
         # calculate total realized revenue
         recent_period_realized_invoices = list(
-            filter(lambda invoice: invoice.status == "fulfilled"),
-            recent_period_invoices,
+            filter(
+                lambda invoice: invoice.status == "fulfilled", recent_period_invoices
+            )
         )
         older_period_realized_invoices = list(
-            filter(lambda invoice: invoice.status == "fulfilled"), older_period_invoices
+            filter(lambda invoice: invoice.status == "fulfilled", older_period_invoices)
         )
         recent_period_realized_rev = sum(
             map(lambda invoice: invoice.total, recent_period_realized_invoices)
@@ -95,5 +90,83 @@ class OrganizationRevenueView(APIView):
                 "older_period_total_rev": older_period_total_rev,
                 "recent_period_realized_rev": recent_period_realized_rev,
                 "older_period_realized_rev": older_period_realized_rev,
+            }
+        )
+
+
+class OrganizationSubscriptionsInPeriodView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
+        """
+
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
+        else:
+            organization = parsed_org
+        reference_date = request.query_params["reference_date"]
+        period_length_days = request.query_params["period_length_days"]
+        query_start_date = reference_date - 2 * timedelta(days=period_length_days)
+        query_mid_date = reference_date - timedelta(days=period_length_days)
+        query_end_date = reference_date
+        subscriptions = Subscription.objects.filter(
+            Q(start_date__range=[query_start_date, query_end_date])
+            | Q(end_date__range=[query_start_date, query_end_date]),
+            organization=organization,
+        )
+        # calculate total theoretical revenue
+        recent_period_only_subscriptions = list(
+            filter(
+                lambda subscription: subscription.start_date >= query_mid_date,
+                list(subscriptions),
+            )
+        )
+        older_period_only_subscriptions = list(
+            filter(
+                lambda subscription: subscription.end_date < query_mid_date,
+                list(subscriptions),
+            )
+        )
+        both_period_subscriptions = list(
+            set(subscriptions)
+            - set(recent_period_only_subscriptions)
+            - set(older_period_only_subscriptions)
+        )
+
+        recent_period_first_time_subscriptions = list(
+            filter(
+                lambda subscription: subscription.is_new,
+                recent_period_only_subscriptions,
+            )
+        )
+        older_period_first_time_subscriptions = list(
+            filter(
+                lambda subscription: subscription.is_new,
+                older_period_only_subscriptions,
+            )
+        )
+        both_period_first_time_subscriptions = list(
+            filter(lambda subscription: subscription.is_new, both_period_subscriptions)
+        )
+
+        return JsonResponse(
+            {
+                "recent_period_total_subscriptions": len(
+                    recent_period_only_subscriptions
+                )
+                + len(both_period_subscriptions),
+                "older_period_total_subscriptions": len(older_period_only_subscriptions)
+                + len(both_period_subscriptions),
+                "recent_period_new_subscriptions": len(
+                    recent_period_first_time_subscriptions
+                )
+                + len(both_period_first_time_subscriptions),
+                "older_period_realized_subscriptions": len(
+                    older_period_first_time_subscriptions
+                )
+                + len(both_period_first_time_subscriptions),
             }
         )

@@ -254,6 +254,7 @@ class Subscription(models.Model):
         blank=True,
         related_name="next_plan",
     )
+    is_new = models.BooleanField(default=True)
 
     class Meta:
         constraints = [
