@@ -212,7 +212,6 @@ class SubscriptionView(APIView):
             start_date__lte=end_date,
             end_date__gte=start_date, 
             billing_plan=plan,
-            status="active",
         )
         if len(overlapping_subscriptions) != 0:
             return Response(
