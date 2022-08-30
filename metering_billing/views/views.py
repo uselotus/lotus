@@ -239,7 +239,7 @@ class CustomerView(APIView):
         return Response(serializer.errors, status=400)
 
 
-class UsageView(APIView):
+class UsageViewForCustomer(APIView):
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 

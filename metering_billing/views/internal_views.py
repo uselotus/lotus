@@ -28,7 +28,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..utils import get_customer_usage, parse_organization
+from ..utils import get_customer_usage, get_metric_usage, parse_organization
 
 
 class OrganizationRevenueInPeriodView(APIView):
@@ -197,3 +197,49 @@ class OrganizationMetricsView(APIView):
                 metric.aggregation_type
             ] = str(metric)
         return JsonResponse(metrics_dict)
+
+
+class OrganizationUsageForMetricView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Return current usage for a customer during a given billing period.
+        """
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
+        else:
+            organization = parsed_org
+        reference_date = request.query_params["reference_date"]
+        period_length_days = request.query_params["period_length_days"]
+        query_start_date = reference_date - 2 * timedelta(days=period_length_days)
+        query_mid_date = reference_date - timedelta(days=period_length_days)
+        query_end_date = reference_date
+
+        event_name = request.query_params["event_name"]
+        property_name = request.query_params["property_name"]
+        aggregation_type = request.query_params["aggregation_type"]
+        metric_qs = BillableMetric.objects.filter(
+            organization=organization,
+            event_name=event_name,
+            property_name=property_name,
+            aggregation_type=aggregation_type,
+        )
+
+        if len(metric_qs) < 1:
+            return Response(
+                {
+                    "error": f"Metric with event_name {event_name}, property_name {property_name}, aggregation_type {aggregation_type} not found"
+                },
+                status=400,
+            )
+        else:
+            metric = metric_qs[0]
+
+        usage_summary_current_period, usage_summary_previous_period = get_metric_usage(
+            metric, query_start_date, query_mid_date, query_end_date
+        )
+
+        return JsonResponse([usage_summary_current_period, usage_summary_previous_period])

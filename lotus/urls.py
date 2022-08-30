@@ -23,13 +23,14 @@ from metering_billing.views.internal_views import (
     OrganizationMetricsView,
     OrganizationRevenueInPeriodView,
     OrganizationSubscriptionsInPeriodView,
+    OrganizationUsageForMetricView,
 )
 from metering_billing.views.views import (
     CustomerView,
     InitializeStripeView,
     PlansView,
     SubscriptionView,
-    UsageView,
+    UsageViewForCustomer,
 )
 from rest_framework import routers
 
@@ -46,7 +47,8 @@ urlpatterns = [
     path("api/customers", CustomerView.as_view(), name="customer"),
     path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
     path("track", track.track_event, name="track_event"),
-    path("api/usage", UsageView.as_view(), name="usage"),
+    path("api/usage", UsageViewForCustomer.as_view(), name="usage"),
+    path("api/metric_usage", OrganizationUsageForMetricView.as_view(), name="metric_usage"),
     path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
     path(
         "api/org_period_revenue",
