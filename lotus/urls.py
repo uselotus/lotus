@@ -13,26 +13,22 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from metering_billing import auth_views
-from django.urls import path, re_path
 from django.conf.urls import include
+from django.contrib import admin
 from django.shortcuts import render
+from django.urls import path, re_path
 from django.views.generic import TemplateView
-from metering_billing import track
-from metering_billing.views import (
+from metering_billing.views import auth_views, track
+from metering_billing.views.views import (
     CustomerView,
-    EventViewSet,
     InitializeStripeView,
     PlansView,
     SubscriptionView,
-    SubscriptionViewSet,
     UsageView,
 )
 from rest_framework import routers
 
 router = routers.DefaultRouter()
-router.register(r"event", EventViewSet)
 
 
 def index(request):
@@ -40,7 +36,6 @@ def index(request):
 
 
 urlpatterns = [
-    # path("grappelli/", include("grappelli.urls")),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/customers", CustomerView.as_view(), name="customer"),

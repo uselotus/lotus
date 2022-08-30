@@ -7,14 +7,15 @@ from urllib.parse import urlparse
 from django.db import IntegrityError
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from metering_billing.models import APIToken, BillingPlan, Customer, Event, Organization
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from metering_billing.models import APIToken, BillingPlan, Customer, Event, Organization
-
-from .permissions import HasUserAPIKey
+from ..permissions import HasUserAPIKey
+from ..utils import parse_organization
 
 
 def load_event(request: HttpRequest) -> Union[None, Dict]:
@@ -70,10 +71,11 @@ def ingest_event(request, data: dict, customer: Customer, organization) -> None:
 @permission_classes((HasUserAPIKey))
 def track_event(request):
     # Find the associated organization, need to move to middleware/auth
-    validator = HasUserAPIKey()
-    key = validator.get_key(request)
-    api_key = APIToken.objects.get_from_key(key)
-    organization = api_key.organization
+    parsed_org = parse_organization(request)
+    if type(parsed_org) == Response:
+        return parsed_org
+    else:
+        organization = parsed_org
 
     data = load_event(request)
     if not data:
