@@ -13,6 +13,7 @@ from django_q.tasks import async_task
 from lotus.settings import STRIPE_SECRET_KEY
 from metering_billing.models import (
     APIToken,
+    BillableMetric,
     BillingPlan,
     Customer,
     Event,
@@ -170,3 +171,26 @@ class OrganizationSubscriptionsInPeriodView(APIView):
                 + len(both_period_first_time_subscriptions),
             }
         )
+
+class OrganizationMetricsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
+        """
+
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
+        else:
+            organization = parsed_org
+        metrics = BillableMetric.objects.filter(organization=organization)
+        metrics_dict = {}
+        for metric in metrics:
+            if metric.event_name not in metrics_dict:
+                metrics_dict[metric.event_name] = {}
+            if metric.property_name not in metrics_dict[metric.event_name]:
+                metrics_dict[metric.event_name][metric.property_name] = {}
+            metrics_dict[metric.event_name][metric.property_name][metric.aggregation_type] = str(metric)
+        return JsonResponse(metrics_dict)

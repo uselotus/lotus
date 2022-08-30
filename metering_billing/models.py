@@ -134,6 +134,9 @@ class BillableMetric(models.Model):
                 + " : "
                 + str(self.event_name)
             )
+    
+    class Meta:
+        unique_together = ('organization', 'event_name', 'property_name', 'aggregation_type')
 
     def get_aggregation_type(self):
         return self.aggregation_type

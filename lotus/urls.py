@@ -20,6 +20,7 @@ from django.urls import path, re_path
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, track
 from metering_billing.views.internal_views import (
+    OrganizationMetricsView,
     OrganizationRevenueInPeriodView,
     OrganizationSubscriptionsInPeriodView,
 )
@@ -57,6 +58,7 @@ urlpatterns = [
         OrganizationSubscriptionsInPeriodView.as_view(),
         name="org_period_subscriptions",
     ),
+    path("api/org_metrics", OrganizationMetricsView.as_view(), name="org_metrics"),
     path("api/plans", PlansView.as_view(), name="plans"),
     path("api/login/", auth_views.login_view, name="api-login"),
     path("api/logout", auth_views.logout_view, name="api-logout"),
