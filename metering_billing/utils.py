@@ -41,7 +41,7 @@ def get_organization_from_key(request):
 
 def parse_organization(request):
     is_authenticated = request.user.is_authenticated
-    has_api_key = request.META.get("HTTP_AUTHORIZATION") is not None
+    has_api_key = HasUserAPIKey().get_key(request) is not None
     if has_api_key and is_authenticated:
         organization_api_token = get_organization_from_key(request)
         organization_user = request.user.organization
