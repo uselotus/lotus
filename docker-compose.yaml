@@ -25,6 +25,7 @@ services:
              "
     depends_on:
       - db
+
   redis:
     image: redis:7-alpine
     command: redis-server
@@ -43,6 +44,7 @@ services:
       - db
       - redis
       - lotus
+
   celery-beat:
     env_file:
       - ./env/.env

@@ -59,6 +59,7 @@ services:
       - db
       - redis
       - lotus
+
   celery-beat:
     env_file:
       - ./env/.env.dev
