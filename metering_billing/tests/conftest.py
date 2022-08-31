@@ -8,7 +8,7 @@ def api_client_with_api_key_auth():
 
     def do_api_client_with_api_key_auth(key):
         client = APIClient()
-        client.credentials(HTTP_AUTHORIZATION="Api-Key " + key)
+        client.credentials(HTTP_X_API_KEY=key)
         return client
 
     return do_api_client_with_api_key_auth
