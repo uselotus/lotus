@@ -4,11 +4,6 @@ services:
     restart: on-failure
     env_file:
       - ./env/.env
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
-      - POSTGRES_USER=${POSTGRES_USER:-db_user}
-      - POSTGRES_DB=${POSTGRES_NAME:-postgres}
-      - POSTGRES_HOST=${POSTGRES_HOST:-db}
 
   lotus:
     container_name: lotus_django
