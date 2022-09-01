@@ -7,6 +7,7 @@ from django.db import connection
 from django.http import HttpResponseBadRequest, JsonResponse
 from lotus.settings import STRIPE_SECRET_KEY
 from metering_billing.models import (
+    APIToken,
     BillingPlan,
     Customer,
     Event,
