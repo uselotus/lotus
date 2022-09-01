@@ -48,7 +48,11 @@ urlpatterns = [
     path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
     path("track", track.track_event, name="track_event"),
     path("api/usage", UsageViewForCustomer.as_view(), name="usage"),
-    path("api/metric_usage", OrganizationUsageForMetricView.as_view(), name="metric_usage"),
+    path(
+        "api/metric_usage",
+        OrganizationUsageForMetricView.as_view(),
+        name="metric_usage",
+    ),
     path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
     path(
         "api/org_period_revenue",

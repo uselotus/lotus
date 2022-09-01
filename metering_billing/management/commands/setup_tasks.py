@@ -12,7 +12,7 @@ load_dotenv()
 class Command(BaseCommand):
     def handle(self, *args, **options):
 
-        #Create schedules
+        # Create schedules
         every_hour, _ = CrontabSchedule.objects.get_or_create(
             minute="0", hour="*", day_of_week="*", day_of_month="*", month_of_year="*"
         )
@@ -21,7 +21,7 @@ class Command(BaseCommand):
             period=IntervalSchedule.MINUTES,
         )
 
-        #create tasks
+        # create tasks
         task, created = PeriodicTask.objects.get_or_create(
             name="Check end of subscriptions",
             task="metering_billing.tasks.calculate_invoice",

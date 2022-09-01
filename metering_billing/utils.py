@@ -166,22 +166,34 @@ def get_customer_usage(customer):
 
 def get_metric_usage(metric, query_start_date, query_mid_date, query_end_date):
     aggregation_field = f"properties__{metric.property_name}"
-    aggregation_type = Count if metric.aggregation_type == "count" else (Sum if metric.aggregation_type == "sum" else Max) 
-    usage_summary_current_period = Event.objects.filter(
-        organization=metric.organization,
-        event_name=metric.event_name,
-        time_created__gte=query_mid_date,
-        time_created__lte=query_end_date,
-        properties__has_key=metric.property_name,
-    ).values('customer').annotate(value=aggregation_type(aggregation_field))
+    aggregation_type = (
+        Count
+        if metric.aggregation_type == "count"
+        else (Sum if metric.aggregation_type == "sum" else Max)
+    )
+    usage_summary_current_period = (
+        Event.objects.filter(
+            organization=metric.organization,
+            event_name=metric.event_name,
+            time_created__gte=query_mid_date,
+            time_created__lte=query_end_date,
+            properties__has_key=metric.property_name,
+        )
+        .values("customer")
+        .annotate(value=aggregation_type(aggregation_field))
+    )
 
-    usage_summary_previous_period = Event.objects.filter(
-        organization=metric.organization,
-        event_name=metric.event_name,
-        time_created__gte=query_start_date,
-        time_created__lte=query_mid_date,
-        properties__has_key=metric.property_name,
-    ).values('customer').annotate(value=aggregation_type(aggregation_field))
+    usage_summary_previous_period = (
+        Event.objects.filter(
+            organization=metric.organization,
+            event_name=metric.event_name,
+            time_created__gte=query_start_date,
+            time_created__lte=query_mid_date,
+            properties__has_key=metric.property_name,
+        )
+        .values("customer")
+        .annotate(value=aggregation_type(aggregation_field))
+    )
 
     return usage_summary_current_period, usage_summary_previous_period
 
