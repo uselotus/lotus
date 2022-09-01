@@ -36,7 +36,7 @@ class OrganizationRevenueInPeriodView(APIView):
 
     def get(self, request, format=None):
         """
-        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
+        Returns the revenue for an organization in a given time period.
         """
 
         parsed_org = parse_organization(request)
@@ -100,7 +100,7 @@ class OrganizationSubscriptionsInPeriodView(APIView):
 
     def get(self, request, format=None):
         """
-        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
+        List subscriptions.
         """
 
         parsed_org = parse_organization(request)
@@ -178,7 +178,7 @@ class OrganizationMetricsView(APIView):
 
     def get(self, request, format=None):
         """
-        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
+        Returns the metrics for an organization in a given time period.
         """
 
         parsed_org = parse_organization(request)
@@ -242,4 +242,6 @@ class OrganizationUsageForMetricView(APIView):
             metric, query_start_date, query_mid_date, query_end_date
         )
 
-        return JsonResponse([usage_summary_current_period, usage_summary_previous_period])
+        return JsonResponse(
+            [usage_summary_current_period, usage_summary_previous_period]
+        )
