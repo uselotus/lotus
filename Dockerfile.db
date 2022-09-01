@@ -1,0 +1,4 @@
+# using official Docker Python BaseImage
+#!/bin/bash
+FROM postgres:14-alpine AS db
+COPY db-extensions.sql /docker-entrypoint-initdb.d/db-extensions.sql

@@ -53,6 +53,7 @@ except KeyError:
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
+API_KEY_CUSTOM_HEADER = "X-API-KEY"
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
