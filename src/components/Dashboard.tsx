@@ -1,11 +1,25 @@
 import React, { FC } from "react";
-import logo_large from "../assets/images/logo_large.jpg";
+import { Card, Divider } from "antd";
+import RevenueDisplay from "./RevenueDisplay";
+import SubscriptionStatistics from "./SubscriptionStatistics";
+import MetricBarGraph from "./MetricBarGraph";
 
 const Dashboard: FC = () => {
   return (
     <div>
-      <h1 className="bg-grey1">Dashboard</h1>
-      <img src={logo_large} alt="lotus" height="500" width="auto" />
+      <h1 className="text-3xl font-main mb-10">Dashboard</h1>
+      <div className="grid grid-cols-2 justify-center ">
+        <Card className="max-w-lg">
+          <RevenueDisplay />
+        </Card>
+        <Card className="max-w-lg">
+          <SubscriptionStatistics />
+        </Card>
+      </div>
+      <Divider />
+      <div className="my-10">
+        <MetricBarGraph />
+      </div>
     </div>
   );
 };

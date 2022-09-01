@@ -1,4 +1,23 @@
+@tailwind base;
+
+@layer base {
+  h1 {
+    @apply text-3xl font-main;
+  }
+}
+
+@tailwind components;
+@tailwind utilities;
 @import url("https://rsms.me/inter/inter.css");
+
+html {
+  font-family: "Inter", sans-serif;
+}
+@supports (font-variation-settings: normal) {
+  html {
+    font-family: "Inter var", sans-serif;
+  }
+}
 
 html,
 body {
@@ -9,9 +28,4 @@ body {
 a {
   color: inherit;
   text-decoration: none;
-}
-
-* {
-  box-sizing: border-box;
-  @apply font-inter;
 }

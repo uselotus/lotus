@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from "axios";
 import { CustomerTableItem, CustomerType } from "../types/customer-type";
 import { PlanType } from "../types/plan-type";
+import { RevenueType } from "../types/revenue-type";
 import {
   StripeConnectType,
   StripeOauthType,
@@ -55,4 +56,9 @@ export const Authentication = {
     password: string
   ): Promise<{ username: string; password: string }> =>
     requests.post("api/login/", { username, password }),
+};
+
+export const GetRevenue = {
+  getMonthlyRevenue: (): Promise<RevenueType> =>
+    requests.get("api/get_revenue/"),
 };

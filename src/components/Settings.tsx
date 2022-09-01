@@ -1,11 +1,9 @@
 import React, { FC, useState } from "react";
 import "./Settings.css";
 import { StripeStatusType } from "../types/stripe-type";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery } from "react-query";
 import { StripeConnect } from "../api/api";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { loadEnv } from "vite";
 
 const Settings: FC = () => {
   const navigate = useNavigate();
@@ -34,15 +32,17 @@ const Settings: FC = () => {
   };
   return (
     <div>
-      <h1>Settings</h1>
+      <h1 className="text-3xl font-main mb-10">Settings</h1>
       <div>
         {data?.connected === true ? (
           <div>
-            <p>Connected to Stripe &#x2705;</p>{" "}
+            <p className="text-danger p-2">Connected to Stripe &#x2705;</p>{" "}
           </div>
         ) : (
-          <div>
-            <p>Not Connected to Stripe </p>{" "}
+          <div className="items-center">
+            <p className="text-danger p-2 text-lg font-main">
+              Not Connected to Stripe{" "}
+            </p>{" "}
             <a
               className="stripe-connect slate"
               onClick={handleConnectWithStripeClick}

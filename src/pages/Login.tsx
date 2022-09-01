@@ -3,8 +3,9 @@ import CustomerTable from "../components/CustomerTable";
 import { CustomerType } from "../types/customer-type";
 import { Customer } from "../api/api";
 import * as Toast from "@radix-ui/react-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Authentication } from "../api/api";
+import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
 
 interface LoginForm extends HTMLFormControlsCollection {
@@ -36,7 +37,7 @@ const Login: FC = () => {
   };
 
   const handleLogin = (event: React.FormEvent<FormElements>) => {
-    event.preventDefault();
+    console.log(3);
     Authentication.login(username, password).then((data) => {
       setIsAuthenticated(true);
     });
@@ -45,39 +46,39 @@ const Login: FC = () => {
   if (!isAuthenticated) {
     return (
       <>
-        <div className="container mt-3">
-          <img src="../assets/images/logo_large.jpg" alt="logo" />
-          <h2>Login</h2>
-          <form onSubmit={handleLogin}>
-            <div className="form-group">
-              <label htmlFor="username">Username</label>
-              <input
-                type="text"
-                className="form-control"
-                id="username"
-                name="username"
-                value={username}
-                onChange={handleUserNameChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="username">Password</label>
-              <input
-                type="password"
-                className="form-control"
-                id="password"
-                name="password"
-                value={password}
-                onChange={handlePasswordChange}
-              />
-              <div>
-                {error && <small className="text-danger">{error}</small>}
-              </div>
-            </div>
-            <button type="submit" className="btn btn-primary">
-              Login
-            </button>
-          </form>
+        <div className="grid h-screen place-items-center">
+          <Card title="Login" className="flex flex-col">
+            <img src="../assets/images/logo_large.jpg" alt="logo" />
+            <Form onFinish={handleLogin} name="normal_login">
+              <Form.Item>
+                <label htmlFor="username">Username</label>
+                <Input
+                  type="text"
+                  name="username"
+                  value={username}
+                  defaultValue="username123"
+                  onChange={handleUserNameChange}
+                />
+              </Form.Item>
+              <label htmlFor="password">Password</label>
+
+              <Form.Item>
+                <Input
+                  type="password"
+                  name="password"
+                  value={password}
+                  defaultValue="password123"
+                  onChange={handlePasswordChange}
+                />
+                <div>
+                  {error && <small className="text-danger">{error}</small>}
+                </div>
+              </Form.Item>
+              <Form.Item>
+                <Button htmlType="submit">Login</Button>
+              </Form.Item>
+            </Form>
+          </Card>
         </div>
       </>
     );
@@ -86,9 +87,9 @@ const Login: FC = () => {
     <div className="container mt-3">
       <h1>Login</h1>
       <p>Hi {username}. You are logged in!</p>
-      <button className="btn btn-primary mr-2" onClick={redirectDashboard}>
+      <Link className="btn btn-primary mr-2" to="/dashboard">
         Dashboard
-      </button>
+      </Link>
       <button className="btn btn-danger">Log out</button>
     </div>
   );

@@ -13,26 +13,28 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from metering_billing import auth_views
-from django.urls import path, re_path
 from django.conf.urls import include
+from django.contrib import admin
 from django.shortcuts import render
+from django.urls import path, re_path
 from django.views.generic import TemplateView
-from metering_billing import track
-from metering_billing.views import (
+from metering_billing.views import auth_views, track
+from metering_billing.views.internal_views import (
+    OrganizationMetricsView,
+    OrganizationRevenueInPeriodView,
+    OrganizationSubscriptionsInPeriodView,
+    OrganizationUsageForMetricView,
+)
+from metering_billing.views.views import (
     CustomerView,
-    EventViewSet,
     InitializeStripeView,
     PlansView,
     SubscriptionView,
-    SubscriptionViewSet,
-    UsageView,
+    UsageViewForCustomer,
 )
 from rest_framework import routers
 
 router = routers.DefaultRouter()
-router.register(r"event", EventViewSet)
 
 
 def index(request):
@@ -40,14 +42,29 @@ def index(request):
 
 
 urlpatterns = [
-    # path("grappelli/", include("grappelli.urls")),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/customers", CustomerView.as_view(), name="customer"),
     path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
     path("track", track.track_event, name="track_event"),
-    path("api/usage", UsageView.as_view(), name="usage"),
+    path("api/usage", UsageViewForCustomer.as_view(), name="usage"),
+    path(
+        "api/metric_usage",
+        OrganizationUsageForMetricView.as_view(),
+        name="metric_usage",
+    ),
     path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
+    path(
+        "api/org_period_revenue",
+        OrganizationRevenueInPeriodView.as_view(),
+        name="org_period_revenue",
+    ),
+    path(
+        "api/org_period_subscriptions",
+        OrganizationSubscriptionsInPeriodView.as_view(),
+        name="org_period_subscriptions",
+    ),
+    path("api/org_metrics", OrganizationMetricsView.as_view(), name="org_metrics"),
     path("api/plans", PlansView.as_view(), name="plans"),
     path("api/login/", auth_views.login_view, name="api-login"),
     path("api/logout", auth_views.logout_view, name="api-logout"),

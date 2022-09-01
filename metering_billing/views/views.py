@@ -1,25 +1,16 @@
-import json
 import math
-import os
+from datetime import datetime
 
 import dateutil.parser as parser
 import stripe
 from django.db import connection
-from django.forms.models import model_to_dict
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
-from django_q.tasks import async_task
+from django.http import HttpResponseBadRequest, JsonResponse
 from lotus.settings import STRIPE_SECRET_KEY
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from metering_billing.models import (
     APIToken,
     BillingPlan,
     Customer,
     Event,
-    Organization,
     PlanComponent,
     Subscription,
 )
@@ -31,50 +22,14 @@ from metering_billing.serializers import (
     PlanComponentSerializer,
     SubscriptionSerializer,
 )
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from ..utils import get_customer_usage, parse_organization
 
 stripe.api_key = STRIPE_SECRET_KEY
-
-
-def get_organization_from_key(request):
-    validator = HasUserAPIKey()
-    key = validator.get_key(request)
-    api_key = APIToken.objects.get_from_key(key)
-    organization = api_key.organization
-    return organization
-
-
-def parse_organization(request):
-    is_authenticated = request.user.is_authenticated
-    has_api_key = request.META.get("HTTP_AUTHORIZATION") is not None
-    if has_api_key and is_authenticated:
-        organization_api_token = get_organization_from_key(request)
-        organization_user = request.user.organization
-        if organization_user.pk != organization_api_token.pk:
-            return Response(
-                {
-                    "error": "Provided both API key and session authentication but organization didn't match"
-                },
-                status=406,
-            )
-        else:
-            return organization_api_token
-    elif has_api_key:
-        return get_organization_from_key(request)
-    elif is_authenticated:
-        organization_user = request.user.organization
-        if organization_user is None:
-            return Response({"error": "User does not have an organization"}, status=403)
-        return organization_user
-
-
-class EventViewSet(viewsets.ModelViewSet):
-    queryset = Event.objects.all()
-    serializer_class = EventSerializer
-
-
-class SubscriptionViewSet(viewsets.ModelViewSet):
-    queryset = Subscription.objects.all()
-    serializer_class = SubscriptionSerializer
 
 
 class PlansView(APIView):
@@ -174,31 +129,17 @@ class SubscriptionView(APIView):
         customer_qs = Customer.objects.filter(
             customer_id=data["customer_id"], organization=organization
         )
-        start_date = parser.parse(data["start_date"])
         if len(customer_qs) < 1:
             return Response(
                 {
-                    "error": "Customer with custmer_id {} does not exist".format(
-                        data["custmer_id"]
+                    "error": "Customer with customer_id {} does not exist".format(
+                        data["customer_id"]
                     )
                 },
                 status=400,
             )
         else:
             customer = customer_qs[0]
-
-        organization_qs = Organization.objects.filter(customer__id=customer.pk)
-        if len(organization_qs) < 1:
-            return Response(
-                {
-                    "error": "Organization with organization_id {} does not exist".format(
-                        data["organization_id"]
-                    )
-                },
-                status=400,
-            )
-        else:
-            organization = organization_qs[0]
 
         plan_qs = BillingPlan.objects.filter(
             plan_id=data["plan_id"], organization=organization
@@ -214,23 +155,43 @@ class SubscriptionView(APIView):
             )
         else:
             plan = plan_qs[0]
-            end_date = plan.subscription_end_date(start_date)
 
-        subscription = Subscription.objects.create(
+        start_date = parser.parse(data["start_date"])
+        end_date = plan.subscription_end_date(start_date)
+
+        overlapping_subscriptions = Subscription.objects.filter(
             organization=organization,
             customer=customer,
-            start_date=start_date,
-            end_date=end_date,
+            start_date__lte=end_date,
+            end_date__gte=start_date,
             billing_plan=plan,
-            status="active",
         )
-        subscription.save()
-
-        serializer_context = {
-            "request": request,
+        if len(overlapping_subscriptions) != 0:
+            return Response(
+                {
+                    "error": f"A subscription for customer {customer.name}, plan {plan.name} overlaps with specified date ranges {start_date} to {end_date}"
+                },
+                status=409,
+            )
+        subscription_kwargs = {
+            "organization": organization,
+            "customer": customer,
+            "start_date": start_date,
+            "end_date": end_date,
+            "billing_plan": plan,
         }
+        if data.get("auto_renew"):
+            subscription_kwargs["auto_renew"] = data.get("auto_renew")
+        if data.get("next_plan"):
+            subscription_kwargs["next_plan"] = data.get("next_plan")
+        if end_date < datetime.now():
+            subscription_kwargs["status"] = "ended"
+        elif start_date < datetime.now():
+            subscription_kwargs["status"] = "active"
+        subscription = Subscription.objects.create(**subscription_kwargs)
+        serializer = SubscriptionSerializer(subscription)
 
-        return Response("Subscription Created", status=201)
+        return Response(serializer.data, status=201)
 
 
 class CustomerView(APIView):
@@ -270,111 +231,16 @@ class CustomerView(APIView):
             return parsed_org
         else:
             organization = parsed_org
-        request.data["organization"] = organization.pk
-        serializer = CustomerSerializer(data=request.data)
+        customer_data = request.data.copy()
+        customer_data["organization"] = organization.pk
+        serializer = CustomerSerializer(data=customer_data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
 
-def get_subscription_usage(subscription):
-    plan = subscription.billing_plan
-    flat_rate = int(plan.flat_rate.amount)
-    plan_start_timestamp = subscription.start_date
-    plan_end_timestamp = subscription.end_date
-
-    plan_components_qs = PlanComponent.objects.filter(billing_plan=plan.id)
-    subscription_cost = 0
-    plan_components_summary = {}
-    # For each component of the plan, calculate usage/cost
-    for plan_component in plan_components_qs:
-        billable_metric = plan_component.billable_metric
-        event_name = billable_metric.event_name
-        aggregation_type = billable_metric.aggregation_type
-        subtotal_usage = 0.0
-        subtotal_cost = 0.0
-
-        events = Event.objects.filter(
-            organization=subscription.customer.organization,
-            customer=subscription.customer,
-            event_name=event_name,
-            time_created__gte=plan_start_timestamp,
-            time_created__lte=plan_end_timestamp,
-        )
-
-        if aggregation_type == "count":
-            subtotal_usage = len(events) - plan_component.free_metric_quantity
-            metric_batches = math.ceil(
-                subtotal_usage / plan_component.metric_amount_per_cost
-            )
-        elif aggregation_type == "sum":
-            property_name = billable_metric.property_name
-            for event in events:
-                properties_dict = event.properties
-                if property_name in properties_dict:
-                    subtotal_usage += float(properties_dict[property_name])
-            subtotal_usage -= plan_component.free_metric_quantity
-            metric_batches = math.ceil(
-                subtotal_usage / plan_component.metric_amount_per_cost
-            )
-
-        elif aggregation_type == "max":
-            property_name = billable_metric.property_name
-            for event in events:
-                properties_dict = event.properties
-                if property_name in properties_dict:
-                    subtotal_usage = max(
-                        subtotal_usage, float(properties_dict[property_name])
-                    )
-                metric_batches = subtotal_usage
-        subtotal_cost = int((metric_batches * plan_component.cost_per_metric).amount)
-        subscription_cost += subtotal_cost
-
-        subtotal_cost_string = "$" + str(subtotal_cost)
-        plan_components_summary[str(plan_component)] = {
-            "cost": subtotal_cost_string,
-            "usage": str(subtotal_usage),
-            "free_usage_left": str(
-                max(plan_component.free_metric_quantity - subtotal_usage, 0)
-            ),
-        }
-        usage_dict = {
-            "subscription_cost": subscription_cost,
-            "flat_rate": flat_rate,
-            "plan_components_summary": plan_components_summary,
-            "current_amount_due": subscription_cost + flat_rate,
-            "plan_start_timestamp": plan_start_timestamp,
-            "plan_end_timestamp": plan_end_timestamp,
-        }
-
-    return usage_dict
-
-
-def get_customer_usage(customer):
-    customer_subscriptions = Subscription.objects.filter(
-        customer=customer, status="active", organization=customer.organization
-    )
-
-    usage_summary = {}
-    for subscription in customer_subscriptions:
-
-        usage_dict = get_subscription_usage(subscription)
-        subscription_usage_dict = {
-            "total_usage_cost": "$" + str(usage_dict["subscription_cost"]),
-            "flat_rate_cost": "$" + str(usage_dict["flat_rate"]),
-            "components": usage_dict["plan_components_summary"],
-            "current_amount_due": "$" + str(usage_dict["current_amount_due"]),
-            "billing_start_date": usage_dict["plan_start_timestamp"],
-            "billing_end_date": usage_dict["plan_end_timestamp"],
-        }
-
-        usage_summary[subscription.billing_plan.name] = subscription_usage_dict
-
-    return usage_summary
-
-
-class UsageView(APIView):
+class UsageViewForCustomer(APIView):
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -508,3 +374,35 @@ class InitializeStripeView(APIView):
         organization.save()
 
         return JsonResponse({"Success": True})
+
+
+class SubscriptionView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    def get(self, request, format=None):
+        """
+        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
+        """
+
+        parsed_org = parse_organization(request)
+        if type(parsed_org) == Response:
+            return parsed_org
+        else:
+            organization = parsed_org
+        if "customer_id" in request.query_params:
+            customer_id = request.query_params["customer_id"]
+            try:
+                customer = Customer.objects.get(
+                    customer_id=customer_id, organization=organization
+                )
+            except Customer.DoesNotExist:
+                return HttpResponseBadRequest("Customer does not exist")
+            subscriptions = Subscription.objects.filter(
+                customer=customer, status="active"
+            )
+            serializer = SubscriptionSerializer(subscriptions, many=True)
+            return Response(serializer.data)
+        else:
+            subscriptions = Subscription.objects.filter(status="active")
+            serializer = SubscriptionSerializer(subscriptions, many=True)
+            return Response(serializer.data)

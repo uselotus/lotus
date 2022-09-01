@@ -1,16 +1,20 @@
 import React, { FC } from "react";
 import { Menu } from "antd";
 import {
+  BarChartOutlined,
   UserOutlined,
-  VideoCameraOutlined,
   UploadOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router";
+import { GearIcon, ImageIcon, SunIcon } from "@radix-ui/react-icons";
+
+import { useNavigate, useLocation } from "react-router";
 import logo from "../assets/images/corner_logo.svg";
 import "./SideBar.css";
 
 const SideBar: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleCustomersClick = () => {
     navigate("/customers");
@@ -36,20 +40,29 @@ const SideBar: FC = () => {
       >
         <img src={logo} alt="lotus" />
       </div>
-      <Menu theme="dark" mode="vertical" defaultSelectedKeys={["1"]}>
-        <Menu.Item key="1" onClick={handleDashboardClick}>
-          <UserOutlined />
+      <Menu
+        mode="vertical"
+        selectedKeys={[location.pathname]}
+        className="min-h-screen"
+      >
+        <Menu.Item key="/dashboard" onClick={handleDashboardClick}>
+          <BarChartOutlined />
           <span> Dashboard</span>
         </Menu.Item>
-        <Menu.Item key="2" onClick={handleCustomersClick}>
-          <VideoCameraOutlined />
+        <Menu.Item key="/customers" onClick={handleCustomersClick}>
+          <UserOutlined />
           <span> Customers</span>
         </Menu.Item>
-        <Menu.Item key="3" onClick={handlePlansClick}>
+        <Menu.Item key="/plans" onClick={handlePlansClick}>
           <UploadOutlined />
           <span> Plans</span>
         </Menu.Item>
-        <Menu.Item title="Settings" onClick={handleSettingsClick}>
+        <Menu.Item
+          key="/settings"
+          onClick={handleSettingsClick}
+          className="flex flex-row"
+        >
+          <SettingOutlined />
           <span> Settings</span>
         </Menu.Item>
       </Menu>

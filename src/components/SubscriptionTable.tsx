@@ -39,7 +39,7 @@ interface Props {
   customerArray: CustomerTableItem[];
 }
 
-const ViewCustomers: FC<Props> = ({ customerArray }) => {
+const SubscriptionTable: FC<Props> = ({ customerArray }) => {
   const navigate = useNavigate();
 
   const navigateCreateCustomer = () => {
@@ -75,4 +75,4 @@ const ViewCustomers: FC<Props> = ({ customerArray }) => {
   );
 };
 
-export default ViewCustomers;
+export default SubscriptionTable;
