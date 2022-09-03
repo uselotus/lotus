@@ -2,6 +2,8 @@ import axios, { AxiosResponse } from "axios";
 import { CustomerTableItem, CustomerType } from "../types/customer-type";
 import { PlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
+import { SubscriptionTotals } from "../types/subscription-type";
+import { MetricUsage } from "../types/metric-type";
 import {
   StripeConnectType,
   StripeOauthType,
@@ -66,12 +68,40 @@ export const GetRevenue = {
     period_2_start_date: string,
     period_2_end_date: string
   ): Promise<RevenueType> =>
-    requests.get("api/period_revenue/", {
+    requests.get("api/period_metric_revenue/", {
       params: {
         period_1_end_date,
         period_1_start_date,
         period_2_start_date,
         period_2_end_date,
       },
+    }),
+};
+
+export const GetSubscriptions = {
+  getSubscriptionOverview: (
+    period_1_end_date: string,
+    period_1_start_date: string,
+    period_2_start_date: string,
+    period_2_end_date: string
+  ): Promise<SubscriptionTotals> =>
+    requests.get("api/period_subscriptions/", {
+      params: {
+        period_1_end_date,
+        period_1_start_date,
+        period_2_start_date,
+        period_2_end_date,
+      },
+    }),
+};
+
+export const Metrics = {
+  getmetricusage: (
+    start_date: string,
+    end_date: string,
+    top_n_customers?: number
+  ): Promise<MetricUsage> =>
+    requests.get("api/metric_usage/", {
+      params: { start_date, end_date, top_n_customers },
     }),
 };

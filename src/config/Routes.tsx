@@ -1,6 +1,6 @@
 import React, { FC, useState, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Dashboard from "../components/Dashboard";
+import Dashboard from "../components/Dashboard/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
 import ViewSettings from "../pages/ViewSettings";

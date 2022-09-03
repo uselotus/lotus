@@ -1,10 +1,12 @@
 import { MetricType } from "./metric-type";
 export interface RevenueType {
-  revenue_period_1: RevenuePeriod;
-  revenue_period_2: RevenuePeriod;
+  daily_usage_revenue_period_1: RevenuePeriod[];
+  daily_usage_revenue_period_2: RevenuePeriod[];
+  total_revenue_period_1: number;
+  total_revenue_period_2: number;
 }
 
-interface RevenuePeriod {
+export interface RevenuePeriod {
   total_revenue: number;
   data: RevenueData[];
   metric: MetricType;
