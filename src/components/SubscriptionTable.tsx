@@ -47,7 +47,7 @@ const SubscriptionTable: FC<Props> = ({ customerArray }) => {
   };
   return (
     <React.Fragment>
-      <h1 className="text-3xl font-main">Customers</h1>
+      <h1 className="text-3xl font-main">Subscriptions</h1>
 
       <ProTable<CustomerTableItem>
         columns={columns}

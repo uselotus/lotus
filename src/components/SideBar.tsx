@@ -1,10 +1,11 @@
 import React, { FC } from "react";
-import { Menu } from "antd";
+import { Divider, Menu } from "antd";
 import {
   BarChartOutlined,
   UserOutlined,
   UploadOutlined,
   SettingOutlined,
+  BookOutlined,
 } from "@ant-design/icons";
 import { GearIcon, ImageIcon, SunIcon } from "@radix-ui/react-icons";
 
@@ -27,6 +28,10 @@ const SideBar: FC = () => {
   };
   const handleSettingsClick = () => {
     navigate("/settings");
+  };
+
+  const handleSubscriptionsClick = () => {
+    navigate("/subscriptions");
   };
 
   return (
@@ -57,6 +62,11 @@ const SideBar: FC = () => {
           <UploadOutlined />
           <span> Plans</span>
         </Menu.Item>
+        <Menu.Item key="/subscriptions" onClick={handleSubscriptionsClick}>
+          <BookOutlined />
+          <span> Subscriptions</span>
+        </Menu.Item>
+        <Divider />
         <Menu.Item
           key="/settings"
           onClick={handleSettingsClick}

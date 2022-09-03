@@ -21,7 +21,8 @@ const instance = axios.create({
 const responseBody = (response: AxiosResponse) => response.data;
 
 const requests = {
-  get: (url: string) => instance.get(url).then(responseBody),
+  get: (url: string, params?: {}) =>
+    instance.get(url, params).then(responseBody),
   post: (url: string, body: {}, headers?: {}) =>
     instance.post(url, body, headers).then(responseBody),
   put: (url: string, body: {}) => instance.put(url, body).then(responseBody),
@@ -59,6 +60,18 @@ export const Authentication = {
 };
 
 export const GetRevenue = {
-  getMonthlyRevenue: (): Promise<RevenueType> =>
-    requests.get("api/get_revenue/"),
+  getMonthlyRevenue: (
+    period_1_end_date: string,
+    period_1_start_date: string,
+    period_2_start_date: string,
+    period_2_end_date: string
+  ): Promise<RevenueType> =>
+    requests.get("api/period_revenue/", {
+      params: {
+        period_1_end_date,
+        period_1_start_date,
+        period_2_start_date,
+        period_2_end_date,
+      },
+    }),
 };
