@@ -8,7 +8,7 @@ import StripeRedirect from "../pages/StripeRedirect";
 
 // import MainContent from "./components/MainContent";
 import SideBar from "../components/SideBar";
-import { Layout } from "antd";
+import { Divider, Layout } from "antd";
 import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import CreatePlan from "../pages/CreatePlan";
 
@@ -26,30 +26,17 @@ const AppRoutes: FC = () => {
     window.innerWidth <= 760 ? setCollapse(true) : setCollapse(false);
   }, []);
   return (
-    <div>
+    <div className="bg-darkgold">
       <Layout>
         <Sider
           trigger={null}
           collapsible={false}
           collapsed={collapse}
-          style={{ minHeight: "100vh", background: "#CCA43B" }}
+          style={{ minHeight: "100vh", background: "#000000" }}
         >
           <SideBar />
         </Sider>
-        <Layout>
-          <Header
-            className="siteLayoutBackground"
-            style={{ padding: 0, background: "#CCA43B" }}
-          >
-            {React.createElement(
-              collapse ? MenuUnfoldOutlined : MenuFoldOutlined,
-              {
-                className: "trigger",
-                onClick: handleToggle,
-                style: { color: "#fff" },
-              }
-            )}
-          </Header>
+        <Layout style={{ background: "#FFFFFF" }}>
           <Content
             style={{
               margin: "24px 16px",

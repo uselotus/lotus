@@ -15,7 +15,6 @@
     "@radix-ui/react-popover": "1.0.0",
     "@radix-ui/react-separator": "^1.0.0",
     "@radix-ui/react-toast": "1.0.0",
-    "@tanstack/react-query-devtools": "4.2.1",
     "@types/node": "18.7.3",
     "antd": "4.22.4",
     "axios": "0.27.2",

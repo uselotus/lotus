@@ -1,9 +1,29 @@
-import { Button, Checkbox, Form, Input, Select, InputNumber } from "antd";
+import {
+  Button,
+  Checkbox,
+  Form,
+  Card,
+  Input,
+  Select,
+  InputNumber,
+  PageHeader,
+  Popconfirm,
+} from "antd";
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/UsageComponentForm";
+
+interface UsageComponent {
+  event_name: string;
+  aggregation_type: string;
+  cost: number;
+  free_amount: number;
+}
 
 const CreatePlan = () => {
   const [visible, setVisible] = useState(false);
+  const [components, setComponents] = useState<UsageComponent[]>([]);
+  const navigate = useNavigate();
   const onFinish = (values: any) => {
     console.log("Success:", values);
   };
@@ -20,13 +40,24 @@ const CreatePlan = () => {
     setVisible(true);
   };
 
+  const goBackPage = () => {
+    navigate(-1);
+  };
+
+  const submitPricingPlan = () => {
+    console.log("Submit Pricing Plan");
+    navigate("/plans");
+  };
+
   return (
     <div className="flex flex-col">
-      <h1>Create Plan</h1>
+      <PageHeader
+        className="site-page-header"
+        onBack={goBackPage}
+        title="Create Plan"
+      />
       <Form
         name="create_plan"
-        labelCol={{ span: 8 }}
-        wrapperCol={{ span: 16 }}
         initialValues={{ remember: true }}
         onFinish={onFinish}
         onFinishFailed={onFinishFailed}
@@ -50,11 +81,16 @@ const CreatePlan = () => {
         </Form.Item>
 
         <Form.Item label="Recurring Cost">
-          <InputNumber addonBefore="$" defaultValue={20} precision={2} />
+          <InputNumber addonBefore="$" defaultValue={0} precision={2} />
         </Form.Item>
         <Form.Item>
-          <Checkbox>Pay In Advance </Checkbox>
+          <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
         </Form.Item>
+        {components.map((component, index) => (
+          <Card>
+            <p>{component.event_name}</p>
+          </Card>
+        ))}
         <Form.Item>
           <Button
             htmlType="button"
@@ -66,9 +102,15 @@ const CreatePlan = () => {
         </Form.Item>
 
         <Form.Item>
-          <Button type="primary" className="bg-info" htmlType="submit">
-            Submit
-          </Button>
+          <Popconfirm
+            title="Submit"
+            onConfirm={submitPricingPlan}
+            onVisibleChange={() => console.log("visible change")}
+          >
+            <Button type="primary" className="bg-info" htmlType="submit">
+              Submit
+            </Button>
+          </Popconfirm>
         </Form.Item>
       </Form>
 

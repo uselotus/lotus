@@ -87,13 +87,7 @@ function MetricBarGraph() {
     seriesField: "type",
     isRange: true,
     maxColumnWidth: 30,
-    colorField: "type", // or seriesField in some cases
     color: ["#DEC27D", "#72A5FD", "#DEC27D"],
-    padding: "auto",
-    legend: {
-      layout: "vertical",
-      position: "left",
-    },
     label: {
       layout: [
         {
@@ -109,7 +103,7 @@ function MetricBarGraph() {
     },
   };
   return (
-    <div className="">
+    <div>
       <Column {...config} />
     </div>
   );

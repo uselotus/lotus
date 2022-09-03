@@ -48,7 +48,7 @@ const Login: FC = () => {
       <>
         <div className="grid h-screen place-items-center">
           <Card title="Login" className="flex flex-col">
-            <img src="../assets/images/logo_large.jpg" alt="logo" />
+            {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
             <Form onFinish={handleLogin} name="normal_login">
               <Form.Item>
                 <label htmlFor="username">Username</label>
