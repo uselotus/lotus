@@ -33,7 +33,7 @@
     classnames "^2.2.6"
     rc-util "^5.9.4"
 
-"@ant-design/plots@^1.2.1":
+"@ant-design/plots@1.2.1":
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/@ant-design/plots/-/plots-1.2.1.tgz#2b5f2e234cf50669ae673c0d5f59344b5fd7caf3"
   integrity sha512-wbcmhHRkVi7IFyqzVNUozcJtIpgWHOFHbny5T+DLQoE2lzh+A1nTOfhlPJXc6aq56uIg6w+4iN/umsJKUmcLPw==
@@ -54,7 +54,7 @@
     omit.js "^2.0.2"
     rc-util "^5.4.0"
 
-"@ant-design/pro-components@^1.1.16":
+"@ant-design/pro-components@1.1.16":
   version "1.1.16"
   resolved "https://registry.yarnpkg.com/@ant-design/pro-components/-/pro-components-1.1.16.tgz#3439207fa2cf05580dd355828d346e2ce84ef78c"
   integrity sha512-VB1ta13Lcz0JCJzba495HGzswkGWtjGXh/nhjglRaJP3+EIxE3lEthLRWRQPfpa0R2XPrrmp34StY5rCALNlFQ==
@@ -839,7 +839,7 @@
     "@radix-ui/react-primitive" "1.0.0"
     "@radix-ui/react-use-callback-ref" "1.0.0"
 
-"@radix-ui/react-icons@^1.1.1":
+"@radix-ui/react-icons@1.1.1":
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/@radix-ui/react-icons/-/react-icons-1.1.1.tgz#38d2aa548035dd3b799c169bd17177b1cec3152b"
   integrity sha512-xc3wQC59rsFylVbSusQCrrM+6695ppF730Q6yqzhRdqDcRNWIm2R6ngpzBoSOQMcwnq4p805F+Gr7xo4fmtN1A==
@@ -915,7 +915,7 @@
     "@babel/runtime" "^7.13.10"
     "@radix-ui/react-slot" "1.0.0"
 
-"@radix-ui/react-separator@^1.0.0":
+"@radix-ui/react-separator@1.0.0":
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@radix-ui/react-separator/-/react-separator-1.0.0.tgz#ae318b5e7e1436b68d77cf08b7cd25a37893021f"
   integrity sha512-narSsDP+CKJWEOV9Yx9aOpw4bLaNRNIvnqmfx30mAJAJ9wPKoyVmcLzFj0Hyx3yQNZx7EokMwW6KtMyxN5jDUw==
@@ -1565,7 +1565,7 @@ date-fns@2.x:
   resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.29.1.tgz#9667c2615525e552b5135a3116b95b1961456e60"
   integrity sha512-dlLD5rKaKxpFdnjrs+5azHDFOPEu4ANy/LTh04A1DTzMM7qoajmKCBc8pkKRFT41CNzw+4gQh79X5C+Jq27HAw==
 
-dayjs@1.x, dayjs@^1.11.5:
+dayjs@1.11.5, dayjs@1.x:
   version "1.11.5"
   resolved "https://registry.yarnpkg.com/dayjs/-/dayjs-1.11.5.tgz#00e8cc627f231f9499c19b38af49f56dc0ac5e93"
   integrity sha512-CAdX5Q3YW3Gclyo5Vpqkgpj8fSdLQcRuzfX6mC6Phy0nfJ0eGYOeS7m4mt2plDWLAtA4TqTakvbboHvUxfe4iA==
@@ -3124,7 +3124,7 @@ react-dom@18.2.0:
     loose-envify "^1.1.0"
     scheduler "^0.23.0"
 
-react-infinite-scroll-component@^6.1.0:
+react-infinite-scroll-component@6.1.0:
   version "6.1.0"
   resolved "https://registry.yarnpkg.com/react-infinite-scroll-component/-/react-infinite-scroll-component-6.1.0.tgz#7e511e7aa0f728ac3e51f64a38a6079ac522407f"
   integrity sha512-SQu5nCqy8DxQWpnUVLx7V7b7LcA37aM7tvoWjTLZp1dk6EJibM5/4EJKzOnl07/BsM1Y40sKLuqjCwwH/xV0TQ==
@@ -3205,12 +3205,7 @@ react-sortable-hoc@^2.0.0:
     invariant "^2.2.4"
     prop-types "^15.5.7"
 
-react-spinner@^0.2.7:
-  version "0.2.7"
-  resolved "https://registry.yarnpkg.com/react-spinner/-/react-spinner-0.2.7.tgz#ea3ca3375dd7a54edbb5cc01d17496a2e2fc14db"
-  integrity sha512-9bIDWGIumXpM7xcas/qpikRZp7AGP1uehgxwTTj/5DL6SwWHMTLfuioYgX7bdeMgOiVEMvOgLyXU3fYKQc16IA==
-
-react-spinners@^0.13.4:
+react-spinners@0.13.4:
   version "0.13.4"
   resolved "https://registry.yarnpkg.com/react-spinners/-/react-spinners-0.13.4.tgz#20f7435e5cb3a2bde23110efa8b7dfbe485373e9"
   integrity sha512-V6IURjYOwomhdngMfuVxBp4utCF6v21sjQ6r4K2JoKl8fwXZp1UeHMBLf+2SU+cts8hAVj9rHOJ8kdT5UqqaJw==
