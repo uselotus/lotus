@@ -48,16 +48,23 @@ class TestGenerateInvoiceSynchrous:
             aggregation_type=itertools.cycle(["sum", "max", "count"]),
             _quantity=3,
         )
-        billing_plan = baker.make(BillingPlan, organization=org, interval="month")
+        billing_plan = baker.make(
+            BillingPlan,
+            organization=org,
+            interval="month",
+            name="test_plan",
+            description="test_plan for testing",
+        )
         plan_component_set = baker.make(
             PlanComponent,
-            billing_plan=billing_plan,
             billable_metric=itertools.cycle(metric_set),
             free_metric_quantity=itertools.cycle([50, 0, 1]),
             cost_per_metric=itertools.cycle([5, 0.05, 2]),
             metric_amount_per_cost=itertools.cycle([100, 1, 1]),
             _quantity=3,
         )
+        billing_plan.components.add(*plan_component_set)
+        billing_plan.save()
         subscription = baker.make(
             Subscription,
             organization=org,

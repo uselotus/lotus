@@ -1,280 +1,59 @@
+import json
 import math
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 
 import dateutil.parser as parser
 import stripe
 from django.db import connection
-from django.http import HttpResponseBadRequest, JsonResponse
+from django.db.models import Q
+from django.forms.models import model_to_dict
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.shortcuts import get_list_or_404, get_object_or_404
+from django_q.tasks import async_task
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
 from lotus.settings import STRIPE_SECRET_KEY
 from metering_billing.models import (
     APIToken,
+    BillableMetric,
     BillingPlan,
     Customer,
     Event,
+    Invoice,
+    Organization,
     PlanComponent,
     Subscription,
 )
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers import (
     BillingPlanSerializer,
+    CustomerRevenueSerializer,
+    CustomerRevenueSummarySerializer,
     CustomerSerializer,
+    DayMetricUsageCustomerSerializer,
     EventSerializer,
+    PeriodComparisonRequestSerializer,
+    PeriodMetricRevenueResponseSerializer,
+    PeriodMetricUsageRequestSerializer,
+    PeriodMetricUsageResponseSerializer,
+    PeriodSubscriptionsResponseSerializer,
     PlanComponentSerializer,
     SubscriptionSerializer,
+    SubscriptionUsageSerializer,
 )
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from ..utils import get_customer_usage, parse_organization
+from ..utils import (
+    calculate_plan_component_daily_revenue,
+    get_customer_usage_and_revenue,
+    get_metric_usage,
+    parse_organization,
+)
 
 stripe.api_key = STRIPE_SECRET_KEY
-
-
-class PlansView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    def get(self, request, format=None):
-
-        parsed_org = parse_organization(request)
-        if type(parsed_org) == Response:
-            return parsed_org
-        else:
-            organization = parsed_org
-        plans = BillingPlan.objects.filter(organization=organization)
-
-        plans_list = []
-
-        for plan in plans:
-            plan_breakdown = {}
-            plan_data = BillingPlanSerializer(plan).data
-            plan_breakdown["name"] = plan_data["name"]
-
-            components = PlanComponent.objects.filter(billing_plan=plan)
-
-            components_list = []
-            for component in components:
-                component_breakdown = {}
-                component_data = PlanComponentSerializer(component).data
-                component_breakdown["free_metric_quantity"] = int(
-                    component_data["free_metric_quantity"]
-                )
-                component_breakdown["cost_per_metric"] = component_data[
-                    "cost_per_metric"
-                ]
-                component_breakdown["unit_per_cost"] = component_data[
-                    "metric_amount_per_cost"
-                ]
-                component_breakdown[
-                    "metric_name"
-                ] = component.billable_metric.event_name
-                component_breakdown[
-                    "aggregation_type"
-                ] = component.billable_metric.aggregation_type.upper()
-                component_breakdown[
-                    "property_name"
-                ] = component.billable_metric.property_name
-
-                components_list.append(component_breakdown)
-            plan_breakdown["components"] = components_list
-            plan_breakdown["billing_interval"] = plan_data["interval"]
-            plan_breakdown["description"] = plan_data["description"]
-            plan_breakdown["flat_rate"] = plan_data["flat_rate"]
-        return JsonResponse(plans_list, safe=False)
-
-
-class SubscriptionView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    def get(self, request, format=None):
-        """
-        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
-        """
-
-        parsed_org = parse_organization(request)
-        if type(parsed_org) == Response:
-            return parsed_org
-        else:
-            organization = parsed_org
-        if "customer_id" in request.query_params:
-            customer_id = request.query_params["customer_id"]
-            try:
-                customer = Customer.objects.get(
-                    customer_id=customer_id, organization=organization
-                )
-            except Customer.DoesNotExist:
-                return HttpResponseBadRequest("Customer does not exist")
-            subscriptions = Subscription.objects.filter(
-                customer=customer, status="active"
-            )
-            serializer = SubscriptionSerializer(subscriptions, many=True)
-            return Response(serializer.data)
-        else:
-            subscriptions = Subscription.objects.filter(status="active")
-            serializer = SubscriptionSerializer(subscriptions, many=True)
-            return Response(serializer.data)
-
-    def post(self, request, format=None):
-        """
-        Create a new subscription, joining a customer and a plan.
-        """
-        data = request.data
-        parsed_org = parse_organization(request)
-        if type(parsed_org) == Response:
-            return parsed_org
-        else:
-            organization = parsed_org
-
-        customer_qs = Customer.objects.filter(
-            customer_id=data["customer_id"], organization=organization
-        )
-        if len(customer_qs) < 1:
-            return Response(
-                {
-                    "error": "Customer with customer_id {} does not exist".format(
-                        data["customer_id"]
-                    )
-                },
-                status=400,
-            )
-        else:
-            customer = customer_qs[0]
-
-        plan_qs = BillingPlan.objects.filter(
-            plan_id=data["plan_id"], organization=organization
-        )
-        if len(plan_qs) < 1:
-            return Response(
-                {
-                    "error": "Plan with plan_id {} does not exist".format(
-                        data["plan_id"]
-                    )
-                },
-                status=400,
-            )
-        else:
-            plan = plan_qs[0]
-
-        start_date = parser.parse(data["start_date"])
-        end_date = plan.subscription_end_date(start_date)
-
-        overlapping_subscriptions = Subscription.objects.filter(
-            organization=organization,
-            customer=customer,
-            start_date__lte=end_date,
-            end_date__gte=start_date,
-            billing_plan=plan,
-        )
-        if len(overlapping_subscriptions) != 0:
-            return Response(
-                {
-                    "error": f"A subscription for customer {customer.name}, plan {plan.name} overlaps with specified date ranges {start_date} to {end_date}"
-                },
-                status=409,
-            )
-        subscription_kwargs = {
-            "organization": organization,
-            "customer": customer,
-            "start_date": start_date,
-            "end_date": end_date,
-            "billing_plan": plan,
-        }
-        if data.get("auto_renew"):
-            subscription_kwargs["auto_renew"] = data.get("auto_renew")
-        if data.get("next_plan"):
-            subscription_kwargs["next_plan"] = data.get("next_plan")
-        if end_date < datetime.now():
-            subscription_kwargs["status"] = "ended"
-        elif start_date < datetime.now():
-            subscription_kwargs["status"] = "active"
-        subscription = Subscription.objects.create(**subscription_kwargs)
-        serializer = SubscriptionSerializer(subscription)
-
-        return Response(serializer.data, status=201)
-
-
-class CustomerView(APIView):
-
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    def get(self, request, format=None):
-        """
-        Return a list of all customers.
-        """
-        parsed_org = parse_organization(request)
-        if type(parsed_org) == Response:
-            return parsed_org
-        else:
-            organization = parsed_org
-
-        customers = Customer.objects.filter(organization=organization)
-        serializer = CustomerSerializer(customers, many=True)
-        customer_list = []
-        for customer in customers:
-            serializer = CustomerSerializer(customer)
-            cust_data = serializer.data
-            cust_data["plan"] = {
-                "name": customer.get_billing_plan_name(),
-                "color": "green",
-            }
-            del cust_data["organization"]
-            customer_list.append(cust_data)
-        return Response(customer_list)
-
-    def post(self, request, format=None):
-        """
-        Create a new customer.
-        """
-        parsed_org = parse_organization(request)
-        if type(parsed_org) == Response:
-            return parsed_org
-        else:
-            organization = parsed_org
-        customer_data = request.data.copy()
-        customer_data["organization"] = organization.pk
-        serializer = CustomerSerializer(data=customer_data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
-
-
-class UsageViewForCustomer(APIView):
-
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    def get(self, request, format=None):
-        """
-        Return current usage for a customer during a given billing period.
-        """
-        parsed_org = parse_organization(request)
-        if type(parsed_org) == Response:
-            return parsed_org
-        else:
-            organization = parsed_org
-
-        customer_id = request.query_params["customer_id"]
-        customer_qs = Customer.objects.filter(
-            organization=organization, customer_id=customer_id
-        )
-
-        if len(customer_qs) < 1:
-            return Response(
-                {
-                    "error": "Customer with customer_id {} does not exist".format(
-                        customer_id
-                    )
-                },
-                status=400,
-            )
-        else:
-            customer = customer_qs[0]
-
-        usage_summary = get_customer_usage(customer)
-
-        usage_summary["# of Active Subscriptions"] = len(usage_summary)
-        return Response(usage_summary)
 
 
 def import_stripe_customers(organization):
@@ -324,9 +103,7 @@ class InitializeStripeView(APIView):
         Check to see if user has connected their Stripe account.
         """
 
-        organization = request.user.organization
-        if organization is None:
-            return Response({"error": "User does not have an organization"}, status=403)
+        organization = parse_organization(request)
 
         stripe_id = organization.stripe_id
 
@@ -376,33 +153,240 @@ class InitializeStripeView(APIView):
         return JsonResponse({"Success": True})
 
 
-class SubscriptionView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+def dates_bwn_twodates(start_date, end_date):
+    for n in range((end_date - start_date).days + 1):
+        yield start_date + timedelta(n)
 
+
+class PeriodMetricRevenueView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[PeriodComparisonRequestSerializer],
+        responses={200: PeriodMetricRevenueResponseSerializer},
+    )
     def get(self, request, format=None):
         """
-        List active subscriptions. If customer_id is provided, only return subscriptions for that customer.
+        Returns the revenue for an organization in a given time period.
         """
 
-        parsed_org = parse_organization(request)
-        if type(parsed_org) == Response:
-            return parsed_org
-        else:
-            organization = parsed_org
-        if "customer_id" in request.query_params:
-            customer_id = request.query_params["customer_id"]
-            try:
-                customer = Customer.objects.get(
-                    customer_id=customer_id, organization=organization
-                )
-            except Customer.DoesNotExist:
-                return HttpResponseBadRequest("Customer does not exist")
-            subscriptions = Subscription.objects.filter(
-                customer=customer, status="active"
+        organization = parse_organization(request)
+        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        p1_start, p1_end, p2_start, p2_end = [
+            serializer.validated_data.get(key, None)
+            for key in [
+                "period_1_start_date",
+                "period_1_end_date",
+                "period_2_start_date",
+                "period_2_end_date",
+            ]
+        ]
+        all_org_billable_metrics = BillableMetric.objects.filter(
+            organization=organization
+        )
+
+        return_dict = {
+            "daily_usage_revenue_period_1": {},
+            "total_revenue_period_1": 0,
+            "daily_usage_revenue_period_2": {},
+            "total_revenue_period_2": 0,
+        }
+        for billable_metric in all_org_billable_metrics:
+            for period_start, period_end, period_num in [
+                (p1_start, p1_end, 1),
+                (p2_start, p2_end, 2),
+            ]:
+                return_dict[f"daily_usage_revenue_period_{period_num}"][
+                    billable_metric.id
+                ] = {
+                    "metric": billable_metric,
+                    "data": {
+                        x: 0 for x in dates_bwn_twodates(period_start, period_end)
+                    },
+                    "total_revenue": 0,
+                }
+        for period_start, period_end, period_num in [
+            (p1_start, p1_end, 1),
+            (p2_start, p2_end, 2),
+        ]:
+            subs = Subscription.objects.filter(
+                Q(start_date__range=[period_start, period_end])
+                | Q(end_date__range=[period_start, period_end]),
+                organization=organization,
             )
-            serializer = SubscriptionSerializer(subscriptions, many=True)
-            return Response(serializer.data)
-        else:
-            subscriptions = Subscription.objects.filter(status="active")
-            serializer = SubscriptionSerializer(subscriptions, many=True)
-            return Response(serializer.data)
+            for sub in subs:
+                billing_plan = sub.billing_plan
+                if billing_plan.pay_in_advance:
+                    if sub.start_date >= period_start and sub.start_date <= period_end:
+                        return_dict[
+                            f"total_revenue_period_{period_num}"
+                        ] += billing_plan.flat_rate
+                else:
+                    if sub.end_date >= period_start and sub.end_date <= period_end:
+                        return_dict[
+                            f"total_revenue_period_{period_num}"
+                        ] += billing_plan.flat_rate
+                for plan_component in billing_plan:
+                    usage_cost_per_day = calculate_plan_component_daily_revenue(
+                        sub.customer,
+                        plan_component,
+                        sub.start_date,
+                        sub.end_date,
+                        period_start,
+                        period_end,
+                    )
+                    metric_dict = return_dict[
+                        f"daily_usage_revenue_period_{period_num}"
+                    ][plan_component.billable_metric.id]
+                    for date, usage_cost in usage_cost_per_day.items():
+                        metric_dict["data"][date] += usage_cost
+                        metric_dict["total_revenue"] += usage_cost
+                        return_dict[f"total_revenue_period_{period_num}"] += usage_cost
+
+        for period_num in [1, 2]:
+            return_dict[f"daily_usage_revenue_period_{period_num}"] = [
+                v
+                for _, v in return_dict[
+                    f"daily_usage_revenue_period_{period_num}"
+                ].items()
+            ]
+            for dic in return_dict[f"daily_usage_revenue_period_{period_num}"]:
+                dic["data"] = [
+                    {"date": k, "metric_revenue": v} for k, v in dic["data"].items()
+                ]
+        serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+
+        return JsonResponse(serializer.validated_data, status=status.HTTP_200_OK)
+
+
+class PeriodSubscriptionsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[PeriodComparisonRequestSerializer],
+        responses={200: PeriodSubscriptionsResponseSerializer},
+    )
+    def get(self, request, format=None):
+        organization = parse_organization(request)
+        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        p1_start, p1_end, p2_start, p2_end = [
+            serializer.validated_data.get(key, None)
+            for key in [
+                "period_1_start_date",
+                "period_1_end_date",
+                "period_2_start_date",
+                "period_2_end_date",
+            ]
+        ]
+
+        return_dict = {}
+
+        p1_subs = Subscription.objects.filter(
+            Q(start_date__range=[p1_start, p1_end])
+            | Q(end_date__range=[p1_start, p1_end]),
+            organization=organization,
+        )
+        p1_new_subs = list(filter(lambda sub: sub.is_new, p1_subs))
+        return_dict["period_1_total_subscriptions"] = len(p1_subs)
+        return_dict["period_1_new_subscriptions"] = len(p1_new_subs)
+
+        p2_subs = Subscription.objects.filter(
+            Q(start_date__range=[p2_start, p2_end])
+            | Q(end_date__range=[p2_start, p2_end]),
+            organization=organization,
+        )
+        p2_new_subs = list(filter(lambda sub: sub.is_new, p2_subs))
+        return_dict["period_2_total_subscriptions"] = len(p2_subs)
+        return_dict["period_2_new_subscriptions"] = len(p2_new_subs)
+
+        serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        return JsonResponse(serializer.validated_data, status=status.HTTP_200_OK)
+
+
+class PeriodMetricUsageView(APIView):
+
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        parameters=[PeriodMetricUsageRequestSerializer],
+        responses={200: PeriodMetricUsageResponseSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Return current usage for a customer during a given billing period.
+        """
+        pass
+        # organization = parse_organization(request)
+        # serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
+        # serializer.is_valid(raise_exception=True)
+        # q_start, q_end, top_n = [
+        #     serializer.validated_data.get(key, None)
+        #     for key in ["start_date", "end_date", "top_n_customers"]
+        # ]
+
+        # metrics = get_list_or_404(BillableMetric, organization=organization)
+        # return_dict = {str(metric):{"data":{}, "total_usage":0} for metric in metrics}
+        # customer_usage = {}
+        # for metric in metrics:
+        #     metric_dict = return_dict[str(metric)]
+        #     usage_summary = get_metric_usage(metric, q_start, q_end, daily=True)
+        #     for customer_day_object in usage_summary:
+        #         customer = customer_day_object["customer_name"]
+        #         date_created = customer_day_object["date_created"]
+        #         usage_qty = customer_day_object["usage_qty"]
+
+        #         metric_dict["total_usage"] += usage_qty
+        #         if date_created not in metric_dict["data"]:
+        #             metric_dict["data"]["date"] = {"date": date_created, "customer_usages": []}
+        #         metric_dict["data"]["date"]["customer_usages"].append({"customer": customer, "metric_amount": usage_qty})
+        #         customer_usage[customer] += usage_qty
+
+        #     return_dict[str(metric)]["data"] =
+        #     total_usage = sum(customer_usage.values())
+        #     return_dict[str(metric)]["total_usage"] = total_usage
+        #     if top_n:
+        #         top_n_dict = dict(
+        #             sorted(customer_usage.items(), key=lambda x: x[1], reverse=True)[
+        #                 :top_n
+        #             ]
+        #         )
+        #         top_n_customers = list(top_n_dict.keys())
+        #         top_n_usage = sum(top_n_dict.values())
+        #         return_dict[str(metric)]["top_n_customers"] = top_n_customers
+        #         return_dict[str(metric)]["top_n_customers_usage"] = top_n_usage
+        # response = PeriodMetricUsageResponseSerializer(data={"usage":return_dict})
+        # response.is_valid(raise_exception=True)
+        # return JsonResponse(response.validated_data, status=status.HTTP_200_OK)
+
+
+class CustomerWithRevenueView(APIView):
+
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        responses={200: CustomerRevenueSummarySerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Return current usage for a customer during a given billing period.
+        """
+        organization = parse_organization(request)
+        customers = get_list_or_404(Customer, organization=organization)
+
+        customers_dict = {"customers": []}
+        for customer in customers:
+            sub_usg_summaries = get_customer_usage_and_revenue(customer)
+            sub_usg_summaries["total_revenue_due"] = sum(
+                x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
+            )
+            serializer = CustomerRevenueSerializer(data=sub_usg_summaries)
+            serializer.is_valid(raise_exception=True)
+            customers_dict["customers"].append(serializer.validated_data)
+        serializer = CustomerRevenueSummarySerializer(data=customers_dict)
+        serializer.is_valid(raise_exception=True)
+
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)

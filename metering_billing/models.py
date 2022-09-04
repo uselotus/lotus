@@ -49,18 +49,23 @@ class Customer(models.Model):
 
     Attributes:
         name (str): The name of the customer.
-        customer_id (str): The external id of the customer in the backend system.
-        billing_id (str): The billing id of the customer, internal to Lotus.
+        customer_id (str): A :model:`metering_billing.Organization`'s internal designation for the customer.
+        currency (str): The currency the customer is paying in.
+        payment_provider_id (str): The id of the payment provider the customer is using.
+        properties (dict): An extendable dictionary of properties, useful for filtering, etc.
+        balance (:obj:`djmoney.models.fields.MoneyField`): The outstanding balance of the customer.
     """
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
     customer_id = models.CharField(max_length=40, unique=True)
-    billing_id = models.CharField(max_length=40, default=uuid.uuid4)
-
-    # balance (in cents) in currency that a customer currently has during this billing period, negative means they owe money, postive is a credit towards their invoice
+    currency = models.CharField(max_length=3, default="USD")
+    payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
+    properties = models.JSONField(default=dict, blank=True, null=True)
+    # balance (in cents) in currency that a customer currently has during this billing period,
+    # negative means they owe money, postive is a credit towards their invoice
     balance = MoneyField(
-        default=0, max_digits=10, decimal_places=2, default_currency="USD"
+        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
     currency = models.CharField(max_length=3, default="USD")
 
@@ -147,6 +152,23 @@ class BillableMetric(models.Model):
         return self.aggregation_type
 
 
+class PlanComponent(models.Model):
+    billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
+
+    free_metric_quantity = models.DecimalField(
+        decimal_places=10, max_digits=20, default=0.0
+    )
+    cost_per_metric = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD"
+    )
+    metric_amount_per_cost = models.DecimalField(
+        decimal_places=10, max_digits=20, default=0.0
+    )
+
+    def __str__(self):
+        return str(self.billable_metric)
+
+
 class BillingPlan(models.Model):
     """
     Billing_ID: Id for this specific plan
@@ -169,9 +191,6 @@ class BillingPlan(models.Model):
     )
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-    plan_id = models.CharField(
-        max_length=36, blank=True, unique=True, default=uuid.uuid4
-    )
     time_created = models.DateTimeField(auto_now=True)
     currency = models.CharField(max_length=30, default="USD")  # 30 is arbitrary
     interval = models.CharField(
@@ -180,11 +199,12 @@ class BillingPlan(models.Model):
         default=INTERVAL_CHOICES.month,
     )
     flat_rate = MoneyField(
-        decimal_places=2, max_digits=8, default_currency="USD", default=0.0
+        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
     pay_in_advance = models.BooleanField(default=False)
     name = models.CharField(max_length=200, default=" ")
     description = models.CharField(max_length=256, default=" ", blank=True)
+    components = models.ManyToManyField(PlanComponent)
 
     def subscription_end_date(self, start_date):
         start_date_parsed = start_date
@@ -202,21 +222,7 @@ class BillingPlan(models.Model):
         return self.name
 
     def __str__(self) -> str:
-        return str(self.name) + ":" + str(self.plan_id)
-
-
-class PlanComponent(models.Model):
-    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE)
-    billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
-
-    free_metric_quantity = models.IntegerField(default=0)
-    cost_per_metric = MoneyField(
-        decimal_places=10, max_digits=14, default_currency="USD"
-    )
-    metric_amount_per_cost = models.IntegerField(default=1)
-
-    def __str__(self):
-        return str(self.billable_metric)
+        return str(self.name)
 
 
 class TsTzRange(Func):
@@ -264,21 +270,21 @@ class Subscription(models.Model):
     )
     is_new = models.BooleanField(default=True)
 
-    class Meta:
-        constraints = [
-            ExclusionConstraint(
-                name="exclude_overlapping_subscriptions",
-                expressions=(
-                    (
-                        TsTzRange("start_date", "end_date", RangeBoundary()),
-                        RangeOperators.OVERLAPS,
-                    ),
-                    ("organization", RangeOperators.EQUAL),
-                    ("customer", RangeOperators.EQUAL),
-                    ("billing_plan", RangeOperators.EQUAL),
-                ),
-            ),
-        ]
+    # class Meta:
+    #     constraints = [
+    #         ExclusionConstraint(
+    #             name="exclude_overlapping_subscriptions",
+    #             expressions=(
+    #                 (
+    #                     TsTzRange("start_date", "end_date", RangeBoundary()),
+    #                     RangeOperators.OVERLAPS,
+    #                 ),
+    #                 ("organization", RangeOperators.EQUAL),
+    #                 ("customer", RangeOperators.EQUAL),
+    #                 ("billing_plan", RangeOperators.EQUAL),
+    #             ),
+    #         ),
+    #     ]
 
     def save(self, *args, **kwargs):
         if not self.next_plan:
@@ -302,7 +308,9 @@ class Invoice(models.Model):
         (STATUS_TYPES.NOT_SENT, _("Not Sent")),
     )
 
-    cost_due = models.IntegerField(default=0)
+    cost_due = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
+    )
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
@@ -321,7 +329,7 @@ class APIToken(AbstractAPIKey):
     name = models.CharField(max_length=200, default="latest_token")
 
     def __str__(self):
-        return str(self.name) + " " + str(self.organization.name)
+        return str(self.name) + " " + str(self.organization.company_name)
 
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"

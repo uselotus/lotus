@@ -3,6 +3,7 @@ import json
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from lotus.urls import router
 from metering_billing.models import User
 from model_bakery import baker
 from rest_framework import status
@@ -76,7 +77,7 @@ class TestGetCustomers:
         )
 
         payload = {}
-        response = setup_dict["client"].get(reverse("customer"), payload)
+        response = setup_dict["client"].get(reverse("customer-list"), payload)
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == num_customers
@@ -93,7 +94,7 @@ class TestGetCustomers:
         )
 
         payload = {}
-        response = setup_dict["client"].get(reverse("customer"), payload)
+        response = setup_dict["client"].get(reverse("customer-list"), payload)
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == num_customers
@@ -110,7 +111,7 @@ class TestGetCustomers:
         )
 
         payload = {}
-        response = setup_dict["client"].get(reverse("customer"), payload)
+        response = setup_dict["client"].get(reverse("customer-list"), payload)
 
         assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
 
@@ -120,7 +121,6 @@ def insert_customer_payload():
     payload = {
         "name": "test_customer",
         "customer_id": "test_customer_id",
-        "billing_id": "test_billing_id",
         "balance": 30,
         "currency": "USD",
         "payment_provider_id": "test_payment_provider_id",
@@ -151,7 +151,7 @@ class TestInsertCustomer:
         )
 
         response = setup_dict["client"].post(
-            reverse("customer"),
+            reverse("customer-list"),
             data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -171,8 +171,8 @@ class TestInsertCustomer:
             user_org_and_api_key_org_different=False,
         )
 
-        response = client = setup_dict["client"].post(
-            reverse("customer"),
+        response = setup_dict["client"].post(
+            reverse("customer-list"),
             data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -193,7 +193,7 @@ class TestInsertCustomer:
         )
 
         response = setup_dict["client"].post(
-            reverse("customer"),
+            reverse("customer-list"),
             data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )

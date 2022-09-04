@@ -19,56 +19,62 @@ from django.shortcuts import render
 from django.urls import path, re_path
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, track
-from metering_billing.views.internal_views import (
-    OrganizationMetricsView,
-    OrganizationRevenueInPeriodView,
-    OrganizationSubscriptionsInPeriodView,
-    OrganizationUsageForMetricView,
+from metering_billing.views.model_viewsets import (
+    BillableMetricViewSet,
+    BillingPlanViewSet,
+    CustomerViewSet,
+    InvoiceViewSet,
+    PlanComponentViewSet,
+    SubscriptionViewSet,
+    UserViewSet,
 )
 from metering_billing.views.views import (
-    CustomerView,
+    CustomerWithRevenueView,
     InitializeStripeView,
-    PlansView,
-    SubscriptionView,
-    UsageViewForCustomer,
+    PeriodMetricRevenueView,
+    PeriodMetricUsageView,
+    PeriodSubscriptionsView,
 )
 from rest_framework import routers
 
 router = routers.DefaultRouter()
-
-
-def index(request):
-    return render(request, "index.html")
-
+router.register(r"users", UserViewSet, basename="user")
+router.register(r"customers", CustomerViewSet, basename="customer")
+router.register(r"metrics", BillableMetricViewSet, basename="metric")
+router.register(r"plans", BillingPlanViewSet, basename="plan")
+router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
+router.register(r"components", PlanComponentViewSet, basename="component")
+router.register(r"invoices", InvoiceViewSet, basename="invoice")
 
 urlpatterns = [
+    path("", include(router.urls)),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
-    path("api/customers", CustomerView.as_view(), name="customer"),
-    path("api/subscriptions", SubscriptionView.as_view(), name="subscription"),
     path("track", track.track_event, name="track_event"),
-    path("api/usage", UsageViewForCustomer.as_view(), name="usage"),
     path(
-        "api/metric_usage",
-        OrganizationUsageForMetricView.as_view(),
-        name="metric_usage",
-    ),
-    path("api/stripe", InitializeStripeView.as_view(), name="stripe_initialize"),
-    path(
-        "api/org_period_revenue",
-        OrganizationRevenueInPeriodView.as_view(),
-        name="org_period_revenue",
+        "api/customer_summary/",
+        CustomerWithRevenueView.as_view(),
+        name="customer_summary",
     ),
     path(
-        "api/org_period_subscriptions",
-        OrganizationSubscriptionsInPeriodView.as_view(),
-        name="org_period_subscriptions",
+        "api/period_metric_usage/",
+        PeriodMetricUsageView.as_view(),
+        name="period_metric_usage",
     ),
-    path("api/org_metrics", OrganizationMetricsView.as_view(), name="org_metrics"),
-    path("api/plans", PlansView.as_view(), name="plans"),
+    path(
+        "api/period_metric_revenue/",
+        PeriodMetricRevenueView.as_view(),
+        name="period_metric_revenue",
+    ),
+    path(
+        "api/period_subscriptions/",
+        PeriodSubscriptionsView.as_view(),
+        name="period_subscriptions",
+    ),
+    path("api/stripe/", InitializeStripeView.as_view(), name="stripe_initialize"),
     path("api/login/", auth_views.login_view, name="api-login"),
-    path("api/logout", auth_views.logout_view, name="api-logout"),
+    path("api/logout/", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
-    path("api/whoami", auth_views.whoami_view, name="api-whoami"),
-    re_path(".*", TemplateView.as_view(template_name="index.html")),
+    path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
+    # re_path(".*", TemplateView.as_view(template_name="index.html")),
 ]
