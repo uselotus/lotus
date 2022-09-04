@@ -344,8 +344,8 @@ class PeriodMetricUsageView(APIView):
         #             metric_dict["data"]["date"] = {"date": date_created, "customer_usages": []}
         #         metric_dict["data"]["date"]["customer_usages"].append({"customer": customer, "metric_amount": usage_qty})
         #         customer_usage[customer] += usage_qty
-            
-        #     return_dict[str(metric)]["data"] = 
+
+        #     return_dict[str(metric)]["data"] =
         #     total_usage = sum(customer_usage.values())
         #     return_dict[str(metric)]["total_usage"] = total_usage
         #     if top_n:
@@ -380,7 +380,9 @@ class CustomerWithRevenueView(APIView):
         customers_dict = {"customers": []}
         for customer in customers:
             sub_usg_summaries = get_customer_usage_and_revenue(customer)
-            sub_usg_summaries["total_revenue_due"] = sum(x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"])
+            sub_usg_summaries["total_revenue_due"] = sum(
+                x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
+            )
             serializer = CustomerRevenueSerializer(data=sub_usg_summaries)
             serializer.is_valid(raise_exception=True)
             customers_dict["customers"].append(serializer.validated_data)

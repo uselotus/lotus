@@ -47,7 +47,7 @@ router.register(r"components", PlanComponentViewSet, basename="component")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", include(router.urls)),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("track", track.track_event, name="track_event"),

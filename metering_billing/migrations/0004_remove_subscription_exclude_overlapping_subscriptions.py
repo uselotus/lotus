@@ -6,12 +6,12 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0003_invoice_cost_due_currency_and_more'),
+        ("metering_billing", "0003_invoice_cost_due_currency_and_more"),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='subscription',
-            name='exclude_overlapping_subscriptions',
+            model_name="subscription",
+            name="exclude_overlapping_subscriptions",
         ),
     ]

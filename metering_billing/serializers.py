@@ -147,12 +147,8 @@ class PeriodComparisonRequestSerializer(serializers.Serializer):
 # CUSTOMER USAGE AND REVENUE SERIALIZERS GO HERE
 class PlanComponentUsageSerializer(serializers.Serializer):
     plan_component = PlanComponentSerializer()
-    units_usage = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
-    usage_revenue = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    units_usage = serializers.DecimalField(decimal_places=10, max_digits=20)
+    usage_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
 
     def get_plan_component(self, obj) -> Decimal:
         return sum(component.usage_cost for component in obj.components)
@@ -165,15 +161,9 @@ class SubscriptionUsageSerializer(serializers.Serializer):
 
     components = PlanComponentUsageSerializer(many=True)
     billing_plan = BillingPlanShallowSerializer()
-    usage_revenue_due = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
-    flat_revenue_due = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
-    total_revenue_due = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    usage_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+    flat_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+    total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
 class CustomerRevenueSerializer(CustomerSerializer):
@@ -181,9 +171,7 @@ class CustomerRevenueSerializer(CustomerSerializer):
         fields = CustomerSerializer.Meta.fields + ("subscriptions", "total_revenue_due")
 
     subscriptions = SubscriptionUsageSerializer(many=True)
-    total_revenue_due = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    ) 
+    total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
 class CustomerRevenueSummarySerializer(serializers.Serializer):
@@ -211,13 +199,13 @@ class CustomerNameSerializer(serializers.ModelSerializer):
 
 class DayMetricUsageCustomerSerializer(serializers.Serializer):
     customer = CustomerNameSerializer()
-    metric_amount = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    metric_amount = serializers.DecimalField(decimal_places=10, max_digits=20)
+
 
 class DayMetricUsageSerializer(serializers.Serializer):
     date = serializers.DateField()
     customer_usages = serializers.ListField(child=DayMetricUsageCustomerSerializer())
+
 
 class PeriodSingleMetricUsageSerializer(serializers.Serializer):
     data = serializers.DictField(child=DayMetricUsageSerializer())
@@ -225,9 +213,8 @@ class PeriodSingleMetricUsageSerializer(serializers.Serializer):
     top_n_customers_usage = serializers.DecimalField(
         decimal_places=10, max_digits=20, required=False
     )
-    total_usage = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    total_usage = serializers.DecimalField(decimal_places=10, max_digits=20)
+
 
 class PeriodMetricUsageResponseSerializer(serializers.Serializer):
     usage = serializers.DictField(child=PeriodSingleMetricUsageSerializer())
@@ -236,25 +223,17 @@ class PeriodMetricUsageResponseSerializer(serializers.Serializer):
 # PERIOD METRIC REVENUE SERIALIZERS GO HERE
 class DayMetricRevenueSerializer(serializers.Serializer):
     date = serializers.DateField()
-    metric_revenue = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    metric_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
 class PeriodSingleMetricRevenueSerializer(serializers.Serializer):
     metric = BillableMetricSerializer()
     data = DayMetricRevenueSerializer(many=True)
-    total_revenue = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
 class PeriodMetricRevenueResponseSerializer(serializers.Serializer):
     daily_usage_revenue_period_1 = PeriodSingleMetricRevenueSerializer(many=True)
-    total_revenue_period_1 = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    total_revenue_period_1 = serializers.DecimalField(decimal_places=10, max_digits=20)
     daily_usage_revenue_period_2 = PeriodSingleMetricRevenueSerializer(many=True)
-    total_revenue_period_2 = serializers.DecimalField(
-        decimal_places=10, max_digits=20
-    )
+    total_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)

@@ -13,4 +13,3 @@ class UserNoOrganization(APIException):
     status_code = 403
     default_detail = "User does not have an organization"
     default_code = "User has no organization"
-

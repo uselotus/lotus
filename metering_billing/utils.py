@@ -66,14 +66,14 @@ def parse_organization(request):
 # DAILY USAGE + REVENUE METHODS
 def get_metric_usage(
     metric, query_start_date, query_end_date, customer=None, daily=False
-):  
+):
     filtering_kwargs = {
         "organization": metric.organization,
         "event_name": metric.event_name,
         "time_created__date__gte": query_start_date,
         "time_created__date__lte": query_end_date,
     }
-    values_kwargs = {"customer_name":F("customer__name")}
+    values_kwargs = {"customer_name": F("customer__name")}
     if metric.aggregation_type == "count":
         aggregation_field = "event_name"
         aggregation_type = Count
@@ -86,8 +86,18 @@ def get_metric_usage(
     if daily:
         filtering_kwargs["time_created__date"] = F("time_created__date")
         values_kwargs["date_created"] = F("time_created__date")
-    usage_summary = Event.objects.filter(**filtering_kwargs).values(**values_kwargs).annotate(usage_qty=aggregation_type(Cast(aggregation_field, FloatField()) if metric.aggregation_type != "count" else aggregation_field))
-        
+    usage_summary = (
+        Event.objects.filter(**filtering_kwargs)
+        .values(**values_kwargs)
+        .annotate(
+            usage_qty=aggregation_type(
+                Cast(aggregation_field, FloatField())
+                if metric.aggregation_type != "count"
+                else aggregation_field
+            )
+        )
+    )
+
     return usage_summary
 
 
@@ -205,12 +215,14 @@ def calculate_plan_component_usage_and_revenue(
 ):
     usage_revenue_dict = {"usage": 0, "revenue": 0}
     billable_metric = plan_component.billable_metric
-    units_usage = Decimal(get_metric_usage(
-        billable_metric,
-        query_start_date=plan_start_date,
-        query_end_date=plan_end_date,
-        customer=customer,
-    ).first()["usage_qty"])
+    units_usage = Decimal(
+        get_metric_usage(
+            billable_metric,
+            query_start_date=plan_start_date,
+            query_end_date=plan_end_date,
+            customer=customer,
+        ).first()["usage_qty"]
+    )
     usage_revenue_dict["units_usage"] = units_usage
     usage_revenue_dict["usage_revenue"] = calculate_plan_component_revenue(
         plan_component, units_usage
@@ -240,13 +252,19 @@ def get_subscription_usage_and_revenue(subscription):
             plan_start_date,
             plan_end_date,
         )
-        plan_component_summary["plan_component"] = PlanComponentSerializer(plan_component).data
+        plan_component_summary["plan_component"] = PlanComponentSerializer(
+            plan_component
+        ).data
         serializer = PlanComponentUsageSerializer(data=plan_component_summary)
         serializer.is_valid(raise_exception=True)
         sub_dict["components"].append(serializer.validated_data)
-    sub_dict["usage_revenue_due"] = sum(component["usage_revenue"] for component in sub_dict["components"])
+    sub_dict["usage_revenue_due"] = sum(
+        component["usage_revenue"] for component in sub_dict["components"]
+    )
     sub_dict["flat_revenue_due"] = subscription.billing_plan.flat_rate.amount
-    sub_dict["total_revenue_due"] = sub_dict["flat_revenue_due"] + sub_dict["usage_revenue_due"]
+    sub_dict["total_revenue_due"] = (
+        sub_dict["flat_revenue_due"] + sub_dict["usage_revenue_due"]
+    )
     serializer = SubscriptionUsageSerializer(data=sub_dict)
     serializer.is_valid(raise_exception=True)
     return serializer.validated_data
