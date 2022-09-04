@@ -255,8 +255,8 @@ class Subscription(models.Model):
     billing_plan = models.ForeignKey(
         BillingPlan, on_delete=models.CASCADE, related_name="current_plan", null=False
     )
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
+    start_date = models.DateField()
+    end_date = models.DateField()
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_started
     )

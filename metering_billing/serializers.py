@@ -131,6 +131,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer()
     subscription = SubscriptionSerializer()
 
+
 class CustomerNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
@@ -198,7 +199,9 @@ class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
 
 
 class DayMetricUsageSerializer(serializers.Serializer):
-    customer_usages = serializers.DictField(child=serializers.DecimalField(decimal_places=10, max_digits=20))
+    customer_usages = serializers.DictField(
+        child=serializers.DecimalField(decimal_places=10, max_digits=20)
+    )
 
 
 class PeriodSingleMetricUsageSerializer(serializers.Serializer):
@@ -208,7 +211,6 @@ class PeriodSingleMetricUsageSerializer(serializers.Serializer):
     top_n_customers_usage = serializers.DecimalField(
         decimal_places=10, max_digits=20, required=False
     )
-    
 
 
 class PeriodMetricUsageResponseSerializer(serializers.Serializer):
@@ -222,7 +224,7 @@ class DayMetricRevenueSerializer(serializers.Serializer):
 
 
 class PeriodSingleMetricRevenueSerializer(serializers.Serializer):
-    metric = BillableMetricSerializer()
+    metric = serializers.CharField()
     data = DayMetricRevenueSerializer(many=True)
     total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
 

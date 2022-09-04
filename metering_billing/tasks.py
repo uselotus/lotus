@@ -11,7 +11,7 @@ from metering_billing.utils import generate_invoice
 @shared_task
 def calculate_invoice():
     ending_subscriptions = Subscription.objects.filter(
-        status="active", end_date__lte=datetime.now().astimezone()
+        status="active", end_date__lte=datetime.now().date()
     )
     for old_subscription in ending_subscriptions:
         # Generate the invoice
@@ -40,8 +40,8 @@ def calculate_invoice():
                 "billing_plan"
             ].subscription_end_date(subscription_kwargs["start_date"])
             if (
-                subscription_kwargs["end_date"] > datetime.now().astimezone()
-                and subscription_kwargs["start_date"] < datetime.now().astimezone()
+                subscription_kwargs["end_date"] >= datetime.now().date()
+                and subscription_kwargs["start_date"] <= datetime.now().date()
             ):
                 subscription_kwargs["status"] = "active"
             else:

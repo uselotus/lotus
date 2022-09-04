@@ -2,6 +2,7 @@ import json
 import math
 import os
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 import dateutil.parser as parser
 import stripe
@@ -158,7 +159,7 @@ def dates_bwn_twodates(start_date, end_date):
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -187,9 +188,9 @@ class PeriodMetricRevenueView(APIView):
 
         return_dict = {
             "daily_usage_revenue_period_1": {},
-            "total_revenue_period_1": 0,
+            "total_revenue_period_1": Decimal(0),
             "daily_usage_revenue_period_2": {},
-            "total_revenue_period_2": 0,
+            "total_revenue_period_2": Decimal(0),
         }
         for billable_metric in all_org_billable_metrics:
             for period_start, period_end, period_num in [
@@ -199,11 +200,12 @@ class PeriodMetricRevenueView(APIView):
                 return_dict[f"daily_usage_revenue_period_{period_num}"][
                     billable_metric.id
                 ] = {
-                    "metric": billable_metric,
+                    "metric": str(billable_metric),
                     "data": {
-                        x: 0 for x in dates_bwn_twodates(period_start, period_end)
+                        str(x): Decimal(0)
+                        for x in dates_bwn_twodates(period_start, period_end)
                     },
-                    "total_revenue": 0,
+                    "total_revenue": Decimal(0),
                 }
         for period_start, period_end, period_num in [
             (p1_start, p1_end, 1),
@@ -220,13 +222,13 @@ class PeriodMetricRevenueView(APIView):
                     if sub.start_date >= period_start and sub.start_date <= period_end:
                         return_dict[
                             f"total_revenue_period_{period_num}"
-                        ] += billing_plan.flat_rate
+                        ] += billing_plan.flat_rate.amount
                 else:
                     if sub.end_date >= period_start and sub.end_date <= period_end:
                         return_dict[
                             f"total_revenue_period_{period_num}"
-                        ] += billing_plan.flat_rate
-                for plan_component in billing_plan:
+                        ] += billing_plan.flat_rate.amount
+                for plan_component in billing_plan.components.all():
                     usage_cost_per_day = calculate_plan_component_daily_revenue(
                         sub.customer,
                         plan_component,
@@ -239,18 +241,16 @@ class PeriodMetricRevenueView(APIView):
                         f"daily_usage_revenue_period_{period_num}"
                     ][plan_component.billable_metric.id]
                     for date, usage_cost in usage_cost_per_day.items():
-                        metric_dict["data"][date] += usage_cost
+                        usage_cost = Decimal(usage_cost)
+                        metric_dict["data"][str(date)] += usage_cost
                         metric_dict["total_revenue"] += usage_cost
                         return_dict[f"total_revenue_period_{period_num}"] += usage_cost
 
         for period_num in [1, 2]:
-            return_dict[f"daily_usage_revenue_period_{period_num}"] = [
-                v
-                for _, v in return_dict[
-                    f"daily_usage_revenue_period_{period_num}"
-                ].items()
-            ]
-            for dic in return_dict[f"daily_usage_revenue_period_{period_num}"]:
+            dailies = return_dict[f"daily_usage_revenue_period_{period_num}"]
+            dailies = [v for _, v in dailies.items()]
+            return_dict[f"daily_usage_revenue_period_{period_num}"] = dailies
+            for dic in dailies:
                 dic["data"] = [
                     {"date": k, "metric_revenue": v} for k, v in dic["data"].items()
                 ]
@@ -328,28 +328,42 @@ class PeriodMetricUsageView(APIView):
         ]
 
         metrics = get_list_or_404(BillableMetric, organization=organization)
-        return_dict = {str(metric):{"data":{}, "total_usage":0, "top_n_customers":{}} for metric in metrics}
+        return_dict = {
+            str(metric): {"data": {}, "total_usage": 0, "top_n_customers": {}}
+            for metric in metrics
+        }
         for metric in metrics:
             usage_summary = get_metric_usage(metric, q_start, q_end, daily=True)
             metric_dict = return_dict[str(metric)]
             for obj in usage_summary:
-                customer, date, qty = [obj[key]  for key in ["customer_name", "date_created", "usage_qty"] ]
-                if str(date) not in metric_dict["data"]: 
-                    metric_dict["data"][str(date)] = {"total_usage":0, "customer_usages":{}}
+                customer, date, qty = [
+                    obj[key] for key in ["customer_name", "date_created", "usage_qty"]
+                ]
+                if str(date) not in metric_dict["data"]:
+                    metric_dict["data"][str(date)] = {
+                        "total_usage": 0,
+                        "customer_usages": {},
+                    }
                 date_dict = metric_dict["data"][str(date)]
                 date_dict["total_usage"] += qty
                 date_dict["customer_usages"][customer] = qty
                 metric_dict["total_usage"] += qty
-                if customer not in metric_dict["top_n_customers"]: 
+                if customer not in metric_dict["top_n_customers"]:
                     metric_dict["top_n_customers"][customer] = 0
                 metric_dict["top_n_customers"][customer] += qty
             if top_n:
-                top_n_customers = sorted(metric_dict["top_n_customers"].items(), key=lambda x: x[1], reverse=True)[:top_n]
+                top_n_customers = sorted(
+                    metric_dict["top_n_customers"].items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )[:top_n]
                 metric_dict["top_n_customers"] = list(x[0] for x in top_n_customers)
-                metric_dict["top_n_customers_usage"] = list(x[1] for x in top_n_customers)
+                metric_dict["top_n_customers_usage"] = list(
+                    x[1] for x in top_n_customers
+                )
             else:
                 del metric_dict["top_n_customers"]
-        return_dict = {"metrics":return_dict}
+        return_dict = {"metrics": return_dict}
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         return JsonResponse(serializer.validated_data, status=status.HTTP_200_OK)
@@ -378,7 +392,9 @@ class CustomerWithRevenueView(APIView):
             )
             customer_dict["customer_name"] = customer.name
             customer_dict["customer_id"] = customer.customer_id
-            customer_dict["subscriptions"] = [x["billing_plan"]["name"] for x in sub_usg_summaries["subscriptions"]]
+            customer_dict["subscriptions"] = [
+                x["billing_plan"]["name"] for x in sub_usg_summaries["subscriptions"]
+            ]
 
             serializer = CustomerRevenueSerializer(data=customer_dict)
             serializer.is_valid(raise_exception=True)
