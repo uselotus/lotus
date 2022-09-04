@@ -71,11 +71,7 @@ def ingest_event(request, data: dict, customer: Customer, organization) -> None:
 @permission_classes((HasUserAPIKey))
 def track_event(request):
     # Find the associated organization, need to move to middleware/auth
-    parsed_org = parse_organization(request)
-    if type(parsed_org) == Response:
-        return parsed_org
-    else:
-        organization = parsed_org
+    organization = parse_organization(request)
 
     data = load_event(request)
     if not data:

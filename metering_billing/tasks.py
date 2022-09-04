@@ -23,7 +23,7 @@ def calculate_invoice():
                 "Error generating invoice for subscription {}".format(old_subscription)
             )
             continue
-        # End the old subsctiption
+        # End the old subscription
         old_subscription.status = "ended"
         old_subscription.save()
         # Renew the subscription

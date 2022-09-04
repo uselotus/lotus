@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "rest_framework_api_key",
     "django_vite",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -115,7 +116,9 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
             ],
             "libraries": {
-                "render_vite_bundle": "metering_billing.template_tags.render_vite_bundle",
+                "render_vite_bundle": (
+                    "metering_billing.template_tags.render_vite_bundle"
+                ),
             },
         },
     },
@@ -165,7 +168,9 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+        ),
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -238,9 +243,32 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "metering_billing.permissions.HasUserAPIKey",
-    ]
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
-
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Lotus API",
+    "DESCRIPTION": (
+        "Lotus is an open-core pricing and billing engine. We enable API companies to"
+        " automate and optimize their custom usage-based pricing for any metric."
+    ),
+    "VERSION": "0.0.1",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "OrganizationApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-KEY",
+            }
+        }
+    },
+    "SECURITY": [
+        {
+            "OrganizationApiKeyAuth": [],
+        }
+    ],
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
