@@ -30,7 +30,6 @@ from metering_billing.serializers import (
     CustomerRevenueSerializer,
     CustomerRevenueSummarySerializer,
     CustomerSerializer,
-    DayMetricUsageCustomerSerializer,
     EventSerializer,
     PeriodComparisonRequestSerializer,
     PeriodMetricRevenueResponseSerializer,
@@ -320,47 +319,40 @@ class PeriodMetricUsageView(APIView):
         Return current usage for a customer during a given billing period.
         """
         pass
-        # organization = parse_organization(request)
-        # serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
-        # serializer.is_valid(raise_exception=True)
-        # q_start, q_end, top_n = [
-        #     serializer.validated_data.get(key, None)
-        #     for key in ["start_date", "end_date", "top_n_customers"]
-        # ]
+        organization = parse_organization(request)
+        serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        q_start, q_end, top_n = [
+            serializer.validated_data.get(key, None)
+            for key in ["start_date", "end_date", "top_n_customers"]
+        ]
 
-        # metrics = get_list_or_404(BillableMetric, organization=organization)
-        # return_dict = {str(metric):{"data":{}, "total_usage":0} for metric in metrics}
-        # customer_usage = {}
-        # for metric in metrics:
-        #     metric_dict = return_dict[str(metric)]
-        #     usage_summary = get_metric_usage(metric, q_start, q_end, daily=True)
-        #     for customer_day_object in usage_summary:
-        #         customer = customer_day_object["customer_name"]
-        #         date_created = customer_day_object["date_created"]
-        #         usage_qty = customer_day_object["usage_qty"]
-
-        #         metric_dict["total_usage"] += usage_qty
-        #         if date_created not in metric_dict["data"]:
-        #             metric_dict["data"]["date"] = {"date": date_created, "customer_usages": []}
-        #         metric_dict["data"]["date"]["customer_usages"].append({"customer": customer, "metric_amount": usage_qty})
-        #         customer_usage[customer] += usage_qty
-
-        #     return_dict[str(metric)]["data"] =
-        #     total_usage = sum(customer_usage.values())
-        #     return_dict[str(metric)]["total_usage"] = total_usage
-        #     if top_n:
-        #         top_n_dict = dict(
-        #             sorted(customer_usage.items(), key=lambda x: x[1], reverse=True)[
-        #                 :top_n
-        #             ]
-        #         )
-        #         top_n_customers = list(top_n_dict.keys())
-        #         top_n_usage = sum(top_n_dict.values())
-        #         return_dict[str(metric)]["top_n_customers"] = top_n_customers
-        #         return_dict[str(metric)]["top_n_customers_usage"] = top_n_usage
-        # response = PeriodMetricUsageResponseSerializer(data={"usage":return_dict})
-        # response.is_valid(raise_exception=True)
-        # return JsonResponse(response.validated_data, status=status.HTTP_200_OK)
+        metrics = get_list_or_404(BillableMetric, organization=organization)
+        return_dict = {str(metric):{"data":{}, "total_usage":0, "top_n_customers":{}} for metric in metrics}
+        for metric in metrics:
+            usage_summary = get_metric_usage(metric, q_start, q_end, daily=True)
+            metric_dict = return_dict[str(metric)]
+            for obj in usage_summary:
+                customer, date, qty = [obj[key]  for key in ["customer_name", "date_created", "usage_qty"] ]
+                if str(date) not in metric_dict["data"]: 
+                    metric_dict["data"][str(date)] = {"total_usage":0, "customer_usages":{}}
+                date_dict = metric_dict["data"][str(date)]
+                date_dict["total_usage"] += qty
+                date_dict["customer_usages"][customer] = qty
+                metric_dict["total_usage"] += qty
+                if customer not in metric_dict["top_n_customers"]: 
+                    metric_dict["top_n_customers"][customer] = 0
+                metric_dict["top_n_customers"][customer] += qty
+            if top_n:
+                top_n_customers = sorted(metric_dict["top_n_customers"].items(), key=lambda x: x[1], reverse=True)[:top_n]
+                metric_dict["top_n_customers"] = list(x[0] for x in top_n_customers)
+                metric_dict["top_n_customers_usage"] = list(x[1] for x in top_n_customers)
+            else:
+                del metric_dict["top_n_customers"]
+        return_dict = {"metrics":return_dict}
+        serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        return JsonResponse(serializer.validated_data, status=status.HTTP_200_OK)
 
 
 class CustomerWithRevenueView(APIView):

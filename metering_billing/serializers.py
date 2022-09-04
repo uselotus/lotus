@@ -196,28 +196,22 @@ class CustomerNameSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ("name",)
 
-
-class DayMetricUsageCustomerSerializer(serializers.Serializer):
-    customer = CustomerNameSerializer()
-    metric_amount = serializers.DecimalField(decimal_places=10, max_digits=20)
-
-
 class DayMetricUsageSerializer(serializers.Serializer):
-    date = serializers.DateField()
-    customer_usages = serializers.ListField(child=DayMetricUsageCustomerSerializer())
+    customer_usages = serializers.DictField(child=serializers.DecimalField(decimal_places=10, max_digits=20))
 
 
 class PeriodSingleMetricUsageSerializer(serializers.Serializer):
     data = serializers.DictField(child=DayMetricUsageSerializer())
+    total_usage = serializers.DecimalField(decimal_places=10, max_digits=20)
     top_n_customers = CustomerNameSerializer(required=False, many=True)
     top_n_customers_usage = serializers.DecimalField(
         decimal_places=10, max_digits=20, required=False
     )
-    total_usage = serializers.DecimalField(decimal_places=10, max_digits=20)
+    
 
 
 class PeriodMetricUsageResponseSerializer(serializers.Serializer):
-    usage = serializers.DictField(child=PeriodSingleMetricUsageSerializer())
+    metrics = serializers.DictField(child=PeriodSingleMetricUsageSerializer())
 
 
 # PERIOD METRIC REVENUE SERIALIZERS GO HERE
