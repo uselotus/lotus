@@ -26,7 +26,6 @@ from metering_billing.serializers import (
     CustomerSerializer,
     EventSerializer,
     PlanComponentSerializer,
-    PlanComponentUsageSerializer,
     SubscriptionSerializer,
     SubscriptionUsageSerializer,
 )
@@ -104,28 +103,23 @@ def get_metric_usage(
 def calculate_plan_component_daily_revenue_for_additive_metric(
     plan_component, units_usage_per_day, query_start, query_end
 ):
-    units_usage_btwn_plan_and_query_starts = sum(
-        (
-            x["usage_qty"]
-            for x in units_usage_per_day
-            if x["date_created"] < query_start
-        ),
-        default=0,
+    days_before_query_start = list(
+        x["usage_qty"] for x in units_usage_per_day if x["date_created"] < query_start
+    )
+    units_usage_before_query_start = (
+        sum(days_before_query_start) if len(days_before_query_start) > 0 else 0
     )
     units_usage_query = [
-        x["usage_qty"]
+        (x["usage_qty"], x["date_created"])
         for x in units_usage_per_day
         if x["date_created"] >= query_start and x["date_created"] <= query_end
     ]
     free_units_usage = plan_component.free_metric_quantity
-    free_units_usage_left = max(
-        free_units_usage - units_usage_btwn_plan_and_query_starts, 0
-    )
+    free_units_usage_left = max(free_units_usage - units_usage_before_query_start, 0)
     day_revenue_dict = {}
     remainder_billable_units = 0
-    for single_day_units_usage in units_usage_query:
-        qty = single_day_units_usage["usage_qty"]
-        date = single_day_units_usage["date_created"]
+    for qty, date in units_usage_query:
+        qty = Decimal(qty)
         billable_units = max(qty - free_units_usage_left + remainder_billable_units, 0)
         billable_batches = billable_units // plan_component.metric_amount_per_cost
         remainder_billable_units = (
@@ -141,34 +135,40 @@ def calculate_plan_component_daily_revenue_for_cliff_metric(
     plan_component, units_usage_per_day, query_start, query_end
 ):
     # determine what the maximum usage was IN the plan, but OUTSIDE the query
-    units_usage_btwn_plan_and_query_start = max(
-        (
-            x["usage_qty"]
-            for x in units_usage_per_day
-            if x["date_created"] < query_start
-        ),
-        default=0,
+    days_before_query_start = list(
+        x["usage_qty"] for x in units_usage_per_day if x["date_created"] < query_start
     )
-    units_usage_btwn_query_end_and_plan_end = max(
-        (x["usage_qty"] for x in units_usage_per_day if x["date_created"] > query_end),
-        default=0,
+    units_usage_before_query_start = (
+        sum(days_before_query_start) if len(days_before_query_start) > 0 else 0
     )
+    units_usage_before_query_start = Decimal(units_usage_before_query_start)
+    days_after_query_end = list(
+        x["usage_qty"] for x in units_usage_per_day if x["date_created"] > query_end
+    )
+    units_usage_after_query_end = (
+        sum(days_after_query_end) if len(days_after_query_end) > 0 else 0
+    )
+    units_usage_after_query_end = Decimal(units_usage_after_query_end)
     max_units_usage_outside_query = max(
-        units_usage_btwn_plan_and_query_start, units_usage_btwn_query_end_and_plan_end
+        units_usage_before_query_start, units_usage_after_query_end
     )
     # go through each day in the query and determine the usage revenue... x if max, 0 otherwise
     units_usage_query = [
-        x["usage_qty"]
+        (x["usage_qty"], x["date_created"])
         for x in units_usage_per_day
         if x["date_created"] >= query_start and x["date_created"] <= query_end
     ]
-    max_units_usage_query = max(units_usage_query)
-    day_revenue_dict = {x["date_created"]: 0 for x in units_usage_query}
-    if max_units_usage_query < max_units_usage_outside_query:
+    max_units_usage_query = (
+        max(x[0] for x in units_usage_query) if len(days_after_query_end) > 0 else 0
+    )
+    day_revenue_dict = {x[1]: Decimal(0) for x in units_usage_query}
+    if (
+        max_units_usage_query < max_units_usage_outside_query
+        or max_units_usage_query == 0
+    ):
         return day_revenue_dict
-    for single_day_units_usage in units_usage_query:
-        qty = single_day_units_usage["usage_qty"]
-        date = single_day_units_usage["date_created"]
+    for qty, date in units_usage_query:
+        qty = Decimal(qty)
         if qty > max_units_usage_outside_query and qty == max_units_usage_query:
             free_units_usage = plan_component.free_metric_quantity
             metric_batches = math.ceil(
@@ -255,9 +255,7 @@ def get_subscription_usage_and_revenue(subscription):
         plan_component_summary["plan_component"] = PlanComponentSerializer(
             plan_component
         ).data
-        serializer = PlanComponentUsageSerializer(data=plan_component_summary)
-        serializer.is_valid(raise_exception=True)
-        sub_dict["components"].append(serializer.validated_data)
+        sub_dict["components"].append(plan_component_summary)
     sub_dict["usage_revenue_due"] = sum(
         component["usage_revenue"] for component in sub_dict["components"]
     )
@@ -275,16 +273,12 @@ def get_customer_usage_and_revenue(customer):
         customer=customer, status="active", organization=customer.organization
     )
 
-    serialized_subscription_usages = {"subscriptions": []}
+    subscription_usages = {"subscriptions": []}
     for subscription in customer_subscriptions:
         sub_dict = get_subscription_usage_and_revenue(subscription)
-        serializer = SubscriptionUsageSerializer(data=sub_dict)
-        serializer.is_valid(raise_exception=True)
-        serialized_subscription_usages["subscriptions"].append(
-            serializer.validated_data
-        )
+        subscription_usages["subscriptions"].append(sub_dict)
 
-    return serialized_subscription_usages
+    return subscription_usages
 
 
 def generate_invoice(subscription):

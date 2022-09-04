@@ -160,7 +160,7 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/customer_summary:
+  /api/customer_summary/:
     get:
       operationId: api_customer_summary_retrieve
       description: Return current usage for a customer during a given billing period.
@@ -650,7 +650,7 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/period_metric_revenue:
+  /api/period_metric_revenue/:
     get:
       operationId: api_period_metric_revenue_retrieve
       description: Returns the revenue for an organization in a given time period.
@@ -692,7 +692,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PeriodMetricRevenueResponse'
           description: ''
-  /api/period_metric_usage:
+  /api/period_metric_usage/:
     get:
       operationId: api_period_metric_usage_retrieve
       description: Return current usage for a customer during a given billing period.
@@ -726,7 +726,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PeriodMetricUsageResponse'
           description: ''
-  /api/period_subscriptions:
+  /api/period_subscriptions/:
     get:
       operationId: api_period_subscriptions_retrieve
       parameters:
@@ -926,7 +926,7 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/stripe:
+  /api/stripe/:
     get:
       operationId: api_stripe_retrieve
       description: Check to see if user has connected their Stripe account.
@@ -2530,8 +2530,8 @@ components:
           type: string
           format: date
         customer_usages:
-          type: array
-          items:
+          type: object
+          additionalProperties:
             $ref: '#/components/schemas/DayMetricUsageCustomer'
       required:
       - customer_usages
@@ -2539,14 +2539,11 @@ components:
     DayMetricUsageCustomer:
       type: object
       properties:
-        customer:
-          $ref: '#/components/schemas/CustomerName'
         metric_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
       required:
-      - customer
       - metric_amount
     IntervalEnum:
       enum:
@@ -2754,8 +2751,8 @@ components:
       type: object
       properties:
         metrics:
-          type: array
-          items:
+          type: object
+          additionalProperties:
             $ref: '#/components/schemas/PeriodSingleMetricUsage'
       required:
       - metrics
@@ -2779,12 +2776,14 @@ components:
     PeriodSingleMetricUsage:
       type: object
       properties:
-        metric:
-          $ref: '#/components/schemas/BillableMetric'
         data:
-          type: array
-          items:
+          type: object
+          additionalProperties:
             $ref: '#/components/schemas/DayMetricUsage'
+        total_usage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
         top_n_customers:
           type: array
           items:
@@ -2793,13 +2792,8 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
-        total_usage:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
       required:
       - data
-      - metric
       - total_usage
     PeriodSubscriptionsResponse:
       type: object

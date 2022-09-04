@@ -36,7 +36,7 @@ class TestGenerateInvoiceSynchrous:
             organization=org,
             customer=customer,
             event_name="email_sent",
-            time_created=datetime.now().astimezone() - timedelta(days=14),
+            time_created=datetime.now().date() - timedelta(days=14),
             properties=itertools.cycle(event_properties),
             _quantity=3,
         )
@@ -70,20 +70,20 @@ class TestGenerateInvoiceSynchrous:
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
-            start_date=datetime.now().astimezone() - timedelta(days=35),
-            end_date=datetime.now().astimezone() - timedelta(days=7),
+            start_date=datetime.now().date() - timedelta(days=35),
+            end_date=datetime.now().date() - timedelta(days=7),
             status="active",
         )
 
         ending_subscriptions = Subscription.objects.filter(
-            status="active", end_date__lte=datetime.now().astimezone()
+            status="active", end_date__lte=datetime.now().date()
         )
         assert len(ending_subscriptions) == 1
 
         calculate_invoice()
 
         ending_subscriptions = Subscription.objects.filter(
-            status="active", end_date__lte=datetime.now().astimezone()
+            status="active", end_date__lte=datetime.now().date()
         )
         assert len(ending_subscriptions) == 0
         invoice_set = Invoice.objects.filter(

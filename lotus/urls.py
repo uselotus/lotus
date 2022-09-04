@@ -76,5 +76,5 @@ urlpatterns = [
     path("api/logout/", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
     path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
-    # re_path(".*", TemplateView.as_view(template_name="index.html")),
+    re_path(".*", TemplateView.as_view(template_name="index.html")),
 ]
