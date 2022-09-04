@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { Avatar, Divider, List, Skeleton, Button } from "antd";
+import { Avatar, Divider, List, Skeleton, Button, Card } from "antd";
 import InfiniteScroll from "react-infinite-scroll-component";
 import { Plan } from "../api/api";
 import { PlanType } from "../types/plan-type";
@@ -46,6 +46,7 @@ const ViewPlans: FC = () => {
         <List
           bordered={false}
           dataSource={plans}
+          grid={{ gutter: 16, column: 3 }}
           className="w-"
           renderItem={(item) => (
             <List.Item key={item.name}>

@@ -11,26 +11,28 @@ import { CustomerTableItem } from "../types/customer-type";
 import { Button, Tag, Tooltip } from "antd";
 import { PlanDisplay } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
+import LoadingSpinner from "./LoadingSpinner";
+import SubscriptionStatistics from "./Dashboard/SubscriptionStatistics";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
-    title: "customer_id",
+    title: "Customer Id",
     width: 120,
     dataIndex: "customer_id",
     align: "left",
   },
   {
-    title: "name",
+    title: "Name",
     width: 120,
-    dataIndex: "name",
+    dataIndex: "customer_name",
     align: "left",
   },
   {
-    title: "plans",
+    title: "Plans",
     width: 120,
     dataIndex: "subscriptions",
     render: (_, record) => (
-      <Tag color={"green"}>{record.subscriptions.billing_plan.name}</Tag>
+      <Tag color={"bruh"}>{record.subscriptions[0].billing_plan.name}</Tag>
     ),
   },
   {
@@ -44,16 +46,15 @@ interface Props {
   customerArray: CustomerTableItem[];
 }
 
-const ViewCustomers: FC<Props> = ({ customerArray }) => {
+const CustomerTable: FC<Props> = ({ customerArray }) => {
   const navigate = useNavigate();
 
   const navigateCreateCustomer = () => {
     navigate("/customers/create");
   };
+
   return (
     <React.Fragment>
-      <h1 className="text-3xl font-main">Customers</h1>
-
       <ProTable<CustomerTableItem>
         columns={columns}
         dataSource={customerArray}
@@ -80,4 +81,4 @@ const ViewCustomers: FC<Props> = ({ customerArray }) => {
   );
 };
 
-export default ViewCustomers;
+export default CustomerTable;

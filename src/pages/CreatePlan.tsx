@@ -12,6 +12,8 @@ import {
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/UsageComponentForm";
+import { useQuery } from "react-query";
+import { MetricType } from "../types/metric-type";
 
 interface UsageComponent {
   event_name: string;
@@ -24,6 +26,18 @@ const CreatePlan = () => {
   const [visible, setVisible] = useState(false);
   const [components, setComponents] = useState<UsageComponent[]>([]);
   const navigate = useNavigate();
+
+  // const { data, isLoading } = useQuery<MetricType[]>(["total_revenue"], () =>
+  //   .getSubscriptionOverview(
+  //     props.range[0].format("YYYY-MM-DD"),
+  //     props.range[1].format("YYYY-MM-DD"),
+  //     props.range[0].subtract(1, "month").format("YYYY-MM-DD"),
+  //     props.range[1].subtract(1, "month").format("YYYY-MM-DD")
+  //   ).then((res) => {
+  //     return res;
+  //   })
+  // );
+
   const onFinish = (values: any) => {
     console.log("Success:", values);
   };

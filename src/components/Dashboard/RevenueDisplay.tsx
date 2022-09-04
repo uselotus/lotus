@@ -36,7 +36,7 @@ function RevenueDisplay(props: {
     <div className="px-2 py-2">
       <h1 className="text-xl font-main mb-4">Monthly Revenue</h1>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
-        <h2 className="text-3xl">$ {3}</h2>
+        <h2 className="text-3xl">$ {props.total_revenue_1}</h2>
         <div>
           {3 >= 0 ? (
             <Statistic
@@ -46,7 +46,7 @@ function RevenueDisplay(props: {
                 fontSize: "1.875rem",
                 lineHeight: "2.25rem",
               }}
-              precision={2}
+              precision={1}
               prefix={<ArrowUpOutlined />}
               suffix="%"
               className="text-3xl"

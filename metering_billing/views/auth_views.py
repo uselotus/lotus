@@ -9,7 +9,10 @@ from django.views.decorators.http import require_POST
 @require_POST
 def login_view(request):
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"detail": "Invalid JSON."}, status=400)
 
     if data is None:
         return JsonResponse({"detail": "No data provided."}, status=400)
