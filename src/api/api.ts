@@ -33,7 +33,7 @@ const requests = {
 
 export const Customer = {
   getCustomers: (): Promise<CustomerTableItem[]> =>
-    requests.get("api/customers"),
+    requests.get("api/customer_summary/"),
   getACustomer: (id: number): Promise<CustomerType> =>
     requests.get(`api/customers/${id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
