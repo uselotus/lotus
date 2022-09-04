@@ -199,13 +199,14 @@ class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
 
 
 class DayMetricUsageSerializer(serializers.Serializer):
+    date = serializers.DateField()
     customer_usages = serializers.DictField(
         child=serializers.DecimalField(decimal_places=10, max_digits=20)
     )
 
 
 class PeriodSingleMetricUsageSerializer(serializers.Serializer):
-    data = serializers.DictField(child=DayMetricUsageSerializer())
+    data = DayMetricUsageSerializer(many=True)
     total_usage = serializers.DecimalField(decimal_places=10, max_digits=20)
     top_n_customers = CustomerNameSerializer(required=False, many=True)
     top_n_customers_usage = serializers.DecimalField(

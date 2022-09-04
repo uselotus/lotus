@@ -159,7 +159,7 @@ def dates_bwn_twodates(start_date, end_date):
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -261,7 +261,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -308,7 +308,7 @@ class PeriodSubscriptionsView(APIView):
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -318,7 +318,6 @@ class PeriodMetricUsageView(APIView):
         """
         Return current usage for a customer during a given billing period.
         """
-        pass
         organization = parse_organization(request)
         serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
@@ -363,6 +362,15 @@ class PeriodMetricUsageView(APIView):
                 )
             else:
                 del metric_dict["top_n_customers"]
+        for metric, metric_d in return_dict.items():
+            metric_d["data"] = [
+                {
+                    "date": k,
+                    "total_usage": v["total_usage"],
+                    "customer_usages": v["customer_usages"],
+                }
+                for k, v in metric_d["data"].items()
+            ]
         return_dict = {"metrics": return_dict}
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
@@ -371,7 +379,7 @@ class PeriodMetricUsageView(APIView):
 
 class CustomerWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: CustomerRevenueSummarySerializer},

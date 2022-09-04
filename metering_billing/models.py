@@ -162,7 +162,7 @@ class PlanComponent(models.Model):
         decimal_places=10, max_digits=20, default_currency="USD"
     )
     metric_amount_per_cost = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0
+        decimal_places=10, max_digits=20, default=1.0
     )
 
     def __str__(self):
