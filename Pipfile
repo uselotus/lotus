@@ -31,6 +31,7 @@ django-heroku = "*"
 django-celery-beat = "*"
 django-vite = "*"
 django-environ = "*"
+drf-spectacular = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"
