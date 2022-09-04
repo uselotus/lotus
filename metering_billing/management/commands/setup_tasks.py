@@ -13,8 +13,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         # Create schedules
-        every_hour, _ = CrontabSchedule.objects.get_or_create(
-            minute="0", hour="*", day_of_week="*", day_of_month="*", month_of_year="*"
+        every_day, _ = CrontabSchedule.objects.get_or_create(
+            minute="0", hour="0", day_of_week="*", day_of_month="*", month_of_year="*"
         )
         every_2_minutes, _ = IntervalSchedule.objects.get_or_create(
             every=2,
@@ -22,17 +22,19 @@ class Command(BaseCommand):
         )
 
         # create tasks
-        task, created = PeriodicTask.objects.get_or_create(
-            name="Check end of subscriptions",
-            task="metering_billing.tasks.calculate_invoice",
-            crontab=every_hour,
-        )
-        if not created:
-            print(f"task {task.name} already exists")
-        task, created = PeriodicTask.objects.get_or_create(
-            name="Check start of subscriptions",
-            task="metering_billing.tasks.start_subscriptions",
-            interval=every_2_minutes,
-        )
-        if not created:
-            print(f"task {task.name} already exists")
+        task_qs = PeriodicTask.objects.filter(name="Check end of subscriptions")
+        if len(task_qs) == 0:
+            PeriodicTask.objects.create(
+                name="Check end of subscriptions",
+                task="metering_billing.tasks.calculate_invoice",
+                crontab=every_day,
+            )
+
+        task_qs_2 = PeriodicTask.objects.filter(name="Check start of subscriptions")
+
+        if len(task_qs_2) == 0:
+            PeriodicTask.objects.create(
+                name="Check start of subscriptions",
+                task="metering_billing.tasks.start_subscriptions",
+                interval=every_2_minutes,
+            )
