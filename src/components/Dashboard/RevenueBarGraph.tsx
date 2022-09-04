@@ -1,17 +1,9 @@
 import { Column } from "@ant-design/plots";
 import React, { useState, useEffect } from "react";
+import { RevenuePeriod } from "../../types/revenue-type";
+import LoadingSpinner from "../LoadingSpinner";
 
 const defaultData = [
-  {
-    day: "Aug 21",
-    revenue: 3,
-    type: "API 1",
-  },
-  {
-    day: "Aug 21",
-    revenue: 4,
-    type: "API 2",
-  },
   {
     day: "Aug 22",
     revenue: 6,
@@ -20,6 +12,16 @@ const defaultData = [
   {
     day: "Aug 22",
     revenue: 3,
+    type: "API 2",
+  },
+  {
+    day: "Aug 21",
+    revenue: 3,
+    type: "API 1",
+  },
+  {
+    day: "Aug 21",
+    revenue: 4,
     type: "API 2",
   },
   {
@@ -77,7 +79,10 @@ const defaultData = [
 
 //Generate more defaultData for the month of august
 
-function MetricBarGraph() {
+function RevenueBarGraph(props: {
+  data?: RevenuePeriod[];
+  isLoading: boolean;
+}) {
   const [data, setData] = useState<any>(defaultData);
   const config = {
     data,
@@ -102,6 +107,13 @@ function MetricBarGraph() {
       ],
     },
   };
+  // if (props.isLoading || props.data === undefined) {
+  //   return (
+  //     <div>
+  //       <LoadingSpinner />
+  //     </div>
+  //   );
+  // }
   return (
     <div>
       <Column {...config} />
@@ -109,4 +121,4 @@ function MetricBarGraph() {
   );
 }
 
-export default MetricBarGraph;
+export default RevenueBarGraph;

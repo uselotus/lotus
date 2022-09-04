@@ -14,7 +14,7 @@ import { useNavigate } from "react-router-dom";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
-    title: "id",
+    title: "customer_id",
     width: 120,
     dataIndex: "customer_id",
     align: "left",
@@ -26,12 +26,17 @@ const columns: ProColumns<CustomerTableItem>[] = [
     align: "left",
   },
   {
-    title: "plan",
+    title: "plans",
     width: 120,
-    dataIndex: "plan.name",
+    dataIndex: "subscriptions",
     render: (_, record) => (
-      <Tag color={record.plan.color}>{record.plan.name}</Tag>
+      <Tag color={"green"}>{record.subscriptions.billing_plan.name}</Tag>
     ),
+  },
+  {
+    title: "Outstanding Revenue",
+    width: 120,
+    dataIndex: "total_revenue_due",
   },
 ];
 

@@ -14,7 +14,6 @@ interface Component {
   aggregation_type: string;
   unit_per_cost: number;
 }
-
 export interface PlanDisplay {
   name: string;
   color: string;

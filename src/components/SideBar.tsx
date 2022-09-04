@@ -6,6 +6,7 @@ import {
   UploadOutlined,
   SettingOutlined,
   BookOutlined,
+  BorderlessTableOutlined,
 } from "@ant-design/icons";
 import { GearIcon, ImageIcon, SunIcon } from "@radix-ui/react-icons";
 
@@ -32,6 +33,10 @@ const SideBar: FC = () => {
 
   const handleSubscriptionsClick = () => {
     navigate("/subscriptions");
+  };
+
+  const handleMetricsClick = () => {
+    navigate("/metrics");
   };
 
   return (
@@ -61,6 +66,10 @@ const SideBar: FC = () => {
         <Menu.Item key="/plans" onClick={handlePlansClick}>
           <UploadOutlined />
           <span> Plans</span>
+        </Menu.Item>
+        <Menu.Item key="/metrics" onClick={handleMetricsClick}>
+          <BorderlessTableOutlined />
+          <span> Metrics</span>
         </Menu.Item>
         <Menu.Item key="/subscriptions" onClick={handleSubscriptionsClick}>
           <BookOutlined />
