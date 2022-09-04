@@ -131,6 +131,23 @@ class InvoiceSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer()
     subscription = SubscriptionSerializer()
 
+class CustomerNameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ("name",)
+
+
+class CustomerIDSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ("customer_id",)
+
+
+class BillingPlanNameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillingPlan
+        fields = ("name",)
+
 
 class PeriodRequestSerializer(serializers.Serializer):
     start_date = serializers.DateField()
@@ -145,33 +162,22 @@ class PeriodComparisonRequestSerializer(serializers.Serializer):
 
 
 # CUSTOMER USAGE AND REVENUE SERIALIZERS GO HERE
-class PlanComponentUsageSerializer(serializers.Serializer):
-    plan_component = PlanComponentSerializer()
-    units_usage = serializers.DecimalField(decimal_places=10, max_digits=20)
-    usage_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
-
-    def get_plan_component(self, obj) -> Decimal:
-        return sum(component.usage_cost for component in obj.components)
-
-
 class SubscriptionUsageSerializer(serializers.Serializer):
     class Meta:
         model = Subscription
         fields = ("id", "start_date", "end_date", "status", "billing_plan")
 
-    components = PlanComponentUsageSerializer(many=True)
     billing_plan = BillingPlanShallowSerializer()
     usage_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     flat_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
-class CustomerRevenueSerializer(CustomerSerializer):
-    class Meta(CustomerSerializer.Meta):
-        fields = CustomerSerializer.Meta.fields + ("subscriptions", "total_revenue_due")
-
-    subscriptions = SubscriptionUsageSerializer(many=True)
+class CustomerRevenueSerializer(serializers.Serializer):
+    subscriptions = serializers.ListField(child=serializers.CharField())
     total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+    customer_name = serializers.CharField()
+    customer_id = serializers.CharField()
 
 
 class CustomerRevenueSummarySerializer(serializers.Serializer):
@@ -190,11 +196,6 @@ class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
 class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
     top_n_customers = serializers.IntegerField(required=False)
 
-
-class CustomerNameSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = ("name",)
 
 class DayMetricUsageSerializer(serializers.Serializer):
     customer_usages = serializers.DictField(child=serializers.DecimalField(decimal_places=10, max_digits=20))

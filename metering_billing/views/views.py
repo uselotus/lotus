@@ -261,7 +261,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -308,7 +308,7 @@ class PeriodSubscriptionsView(APIView):
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -371,11 +371,16 @@ class CustomerWithRevenueView(APIView):
 
         customers_dict = {"customers": []}
         for customer in customers:
+            customer_dict = {}
             sub_usg_summaries = get_customer_usage_and_revenue(customer)
-            sub_usg_summaries["total_revenue_due"] = sum(
+            customer_dict["total_revenue_due"] = sum(
                 x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
             )
-            serializer = CustomerRevenueSerializer(data=sub_usg_summaries)
+            customer_dict["customer_name"] = customer.name
+            customer_dict["customer_id"] = customer.customer_id
+            customer_dict["subscriptions"] = [x["billing_plan"]["name"] for x in sub_usg_summaries["subscriptions"]]
+
+            serializer = CustomerRevenueSerializer(data=customer_dict)
             serializer.is_valid(raise_exception=True)
             customers_dict["customers"].append(serializer.validated_data)
         serializer = CustomerRevenueSummarySerializer(data=customers_dict)

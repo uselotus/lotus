@@ -26,7 +26,6 @@ from metering_billing.serializers import (
     CustomerSerializer,
     EventSerializer,
     PlanComponentSerializer,
-    PlanComponentUsageSerializer,
     SubscriptionSerializer,
     SubscriptionUsageSerializer,
 )
@@ -255,9 +254,7 @@ def get_subscription_usage_and_revenue(subscription):
         plan_component_summary["plan_component"] = PlanComponentSerializer(
             plan_component
         ).data
-        serializer = PlanComponentUsageSerializer(data=plan_component_summary)
-        serializer.is_valid(raise_exception=True)
-        sub_dict["components"].append(serializer.validated_data)
+        sub_dict["components"].append(plan_component_summary)
     sub_dict["usage_revenue_due"] = sum(
         component["usage_revenue"] for component in sub_dict["components"]
     )
@@ -275,16 +272,12 @@ def get_customer_usage_and_revenue(customer):
         customer=customer, status="active", organization=customer.organization
     )
 
-    serialized_subscription_usages = {"subscriptions": []}
+    subscription_usages = {"subscriptions": []}
     for subscription in customer_subscriptions:
         sub_dict = get_subscription_usage_and_revenue(subscription)
-        serializer = SubscriptionUsageSerializer(data=sub_dict)
-        serializer.is_valid(raise_exception=True)
-        serialized_subscription_usages["subscriptions"].append(
-            serializer.validated_data
-        )
+        subscription_usages["subscriptions"].append(sub_dict)
 
-    return serialized_subscription_usages
+    return subscription_usages
 
 
 def generate_invoice(subscription):
