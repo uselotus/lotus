@@ -2478,27 +2478,21 @@ components:
     CustomerRevenue:
       type: object
       properties:
-        name:
-          type: string
-          maxLength: 100
-        customer_id:
-          type: string
-          maxLength: 40
-        balance:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
         subscriptions:
           type: array
           items:
-            $ref: '#/components/schemas/SubscriptionUsage'
+            type: string
         total_revenue_due:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+        customer_name:
+          type: string
+        customer_id:
+          type: string
       required:
       - customer_id
-      - name
+      - customer_name
       - subscriptions
       - total_revenue_due
     CustomerRevenueSummary:
@@ -2532,19 +2526,12 @@ components:
         customer_usages:
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/DayMetricUsageCustomer'
+            type: string
+            format: decimal
+            pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
       required:
       - customer_usages
       - date
-    DayMetricUsageCustomer:
-      type: object
-      properties:
-        metric_amount:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
-      required:
-      - metric_amount
     IntervalEnum:
       enum:
       - week
@@ -2705,10 +2692,10 @@ components:
           $ref: '#/components/schemas/BillingPlanShallow'
         start_date:
           type: string
-          format: date-time
+          format: date
         end_date:
           type: string
-          format: date-time
+          format: date
         status:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
     PatchedUser:
@@ -2760,7 +2747,7 @@ components:
       type: object
       properties:
         metric:
-          $ref: '#/components/schemas/BillableMetric'
+          type: string
         data:
           type: array
           items:
@@ -2777,8 +2764,8 @@ components:
       type: object
       properties:
         data:
-          type: object
-          additionalProperties:
+          type: array
+          items:
             $ref: '#/components/schemas/DayMetricUsage'
         total_usage:
           type: string
@@ -2835,23 +2822,6 @@ components:
       - billable_metric
       - cost_per_metric
       - id
-    PlanComponentUsage:
-      type: object
-      properties:
-        plan_component:
-          $ref: '#/components/schemas/PlanComponent'
-        units_usage:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
-        usage_revenue:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
-      required:
-      - plan_component
-      - units_usage
-      - usage_revenue
     Subscription:
       type: object
       properties:
@@ -2864,10 +2834,10 @@ components:
           $ref: '#/components/schemas/BillingPlanShallow'
         start_date:
           type: string
-          format: date-time
+          format: date
         end_date:
           type: string
-          format: date-time
+          format: date
         status:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
       required:
@@ -2882,33 +2852,6 @@ components:
       - ended
       - not_started
       type: string
-    SubscriptionUsage:
-      type: object
-      properties:
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentUsage'
-        billing_plan:
-          $ref: '#/components/schemas/BillingPlanShallow'
-        usage_revenue_due:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
-        flat_revenue_due:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
-        total_revenue_due:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
-      required:
-      - billing_plan
-      - components
-      - flat_revenue_due
-      - total_revenue_due
-      - usage_revenue_due
     User:
       type: object
       properties:

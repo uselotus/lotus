@@ -215,14 +215,13 @@ def calculate_plan_component_usage_and_revenue(
 ):
     usage_revenue_dict = {"usage": 0, "revenue": 0}
     billable_metric = plan_component.billable_metric
-    units_usage = Decimal(
-        get_metric_usage(
-            billable_metric,
-            query_start_date=plan_start_date,
-            query_end_date=plan_end_date,
-            customer=customer,
-        ).first()["usage_qty"]
+    metric_usage = get_metric_usage(
+        billable_metric,
+        query_start_date=plan_start_date,
+        query_end_date=plan_end_date,
+        customer=customer,
     )
+    units_usage = Decimal(metric_usage.first()["usage_qty"]) if metric_usage else 0
     usage_revenue_dict["units_usage"] = units_usage
     usage_revenue_dict["usage_revenue"] = calculate_plan_component_revenue(
         plan_component, units_usage
