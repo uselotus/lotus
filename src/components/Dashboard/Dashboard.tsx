@@ -21,18 +21,15 @@ const Dashboard: FC = () => {
   const [dateRange, setDateRange] = React.useState<any>(defaultDate);
 
   const { data, isLoading }: UseQueryResult<RevenueType, RevenueType> =
-    useQuery<RevenueType, RevenueType>(
-      ["total_revenue"],
-      () =>
-        GetRevenue.getMonthlyRevenue(
-          dateRange[0].format("YYYY-MM-DD"),
-          dateRange[1].format("YYYY-MM-DD"),
-          dateRange[0].subtract(1, "month").format("YYYY-MM-DD"),
-          dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
-        ).then((res) => {
-          return res;
-        }),
-      { select: (data) => data }
+    useQuery<RevenueType, RevenueType>(["total_revenue_"], () =>
+      GetRevenue.getMonthlyRevenue(
+        dateRange[0].format("YYYY-MM-DD"),
+        dateRange[1].format("YYYY-MM-DD"),
+        dateRange[0].subtract(1, "month").format("YYYY-MM-DD"),
+        dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
+      ).then((res) => {
+        return res;
+      })
     );
 
   return (

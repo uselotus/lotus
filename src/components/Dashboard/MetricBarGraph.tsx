@@ -25,22 +25,19 @@ function MetricBarGraph(props: { range: any }) {
   const [chartData, setChartData] = useState<ChartDataType[]>([]);
 
   const { data, isLoading }: UseQueryResult<MetricUsage> =
-    useQuery<MetricUsage>(
-      ["dashboard_metric_graph"],
-      () =>
-        Metrics.getmetricusage(
-          dateRange[0].format("YYYY-MM-DD"),
-          dateRange[1].format("YYYY-MM-DD")
-        ).then((res) => {
-          return res;
-        }),
-      { select: (data) => data }
+    useQuery<MetricUsage>(["dashboard_metric_graph"], () =>
+      Metrics.getMetricUsage(
+        dateRange[0].format("YYYY-MM-DD"),
+        dateRange[1].format("YYYY-MM-DD")
+      ).then((res) => {
+        return res;
+      })
     );
 
   useEffect(() => {
-    if (data) {
+    if (data?.metrics) {
       console.log(data);
-      setMetricList(Object.keys(data));
+      setMetricList(Object.keys(data.metrics));
     }
   }, [data]);
 
@@ -78,7 +75,7 @@ function MetricBarGraph(props: { range: any }) {
   const changeMetric = (value: string) => {
     let compressedArray: ChartDataType[] = [];
 
-    const daily_data = data[value].data;
+    const daily_data = data.metrics[value].data;
     for (let i = 0; i < daily_data.length; i++) {
       const date = daily_data[i].date;
 

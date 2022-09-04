@@ -1,9 +1,13 @@
 import axios, { AxiosResponse } from "axios";
-import { CustomerTableItem, CustomerType } from "../types/customer-type";
+import {
+  CustomerSummary,
+  CustomerTableItem,
+  CustomerType,
+} from "../types/customer-type";
 import { PlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import { SubscriptionTotals } from "../types/subscription-type";
-import { MetricUsage } from "../types/metric-type";
+import { MetricUsage, MetricType } from "../types/metric-type";
 import {
   StripeConnectType,
   StripeOauthType,
@@ -32,16 +36,16 @@ const requests = {
 };
 
 export const Customer = {
-  getCustomers: (): Promise<CustomerTableItem[]> =>
+  getCustomers: (): Promise<CustomerSummary> =>
     requests.get("api/customer_summary/"),
   getACustomer: (id: number): Promise<CustomerType> =>
     requests.get(`api/customers/${id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
-    requests.post("api/customers", post),
+    requests.post("api/customers/", post),
 };
 
 export const Plan = {
-  getPlans: (): Promise<PlanType[]> => requests.get("api/plans"),
+  getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
 };
 
 export const StripeConnect = {
@@ -96,12 +100,13 @@ export const GetSubscriptions = {
 };
 
 export const Metrics = {
-  getmetricusage: (
+  getMetricUsage: (
     start_date: string,
     end_date: string,
     top_n_customers?: number
   ): Promise<MetricUsage> =>
-    requests.get("api/metric_usage/", {
+    requests.get("api/period_metric_usage/", {
       params: { start_date, end_date, top_n_customers },
     }),
+  getMetrics: (): Promise<MetricType[]> => requests.get("api/metrics/"),
 };

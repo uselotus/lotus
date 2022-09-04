@@ -1,19 +1,18 @@
 export interface MetricType {
   event_name: string;
-  property_type: string;
+  property_name: string;
   aggregation_type: string;
   id: number;
 }
 
 export interface MetricUsage {
-  [key: string]: MetricUsageValue;
+  metrics: { [key: string]: MetricUsageValue };
 }
 interface MetricUsageValue {
-  metric: MetricType;
   data: UsageData[];
-  top_n_customers: { name: string }[];
+  top_n_customers?: { name: string }[];
   total_usage: number;
-  top_n_customers_usage: number;
+  top_n_customers_usage?: number;
 }
 
 interface UsageData {

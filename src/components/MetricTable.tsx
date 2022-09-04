@@ -11,35 +11,34 @@ import { CustomerTableItem } from "../types/customer-type";
 import { Button, Tag, Tooltip } from "antd";
 import { PlanDisplay } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
+import { MetricType } from "../types/metric-type";
 
-const columns: ProColumns<CustomerTableItem>[] = [
+const columns: ProColumns<MetricType>[] = [
   {
-    title: "id",
+    title: "Event Name",
     width: 120,
-    dataIndex: "customer_id",
+    dataIndex: "event_name",
     align: "left",
   },
   {
-    title: "name",
+    title: "Aggregation Type",
     width: 120,
-    dataIndex: "name",
-    align: "left",
+    dataIndex: "aggregation_type",
+    render: (_, record) => <Tag color={"green"}>{record.aggregation_type}</Tag>,
   },
   {
-    title: "plan",
+    title: "Property Name",
     width: 120,
-    dataIndex: "plan.name",
-    render: (_, record) => (
-      <Tag color={"bruh"}>{record.subscriptions.billing_plan.name}</Tag>
-    ),
+    dataIndex: "property_name",
+    align: "left",
   },
 ];
 
 interface Props {
-  customerArray: CustomerTableItem[];
+  metricArray: MetricType[];
 }
 
-const SubscriptionTable: FC<Props> = ({ customerArray }) => {
+const MetricTable: FC<Props> = ({ metricArray }) => {
   const navigate = useNavigate();
 
   const navigateCreateCustomer = () => {
@@ -47,11 +46,9 @@ const SubscriptionTable: FC<Props> = ({ customerArray }) => {
   };
   return (
     <React.Fragment>
-      <h1 className="text-3xl font-main">Subscriptions</h1>
-
-      <ProTable<CustomerTableItem>
+      <ProTable<MetricType>
         columns={columns}
-        dataSource={customerArray}
+        dataSource={metricArray}
         rowKey="customer_id"
         search={false}
         pagination={{
@@ -60,19 +57,9 @@ const SubscriptionTable: FC<Props> = ({ customerArray }) => {
           ),
         }}
         options={false}
-        toolBarRender={() => [
-          <Button
-            key="primary"
-            type="primary"
-            disabled={true}
-            onClick={navigateCreateCustomer}
-          >
-            Create Customer
-          </Button>,
-        ]}
       />
     </React.Fragment>
   );
 };
 
-export default SubscriptionTable;
+export default MetricTable;

@@ -1,18 +1,21 @@
+import { MetricType } from "./metric-type";
 export interface PlanType {
   name: string;
   components: Component[];
-  billing_interval: string;
+  interval: string;
   description: string;
   flat_rate: number;
+  currency: string;
+  id: number;
+  time_created: string;
 }
 
 interface Component {
-  metric_name: string;
-  property_name: string;
-  free_metric_quantity: number;
-  cost_per_metric: number;
-  aggregation_type: string;
-  unit_per_cost: number;
+  billable_metric: MetricType;
+  free_metric_quantity: string;
+  cost_per_metric: string;
+  metric_amount_per_cost: string;
+  id: number;
 }
 export interface PlanDisplay {
   name: string;
