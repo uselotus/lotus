@@ -5,12 +5,11 @@ import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
 import ViewSettings from "../pages/ViewSettings";
 import StripeRedirect from "../pages/StripeRedirect";
-
-// import MainContent from "./components/MainContent";
 import SideBar from "../components/SideBar";
 import { Divider, Layout } from "antd";
 import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import CreatePlan from "../pages/CreatePlan";
+import ViewMetrics from "../pages/ViewMetrics";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -51,6 +50,7 @@ const AppRoutes: FC = () => {
               <Route path="/plans" element={<ViewPlans />} />
               <Route path="create-plan" element={<CreatePlan />} />
               <Route path="/customers" element={<ViewCustomers />} />
+              <Route path="/metrics" element={<ViewMetrics />} />
               <Route path="/customers-create" element={<CreatePlan />} />
               <Route path="/settings" element={<ViewSettings />} />
               <Route path="/redirectstripe" element={<StripeRedirect />} />
