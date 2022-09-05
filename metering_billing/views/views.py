@@ -128,9 +128,7 @@ class InitializeStripeView(APIView):
         if data is None:
             return JsonResponse({"details": "No data provided"}, status=400)
 
-        organization = request.user.organization
-        if organization is None:
-            return Response({"error": "User does not have an organization"}, status=403)
+        organization = parse_organization(request)
         stripe_code = data["authorization_code"]
 
         try:
