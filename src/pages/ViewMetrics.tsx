@@ -83,7 +83,7 @@ const ViewMetrics: FC = () => {
             <MetricTable metricArray={data} />
           )}
         </div>
-        <Card className="flex flex-row justify-center">
+        <Card className="flex flex-row justify-center bg-grey3">
           <h1 className="text-2xl font-main mb-5">Event Stream</h1>
           <Divider />
         </Card>

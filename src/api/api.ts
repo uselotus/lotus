@@ -84,15 +84,15 @@ export const GetRevenue = {
 
 export const GetSubscriptions = {
   getSubscriptionOverview: (
-    period_1_end_date: string,
     period_1_start_date: string,
+    period_1_end_date: string,
     period_2_start_date: string,
     period_2_end_date: string
   ): Promise<SubscriptionTotals> =>
     requests.get("api/period_subscriptions/", {
       params: {
-        period_1_end_date,
         period_1_start_date,
+        period_1_end_date,
         period_2_start_date,
         period_2_end_date,
       },

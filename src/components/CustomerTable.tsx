@@ -98,7 +98,11 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
         }}
         options={false}
         toolBarRender={() => [
-          <Button type="primary" onClick={openCustomerModal}>
+          <Button
+            type="primary"
+            className="ml-auto bg-info"
+            onClick={openCustomerModal}
+          >
             Create Customer
           </Button>,
         ]}

@@ -10,7 +10,7 @@ export interface PlanType {
   time_created: string;
 }
 
-interface Component {
+export interface Component {
   billable_metric: MetricType;
   free_metric_quantity: string;
   cost_per_metric: string;

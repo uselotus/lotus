@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { RevenueType } from "../types/revenue-type";
-import { GetRevenue } from "../api/api";
 import { Button, Form, Input, InputNumber, Modal, Radio, Select } from "antd";
-import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 
@@ -21,7 +18,8 @@ function UsageComponentForm(props: { visible: boolean; onCancel: () => void }) {
         form
           .validateFields()
           .then((values) => {
-            form.resetFields();
+            console.log(values);
+            form.submit();
           })
           .catch((info) => {
             console.log("Validate Failed:", info);
@@ -31,8 +29,12 @@ function UsageComponentForm(props: { visible: boolean; onCancel: () => void }) {
       <Form
         form={form}
         layout="vertical"
-        name="form_in_modal"
-        initialValues={{ modifier: "public" }}
+        name="component_form"
+        initialValues={{
+          cost_per_metric: 0.0,
+          metric_amount_per_cost: 0.0,
+          free_amount: 0,
+        }}
       >
         <Form.Item
           name="metric"
@@ -48,28 +50,14 @@ function UsageComponentForm(props: { visible: boolean; onCancel: () => void }) {
             <Option value="test-runs">Test-Runs</Option>
           </Select>
         </Form.Item>
-        <Form.Item name="cost" label="Cost Per Unit Amount">
-          <InputNumber addonBefore="$" defaultValue={0.0} precision={2} />
-          <InputNumber addonBefore="per" defaultValue={1} precision={0} />
+        <Form.Item name="cost_per_metric" label="Cost Per Unit Amount">
+          <InputNumber addonBefore="$" defaultValue={0} precision={2} />
         </Form.Item>
-        <Form.Item name="free-amount" label="Free Units">
-          <InputNumber defaultValue={0} precision={0} />
+        <Form.Item name="metric_amount_per_cost">
+          <InputNumber addonBefore="per" defaultValue={1} precision={10} />
         </Form.Item>
-        <Form.Item
-          name="aggregation_type"
-          label="Aggregation Type"
-          rules={[
-            {
-              required: true,
-              message: "Please select an aggregation type",
-            },
-          ]}
-        >
-          <Select>
-            <Option value="count">Count</Option>
-            <Option value="sum">Sum</Option>
-            <Option value="max">Max</Option>
-          </Select>
+        <Form.Item name="free_amount" label="Free Units">
+          <InputNumber defaultValue={0} precision={5} />
         </Form.Item>
       </Form>
     </Modal>
