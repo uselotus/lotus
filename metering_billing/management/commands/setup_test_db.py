@@ -24,10 +24,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         username = os.getenv("DJANGO_SUPERUSER_USERNAME")
-        email = os.getenv("DJANGO_SUPERUSER_EMAIL")
-        password = os.getenv("DJANGO_SUPERUSER_PASSWORD")
 
-        admin = User.objects.get(email=email, username=username, password=password)
+        admin = User.objects.get(username=username)
         organization = admin.organization
 
         customer_set = baker.make(Customer, _quantity=10, organization=organization)
