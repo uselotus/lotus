@@ -1,18 +1,12 @@
-import json
-import math
-import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 import dateutil.parser as parser
 import stripe
-from django.db import connection
 from django.db.models import Q
-from django.forms.models import model_to_dict
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_list_or_404, get_object_or_404
-from django_q.tasks import async_task
-from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
+from drf_spectacular.utils import extend_schema
 from lotus.settings import STRIPE_SECRET_KEY
 from metering_billing.models import (
     APIToken,
@@ -54,6 +48,18 @@ from ..utils import (
 )
 
 stripe.api_key = STRIPE_SECRET_KEY
+
+
+def make_all_decimals_floats(json):
+    if type(json) in [dict, list, Decimal]:
+        for key, value in json.items():
+            if isinstance(value, dict):
+                make_all_decimals_floats(value)
+            elif isinstance(value, list):
+                for item in value:
+                    make_all_decimals_floats(item)
+            elif isinstance(value, Decimal):
+                json[key] = float(value)
 
 
 def import_stripe_customers(organization):
@@ -159,7 +165,7 @@ def dates_bwn_twodates(start_date, end_date):
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -193,75 +199,69 @@ class PeriodMetricRevenueView(APIView):
             "total_revenue_period_2": Decimal(0),
         }
         for billable_metric in all_org_billable_metrics:
-            for period_start, period_end, period_num in [
-                (p1_start, p1_end, 1),
-                (p2_start, p2_end, 2),
-            ]:
-                return_dict[f"daily_usage_revenue_period_{period_num}"][
+            for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+                return_dict[f"daily_usage_revenue_period_{p_num}"][
                     billable_metric.id
                 ] = {
                     "metric": str(billable_metric),
                     "data": {
-                        str(x): Decimal(0)
-                        for x in dates_bwn_twodates(period_start, period_end)
+                        str(x): Decimal(0) for x in dates_bwn_twodates(p_start, p_end)
                     },
                     "total_revenue": Decimal(0),
                 }
-        for period_start, period_end, period_num in [
-            (p1_start, p1_end, 1),
-            (p2_start, p2_end, 2),
-        ]:
+        for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
             subs = Subscription.objects.filter(
-                Q(start_date__range=[period_start, period_end])
-                | Q(end_date__range=[period_start, period_end]),
+                Q(start_date__range=[p_start, p_end])
+                | Q(end_date__range=[p_start, p_end]),
                 organization=organization,
             )
             for sub in subs:
                 billing_plan = sub.billing_plan
-                if billing_plan.pay_in_advance:
-                    if sub.start_date >= period_start and sub.start_date <= period_end:
-                        return_dict[
-                            f"total_revenue_period_{period_num}"
-                        ] += billing_plan.flat_rate.amount
-                else:
-                    if sub.end_date >= period_start and sub.end_date <= period_end:
-                        return_dict[
-                            f"total_revenue_period_{period_num}"
-                        ] += billing_plan.flat_rate.amount
+                flat_fee_billable_date = (
+                    sub.start_date if billing_plan.pay_in_advance else sub.end_date
+                )
+                if (
+                    flat_fee_billable_date >= p_start
+                    and flat_fee_billable_date <= p_end
+                ):
+                    return_dict[
+                        f"total_revenue_period_{p_num}"
+                    ] += billing_plan.flat_rate.amount
                 for plan_component in billing_plan.components.all():
                     usage_cost_per_day = calculate_plan_component_daily_revenue(
                         sub.customer,
                         plan_component,
                         sub.start_date,
                         sub.end_date,
-                        period_start,
-                        period_end,
+                        p_start,
+                        p_end,
                     )
-                    metric_dict = return_dict[
-                        f"daily_usage_revenue_period_{period_num}"
-                    ][plan_component.billable_metric.id]
+                    metric_dict = return_dict[f"daily_usage_revenue_period_{p_num}"][
+                        plan_component.billable_metric.id
+                    ]
                     for date, usage_cost in usage_cost_per_day.items():
                         usage_cost = Decimal(usage_cost)
                         metric_dict["data"][str(date)] += usage_cost
                         metric_dict["total_revenue"] += usage_cost
-                        return_dict[f"total_revenue_period_{period_num}"] += usage_cost
+                        return_dict[f"total_revenue_period_{p_num}"] += usage_cost
 
-        for period_num in [1, 2]:
-            dailies = return_dict[f"daily_usage_revenue_period_{period_num}"]
+        for p_num in [1, 2]:
+            dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
             dailies = [v for _, v in dailies.items()]
-            return_dict[f"daily_usage_revenue_period_{period_num}"] = dailies
+            return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
             for dic in dailies:
                 dic["data"] = [
                     {"date": k, "metric_revenue": v} for k, v in dic["data"].items()
                 ]
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
-
-        return JsonResponse(serializer.validated_data, status=status.HTTP_200_OK)
+        ret = serializer.validated_data
+        make_all_decimals_floats(ret)
+        return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -303,7 +303,9 @@ class PeriodSubscriptionsView(APIView):
 
         serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
-        return JsonResponse(serializer.validated_data, status=status.HTTP_200_OK)
+        ret = serializer.validated_data
+        make_all_decimals_floats(ret)
+        return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
 class PeriodMetricUsageView(APIView):
@@ -340,7 +342,7 @@ class PeriodMetricUsageView(APIView):
                 ]
                 if str(date) not in metric_dict["data"]:
                     metric_dict["data"][str(date)] = {
-                        "total_usage": 0,
+                        "total_usage": Decimal(0),
                         "customer_usages": {},
                     }
                 date_dict = metric_dict["data"][str(date)]
@@ -374,12 +376,14 @@ class PeriodMetricUsageView(APIView):
         return_dict = {"metrics": return_dict}
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
-        return JsonResponse(serializer.validated_data, status=status.HTTP_200_OK)
+        ret = serializer.validated_data
+        make_all_decimals_floats(ret)
+        return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
 class CustomerWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         responses={200: CustomerRevenueSummarySerializer},
@@ -409,5 +413,6 @@ class CustomerWithRevenueView(APIView):
             customers_dict["customers"].append(serializer.validated_data)
         serializer = CustomerRevenueSummarySerializer(data=customers_dict)
         serializer.is_valid(raise_exception=True)
-
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        ret = serializer.validated_data
+        make_all_decimals_floats(ret)
+        return Response(ret, status=status.HTTP_200_OK)

@@ -1,32 +1,17 @@
+import datetime
 import math
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal
 
-from django.contrib.postgres.fields import DateTimeRangeField
-from django.db import connection
 from django.db.models import Count, F, FloatField, Func, Max, Q, Sum
+from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
-from django.shortcuts import get_list_or_404
-from lotus.settings import STRIPE_SECRET_KEY
-from rest_framework.response import Response
 
 from metering_billing.exceptions import OrganizationMismatch, UserNoOrganization
-from metering_billing.models import (
-    APIToken,
-    BillingPlan,
-    Customer,
-    Event,
-    Invoice,
-    PlanComponent,
-    Subscription,
-)
+from metering_billing.models import APIToken, Event, Invoice, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers import (
     BillingPlanSerializer,
-    CustomerRevenueSerializer,
-    CustomerSerializer,
-    EventSerializer,
     PlanComponentSerializer,
-    SubscriptionSerializer,
     SubscriptionUsageSerializer,
 )
 
@@ -66,36 +51,38 @@ def parse_organization(request):
 def get_metric_usage(
     metric, query_start_date, query_end_date, customer=None, daily=False
 ):
-    filtering_kwargs = {
+    filter_kwargs = {
         "organization": metric.organization,
         "event_name": metric.event_name,
-        "time_created__date__gte": query_start_date,
-        "time_created__date__lte": query_end_date,
+        "time_created__date__range": (query_start_date, query_end_date),
     }
-    values_kwargs = {"customer_name": F("customer__name")}
-    if metric.aggregation_type == "count":
-        aggregation_field = "event_name"
-        aggregation_type = Count
+    values_kwargs = {}
+    annotate_kwargs = {}
+    if customer is not None:
+        filter_kwargs["customer"] = customer
     else:
-        aggregation_field = f"properties__{metric.property_name}"
-        aggregation_type = Sum if metric.aggregation_type == "sum" else Max
-        filtering_kwargs["properties__has_key"] = metric.property_name
-    if customer:
-        filtering_kwargs["customer"] = customer
+        values_kwargs["customer_name"] = F("customer__name")
     if daily:
-        filtering_kwargs["time_created__date"] = F("time_created__date")
         values_kwargs["date_created"] = F("time_created__date")
-    usage_summary = (
-        Event.objects.filter(**filtering_kwargs)
-        .values(**values_kwargs)
-        .annotate(
-            usage_qty=aggregation_type(
-                Cast(aggregation_field, FloatField())
-                if metric.aggregation_type != "count"
-                else aggregation_field
-            )
+    if metric.aggregation_type == "count":
+        annotate_kwargs["usage_qty"] = Count("pk")
+    else:
+        aggregation_type = Sum if metric.aggregation_type == "sum" else Max
+        annotate_kwargs["usage_qty"] = aggregation_type(
+            Cast(KeyTextTransform(metric.property_name, "properties"), FloatField())
         )
+
+    query = (
+        Event.objects.filter(**filter_kwargs)
+        .values(**values_kwargs)
+        .annotate(**annotate_kwargs)
     )
+
+    usage_summary = query
+    for x in usage_summary:
+        x["usage_qty"] = Decimal(x["usage_qty"]).quantize(
+            Decimal(".0000000001"), rounding=ROUND_UP
+        )
 
     return usage_summary
 
@@ -139,14 +126,14 @@ def calculate_plan_component_daily_revenue_for_cliff_metric(
         x["usage_qty"] for x in units_usage_per_day if x["date_created"] < query_start
     )
     units_usage_before_query_start = (
-        sum(days_before_query_start) if len(days_before_query_start) > 0 else 0
+        max(days_before_query_start) if len(days_before_query_start) > 0 else 0
     )
     units_usage_before_query_start = Decimal(units_usage_before_query_start)
     days_after_query_end = list(
         x["usage_qty"] for x in units_usage_per_day if x["date_created"] > query_end
     )
     units_usage_after_query_end = (
-        sum(days_after_query_end) if len(days_after_query_end) > 0 else 0
+        max(days_after_query_end) if len(days_after_query_end) > 0 else 0
     )
     units_usage_after_query_end = Decimal(units_usage_after_query_end)
     max_units_usage_outside_query = max(
@@ -191,6 +178,8 @@ def calculate_plan_component_daily_revenue(
         customer=customer,
         daily=True,
     )
+    # if str(billable_metric) == "sum of stacktrace_len : raise_issue":
+    #     print(plan_start_date, plan_end_date, len(units_usage_per_day), customer)
     if billable_metric.aggregation_type == "max":
         usage_revenue_dict = calculate_plan_component_daily_revenue_for_cliff_metric(
             plan_component, units_usage_per_day, query_start, query_end
@@ -204,7 +193,7 @@ def calculate_plan_component_daily_revenue(
 
 # AGGREGATE USAGE + REVENUE METHODS
 def calculate_plan_component_revenue(plan_component, units_usage):
-    subtotal_usage = units_usage - plan_component.free_metric_quantity
+    subtotal_usage = max(units_usage - plan_component.free_metric_quantity, 0)
     metric_batches = math.ceil(subtotal_usage / plan_component.metric_amount_per_cost)
     subtotal_cost = (metric_batches * plan_component.cost_per_metric).amount
     return subtotal_cost
@@ -221,7 +210,11 @@ def calculate_plan_component_usage_and_revenue(
         query_end_date=plan_end_date,
         customer=customer,
     )
-    units_usage = Decimal(metric_usage.first()["usage_qty"]) if metric_usage else 0
+    # print(plan_start_date, plan_end_date, str(billable_metric), metric_usage)
+    if metric_usage is not None and len(metric_usage) > 0:
+        units_usage = Decimal(sum([x["usage_qty"] for x in metric_usage]))
+    else:
+        units_usage = 0
     usage_revenue_dict["units_usage"] = units_usage
     usage_revenue_dict["usage_revenue"] = calculate_plan_component_revenue(
         plan_component, units_usage
@@ -234,8 +227,6 @@ def get_subscription_usage_and_revenue(subscription):
     sub_dict["components"] = []
     # set up the billing plan for this subscription
     plan = subscription.billing_plan
-    # shallow_serializer = BillingPlanSerializer(plan)
-    # shallow_serializer.is_valid(raise_exception=True)
     sub_dict["billing_plan"] = BillingPlanSerializer(plan).data
     # set up other details of the subscription
     plan_start_date = subscription.start_date
@@ -271,7 +262,6 @@ def get_customer_usage_and_revenue(customer):
     customer_subscriptions = Subscription.objects.filter(
         customer=customer, status="active", organization=customer.organization
     )
-
     subscription_usages = {"subscriptions": []}
     for subscription in customer_subscriptions:
         sub_dict = get_subscription_usage_and_revenue(subscription)

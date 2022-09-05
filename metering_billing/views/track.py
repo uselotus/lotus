@@ -4,7 +4,6 @@ from re import S
 from typing import Dict, List, Union
 from urllib.parse import urlparse
 
-from django.db import IntegrityError
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from metering_billing.models import APIToken, BillingPlan, Customer, Event, Organization
