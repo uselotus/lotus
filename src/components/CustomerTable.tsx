@@ -1,18 +1,16 @@
 import React, { FC, useState, useEffect } from "react";
-import {
-  DownOutlined,
-  EllipsisOutlined,
-  QuestionCircleOutlined,
-} from "@ant-design/icons";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
-import { Table } from "antd";
 import { CustomerTableItem } from "../types/customer-type";
-import { Button, Tag, Tooltip } from "antd";
-import { PlanDisplay } from "../types/plan-type";
+import { CustomerType } from "../types/customer-type";
+import { Button, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "./LoadingSpinner";
-import SubscriptionStatistics from "./Dashboard/SubscriptionStatistics";
+import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
+import { useMutation } from "react-query";
+import { Customer } from "../api/api";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
@@ -46,15 +44,48 @@ interface Props {
   customerArray: CustomerTableItem[];
 }
 
-const CustomerTable: FC<Props> = ({ customerArray }) => {
-  const navigate = useNavigate();
+const defaultCustomerState: CreateCustomerState = {
+  title: "Create a Customer",
+  name: "",
+  customer_id: "",
+};
 
-  const navigateCreateCustomer = () => {
-    navigate("/customers/create");
+const CustomerTable: FC<Props> = ({ customerArray }) => {
+  const [visible, setVisible] = useState(false);
+  const [customerState, setCustomerState] =
+    useState<CreateCustomerState>(defaultCustomerState);
+
+  const mutation = useMutation(
+    (post: CustomerType) => Customer.createCustomer(post),
+    {
+      onSuccess: () => {
+        setVisible(false);
+        toast.success("Customer created successfully", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
+
+  const openCustomerModal = () => {
+    setVisible(true);
+    setCustomerState(defaultCustomerState);
   };
 
+  const onCancel = () => {
+    setVisible(false);
+  };
+
+  const onSave = (state: CreateCustomerState) => {
+    const customerInstance: CustomerType = {
+      customer_id: state.customer_id,
+      name: state.name,
+    };
+    console.log(customerInstance);
+    mutation.mutate(customerInstance);
+  };
   return (
-    <React.Fragment>
+    <div>
       <ProTable<CustomerTableItem>
         columns={columns}
         dataSource={customerArray}
@@ -68,16 +99,22 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
         options={false}
         toolBarRender={() => [
           <Button
-            key="primary"
             type="primary"
-            disabled={true}
-            onClick={navigateCreateCustomer}
+            className="ml-auto bg-info"
+            onClick={openCustomerModal}
           >
             Create Customer
           </Button>,
         ]}
       />
-    </React.Fragment>
+      <CreateCustomerForm
+        state={customerState}
+        visible={visible}
+        onSave={onSave}
+        onCancel={onCancel}
+      />
+      <ToastContainer autoClose={1000} />
+    </div>
   );
 };
 

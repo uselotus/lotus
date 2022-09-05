@@ -84,15 +84,15 @@ export const GetRevenue = {
 
 export const GetSubscriptions = {
   getSubscriptionOverview: (
-    period_1_end_date: string,
     period_1_start_date: string,
+    period_1_end_date: string,
     period_2_start_date: string,
     period_2_end_date: string
   ): Promise<SubscriptionTotals> =>
     requests.get("api/period_subscriptions/", {
       params: {
-        period_1_end_date,
         period_1_start_date,
+        period_1_end_date,
         period_2_start_date,
         period_2_end_date,
       },
@@ -109,4 +109,6 @@ export const Metrics = {
       params: { start_date, end_date, top_n_customers },
     }),
   getMetrics: (): Promise<MetricType[]> => requests.get("api/metrics/"),
+  createMetric: (post: MetricType): Promise<MetricType> =>
+    requests.post("api/metrics/", post),
 };

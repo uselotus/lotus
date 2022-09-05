@@ -71,10 +71,10 @@ const SideBar: FC = () => {
           <BorderlessTableOutlined />
           <span> Metrics</span>
         </Menu.Item>
-        <Menu.Item key="/subscriptions" onClick={handleSubscriptionsClick}>
+        {/* <Menu.Item key="/subscriptions" onClick={handleSubscriptionsClick}>
           <BookOutlined />
           <span> Subscriptions</span>
-        </Menu.Item>
+        </Menu.Item> */}
         <Divider />
         <Menu.Item
           key="/settings"
