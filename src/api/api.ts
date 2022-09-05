@@ -109,4 +109,6 @@ export const Metrics = {
       params: { start_date, end_date, top_n_customers },
     }),
   getMetrics: (): Promise<MetricType[]> => requests.get("api/metrics/"),
+  createMetric: (post: MetricType): Promise<MetricType> =>
+    requests.post("api/metrics/", post),
 };

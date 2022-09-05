@@ -1,17 +1,29 @@
 import React, { FC, useEffect, useState } from "react";
 import { Card, List, Skeleton, Button, Divider } from "antd";
-import InfiniteScroll from "react-infinite-scroll-component";
 import { useNavigate } from "react-router-dom";
-import type { ProColumns } from "@ant-design/pro-components";
-import { ProTable } from "@ant-design/pro-components";
 import MetricTable from "../components/MetricTable";
 import { Metrics } from "../api/api";
 import { MetricType } from "../types/metric-type";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult, useMutation } from "react-query";
 import LoadingSpinner from "../components/LoadingSpinner";
+import CreateMetricForm, {
+  CreateMetricState,
+} from "../components/CreateMetricForm";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+const defaultMetricState: CreateMetricState = {
+  title: "Create a new Metric",
+  event_name: "",
+  aggregation_type: "",
+  property_name: "",
+};
 
 const ViewMetrics: FC = () => {
   const navigate = useNavigate();
+  const [visible, setVisible] = useState<boolean>(false);
+  const [metricState, setMetricState] =
+    useState<CreateMetricState>(defaultMetricState);
 
   const { data, isLoading }: UseQueryResult<MetricType[]> = useQuery<
     MetricType[]
@@ -21,8 +33,33 @@ const ViewMetrics: FC = () => {
     })
   );
 
-  const navigateCreatePlan = () => {
-    navigate("/create-plan");
+  const mutation = useMutation(
+    (post: MetricType) => Metrics.createMetric(post),
+    {
+      onSuccess: () => {
+        setVisible(false);
+        toast.success("Successfully created metric", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
+  const createMetricButton = () => {
+    setMetricState(defaultMetricState);
+    setVisible(true);
+  };
+
+  const onCancel = () => {
+    setVisible(false);
+  };
+
+  const onSave = (state: CreateMetricState) => {
+    const metricInstance: MetricType = {
+      event_name: state.event_name,
+      aggregation_type: state.aggregation_type,
+      property_name: state.property_name,
+    };
+    mutation.mutate(metricInstance);
   };
 
   return (
@@ -32,7 +69,7 @@ const ViewMetrics: FC = () => {
         <Button
           type="primary"
           className="ml-auto bg-info"
-          onClick={navigateCreatePlan}
+          onClick={createMetricButton}
         >
           Create Metric
         </Button>
@@ -51,6 +88,13 @@ const ViewMetrics: FC = () => {
           <Divider />
         </Card>
       </div>
+      <CreateMetricForm
+        state={metricState}
+        visible={visible}
+        onSave={onSave}
+        onCancel={onCancel}
+      />
+      <ToastContainer />
     </div>
   );
 };

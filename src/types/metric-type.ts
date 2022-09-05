@@ -2,7 +2,7 @@ export interface MetricType {
   event_name: string;
   property_name: string;
   aggregation_type: string;
-  id: number;
+  id?: number;
 }
 
 export interface MetricUsage {
