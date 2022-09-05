@@ -329,12 +329,10 @@ class PeriodMetricUsageView(APIView):
         ]
 
         metrics = get_list_or_404(BillableMetric, organization=organization)
-        return_dict = {
-            str(metric): {"data": {}, "total_usage": 0, "top_n_customers": {}}
-            for metric in metrics
-        }
+        return_dict = {}
         for metric in metrics:
             usage_summary = get_metric_usage(metric, q_start, q_end, daily=True)
+            return_dict[str(metric)] = {"data": {}, "total_usage": 0, "top_n_customers": {}}
             metric_dict = return_dict[str(metric)]
             for obj in usage_summary:
                 customer, date, qty = [
