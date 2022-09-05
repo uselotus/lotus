@@ -54,6 +54,7 @@ class TestGenerateInvoiceSynchrous:
             interval="month",
             name="test_plan",
             description="test_plan for testing",
+            flat_rate=30.0,
         )
         plan_component_set = baker.make(
             PlanComponent,

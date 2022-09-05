@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from metering_billing import serializers
 from metering_billing.models import (
     BillableMetric,
     BillingPlan,
@@ -10,15 +11,6 @@ from metering_billing.models import (
     User,
 )
 from metering_billing.permissions import HasUserAPIKey
-from metering_billing.serializers import (
-    BillableMetricSerializer,
-    BillingPlanSerializer,
-    CustomerSerializer,
-    InvoiceSerializer,
-    PlanComponentSerializer,
-    SubscriptionSerializer,
-    UserSerializer,
-)
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -30,7 +22,7 @@ class UserViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Users.
     """
 
-    serializer_class = UserSerializer
+    serializer_class = serializers.UserSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get_queryset(self):
@@ -46,7 +38,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Customers.
     """
 
-    serializer_class = CustomerSerializer
+    serializer_class = serializers.CustomerSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "customer_id"
 
@@ -63,7 +55,7 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Billable Metrics.
     """
 
-    serializer_class = BillableMetricSerializer
+    serializer_class = serializers.BillableMetricSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get_queryset(self):
@@ -79,8 +71,13 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing BillingPlans.
     """
 
-    serializer_class = BillingPlanSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    def get_serializer_class(self):
+        if self.action in ["list", "retrieve"]:
+            return serializers.BillingPlanReadSerializer
+        else:
+            return serializers.BillingPlanSerializer
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -97,7 +94,7 @@ class PlanComponentViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Plan components.
     """
 
-    serializer_class = PlanComponentSerializer
+    serializer_class = serializers.PlanComponentSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get_queryset(self):
@@ -113,7 +110,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Subscriptions.
     """
 
-    serializer_class = SubscriptionSerializer
+    serializer_class = serializers.SubscriptionSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get_queryset(self):
@@ -129,7 +126,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Invoicess.
     """
 
-    serializer_class = InvoiceSerializer
+    serializer_class = serializers.InvoiceSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     def get_queryset(self):

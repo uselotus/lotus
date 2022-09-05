@@ -196,13 +196,10 @@ class BillingPlan(models.Model):
     interval = models.CharField(
         max_length=5,
         choices=INTERVAL_CHOICES,
-        default=INTERVAL_CHOICES.month,
     )
-    flat_rate = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
-    )
-    pay_in_advance = models.BooleanField(default=False)
-    name = models.CharField(max_length=200, default=" ")
+    flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
+    pay_in_advance = models.BooleanField()
+    name = models.CharField(max_length=200)
     description = models.CharField(max_length=256, default=" ", blank=True)
     components = models.ManyToManyField(PlanComponent)
 

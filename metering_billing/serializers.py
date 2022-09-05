@@ -58,7 +58,13 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name",
             "property_name",
             "aggregation_type",
+            "metric_name",
         )
+
+    metric_name = serializers.SerializerMethodField()
+
+    def get_metric_name(self, obj) -> str:
+        return str(obj)
 
 
 class PlanComponentSerializer(serializers.ModelSerializer):
@@ -90,13 +96,27 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "components",
         )
 
-    components = PlanComponentSerializer(many=True)
 
-
-class BillingPlanShallowSerializer(serializers.HyperlinkedModelSerializer):
+class BillingPlanReadSerializer(BillingPlanSerializer):
     class Meta:
         model = BillingPlan
-        fields = ("url", "id", "name")
+        fields = (
+            "id",
+            "time_created",
+            "currency",
+            "interval",
+            "flat_rate",
+            "pay_in_advance",
+            "name",
+            "description",
+            "components",
+        )
+
+    components = PlanComponentSerializer(many=True)
+    time_created = serializers.SerializerMethodField()
+
+    def get_time_created(self, obj) -> datetime.date:
+        return str(obj.time_created.date())
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -112,7 +132,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
 
     customer = CustomerSerializer()
-    billing_plan = BillingPlanShallowSerializer()
+    billing_plan = BillingPlanSerializer()
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -168,7 +188,7 @@ class SubscriptionUsageSerializer(serializers.Serializer):
         model = Subscription
         fields = ("id", "start_date", "end_date", "status", "billing_plan")
 
-    billing_plan = BillingPlanShallowSerializer()
+    billing_plan = BillingPlanSerializer()
     usage_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     flat_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
