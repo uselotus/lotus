@@ -18,12 +18,6 @@
     "SECRET_KEY": {
       "generator": "secret"
     },
-    "CELERY_BROKER_URL": {
-      "value": "redis://redis:6379/"
-    },
-    "CELERY_RESULT_BACKEND": {
-      "value": "redis://redis:6379/"
-    },
     "DJANGO_SUPERUSER_PASSWORD":{
       "value": "password"
     },

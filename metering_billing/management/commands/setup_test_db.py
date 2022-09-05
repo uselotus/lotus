@@ -60,7 +60,7 @@ class Command(BaseCommand):
         pc4 = PlanComponent.objects.create(
             billable_metric=bm_e2_2,
             free_metric_quantity=200,
-            cost_per_metric=2,
+            cost_per_metric=200,
             metric_amount_per_cost=100,
         )
         bp = BillingPlan.objects.create(
@@ -98,28 +98,29 @@ class Command(BaseCommand):
             )
 
         for customer in customer_set:
-            n = int(random.gauss(100_000, 1500) // 1)
-            baker.make(
-                Event,
-                organization=organization,
-                customer=customer,
-                event_name="raise_issue",
-                properties=gaussian_stacktrace_len(n),
-                time_created=random_date(old_sub_start, old_sub_end, n),
-                idempotency_id=uuid.uuid4,
-                _quantity=n,
-            )
-            n = int(random.gauss(10_000, 500) // 1)
-            baker.make(
-                Event,
-                organization=organization,
-                customer=customer,
-                event_name="send_alert",
-                properties=gaussian_latency(n),
-                time_created=random_date(new_sub_start, new_sub_end, n),
-                idempotency_id=uuid.uuid4,
-                _quantity=n,
-            )
+            for start, end in [(old_sub_start, old_sub_end), (new_sub_start, new_sub_end)]:
+                n = int(random.gauss(100_000, 1500) // 1)
+                baker.make(
+                    Event,
+                    organization=organization,
+                    customer=customer,
+                    event_name="raise_issue",
+                    properties=gaussian_stacktrace_len(n),
+                    time_created=random_date(start, end, n),
+                    idempotency_id=uuid.uuid4,
+                    _quantity=n,
+                )
+                n = int(random.gauss(10_000, 500) // 1)
+                baker.make(
+                    Event,
+                    organization=organization,
+                    customer=customer,
+                    event_name="send_alert",
+                    properties=gaussian_latency(n),
+                    time_created=random_date(start, end, n),
+                    idempotency_id=uuid.uuid4,
+                    _quantity=n,
+                )
 
 
 def random_date(start, end, n):
