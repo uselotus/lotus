@@ -26,6 +26,7 @@
     "react-query-devtools": "2.6.3",
     "react-router-dom": "6.3.0",
     "react-spinners": "0.13.4",
+    "react-toastify": "^9.0.8",
     "universal-cookie": "4.0.4",
     "vite-tsconfig-paths": "3.5.0"
   },
