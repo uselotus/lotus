@@ -1,3 +1,4 @@
+import collections
 from datetime import timedelta
 from decimal import Decimal
 
@@ -51,9 +52,9 @@ stripe.api_key = STRIPE_SECRET_KEY
 
 
 def make_all_decimals_floats(json):
-    if type(json) in [dict, list, Decimal]:
+    if type(json) in [dict, list, Decimal, collections.OrderedDict]:
         for key, value in json.items():
-            if isinstance(value, dict):
+            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
                 make_all_decimals_floats(value)
             elif isinstance(value, list):
                 for item in value:

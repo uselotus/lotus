@@ -146,7 +146,7 @@ def calculate_plan_component_daily_revenue_for_cliff_metric(
         if x["date_created"] >= query_start and x["date_created"] <= query_end
     ]
     max_units_usage_query = (
-        max(x[0] for x in units_usage_query) if len(days_after_query_end) > 0 else 0
+        max(x[0] for x in units_usage_query) if len(units_usage_query) > 0 else 0
     )
     day_revenue_dict = {x[1]: Decimal(0) for x in units_usage_query}
     if (
@@ -178,8 +178,6 @@ def calculate_plan_component_daily_revenue(
         customer=customer,
         daily=True,
     )
-    # if str(billable_metric) == "sum of stacktrace_len : raise_issue":
-    #     print(plan_start_date, plan_end_date, len(units_usage_per_day), customer)
     if billable_metric.aggregation_type == "max":
         usage_revenue_dict = calculate_plan_component_daily_revenue_for_cliff_metric(
             plan_component, units_usage_per_day, query_start, query_end
