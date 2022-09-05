@@ -7,1270 +7,6 @@ info:
 paths:
   /api/components/:
     get:
-      operationId: api_components_list
-      description: A simple ViewSet for viewing and editing Plan components.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlanComponent'
-          description: ''
-    post:
-      operationId: api_components_create
-      description: A simple ViewSet for viewing and editing Plan components.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanComponent'
-          description: ''
-  /api/components/{id}/:
-    get:
-      operationId: api_components_retrieve
-      description: A simple ViewSet for viewing and editing Plan components.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanComponent'
-          description: ''
-    put:
-      operationId: api_components_update
-      description: A simple ViewSet for viewing and editing Plan components.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanComponent'
-          description: ''
-    patch:
-      operationId: api_components_partial_update
-      description: A simple ViewSet for viewing and editing Plan components.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedPlanComponent'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedPlanComponent'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedPlanComponent'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanComponent'
-          description: ''
-    delete:
-      operationId: api_components_destroy
-      description: A simple ViewSet for viewing and editing Plan components.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/customer_summary/:
-    get:
-      operationId: api_customer_summary_retrieve
-      description: Return current usage for a customer during a given billing period.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CustomerRevenueSummary'
-          description: ''
-  /api/customers/:
-    get:
-      operationId: api_customers_list
-      description: A simple ViewSet for viewing and editing Customers.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Customer'
-          description: ''
-    post:
-      operationId: api_customers_create
-      description: A simple ViewSet for viewing and editing Customers.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Customer'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Customer'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Customer'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Customer'
-          description: ''
-  /api/customers/{customer_id}/:
-    get:
-      operationId: api_customers_retrieve
-      description: A simple ViewSet for viewing and editing Customers.
-      parameters:
-      - in: path
-        name: customer_id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Customer'
-          description: ''
-    put:
-      operationId: api_customers_update
-      description: A simple ViewSet for viewing and editing Customers.
-      parameters:
-      - in: path
-        name: customer_id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Customer'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Customer'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Customer'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Customer'
-          description: ''
-    patch:
-      operationId: api_customers_partial_update
-      description: A simple ViewSet for viewing and editing Customers.
-      parameters:
-      - in: path
-        name: customer_id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomer'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomer'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedCustomer'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Customer'
-          description: ''
-    delete:
-      operationId: api_customers_destroy
-      description: A simple ViewSet for viewing and editing Customers.
-      parameters:
-      - in: path
-        name: customer_id
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/invoices/:
-    get:
-      operationId: api_invoices_list
-      description: A simple ViewSet for viewing and editing Invoicess.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Invoice'
-          description: ''
-    post:
-      operationId: api_invoices_create
-      description: A simple ViewSet for viewing and editing Invoicess.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-          description: ''
-  /api/invoices/{id}/:
-    get:
-      operationId: api_invoices_retrieve
-      description: A simple ViewSet for viewing and editing Invoicess.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this invoice.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-          description: ''
-    put:
-      operationId: api_invoices_update
-      description: A simple ViewSet for viewing and editing Invoicess.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this invoice.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-          description: ''
-    patch:
-      operationId: api_invoices_partial_update
-      description: A simple ViewSet for viewing and editing Invoicess.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this invoice.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedInvoice'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedInvoice'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedInvoice'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-          description: ''
-    delete:
-      operationId: api_invoices_destroy
-      description: A simple ViewSet for viewing and editing Invoicess.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this invoice.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/metrics/:
-    get:
-      operationId: api_metrics_list
-      description: A simple ViewSet for viewing and editing Billable Metrics.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BillableMetric'
-          description: ''
-    post:
-      operationId: api_metrics_create
-      description: A simple ViewSet for viewing and editing Billable Metrics.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillableMetric'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BillableMetric'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BillableMetric'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillableMetric'
-          description: ''
-  /api/metrics/{id}/:
-    get:
-      operationId: api_metrics_retrieve
-      description: A simple ViewSet for viewing and editing Billable Metrics.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billable metric.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillableMetric'
-          description: ''
-    put:
-      operationId: api_metrics_update
-      description: A simple ViewSet for viewing and editing Billable Metrics.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billable metric.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillableMetric'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BillableMetric'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BillableMetric'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillableMetric'
-          description: ''
-    patch:
-      operationId: api_metrics_partial_update
-      description: A simple ViewSet for viewing and editing Billable Metrics.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billable metric.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedBillableMetric'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedBillableMetric'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedBillableMetric'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillableMetric'
-          description: ''
-    delete:
-      operationId: api_metrics_destroy
-      description: A simple ViewSet for viewing and editing Billable Metrics.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billable metric.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/period_metric_revenue/:
-    get:
-      operationId: api_period_metric_revenue_retrieve
-      description: Returns the revenue for an organization in a given time period.
-      parameters:
-      - in: query
-        name: period_1_end_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_1_start_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_2_end_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_2_start_date
-        schema:
-          type: string
-          format: date
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PeriodMetricRevenueResponse'
-          description: ''
-  /api/period_metric_usage/:
-    get:
-      operationId: api_period_metric_usage_retrieve
-      description: Return current usage for a customer during a given billing period.
-      parameters:
-      - in: query
-        name: end_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: start_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: top_n_customers
-        schema:
-          type: integer
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PeriodMetricUsageResponse'
-          description: ''
-  /api/period_subscriptions/:
-    get:
-      operationId: api_period_subscriptions_retrieve
-      parameters:
-      - in: query
-        name: period_1_end_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_1_start_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_2_end_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_2_start_date
-        schema:
-          type: string
-          format: date
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PeriodSubscriptionsResponse'
-          description: ''
-  /api/plans/:
-    get:
-      operationId: api_plans_list
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BillingPlan'
-          description: ''
-    post:
-      operationId: api_plans_create
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillingPlan'
-          description: ''
-  /api/plans/{id}/:
-    get:
-      operationId: api_plans_retrieve
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillingPlan'
-          description: ''
-    put:
-      operationId: api_plans_update
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillingPlan'
-          description: ''
-    patch:
-      operationId: api_plans_partial_update
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedBillingPlan'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedBillingPlan'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedBillingPlan'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillingPlan'
-          description: ''
-    delete:
-      operationId: api_plans_destroy
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/stripe/:
-    get:
-      operationId: api_stripe_retrieve
-      description: Check to see if user has connected their Stripe account.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          description: No response body
-    post:
-      operationId: api_stripe_create
-      description: Initialize Stripe after user inputs an API key.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          description: No response body
-  /api/subscriptions/:
-    get:
-      operationId: api_subscriptions_list
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Subscription'
-          description: ''
-    post:
-      operationId: api_subscriptions_create
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-          description: ''
-  /api/subscriptions/{id}/:
-    get:
-      operationId: api_subscriptions_retrieve
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-          description: ''
-    put:
-      operationId: api_subscriptions_update
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-          description: ''
-    patch:
-      operationId: api_subscriptions_partial_update
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscription'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-          description: ''
-    delete:
-      operationId: api_subscriptions_destroy
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/users/:
-    get:
-      operationId: api_users_list
-      description: A simple ViewSet for viewing and editing Users.
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
-          description: ''
-    post:
-      operationId: api_users_create
-      description: A simple ViewSet for viewing and editing Users.
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/User'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/User'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-          description: ''
-  /api/users/{id}/:
-    get:
-      operationId: api_users_retrieve
-      description: A simple ViewSet for viewing and editing Users.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this user.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-          description: ''
-    put:
-      operationId: api_users_update
-      description: A simple ViewSet for viewing and editing Users.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this user.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/User'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/User'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-          description: ''
-    patch:
-      operationId: api_users_partial_update
-      description: A simple ViewSet for viewing and editing Users.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this user.
-        required: true
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedUser'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedUser'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedUser'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-          description: ''
-    delete:
-      operationId: api_users_destroy
-      description: A simple ViewSet for viewing and editing Users.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this user.
-        required: true
-      tags:
-      - api
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /components/:
-    get:
       operationId: components_list
       description: A simple ViewSet for viewing and editing Plan components.
       tags:
@@ -1316,7 +52,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/PlanComponent'
           description: ''
-  /components/{id}/:
+  /api/components/{id}/:
     get:
       operationId: components_retrieve
       description: A simple ViewSet for viewing and editing Plan components.
@@ -1424,7 +160,24 @@ paths:
       responses:
         '204':
           description: No response body
-  /customers/:
+  /api/customer_summary/:
+    get:
+      operationId: customer_summary_retrieve
+      description: Return current usage for a customer during a given billing period.
+      tags:
+      - customer_summary
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerRevenueSummary'
+          description: ''
+  /api/customers/:
     get:
       operationId: customers_list
       description: A simple ViewSet for viewing and editing Customers.
@@ -1471,7 +224,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
           description: ''
-  /customers/{customer_id}/:
+  /api/customers/{customer_id}/:
     get:
       operationId: customers_retrieve
       description: A simple ViewSet for viewing and editing Customers.
@@ -1579,7 +332,7 @@ paths:
       responses:
         '204':
           description: No response body
-  /invoices/:
+  /api/invoices/:
     get:
       operationId: invoices_list
       description: A simple ViewSet for viewing and editing Invoicess.
@@ -1626,7 +379,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Invoice'
           description: ''
-  /invoices/{id}/:
+  /api/invoices/{id}/:
     get:
       operationId: invoices_retrieve
       description: A simple ViewSet for viewing and editing Invoicess.
@@ -1738,7 +491,7 @@ paths:
       responses:
         '204':
           description: No response body
-  /metrics/:
+  /api/metrics/:
     get:
       operationId: metrics_list
       description: A simple ViewSet for viewing and editing Billable Metrics.
@@ -1785,7 +538,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/BillableMetric'
           description: ''
-  /metrics/{id}/:
+  /api/metrics/{id}/:
     get:
       operationId: metrics_retrieve
       description: A simple ViewSet for viewing and editing Billable Metrics.
@@ -1897,7 +650,124 @@ paths:
       responses:
         '204':
           description: No response body
-  /plans/:
+  /api/period_metric_revenue/:
+    get:
+      operationId: period_metric_revenue_retrieve
+      description: Returns the revenue for an organization in a given time period.
+      parameters:
+      - in: query
+        name: period_1_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_1_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - period_metric_revenue
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodMetricRevenueResponse'
+          description: ''
+  /api/period_metric_usage/:
+    get:
+      operationId: period_metric_usage_retrieve
+      description: Return current usage for a customer during a given billing period.
+      parameters:
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: top_n_customers
+        schema:
+          type: integer
+      tags:
+      - period_metric_usage
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodMetricUsageResponse'
+          description: ''
+  /api/period_subscriptions/:
+    get:
+      operationId: period_subscriptions_retrieve
+      parameters:
+      - in: query
+        name: period_1_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_1_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: period_2_start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - period_subscriptions
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PeriodSubscriptionsResponse'
+          description: ''
+  /api/plans/:
     get:
       operationId: plans_list
       description: A simple ViewSet for viewing and editing BillingPlans.
@@ -1914,7 +784,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/BillingPlan'
+                  $ref: '#/components/schemas/BillingPlanRead'
           description: ''
     post:
       operationId: plans_create
@@ -1944,7 +814,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/BillingPlan'
           description: ''
-  /plans/{id}/:
+  /api/plans/{id}/:
     get:
       operationId: plans_retrieve
       description: A simple ViewSet for viewing and editing BillingPlans.
@@ -1966,7 +836,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BillingPlan'
+                $ref: '#/components/schemas/BillingPlanRead'
           description: ''
     put:
       operationId: plans_update
@@ -2056,7 +926,32 @@ paths:
       responses:
         '204':
           description: No response body
-  /subscriptions/:
+  /api/stripe/:
+    get:
+      operationId: stripe_retrieve
+      description: Check to see if user has connected their Stripe account.
+      tags:
+      - stripe
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: stripe_create
+      description: Initialize Stripe after user inputs an API key.
+      tags:
+      - stripe
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/subscriptions/:
     get:
       operationId: subscriptions_list
       description: A simple ViewSet for viewing and editing Subscriptions.
@@ -2103,7 +998,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Subscription'
           description: ''
-  /subscriptions/{id}/:
+  /api/subscriptions/{id}/:
     get:
       operationId: subscriptions_retrieve
       description: A simple ViewSet for viewing and editing Subscriptions.
@@ -2215,7 +1110,7 @@ paths:
       responses:
         '204':
           description: No response body
-  /users/:
+  /api/users/:
     get:
       operationId: users_list
       description: A simple ViewSet for viewing and editing Users.
@@ -2262,7 +1157,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
-  /users/{id}/:
+  /api/users/{id}/:
     get:
       operationId: users_retrieve
       description: A simple ViewSet for viewing and editing Users.
@@ -2397,9 +1292,13 @@ components:
           maxLength: 200
         aggregation_type:
           $ref: '#/components/schemas/AggregationTypeEnum'
+        metric_name:
+          type: string
+          readOnly: true
       required:
       - event_name
       - id
+      - metric_name
     BillingPlan:
       type: object
       properties:
@@ -2416,9 +1315,54 @@ components:
         interval:
           $ref: '#/components/schemas/IntervalEnum'
         flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        pay_in_advance:
+          type: boolean
+        name:
           type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 256
+        components:
+          type: array
+          items:
+            type: integer
+      required:
+      - components
+      - flat_rate
+      - id
+      - interval
+      - name
+      - pay_in_advance
+      - time_created
+    BillingPlanRead:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        time_created:
+          type: string
+          format: date
+          readOnly: true
+        currency:
+          type: string
+          maxLength: 30
+        interval:
+          $ref: '#/components/schemas/IntervalEnum'
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         pay_in_advance:
           type: boolean
         name:
@@ -2433,24 +1377,12 @@ components:
             $ref: '#/components/schemas/PlanComponent'
       required:
       - components
+      - flat_rate
       - id
+      - interval
+      - name
+      - pay_in_advance
       - time_created
-    BillingPlanShallow:
-      type: object
-      properties:
-        url:
-          type: string
-          format: uri
-          readOnly: true
-        id:
-          type: integer
-          readOnly: true
-        name:
-          type: string
-          maxLength: 200
-      required:
-      - id
-      - url
     Customer:
       type: object
       properties:
@@ -2461,9 +1393,12 @@ components:
           type: string
           maxLength: 40
         balance:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - customer_id
       - name
@@ -2483,9 +1418,12 @@ components:
           items:
             type: string
         total_revenue_due:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         customer_name:
           type: string
         customer_id:
@@ -2511,9 +1449,12 @@ components:
           type: string
           format: date
         metric_revenue:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - date
       - metric_revenue
@@ -2526,9 +1467,12 @@ components:
         customer_usages:
           type: object
           additionalProperties:
-            type: string
-            format: decimal
-            pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+            type: number
+            format: double
+            maximum: 10000000000
+            minimum: -10000000000
+            exclusiveMaximum: true
+            exclusiveMinimum: true
       required:
       - customer_usages
       - date
@@ -2545,9 +1489,12 @@ components:
           type: integer
           readOnly: true
         cost_due:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         issue_date:
           type: string
           format: date-time
@@ -2590,6 +1537,9 @@ components:
           maxLength: 200
         aggregation_type:
           $ref: '#/components/schemas/AggregationTypeEnum'
+        metric_name:
+          type: string
+          readOnly: true
     PatchedBillingPlan:
       type: object
       properties:
@@ -2606,9 +1556,12 @@ components:
         interval:
           $ref: '#/components/schemas/IntervalEnum'
         flat_rate:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         pay_in_advance:
           type: boolean
         name:
@@ -2620,7 +1573,7 @@ components:
         components:
           type: array
           items:
-            $ref: '#/components/schemas/PlanComponent'
+            type: integer
     PatchedCustomer:
       type: object
       properties:
@@ -2631,9 +1584,12 @@ components:
           type: string
           maxLength: 40
         balance:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
     PatchedInvoice:
       type: object
       properties:
@@ -2641,9 +1597,12 @@ components:
           type: integer
           readOnly: true
         cost_due:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         issue_date:
           type: string
           format: date-time
@@ -2669,17 +1628,26 @@ components:
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
         free_metric_quantity:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         cost_per_metric:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         metric_amount_per_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
     PatchedSubscription:
       type: object
       properties:
@@ -2689,7 +1657,7 @@ components:
         customer:
           $ref: '#/components/schemas/Customer'
         billing_plan:
-          $ref: '#/components/schemas/BillingPlanShallow'
+          $ref: '#/components/schemas/BillingPlan'
         start_date:
           type: string
           format: date
@@ -2718,17 +1686,23 @@ components:
           items:
             $ref: '#/components/schemas/PeriodSingleMetricRevenue'
         total_revenue_period_1:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         daily_usage_revenue_period_2:
           type: array
           items:
             $ref: '#/components/schemas/PeriodSingleMetricRevenue'
         total_revenue_period_2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - daily_usage_revenue_period_1
       - daily_usage_revenue_period_2
@@ -2753,9 +1727,12 @@ components:
           items:
             $ref: '#/components/schemas/DayMetricRevenue'
         total_revenue:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - data
       - metric
@@ -2768,17 +1745,23 @@ components:
           items:
             $ref: '#/components/schemas/DayMetricUsage'
         total_usage:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         top_n_customers:
           type: array
           items:
             $ref: '#/components/schemas/CustomerName'
         top_n_customers_usage:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - data
       - total_usage
@@ -2807,17 +1790,26 @@ components:
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
         free_metric_quantity:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         cost_per_metric:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         metric_amount_per_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,10}(?:\.\d{0,10})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - billable_metric
       - cost_per_metric
@@ -2831,7 +1823,7 @@ components:
         customer:
           $ref: '#/components/schemas/Customer'
         billing_plan:
-          $ref: '#/components/schemas/BillingPlanShallow'
+          $ref: '#/components/schemas/BillingPlan'
         start_date:
           type: string
           format: date
