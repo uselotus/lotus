@@ -193,7 +193,7 @@ except KeyError:
 try:
     CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
     CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
-except KeyError: #heroku version
+except KeyError:  # heroku version
     CELERY_BROKER_URL = os.environ["REDIS_URL"]
     CELERY_RESULT_BACKEND = os.environ["REDIS_URL"]
 CELERY_ACCEPT_CONTENT = ["application/json"]

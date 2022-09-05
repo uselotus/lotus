@@ -98,7 +98,10 @@ class Command(BaseCommand):
             )
 
         for customer in customer_set:
-            for start, end in [(old_sub_start, old_sub_end), (new_sub_start, new_sub_end)]:
+            for start, end in [
+                (old_sub_start, old_sub_end),
+                (new_sub_start, new_sub_end),
+            ]:
                 n = int(random.gauss(100_000, 1500) // 1)
                 baker.make(
                     Event,
