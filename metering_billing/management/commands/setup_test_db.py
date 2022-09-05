@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import os
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,7 @@ from metering_billing.models import (
     Organization,
     PlanComponent,
     Subscription,
+    User,
 )
 from model_bakery import baker
 
@@ -21,7 +23,15 @@ class Command(BaseCommand):
     "Django command to pause execution until the database is available"
 
     def handle(self, *args, **options):
-        organization = baker.make(Organization)
+        username = os.getenv("DJANGO_SUPERUSER_USERNAME")
+        email = os.getenv("DJANGO_SUPERUSER_EMAIL")
+        password = os.getenv("DJANGO_SUPERUSER_PASSWORD")
+
+        admin = User.objects.get(
+                email=email, username=username, password=password
+            )
+        organization = admin.organization
+
         customer_set = baker.make(Customer, _quantity=10, organization=organization)
         bm_e1_1, bm_e1_2 = baker.make(
             BillableMetric,
