@@ -47,15 +47,15 @@ class Command(BaseCommand):
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=bm_e1_1,
-            free_metric_quantity=100,
+            free_metric_quantity=1000,
             cost_per_metric=0.01,
             metric_amount_per_cost=5,
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=bm_e1_2,
-            free_metric_quantity=1_000_000,
+            free_metric_quantity=20_000,
             cost_per_metric=0.005,
-            metric_amount_per_cost=500,
+            metric_amount_per_cost=250,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=bm_e2_1,
@@ -66,7 +66,7 @@ class Command(BaseCommand):
         pc4 = PlanComponent.objects.create(
             billable_metric=bm_e2_2,
             free_metric_quantity=200,
-            cost_per_metric=200,
+            cost_per_metric=75,
             metric_amount_per_cost=100,
         )
         bp = BillingPlan.objects.create(
@@ -108,7 +108,7 @@ class Command(BaseCommand):
                 (old_sub_start, old_sub_end),
                 (new_sub_start, new_sub_end),
             ]:
-                n = int(random.gauss(100_000, 1500) // 1)
+                n = int(random.gauss(10_000, 500) // 1)
                 baker.make(
                     Event,
                     organization=organization,
@@ -119,7 +119,7 @@ class Command(BaseCommand):
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
                 )
-                n = int(random.gauss(10_000, 500) // 1)
+                n = int(random.gauss(1_000, 100) // 1)
                 baker.make(
                     Event,
                     organization=organization,
