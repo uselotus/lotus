@@ -10,6 +10,23 @@ export interface PlanType {
   time_created: string;
 }
 
+export interface CreatePlanType {
+  name: string;
+  components: CreateComponent[];
+  interval: string;
+  description: string;
+  flat_rate: number;
+  pay_in_advance: boolean;
+  currency?: string;
+}
+
+export interface CreateComponent {
+  billable_metric?: number;
+  free_metric_quantity: number;
+  cost_per_metric: number;
+  metric_amount_per_cost: number;
+}
+
 export interface Component {
   billable_metric: MetricType;
   free_metric_quantity: string;

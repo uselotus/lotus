@@ -3,6 +3,15 @@ export interface MetricType {
   property_name: string;
   aggregation_type: string;
   id?: number;
+  metric_name?: string;
+}
+
+export interface MetricNameType {
+  event_name: string;
+  property_name: string;
+  aggregation_type: string;
+  id: number;
+  metric_name: string;
 }
 
 export interface MetricUsage {
