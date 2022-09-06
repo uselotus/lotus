@@ -11,8 +11,8 @@ const { Option } = Select;
 
 interface ChartDataType {
   date: string;
-  metric_amount: number;
-  customer: string;
+  metric_amount: number | any;
+  type: string;
 }
 
 //Generate more defaultData for the month of august
@@ -44,8 +44,8 @@ function MetricBarGraph(props: { range: any }) {
   const config = {
     data: chartData,
     isStack: true,
-    xField: "day",
-    yField: "revenue",
+    xField: "date",
+    yField: "metric_amount",
     seriesField: "type",
     isRange: true,
     maxColumnWidth: 30,
@@ -76,17 +76,20 @@ function MetricBarGraph(props: { range: any }) {
     let compressedArray: ChartDataType[] = [];
 
     const daily_data = data.metrics[value].data;
+    console.log(daily_data);
+
     for (let i = 0; i < daily_data.length; i++) {
       const date = daily_data[i].date;
-
-      for (let j = 0; j < daily_data[i].customer_usages.length; j++) {
+      for (const k in daily_data[i].customer_usages) {
+        console.log(daily_data[i].customer_usages[k]);
         compressedArray.push({
           date: date,
-          metric_amount: daily_data[i].customer_usages[j].metric_amount,
-          customer: daily_data[i].customer_usages[j].customer.name,
+          metric_amount: daily_data[i].customer_usages[k],
+          type: k,
         });
       }
     }
+    console.log(compressedArray);
     setChartData(compressedArray);
   };
 
