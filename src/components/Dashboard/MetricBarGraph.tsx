@@ -34,8 +34,9 @@ function MetricBarGraph(props: { range: any }) {
 
   useEffect(() => {
     if (data?.metrics) {
-      console.log(data);
       setMetricList(Object.keys(data.metrics));
+      setSelectedMetric(Object.keys(data.metrics)[0]);
+      changeMetric(Object.keys(data.metrics)[0]);
     }
   }, [data]);
 
@@ -75,12 +76,10 @@ function MetricBarGraph(props: { range: any }) {
     setSelectedMetric(value);
 
     const daily_data = data.metrics[value].data;
-    console.log(daily_data);
 
     for (let i = 0; i < daily_data.length; i++) {
       const date = daily_data[i].date;
       for (const k in daily_data[i].customer_usages) {
-        console.log(daily_data[i].customer_usages[k]);
         compressedArray.push({
           date: date,
           metric_amount: daily_data[i].customer_usages[k],
@@ -94,7 +93,11 @@ function MetricBarGraph(props: { range: any }) {
 
   return (
     <div>
-      <Select defaultValue="Select Metric" onChange={changeMetric}>
+      <Select
+        defaultValue="Select Metric"
+        onChange={changeMetric}
+        value={selectedMetric}
+      >
         {metricList.map((metric_name) => (
           <Option value={metric_name} loading={isLoading}>
             {metric_name}

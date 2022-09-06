@@ -32,7 +32,6 @@ const CreateMetricForm = (props: {
           .validateFields()
           .then((values) => {
             form.resetFields();
-            console.log(values);
             props.onSave(values);
           })
           .catch((info) => {

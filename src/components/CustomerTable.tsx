@@ -29,9 +29,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
     title: "Plans",
     width: 120,
     dataIndex: "subscriptions",
-    render: (_, record) => (
-      <Tag color={"bruh"}>{record.subscriptions[0]}</Tag>
-    ),
+    render: (_, record) => <Tag color={"bruh"}>{record.subscriptions[0]}</Tag>,
   },
   {
     title: "Outstanding Revenue",
@@ -81,7 +79,6 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
       customer_id: state.customer_id,
       name: state.name,
     };
-    console.log(customerInstance);
     mutation.mutate(customerInstance);
   };
   return (

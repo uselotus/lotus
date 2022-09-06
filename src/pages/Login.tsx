@@ -37,7 +37,6 @@ const Login: FC = () => {
   };
 
   const handleLogin = (event: React.FormEvent<FormElements>) => {
-    console.log(3);
     Authentication.login(username, password).then((data) => {
       setIsAuthenticated(true);
     });
