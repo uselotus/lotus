@@ -1302,9 +1302,6 @@ components:
     BillingPlan:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         time_created:
           type: string
           format: date-time
@@ -1332,11 +1329,10 @@ components:
         components:
           type: array
           items:
-            type: integer
+            $ref: '#/components/schemas/PlanComponentShallow'
       required:
       - components
       - flat_rate
-      - id
       - interval
       - name
       - pay_in_advance
@@ -1543,9 +1539,6 @@ components:
     PatchedBillingPlan:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         time_created:
           type: string
           format: date-time
@@ -1573,7 +1566,7 @@ components:
         components:
           type: array
           items:
-            type: integer
+            $ref: '#/components/schemas/PlanComponentShallow'
     PatchedCustomer:
       type: object
       properties:
@@ -1789,6 +1782,39 @@ components:
           readOnly: true
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
+        free_metric_quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        cost_per_metric:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        metric_amount_per_cost:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - billable_metric
+      - cost_per_metric
+      - id
+    PlanComponentShallow:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        billable_metric:
+          type: integer
         free_metric_quantity:
           type: number
           format: double

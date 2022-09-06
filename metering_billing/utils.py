@@ -146,7 +146,7 @@ def calculate_plan_component_daily_revenue_for_cliff_metric(
         if x["date_created"] >= query_start and x["date_created"] <= query_end
     ]
     max_units_usage_query = (
-        max(x[0] for x in units_usage_query) if len(days_after_query_end) > 0 else 0
+        max(x[0] for x in units_usage_query) if len(units_usage_query) > 0 else 0
     )
     day_revenue_dict = {x[1]: Decimal(0) for x in units_usage_query}
     if (

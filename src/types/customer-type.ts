@@ -8,7 +8,7 @@ export interface CustomerType {
 }
 
 export interface CustomerTableItem extends CustomerType {
-  subscriptions: SubscriptionType[];
+  subscriptions: string[];
   total_revenue_due: number;
 }
 

@@ -30,7 +30,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
     width: 120,
     dataIndex: "subscriptions",
     render: (_, record) => (
-      <Tag color={"bruh"}>{record.subscriptions[0].billing_plan.name}</Tag>
+      <Tag color={"bruh"}>{record.subscriptions[0]}</Tag>
     ),
   },
   {

@@ -196,7 +196,7 @@ class BillingPlan(models.Model):
     pay_in_advance = models.BooleanField()
     name = models.CharField(max_length=200)
     description = models.CharField(max_length=256, default=" ", blank=True)
-    components = models.ManyToManyField(PlanComponent)
+    components = models.ManyToManyField(PlanComponent, blank=True)
 
     def subscription_end_date(self, start_date):
         start_date_parsed = start_date

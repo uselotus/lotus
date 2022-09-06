@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import os
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,7 @@ from metering_billing.models import (
     Organization,
     PlanComponent,
     Subscription,
+    User,
 )
 from model_bakery import baker
 
@@ -21,7 +23,11 @@ class Command(BaseCommand):
     "Django command to pause execution until the database is available"
 
     def handle(self, *args, **options):
-        organization = baker.make(Organization)
+        username = os.getenv("DJANGO_SUPERUSER_USERNAME")
+
+        admin = User.objects.get(username=username)
+        organization = admin.organization
+
         customer_set = baker.make(Customer, _quantity=10, organization=organization)
         bm_e1_1, bm_e1_2 = baker.make(
             BillableMetric,
@@ -41,15 +47,15 @@ class Command(BaseCommand):
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=bm_e1_1,
-            free_metric_quantity=100,
+            free_metric_quantity=1000,
             cost_per_metric=0.01,
             metric_amount_per_cost=5,
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=bm_e1_2,
-            free_metric_quantity=1_000_000,
+            free_metric_quantity=20_000,
             cost_per_metric=0.005,
-            metric_amount_per_cost=500,
+            metric_amount_per_cost=250,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=bm_e2_1,
@@ -60,7 +66,7 @@ class Command(BaseCommand):
         pc4 = PlanComponent.objects.create(
             billable_metric=bm_e2_2,
             free_metric_quantity=200,
-            cost_per_metric=2,
+            cost_per_metric=75,
             metric_amount_per_cost=100,
         )
         bp = BillingPlan.objects.create(
@@ -98,28 +104,32 @@ class Command(BaseCommand):
             )
 
         for customer in customer_set:
-            n = int(random.gauss(100_000, 1500) // 1)
-            baker.make(
-                Event,
-                organization=organization,
-                customer=customer,
-                event_name="raise_issue",
-                properties=gaussian_stacktrace_len(n),
-                time_created=random_date(old_sub_start, old_sub_end, n),
-                idempotency_id=uuid.uuid4,
-                _quantity=n,
-            )
-            n = int(random.gauss(10_000, 500) // 1)
-            baker.make(
-                Event,
-                organization=organization,
-                customer=customer,
-                event_name="send_alert",
-                properties=gaussian_latency(n),
-                time_created=random_date(new_sub_start, new_sub_end, n),
-                idempotency_id=uuid.uuid4,
-                _quantity=n,
-            )
+            for start, end in [
+                (old_sub_start, old_sub_end),
+                (new_sub_start, new_sub_end),
+            ]:
+                n = int(random.gauss(10_000, 500) // 1)
+                baker.make(
+                    Event,
+                    organization=organization,
+                    customer=customer,
+                    event_name="raise_issue",
+                    properties=gaussian_stacktrace_len(n),
+                    time_created=random_date(start, end, n),
+                    idempotency_id=uuid.uuid4,
+                    _quantity=n,
+                )
+                n = int(random.gauss(1_000, 100) // 1)
+                baker.make(
+                    Event,
+                    organization=organization,
+                    customer=customer,
+                    event_name="send_alert",
+                    properties=gaussian_latency(n),
+                    time_created=random_date(start, end, n),
+                    idempotency_id=uuid.uuid4,
+                    _quantity=n,
+                )
 
 
 def random_date(start, end, n):

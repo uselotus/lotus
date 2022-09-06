@@ -7,16 +7,18 @@ import {
   Select,
   InputNumber,
   PageHeader,
-  Popconfirm,
   List,
 } from "antd";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/UsageComponentForm";
 import { useMutation } from "react-query";
-import { MetricType } from "../types/metric-type";
+import { MetricNameType } from "../types/metric-type";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Metrics } from "../api/api";
+import { CreatePlanType, CreateComponent } from "../types/plan-type";
+import { Plan } from "../api/api";
 
 interface ComponentDisplay {
   metric: string;
@@ -24,32 +26,47 @@ interface ComponentDisplay {
   metric_amount_per_cost: number;
   free_amount: number;
 }
-interface UsageComponent {
-  event_name: string;
-  aggregation_type: string;
-  cost: number;
-  free_amount: number;
-}
 
 const CreatePlan = () => {
   const [visible, setVisible] = useState(false);
   const navigate = useNavigate();
+  const [metrics, setMetrics] = useState<string[]>([]);
+  const [form] = Form.useForm();
+  const [metricMap, setMetricMap] = useState<Map<string, number>>(new Map());
 
-  // const mutation = useMutation(
-  //   (post: CustomerType) => Customer.createCustomer(post),
-  //   {
-  //     onSuccess: () => {
-  //       setVisible(false);
-  //       toast.success("Customer created successfully", {
-  //         position: toast.POSITION.TOP_CENTER,
-  //       });
-  //     },
-  //   }
-  // );
+  useEffect(() => {
+    Metrics.getMetrics().then((res) => {
+      const data: MetricNameType[] = res;
+      if (data) {
+        const newmetricMap = new Map<string, number>();
+        const metricList: string[] = [];
+        for (let i = 0; i < data.length; i++) {
+          if (typeof data[i].metric_name !== undefined) {
+            metricList.push(data[i].metric_name);
+            newmetricMap.set(data[i].metric_name, data[i].id);
+          }
+        }
+        setMetricMap(newmetricMap);
+        setMetrics(metricList);
+      }
+    });
+  }, []);
 
-  const onFinish = (values: any) => {
-    console.log("Success:", values);
-  };
+  const mutation = useMutation(
+    (post: CreatePlanType) => Plan.createPlan(post),
+    {
+      onSuccess: () => {
+        toast.success("Successfully created Plan", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+      onError: () => {
+        toast.error("Failed to create Plan", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
 
   const onFinishFailed = (errorInfo: any) => {
     console.log("Failed:", errorInfo);
@@ -69,6 +86,38 @@ const CreatePlan = () => {
 
   const submitPricingPlan = () => {
     console.log("Submit Pricing Plan");
+    form
+      .validateFields()
+      .then((values) => {
+        form.resetFields();
+
+        const usagecomponentslist: CreateComponent[] = [];
+        if (values.usage_components) {
+          for (let i = 0; i < values.components.length; i++) {
+            const usagecomponent: CreateComponent = {
+              billable_metric: metricMap.get(values.components[i].metric),
+              cost_per_metric: values.components[i].cost_per_metric,
+              metric_amount_per_cost:
+                values.usage_components[i].metric_amount_per_cost,
+              free_metric_quantity: values.usage_components[i].free_amount,
+            };
+            usagecomponentslist.push(usagecomponent);
+          }
+        }
+
+        const plan: CreatePlanType = {
+          name: values.name,
+          description: values.description,
+          flat_rate: values.flat_rate,
+          pay_in_advance: values.pay_in_advance,
+          interval: values.billing_interval,
+          components: usagecomponentslist,
+        };
+        mutation.mutate(plan);
+      })
+      .catch((info) => {
+        console.log("Validate Failed:", info);
+      });
     navigate("/plans");
   };
 
@@ -81,41 +130,62 @@ const CreatePlan = () => {
       />
       <Form.Provider
         onFormFinish={(name, { values, forms }) => {
-          console.log(forms);
           if (name === "component_form") {
             const { create_plan } = forms;
-            console.log(values);
             const components = create_plan.getFieldValue("components") || [];
             create_plan.setFieldsValue({ components: [...components, values] });
+            console.log(create_plan.getFieldValue("components"));
             setVisible(false);
+          }
+          if (name === "create_plan") {
+            console.log(values);
           }
         }}
       >
         <Form
+          form={form}
           name="create_plan"
-          initialValues={{ remember: true }}
-          onFinish={onFinish}
+          initialValues={{ flat_rate: 0, pay_in_advance: true }}
+          onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
           autoComplete="off"
         >
-          <Form.Item label="Plan Name">
+          <Form.Item
+            label="Plan Name"
+            name="name"
+            rules={[
+              {
+                required: true,
+                message: "Please Name Your Plan",
+              },
+            ]}
+          >
             <Input placeholder="Ex: Starter Plan" />
           </Form.Item>
-          <Form.Item label="Description">
+          <Form.Item label="Description" name="description">
             <Input
               type="textarea"
               placeholder="Ex: Cheapest plan for small scale businesses"
             />
           </Form.Item>
-          <Form.Item label="Billing Interval">
+          <Form.Item
+            label="Billing Interval"
+            name="billing_interval"
+            rules={[
+              {
+                required: true,
+                message: "Please select an interval",
+              },
+            ]}
+          >
             <Select>
-              <Select.Option value="weekly">Weekly</Select.Option>
-              <Select.Option value="monthly">Monthly</Select.Option>
-              <Select.Option value="yearly">Yearly</Select.Option>
+              <Select.Option value="week">Weekly</Select.Option>
+              <Select.Option value="month">Monthly</Select.Option>
+              <Select.Option value="year">Yearly</Select.Option>
             </Select>
           </Form.Item>
 
-          <Form.Item label="Recurring Cost">
+          <Form.Item name="flat_rate" label="Recurring Cost">
             <InputNumber addonBefore="$" defaultValue={0} precision={2} />
           </Form.Item>
           <Form.Item name="pay_in_advance">
@@ -139,6 +209,7 @@ const CreatePlan = () => {
             {({ getFieldValue }) => {
               const components: ComponentDisplay[] =
                 getFieldValue("components") || [];
+              console.log(getFieldValue("components"));
               return components.length ? (
                 <List grid={{ gutter: 16, column: 4 }}>
                   {components.map((component, index) => (
@@ -162,18 +233,16 @@ const CreatePlan = () => {
           </Form.Item>
 
           <Form.Item>
-            <Popconfirm
-              title="Submit"
-              onConfirm={submitPricingPlan}
-              onVisibleChange={() => console.log("visible change")}
-            >
-              <Button type="primary" className="bg-info" htmlType="submit">
-                Submit
-              </Button>
-            </Popconfirm>
+            <Button type="primary" className="bg-info" htmlType="submit">
+              Submit
+            </Button>
           </Form.Item>
         </Form>
-        <UsageComponentForm visible={visible} onCancel={hideUserModal} />
+        <UsageComponentForm
+          visible={visible}
+          onCancel={hideUserModal}
+          metrics={metrics}
+        />
       </Form.Provider>
       <ToastContainer />
     </div>

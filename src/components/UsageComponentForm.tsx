@@ -3,7 +3,11 @@ import { Button, Form, Input, InputNumber, Modal, Radio, Select } from "antd";
 
 const { Option } = Select;
 
-function UsageComponentForm(props: { visible: boolean; onCancel: () => void }) {
+function UsageComponentForm(props: {
+  visible: boolean;
+  onCancel: () => void;
+  metrics: string[];
+}) {
   const [form] = Form.useForm();
 
   return (
@@ -47,7 +51,9 @@ function UsageComponentForm(props: { visible: boolean; onCancel: () => void }) {
           ]}
         >
           <Select>
-            <Option value="test-runs">Test-Runs</Option>
+            {props.metrics.map((metric_name) => (
+              <Option value={metric_name}>{metric_name}</Option>
+            ))}
           </Select>
         </Form.Item>
         <Form.Item name="cost_per_metric" label="Cost Per Unit Amount">
