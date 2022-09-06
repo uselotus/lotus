@@ -6,49 +6,57 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0002_alter_billingplan_flat_rate_and_more'),
+        ("metering_billing", "0002_alter_billingplan_flat_rate_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='invoice',
-            name='customer',
+            model_name="invoice",
+            name="customer",
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='customer',
+            model_name="invoice",
+            name="customer",
             field=models.JSONField(),
         ),
         migrations.RemoveField(
-            model_name='invoice',
-            name='line_items',
+            model_name="invoice",
+            name="line_items",
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='line_items',
+            model_name="invoice",
+            name="line_items",
             field=models.JSONField(),
         ),
         migrations.RemoveField(
-            model_name='invoice',
-            name='organization',
+            model_name="invoice",
+            name="organization",
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='organization',
+            model_name="invoice",
+            name="organization",
             field=models.JSONField(),
         ),
         migrations.AlterField(
-            model_name='invoice',
-            name='status',
-            field=models.CharField(choices=[('requires_payment_method', 'Requires Payment Method'), ('requires_action', 'Requires Action'), ('processing', 'Processing'), ('succeeded', 'Succeeded')], max_length=35),
+            model_name="invoice",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("requires_payment_method", "Requires Payment Method"),
+                    ("requires_action", "Requires Action"),
+                    ("processing", "Processing"),
+                    ("succeeded", "Succeeded"),
+                ],
+                max_length=35,
+            ),
         ),
         migrations.RemoveField(
-            model_name='invoice',
-            name='subscription',
+            model_name="invoice",
+            name="subscription",
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='subscription',
+            model_name="invoice",
+            name="subscription",
             field=models.JSONField(),
         ),
     ]

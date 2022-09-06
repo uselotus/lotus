@@ -40,8 +40,10 @@ class Command(BaseCommand):
                 task="metering_billing.tasks.start_subscriptions",
                 interval=every_2_minutes,
             )
-        
-        task_qs = PeriodicTask.objects.filter(name="Check Payment Intent status and update invoice")
+
+        task_qs = PeriodicTask.objects.filter(
+            name="Check Payment Intent status and update invoice"
+        )
         if len(task_qs) == 0:
             PeriodicTask.objects.create(
                 name="Check Payment Intent status and update invoice",

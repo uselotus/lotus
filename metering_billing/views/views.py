@@ -44,22 +44,11 @@ from ..utils import (
     calculate_plan_component_daily_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
+    make_all_decimals_floats,
     parse_organization,
 )
 
 stripe.api_key = STRIPE_SECRET_KEY
-
-
-def make_all_decimals_floats(json):
-    if type(json) in [dict, list, Decimal]:
-        for key, value in json.items():
-            if isinstance(value, dict):
-                make_all_decimals_floats(value)
-            elif isinstance(value, list):
-                for item in value:
-                    make_all_decimals_floats(item)
-            elif isinstance(value, Decimal):
-                json[key] = float(value)
 
 
 def import_stripe_customers(organization):
@@ -415,4 +404,4 @@ class CustomerWithRevenueView(APIView):
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         make_all_decimals_floats(ret)
-        return Response(ret, status=status.HTTP_200_OK)
+        return JsonResponse(ret, status=status.HTTP_200_OK)

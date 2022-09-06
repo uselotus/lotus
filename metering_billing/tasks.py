@@ -13,7 +13,6 @@ from metering_billing.models import Invoice, Subscription
 stripe.api_key = STRIPE_SECRET_KEY
 
 
-
 @shared_task
 def calculate_invoice():
     ending_subscriptions = Subscription.objects.filter(
@@ -69,9 +68,7 @@ def start_subscriptions():
 def update_invoice_status():
     incomplete_invoices = Invoice.objects.filter(~Q(status="succeeded"))
     for incomplete_invoice in incomplete_invoices:
-        p_intent = stripe.PaymentIntent.retrieve(
-            "pi_1DsTgI2eZvKYlo2CAd7R4A03",
-        )
+        p_intent = stripe.PaymentIntent.retrieve(incomplete_invoice.payment_intent_id)
         if p_intent.status != incomplete_invoice.status:
             incomplete_invoice.status = p_intent.status
             incomplete_invoice.save()

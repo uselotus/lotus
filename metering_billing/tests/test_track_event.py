@@ -146,7 +146,7 @@ class TestTrackEvent:
         org_events = get_events_with_org(setup_dict["org"])
         assert len(org_events) == setup_dict["num_events_in"]
 
-    def test_request_invalid_if_idempotency_id_repeared(
+    def test_request_invalid_if_idempotency_id_repeated(
         self,
         track_event_test_common_setup,
         track_event_payload,

@@ -1,3 +1,4 @@
+import collections
 import math
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
@@ -199,7 +200,7 @@ def calculate_plan_component_revenue(plan_component, units_usage):
 def calculate_plan_component_usage_and_revenue(
     customer, plan_component, plan_start_date, plan_end_date
 ):
-    usage_revenue_dict = {"usage": 0, "revenue": 0}
+    usage_revenue_dict = {}
     billable_metric = plan_component.billable_metric
     metric_usage = get_metric_usage(
         billable_metric,
@@ -266,3 +267,14 @@ def get_customer_usage_and_revenue(customer):
 
     return subscription_usages
 
+
+def make_all_decimals_floats(json):
+    if type(json) in [dict, list, Decimal, collections.OrderedDict]:
+        for key, value in json.items():
+            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
+                make_all_decimals_floats(value)
+            elif isinstance(value, list):
+                for item in value:
+                    make_all_decimals_floats(item)
+            elif isinstance(value, Decimal):
+                json[key] = float(value)

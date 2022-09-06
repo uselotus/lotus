@@ -27,7 +27,7 @@ class Organization(models.Model):
         ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
     )
     company_name = models.CharField(max_length=100, default=" ")
-    stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
+    stripe_id = models.CharField(max_length=110, blank=True, null=True)
     created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
@@ -290,6 +290,7 @@ class Subscription(models.Model):
 
 class Invoice(models.Model):
     class STATUS_TYPES(object):
+        NOT_CONNECTED_TO_STRIPE = "not_connected_to_stripe"
         REQUIRES_PAYMENT_METHOD = "requires_payment_method"
         REQUIRES_ACTION = "requires_action"
         PROCESSING = "processing"
@@ -300,6 +301,7 @@ class Invoice(models.Model):
         (STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
         (STATUS_TYPES.PROCESSING, _("Processing")),
         (STATUS_TYPES.SUCCEEDED, _("Succeeded")),
+        (STATUS_TYPES.NOT_CONNECTED_TO_STRIPE, _("Not Connected to Stripe")),
     )
 
     cost_due = MoneyField(
@@ -308,8 +310,8 @@ class Invoice(models.Model):
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     status = models.CharField(max_length=35, choices=STATUS_CHOICES)
+    payment_intent_id = models.CharField(max_length=240, null=True, blank=True)
     line_items = models.JSONField()
-
     organization = models.JSONField()
     customer = models.JSONField()
     subscription = models.JSONField()
