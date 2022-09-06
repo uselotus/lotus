@@ -80,12 +80,22 @@ class PlanComponentSerializer(serializers.ModelSerializer):
 
     billable_metric = BillableMetricSerializer()
 
+class PlanComponentShallowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanComponent
+        fields = (
+            "id",
+            "billable_metric",
+            "free_metric_quantity",
+            "cost_per_metric",
+            "metric_amount_per_cost",
+        )
+
 
 class BillingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillingPlan
         fields = (
-            "id",
             "time_created",
             "currency",
             "interval",
@@ -95,6 +105,8 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "description",
             "components",
         )
+        
+    components = PlanComponentShallowSerializer(many=True)
 
 
 class BillingPlanReadSerializer(BillingPlanSerializer):
