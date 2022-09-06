@@ -6,9 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0003_alter_billingplan_components'),
-        ('metering_billing', '0005_invoice_payment_intent_id'),
+        ("metering_billing", "0003_alter_billingplan_components"),
+        ("metering_billing", "0005_invoice_payment_intent_id"),
     ]
 
-    operations = [
-    ]
+    operations = []
