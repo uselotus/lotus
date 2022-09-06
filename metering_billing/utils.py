@@ -1,13 +1,12 @@
-import datetime
 import math
-from decimal import ROUND_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
-from django.db.models import Count, F, FloatField, Func, Max, Q, Sum
+from django.db.models import Count, F, FloatField, Max, Sum
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
 
 from metering_billing.exceptions import OrganizationMismatch, UserNoOrganization
-from metering_billing.models import APIToken, Event, Invoice, Subscription
+from metering_billing.models import APIToken, Event, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers import (
     BillingPlanSerializer,
@@ -178,8 +177,6 @@ def calculate_plan_component_daily_revenue(
         customer=customer,
         daily=True,
     )
-    # if str(billable_metric) == "sum of stacktrace_len : raise_issue":
-    #     print(plan_start_date, plan_end_date, len(units_usage_per_day), customer)
     if billable_metric.aggregation_type == "max":
         usage_revenue_dict = calculate_plan_component_daily_revenue_for_cliff_metric(
             plan_component, units_usage_per_day, query_start, query_end
@@ -269,22 +266,3 @@ def get_customer_usage_and_revenue(customer):
 
     return subscription_usages
 
-
-def generate_invoice(subscription):
-    """
-    Generate an invoice for a subscription.
-    """
-    usage_dict = get_subscription_usage_and_revenue(subscription)
-    # Get the customer
-    customer = subscription.customer
-    billing_plan = subscription.billing_plan
-    # Create the invoice
-    invoice = Invoice.objects.create(
-        cost_due=usage_dict["total_revenue_due"],
-        issue_date=subscription.end_date,
-        organization=subscription.organization,
-        customer=customer,
-        subscription=subscription,
-    )
-
-    return invoice

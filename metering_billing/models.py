@@ -68,8 +68,6 @@ class Customer(models.Model):
 
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
 
-    properties = models.JSONField(default=dict, blank=True, null=True)
-
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
 
@@ -292,28 +290,29 @@ class Subscription(models.Model):
 
 class Invoice(models.Model):
     class STATUS_TYPES(object):
-        ISSUED = "issued"
-        NOT_SENT = "not_sent"
-        FULFILLED = "fulfilled"
+        REQUIRES_PAYMENT_METHOD = "requires_payment_method"
+        REQUIRES_ACTION = "requires_action"
+        PROCESSING = "processing"
+        SUCCEEDED = "succeeded"
 
     STATUS_CHOICES = Choices(
-        (STATUS_TYPES.ISSUED, _("Issued")),
-        (STATUS_TYPES.FULFILLED, _("Fullfilled")),
-        (STATUS_TYPES.NOT_SENT, _("Not Sent")),
+        (STATUS_TYPES.REQUIRES_PAYMENT_METHOD, _("Requires Payment Method")),
+        (STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
+        (STATUS_TYPES.PROCESSING, _("Processing")),
+        (STATUS_TYPES.SUCCEEDED, _("Succeeded")),
     )
 
     cost_due = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
-    subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent
-    )
-    line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
+    status = models.CharField(max_length=35, choices=STATUS_CHOICES)
+    line_items = models.JSONField()
+
+    organization = models.JSONField()
+    customer = models.JSONField()
+    subscription = models.JSONField()
 
 
 class APIToken(AbstractAPIKey):
