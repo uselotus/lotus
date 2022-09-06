@@ -16,6 +16,9 @@ class Command(BaseCommand):
         every_day, _ = CrontabSchedule.objects.get_or_create(
             minute="0", hour="0", day_of_week="*", day_of_month="*", month_of_year="*"
         )
+        every_hour, _ = CrontabSchedule.objects.get_or_create(
+            minute="0", hour="*", day_of_week="*", day_of_month="*", month_of_year="*"
+        )
         every_2_minutes, _ = IntervalSchedule.objects.get_or_create(
             every=2,
             period=IntervalSchedule.MINUTES,
@@ -30,11 +33,18 @@ class Command(BaseCommand):
                 crontab=every_day,
             )
 
-        task_qs_2 = PeriodicTask.objects.filter(name="Check start of subscriptions")
-
-        if len(task_qs_2) == 0:
+        task_qs = PeriodicTask.objects.filter(name="Check start of subscriptions")
+        if len(task_qs) == 0:
             PeriodicTask.objects.create(
                 name="Check start of subscriptions",
                 task="metering_billing.tasks.start_subscriptions",
                 interval=every_2_minutes,
+            )
+        
+        task_qs = PeriodicTask.objects.filter(name="Check Payment Intent status and update invoice")
+        if len(task_qs) == 0:
+            PeriodicTask.objects.create(
+                name="Check Payment Intent status and update invoice",
+                task="metering_billing.tasks.update_invoice_status",
+                interval=every_hour,
             )

@@ -2,10 +2,16 @@ from __future__ import absolute_import, unicode_literals
 
 from datetime import datetime
 
+import stripe
 from celery import shared_task
+from django.db.models import Q
+from lotus.settings import STRIPE_SECRET_KEY
 
-from metering_billing.models import Subscription
-from metering_billing.utils import generate_invoice
+from metering_billing.invoice import generate_invoice
+from metering_billing.models import Invoice, Subscription
+
+stripe.api_key = STRIPE_SECRET_KEY
+
 
 
 @shared_task
@@ -57,3 +63,15 @@ def start_subscriptions():
     for new_subscription in starting_subscriptions:
         new_subscription.status = "active"
         new_subscription.save()
+
+
+@shared_task
+def update_invoice_status():
+    incomplete_invoices = Invoice.objects.filter(~Q(status="succeeded"))
+    for incomplete_invoice in incomplete_invoices:
+        p_intent = stripe.PaymentIntent.retrieve(
+            "pi_1DsTgI2eZvKYlo2CAd7R4A03",
+        )
+        if p_intent.status != incomplete_invoice.status:
+            incomplete_invoice.status = p_intent.status
+            incomplete_invoice.save()
