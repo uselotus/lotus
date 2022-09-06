@@ -4,10 +4,10 @@ import {
   CustomerTableItem,
   CustomerType,
 } from "../types/customer-type";
-import { PlanType } from "../types/plan-type";
+import { PlanType, CreatePlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import { SubscriptionTotals } from "../types/subscription-type";
-import { MetricUsage, MetricType } from "../types/metric-type";
+import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import {
   StripeConnectType,
   StripeOauthType,
@@ -46,6 +46,8 @@ export const Customer = {
 
 export const Plan = {
   getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
+  createPlan: (post: CreatePlanType): Promise<CreatePlanType> =>
+    requests.post("api/plans/", post),
 };
 
 export const StripeConnect = {
@@ -67,15 +69,15 @@ export const Authentication = {
 
 export const GetRevenue = {
   getMonthlyRevenue: (
-    period_1_end_date: string,
     period_1_start_date: string,
+    period_1_end_date: string,
     period_2_start_date: string,
     period_2_end_date: string
   ): Promise<RevenueType> =>
     requests.get("api/period_metric_revenue/", {
       params: {
-        period_1_end_date,
         period_1_start_date,
+        period_1_end_date,
         period_2_start_date,
         period_2_end_date,
       },
@@ -108,7 +110,7 @@ export const Metrics = {
     requests.get("api/period_metric_usage/", {
       params: { start_date, end_date, top_n_customers },
     }),
-  getMetrics: (): Promise<MetricType[]> => requests.get("api/metrics/"),
+  getMetrics: (): Promise<MetricNameType[]> => requests.get("api/metrics/"),
   createMetric: (post: MetricType): Promise<MetricType> =>
     requests.post("api/metrics/", post),
 };

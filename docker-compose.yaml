@@ -21,7 +21,7 @@ services:
              python3 manage.py collectstatic --no-input &&
              python3 manage.py initadmin &&
              python3 manage.py setup_tasks &&
-             python3 manage.py runserver 0.0.0.0:8000
+             gunicorn lotus.wsgi:application -w 2 -b :8000 --reload
              "
     depends_on:
       - db

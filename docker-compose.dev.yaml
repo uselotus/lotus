@@ -53,8 +53,6 @@ services:
     build:
       context: .
     command: celery -A lotus worker -l info
-    volumes:
-      - ./lotus:/lotus
     depends_on:
       - db
       - redis
@@ -67,8 +65,6 @@ services:
     build:
       context: .
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    volumes:
-      - ./lotus:/lotus
     depends_on:
       - celery
       - redis
