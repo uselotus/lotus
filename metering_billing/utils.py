@@ -1,13 +1,13 @@
-import datetime
+import collections
 import math
-from decimal import ROUND_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
-from django.db.models import Count, F, FloatField, Func, Max, Q, Sum
+from django.db.models import Count, F, FloatField, Max, Sum
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
 
 from metering_billing.exceptions import OrganizationMismatch, UserNoOrganization
-from metering_billing.models import APIToken, Event, Invoice, Subscription
+from metering_billing.models import APIToken, Event, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers import (
     BillingPlanSerializer,
@@ -200,7 +200,7 @@ def calculate_plan_component_revenue(plan_component, units_usage):
 def calculate_plan_component_usage_and_revenue(
     customer, plan_component, plan_start_date, plan_end_date
 ):
-    usage_revenue_dict = {"usage": 0, "revenue": 0}
+    usage_revenue_dict = {}
     billable_metric = plan_component.billable_metric
     metric_usage = get_metric_usage(
         billable_metric,
@@ -268,21 +268,13 @@ def get_customer_usage_and_revenue(customer):
     return subscription_usages
 
 
-def generate_invoice(subscription):
-    """
-    Generate an invoice for a subscription.
-    """
-    usage_dict = get_subscription_usage_and_revenue(subscription)
-    # Get the customer
-    customer = subscription.customer
-    billing_plan = subscription.billing_plan
-    # Create the invoice
-    invoice = Invoice.objects.create(
-        cost_due=usage_dict["total_revenue_due"],
-        issue_date=subscription.end_date,
-        organization=subscription.organization,
-        customer=customer,
-        subscription=subscription,
-    )
-
-    return invoice
+def make_all_decimals_floats(json):
+    if type(json) in [dict, list, Decimal, collections.OrderedDict]:
+        for key, value in json.items():
+            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
+                make_all_decimals_floats(value)
+            elif isinstance(value, list):
+                for item in value:
+                    make_all_decimals_floats(item)
+            elif isinstance(value, Decimal):
+                json[key] = float(value)
