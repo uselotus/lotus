@@ -109,6 +109,15 @@ class BillingPlanSerializer(serializers.ModelSerializer):
 
     components = PlanComponentShallowSerializer(many=True)
 
+    def create(self, validated_data):
+        components_data = validated_data.pop("components")
+        billing_plan = BillingPlan.objects.create(**validated_data)
+        for component_data in components_data:
+            pc = PlanComponent.objects.get(**component_data)
+            billing_plan.components.add(pc)
+            billing_plan.save()
+        return billing_plan
+
 
 class BillingPlanReadSerializer(BillingPlanSerializer):
     class Meta:
