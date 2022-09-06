@@ -80,6 +80,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
 
     billable_metric = BillableMetricSerializer()
 
+
 class PlanComponentShallowSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
@@ -105,7 +106,7 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "description",
             "components",
         )
-        
+
     components = PlanComponentShallowSerializer(many=True)
 
 
