@@ -57,7 +57,7 @@ class Customer(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
-    customer_id = models.CharField(max_length=40, unique=True)
+    customer_id = models.CharField(max_length=40)
     currency = models.CharField(max_length=3, default="USD")
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -76,6 +76,9 @@ class Customer(models.Model):
         if subscription_set is None:
             return "None"
         return [sub.billing_plan.get_plan_name() for sub in subscription_set]
+    
+    class Meta:
+        unique_together = ('organization', 'customer_id')
 
 
 class Event(models.Model):

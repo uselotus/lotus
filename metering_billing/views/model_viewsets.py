@@ -1,6 +1,8 @@
 from datetime import datetime
 
+from django.db import IntegrityError
 from metering_billing import serializers
+from metering_billing.exceptions import DuplicateCustomerID
 from metering_billing.models import (
     BillableMetric,
     BillingPlan,
@@ -47,7 +49,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
         return Customer.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        try:
+            serializer.save(organization=parse_organization(self.request))
+        except IntegrityError as e:
+            raise DuplicateCustomerID 
+        
 
 
 class BillableMetricViewSet(viewsets.ModelViewSet):
