@@ -18,17 +18,15 @@ interface ChartDataType {
 //Generate more defaultData for the month of august
 
 function MetricBarGraph(props: { range: any }) {
-  const [dateRange, setDateRange] = useState(props.range);
-
-  const [selectedMetric, setSelectedMetric] = useState();
+  const [selectedMetric, setSelectedMetric] = useState<string>();
   const [metricList, setMetricList] = useState<string[]>([]);
   const [chartData, setChartData] = useState<ChartDataType[]>([]);
 
   const { data, isLoading }: UseQueryResult<MetricUsage> =
-    useQuery<MetricUsage>(["dashboard_metric_graph"], () =>
+    useQuery<MetricUsage>(["dashboard_metric_graph", props.range], () =>
       Metrics.getMetricUsage(
-        dateRange[0].format("YYYY-MM-DD"),
-        dateRange[1].format("YYYY-MM-DD")
+        props.range[0].format("YYYY-MM-DD"),
+        props.range[1].format("YYYY-MM-DD")
       ).then((res) => {
         return res;
       })
@@ -74,6 +72,7 @@ function MetricBarGraph(props: { range: any }) {
 
   const changeMetric = (value: string) => {
     let compressedArray: ChartDataType[] = [];
+    setSelectedMetric(value);
 
     const daily_data = data.metrics[value].data;
     console.log(daily_data);
@@ -89,7 +88,7 @@ function MetricBarGraph(props: { range: any }) {
         });
       }
     }
-    console.log(compressedArray);
+    compressedArray.reverse();
     setChartData(compressedArray);
   };
 
