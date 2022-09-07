@@ -203,7 +203,8 @@ class TestInsertCustomer:
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
 
-    def test_customer_id_already_exists_within_org_reject_creation(self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
+    def test_customer_id_already_exists_within_org_reject_creation(
+        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
     ):
         num_customers = 3
         setup_dict = customer_test_common_setup(
@@ -224,7 +225,8 @@ class TestInsertCustomer:
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
 
-    def test_customer_id_already_exists_not_in_org_accept_creation(self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
+    def test_customer_id_already_exists_not_in_org_accept_creation(
+        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
     ):
         num_customers = 3
         setup_dict = customer_test_common_setup(
@@ -232,14 +234,17 @@ class TestInsertCustomer:
             auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
-        
-        Customer.objects.create(organization=setup_dict["org2"], customer_id=insert_customer_payload["customer_id"])
+
+        Customer.objects.create(
+            organization=setup_dict["org2"],
+            customer_id=insert_customer_payload["customer_id"],
+        )
         response = setup_dict["client"].post(
             reverse("customer-list"),
             data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        
+
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
-        assert len(get_customers_in_org(setup_dict["org"])) == num_customers+1
+        assert len(get_customers_in_org(setup_dict["org"])) == num_customers + 1

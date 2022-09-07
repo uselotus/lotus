@@ -95,3 +95,24 @@ def get_events_with_org():
         return event_set
 
     return do_get_events_with_org
+
+
+@pytest.fixture
+def add_billable_metrics_to_org():
+    from metering_billing.models import BillableMetric
+
+    def do_add_billable_metrics_to_org(organization, n):
+        bm_set = baker.make(BillableMetric, _quantity=n, organization=organization)
+        return bm_set
+
+    return do_add_billable_metrics_to_org
+
+
+@pytest.fixture
+def get_billable_metrics_in_org():
+    from metering_billing.models import BillableMetric
+
+    def do_get_billable_metrics_in_org(organization):
+        return BillableMetric.objects.filter(organization=organization)
+
+    return do_get_billable_metrics_in_org

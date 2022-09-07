@@ -14,7 +14,14 @@ class UserNoOrganization(APIException):
     default_detail = "User does not have an organization"
     default_code = "User has no organization"
 
+
 class DuplicateCustomerID(APIException):
     status_code = 409
     default_detail = "Customer ID already exists"
     default_code = "Customer ID already exists"
+
+
+class DuplicateBillableMetric(APIException):
+    status_code = 409
+    default_detail = "Billable metric already exists"
+    default_code = "Billable metric already exists"

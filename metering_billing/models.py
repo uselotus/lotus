@@ -12,6 +12,7 @@ from django.contrib.postgres.fields import (
 )
 from django.db import models
 from django.db.models import Func, Q
+from django.db.models.constraints import UniqueConstraint
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
@@ -76,9 +77,9 @@ class Customer(models.Model):
         if subscription_set is None:
             return "None"
         return [sub.billing_plan.get_plan_name() for sub in subscription_set]
-    
+
     class Meta:
-        unique_together = ('organization', 'customer_id')
+        unique_together = ("organization", "customer_id")
 
 
 class Event(models.Model):
@@ -139,12 +140,22 @@ class BillableMetric(models.Model):
             )
 
     class Meta:
-        unique_together = (
-            "organization",
-            "event_name",
-            "property_name",
-            "aggregation_type",
-        )
+        constraints = [
+            UniqueConstraint(
+                fields=[
+                    "organization",
+                    "event_name",
+                    "aggregation_type",
+                    "property_name",
+                ],
+                name="unique_with_property_name",
+            ),
+            UniqueConstraint(
+                fields=["organization", "event_name", "aggregation_type"],
+                condition=Q(property_name=None),
+                name="unique_without_property_name",
+            ),
+        ]
 
     def get_aggregation_type(self):
         return self.aggregation_type

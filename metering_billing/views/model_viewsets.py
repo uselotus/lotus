@@ -52,8 +52,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
         try:
             serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
-            raise DuplicateCustomerID 
-        
+            raise DuplicateCustomerID
 
 
 class BillableMetricViewSet(viewsets.ModelViewSet):
@@ -69,7 +68,10 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         return BillableMetric.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        try:
+            serializer.save(organization=parse_organization(self.request))
+        except IntegrityError as e:
+            raise DuplicateCustomerID
 
 
 class BillingPlanViewSet(viewsets.ModelViewSet):
