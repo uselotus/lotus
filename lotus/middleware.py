@@ -1,7 +1,8 @@
-from ..metering_billing.permissions import HasUserAPIKey
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.authentication import BaseAuthentication
 from metering_billing.models import Organization
+from rest_framework.authentication import BaseAuthentication
+
+from ..metering_billing.permissions import HasUserAPIKey
 
 
 ### NOT YET READY TO BE ADDED INTO AUTHENTICATION

@@ -276,22 +276,6 @@ class Subscription(models.Model):
     )
     is_new = models.BooleanField(default=True)
 
-    # class Meta:
-    #     constraints = [
-    #         ExclusionConstraint(
-    #             name="exclude_overlapping_subscriptions",
-    #             expressions=(
-    #                 (
-    #                     TsTzRange("start_date", "end_date", RangeBoundary()),
-    #                     RangeOperators.OVERLAPS,
-    #                 ),
-    #                 ("organization", RangeOperators.EQUAL),
-    #                 ("customer", RangeOperators.EQUAL),
-    #                 ("billing_plan", RangeOperators.EQUAL),
-    #             ),
-    #         ),
-    #     ]
-
     def save(self, *args, **kwargs):
         if not self.next_plan:
             self.next_plan = self.billing_plan

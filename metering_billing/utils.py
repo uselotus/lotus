@@ -9,10 +9,12 @@ from django.db.models.functions import Cast
 from metering_billing.exceptions import OrganizationMismatch, UserNoOrganization
 from metering_billing.models import APIToken, Event, Subscription
 from metering_billing.permissions import HasUserAPIKey
-from metering_billing.serializers import (
-    BillingPlanSerializer,
-    PlanComponentSerializer,
+from metering_billing.serializers.internal_serializers import (
     SubscriptionUsageSerializer,
+)
+from metering_billing.serializers.model_serializers import (
+    BillingPlanSerializer,
+    PlanComponentReadSerializer,
 )
 
 
@@ -240,7 +242,7 @@ def get_subscription_usage_and_revenue(subscription):
             plan_start_date,
             plan_end_date,
         )
-        plan_component_summary["plan_component"] = PlanComponentSerializer(
+        plan_component_summary["plan_component"] = PlanComponentReadSerializer(
             plan_component
         ).data
         sub_dict["components"].append(plan_component_summary)

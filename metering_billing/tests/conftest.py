@@ -116,3 +116,30 @@ def get_billable_metrics_in_org():
         return BillableMetric.objects.filter(organization=organization)
 
     return do_get_billable_metrics_in_org
+
+
+@pytest.fixture
+def add_subscriptions_to_org():
+    from metering_billing.models import Subscription
+
+    def do_add_subscriptions_to_org(organization, billing_plan, customer, n):
+        bm_set = baker.make(
+            Subscription,
+            _quantity=n,
+            organization=organization,
+            billing_plan=billing_plan,
+            customer=customer,
+        )
+        return bm_set
+
+    return do_add_subscriptions_to_org
+
+
+@pytest.fixture
+def get_subscriptions_in_org():
+    from metering_billing.models import Subscription
+
+    def do_get_subscriptions_in_org(organization):
+        return Subscription.objects.filter(organization=organization)
+
+    return do_get_subscriptions_in_org

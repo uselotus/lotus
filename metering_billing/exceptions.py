@@ -25,3 +25,9 @@ class DuplicateBillableMetric(APIException):
     status_code = 409
     default_detail = "Billable metric already exists"
     default_code = "Billable metric already exists"
+
+
+class OverlappingSubscription(APIException):
+    status_code = 409
+    default_detail = "Subscription overlaps with another subscription with the same billing plan and customer"
+    default_code = "Subscription overlaps with another subscription with the same billing plan and customer"

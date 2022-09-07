@@ -84,7 +84,7 @@ jobs:
         PIPENV_NOSPIN: 'true'
         WORKON_HOME: ~/.pipenv/virtualenvs
       run: |
-        pipenv run pytest 
+        pipenv run pytest -k "not test_tasks" 
 
   codestyle:
 
