@@ -21,21 +21,8 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.permissions import HasUserAPIKey
-from metering_billing.serializers import (
-    BillingPlanSerializer,
-    CustomerRevenueSerializer,
-    CustomerRevenueSummarySerializer,
-    CustomerSerializer,
-    EventSerializer,
-    PeriodComparisonRequestSerializer,
-    PeriodMetricRevenueResponseSerializer,
-    PeriodMetricUsageRequestSerializer,
-    PeriodMetricUsageResponseSerializer,
-    PeriodSubscriptionsResponseSerializer,
-    PlanComponentSerializer,
-    SubscriptionSerializer,
-    SubscriptionUsageSerializer,
-)
+from metering_billing.serializers.internal_serializers import *
+from metering_billing.serializers.model_serializers import *
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response

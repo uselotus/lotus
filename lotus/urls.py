@@ -19,7 +19,7 @@ from django.shortcuts import render
 from django.urls import path, re_path
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, track
-from metering_billing.views.model_viewsets import (
+from metering_billing.views.model_views import (
     BillableMetricViewSet,
     BillingPlanViewSet,
     CustomerViewSet,

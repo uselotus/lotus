@@ -12,6 +12,7 @@ from django.contrib.postgres.fields import (
 )
 from django.db import models
 from django.db.models import Func, Q
+from django.db.models.constraints import UniqueConstraint
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
@@ -57,7 +58,7 @@ class Customer(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
-    customer_id = models.CharField(max_length=40, unique=True)
+    customer_id = models.CharField(max_length=40)
     currency = models.CharField(max_length=3, default="USD")
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -76,6 +77,9 @@ class Customer(models.Model):
         if subscription_set is None:
             return "None"
         return [sub.billing_plan.get_plan_name() for sub in subscription_set]
+
+    class Meta:
+        unique_together = ("organization", "customer_id")
 
 
 class Event(models.Model):
@@ -136,12 +140,22 @@ class BillableMetric(models.Model):
             )
 
     class Meta:
-        unique_together = (
-            "organization",
-            "event_name",
-            "property_name",
-            "aggregation_type",
-        )
+        constraints = [
+            UniqueConstraint(
+                fields=[
+                    "organization",
+                    "event_name",
+                    "aggregation_type",
+                    "property_name",
+                ],
+                name="unique_with_property_name",
+            ),
+            UniqueConstraint(
+                fields=["organization", "event_name", "aggregation_type"],
+                condition=Q(property_name=None),
+                name="unique_without_property_name",
+            ),
+        ]
 
     def get_aggregation_type(self):
         return self.aggregation_type
@@ -261,22 +275,6 @@ class Subscription(models.Model):
         related_name="next_plan",
     )
     is_new = models.BooleanField(default=True)
-
-    # class Meta:
-    #     constraints = [
-    #         ExclusionConstraint(
-    #             name="exclude_overlapping_subscriptions",
-    #             expressions=(
-    #                 (
-    #                     TsTzRange("start_date", "end_date", RangeBoundary()),
-    #                     RangeOperators.OVERLAPS,
-    #                 ),
-    #                 ("organization", RangeOperators.EQUAL),
-    #                 ("customer", RangeOperators.EQUAL),
-    #                 ("billing_plan", RangeOperators.EQUAL),
-    #             ),
-    #         ),
-    #     ]
 
     def save(self, *args, **kwargs):
         if not self.next_plan:

@@ -4,7 +4,7 @@ import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from lotus.urls import router
-from metering_billing.models import User
+from metering_billing.models import Customer
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -49,8 +49,8 @@ def customer_test_common_setup(
 
         # set up number of customers
         if num_customers > 0:
-            add_customers_to_org(org, n=num_customers)
-            add_customers_to_org(org2, n=num_customers)
+            setup_dict["org_customers"] = add_customers_to_org(org, n=num_customers)
+            setup_dict["org2_customers"] = add_customers_to_org(org2, n=num_customers)
 
         return setup_dict
 
@@ -129,7 +129,7 @@ def insert_customer_payload():
     return payload
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestInsertCustomer:
     """Testing the POST of Customer endpoint:
     POST: Return list of customers associated with the organization with API key / user.
@@ -137,6 +137,7 @@ class TestInsertCustomer:
         auth_method: api_key, session_auth, both
         num_customers_before_insert: 0, >0
         user_org_and_api_key_org_different: true, false
+        customer_id
     """
 
     def test_api_key_can_create_customer_empty_before(
@@ -201,3 +202,49 @@ class TestInsertCustomer:
         assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
+
+    def test_customer_id_already_exists_within_org_reject_creation(
+        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
+    ):
+        num_customers = 3
+        setup_dict = customer_test_common_setup(
+            num_customers=num_customers,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        payload = insert_customer_payload
+        payload["customer_id"] = setup_dict["org_customers"][0].customer_id
+        response = setup_dict["client"].post(
+            reverse("customer-list"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        assert response.status_code == status.HTTP_409_CONFLICT
+        assert len(get_customers_in_org(setup_dict["org"])) == num_customers
+        assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
+
+    def test_customer_id_already_exists_not_in_org_accept_creation(
+        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
+    ):
+        num_customers = 3
+        setup_dict = customer_test_common_setup(
+            num_customers=num_customers,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        Customer.objects.create(
+            organization=setup_dict["org2"],
+            customer_id=insert_customer_payload["customer_id"],
+        )
+        response = setup_dict["client"].post(
+            reverse("customer-list"),
+            data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_customers_in_org(setup_dict["org"])) == num_customers + 1
