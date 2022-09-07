@@ -31,7 +31,7 @@ const AppRoutes: FC = () => {
           trigger={null}
           collapsible={false}
           collapsed={collapse}
-          style={{ minHeight: "100vh", background: "#000000" }}
+          style={{ minHeight: "100vh", background: "#FFFFFF" }}
         >
           <SideBar />
         </Sider>

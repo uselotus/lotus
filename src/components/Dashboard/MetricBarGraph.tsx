@@ -92,11 +92,12 @@ function MetricBarGraph(props: { range: any }) {
   };
 
   return (
-    <div>
+    <div className="">
       <Select
         defaultValue="Select Metric"
         onChange={changeMetric}
         value={selectedMetric}
+        className="my-5"
       >
         {metricList.map((metric_name) => (
           <Option value={metric_name} loading={isLoading}>
