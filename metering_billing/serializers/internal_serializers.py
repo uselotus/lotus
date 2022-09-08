@@ -1,8 +1,6 @@
 import datetime
 from decimal import Decimal
 
-from rest_framework import serializers
-
 from metering_billing.models import (
     BillableMetric,
     BillingPlan,
@@ -14,166 +12,12 @@ from metering_billing.models import (
     Subscription,
     User,
 )
+from rest_framework import serializers
+
+from .model_serializers import BillingPlanSerializer
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Organization
-        fields = (
-            "id",
-            "company_name",
-            "payment_plan",
-            "stripe_id",
-        )
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("username", "password")
-
-
-class CustomerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = (
-            "name",
-            "customer_id",
-            "balance",
-        )
-        lookup_field = "customer_id"
-
-
-class EventSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Event
-        fields = "__all__"  # allowed because we never send back, just take in
-
-
-class BillableMetricSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BillableMetric
-        fields = (
-            "id",
-            "event_name",
-            "property_name",
-            "aggregation_type",
-            "metric_name",
-        )
-
-    metric_name = serializers.SerializerMethodField()
-
-    def get_metric_name(self, obj) -> str:
-        return str(obj)
-
-
-class PlanComponentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PlanComponent
-        fields = (
-            "id",
-            "billable_metric",
-            "free_metric_quantity",
-            "cost_per_metric",
-            "metric_amount_per_cost",
-        )
-
-    billable_metric = BillableMetricSerializer()
-
-
-class PlanComponentShallowSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PlanComponent
-        fields = (
-            "id",
-            "billable_metric",
-            "free_metric_quantity",
-            "cost_per_metric",
-            "metric_amount_per_cost",
-        )
-
-
-class BillingPlanSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BillingPlan
-        fields = (
-            "time_created",
-            "currency",
-            "interval",
-            "flat_rate",
-            "pay_in_advance",
-            "name",
-            "description",
-            "components",
-        )
-
-    components = PlanComponentShallowSerializer(many=True)
-
-    def create(self, validated_data):
-        components_data = validated_data.pop("components")
-        billing_plan = BillingPlan.objects.create(**validated_data)
-        for component_data in components_data:
-            pc = PlanComponent.objects.get(**component_data)
-            billing_plan.components.add(pc)
-            billing_plan.save()
-        return billing_plan
-
-
-class BillingPlanReadSerializer(BillingPlanSerializer):
-    class Meta:
-        model = BillingPlan
-        fields = (
-            "id",
-            "time_created",
-            "currency",
-            "interval",
-            "flat_rate",
-            "pay_in_advance",
-            "name",
-            "description",
-            "components",
-        )
-
-    components = PlanComponentSerializer(many=True)
-    time_created = serializers.SerializerMethodField()
-
-    def get_time_created(self, obj) -> datetime.date:
-        return str(obj.time_created.date())
-
-
-class SubscriptionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Subscription
-        fields = (
-            "id",
-            "customer",
-            "billing_plan",
-            "start_date",
-            "end_date",
-            "status",
-        )
-
-    customer = CustomerSerializer()
-    billing_plan = BillingPlanSerializer()
-
-
-class InvoiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Invoice
-        fields = (
-            "id",
-            "cost_due",
-            "issue_date",
-            "customer",
-            "subscription",
-            "status",
-            "line_items",
-        )
-
-    customer = CustomerSerializer()
-    subscription = SubscriptionSerializer()
-
-
+## CUSTOM SERIALIZERS
 class CustomerNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer

@@ -12,6 +12,7 @@ from django.contrib.postgres.fields import (
 )
 from django.db import models
 from django.db.models import Func, Q
+from django.db.models.constraints import UniqueConstraint
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
@@ -27,7 +28,7 @@ class Organization(models.Model):
         ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
     )
     company_name = models.CharField(max_length=100, default=" ")
-    stripe_id = models.CharField(max_length=110, default="", blank=True, null=True)
+    stripe_id = models.CharField(max_length=110, blank=True, null=True)
     created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
@@ -57,7 +58,7 @@ class Customer(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
-    customer_id = models.CharField(max_length=40, unique=True)
+    customer_id = models.CharField(max_length=40)
     currency = models.CharField(max_length=3, default="USD")
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -68,8 +69,6 @@ class Customer(models.Model):
 
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
 
-    properties = models.JSONField(default=dict, blank=True, null=True)
-
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
 
@@ -78,6 +77,9 @@ class Customer(models.Model):
         if subscription_set is None:
             return "None"
         return [sub.billing_plan.get_plan_name() for sub in subscription_set]
+
+    class Meta:
+        unique_together = ("organization", "customer_id")
 
 
 class Event(models.Model):
@@ -138,12 +140,22 @@ class BillableMetric(models.Model):
             )
 
     class Meta:
-        unique_together = (
-            "organization",
-            "event_name",
-            "property_name",
-            "aggregation_type",
-        )
+        constraints = [
+            UniqueConstraint(
+                fields=[
+                    "organization",
+                    "event_name",
+                    "aggregation_type",
+                    "property_name",
+                ],
+                name="unique_with_property_name",
+            ),
+            UniqueConstraint(
+                fields=["organization", "event_name", "aggregation_type"],
+                condition=Q(property_name=None),
+                name="unique_without_property_name",
+            ),
+        ]
 
     def get_aggregation_type(self):
         return self.aggregation_type
@@ -264,22 +276,6 @@ class Subscription(models.Model):
     )
     is_new = models.BooleanField(default=True)
 
-    # class Meta:
-    #     constraints = [
-    #         ExclusionConstraint(
-    #             name="exclude_overlapping_subscriptions",
-    #             expressions=(
-    #                 (
-    #                     TsTzRange("start_date", "end_date", RangeBoundary()),
-    #                     RangeOperators.OVERLAPS,
-    #                 ),
-    #                 ("organization", RangeOperators.EQUAL),
-    #                 ("customer", RangeOperators.EQUAL),
-    #                 ("billing_plan", RangeOperators.EQUAL),
-    #             ),
-    #         ),
-    #     ]
-
     def save(self, *args, **kwargs):
         if not self.next_plan:
             self.next_plan = self.billing_plan
@@ -292,28 +288,31 @@ class Subscription(models.Model):
 
 class Invoice(models.Model):
     class STATUS_TYPES(object):
-        ISSUED = "issued"
-        NOT_SENT = "not_sent"
-        FULFILLED = "fulfilled"
+        NOT_CONNECTED_TO_STRIPE = "not_connected_to_stripe"
+        REQUIRES_PAYMENT_METHOD = "requires_payment_method"
+        REQUIRES_ACTION = "requires_action"
+        PROCESSING = "processing"
+        SUCCEEDED = "succeeded"
 
     STATUS_CHOICES = Choices(
-        (STATUS_TYPES.ISSUED, _("Issued")),
-        (STATUS_TYPES.FULFILLED, _("Fullfilled")),
-        (STATUS_TYPES.NOT_SENT, _("Not Sent")),
+        (STATUS_TYPES.REQUIRES_PAYMENT_METHOD, _("Requires Payment Method")),
+        (STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
+        (STATUS_TYPES.PROCESSING, _("Processing")),
+        (STATUS_TYPES.SUCCEEDED, _("Succeeded")),
+        (STATUS_TYPES.NOT_CONNECTED_TO_STRIPE, _("Not Connected to Stripe")),
     )
 
     cost_due = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
-    subscription = models.ForeignKey(Subscription, on_delete=models.PROTECT)
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_sent
-    )
-    line_items = ArrayField(base_field=models.JSONField(), null=True, blank=True)
+    status = models.CharField(max_length=35, choices=STATUS_CHOICES)
+    payment_intent_id = models.CharField(max_length=240, null=True, blank=True)
+    line_items = models.JSONField()
+    organization = models.JSONField()
+    customer = models.JSONField()
+    subscription = models.JSONField()
 
 
 class APIToken(AbstractAPIKey):
