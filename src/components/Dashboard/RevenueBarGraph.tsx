@@ -3,6 +3,12 @@ import React, { useState, useEffect } from "react";
 import { RevenuePeriod } from "../../types/revenue-type";
 import LoadingSpinner from "../LoadingSpinner";
 
+interface RevenueChartData {
+  day: string;
+  revenue: number;
+  type: string | any;
+}
+
 const defaultData = [
   {
     day: "Aug 22",
@@ -83,7 +89,25 @@ function RevenueBarGraph(props: {
   data?: RevenuePeriod[];
   isLoading: boolean;
 }) {
-  const [data, setData] = useState<any>(defaultData);
+  const [data, setData] = useState<RevenuePeriod[]>([]);
+
+  useEffect(() => {
+    if (props.data) {
+      let compressedArray: RevenueChartData[] = [];
+
+      for (let i = 0; i < props.data.length; i++) {
+        const metric = props.data[i].metric;
+        for (const k in props.data[i].data) {
+          compressedArray.push({
+            day: props.data[i].data[k].day,
+            revenue: props.data[i].data[k].metric_revenue,
+            type: metric.metric_name,
+          });
+        }
+      }
+    }
+  }, [props.data]);
+
   const config = {
     data,
     isStack: true,
@@ -107,13 +131,14 @@ function RevenueBarGraph(props: {
       ],
     },
   };
-  // if (props.isLoading || props.data === undefined) {
-  //   return (
-  //     <div>
-  //       <LoadingSpinner />
-  //     </div>
-  //   );
-  // }
+  if (props.isLoading || props.data === undefined || props.data.length === 0) {
+    return (
+      <div className="flex flex-col justify-center">
+        <h3>No Revenue Data</h3>
+        <LoadingSpinner />
+      </div>
+    );
+  }
   return (
     <div>
       <Column {...config} />

@@ -33,7 +33,7 @@ function MetricBarGraph(props: { range: any }) {
     );
 
   useEffect(() => {
-    if (data?.metrics) {
+    if (data?.metrics && Object.keys(data.metrics).length > 0) {
       setMetricList(Object.keys(data.metrics));
       setSelectedMetric(Object.keys(data.metrics)[0]);
       changeMetric(Object.keys(data.metrics)[0]);
@@ -66,6 +66,7 @@ function MetricBarGraph(props: { range: any }) {
   if (isLoading || data === undefined) {
     return (
       <div>
+        <h3>No Usage Data</h3>
         <LoadingSpinner />
       </div>
     );
@@ -87,7 +88,6 @@ function MetricBarGraph(props: { range: any }) {
         });
       }
     }
-    compressedArray.reverse();
     setChartData(compressedArray);
   };
 

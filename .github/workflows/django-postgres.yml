@@ -9,15 +9,13 @@ on:
   pull_request:
     branches: ["main"]
 
-
 permissions:
   contents: read
 
 jobs:
   tests:
-
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:latest
@@ -34,100 +32,106 @@ jobs:
     environment: Development
 
     env:
-        REDIS_HOST: localhost
-        DJANGO_SETTINGS_MODULE: 'lotus.settings'
-        PYTHONPATH: '.'
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
-        CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
-        DEBUG: False
+      REDIS_HOST: localhost
+      DJANGO_SETTINGS_MODULE: "lotus.settings"
+      PYTHONPATH: "."
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
+      CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
+      DEBUG: False
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.9"
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
 
-    - name: Install dependencies with pipenv
-      run: |
-        pip install pipenv
-        pipenv install --deploy --dev
+      - name: Install dependencies with pipenv
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev
 
-    - name: Cache Pipenv virtualenv
-      uses: actions/cache@v1
-      id: pipenv-cache
-      with:
-        path: ~/.pipenv
-        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pipenv-v2-
+      - name: Cache Pipenv virtualenv
+        uses: actions/cache@v1
+        id: pipenv-cache
+        with:
+          path: ~/.pipenv
+          key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pipenv-v2-
 
-    - name: Install Dependencies
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
-      run: pipenv install --deploy --dev
-      if: steps.pipenv-cache.outputs.cache-hit != 'true'
+      - name: Install Dependencies
+        env:
+          PIPENV_NOSPIN: "true"
+          WORKON_HOME: ~/.pipenv/virtualenvs
+          PIPENV_CACHE_DIR: ~/.pipenv/pipcache
+        run: pipenv install --deploy --dev
+        if: steps.pipenv-cache.outputs.cache-hit != 'true'
 
-    - name: Migrate
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-      run: |
-        pipenv run python manage.py migrate --noinput
-    
-    - name: Test
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-      run: |
-        pipenv run pytest -k "not test_tasks" 
+      - name: Migrate
+        env:
+          PIPENV_NOSPIN: "true"
+          WORKON_HOME: ~/.pipenv/virtualenvs
+        run: |
+          pipenv run python manage.py migrate --noinput
+
+      - name: Test Pytest
+        env:
+          PIPENV_NOSPIN: "true"
+          WORKON_HOME: ~/.pipenv/virtualenvs
+        run: |
+          pipenv run pytest -k "not test_tasks"
+
+      - name: Test Setup Tasks
+        env:
+          PIPENV_NOSPIN: "true"
+          WORKON_HOME: ~/.pipenv/virtualenvs
+        run: |
+          pipenv run python manage.py setup_tasks --noinput
 
   codestyle:
-
     runs-on: ubuntu-latest
 
     environment: Development
 
     env:
-        PYTHONPATH: '.'
+      PYTHONPATH: "."
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.9"
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.9"
 
-    - name: Install dependencies with pipenv
-      run: |
-        pip install pipenv
-        pipenv install --deploy --dev
+      - name: Install dependencies with pipenv
+        run: |
+          pip install pipenv
+          pipenv install --deploy --dev
 
-    - name: Cache Pipenv virtualenv
-      uses: actions/cache@v1
-      id: pipenv-cache
-      with:
-        path: ~/.pipenv
-        key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pipenv-v2-
+      - name: Cache Pipenv virtualenv
+        uses: actions/cache@v1
+        id: pipenv-cache
+        with:
+          path: ~/.pipenv
+          key: ${{ runner.os }}-pipenv-v2-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pipenv-v2-
 
-    - name: Install Dependencies
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-        PIPENV_CACHE_DIR: ~/.pipenv/pipcache
-      run: pipenv install --deploy --dev
-      if: steps.pipenv-cache.outputs.cache-hit != 'true'
+      - name: Install Dependencies
+        env:
+          PIPENV_NOSPIN: "true"
+          WORKON_HOME: ~/.pipenv/virtualenvs
+          PIPENV_CACHE_DIR: ~/.pipenv/pipcache
+        run: pipenv install --deploy --dev
+        if: steps.pipenv-cache.outputs.cache-hit != 'true'
 
-    - name: Codestyle Check
-      env:
-        PIPENV_NOSPIN: 'true'
-        WORKON_HOME: ~/.pipenv/virtualenvs
-      run: |
-        pipenv run black --check .
+      - name: Codestyle Check
+        env:
+          PIPENV_NOSPIN: "true"
+          WORKON_HOME: ~/.pipenv/virtualenvs
+        run: |
+          pipenv run black --check .
