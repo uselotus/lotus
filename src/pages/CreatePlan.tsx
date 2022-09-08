@@ -134,11 +134,7 @@ const CreatePlan = () => {
             const { create_plan } = forms;
             const components = create_plan.getFieldValue("components") || [];
             create_plan.setFieldsValue({ components: [...components, values] });
-            console.log(create_plan.getFieldValue("components"));
             setVisible(false);
-          }
-          if (name === "create_plan") {
-            console.log(values);
           }
         }}
       >
@@ -209,7 +205,6 @@ const CreatePlan = () => {
             {({ getFieldValue }) => {
               const components: ComponentDisplay[] =
                 getFieldValue("components") || [];
-              console.log(getFieldValue("components"));
               return components.length ? (
                 <List grid={{ gutter: 16, column: 4 }}>
                   {components.map((component, index) => (

@@ -44,7 +44,6 @@ const SideBar: FC = () => {
       <div
         style={{
           height: "32px",
-          background: "#fff",
           margin: "16px",
         }}
       >

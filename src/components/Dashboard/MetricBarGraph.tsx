@@ -33,9 +33,10 @@ function MetricBarGraph(props: { range: any }) {
     );
 
   useEffect(() => {
-    if (data?.metrics) {
-      console.log(data);
+    if (data?.metrics && Object.keys(data.metrics).length > 0) {
       setMetricList(Object.keys(data.metrics));
+      setSelectedMetric(Object.keys(data.metrics)[0]);
+      changeMetric(Object.keys(data.metrics)[0]);
     }
   }, [data]);
 
@@ -65,6 +66,7 @@ function MetricBarGraph(props: { range: any }) {
   if (isLoading || data === undefined) {
     return (
       <div>
+        <h3>No Usage Data</h3>
         <LoadingSpinner />
       </div>
     );
@@ -75,12 +77,10 @@ function MetricBarGraph(props: { range: any }) {
     setSelectedMetric(value);
 
     const daily_data = data.metrics[value].data;
-    console.log(daily_data);
 
     for (let i = 0; i < daily_data.length; i++) {
       const date = daily_data[i].date;
       for (const k in daily_data[i].customer_usages) {
-        console.log(daily_data[i].customer_usages[k]);
         compressedArray.push({
           date: date,
           metric_amount: daily_data[i].customer_usages[k],
@@ -88,13 +88,17 @@ function MetricBarGraph(props: { range: any }) {
         });
       }
     }
-    compressedArray.reverse();
     setChartData(compressedArray);
   };
 
   return (
-    <div>
-      <Select defaultValue="Select Metric" onChange={changeMetric}>
+    <div className="">
+      <Select
+        defaultValue="Select Metric"
+        onChange={changeMetric}
+        value={selectedMetric}
+        className="my-5"
+      >
         {metricList.map((metric_name) => (
           <Option value={metric_name} loading={isLoading}>
             {metric_name}

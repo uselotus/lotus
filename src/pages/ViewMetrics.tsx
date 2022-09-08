@@ -83,9 +83,14 @@ const ViewMetrics: FC = () => {
             <MetricTable metricArray={data} />
           )}
         </div>
-        <Card className="flex flex-row justify-center bg-grey3">
+        <Card className="flex flex-row justify-center bg-light">
           <h1 className="text-2xl font-main mb-5">Event Stream</h1>
           <Divider />
+          <div>
+            <p className=" text-bold">
+              Realtime Event Stream Preivew Coming Soon
+            </p>
+          </div>
         </Card>
       </div>
       <CreateMetricForm

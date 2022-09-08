@@ -11,7 +11,7 @@ function SubscriptionStatistics(props: { range: any[] }) {
     cancelled_subscriptions: 6,
   };
   const { data, isLoading } = useQuery<SubscriptionTotals>(
-    ["total_revenue"],
+    ["subscription_overview", props.range],
     () =>
       GetSubscriptions.getSubscriptionOverview(
         props.range[0].format("YYYY-MM-DD"),

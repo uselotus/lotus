@@ -21,6 +21,12 @@ function RevenueDisplay(props: {
   total_revenue_2: number | undefined;
   isLoading: boolean;
 }) {
+  const [percentageChange, setPercentageChange] = useState<number>(0);
+  useEffect(() => {
+    setPercentageChange(
+      computePercentageChange(props.total_revenue_1, props.total_revenue_2)
+    );
+  }, [props.total_revenue_1, props.total_revenue_2]);
   if (
     props.isLoading ||
     props.total_revenue_1 === undefined ||
@@ -38,7 +44,7 @@ function RevenueDisplay(props: {
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <h2 className="text-3xl">$ {props.total_revenue_1}</h2>
         <div>
-          {3 >= 0 ? (
+          {percentageChange >= 0 ? (
             <Statistic
               value={props.total_revenue_1}
               valueStyle={{
@@ -54,8 +60,8 @@ function RevenueDisplay(props: {
           ) : (
             <Statistic
               value={computePercentageChange(
-                props.total_revenue_2,
-                props.total_revenue_1
+                props.total_revenue_1,
+                props.total_revenue_2
               )}
               valueStyle={{
                 color: "#cf1322",

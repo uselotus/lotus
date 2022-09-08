@@ -48,5 +48,5 @@ class Command(BaseCommand):
             PeriodicTask.objects.create(
                 name="Check Payment Intent status and update invoice",
                 task="metering_billing.tasks.update_invoice_status",
-                interval=every_hour,
+                crontab=every_hour,
             )
