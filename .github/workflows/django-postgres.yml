@@ -89,7 +89,7 @@ jobs:
           PIPENV_NOSPIN: "true"
           WORKON_HOME: ~/.pipenv/virtualenvs
         run: |
-          pipenv run python manage.py setup_tasks --noinput
+          pipenv run python manage.py setup_tasks
 
   codestyle:
     runs-on: ubuntu-latest
