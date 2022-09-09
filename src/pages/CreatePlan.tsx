@@ -9,7 +9,7 @@ import {
   PageHeader,
   List,
 } from "antd";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/UsageComponentForm";
 import { useMutation } from "react-query";
@@ -19,6 +19,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { Metrics } from "../api/api";
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
 import { Plan } from "../api/api";
+import { conversionMomentValue } from "@ant-design/pro-components";
 
 interface ComponentDisplay {
   metric: string;
@@ -59,6 +60,7 @@ const CreatePlan = () => {
         toast.success("Successfully created Plan", {
           position: toast.POSITION.TOP_CENTER,
         });
+        navigate("/plans");
       },
       onError: () => {
         toast.error("Failed to create Plan", {
@@ -89,17 +91,15 @@ const CreatePlan = () => {
     form
       .validateFields()
       .then((values) => {
-        form.resetFields();
-
         const usagecomponentslist: CreateComponent[] = [];
-        if (values.usage_components) {
-          for (let i = 0; i < values.components.length; i++) {
+        const components = form.getFieldValue("components");
+        if (components) {
+          for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              billable_metric: metricMap.get(values.components[i].metric),
-              cost_per_metric: values.components[i].cost_per_metric,
-              metric_amount_per_cost:
-                values.usage_components[i].metric_amount_per_cost,
-              free_metric_quantity: values.usage_components[i].free_amount,
+              billable_metric: metricMap.get(components[i].metric),
+              cost_per_metric: components[i].cost_per_metric,
+              metric_amount_per_cost: components[i].metric_amount_per_cost,
+              free_metric_quantity: components[i].free_amount,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -114,11 +114,11 @@ const CreatePlan = () => {
           components: usagecomponentslist,
         };
         mutation.mutate(plan);
+        form.resetFields();
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
       });
-    navigate("/plans");
   };
 
   return (
@@ -205,6 +205,7 @@ const CreatePlan = () => {
             {({ getFieldValue }) => {
               const components: ComponentDisplay[] =
                 getFieldValue("components") || [];
+              console.log(components);
               return components.length ? (
                 <List grid={{ gutter: 16, column: 4 }}>
                   {components.map((component, index) => (

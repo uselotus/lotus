@@ -40,7 +40,7 @@ function SubscriptionStatistics(props: { range: any[] }) {
             precision={0}
             className="text-3xl"
           />
-          <p>Total Subscriptions</p>
+          <p>Total</p>
         </div>
 
         <div className="flex flex-col items-center">
@@ -52,7 +52,7 @@ function SubscriptionStatistics(props: { range: any[] }) {
             }}
             precision={0}
           />
-          <p>New Subscriptions</p>
+          <p>New</p>
         </div>
       </div>
     </div>

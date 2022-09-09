@@ -9,102 +9,29 @@ interface RevenueChartData {
   type: string | any;
 }
 
-const defaultData = [
-  {
-    day: "Aug 22",
-    revenue: 6,
-    type: "API 1",
-  },
-  {
-    day: "Aug 22",
-    revenue: 3,
-    type: "API 2",
-  },
-  {
-    day: "Aug 21",
-    revenue: 3,
-    type: "API 1",
-  },
-  {
-    day: "Aug 21",
-    revenue: 4,
-    type: "API 2",
-  },
-  {
-    day: "Aug 23",
-    revenue: 24,
-    type: "API 1",
-  },
-  {
-    day: "Aug 23",
-    revenue: 3,
-    type: "API 2",
-  },
-  {
-    day: "Aug 24",
-    revenue: 53,
-    type: "API 1",
-  },
-  {
-    day: "Aug 24",
-    revenue: 2,
-    type: "API 2",
-  },
-  {
-    day: "Aug 26",
-    revenue: 23,
-    type: "API 1",
-  },
-  {
-    day: "Aug 26",
-    revenue: 6,
-    type: "API 2",
-  },
-  {
-    day: "Aug 27",
-    revenue: 20,
-    type: "API 1",
-  },
-  {
-    day: "Aug 27",
-    revenue: 10,
-    type: "API 2",
-  },
-  //generate more data
-  {
-    day: "Aug 28",
-    revenue: 6,
-    type: "API 1",
-  },
-  {
-    day: "Aug 28",
-    revenue: 4,
-    type: "API 2",
-  },
-];
-
 //Generate more defaultData for the month of august
 
 function RevenueBarGraph(props: {
   data?: RevenuePeriod[];
   isLoading: boolean;
 }) {
-  const [data, setData] = useState<RevenuePeriod[]>([]);
+  const [data, setData] = useState<RevenueChartData[]>([]);
 
   useEffect(() => {
     if (props.data) {
       let compressedArray: RevenueChartData[] = [];
-
       for (let i = 0; i < props.data.length; i++) {
         const metric = props.data[i].metric;
         for (const k in props.data[i].data) {
           compressedArray.push({
-            day: props.data[i].data[k].day,
+            day: props.data[i].data[k].date,
             revenue: props.data[i].data[k].metric_revenue,
-            type: metric.metric_name,
+            type: metric,
           });
+          console.log(compressedArray);
         }
       }
+      setData(compressedArray);
     }
   }, [props.data]);
 
@@ -116,7 +43,18 @@ function RevenueBarGraph(props: {
     seriesField: "type",
     isRange: true,
     maxColumnWidth: 30,
-    color: ["#DEC27D", "#72A5FD", "#DEC27D"],
+    color: [
+      "#abab05",
+      "#ffdd02",
+      "#ffea01",
+      "#ffe601",
+      "#fcdb00",
+      "#e3b200",
+      "#f5d800",
+      "#f7ce00",
+      "#926600",
+      "#291c00",
+    ],
     label: {
       layout: [
         {

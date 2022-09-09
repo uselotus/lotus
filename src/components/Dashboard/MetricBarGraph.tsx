@@ -48,7 +48,21 @@ function MetricBarGraph(props: { range: any }) {
     seriesField: "type",
     isRange: true,
     maxColumnWidth: 30,
-    color: ["#DEC27D", "#72A5FD", "#DEC27D"],
+
+    color: [
+      "#0c1820",
+      "#071d2a",
+      "#082636",
+      "#082d41",
+      "#08354c",
+      "#083e59",
+      "#064b6b",
+      "#005d85",
+      "#68ddfd",
+      "#8ae8ff",
+      "#2ec8ee",
+      "#eaf8ff",
+    ],
     label: {
       layout: [
         {

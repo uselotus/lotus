@@ -46,27 +46,22 @@ function RevenueDisplay(props: {
         <div>
           {percentageChange >= 0 ? (
             <Statistic
-              value={props.total_revenue_1}
+              value={percentageChange}
               valueStyle={{
                 color: "#3f8600",
                 fontSize: "1.875rem",
                 lineHeight: "2.25rem",
               }}
-              precision={1}
+              precision={2}
               prefix={<ArrowUpOutlined />}
               suffix="%"
               className="text-3xl"
             />
           ) : (
             <Statistic
-              value={computePercentageChange(
-                props.total_revenue_1,
-                props.total_revenue_2
-              )}
+              value={percentageChange}
               valueStyle={{
                 color: "#cf1322",
-                fontSize: "1.875rem",
-                lineHeight: "2.25rem",
               }}
               precision={2}
               prefix={<ArrowDownOutlined />}
