@@ -1,19 +1,17 @@
 import base64
 import json
 from re import S
-from typing import Dict, List, Union
-from urllib.parse import urlparse
+from typing import Dict, Union
 
-from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.core.cache import cache
+from django.db import IntegrityError
+from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from metering_billing.models import APIToken, BillingPlan, Customer, Event, Organization
-from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+from metering_billing.exceptions import RepeatedEventIdempotency
+from metering_billing.models import Customer, Event
+from silk.profiling.profiler import silk_profile
 
-from ..auth_utils import parse_organization
+from ..auth_utils import get_organization_from_key
 from ..permissions import HasUserAPIKey
 
 
@@ -41,65 +39,50 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
     return event_data
 
 
-def ingest_event(request, data: dict, customer: Customer, organization) -> None:
-
-    idempotency_id_query = Event.objects.filter(
-        idempotency_id=data["idempotency_id"]
-    ).count()
-
-    if idempotency_id_query > 0:
-        return JsonResponse(
-            {"detail": "This event record already exists", "status": "Failure"},
-            status=409,
-        )
-
-    db_event = Event.objects.create(
-        organization=organization,
-        event_name=data["event_name"],
-        idempotency_id=data["idempotency_id"],
-        customer=customer,
-        time_created=data["time_created"],
-    )
+def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
+    event_kwargs = {
+        "organization_id": organization_pk,
+        "customer_id": customer_pk,
+        "event_name": data["event_name"],
+        "idempotency_id": data["idempotency_id"],
+        "time_created": data["time_created"],
+    }
     if "properties" in data:
-        db_event.properties = data["properties"]
-    db_event.save()
+        event_kwargs["properties"] = data["properties"]
+    Event.objects.create(**event_kwargs)
+
     return JsonResponse({"status": "Success"}, status=201)
 
 
 @csrf_exempt
-@permission_classes((HasUserAPIKey))
+@silk_profile(name="Track Event")
 def track_event(request):
-    # Find the associated organization, need to move to middleware/auth
-    organization = parse_organization(request)
+    key = HasUserAPIKey().get_key(request)
+    prefix, _, _ = key.partition(".")
+    organization_pk = cache.get(prefix)
+    if not organization_pk:
+        organization_pk = get_organization_from_key(key).pk
+        cache.set(prefix, organization_pk, 60 * 60 * 24)
 
     data = load_event(request)
     if not data:
         return HttpResponseBadRequest("No data provided")
-    customer_id = data["customer_id"]
-    try:
-        customer = Customer.objects.get(customer_id=customer_id)
-    except Customer.DoesNotExist:
-        return HttpResponseBadRequest("Customer does not exist")
 
-    if isinstance(data, list):
-        for i in data:
-            try:
-                return ingest_event(
-                    request=request,
-                    data=i,
-                    customer=customer,
-                    organization=organization,
-                )
-            except KeyError:
-                return JsonResponse(
-                    {
-                        "code": "validation",
-                        "message": "You need to set a distinct_id.",
-                        "item": data,
-                    },
-                    status=400,
-                )
+    customer_id = data["customer_id"]
+    customer_pk_list = Customer.objects.filter(
+        organization=organization_pk, customer_id=customer_id
+    ).values_list("id", flat=True)
+    if len(customer_pk_list) == 0:
+        return HttpResponseBadRequest("Customer does not exist")
     else:
-        return ingest_event(
-            request=request, data=data, customer=customer, organization=organization
-        )
+        customer_pk = customer_pk_list[0]
+
+    event_idem_list = Event.objects.filter(
+        idempotency_id=data["idempotency_id"],
+    ).values_list("id", flat=True)
+    if len(event_idem_list) > 0:
+        return HttpResponseBadRequest("Event idempotency already exists")
+
+    return ingest_event(
+        data=data, customer_pk=customer_pk, organization_pk=organization_pk
+    )

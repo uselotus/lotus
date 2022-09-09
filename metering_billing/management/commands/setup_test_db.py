@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from django.core.management.base import BaseCommand
+from faker import Faker
 from metering_billing.models import (
     BillableMetric,
     BillingPlan,
@@ -23,12 +24,19 @@ class Command(BaseCommand):
     "Django command to pause execution until the database is available"
 
     def handle(self, *args, **options):
+        fake = Faker()
         username = os.getenv("DJANGO_SUPERUSER_USERNAME")
 
         admin = User.objects.get(username=username)
         organization = admin.organization
 
-        customer_set = baker.make(Customer, _quantity=10, organization=organization)
+        customer_set = baker.make(
+            Customer,
+            _quantity=10,
+            organization=organization,
+            name=lambda _: fake.unique.company(),
+            customer_id=lambda _: fake.unique.ean(),
+        )
         bm_e1_1, bm_e1_2 = baker.make(
             BillableMetric,
             organization=organization,
@@ -77,6 +85,7 @@ class Command(BaseCommand):
             currency="USD",
             flat_rate=30,
             pay_in_advance=True,
+            billing_plan_id="sentry-basic-plan",
         )
         bp.components.add(pc1, pc2, pc3, pc4)
         bp.save()

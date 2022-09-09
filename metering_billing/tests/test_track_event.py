@@ -167,8 +167,7 @@ class TestTrackEvent:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
-        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         customer_org_events = get_events_with_org_customer_id(
             setup_dict["org"], setup_dict["customer_id"]
         )
