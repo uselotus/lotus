@@ -9,7 +9,6 @@ from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from metering_billing.exceptions import RepeatedEventIdempotency
 from metering_billing.models import Customer, Event
-from silk.profiling.profiler import silk_profile
 
 from ..auth_utils import get_organization_from_key
 from ..permissions import HasUserAPIKey
@@ -55,7 +54,6 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
 
 
 @csrf_exempt
-@silk_profile(name="Track Event")
 def track_event(request):
     key = HasUserAPIKey().get_key(request)
     prefix, _, _ = key.partition(".")
