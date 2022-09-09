@@ -2,8 +2,14 @@ import datetime
 from decimal import Decimal
 
 from django.db.models import Q
-from metering_billing.exceptions import OverlappingSubscription
+from metering_billing.auth_utils import parse_organization
+from metering_billing.exceptions import (
+    OrganizationMismatch,
+    OverlappingSubscription,
+    UserNoOrganization,
+)
 from metering_billing.models import (
+    APIToken,
     BillableMetric,
     BillingPlan,
     Customer,
@@ -14,6 +20,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
+from metering_billing.permissions import HasUserAPIKey
 from rest_framework import serializers
 
 ## EXTRANEOUS SERIALIZERS
@@ -52,7 +59,6 @@ class CustomerSerializer(serializers.ModelSerializer):
             "customer_id",
             "balance",
         )
-        lookup_field = "customer_id"
 
 
 ## BILLABLE METRIC
@@ -131,6 +137,15 @@ class BillingPlanReadSerializer(BillingPlanSerializer):
 
 
 ## SUBSCRIPTION
+class SlugRelatedLookupField(serializers.SlugRelatedField):
+    def get_queryset(self):
+        queryset = self.queryset
+        request = self.context.get("request", None)
+        organization = parse_organization(request)
+        queryset.filter(organization=organization)
+        return queryset
+
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
@@ -141,6 +156,15 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "end_date",
             "status",
         )
+
+    customer = SlugRelatedLookupField(
+        slug_field="customer_id", queryset=Customer.objects.all(), read_only=False
+    )
+    billing_plan = SlugRelatedLookupField(
+        slug_field="billing_plan_id",
+        queryset=BillingPlan.objects.all(),
+        read_only=False,
+    )
 
     def validate(self, data):
         """

@@ -77,8 +77,8 @@ def generate_invoice(subscription):
         v["usage_revenue"] for _, v in components.items()
     )
     if billing_plan.pay_in_advance:
-        if subscription.next_plan.exists():
-            usage_dict["flat_revenue_due"] = subscription.next_plan.flat_rate.amount
+        if subscription.auto_renew:
+            usage_dict["flat_revenue_due"] = billing_plan.flat_rate.amount
         else:
             usage_dict["flat_revenue_due"] = 0
     else:
