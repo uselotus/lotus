@@ -29,13 +29,12 @@ class Command(BaseCommand):
 
         admin = User.objects.get(username=username)
         organization = admin.organization
-
         customer_set = baker.make(
             Customer,
             _quantity=10,
             organization=organization,
-            name=lambda _: fake.unique.company(),
-            customer_id=lambda _: fake.unique.ean(),
+            name=(fake.unique.company() for _ in range(10)),
+            customer_id=(fake.unique.ean() for _ in range(10)),
         )
         bm_e1_1, bm_e1_2 = baker.make(
             BillableMetric,
