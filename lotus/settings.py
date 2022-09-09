@@ -22,7 +22,8 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 env = environ.Env(
     # set casting, default value
-    DEBUG=(bool, False)
+    DEBUG=(bool, False),
+    PROFILER_ENABLED=(bool, False),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -58,6 +59,7 @@ API_KEY_CUSTOM_HEADER = "X-API-KEY"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
+PROFILER_ENABLED = env("PROFILER_ENABLED")
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
@@ -87,6 +89,7 @@ INSTALLED_APPS = [
     "rest_framework_api_key",
     "django_vite",
     "drf_spectacular",
+    "silk",
 ]
 
 MIDDLEWARE = [
@@ -100,6 +103,11 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+if PROFILER_ENABLED:
+    MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
+    SILKY_PYTHON_PROFILER = True
+
 
 ROOT_URLCONF = "lotus.urls"
 
@@ -184,10 +192,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Stripe Settings
-try:
-    STRIPE_SECRET_KEY = os.environ["STRIPE_SECRET_KEY"]
-except KeyError:
-    STRIPE_SECRET_KEY = ""
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+
+# Stripe Settings
+ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
 
 # Celery Settings
 try:

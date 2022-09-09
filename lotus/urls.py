@@ -37,6 +37,8 @@ from metering_billing.views.views import (
 )
 from rest_framework import routers
 
+from .settings import PROFILER_ENABLED
+
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
 router.register(r"customers", CustomerViewSet, basename="customer")
@@ -75,5 +77,9 @@ urlpatterns = [
     path("api/logout/", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
     path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
-    re_path(".*", TemplateView.as_view(template_name="index.html")),
 ]
+
+if PROFILER_ENABLED:
+    urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
+
+urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

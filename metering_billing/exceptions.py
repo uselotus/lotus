@@ -9,6 +9,18 @@ class OrganizationMismatch(APIException):
     default_code = "Mismatched API key and session authentication"
 
 
+class NoMatchingAPIKey(APIException):
+    status_code = 403
+    default_detail = "API Key not known"
+    default_code = "API Key not known"
+
+
+class RepeatedEventIdempotency(APIException):
+    status_code = 409
+    default_detail = "Idempotency key already exists"
+    default_code = "Idempotency key already exists"
+
+
 class UserNoOrganization(APIException):
     status_code = 403
     default_detail = "User does not have an organization"

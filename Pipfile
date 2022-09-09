@@ -33,6 +33,7 @@ django-vite = "*"
 django-environ = "*"
 drf-spectacular = "*"
 model-bakery = "*"
+faker = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"
@@ -42,6 +43,8 @@ isort = "*"
 model-bakery = "*"
 pytest-django = "*"
 pytest = "*"
+locust = "*"
+django-silk = "*"
 
 [requires]
 python_version = "3.9"
