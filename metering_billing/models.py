@@ -76,7 +76,7 @@ class Customer(models.Model):
         subscription_set = Subscription.objects.filter(customer=self, status="active")
         if subscription_set is None:
             return "None"
-        return [sub.billing_plan.get_plan_name() for sub in subscription_set]
+        return [str(sub.billing_plan) for sub in subscription_set]
 
     class Meta:
         unique_together = ("organization", "customer_id")
@@ -206,6 +206,7 @@ class BillingPlan(models.Model):
         max_length=5,
         choices=INTERVAL_CHOICES,
     )
+    billing_plan_id = models.CharField(max_length=255)
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
     pay_in_advance = models.BooleanField()
     name = models.CharField(max_length=200)
@@ -224,11 +225,11 @@ class BillingPlan(models.Model):
             print("none")
             return None
 
-    def get_plan_name(self):
-        return self.name
-
     def __str__(self) -> str:
         return str(self.name)
+
+    class Meta:
+        unique_together = ("organization", "billing_plan_id")
 
 
 class TsTzRange(Func):
@@ -246,60 +247,47 @@ class Subscription(models.Model):
     status: The status of the subscription, active or ended.
     """
 
-    class STATUS_TYPES(object):
+    class SUB_STATUS_TYPES(object):
         ACTIVE = "active"
         ENDED = "ended"
         NOT_STARTED = "not_started"
 
-    STATUS_CHOICES = Choices(
-        (STATUS_TYPES.ACTIVE, _("Active")),
-        (STATUS_TYPES.ENDED, _("Ended")),
-        (STATUS_TYPES.NOT_STARTED, _("Not Started")),
+    SUB_STATUS_CHOICES = Choices(
+        (SUB_STATUS_TYPES.ACTIVE, _("Active")),
+        (SUB_STATUS_TYPES.ENDED, _("Ended")),
+        (SUB_STATUS_TYPES.NOT_STARTED, _("Not Started")),
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
-    billing_plan = models.ForeignKey(
-        BillingPlan, on_delete=models.CASCADE, related_name="current_plan", null=False
-    )
+    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, null=False)
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default=STATUS_CHOICES.not_started
+        max_length=20,
+        choices=SUB_STATUS_CHOICES,
+        default=SUB_STATUS_CHOICES.not_started,
     )
     auto_renew = models.BooleanField(default=True)
-    next_plan = models.ForeignKey(
-        BillingPlan,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="next_plan",
-    )
     is_new = models.BooleanField(default=True)
-
-    def save(self, *args, **kwargs):
-        if not self.next_plan:
-            self.next_plan = self.billing_plan
-
-        super(Subscription, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
 
 
 class Invoice(models.Model):
-    class STATUS_TYPES(object):
+    class INVOICE_STATUS_TYPES(object):
         NOT_CONNECTED_TO_STRIPE = "not_connected_to_stripe"
         REQUIRES_PAYMENT_METHOD = "requires_payment_method"
         REQUIRES_ACTION = "requires_action"
         PROCESSING = "processing"
         SUCCEEDED = "succeeded"
 
-    STATUS_CHOICES = Choices(
-        (STATUS_TYPES.REQUIRES_PAYMENT_METHOD, _("Requires Payment Method")),
-        (STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
-        (STATUS_TYPES.PROCESSING, _("Processing")),
-        (STATUS_TYPES.SUCCEEDED, _("Succeeded")),
-        (STATUS_TYPES.NOT_CONNECTED_TO_STRIPE, _("Not Connected to Stripe")),
+    INVOICE_STATUS_CHOICES = Choices(
+        (INVOICE_STATUS_TYPES.REQUIRES_PAYMENT_METHOD, _("Requires Payment Method")),
+        (INVOICE_STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
+        (INVOICE_STATUS_TYPES.PROCESSING, _("Processing")),
+        (INVOICE_STATUS_TYPES.SUCCEEDED, _("Succeeded")),
+        (INVOICE_STATUS_TYPES.NOT_CONNECTED_TO_STRIPE, _("Not Connected to Stripe")),
     )
 
     cost_due = MoneyField(
@@ -307,7 +295,7 @@ class Invoice(models.Model):
     )
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
-    status = models.CharField(max_length=35, choices=STATUS_CHOICES)
+    status = models.CharField(max_length=35, choices=INVOICE_STATUS_CHOICES)
     payment_intent_id = models.CharField(max_length=240, null=True, blank=True)
     line_items = models.JSONField()
     organization = models.JSONField()

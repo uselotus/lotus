@@ -27,7 +27,7 @@ from metering_billing.serializers.model_serializers import (
 from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
 
-from ..utils import parse_organization
+from ..auth_utils import parse_organization
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -99,8 +99,7 @@ class PlanComponentViewSet(viewsets.ModelViewSet):
             return PlanComponentSerializer
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
-        return PlanComponent.objects.filter(organization=organization)
+        return PlanComponent.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
@@ -112,6 +111,7 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
+    lookup_field = "billing_plan_id"
 
     def get_serializer_class(self):
         if self.action in ["list", "retrieve"]:

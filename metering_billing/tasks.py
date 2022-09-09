@@ -36,7 +36,7 @@ def calculate_invoice():
             subscription_kwargs = {
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
-                "billing_plan": old_subscription.next_plan,
+                "billing_plan": old_subscription.billing_plan,
                 "start_date": old_subscription.end_date,
                 "auto_renew": True,
                 "is_new": False,

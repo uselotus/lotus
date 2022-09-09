@@ -13,8 +13,8 @@ from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from ..auth_utils import parse_organization
 from ..permissions import HasUserAPIKey
-from ..utils import parse_organization
 
 
 def load_event(request: HttpRequest) -> Union[None, Dict]:

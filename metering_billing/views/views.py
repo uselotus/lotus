@@ -28,12 +28,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from ..auth_utils import parse_organization
 from ..utils import (
     calculate_plan_component_daily_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
     make_all_decimals_floats,
-    parse_organization,
 )
 
 stripe.api_key = STRIPE_SECRET_KEY

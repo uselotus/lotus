@@ -22,7 +22,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/PlanComponent'
+                  $ref: '#/components/schemas/PlanComponentRead'
           description: ''
     post:
       operationId: components_create
@@ -60,7 +60,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this plan component.
         required: true
       tags:
       - components
@@ -73,7 +74,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PlanComponent'
+                $ref: '#/components/schemas/PlanComponentRead'
           description: ''
     put:
       operationId: components_update
@@ -82,7 +83,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this plan component.
         required: true
       tags:
       - components
@@ -116,7 +118,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this plan component.
         required: true
       tags:
       - components
@@ -149,7 +152,8 @@ paths:
       - in: path
         name: id
         schema:
-          type: string
+          type: integer
+        description: A unique integer value identifying this plan component.
         required: true
       tags:
       - components
@@ -335,7 +339,7 @@ paths:
   /api/invoices/:
     get:
       operationId: invoices_list
-      description: A simple ViewSet for viewing and editing Invoicess.
+      description: A simple ViewSet for viewing and editing Invoices.
       tags:
       - invoices
       security:
@@ -353,7 +357,7 @@ paths:
           description: ''
     post:
       operationId: invoices_create
-      description: A simple ViewSet for viewing and editing Invoicess.
+      description: A simple ViewSet for viewing and editing Invoices.
       tags:
       - invoices
       requestBody:
@@ -382,7 +386,7 @@ paths:
   /api/invoices/{id}/:
     get:
       operationId: invoices_retrieve
-      description: A simple ViewSet for viewing and editing Invoicess.
+      description: A simple ViewSet for viewing and editing Invoices.
       parameters:
       - in: path
         name: id
@@ -405,7 +409,7 @@ paths:
           description: ''
     put:
       operationId: invoices_update
-      description: A simple ViewSet for viewing and editing Invoicess.
+      description: A simple ViewSet for viewing and editing Invoices.
       parameters:
       - in: path
         name: id
@@ -440,7 +444,7 @@ paths:
           description: ''
     patch:
       operationId: invoices_partial_update
-      description: A simple ViewSet for viewing and editing Invoicess.
+      description: A simple ViewSet for viewing and editing Invoices.
       parameters:
       - in: path
         name: id
@@ -474,7 +478,7 @@ paths:
           description: ''
     delete:
       operationId: invoices_destroy
-      description: A simple ViewSet for viewing and editing Invoicess.
+      description: A simple ViewSet for viewing and editing Invoices.
       parameters:
       - in: path
         name: id
@@ -814,16 +818,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/BillingPlan'
           description: ''
-  /api/plans/{id}/:
+  /api/plans/{billing_plan_id}/:
     get:
       operationId: plans_retrieve
       description: A simple ViewSet for viewing and editing BillingPlans.
       parameters:
       - in: path
-        name: id
+        name: billing_plan_id
         schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
+          type: string
         required: true
       tags:
       - plans
@@ -843,10 +846,9 @@ paths:
       description: A simple ViewSet for viewing and editing BillingPlans.
       parameters:
       - in: path
-        name: id
+        name: billing_plan_id
         schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
+          type: string
         required: true
       tags:
       - plans
@@ -878,10 +880,9 @@ paths:
       description: A simple ViewSet for viewing and editing BillingPlans.
       parameters:
       - in: path
-        name: id
+        name: billing_plan_id
         schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
+          type: string
         required: true
       tags:
       - plans
@@ -912,10 +913,9 @@ paths:
       description: A simple ViewSet for viewing and editing BillingPlans.
       parameters:
       - in: path
-        name: id
+        name: billing_plan_id
         schema:
-          type: integer
-        description: A unique integer value identifying this billing plan.
+          type: string
         required: true
       tags:
       - plans
@@ -968,7 +968,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Subscription'
+                  $ref: '#/components/schemas/SubscriptionRead'
           description: ''
     post:
       operationId: subscriptions_create
@@ -1020,7 +1020,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Subscription'
+                $ref: '#/components/schemas/SubscriptionRead'
           description: ''
     put:
       operationId: subscriptions_update
@@ -1329,7 +1329,7 @@ components:
         components:
           type: array
           items:
-            $ref: '#/components/schemas/PlanComponentShallow'
+            $ref: '#/components/schemas/PlanComponent'
       required:
       - components
       - flat_rate
@@ -1340,9 +1340,6 @@ components:
     BillingPlanRead:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         time_created:
           type: string
           format: date
@@ -1370,7 +1367,10 @@ components:
         components:
           type: array
           items:
-            $ref: '#/components/schemas/PlanComponent'
+            $ref: '#/components/schemas/PlanComponentRead'
+        id:
+          type: integer
+          readOnly: true
       required:
       - components
       - flat_rate
@@ -1484,6 +1484,9 @@ components:
         id:
           type: integer
           readOnly: true
+        cost_due_currency:
+          type: string
+          readOnly: true
         cost_due:
           type: number
           format: double
@@ -1495,28 +1498,44 @@ components:
           type: string
           format: date-time
           readOnly: true
-        customer:
-          $ref: '#/components/schemas/Customer'
-        subscription:
-          $ref: '#/components/schemas/Subscription'
+        invoice_pdf:
+          type: string
+          format: uri
+          nullable: true
         status:
           $ref: '#/components/schemas/InvoiceStatusEnum'
-        line_items:
-          type: array
-          items:
-            type: object
-            additionalProperties: {}
+        payment_intent_id:
+          type: string
           nullable: true
+          maxLength: 240
+        line_items:
+          type: object
+          additionalProperties: {}
+        organization:
+          type: object
+          additionalProperties: {}
+        customer:
+          type: object
+          additionalProperties: {}
+        subscription:
+          type: object
+          additionalProperties: {}
       required:
+      - cost_due_currency
       - customer
       - id
       - issue_date
+      - line_items
+      - organization
+      - status
       - subscription
     InvoiceStatusEnum:
       enum:
-      - issued
-      - fulfilled
-      - not_sent
+      - requires_payment_method
+      - requires_action
+      - processing
+      - succeeded
+      - not_connected_to_stripe
       type: string
     PatchedBillableMetric:
       type: object
@@ -1566,7 +1585,7 @@ components:
         components:
           type: array
           items:
-            $ref: '#/components/schemas/PlanComponentShallow'
+            $ref: '#/components/schemas/PlanComponent'
     PatchedCustomer:
       type: object
       properties:
@@ -1589,6 +1608,9 @@ components:
         id:
           type: integer
           readOnly: true
+        cost_due_currency:
+          type: string
+          readOnly: true
         cost_due:
           type: number
           format: double
@@ -1600,26 +1622,33 @@ components:
           type: string
           format: date-time
           readOnly: true
-        customer:
-          $ref: '#/components/schemas/Customer'
-        subscription:
-          $ref: '#/components/schemas/Subscription'
+        invoice_pdf:
+          type: string
+          format: uri
+          nullable: true
         status:
           $ref: '#/components/schemas/InvoiceStatusEnum'
-        line_items:
-          type: array
-          items:
-            type: object
-            additionalProperties: {}
+        payment_intent_id:
+          type: string
           nullable: true
+          maxLength: 240
+        line_items:
+          type: object
+          additionalProperties: {}
+        organization:
+          type: object
+          additionalProperties: {}
+        customer:
+          type: object
+          additionalProperties: {}
+        subscription:
+          type: object
+          additionalProperties: {}
     PatchedPlanComponent:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         billable_metric:
-          $ref: '#/components/schemas/BillableMetric'
+          type: integer
         free_metric_quantity:
           type: number
           format: double
@@ -1644,13 +1673,10 @@ components:
     PatchedSubscription:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         customer:
-          $ref: '#/components/schemas/Customer'
+          type: string
         billing_plan:
-          $ref: '#/components/schemas/BillingPlan'
+          type: string
         start_date:
           type: string
           format: date
@@ -1658,7 +1684,7 @@ components:
           type: string
           format: date
         status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
+          $ref: '#/components/schemas/Status2b4Enum'
     PatchedUser:
       type: object
       properties:
@@ -1777,9 +1803,35 @@ components:
     PlanComponent:
       type: object
       properties:
-        id:
+        billable_metric:
           type: integer
-          readOnly: true
+        free_metric_quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        cost_per_metric:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        metric_amount_per_cost:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - billable_metric
+      - cost_per_metric
+    PlanComponentRead:
+      type: object
+      properties:
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
         free_metric_quantity:
@@ -1803,53 +1855,26 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-      required:
-      - billable_metric
-      - cost_per_metric
-      - id
-    PlanComponentShallow:
-      type: object
-      properties:
         id:
           type: integer
           readOnly: true
-        billable_metric:
-          type: integer
-        free_metric_quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        cost_per_metric:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        metric_amount_per_cost:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
       required:
       - billable_metric
       - cost_per_metric
       - id
+    Status2b4Enum:
+      enum:
+      - active
+      - ended
+      - not_started
+      type: string
     Subscription:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         customer:
-          $ref: '#/components/schemas/Customer'
+          type: string
         billing_plan:
-          $ref: '#/components/schemas/BillingPlan'
+          type: string
         start_date:
           type: string
           format: date
@@ -1857,19 +1882,36 @@ components:
           type: string
           format: date
         status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
+          $ref: '#/components/schemas/Status2b4Enum'
+      required:
+      - billing_plan
+      - customer
+      - end_date
+      - start_date
+    SubscriptionRead:
+      type: object
+      properties:
+        customer:
+          $ref: '#/components/schemas/Customer'
+        billing_plan:
+          $ref: '#/components/schemas/BillingPlanRead'
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/Status2b4Enum'
+        id:
+          type: integer
+          readOnly: true
       required:
       - billing_plan
       - customer
       - end_date
       - id
       - start_date
-    SubscriptionStatusEnum:
-      enum:
-      - active
-      - ended
-      - not_started
-      type: string
     User:
       type: object
       properties:

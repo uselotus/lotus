@@ -100,7 +100,6 @@ class Command(BaseCommand):
                 start_date=new_sub_start.date(),
                 end_date=new_sub_end.date(),
                 status="active",
-                next_plan=bp,
             )
 
         for customer in customer_set:
