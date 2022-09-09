@@ -150,27 +150,26 @@ if os.environ.get("GITHUB_WORKFLOW"):
             "PORT": "5432",
         }
     }
+elif os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.parse(
+            os.environ["DATABASE_URL"],
+            engine="django.db.backends.postgresql",
+            conn_max_age=600,
+        )
+    }
+    django_heroku.settings(locals(), databases=False)
 else:
-    try:
-        DATABASES = {
-            "default": dj_database_url.parse(
-                os.environ["DATABASE_URL"],
-                engine="django.db.backends.postgresql",
-                conn_max_age=600,
-            )
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ["POSTGRES_NAME"],
+            "USER": os.environ["POSTGRES_USER"],
+            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+            "HOST": os.environ["POSTGRES_HOST"],
+            "PORT": 5432,
         }
-        django_heroku.settings(locals(), databases=False)
-    except:
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql",
-                "NAME": os.environ["POSTGRES_NAME"],
-                "USER": os.environ["POSTGRES_USER"],
-                "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-                "HOST": os.environ["POSTGRES_HOST"],
-                "PORT": 5432,
-            }
-        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -198,25 +197,26 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 # Stripe Settings
 ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
 
+# redis settings
+if os.environ.get("REDIS_URL"):
+    REDIS_URL = os.environ.get("REDIS_URL")
+else:
+    REDIS_HOST = os.environ["REDIS_SERVER_LOCATION"]
+    REDIS_PORT = os.environ["REDIS_PORT"]
+    REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}"
+
 # Celery Settings
-try:
-    CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
-    CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
-except KeyError:  # heroku version
-    CELERY_BROKER_URL = os.environ["REDIS_URL"]
-    CELERY_RESULT_BACKEND = os.environ["REDIS_URL"]
+CELERY_BROKER_URL = f"{REDIS_URL}/1"
+CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "America/New_York"
 
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
-
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/4",
+        "LOCATION": f"{REDIS_URL}/3",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
