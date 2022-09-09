@@ -52,7 +52,7 @@ function RevenueDisplay(props: {
                 fontSize: "1.875rem",
                 lineHeight: "2.25rem",
               }}
-              precision={1}
+              precision={2}
               prefix={<ArrowUpOutlined />}
               suffix="%"
               className="text-3xl"
@@ -62,8 +62,6 @@ function RevenueDisplay(props: {
               value={percentageChange}
               valueStyle={{
                 color: "#cf1322",
-                fontSize: "1.875rem",
-                lineHeight: "2.25rem",
               }}
               precision={2}
               prefix={<ArrowDownOutlined />}

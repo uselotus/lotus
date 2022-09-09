@@ -22,7 +22,6 @@ function UsageComponentForm(props: {
         form
           .validateFields()
           .then((values) => {
-            console.log(values);
             form.submit();
           })
           .catch((info) => {
@@ -36,7 +35,7 @@ function UsageComponentForm(props: {
         name="component_form"
         initialValues={{
           cost_per_metric: 0.0,
-          metric_amount_per_cost: 0.0,
+          metric_amount_per_cost: 1,
           free_amount: 0,
         }}
       >

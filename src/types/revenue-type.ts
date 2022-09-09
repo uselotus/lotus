@@ -9,10 +9,10 @@ export interface RevenueType {
 export interface RevenuePeriod {
   total_revenue: number;
   data: RevenueData[];
-  metric: MetricType;
+  metric: string;
 }
 
 interface RevenueData {
-  day: string;
+  date: string;
   metric_revenue: number;
 }

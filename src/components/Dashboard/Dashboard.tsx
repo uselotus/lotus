@@ -21,7 +21,7 @@ const Dashboard: FC = () => {
   const [dateRange, setDateRange] = React.useState<any>(defaultDate);
 
   const { data, isLoading }: UseQueryResult<RevenueType, RevenueType> =
-    useQuery<RevenueType, RevenueType>(["total_revenue_"], () =>
+    useQuery<RevenueType, RevenueType>(["total_revenue", dateRange], () =>
       GetRevenue.getMonthlyRevenue(
         dateRange[0].format("YYYY-MM-DD"),
         dateRange[1].format("YYYY-MM-DD"),
