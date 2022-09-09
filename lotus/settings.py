@@ -89,8 +89,9 @@ INSTALLED_APPS = [
     "rest_framework_api_key",
     "django_vite",
     "drf_spectacular",
-    "silk",
 ]
+if PROFILER_ENABLED:
+    INSTALLED_APPS.append("silk")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
