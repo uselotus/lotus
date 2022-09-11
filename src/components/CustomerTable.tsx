@@ -7,10 +7,13 @@ import { Button, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "./LoadingSpinner";
 import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
-import { useMutation } from "react-query";
-import { Customer } from "../api/api";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
+import { Customer, Plan } from "../api/api";
+import { PlanType } from "../types/plan-type";
+import { CreateSubscriptionType } from "../types/subscription-type";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import CustomerDetail from "./CustomerDetail";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
@@ -29,11 +32,14 @@ const columns: ProColumns<CustomerTableItem>[] = [
     title: "Plans",
     width: 120,
     dataIndex: "subscriptions",
-    render: (_, record) => <Tag color={"bruh"}>{record.subscriptions[0]}</Tag>,
+    render: (_, record) => (
+      <Tag color={"default"}>{record.subscriptions[0]}</Tag>
+    ),
   },
   {
     title: "Outstanding Revenue",
     width: 120,
+    render: (_, record) => <p>${record.total_revenue_due}</p>,
     dataIndex: "total_revenue_due",
   },
 ];
@@ -46,12 +52,22 @@ const defaultCustomerState: CreateCustomerState = {
   title: "Create a Customer",
   name: "",
   customer_id: "",
+  subscriptions: [],
 };
 
 const CustomerTable: FC<Props> = ({ customerArray }) => {
   const [visible, setVisible] = useState(false);
+  const [customerVisible, setCustomerVisible] = useState(false);
   const [customerState, setCustomerState] =
     useState<CreateCustomerState>(defaultCustomerState);
+
+  const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
+    ["plans"],
+    () =>
+      Plan.getPlans().then((res) => {
+        return res;
+      })
+  );
 
   const mutation = useMutation(
     (post: CustomerType) => Customer.createCustomer(post),
@@ -65,6 +81,27 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
     }
   );
 
+  const subscribe = useMutation((post: CreateSubscriptionType) =>
+    Customer.subscribe(post)
+  );
+
+  const onDetailCancel = () => {
+    setCustomerVisible(false);
+  };
+
+  const changePlan = (plan_id: string, customer_id: string) => {
+    console.log(plan_id, customer_id);
+  };
+
+  const rowModal = (record: any) => {
+    setCustomerVisible(true);
+    setCustomerState({
+      title: "Customer Detail",
+      name: record.customer_name,
+      customer_id: record.customer_id,
+      subscriptions: record.subscriptions,
+    });
+  };
   const openCustomerModal = () => {
     setVisible(true);
     setCustomerState(defaultCustomerState);
@@ -87,6 +124,13 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
         columns={columns}
         dataSource={customerArray}
         rowKey="customer_id"
+        onRow={(record, rowIndex) => {
+          return {
+            onClick: (event) => {
+              rowModal(record);
+            }, // click row
+          };
+        }}
         search={false}
         pagination={{
           showTotal: (total, range) => (
@@ -109,6 +153,13 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
         visible={visible}
         onSave={onSave}
         onCancel={onCancel}
+      />
+      <CustomerDetail
+        visible={customerVisible}
+        onCancel={onDetailCancel}
+        changePlan={changePlan}
+        plans={data}
+        customer={customerState}
       />
       <ToastContainer autoClose={1000} />
     </div>

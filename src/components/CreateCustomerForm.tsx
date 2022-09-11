@@ -4,6 +4,7 @@ export interface CreateCustomerState {
   name: string;
   customer_id: string;
   title: string;
+  subscriptions: string[];
 }
 
 const CreateCustomerForm = (props: {
