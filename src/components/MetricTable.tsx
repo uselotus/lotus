@@ -13,6 +13,12 @@ import { PlanDisplay } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
 import { MetricType } from "../types/metric-type";
 
+const colorMap = new Map<string, string>([
+  ["count", "green"],
+  ["sum", "blue"],
+  ["max", "pink"],
+]);
+
 const columns: ProColumns<MetricType>[] = [
   {
     title: "Event Name",
@@ -24,7 +30,11 @@ const columns: ProColumns<MetricType>[] = [
     title: "Aggregation Type",
     width: 120,
     dataIndex: "aggregation_type",
-    render: (_, record) => <Tag color={"green"}>{record.aggregation_type}</Tag>,
+    render: (_, record) => (
+      <Tag color={colorMap.get(record.aggregation_type)}>
+        {record.aggregation_type}
+      </Tag>
+    ),
   },
   {
     title: "Property Name",
