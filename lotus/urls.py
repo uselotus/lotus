@@ -37,7 +37,7 @@ from metering_billing.views.views import (
 )
 from rest_framework import routers
 
-from .settings import DEBUG, PROFILER_ENABLED
+from .settings import DEBUG, ON_HEROKU, PROFILER_ENABLED
 
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
@@ -82,5 +82,5 @@ urlpatterns = [
 if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
-if DEBUG:
+if DEBUG or ON_HEROKU:
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

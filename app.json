@@ -8,6 +8,9 @@
   "addons":[
     {
         "plan":"heroku-postgresql"
+    },
+    {
+        "plan":"heroku-redis"
     }
   ],
   "buildpacks": [
@@ -32,6 +35,9 @@
     },
     "STRIPE_SECRET_KEY":{
       "value": "1234"
+    },
+    "ON_HEROKU":{
+      "value": "True"
     }
   },
   "scripts":{

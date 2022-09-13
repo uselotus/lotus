@@ -26,12 +26,14 @@ env = environ.Env(
     DEBUG=(bool, False),
     PROFILER_ENABLED=(bool, False),
     DOCKERIZED=(bool, False),
+    ON_HEROKU=(bool, False),
     POSTGRES_NAME=(str, "lotus"),
     POSTGRES_USER=(str, "lotus"),
     POSTGRES_PASSWORD=(str, "lotus"),
 )
 
 DOCKERIZED = env("DOCKERIZED")
+ON_HEROKU = env("ON_HEROKU")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 # local_env_file = BASE_DIR / "env/.env"
