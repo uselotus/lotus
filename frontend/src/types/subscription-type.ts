@@ -6,6 +6,13 @@ export interface SubscriptionTotals {
   period_2_new_subscriptions: number;
 }
 
+export interface CreateSubscriptionType {
+  customer: string;
+  billing_plan: string;
+  start_date: string;
+  end_date: string;
+}
+
 export interface SubscriptionType {
   components: ComponentType[];
   billing_plan: PlanSimple;

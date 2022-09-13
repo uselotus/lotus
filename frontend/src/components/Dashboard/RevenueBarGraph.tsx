@@ -43,18 +43,8 @@ function RevenueBarGraph(props: {
     seriesField: "type",
     isRange: true,
     maxColumnWidth: 30,
-    color: [
-      "#abab05",
-      "#ffdd02",
-      "#ffea01",
-      "#ffe601",
-      "#fcdb00",
-      "#e3b200",
-      "#f5d800",
-      "#f7ce00",
-      "#926600",
-      "#291c00",
-    ],
+
+    // color: ["1d4427", "245530", "2f6e3b", "55b467", "e5fbeb"],
     label: {
       layout: [
         {

@@ -42,10 +42,10 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
             renderItem={(item) => (
               <List.Item>
                 <Card>
-                  <b className="text-lg">
+                  <p className="text-base font-main">
                     {item.billable_metric.event_name} --{" "}
-                    {item.billable_metric.aggregation_type}
-                  </b>
+                    <b>{item.billable_metric.aggregation_type}</b>
+                  </p>
                 </Card>
               </List.Item>
             )}

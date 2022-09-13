@@ -6,7 +6,10 @@ import {
 } from "../types/customer-type";
 import { PlanType, CreatePlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
-import { SubscriptionTotals } from "../types/subscription-type";
+import {
+  SubscriptionTotals,
+  CreateSubscriptionType,
+} from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import {
   StripeConnectType,
@@ -42,6 +45,8 @@ export const Customer = {
     requests.get(`api/customers/${id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
     requests.post("api/customers/", post),
+  subscribe: (post: CreateSubscriptionType): Promise<CreateSubscriptionType> =>
+    requests.post("api/subscriptions/", post),
 };
 
 export const Plan = {
