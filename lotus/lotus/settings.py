@@ -37,12 +37,10 @@ if local_env_file.is_file():
     environ.Env.read_env(local_env_file)
     DOCKERIZED = True
 else:
+    DOCKERIZED = False
     global_env_file = BASE_DIR / ".." / "env/.env"
     if global_env_file.is_file():
         environ.Env.read_env(global_env_file)
-        DOCKERIZED = False
-    else:
-        raise FileNotFoundError("No .env file found")
 
 
 try:

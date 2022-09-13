@@ -25,8 +25,8 @@ jobs:
       postgres:
         image: postgres:latest
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: lotus
+          POSTGRES_PASSWORD: lotus
           SSLMODE: PREFER
         ports:
           - 5432:5432
@@ -40,8 +40,6 @@ jobs:
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
-      CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
       DEBUG: False
 
     steps:
