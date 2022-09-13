@@ -25,11 +25,24 @@ env = environ.Env(
     # set casting, default value
     DEBUG=(bool, False),
     PROFILER_ENABLED=(bool, False),
+    POSTGRES_NAME=(str, "lotus"),
+    POSTGRES_USER=(str, "lotus"),
+    POSTGRES_PASSWORD=(str, "lotus"),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-environ.Env.read_env(os.path.join(BASE_DIR, "env/.env"))
+local_env_file = BASE_DIR / "env/.env"
+if local_env_file.is_file():
+    environ.Env.read_env(local_env_file)
+    DOCKERIZED = True
+else:
+    global_env_file = BASE_DIR / ".." / "env/.env"
+    if global_env_file.is_file():
+        environ.Env.read_env(global_env_file)
+        DOCKERIZED = False
+    else:
+        raise FileNotFoundError("No .env file found")
 
 
 try:
@@ -75,7 +88,6 @@ else:
 # Application definition
 
 INSTALLED_APPS = [
-    # "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -153,10 +165,10 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ["POSTGRES_NAME"],
-            "USER": os.environ["POSTGRES_USER"],
-            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-            "HOST": "db",
+            "NAME": env("POSTGRES_NAME"),
+            "USER": env("POSTGRES_USER"),
+            "PASSWORD": env("POSTGRES_PASSWORD"),
+            "HOST": "db" if DOCKERIZED else "localhost",
             "PORT": 5432,
         }
     }
@@ -187,8 +199,10 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 # redis settings
 if os.environ.get("REDIS_URL"):
     REDIS_URL = os.environ.get("REDIS_URL")
-else:
+elif DOCKERIZED:
     REDIS_URL = f"redis://redis:6379"
+else:
+    REDIS_URL = f"redis://localhost:6379"
 
 # Celery Settings
 CELERY_BROKER_URL = f"{REDIS_URL}/1"
@@ -198,15 +212,24 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "America/New_York"
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"{REDIS_URL}/3",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
+if DOCKERIZED:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": f"{REDIS_URL}/3",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
@@ -223,12 +246,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
-INTERNAL_IPS = ['127.0.0.1']
-hostname, _, ips = socket.gethostbyname_ex('frontend')
-INTERNAL_IPS += [ip for ip in ips] 
-hostname, _, ips = socket.gethostbyname_ex('backend')
-INTERNAL_IPS += [ip for ip in ips] 
-INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
+INTERNAL_IPS = ["127.0.0.1"]
+if DOCKERIZED:
+    hostname, _, ips = socket.gethostbyname_ex("frontend")
+    INTERNAL_IPS += [ip for ip in ips]
+    hostname, _, ips = socket.gethostbyname_ex("backend")
+    INTERNAL_IPS += [ip for ip in ips]
+    INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
+
 
 # VITE_APP_DIR = BASE_DIR / "frontend" / "src"
 
