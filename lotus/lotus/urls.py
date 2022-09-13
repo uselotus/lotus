@@ -37,7 +37,7 @@ from metering_billing.views.views import (
 )
 from rest_framework import routers
 
-from .settings import PROFILER_ENABLED
+from .settings import DEBUG, PROFILER_ENABLED
 
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
@@ -51,7 +51,7 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
-    path("track", track.track_event, name="track_event"),
+    path("api/track/", track.track_event, name="track_event"),
     path(
         "api/customer_summary/",
         CustomerWithRevenueView.as_view(),
@@ -82,4 +82,5 @@ urlpatterns = [
 if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
-urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
+if DEBUG:
+    urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]

@@ -34,6 +34,8 @@ django-environ = "*"
 drf-spectacular = "*"
 model-bakery = "*"
 faker = "*"
+django-redis = "*"
+flower = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"

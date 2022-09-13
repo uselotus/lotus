@@ -88,7 +88,7 @@ const ViewMetrics: FC = () => {
           <Divider />
           <div>
             <p className=" text-bold">
-              Realtime Event Stream Preivew Coming Soon
+              Realtime Event Stream Preview Coming Soon
             </p>
           </div>
         </Card>

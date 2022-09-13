@@ -4,42 +4,41 @@ services:
     restart: on-failure
     env_file:
       - ./env/.env.dev
-    build:
-      context: .
-      dockerfile: Dockerfile.db
+    ports:
+      - 5432:5432
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
 
-  lotus:
-    container_name: lotus_django
+  backend:
     env_file:
       - ./env/.env.dev
     build:
-      context: .
+      context: ./lotus
+      dockerfile: Dockerfile
+      target: development
     ports:
-      - "8000:8000"
+      - 8000:8000
     volumes:
-      - ./lotus:/lotus
-    command: >
-      sh -c "python3 manage.py wait_for_db &&
-             python3 manage.py migrate &&
-             python3 manage.py initadmin &&
-             python3 manage.py setup_tasks &&
-             python3 manage.py runserver 0.0.0.0:8000
-             "
+      - ./lotus:/code
+    command: python3 manage.py runserver 0.0.0.0:8000
     depends_on:
       - db
 
   frontend:
     restart: always
-    command: yarn dev
-    container_name: front
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
     ports:
-      - "3000:3000"
+      - 3000:3000
+    command: yarn run dev --host 0.0.0.0 --port 3000
+    volumes:
+      - ./frontend:/frontend:delegated
+      - /frontend/node_modules/
     stdin_open: true
     depends_on:
-      - lotus
+      - backend
 
   redis:
     image: redis:7-alpine
@@ -50,25 +49,20 @@ services:
   celery:
     env_file:
       - ./env/.env.dev
-    build:
-      context: .
+    build: ./lotus
     command: celery -A lotus worker -l info
     depends_on:
-      - db
       - redis
-      - lotus
+      - backend
 
   celery-beat:
     env_file:
       - ./env/.env.dev
     restart: on-failure
-    build:
-      context: .
+    build: ./lotus
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
       - celery
-      - redis
-      - lotus
-      - db
+
 volumes:
   pgdata:

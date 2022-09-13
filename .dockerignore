@@ -1,6 +1,4 @@
-.git
-
-**/*.pyc
-**/__pycache__
-.pytest_cache
-.coverage
+README.md
+node_modules
+pgdata
+static

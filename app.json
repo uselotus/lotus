@@ -18,13 +18,13 @@
     "SECRET_KEY": {
       "generator": "secret"
     },
-    "DJANGO_SUPERUSER_PASSWORD":{
+    "ADMIN_PASSWORD":{
       "value": "password"
     },
-    "DJANGO_SUPERUSER_USERNAME":{
+    "ADMIN_USERNAME":{
       "value": "admin"
     },
-    "DJANGO_SUPERUSER_EMAIL":{
+    "ADMIN_EMAIL":{
       "value": "example@example.com"
     },
     "STRIPE_API_KEY":{

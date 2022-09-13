@@ -2,7 +2,8 @@ import uuid
 from telnetlib import STATUS
 
 from locust import HttpUser, between, task
-from lotus.settings import ADMIN_API_KEY
+
+ADMIN_API_KEY = "admin_api_key"
 
 
 class UnauthenticatedUser(HttpUser):

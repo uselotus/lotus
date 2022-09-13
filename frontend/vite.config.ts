@@ -8,25 +8,32 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   build: {
     manifest: true,
-    outDir: "../static/dist",
-    emptyOutDir: true,
-    rollupOptions: {
-      input: {
-        main: "./src/main.tsx",
-      },
-      output: {
-        chunkFileNames: undefined,
-      },
-    },
+    // outDir: "../static/dist",
+    // emptyOutDir: true,
+    // rollupOptions: {
+    //   input: {
+    //     main: "./src/index.html",
+    //   },
+    //   output: {
+    //     chunkFileNames: undefined,
+    //   },
+    // },
   },
   server: {
-    host: "localhost",
+    host: true,
+    hmr: {
+      clientPort: 3000,
+    },
     port: 3000,
     open: false,
     middlewareMode: false,
+    strictPort: true,
+    watch: {
+      usePolling: true,
+    },
   },
-  base: process.env.mode === "production" ? "./" : "/static/",
-  publicDir: "/public",
+  base: process.env.mode === "production" ? "/static/" : "./",
+  publicDir: "./public",
   root: "./src",
   resolve: {
     alias: [{ find: /^~/, replacement: "" }],

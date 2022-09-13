@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
 import re
+import socket
 from pathlib import Path
 
 import dj_database_url
@@ -24,11 +25,22 @@ env = environ.Env(
     # set casting, default value
     DEBUG=(bool, False),
     PROFILER_ENABLED=(bool, False),
+    POSTGRES_NAME=(str, "lotus"),
+    POSTGRES_USER=(str, "lotus"),
+    POSTGRES_PASSWORD=(str, "lotus"),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-environ.Env.read_env(os.path.join(BASE_DIR, "env/.env"))
+local_env_file = BASE_DIR / "env/.env"
+if local_env_file.is_file():
+    environ.Env.read_env(local_env_file)
+    DOCKERIZED = True
+else:
+    DOCKERIZED = False
+    global_env_file = BASE_DIR / ".." / "env/.env"
+    if global_env_file.is_file():
+        environ.Env.read_env(global_env_file)
 
 
 try:
@@ -74,7 +86,6 @@ else:
 # Application definition
 
 INSTALLED_APPS = [
-    # "grappelli",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -87,7 +98,6 @@ INSTALLED_APPS = [
     "django_extensions",
     "django_celery_beat",
     "rest_framework_api_key",
-    "django_vite",
     "drf_spectacular",
 ]
 if PROFILER_ENABLED:
@@ -139,38 +149,27 @@ AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-if os.environ.get("GITHUB_WORKFLOW"):
+
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.parse(
+            os.environ["DATABASE_URL"],
+            engine="django.db.backends.postgresql",
+            conn_max_age=600,
+        )
+    }
+    django_heroku.settings(locals(), databases=False)
+else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": "postgres",
-            "USER": "postgres",
-            "PASSWORD": "postgres",
-            "HOST": "127.0.0.1",
-            "PORT": "5432",
+            "NAME": env("POSTGRES_NAME"),
+            "USER": env("POSTGRES_USER"),
+            "PASSWORD": env("POSTGRES_PASSWORD"),
+            "HOST": "db" if DOCKERIZED else "localhost",
+            "PORT": 5432,
         }
     }
-else:
-    try:
-        DATABASES = {
-            "default": dj_database_url.parse(
-                os.environ["DATABASE_URL"],
-                engine="django.db.backends.postgresql",
-                conn_max_age=600,
-            )
-        }
-        django_heroku.settings(locals(), databases=False)
-    except:
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql",
-                "NAME": os.environ["POSTGRES_NAME"],
-                "USER": os.environ["POSTGRES_USER"],
-                "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-                "HOST": os.environ["POSTGRES_HOST"],
-                "PORT": 5432,
-            }
-        }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -195,23 +194,40 @@ AUTH_PASSWORD_VALIDATORS = [
 # Stripe Settings
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 
-# Stripe Settings
-ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
+# redis settings
+if os.environ.get("REDIS_URL"):
+    REDIS_URL = os.environ.get("REDIS_URL")
+elif DOCKERIZED:
+    REDIS_URL = f"redis://redis:6379"
+else:
+    REDIS_URL = f"redis://localhost:6379"
 
 # Celery Settings
-try:
-    CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
-    CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
-except KeyError:  # heroku version
-    CELERY_BROKER_URL = os.environ["REDIS_URL"]
-    CELERY_RESULT_BACKEND = os.environ["REDIS_URL"]
+CELERY_BROKER_URL = f"{REDIS_URL}/1"
+CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "America/New_York"
 
-REDIS_HOST = "localhost"
-REDIS_PORT = 6379
+if DOCKERIZED:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": f"{REDIS_URL}/3",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "unique-snowflake",
+        }
+    }
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
@@ -228,31 +244,32 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
+INTERNAL_IPS = ["127.0.0.1"]
+if DOCKERIZED:
+    hostname, _, ips = socket.gethostbyname_ex("frontend")
+    INTERNAL_IPS += [ip for ip in ips]
+    hostname, _, ips = socket.gethostbyname_ex("backend")
+    INTERNAL_IPS += [ip for ip in ips]
+    INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
 
-STATIC_URL = "/static/"
+
+# VITE_APP_DIR = BASE_DIR / "frontend" / "src"
+
+# DJANGO_VITE_ASSETS_PATH = BASE_DIR / "frontend" / "static" / "dist"
+
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_URL = "static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
 
-INTERNAL_IPS = ["127.0.0.1"]
 
-DJANGO_VITE_DEV_MODE = env("DEBUG")
-DJANGO_VITE_DEV_SERVER_HOST = "localhost"
-DJANGO_VITE_DEV_SERVER_PORT = 3000
-
-VITE_APP_DIR = BASE_DIR / "src"
-
-DJANGO_VITE_ASSETS_PATH = BASE_DIR / "static" / "dist"
-
-STATICFILES_DIRS = [DJANGO_VITE_ASSETS_PATH]
-
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
-
-MEDIA_URL = "/mediafiles/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "metering_billing.permissions.HasUserAPIKey",
