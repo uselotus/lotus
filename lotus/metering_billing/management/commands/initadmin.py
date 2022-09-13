@@ -13,9 +13,9 @@ load_dotenv()
 class Command(BaseCommand):
     def handle(self, *args, **options):
 
-        username = os.getenv("DJANGO_SUPERUSER_USERNAME")
-        email = os.getenv("DJANGO_SUPERUSER_EMAIL")
-        password = os.getenv("DJANGO_SUPERUSER_PASSWORD")
+        username = os.getenv("ADMIN_USERNAME")
+        email = os.getenv("ADMIN_EMAIL")
+        password = os.getenv("ADMIN_PASSWORD")
 
         if not User.objects.filter(username=username).exists():
             admin = User.objects.create_superuser(

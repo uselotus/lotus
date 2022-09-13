@@ -25,8 +25,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         fake = Faker()
-        username = os.getenv("DJANGO_SUPERUSER_USERNAME")
-
+        username = os.getenv("ADMIN_USERNAME")
         admin = User.objects.get(username=username)
         organization = admin.organization
         customer_set = baker.make(

@@ -57,10 +57,14 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
 @csrf_exempt
 def track_event(request):
     key = HasUserAPIKey().get_key(request)
+    if key is None:
+        return HttpResponseBadRequest("No API key provided")
     prefix, _, _ = key.partition(".")
     organization_pk = cache.get(prefix)
     if not organization_pk:
         api_token = APIToken.objects.get_from_key(key)
+        if api_token is False:
+            return HttpResponseBadRequest("Invalid API key")
         expiry_date = api_token.expiry_date
         organization_pk = api_token.organization.pk
         timeout = (expiry_date - datetime.datetime.now()).total_seconds()
@@ -83,9 +87,13 @@ def track_event(request):
             customer_pk = customer_pk_list[0]
             cache.set(customer_cache_key, customer_pk, 60 * 60 * 24 * 7)
 
-    event_idem_ct = Event.objects.filter(
-        idempotency_id=data["idempotency_id"],
-    ).values_list("id", flat=True).count()
+    event_idem_ct = (
+        Event.objects.filter(
+            idempotency_id=data["idempotency_id"],
+        )
+        .values_list("id", flat=True)
+        .count()
+    )
     if event_idem_ct > 0:
         return HttpResponseBadRequest("Event idempotency already exists")
 

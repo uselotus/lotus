@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
 import re
+import socket
 from pathlib import Path
 
 import dj_database_url
@@ -87,7 +88,6 @@ INSTALLED_APPS = [
     "django_extensions",
     "django_celery_beat",
     "rest_framework_api_key",
-    "django_vite",
     "drf_spectacular",
 ]
 if PROFILER_ENABLED:
@@ -139,18 +139,8 @@ AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-if os.environ.get("GITHUB_WORKFLOW"):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": "postgres",
-            "USER": "postgres",
-            "PASSWORD": "postgres",
-            "HOST": "127.0.0.1",
-            "PORT": "5432",
-        }
-    }
-elif os.environ.get("DATABASE_URL"):
+
+if os.environ.get("DATABASE_URL"):
     DATABASES = {
         "default": dj_database_url.parse(
             os.environ["DATABASE_URL"],
@@ -166,7 +156,7 @@ else:
             "NAME": os.environ["POSTGRES_NAME"],
             "USER": os.environ["POSTGRES_USER"],
             "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-            "HOST": os.environ["POSTGRES_HOST"],
+            "HOST": "db",
             "PORT": 5432,
         }
     }
@@ -194,16 +184,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # Stripe Settings
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 
-# Stripe Settings
-ADMIN_API_KEY = os.environ.get("ADMIN_API_KEY", "")
-
 # redis settings
 if os.environ.get("REDIS_URL"):
     REDIS_URL = os.environ.get("REDIS_URL")
 else:
-    REDIS_HOST = os.environ["REDIS_SERVER_LOCATION"]
-    REDIS_PORT = os.environ["REDIS_PORT"]
-    REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}"
+    REDIS_URL = f"redis://redis:6379"
 
 # Celery Settings
 CELERY_BROKER_URL = f"{REDIS_URL}/1"
@@ -219,7 +204,7 @@ CACHES = {
         "LOCATION": f"{REDIS_URL}/3",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        },
     }
 }
 
@@ -238,31 +223,30 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
+INTERNAL_IPS = ['127.0.0.1']
+hostname, _, ips = socket.gethostbyname_ex('frontend')
+INTERNAL_IPS += [ip for ip in ips] 
+hostname, _, ips = socket.gethostbyname_ex('backend')
+INTERNAL_IPS += [ip for ip in ips] 
+INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
 
-STATIC_URL = "/static/"
+# VITE_APP_DIR = BASE_DIR / "frontend" / "src"
+
+# DJANGO_VITE_ASSETS_PATH = BASE_DIR / "frontend" / "static" / "dist"
+
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_URL = "static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
 
-INTERNAL_IPS = ["127.0.0.1"]
 
-DJANGO_VITE_DEV_MODE = env("DEBUG")
-DJANGO_VITE_DEV_SERVER_HOST = "localhost"
-DJANGO_VITE_DEV_SERVER_PORT = 3000
-
-VITE_APP_DIR = BASE_DIR / "src"
-
-DJANGO_VITE_ASSETS_PATH = BASE_DIR / "static" / "dist"
-
-STATICFILES_DIRS = [DJANGO_VITE_ASSETS_PATH]
-
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
-
-MEDIA_URL = "/mediafiles/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "metering_billing.permissions.HasUserAPIKey",
