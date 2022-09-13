@@ -259,8 +259,6 @@ if DOCKERIZED:
 
 VITE_APP_DIR = BASE_DIR / "src"
 
-# DJANGO_VITE_ASSETS_PATH = BASE_DIR / "frontend" / "static" / "dist"
-
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")

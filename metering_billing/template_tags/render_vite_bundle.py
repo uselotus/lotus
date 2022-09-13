@@ -18,9 +18,9 @@ def render_vite_bundle():
     Supposed to only be used in production.
     For development, see other files.
     """
-
+    root = f"{settings.VITE_APP_DIR}/dist"
     try:
-        fd = open(f"{settings.VITE_APP_DIR}/dist/manifest.json", "r")
+        fd = open(f"{root}/manifest.json", "r")
         manifest = json.load(fd)
     except:
         raise Exception(
@@ -29,13 +29,13 @@ def render_vite_bundle():
 
     imports_files = "".join(
         [
-            f'<script type="module" src="/{manifest[file]["file"]}"></script>'
+            f'<script type="module" src="{root}/{manifest[file]["file"]}"></script>'
             for file in manifest["index.html"]["imports"]
         ]
     )
 
     return mark_safe(
-        f"""<script type="module" src="/{manifest['index.html']['file']}"></script>
-        <link rel="stylesheet" type="text/css" href="/{manifest['index.html']['css'][0]}" />
+        f"""<script type="module" src="{root}/{manifest['index.html']['file']}"></script>
+        <link rel="stylesheet" type="text/css" href="{root}/{manifest['index.html']['css'][0]}" />
         {imports_files}"""
     )
