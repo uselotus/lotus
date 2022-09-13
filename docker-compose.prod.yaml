@@ -72,6 +72,7 @@ services:
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
       - celery
+      - backend
 
 volumes:
   pgdata:

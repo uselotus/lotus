@@ -2,39 +2,48 @@ services:
   db:
     image: postgres:14-alpine
     restart: on-failure
-    env_file:
-      - ./env/.env.dev
     ports:
       - 5432:5432
     volumes:
       - ./pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: lotus
+      POSTGRES_PASSWORD: lotus
+      POSTGRES_DB: lotus
 
   backend:
     env_file:
       - ./env/.env.dev
     build:
-      context: ./lotus
+      context: .
       dockerfile: Dockerfile
-      target: development
+      target: build
     ports:
       - 8000:8000
     volumes:
-      - ./lotus:/code
-    command: python3 manage.py runserver 0.0.0.0:8000
+      - ./lotus:/lotus/lotus
+      - ./metering_billing:/lotus/metering_billing
+    command: >
+      sh -c "python3 manage.py wait_for_db && \
+              python3 manage.py migrate && \
+              python3 manage.py initadmin && \
+              python3 manage.py setup_tasks && \
+              python3 manage.py runserver 0.0.0.0:8000"
     depends_on:
       - db
 
   frontend:
     restart: always
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend.Dockerfile
       target: development
     ports:
       - 3000:3000
     command: yarn run dev --host 0.0.0.0 --port 3000
     volumes:
-      - ./frontend:/frontend:delegated
+      - ./src:/frontend/src:delegated
+      - ./public:/frontend/public:delegated
       - /frontend/node_modules/
     stdin_open: true
     depends_on:
@@ -49,7 +58,10 @@ services:
   celery:
     env_file:
       - ./env/.env.dev
-    build: ./lotus
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
     command: celery -A lotus worker -l info
     depends_on:
       - redis
@@ -59,10 +71,15 @@ services:
     env_file:
       - ./env/.env.dev
     restart: on-failure
-    build: ./lotus
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
       - celery
+      - backend
+      - redis
 
 volumes:
   pgdata:
