@@ -257,7 +257,7 @@ if DOCKERIZED:
     INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
 
 
-# VITE_APP_DIR = BASE_DIR / "frontend" / "src"
+VITE_APP_DIR = BASE_DIR / "src"
 
 # DJANGO_VITE_ASSETS_PATH = BASE_DIR / "frontend" / "static" / "dist"
 
