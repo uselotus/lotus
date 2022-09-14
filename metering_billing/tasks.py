@@ -1,22 +1,25 @@
 from __future__ import absolute_import, unicode_literals
 
-from datetime import datetime
+import datetime
+from datetime import timezone
 
 import stripe
 from celery import shared_task
+from django.core.cache import cache
 from django.db.models import Q
 from lotus.settings import STRIPE_SECRET_KEY
 
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import Invoice, Subscription
+from metering_billing.models import Event, Invoice, Subscription
 
 stripe.api_key = STRIPE_SECRET_KEY
 
 
 @shared_task
 def calculate_invoice():
+    now = datetime.date.today()
     ending_subscriptions = Subscription.objects.filter(
-        status="active", end_date__lte=datetime.now().date()
+        status="active", end_date__lte=now
     )
     for old_subscription in ending_subscriptions:
         # Generate the invoice
@@ -45,8 +48,8 @@ def calculate_invoice():
                 "billing_plan"
             ].subscription_end_date(subscription_kwargs["start_date"])
             if (
-                subscription_kwargs["end_date"] >= datetime.now().date()
-                and subscription_kwargs["start_date"] <= datetime.now().date()
+                subscription_kwargs["end_date"] >= now
+                and subscription_kwargs["start_date"] <= now
             ):
                 subscription_kwargs["status"] = "active"
             else:
@@ -56,8 +59,9 @@ def calculate_invoice():
 
 @shared_task
 def start_subscriptions():
+    now = datetime.datetime.now(timezone.utc).astimezone()
     starting_subscriptions = Subscription.objects.filter(
-        status="not_started", start_date__lte=datetime.now().astimezone()
+        status="not_started", start_date__lte=now
     )
     for new_subscription in starting_subscriptions:
         new_subscription.status = "active"
@@ -72,3 +76,21 @@ def update_invoice_status():
         if p_intent.status != incomplete_invoice.status:
             incomplete_invoice.status = p_intent.status
             incomplete_invoice.save()
+
+
+@shared_task
+def write_batch_events_to_db(events_list):
+    event_obj_list = [Event(**event) for event in events_list]
+    Event.objects.bulk_create(event_obj_list)
+
+
+@shared_task
+def check_event_cache_flushed():
+    cache_tup = cache.get("events_to_insert")
+    now = datetime.datetime.now(timezone.utc).astimezone()
+    cached_events, last_flush_dt = cache_tup if cache_tup else ([], now)
+    time_since_last_flush = (now - last_flush_dt).total_seconds()
+    if len(cached_events) >= 100 or time_since_last_flush >= 60:
+        write_batch_events_to_db.delay(cached_events)
+        cached_events = []
+        cache.set("events_to_insert", (cached_events, now), None)

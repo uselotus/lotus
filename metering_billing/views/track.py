@@ -1,6 +1,9 @@
 import base64
 import datetime
 import json
+import logging
+import time
+from datetime import timezone
 from re import S
 from typing import Dict, Union
 
@@ -8,8 +11,12 @@ from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from metering_billing.models import APIToken, Customer, Event
+from metering_billing.tasks import write_batch_events_to_db
+from rest_framework.decorators import api_view
 
 from ..permissions import HasUserAPIKey
+
+logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
 
 
 def load_event(request: HttpRequest) -> Union[None, Dict]:
@@ -46,10 +53,11 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
     }
     if "properties" in data:
         event_kwargs["properties"] = data["properties"]
-    Event.objects.create(**event_kwargs)
+    return event_kwargs
 
 
 @csrf_exempt
+@api_view(http_method_names=["POST"])
 def track_event(request):
     key = HasUserAPIKey().get_key(request)
     if key is None:
@@ -67,7 +75,9 @@ def track_event(request):
         timeout = (
             60 * 60 * 25 * 7
             if expiry_date is None
-            else (expiry_date - datetime.datetime.now()).total_seconds()
+            else (
+                expiry_date - datetime.datetime.now(timezone.utc).astimezone()
+            ).total_seconds()
         )
         cache.set(prefix, organization_pk, timeout)
 
@@ -77,6 +87,7 @@ def track_event(request):
     if type(event_list) != list:
         event_list = [event_list]
     bad_events = {}
+    events_to_insert = []
     for data in event_list:
         customer_id = data["customer_id"]
         customer_cache_key = f"{organization_pk}-{customer_id}"
@@ -103,9 +114,18 @@ def track_event(request):
             bad_events[data["idempotency_id"]] = "Event idempotency already exists"
             continue
 
-        ingest_event(
-            data=data, customer_pk=customer_pk, organization_pk=organization_pk
-        )
+        events_to_insert.append(ingest_event(data, customer_pk, organization_pk))
+
+    cache_tup = cache.get("events_to_insert")
+    now = datetime.datetime.now(timezone.utc).astimezone()
+    cached_events, last_flush_dt = cache_tup if cache_tup else ([], now)
+    cached_events.extend(events_to_insert)
+    if len(cached_events) >= 100:
+        write_batch_events_to_db.delay(cached_events)
+        last_flush_dt = now
+        cached_events = []
+    cache.set("events_to_insert", (cached_events, last_flush_dt), None)
+
     if len(bad_events) > 0:
         return JsonResponse(bad_events, status=400)
     else:

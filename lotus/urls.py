@@ -17,6 +17,7 @@ from django.conf.urls import include
 from django.contrib import admin
 from django.shortcuts import render
 from django.urls import path, re_path
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, track
 from metering_billing.views.model_views import (
@@ -51,7 +52,7 @@ router.register(r"invoices", InvoiceViewSet, basename="invoice")
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
-    path("api/track/", track.track_event, name="track_event"),
+    path("api/track/", csrf_exempt(track.track_event), name="track_event"),
     path(
         "api/customer_summary/",
         CustomerWithRevenueView.as_view(),

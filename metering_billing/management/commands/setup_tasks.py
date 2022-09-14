@@ -50,3 +50,11 @@ class Command(BaseCommand):
                 task="metering_billing.tasks.update_invoice_status",
                 crontab=every_hour,
             )
+
+        task_qs = PeriodicTask.objects.filter(name="Check cached events and flush")
+        if len(task_qs) == 0:
+            PeriodicTask.objects.create(
+                name="Check cached events and flush",
+                task="metering_billing.tasks.check_event_cache_flushed",
+                interval=every_2_minutes,
+            )

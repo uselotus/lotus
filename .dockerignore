@@ -50,3 +50,5 @@ README.md
 node_modules
 pgdata
 static
+
+dump.rdb
