@@ -1,7 +1,7 @@
 # ---------------------------------------
 # Build
 # ---------------------------------------
-FROM --platform=linux/amd64 python:3.9-bullseye AS build
+FROM --platform=linux/amd64 python:3.10-bullseye AS build
 ENV PYTHONUNBUFFERED 1
 #make lotus user
 WORKDIR /lotus
