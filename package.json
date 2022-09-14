@@ -27,7 +27,7 @@
     "react-query-devtools": "2.6.3",
     "react-router-dom": "6.3.0",
     "react-spinners": "0.13.4",
-    "react-toastify": "^9.0.8",
+    "react-toastify": "9.0.8",
     "universal-cookie": "4.0.4",
     "vite-tsconfig-paths": "3.5.0"
   },
@@ -40,7 +40,7 @@
     "less-loader": "11.0.0",
     "postcss": "8.4.16",
     "tailwindcss": "3.1.8",
-    "typescript": "^4.8.3",
+    "typescript": "4.8.3",
     "vite": "3.0.9",
     "vite-plugin-imp": "2.2.0"
   }
