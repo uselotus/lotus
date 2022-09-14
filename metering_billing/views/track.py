@@ -102,7 +102,7 @@ def track_event(request):
         if event_idem_ct > 0:
             bad_events[data["idempotency_id"]] = "Event idempotency already exists"
             continue
-        
+
         ingest_event(
             data=data, customer_pk=customer_pk, organization_pk=organization_pk
         )

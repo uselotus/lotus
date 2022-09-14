@@ -189,13 +189,9 @@ class TestTrackEvent:
         time_created = datetime.now()
 
         idem1 = str(uuid.uuid4())
-        payload1 = track_event_payload(
-            idem1, time_created, setup_dict["customer_id"]
-        )
+        payload1 = track_event_payload(idem1, time_created, setup_dict["customer_id"])
         idem2 = str(uuid.uuid4())
-        payload2 = track_event_payload(
-            idem2, time_created, setup_dict["customer_id"]
-        )
+        payload2 = track_event_payload(idem2, time_created, setup_dict["customer_id"])
         response = setup_dict["client"].post(
             reverse("track_event"),
             data=json.dumps([payload1, payload2], cls=DjangoJSONEncoder),
