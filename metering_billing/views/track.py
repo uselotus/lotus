@@ -48,8 +48,6 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
         event_kwargs["properties"] = data["properties"]
     Event.objects.create(**event_kwargs)
 
-    return JsonResponse({"status": "Success"}, status=201)
-
 
 @csrf_exempt
 def track_event(request):
@@ -73,33 +71,42 @@ def track_event(request):
         )
         cache.set(prefix, organization_pk, timeout)
 
-    data = load_event(request)
-    if not data:
+    event_list = load_event(request)
+    if not event_list:
         return HttpResponseBadRequest("No data provided")
+    if type(event_list) != list:
+        event_list = [event_list]
+    bad_events = {}
+    for data in event_list:
+        customer_id = data["customer_id"]
+        customer_cache_key = f"{organization_pk}-{customer_id}"
+        customer_pk = cache.get(customer_cache_key)
+        if customer_pk is None:
+            customer_pk_list = Customer.objects.filter(
+                organization=organization_pk, customer_id=customer_id
+            ).values_list("id", flat=True)
+            if len(customer_pk_list) == 0:
+                bad_events[data["idempotency_id"]] = "Customer does not exist"
+                continue
+            else:
+                customer_pk = customer_pk_list[0]
+                cache.set(customer_cache_key, customer_pk, 60 * 60 * 24 * 7)
 
-    customer_id = data["customer_id"]
-    customer_cache_key = f"{organization_pk}-{customer_id}"
-    customer_pk = cache.get(customer_cache_key)
-    if customer_pk is None:
-        customer_pk_list = Customer.objects.filter(
-            organization=organization_pk, customer_id=customer_id
-        ).values_list("id", flat=True)
-        if len(customer_pk_list) == 0:
-            return HttpResponseBadRequest("Customer does not exist")
-        else:
-            customer_pk = customer_pk_list[0]
-            cache.set(customer_cache_key, customer_pk, 60 * 60 * 24 * 7)
-
-    event_idem_ct = (
-        Event.objects.filter(
-            idempotency_id=data["idempotency_id"],
+        event_idem_ct = (
+            Event.objects.filter(
+                idempotency_id=data["idempotency_id"],
+            )
+            .values_list("id", flat=True)
+            .count()
         )
-        .values_list("id", flat=True)
-        .count()
-    )
-    if event_idem_ct > 0:
-        return HttpResponseBadRequest("Event idempotency already exists")
-
-    return ingest_event(
-        data=data, customer_pk=customer_pk, organization_pk=organization_pk
-    )
+        if event_idem_ct > 0:
+            bad_events[data["idempotency_id"]] = "Event idempotency already exists"
+            continue
+        
+        ingest_event(
+            data=data, customer_pk=customer_pk, organization_pk=organization_pk
+        )
+    if len(bad_events) > 0:
+        return JsonResponse(bad_events, status=400)
+    else:
+        return JsonResponse({"success": True}, status=201)
