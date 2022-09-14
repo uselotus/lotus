@@ -25,7 +25,7 @@
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.jpg#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing and Billing On Any Metric
+# :lotus: Lotus: Pricing and Billing On Any Metric
 
 <br/>
 
@@ -71,7 +71,6 @@ Best if you want to keep your data local or want full control and extensibility.
 3. Build the Docker Image 
    ```sh
    export DOCKER_BUILDKIT=0 && 
-   export COMPOSE_DOCKER_CLI_BUILD=0 &&
    docker-compose -f docker-compose.prod.yaml build
    ```
 4. Run the Docker Image!
@@ -107,7 +106,6 @@ In order to develop locally, we recommend using Docker to set up the environment
 3. Build the Docker Image 
    ```sh
    export DOCKER_BUILDKIT=0 && 
-   export COMPOSE_DOCKER_CLI_BUILD=0 &&
    docker-compose -f docker-compose.dev.yaml build
    ```
 4. Run the Docker Image!
