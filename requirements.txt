@@ -1,7 +1,7 @@
 amqp==5.1.1
 arrow==1.2.2
 asgiref==3.5.2
-astroid==2.11.7
+astroid==2.12.9
 async-timeout==4.0.2
 Babel==2.10.3
 billiard==3.6.4.0
