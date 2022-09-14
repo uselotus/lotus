@@ -25,23 +25,20 @@ env = environ.Env(
     # set casting, default value
     DEBUG=(bool, False),
     PROFILER_ENABLED=(bool, False),
+    DOCKERIZED=(bool, False),
+    ON_HEROKU=(bool, False),
     POSTGRES_NAME=(str, "lotus"),
     POSTGRES_USER=(str, "lotus"),
     POSTGRES_PASSWORD=(str, "lotus"),
 )
 
+DOCKERIZED = env("DOCKERIZED")
+ON_HEROKU = env("ON_HEROKU")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 local_env_file = BASE_DIR / "env/.env"
 if local_env_file.is_file():
     environ.Env.read_env(local_env_file)
-    DOCKERIZED = True
-else:
-    DOCKERIZED = False
-    global_env_file = BASE_DIR / ".." / "env/.env"
-    if global_env_file.is_file():
-        environ.Env.read_env(global_env_file)
-
 
 try:
     sentry_sdk.init(
@@ -253,11 +250,9 @@ if DOCKERIZED:
     INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
 
 
-# VITE_APP_DIR = BASE_DIR / "frontend" / "src"
+VITE_APP_DIR = BASE_DIR / "src"
 
-# DJANGO_VITE_ASSETS_PATH = BASE_DIR / "frontend" / "static" / "dist"
-
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static", VITE_APP_DIR / "dist"]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "static/"

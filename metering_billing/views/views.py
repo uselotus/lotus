@@ -173,52 +173,57 @@ class PeriodMetricRevenueView(APIView):
             "daily_usage_revenue_period_2": {},
             "total_revenue_period_2": Decimal(0),
         }
-        for billable_metric in all_org_billable_metrics:
+        if all_org_billable_metrics.count() > 0:
+            for billable_metric in all_org_billable_metrics:
+                for p_start, p_end, p_num in [
+                    (p1_start, p1_end, 1),
+                    (p2_start, p2_end, 2),
+                ]:
+                    return_dict[f"daily_usage_revenue_period_{p_num}"][
+                        billable_metric.id
+                    ] = {
+                        "metric": str(billable_metric),
+                        "data": {
+                            str(x): Decimal(0)
+                            for x in dates_bwn_twodates(p_start, p_end)
+                        },
+                        "total_revenue": Decimal(0),
+                    }
             for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-                return_dict[f"daily_usage_revenue_period_{p_num}"][
-                    billable_metric.id
-                ] = {
-                    "metric": str(billable_metric),
-                    "data": {
-                        str(x): Decimal(0) for x in dates_bwn_twodates(p_start, p_end)
-                    },
-                    "total_revenue": Decimal(0),
-                }
-        for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-            subs = Subscription.objects.filter(
-                Q(start_date__range=[p_start, p_end])
-                | Q(end_date__range=[p_start, p_end]),
-                organization=organization,
-            )
-            for sub in subs:
-                billing_plan = sub.billing_plan
-                flat_fee_billable_date = (
-                    sub.start_date if billing_plan.pay_in_advance else sub.end_date
+                subs = Subscription.objects.filter(
+                    Q(start_date__range=[p_start, p_end])
+                    | Q(end_date__range=[p_start, p_end]),
+                    organization=organization,
                 )
-                if (
-                    flat_fee_billable_date >= p_start
-                    and flat_fee_billable_date <= p_end
-                ):
-                    return_dict[
-                        f"total_revenue_period_{p_num}"
-                    ] += billing_plan.flat_rate.amount
-                for plan_component in billing_plan.components.all():
-                    usage_cost_per_day = calculate_plan_component_daily_revenue(
-                        sub.customer,
-                        plan_component,
-                        sub.start_date,
-                        sub.end_date,
-                        p_start,
-                        p_end,
+                for sub in subs:
+                    billing_plan = sub.billing_plan
+                    flat_fee_billable_date = (
+                        sub.start_date if billing_plan.pay_in_advance else sub.end_date
                     )
-                    metric_dict = return_dict[f"daily_usage_revenue_period_{p_num}"][
-                        plan_component.billable_metric.id
-                    ]
-                    for date, usage_cost in usage_cost_per_day.items():
-                        usage_cost = Decimal(usage_cost)
-                        metric_dict["data"][str(date)] += usage_cost
-                        metric_dict["total_revenue"] += usage_cost
-                        return_dict[f"total_revenue_period_{p_num}"] += usage_cost
+                    if (
+                        flat_fee_billable_date >= p_start
+                        and flat_fee_billable_date <= p_end
+                    ):
+                        return_dict[
+                            f"total_revenue_period_{p_num}"
+                        ] += billing_plan.flat_rate.amount
+                    for plan_component in billing_plan.components.all():
+                        usage_cost_per_day = calculate_plan_component_daily_revenue(
+                            sub.customer,
+                            plan_component,
+                            sub.start_date,
+                            sub.end_date,
+                            p_start,
+                            p_end,
+                        )
+                        metric_dict = return_dict[
+                            f"daily_usage_revenue_period_{p_num}"
+                        ][plan_component.billable_metric.id]
+                        for date, usage_cost in usage_cost_per_day.items():
+                            usage_cost = Decimal(usage_cost)
+                            metric_dict["data"][str(date)] += usage_cost
+                            metric_dict["total_revenue"] += usage_cost
+                            return_dict[f"total_revenue_period_{p_num}"] += usage_cost
 
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
@@ -257,7 +262,6 @@ class PeriodSubscriptionsView(APIView):
         ]
 
         return_dict = {}
-
         p1_subs = Subscription.objects.filter(
             Q(start_date__range=[p1_start, p1_end])
             | Q(end_date__range=[p1_start, p1_end]),
@@ -370,8 +374,7 @@ class CustomerWithRevenueView(APIView):
         Return current usage for a customer during a given billing period.
         """
         organization = parse_organization(request)
-        customers = get_list_or_404(Customer, organization=organization)
-
+        customers = Customer.objects.filter(organization=organization)
         customers_dict = {"customers": []}
         for customer in customers:
             customer_dict = {}
