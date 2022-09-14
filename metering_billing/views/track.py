@@ -125,6 +125,7 @@ def track_event(request):
         last_flush_dt = now
         cached_events = []
     cache.set("events_to_insert", (cached_events, last_flush_dt), None)
+
     if len(bad_events) > 0:
         return JsonResponse(bad_events, status=400)
     else:
