@@ -175,13 +175,17 @@ class PeriodMetricRevenueView(APIView):
         }
         if all_org_billable_metrics.count() > 0:
             for billable_metric in all_org_billable_metrics:
-                for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+                for p_start, p_end, p_num in [
+                    (p1_start, p1_end, 1),
+                    (p2_start, p2_end, 2),
+                ]:
                     return_dict[f"daily_usage_revenue_period_{p_num}"][
                         billable_metric.id
                     ] = {
                         "metric": str(billable_metric),
                         "data": {
-                            str(x): Decimal(0) for x in dates_bwn_twodates(p_start, p_end)
+                            str(x): Decimal(0)
+                            for x in dates_bwn_twodates(p_start, p_end)
                         },
                         "total_revenue": Decimal(0),
                     }
@@ -212,9 +216,9 @@ class PeriodMetricRevenueView(APIView):
                             p_start,
                             p_end,
                         )
-                        metric_dict = return_dict[f"daily_usage_revenue_period_{p_num}"][
-                            plan_component.billable_metric.id
-                        ]
+                        metric_dict = return_dict[
+                            f"daily_usage_revenue_period_{p_num}"
+                        ][plan_component.billable_metric.id]
                         for date, usage_cost in usage_cost_per_day.items():
                             usage_cost = Decimal(usage_cost)
                             metric_dict["data"][str(date)] += usage_cost
