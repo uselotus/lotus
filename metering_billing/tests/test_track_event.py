@@ -175,3 +175,37 @@ class TestTrackEvent:
         assert [
             getattr(event, "idempotency_id") for event in customer_org_events
         ].count(setup_dict["idempotency_id"]) == 1
+
+    def test_batch_track_event_works(
+        self,
+        track_event_test_common_setup,
+        track_event_payload,
+        get_events_with_org_customer_id,
+    ):
+        # batch_events=true
+        setup_dict = track_event_test_common_setup(
+            idempotency_already_created=False, customer_id_exists=True
+        )
+        time_created = datetime.now()
+
+        idem1 = str(uuid.uuid4())
+        payload1 = track_event_payload(idem1, time_created, setup_dict["customer_id"])
+        idem2 = str(uuid.uuid4())
+        payload2 = track_event_payload(idem2, time_created, setup_dict["customer_id"])
+        response = setup_dict["client"].post(
+            reverse("track_event"),
+            data=json.dumps([payload1, payload2], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        customer_org_events = get_events_with_org_customer_id(
+            setup_dict["org"], setup_dict["customer_id"]
+        )
+        assert len(customer_org_events) == setup_dict["num_events_in"] + 2
+        assert [
+            getattr(event, "idempotency_id") for event in customer_org_events
+        ].count(idem1) == 1
+        assert [
+            getattr(event, "idempotency_id") for event in customer_org_events
+        ].count(idem2) == 1
