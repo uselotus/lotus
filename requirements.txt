@@ -46,7 +46,7 @@ nodeenv==1.7.0
 packaging==21.3
 platformdirs==2.5.2
 pre-commit==2.20.0
-prompt-toolkit==3.0.30
+prompt-toolkit==3.0.31
 psycopg2==2.9.3
 py-moneyed==2.0
 pycparser==2.21
