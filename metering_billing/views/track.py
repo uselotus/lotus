@@ -1,13 +1,16 @@
 import base64
 import datetime
 import json
+from datetime import timezone
 from re import S
 from typing import Dict, Union
 
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
+from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from metering_billing.models import APIToken, Customer, Event
+from rest_framework.decorators import api_view, permission_classes
 
 from ..permissions import HasUserAPIKey
 
@@ -48,8 +51,8 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
         event_kwargs["properties"] = data["properties"]
     Event.objects.create(**event_kwargs)
 
-
 @csrf_exempt
+@api_view(http_method_names=['POST'])
 def track_event(request):
     key = HasUserAPIKey().get_key(request)
     if key is None:
@@ -67,7 +70,7 @@ def track_event(request):
         timeout = (
             60 * 60 * 25 * 7
             if expiry_date is None
-            else (expiry_date - datetime.datetime.now()).total_seconds()
+            else (expiry_date - datetime.datetime.now(timezone.utc).astimezone()).total_seconds()
         )
         cache.set(prefix, organization_pk, timeout)
 
