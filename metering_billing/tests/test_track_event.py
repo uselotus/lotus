@@ -1,4 +1,5 @@
 import json
+import time
 import uuid
 from datetime import datetime
 
@@ -6,6 +7,7 @@ import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import Event
+from metering_billing.tasks import write_batch_events_to_db
 from model_bakery import baker
 from rest_framework import status
 
@@ -108,6 +110,21 @@ class TestTrackEvent:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
+        # test batch insert after
+        events_list = []
+        for event in [payload]:
+            events_list.append(
+                {
+                    "idempotency_id": event["idempotency_id"],
+                    "customer_id": event["customer_id"],
+                    "event_name": event["event_name"],
+                    "properties": event["properties"],
+                    "time_created": event["time_created"],
+                    "organization_id": setup_dict["org"].pk,
+                    "customer_id": setup_dict["customer"].pk,
+                }
+            )
+        write_batch_events_to_db(events_list)
         customer_org_events = get_events_with_org_customer_id(
             setup_dict["org"], setup_dict["customer_id"]
         )
@@ -176,7 +193,7 @@ class TestTrackEvent:
             getattr(event, "idempotency_id") for event in customer_org_events
         ].count(setup_dict["idempotency_id"]) == 1
 
-    def test_batch_track_event_works(
+    def test_batch_track_event_creates_event(
         self,
         track_event_test_common_setup,
         track_event_payload,
@@ -188,17 +205,35 @@ class TestTrackEvent:
         )
         time_created = datetime.now()
 
+        # test asynchrounous response first
         idem1 = str(uuid.uuid4())
         payload1 = track_event_payload(idem1, time_created, setup_dict["customer_id"])
         idem2 = str(uuid.uuid4())
         payload2 = track_event_payload(idem2, time_created, setup_dict["customer_id"])
+        batch_payload = [payload1, payload2]
         response = setup_dict["client"].post(
             reverse("track_event"),
-            data=json.dumps([payload1, payload2], cls=DjangoJSONEncoder),
+            data=json.dumps(batch_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
 
         assert response.status_code == status.HTTP_201_CREATED
+
+        # test batch insert after
+        events_list = []
+        for event in batch_payload:
+            events_list.append(
+                {
+                    "idempotency_id": event["idempotency_id"],
+                    "customer_id": event["customer_id"],
+                    "event_name": event["event_name"],
+                    "properties": event["properties"],
+                    "time_created": event["time_created"],
+                    "organization_id": setup_dict["org"].pk,
+                    "customer_id": setup_dict["customer"].pk,
+                }
+            )
+        write_batch_events_to_db(events_list)
         customer_org_events = get_events_with_org_customer_id(
             setup_dict["org"], setup_dict["customer_id"]
         )
