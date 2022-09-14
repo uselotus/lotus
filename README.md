@@ -75,14 +75,14 @@ Best if you want to keep your data local or want full control and extensibility.
    ```
 You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
 <!-- USAGE EXAMPLES -->
 ## Examples
 
 _For more examples, please refer to the [Documentation](https://uselotus.stoplight.io/)_
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -102,32 +102,32 @@ In order to develop locally, we recommend using Docker to set up the environment
 3. Build and run the Docker Image!
    ```sh
    export DOCKER_BUILDKIT=0 && 
-   docker-compose --env-file env/.env -f docker-compose.prod.yaml up --build
+   docker-compose --env-file env/.env.dev -f docker-compose.dev.yaml up --build
    ```
 You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
 
 If you make any changes to the backend settings, you might need to restart the Docker container.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
 Lotus is the quickest way to start billing flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our metering and billing solutions are open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
 ## :bar_chart: Repo Activity
 ![Alt](https://repobeats.axiom.co/api/embed/408c31cc31b6650e1e5c00414ec4a77b0277cf99.svg "Repobeats analytics image")
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
 <!-- LICENSE -->
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
 <!-- CONTACT -->
 ## Get in Touch
@@ -136,7 +136,7 @@ Lotus founders - founders@uselotus.io
 
 Or visit www.uselotus.io
 
-<p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
+<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
 
 
