@@ -25,7 +25,7 @@
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.jpg#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# :lotus: Lotus: Pricing and Billing On Any Metric
+# Lotus: Pricing and Billing On Any Metric
 
 <br/>
 
