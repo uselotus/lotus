@@ -52,29 +52,33 @@ Best for convenience and fast deployment.
 
 Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details. 
 
-### :computer: Self-Hosted Version
+Once you have an account, head over to [the app](https://www.uselotus.app/) and you can start using Lotus right away.
+
+### Self-Hosted Version
 
 Best if you want to keep your data local or want full control and extensibility.
 
-#### One-click Deploy with Heroku
+#### :pisces: One-click Deploy with Heroku
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
-#### Set up locally
+#### :computer: Set up locally
 
 1. Clone the repo and navigate to the project
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-2. Use [pipenv](https://pipenv.pypa.io/en/latest/) to install the requried packages. 
+2. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
+3. Build the Docker Image 
    ```sh
-   pipenv sync
+   export DOCKER_BUILDKIT=0 && 
+   export COMPOSE_DOCKER_CLI_BUILD=0 &&
+   docker-compose -f docker-compose.prod.yaml build
    ```
-3. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
-4. Run the project! 
+4. Run the Docker Image!
    ```sh
-   python manage.py runserver
+   docker-compose --env-file env/.env -f docker-compose.prod.yaml up
    ```
-You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
+You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
@@ -92,6 +96,27 @@ Contributions are what make the open source community such an amazing place to l
 
 If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply [request a feature]().
 Don't forget to give the project a star! Thanks again!
+
+### :exclamation: Local Development
+In order to develop locally, we recommend using Docker to set up the environment, which allows for hot reloading of both frontend and backend code.
+1. Clone the repo and navigate to the project
+   ```sh
+   git clone https://github.com/uselotus/lotus.git && cd lotus
+   ```
+2. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
+3. Build the Docker Image 
+   ```sh
+   export DOCKER_BUILDKIT=0 && 
+   export COMPOSE_DOCKER_CLI_BUILD=0 &&
+   docker-compose -f docker-compose.dev.yaml build
+   ```
+4. Run the Docker Image!
+   ```sh
+   docker-compose --env-file env/.env.dev -f docker-compose.dev.yaml up
+   ```
+You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
+
+If you make any changes to the backend settings, you might need to restart the Docker container.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-your-way">back to top</a>)</p>
 
