@@ -19,7 +19,6 @@ def render_vite_bundle():
     For development, see other files.
     """
     root = f"{settings.VITE_APP_DIR}/dist"
-    assets = f"{root}/assets"
     try:
         fd = open(f"{root}/manifest.json", "r")
         manifest = json.load(fd)
@@ -30,13 +29,13 @@ def render_vite_bundle():
 
     imports_files = "".join(
         [
-            f'<script type="module" src="{assets}/{manifest[file]["file"]}"></script>'
+            f'<script type="module" src="/static/{manifest[file]["file"]}"></script>'
             for file in manifest["index.html"]["imports"]
         ]
     )
 
     return mark_safe(
-        f"""<script type="module" src="{assets}/{manifest['index.html']['file']}"></script>
-        <link rel="stylesheet" type="text/css" href="{assets}/{manifest['index.html']['css'][0]}" />
+        f"""<script type="module" src="/static/{manifest['index.html']['file']}"></script>
+        <link rel="stylesheet" type="text/css" href="/static/{manifest['index.html']['css'][0]}" />
         {imports_files}"""
     )

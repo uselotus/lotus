@@ -259,7 +259,7 @@ if DOCKERIZED:
 
 VITE_APP_DIR = BASE_DIR / "src"
 
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static", VITE_APP_DIR / "dist"]
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "static/"
