@@ -10,6 +10,7 @@ from typing import Dict, Union
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from lotus.settings import EVENT_CACHE_FLUSH_COUNT
 from metering_billing.models import APIToken, Customer, Event
 from metering_billing.tasks import write_batch_events_to_db
 from rest_framework.decorators import api_view
@@ -59,9 +60,14 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
 @csrf_exempt
 @api_view(http_method_names=["POST"])
 def track_event(request):
-    key = HasUserAPIKey().get_key(request)
-    if key is None:
-        return HttpResponseBadRequest("No API key provided")
+    try:
+        key = request.META.get("HTTP_X_API_KEY")
+    except KeyError:
+        meta_dict = {k.lower(): v for k, v in request.META}
+        if "http_x_api_key".lower() in meta_dict:
+            key = meta_dict["http_x_api_key"]
+        else:
+            raise KeyError("No API key found in request")
     prefix, _, _ = key.partition(".")
     organization_pk = cache.get(prefix)
     if not organization_pk:
@@ -120,7 +126,7 @@ def track_event(request):
     now = datetime.datetime.now(timezone.utc).astimezone()
     cached_events, last_flush_dt = cache_tup if cache_tup else ([], now)
     cached_events.extend(events_to_insert)
-    if len(cached_events) >= 100:
+    if len(cached_events) >= EVENT_CACHE_FLUSH_COUNT:
         write_batch_events_to_db.delay(cached_events)
         last_flush_dt = now
         cached_events = []

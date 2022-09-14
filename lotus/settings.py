@@ -30,8 +30,11 @@ env = environ.Env(
     POSTGRES_NAME=(str, "lotus"),
     POSTGRES_USER=(str, "lotus"),
     POSTGRES_PASSWORD=(str, "lotus"),
+    EVENT_CACHE_FLUSH_SECONDS=(int, 300),
+    EVENT_CACHE_FLUSH_COUNT=(int, 500),
 )
-
+EVENT_CACHE_FLUSH_SECONDS = env("EVENT_CACHE_FLUSH_SECONDS")
+EVENT_CACHE_FLUSH_COUNT = env("EVENT_CACHE_FLUSH_COUNT")
 DOCKERIZED = env("DOCKERIZED")
 ON_HEROKU = env("ON_HEROKU")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

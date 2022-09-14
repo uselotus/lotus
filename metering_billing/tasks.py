@@ -7,7 +7,11 @@ import stripe
 from celery import shared_task
 from django.core.cache import cache
 from django.db.models import Q
-from lotus.settings import STRIPE_SECRET_KEY
+from lotus.settings import (
+    EVENT_CACHE_FLUSH_COUNT,
+    EVENT_CACHE_FLUSH_SECONDS,
+    STRIPE_SECRET_KEY,
+)
 
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import Event, Invoice, Subscription
@@ -80,7 +84,7 @@ def update_invoice_status():
 
 @shared_task
 def write_batch_events_to_db(events_list):
-    event_obj_list = [Event(**event) for event in events_list]
+    event_obj_list = [Event(**dict(event)) for event in events_list]
     Event.objects.bulk_create(event_obj_list)
 
 
@@ -88,9 +92,12 @@ def write_batch_events_to_db(events_list):
 def check_event_cache_flushed():
     cache_tup = cache.get("events_to_insert")
     now = datetime.datetime.now(timezone.utc).astimezone()
-    cached_events, last_flush_dt = cache_tup if cache_tup else ([], now)
+    cached_events, last_flush_dt = cache_tup if cache_tup else (set(), now)
     time_since_last_flush = (now - last_flush_dt).total_seconds()
-    if len(cached_events) >= 100 or time_since_last_flush >= 60:
+    if (
+        len(cached_events) >= EVENT_CACHE_FLUSH_COUNT
+        or time_since_last_flush >= EVENT_CACHE_FLUSH_SECONDS
+    ):
         write_batch_events_to_db.delay(cached_events)
         cached_events = []
         cache.set("events_to_insert", (cached_events, now), None)
