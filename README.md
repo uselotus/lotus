@@ -27,6 +27,10 @@
 
 # Lotus: Pricing and Billing On Any Metric
 
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-13-orange.svg?style=flat-square)](#contributors)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
+
 <br/>
 
 Lotus is the open-core pricing and billing engine. We enable SaaS companies to manage and experiment in real-time with custom subscription and usage-based billing.
@@ -108,8 +112,6 @@ You should now be able to access the homepage at [localhost:8000/](http://localh
 
 If you make any changes to the backend settings, you might need to restart the Docker container.
 
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
-
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
@@ -137,6 +139,19 @@ Lotus founders - founders@uselotus.io
 Or visit www.uselotus.io
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
+
+## Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+
 
 
 
