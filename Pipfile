@@ -36,6 +36,7 @@ model-bakery = "*"
 faker = "*"
 django-redis = "*"
 flower = "*"
+posthog = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"

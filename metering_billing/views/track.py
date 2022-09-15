@@ -91,7 +91,10 @@ def track_event(request):
     if not event_list:
         return HttpResponseBadRequest("No data provided")
     if type(event_list) != list:
-        event_list = [event_list]
+        if type(event_list) == dict and "batch" in event_list:
+            event_list = event_list["batch"]
+        else:
+            event_list = [event_list]
     bad_events = {}
     events_to_insert = []
     for data in event_list:
