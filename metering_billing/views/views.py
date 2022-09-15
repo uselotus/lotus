@@ -43,18 +43,20 @@ def import_stripe_customers(organization):
     """
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
+    if organization.stripe_id:
+        stripe_customers_response = stripe.Customer.list(
+            stripe_account=organization.stripe_id
+        )
 
-    stripe_customers_response = stripe.Customer.list(
-        stripe_account=organization.stripe_id
-    )
-
-    for stripe_customer in stripe_customers_response.auto_paging_iter():
-        try:
-            customer = Customer.objects.get(name=stripe_customer["name"])
-            customer.payment_provider_id = stripe_customer["id"]
-            customer.save()
-        except Customer.DoesNotExist:
-            pass
+        for stripe_customer in stripe_customers_response.auto_paging_iter():
+            try:
+                customer = Customer.objects.get(
+                    organization=organization, name=stripe_customer.name
+                )
+                customer.payment_provider_id = stripe_customer.id
+                customer.save()
+            except Customer.DoesNotExist:
+                pass
 
 
 def issue_stripe_payment_intent(invoice):

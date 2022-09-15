@@ -5,6 +5,7 @@ from datetime import timezone
 
 import stripe
 from celery import shared_task
+from dateutil.relativedelta import relativedelta
 from django.core.cache import cache
 from django.db.models import Q
 from lotus.settings import (
@@ -15,16 +16,26 @@ from lotus.settings import (
 
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import Event, Invoice, Subscription
+from metering_billing.views.views import import_stripe_customers
 
 stripe.api_key = STRIPE_SECRET_KEY
 
 
 @shared_task
 def calculate_invoice():
+    # get ending subs
     now = datetime.date.today()
-    ending_subscriptions = Subscription.objects.filter(
-        status="active", end_date__lte=now
+    ending_subscriptions = list(
+        Subscription.objects.filter(status="active", end_date__lt=now)
     )
+    # prefetch organization customer stripe keys
+    orgs_seen = set()
+    for sub in ending_subscriptions:
+        org_pk = sub.organization.pk
+        if org_pk not in orgs_seen:
+            orgs_seen.add(org_pk)
+            import_stripe_customers(sub.organization)
+    # now generate invoices and new subs
     for old_subscription in ending_subscriptions:
         # Generate the invoice
         try:
@@ -44,7 +55,7 @@ def calculate_invoice():
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
                 "billing_plan": old_subscription.billing_plan,
-                "start_date": old_subscription.end_date,
+                "start_date": old_subscription.end_date + relativedelta(days=+1),
                 "auto_renew": True,
                 "is_new": False,
             }
@@ -63,7 +74,7 @@ def calculate_invoice():
 
 @shared_task
 def start_subscriptions():
-    now = datetime.datetime.now(timezone.utc).astimezone()
+    now = datetime.date.today()
     starting_subscriptions = Subscription.objects.filter(
         status="not_started", start_date__lte=now
     )
