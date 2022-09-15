@@ -100,7 +100,7 @@ def task_test_common_setup(
     return do_task_test_common_setup
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestGenerateInvoiceSynchrous:
     def test_generate_invoice(self, task_test_common_setup):
         setup_dict = task_test_common_setup()
@@ -115,7 +115,7 @@ class TestGenerateInvoiceSynchrous:
         calculate_invoice()
 
         ending_subscriptions = Subscription.objects.filter(
-            status="active", end_date__lte=datetime.now().date()
+            status="active", end_date__lt=datetime.now().date()
         )
         assert len(ending_subscriptions) == 0
         invoice_set = Invoice.objects.all()
