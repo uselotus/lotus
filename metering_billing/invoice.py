@@ -92,20 +92,23 @@ def generate_invoice(subscription):
         amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100)
     )
     if organization.stripe_id is not None:
-        payment_intent = stripe.PaymentIntent.create(
-            amount=amount_cents,
-            currency=str.lower(customer.currency),
-            payment_method_types=["card"],
-            confirm=True,
-            customer=customer.payment_provider_id,
-            off_session=True,
-            statement_descriptor=f"Invoice from {organization.company_name}",
-            on_behalf_of=organization.stripe_id,
-        )
-        status = payment_intent.status
-        payment_intent_id = payment_intent.id
+        if customer.payment_provider_id is not None:
+            print(organization.stripe_id, customer.payment_provider_id, amount_cents)
+            payment_intent = stripe.PaymentIntent.create(
+                amount=amount_cents,
+                currency=str.lower(customer.currency),
+                payment_method_types=["card"],
+                customer=customer.payment_provider_id,
+                description=f"Invoice from {organization.company_name}",
+                stripe_account=organization.stripe_id,
+            )
+            status = payment_intent.status
+            payment_intent_id = payment_intent.id
+        else:
+            status = "customer_not_connected_to_stripe"
+            payment_intent_id = None
     else:
-        status = "not_connected_to_stripe"
+        status = "organization_not_connected_to_stripe"
         payment_intent_id = None
 
     # Create the invoice

@@ -3,18 +3,11 @@ import uuid
 from dateutil.parser import isoparse
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
-from django.contrib.postgres.constraints import ExclusionConstraint
-from django.contrib.postgres.fields import (
-    ArrayField,
-    DateTimeRangeField,
-    RangeBoundary,
-    RangeOperators,
-)
+from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from django.db.models.signals import post_save
-from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
 from model_utils import Choices
@@ -216,11 +209,11 @@ class BillingPlan(models.Model):
     def subscription_end_date(self, start_date):
         start_date_parsed = start_date
         if self.interval == "week":
-            return start_date_parsed + relativedelta(weeks=+1)
+            return start_date_parsed + relativedelta(weeks=+1) - relativedelta(days=+1)
         elif self.interval == "month":
-            return start_date_parsed + relativedelta(months=+1)
+            return start_date_parsed + relativedelta(months=+1) - relativedelta(days=+1)
         elif self.interval == "year":
-            return start_date_parsed + relativedelta(years=+1)
+            return start_date_parsed + relativedelta(years=+1) - relativedelta(days=+1)
         else:  # fix!!! should not work
             print("none")
             return None
@@ -276,7 +269,8 @@ class Subscription(models.Model):
 
 class Invoice(models.Model):
     class INVOICE_STATUS_TYPES(object):
-        NOT_CONNECTED_TO_STRIPE = "not_connected_to_stripe"
+        ORG_NOT_CONNECTED_TO_STRIPE = "organization_not_connected_to_stripe"
+        CUST_NOT_CONNECTED_TO_STRIPE = "customer_not_connected_to_stripe"
         REQUIRES_PAYMENT_METHOD = "requires_payment_method"
         REQUIRES_ACTION = "requires_action"
         PROCESSING = "processing"
@@ -287,7 +281,14 @@ class Invoice(models.Model):
         (INVOICE_STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
         (INVOICE_STATUS_TYPES.PROCESSING, _("Processing")),
         (INVOICE_STATUS_TYPES.SUCCEEDED, _("Succeeded")),
-        (INVOICE_STATUS_TYPES.NOT_CONNECTED_TO_STRIPE, _("Not Connected to Stripe")),
+        (
+            INVOICE_STATUS_TYPES.ORG_NOT_CONNECTED_TO_STRIPE,
+            _("Organization Not Connected to Stripe"),
+        ),
+        (
+            INVOICE_STATUS_TYPES.CUST_NOT_CONNECTED_TO_STRIPE,
+            _("Customer Not Connected to Stripe"),
+        ),
     )
 
     cost_due = MoneyField(
@@ -295,7 +296,7 @@ class Invoice(models.Model):
     )
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
-    status = models.CharField(max_length=35, choices=INVOICE_STATUS_CHOICES)
+    status = models.CharField(max_length=40, choices=INVOICE_STATUS_CHOICES)
     payment_intent_id = models.CharField(max_length=240, null=True, blank=True)
     line_items = models.JSONField()
     organization = models.JSONField()
