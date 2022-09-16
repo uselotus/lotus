@@ -41,7 +41,7 @@ We provide a flexible and modular approach to every step of the billing experien
 
 <br/>
 
-[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/) · [Contact Us](founders@uselotus.io)
+[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/intro/) · [Contact Us](founders@uselotus.io)
 
 <br/>
 
