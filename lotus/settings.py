@@ -13,6 +13,7 @@ import os
 import re
 import socket
 from pathlib import Path
+import posthog
 
 import dj_database_url
 import django_heroku
@@ -72,6 +73,9 @@ API_KEY_CUSTOM_HEADER = "X-API-KEY"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
 PROFILER_ENABLED = env("PROFILER_ENABLED")
+
+# posthog.project_api_key(env("POSTHOG_API_KEY"))
+# posthog.debug = DEBUG
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]

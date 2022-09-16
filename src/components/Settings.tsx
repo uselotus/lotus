@@ -4,10 +4,18 @@ import { StripeStatusType } from "../types/stripe-type";
 import { useQuery } from "react-query";
 import { StripeConnect } from "../api/api";
 import { useNavigate } from "react-router-dom";
+import { Divider, Button, Modal } from "antd";
 
 const Settings: FC = () => {
   const navigate = useNavigate();
   const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
+  const [visible, setVisible] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>("");
+
+  const closeModal = () => {
+    setVisible(false);
+    setApiKey("");
+  };
 
   const fetchStripeConnect = async (): Promise<StripeStatusType> =>
     StripeConnect.getStripeConnectionStatus().then((data) => {
@@ -18,6 +26,10 @@ const Settings: FC = () => {
     ["stripeConnect"],
     fetchStripeConnect
   );
+
+  const getKey = () => {
+    setVisible(true);
+  };
 
   const handleConnectWithStripeClick = () => {
     const client_id: string = import.meta.env.VITE_STRIPE_CLIENT;
@@ -40,9 +52,7 @@ const Settings: FC = () => {
           </div>
         ) : (
           <div className="items-center">
-            <p className="text-danger p-2 text-lg font-main">
-              Not Connected to Stripe{" "}
-            </p>{" "}
+            <p className="text-danger p-2">Not Connected to Stripe </p>{" "}
             <a
               className="stripe-connect slate"
               onClick={handleConnectWithStripeClick}
@@ -52,6 +62,21 @@ const Settings: FC = () => {
           </div>
         )}
       </div>
+      <Divider />
+      <div className="mt-10 flex flex-row">
+        <Button onClick={getKey}>New API Key</Button>
+      </div>
+      <Modal visible={visible} onCancel={closeModal}>
+        <div className="flex flex-col">
+          <p className="text-2xl font-main">New API Key</p>
+          <p className="text-lg font-main">
+            Your previous key has been revoked
+          </p>
+          <p className="text-lg font-main">
+            Your new key is: 2j234oujl25hlou234
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 };
