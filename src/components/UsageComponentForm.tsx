@@ -56,10 +56,10 @@ function UsageComponentForm(props: {
           </Select>
         </Form.Item>
         <Form.Item name="cost_per_metric" label="Cost Per Unit Amount">
-          <InputNumber addonBefore="$" defaultValue={0} precision={2} />
+          <InputNumber addonBefore="$" defaultValue={0} precision={4} />
         </Form.Item>
         <Form.Item name="metric_amount_per_cost">
-          <InputNumber addonBefore="per" defaultValue={1} precision={10} />
+          <InputNumber addonBefore="per" defaultValue={1} precision={5} />
         </Form.Item>
         <Form.Item name="free_amount" label="Free Units">
           <InputNumber defaultValue={0} precision={5} />
