@@ -13,6 +13,7 @@ import {
 import { useNavigate, useLocation } from "react-router";
 import logo from "../assets/images/corner_logo.svg";
 import "./SideBar.css";
+import { Authentication } from "../api/api";
 
 const SideBar: FC = () => {
   const navigate = useNavigate();
@@ -40,24 +41,27 @@ const SideBar: FC = () => {
   };
 
   const handleLogoutClick = () => {
-    navigate("/login");
+    Authentication.logout().then(() => {
+      window.location.reload();
+      navigate("/");
+    });
   };
 
   return (
     <div>
-      <div
-        style={{
-          height: "32px",
-          margin: "16px",
-        }}
-      >
-        <img src={logo} alt="lotus" />
-      </div>
       <Menu
         mode="vertical"
         selectedKeys={[location.pathname]}
         className="min-h-screen"
       >
+        <div
+          style={{
+            height: "100%",
+            margin: "30px",
+          }}
+        >
+          <img src={logo} alt="lotus" />
+        </div>
         <Menu.Item key="/dashboard" onClick={handleDashboardClick}>
           <BarChartOutlined />
           <span> Dashboard</span>

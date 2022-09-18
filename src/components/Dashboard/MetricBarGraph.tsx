@@ -107,6 +107,7 @@ function MetricBarGraph(props: { range: any }) {
 
   return (
     <div className="">
+      <h2>Metric Usage By Customer</h2>
       <Select
         defaultValue="Select Metric"
         onChange={changeMetric}

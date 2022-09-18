@@ -364,6 +364,34 @@ class PeriodMetricUsageView(APIView):
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
+class APIKeyCreate(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Revokes the current API key and returns a new one.
+        """
+        organization = parse_organization(request)
+        APIToken.objects.filter(organization=organization).delete()
+        api_key, key = APIToken.objects.create_key(
+            name="new_api_key", organization=organization
+        )
+        return JsonResponse({"api_key": key}, status=status.HTTP_200_OK)
+
+
+class SettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        return JsonResponse(
+            {"organization": organization.company_name}, status=status.HTTP_200_OK
+        )
+
+
 class CustomerWithRevenueView(APIView):
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]

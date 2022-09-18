@@ -120,3 +120,8 @@ export const Metrics = {
   createMetric: (post: MetricType): Promise<MetricType> =>
     requests.post("api/metrics/", post),
 };
+
+export const APIToken = {
+  newAPIToken: (): Promise<{ api_key: string }> =>
+    requests.get("api/new_api_key/", {}),
+};
