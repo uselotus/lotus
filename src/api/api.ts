@@ -70,6 +70,7 @@ export const Authentication = {
     password: string
   ): Promise<{ username: string; password: string }> =>
     requests.post("api/login/", { username, password }),
+  logout: (): Promise<{}> => requests.post("api/logout/", {}),
 };
 
 export const GetRevenue = {

@@ -27,6 +27,9 @@ class Organization(models.Model):
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
 
+    def __str__(self):
+        return self.company_name
+
 
 class User(AbstractUser):
     organization = models.ForeignKey(

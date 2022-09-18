@@ -7,8 +7,8 @@ import {
   SettingOutlined,
   BookOutlined,
   BorderlessTableOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
-import { GearIcon, ImageIcon, SunIcon } from "@radix-ui/react-icons";
 
 import { useNavigate, useLocation } from "react-router";
 import logo from "../assets/images/corner_logo.svg";
@@ -37,6 +37,10 @@ const SideBar: FC = () => {
 
   const handleMetricsClick = () => {
     navigate("/metrics");
+  };
+
+  const handleLogoutClick = () => {
+    navigate("/login");
   };
 
   return (
@@ -75,6 +79,19 @@ const SideBar: FC = () => {
           <span> Subscriptions</span>
         </Menu.Item> */}
         <Divider />
+        <Menu.Item key="/docs">
+          <BookOutlined />
+          <span>
+            {" "}
+            <a
+              target="_blank"
+              rel="noreferrer"
+              href="https://docs.uselotus.io/docs/intro"
+            >
+              Docs
+            </a>
+          </span>
+        </Menu.Item>
         <Menu.Item
           key="/settings"
           onClick={handleSettingsClick}
@@ -82,6 +99,10 @@ const SideBar: FC = () => {
         >
           <SettingOutlined />
           <span> Settings</span>
+        </Menu.Item>
+        <Menu.Item key="logout" onClick={handleLogoutClick}>
+          <LogoutOutlined />
+          <span> Logout</span>
         </Menu.Item>
       </Menu>
     </div>
