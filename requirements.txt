@@ -18,7 +18,7 @@ click-repl==0.2.0
 cryptography==37.0.4
 Deprecated==1.2.13
 dill==0.3.5.1
-distlib==0.3.5
+distlib==0.3.6
 dj-database-url==1.0.0
 Django==4.0.5
 django-appconf==1.0.5
