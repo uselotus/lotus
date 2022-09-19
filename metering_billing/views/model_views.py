@@ -1,5 +1,4 @@
 from datetime import datetime
-from msilib.schema import Error
 
 from django.db import IntegrityError
 from metering_billing.exceptions import DuplicateCustomerID
