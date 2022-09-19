@@ -48,7 +48,7 @@ We provide a flexible and modular approach to every step of the billing experien
 <!-- GETTING STARTED -->
 ## Getting Started
 
-There's a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/lotus-docs) to learn how to use Lotus!
+There are a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/lotus-docs) to learn how to use Lotus!
 
 ### :cloud: Cloud Version
 
