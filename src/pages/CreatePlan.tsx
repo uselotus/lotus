@@ -9,6 +9,7 @@ import {
   PageHeader,
   List,
   Radio,
+  Divider,
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -188,7 +189,7 @@ const CreatePlan = () => {
           <Form.Item name="pay_in_advance">
             <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
           </Form.Item>
-          <div className="grid grid-cols-2">
+          <div className="grid grid-cols-1">
             <div className=" flex flex-col border border-grey1 my-2 mx-2 px-2 py-2 place-items-center	">
               <Form.Item>
                 <Button
@@ -232,9 +233,8 @@ const CreatePlan = () => {
                 }}
               </Form.Item>
             </div>
-            <div className=" border border-grey1 my-2 mx-2 px-2 py-2">
-              <p>Hello</p>
-            </div>
+            <Divider type="vertical" />
+            <div className=" my-2 mx-2 px-2 py-2"></div>
           </div>
 
           <Form.Item>

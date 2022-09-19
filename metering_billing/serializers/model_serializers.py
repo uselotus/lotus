@@ -77,6 +77,7 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name",
             "property_name",
             "aggregation_type",
+            "recurring",
             "metric_name",  # read-only b/c MethodField, ignored in deserialization
         )
 
@@ -95,6 +96,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             "free_metric_quantity",
             "cost_per_metric",
             "metric_amount_per_cost",
+            "max_amount",
         )
 
 

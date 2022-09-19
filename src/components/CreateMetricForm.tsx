@@ -1,4 +1,4 @@
-import { Modal, Form, Input, Select } from "antd";
+import { Modal, Form, Input, Select, Checkbox } from "antd";
 import { MetricType } from "../types/metric-type";
 const { Option } = Select;
 
@@ -88,6 +88,9 @@ const CreateMetricForm = (props: {
               </Form.Item>
             ) : null
           }
+        </Form.Item>
+        <Form.Item name="recurring">
+          <Checkbox>Recurring?</Checkbox>
         </Form.Item>
       </Form>
     </Modal>
