@@ -106,11 +106,13 @@ class BillableMetric(models.Model):
         COUNT = "count"
         SUM = "sum"
         MAX = "max"
+        UNIQUE = "unique"
 
     AGGREGATION_CHOICES = Choices(
         (AGGREGATION_TYPES.COUNT, _("Count")),
         (AGGREGATION_TYPES.SUM, _("Sum")),
         (AGGREGATION_TYPES.MAX, _("Max")),
+        (AGGREGATION_TYPES.UNIQUE, _("Unique")),
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)

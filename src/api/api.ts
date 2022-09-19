@@ -119,6 +119,8 @@ export const Metrics = {
   getMetrics: (): Promise<MetricNameType[]> => requests.get("api/metrics/"),
   createMetric: (post: MetricType): Promise<MetricType> =>
     requests.post("api/metrics/", post),
+  deleteMetric: (id: number): Promise<{}> =>
+    requests.delete(`api/metrics/${id}`),
 };
 
 export const APIToken = {

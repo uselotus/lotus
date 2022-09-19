@@ -189,7 +189,7 @@ const CreatePlan = () => {
             <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
           </Form.Item>
           <div className="grid grid-cols-2">
-            <div className="border border-gray-300 my-2 mx-2 px-2 py-2">
+            <div className=" flex flex-col border border-grey1 my-2 mx-2 px-2 py-2 place-items-center	">
               <Form.Item>
                 <Button
                   htmlType="button"
@@ -201,6 +201,7 @@ const CreatePlan = () => {
               </Form.Item>
               <Form.Item
                 label="Usage Components"
+                className="self-start"
                 shouldUpdate={(prevValues, curValues) =>
                   prevValues.components !== curValues.components
                 }
@@ -231,7 +232,7 @@ const CreatePlan = () => {
                 }}
               </Form.Item>
             </div>
-            <div>
+            <div className=" border border-grey1 my-2 mx-2 px-2 py-2">
               <p>Hello</p>
             </div>
           </div>
