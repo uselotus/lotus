@@ -8,33 +8,52 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0012_alter_billablemetric_aggregation_type_and_more'),
+        ("metering_billing", "0012_alter_billablemetric_aggregation_type_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='billablemetric',
-            name='recurring',
+            model_name="billablemetric",
+            name="recurring",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='plancomponent',
-            name='max_amount',
-            field=models.DecimalField(blank=True, decimal_places=10, default=0.0, max_digits=20, null=True),
+            model_name="plancomponent",
+            name="max_amount",
+            field=models.DecimalField(
+                blank=True, decimal_places=10, default=0.0, max_digits=20, null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='billingplan',
-            name='billing_plan_id',
+            model_name="billingplan",
+            name="billing_plan_id",
             field=models.CharField(default=uuid.uuid4, max_length=255, unique=True),
         ),
         migrations.CreateModel(
-            name='Alert',
+            name="Alert",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('type', models.CharField(default='webhook', max_length=20)),
-                ('webhook_url', models.CharField(blank=True, max_length=300, null=True)),
-                ('name', models.CharField(default=' ', max_length=100)),
-                ('organization', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='metering_billing.organization')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("type", models.CharField(default="webhook", max_length=20)),
+                (
+                    "webhook_url",
+                    models.CharField(blank=True, max_length=300, null=True),
+                ),
+                ("name", models.CharField(default=" ", max_length=100)),
+                (
+                    "organization",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="metering_billing.organization",
+                    ),
+                ),
             ],
         ),
     ]
