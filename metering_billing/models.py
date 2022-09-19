@@ -22,6 +22,7 @@ class Organization(models.Model):
     )
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, blank=True, null=True)
+    webhook_url = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
@@ -29,6 +30,13 @@ class Organization(models.Model):
 
     def __str__(self):
         return self.company_name
+
+
+class Alert(models.Model):
+    type = models.CharField(max_length=20, default="webhook")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    webhook_url = models.CharField(max_length=300, blank=True, null=True)
+    name = models.CharField(max_length=100, default=" ")
 
 
 class User(AbstractUser):
