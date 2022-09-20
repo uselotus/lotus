@@ -9,12 +9,12 @@ interface Props {
 }
 
 const SubscriptionView: FC<Props> = ({ subscriptions, plans, onChange }) => {
-  const [selectedPlan, setSelectedPlan] = useState<number>();
-  const [idtoPlan, setIDtoPlan] = useState<{ [key: number]: PlanType }>({});
+  const [selectedPlan, setSelectedPlan] = useState<string>();
+  const [idtoPlan, setIDtoPlan] = useState<{ [key: string]: PlanType }>({});
   const [planList, setPlanList] =
-    useState<{ label: string; value: number }[]>();
+    useState<{ label: string; value: string }[]>();
 
-  const selectPlan = (plan_id: number) => {
+  const selectPlan = (plan_id: string) => {
     console.log(plan_id, "22");
 
     setSelectedPlan(plan_id);
@@ -23,13 +23,13 @@ const SubscriptionView: FC<Props> = ({ subscriptions, plans, onChange }) => {
   useEffect(() => {
     if (plans !== undefined) {
       const planMap = plans.reduce((acc, plan) => {
-        acc[plan.id] = plan;
+        acc[plan.billing_plan_id] = plan;
         return acc;
       }, {} as { [key: number]: PlanType });
       setIDtoPlan(planMap);
-      const newplanList: { label: string; value: number }[] = plans.map(
+      const newplanList: { label: string; value: string }[] = plans.map(
         (plan) => {
-          return { label: plan.name, value: plan.id };
+          return { label: plan.name, value: plan.billing_plan_id };
         }
       );
       console.log(newplanList);
