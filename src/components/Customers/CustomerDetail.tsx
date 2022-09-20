@@ -38,7 +38,7 @@ function CustomerDetail(props: {
 
     const newSubscription: CreateSubscriptionType = {
       customer: props.customer.customer_id,
-      billing_plan: subscription.id,
+      billing_plan: subscription.billing_plan_id,
       start_date: today,
     };
 
