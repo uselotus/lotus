@@ -104,6 +104,7 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "interval",
             "flat_rate",
             "pay_in_advance",
+            "billing_plan_id",
             "name",
             "description",
             "components",

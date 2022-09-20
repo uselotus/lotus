@@ -16,7 +16,7 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
         <div className="grid gap-4 grid-rows-2 justify-between">
           <div className="grid grid-cols-2 flex-col">
             <p>
-              <b>Plan id:</b> {props.plan.id}
+              <b>Plan id:</b> {props.plan.billing_plan_id}
             </p>
             <p>
               <b>Date Created:</b> {props.plan.time_created}

@@ -9,8 +9,7 @@ export interface SubscriptionTotals {
 export interface CreateSubscriptionType {
   customer: string;
   billing_plan: string;
-  start_date: string;
-  end_date: string;
+  start_date?: string;
 }
 
 export interface SubscriptionType {

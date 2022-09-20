@@ -8,6 +8,7 @@ export interface PlanType {
   currency: string;
   id: number;
   time_created: string;
+  billing_plan_id: string;
 }
 
 export interface CreatePlanType {
