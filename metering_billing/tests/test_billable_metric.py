@@ -4,7 +4,8 @@ import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from lotus.urls import router
-from metering_billing.models import BillableMetric
+from metering_billing.models import BillableMetric, Customer, Event
+from metering_billing.utils import get_metric_usage
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -191,3 +192,49 @@ class TestInsertBillableMetric:
         assert (
             len(get_billable_metrics_in_org(setup_dict["org2"])) == num_billable_metrics
         )
+
+
+@pytest.mark.django_db(transaction=True)
+class TestCalculateBillableMetric:
+    def test_count_unique(self, billable_metric_test_common_setup):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = BillableMetric.objects.create(
+            organization=setup_dict["org"],
+            property_name="test_property",
+            event_name="test_event",
+            aggregation_type="unique",
+        )
+        time_created = "2021-01-01T06:00:00Z"
+        customer = baker.make(Customer, organization=setup_dict["org"])
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "foo"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "bar"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        metric_usage_qs = get_metric_usage(
+            billable_metric,
+            query_start_date="2021-01-01",
+            query_end_date="2021-01-01",
+            customer=customer,
+        )
+        metric_usage = sum(metric_usage_qs.values_list("usage_qty", flat=True))
+
+        assert metric_usage == 2
