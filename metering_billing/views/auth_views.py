@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
+import uuid
 
 
 @require_POST
@@ -31,9 +32,11 @@ def login_view(request):
         return JsonResponse({"detail": "Invalid credentials."}, status=400)
 
     login(request, user)
+    # posthog.capture('test-id', 'test-event')
     return JsonResponse({"detail": "Successfully logged in."})
 
 
+@require_POST
 def logout_view(request):
     if not request.user.is_authenticated:
         return JsonResponse({"detail": "You're not logged in."}, status=400)

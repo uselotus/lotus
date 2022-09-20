@@ -35,6 +35,7 @@ from metering_billing.views.views import (
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
+    APIKeyCreate,
 )
 from rest_framework import routers
 
@@ -73,6 +74,7 @@ urlpatterns = [
         PeriodSubscriptionsView.as_view(),
         name="period_subscriptions",
     ),
+    path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
     path("api/stripe/", InitializeStripeView.as_view(), name="stripe_initialize"),
     path("api/login/", auth_views.login_view, name="api-login"),
     path("api/logout/", auth_views.logout_view, name="api-logout"),

@@ -27,6 +27,16 @@ class Organization(models.Model):
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
 
+    def __str__(self):
+        return self.company_name
+
+
+class Alert(models.Model):
+    type = models.CharField(max_length=20, default="webhook")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    webhook_url = models.CharField(max_length=300, blank=True, null=True)
+    name = models.CharField(max_length=100, default=" ")
+
 
 class User(AbstractUser):
     organization = models.ForeignKey(
@@ -103,15 +113,18 @@ class BillableMetric(models.Model):
         COUNT = "count"
         SUM = "sum"
         MAX = "max"
+        UNIQUE = "unique"
 
     AGGREGATION_CHOICES = Choices(
         (AGGREGATION_TYPES.COUNT, _("Count")),
         (AGGREGATION_TYPES.SUM, _("Sum")),
         (AGGREGATION_TYPES.MAX, _("Max")),
+        (AGGREGATION_TYPES.UNIQUE, _("Unique")),
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
     property_name = models.CharField(max_length=200, blank=True, null=True)
+    recurring = models.BooleanField(default=False)
     aggregation_type = models.CharField(
         max_length=10,
         choices=AGGREGATION_CHOICES,
@@ -167,6 +180,10 @@ class PlanComponent(models.Model):
         decimal_places=10, max_digits=20, default=1.0
     )
 
+    max_amount = models.DecimalField(
+        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
+    )
+
     def __str__(self):
         return str(self.billable_metric)
 
@@ -199,10 +216,10 @@ class BillingPlan(models.Model):
         max_length=5,
         choices=INTERVAL_CHOICES,
     )
-    billing_plan_id = models.CharField(max_length=255)
+    billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
     pay_in_advance = models.BooleanField()
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     description = models.CharField(max_length=256, default=" ", blank=True)
     components = models.ManyToManyField(PlanComponent, blank=True)
 

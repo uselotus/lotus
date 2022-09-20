@@ -15,6 +15,7 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
     User,
+    Alert,
 )
 from metering_billing.permissions import HasUserAPIKey
 from rest_framework import serializers
@@ -37,6 +38,16 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = "__all__"  # allowed because we never send back, just take in
+
+
+class AlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Alert
+        fields = (
+            "type",
+            "webhook_url",
+            "name",
+        )
 
 
 ## USER
@@ -66,6 +77,7 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name",
             "property_name",
             "aggregation_type",
+            "recurring",
             "metric_name",  # read-only b/c MethodField, ignored in deserialization
         )
 
@@ -84,6 +96,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             "free_metric_quantity",
             "cost_per_metric",
             "metric_amount_per_cost",
+            "max_amount",
         )
 
 

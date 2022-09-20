@@ -7,6 +7,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Authentication } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
+import { useQueryClient } from "react-query";
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;
@@ -21,6 +22,8 @@ const Login: FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
@@ -39,6 +42,7 @@ const Login: FC = () => {
   const handleLogin = (event: React.FormEvent<FormElements>) => {
     Authentication.login(username, password).then((data) => {
       setIsAuthenticated(true);
+      queryClient.invalidateQueries("session");
     });
   };
 
@@ -84,12 +88,18 @@ const Login: FC = () => {
   }
   return (
     <div className="container mt-3">
-      <h1>Login</h1>
-      <p>Hi {username}. You are logged in!</p>
-      <Link className="btn btn-primary mr-2" to="/dashboard">
-        Dashboard
-      </Link>
-      <button className="btn btn-danger">Log out</button>
+      <div className="grid h-screen place-items-center">
+        <Card title="Logged In" className="flex flex-col">
+          <p className="text-lg mb-3">Hi {username}. You are logged in!</p>
+          <Button
+            type="primary"
+            className="ml-auto bg-info"
+            onClick={redirectDashboard}
+          >
+            Enter Dashboard
+          </Button>
+        </Card>
+      </div>
     </div>
   );
 };

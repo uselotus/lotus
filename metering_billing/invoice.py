@@ -3,6 +3,7 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 import stripe
 from lotus.settings import STRIPE_SECRET_KEY
 from rest_framework import serializers
+from .webhooks import invoice_created_webhook
 
 from metering_billing.models import (
     BillingPlan,
@@ -127,5 +128,19 @@ def generate_invoice(subscription):
         payment_intent_id=payment_intent_id,
         line_items=usage_dict,
     )
+
+    invoice_data = {
+        invoice: {
+            "cost_due": amount_cents / 100,
+            "issue_date": subscription.end_date,
+            "organization": org_serializer.data,
+            "customer": customer_serializer.data,
+            "subscription": subscription_serializer.data,
+            "status": status,
+            "payment_intent_id": payment_intent_id,
+            "line_items": usage_dict,
+        }
+    }
+    invoice_created_webhook(invoice_data)
 
     return invoice

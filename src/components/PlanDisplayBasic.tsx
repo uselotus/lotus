@@ -29,7 +29,7 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
             </p>
             <p>
               {" "}
-              <b>Recurring Price</b>: {props.plan.flat_rate}
+              <b>Recurring Price</b>: ${props.plan.flat_rate}
             </p>
           </div>
           <p>
