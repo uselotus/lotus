@@ -59,17 +59,12 @@ def calculate_invoice():
                 "auto_renew": True,
                 "is_new": False,
             }
-            subscription_kwargs["end_date"] = subscription_kwargs[
-                "billing_plan"
-            ].subscription_end_date(subscription_kwargs["start_date"])
-            if (
-                subscription_kwargs["end_date"] >= now
-                and subscription_kwargs["start_date"] <= now
-            ):
-                subscription_kwargs["status"] = "active"
+            sub = Subscription.objects.create(**subscription_kwargs)
+            if sub.end_date >= now and sub.start_date <= now:
+                sub.status = "active"
             else:
-                subscription_kwargs["status"] = "ended"
-            Subscription.objects.create(**subscription_kwargs)
+                sub.status = "ended"
+            sub.save()
 
 
 @shared_task
