@@ -117,6 +117,7 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "interval",
             "flat_rate",
             "pay_in_advance",
+            "billing_plan_id",
             "name",
             "description",
             "components",
@@ -162,7 +163,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "customer",
             "billing_plan",
             "start_date",
-            "end_date",
             "status",
         )
 
@@ -174,20 +174,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         queryset=BillingPlan.objects.all(),
         read_only=False,
     )
-
-    def validate(self, data):
-        """
-        Check that start is before finish.
-        """
-        rng = [data["start_date"], data["end_date"]]
-        overlapping = Subscription.objects.filter(
-            Q(start_date__range=rng) | Q(end_date__range=rng),
-            customer=data["customer"],
-            billing_plan=data["billing_plan"],
-        )
-        if len(overlapping) > 0:
-            raise OverlappingSubscription
-        return data
 
 
 class SubscriptionReadSerializer(SubscriptionSerializer):

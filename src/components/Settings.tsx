@@ -2,9 +2,9 @@ import React, { FC, useState } from "react";
 import "./Settings.css";
 import { StripeStatusType } from "../types/stripe-type";
 import { useQuery } from "react-query";
-import { StripeConnect } from "../api/api";
+import { StripeConnect, Alerts } from "../api/api";
 import { useNavigate } from "react-router-dom";
-import { Divider, Button, Modal } from "antd";
+import { Divider, Button, Modal, List, Card } from "antd";
 import { APIToken } from "../api/api";
 
 const Settings: FC = () => {
@@ -27,6 +27,12 @@ const Settings: FC = () => {
     ["stripeConnect"],
     fetchStripeConnect
   );
+
+  const {
+    status: alertStatus,
+    error: webhookError,
+    data: webhookData,
+  } = useQuery<StripeStatusType>(["urls"], Alerts.getUrls);
 
   const getKey = () => {
     APIToken.newAPIToken().then((data) => {
@@ -69,6 +75,19 @@ const Settings: FC = () => {
       <Divider />
       <div className="mt-10 flex flex-row">
         <Button onClick={getKey}>New API Key</Button>
+      </div>
+      <Divider />
+      <div className="mt-10 flex flex-row">
+        <h2 className="font-main text-xl">Webhooks Urls</h2>
+        {/* <List>
+          {webhookData?.urls.map((url) => (
+            <List.Item>
+              <Card>
+                <p>{url}</p>
+                </Card>}
+              </List.Item>
+            ))}
+        </List> */}
       </div>
       <Modal visible={visible} onCancel={closeModal}>
         <div className="flex flex-col">

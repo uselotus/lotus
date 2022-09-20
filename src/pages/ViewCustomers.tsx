@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import CustomerTable from "../components/CustomerTable";
+import CustomerTable from "../components/Customers/CustomerTable";
 import { CustomerSummary, CustomerTableItem } from "../types/customer-type";
 import { Customer } from "../api/api";
 import LoadingSpinner from "../components/LoadingSpinner";

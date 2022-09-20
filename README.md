@@ -41,14 +41,14 @@ We provide a flexible and modular approach to every step of the billing experien
 
 <br/>
 
-[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/lotus-docs) · [Contact Us](founders@uselotus.io)
+[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/intro) · [Contact Us](founders@uselotus.io)
 
 <br/>
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
-There's a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/lotus-docs) to learn how to use Lotus!
+There are a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/lotus-docs) to learn how to use Lotus!
 
 ### :cloud: Cloud Version
 

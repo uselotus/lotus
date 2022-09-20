@@ -99,7 +99,6 @@ def subscription_test_common_setup(
             "name": "test_subscription",
             "balance": 30,
             "start_date": datetime.now().date() - timedelta(days=35),
-            "end_date": datetime.now().date() - timedelta(days=7),
             "status": "active",
             "customer": customer.customer_id,
             "billing_plan": billing_plan.billing_plan_id,
@@ -182,26 +181,4 @@ class TestInsertSubscription:
         )
 
         assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
-
-    def test_subscription_overlapping_reject_creation(
-        self, subscription_test_common_setup, get_subscriptions_in_org
-    ):
-        num_subscriptions = 3
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=num_subscriptions,
-            auth_method="api_key",
-            user_org_and_api_key_org_different=False,
-        )
-
-        payload = setup_dict["payload"]
-        payload["start_date"] = setup_dict["org_subscriptions"][0].start_date
-        payload["end_date"] = payload["start_date"] + timedelta(days=30)
-        response = setup_dict["client"].post(
-            reverse("subscription-list"),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_409_CONFLICT
         assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions

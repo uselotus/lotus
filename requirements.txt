@@ -1,5 +1,5 @@
 amqp==5.1.1
-arrow==1.2.2
+arrow==1.2.3
 asgiref==3.5.2
 astroid==2.11.7
 async-timeout==4.0.2
@@ -7,7 +7,7 @@ Babel==2.10.3
 billiard==3.6.4.0
 blessed==1.19.1
 celery==5.2.7
-certifi==2022.6.15
+certifi==2022.9.14
 cffi==1.15.1
 cfgv==3.3.1
 charset-normalizer==2.1.0
@@ -18,7 +18,7 @@ click-repl==0.2.0
 cryptography==37.0.4
 Deprecated==1.2.13
 dill==0.3.5.1
-distlib==0.3.5
+distlib==0.3.6
 dj-database-url==1.0.0
 Django==4.0.5
 django-appconf==1.0.5

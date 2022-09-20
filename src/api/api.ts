@@ -62,6 +62,14 @@ export const StripeConnect = {
     requests.post("api/stripe/", { authorization_code }),
 };
 
+export const Alerts = {
+  getUrls: (): Promise<any> => requests.get("api/webhooks/"),
+  addUrl: (url: string): Promise<any> =>
+    requests.post("api/webhooks/", { url }),
+  deleteUrl: (id: number): Promise<any> =>
+    requests.delete(`api/webhooks/${id}`),
+};
+
 export const Authentication = {
   getSession: (): Promise<{ isAuthenticated: boolean }> =>
     requests.get("api/session/"),
