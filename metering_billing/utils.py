@@ -25,22 +25,31 @@ def get_metric_usage(
         "event_name": metric.event_name,
         "time_created__date__range": (query_start_date, query_end_date),
     }
-    values_kwargs = {}
+    values_kwargs = {"org": F("organization")}
     annotate_kwargs = {}
+    # do it in aggregate, or by customer
     if customer is not None:
         filter_kwargs["customer"] = customer
     else:
         values_kwargs["customer_name"] = F("customer__name")
+    # do it day-by-day, or aggregated over the query period
     if daily:
         values_kwargs["date_created"] = F("time_created__date")
+    # try filtering by the metric's desired property_name
+    if metric.property_name is not None:
+        filter_kwargs["properties__has_key"] = metric.property_name
+    # input the correct aggregation type
     if metric.aggregation_type == "count":
         annotate_kwargs["usage_qty"] = Count("pk")
+    elif metric.aggregation_type == "unique":
+        annotate_kwargs["usage_qty"] = Count(
+            f"properties__{metric.property_name}", distinct=True
+        )
     else:
         aggregation_type = Sum if metric.aggregation_type == "sum" else Max
         annotate_kwargs["usage_qty"] = aggregation_type(
             Cast(KeyTextTransform(metric.property_name, "properties"), FloatField())
         )
-
     query = (
         Event.objects.filter(**filter_kwargs)
         .values(**values_kwargs)
