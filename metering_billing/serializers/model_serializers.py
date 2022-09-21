@@ -78,13 +78,8 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "property_name",
             "aggregation_type",
             "carries_over",
-            "metric_name",  # read-only b/c MethodField, ignored in deserialization
+            "metric_name",
         )
-
-    metric_name = serializers.SerializerMethodField()
-
-    def get_metric_name(self, obj) -> str:
-        return str(obj)
 
 
 ## PLAN COMPONENT
@@ -131,7 +126,7 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         for component_data in components_data:
             pc, _ = PlanComponent.objects.get_or_create(**component_data)
             billing_plan.components.add(pc)
-            billing_plan.save()
+        billing_plan.save()
         return billing_plan
 
 
@@ -160,19 +155,23 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = (
-            "customer",
-            "billing_plan",
+            "customer_id",
+            "billing_plan_id",
             "start_date",
             "status",
         )
 
-    customer = SlugRelatedLookupField(
-        slug_field="customer_id", queryset=Customer.objects.all(), read_only=False
+    customer_id = SlugRelatedLookupField(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        read_only=False,
+        source="customer",
     )
-    billing_plan = SlugRelatedLookupField(
+    billing_plan_id = SlugRelatedLookupField(
         slug_field="billing_plan_id",
         queryset=BillingPlan.objects.all(),
         read_only=False,
+        source="billing_plan",
     )
 
 

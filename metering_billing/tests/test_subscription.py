@@ -100,8 +100,8 @@ def subscription_test_common_setup(
             "balance": 30,
             "start_date": datetime.now().date() - timedelta(days=35),
             "status": "active",
-            "customer": customer.customer_id,
-            "billing_plan": billing_plan.billing_plan_id,
+            "customer_id": customer.customer_id,
+            "billing_plan_id": billing_plan.billing_plan_id,
         }
         setup_dict["payload"] = payload
 
