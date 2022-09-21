@@ -64,7 +64,6 @@ def billable_metric_test_common_setup(
             setup_dict["org2_billable_metrics"] = add_billable_metrics_to_org(
                 org2, n=num_billable_metrics
             )
-        print("noooo")
 
         return setup_dict
 

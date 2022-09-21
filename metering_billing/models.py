@@ -182,7 +182,9 @@ class BillableMetric(models.Model):
         blank=True,
         null=True,
     )
-    metric_name = models.CharField(max_length=200, null=False, blank=True)
+    billable_metric_name = models.CharField(
+        max_length=200, null=False, blank=True, default=uuid.uuid4
+    )
 
     def default_name(self):
         if self.aggregation_type == AGGREGATION_TYPES.COUNT:
@@ -197,12 +199,12 @@ class BillableMetric(models.Model):
             )
 
     def save(self, *args, **kwargs):
-        if not self.metric_name or self.metric_name == "":
-            self.metric_name = self.default_name()
+        if not self.billable_metric_name or self.billable_metric_name == "":
+            self.billable_metric_name = self.default_name()
         super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ("organization", "metric_name")
+        unique_together = ("organization", "billable_metric_name")
         constraints = [
             UniqueConstraint(
                 fields=[

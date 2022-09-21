@@ -3,6 +3,7 @@ from datetime import datetime
 from django.db import IntegrityError
 from metering_billing.exceptions import DuplicateCustomerID
 from metering_billing.models import (
+    Alert,
     BillableMetric,
     BillingPlan,
     Customer,
@@ -10,10 +11,10 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
     User,
-    Alert,
 )
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.model_serializers import (
+    AlertSerializer,
     BillableMetricSerializer,
     BillingPlanReadSerializer,
     BillingPlanSerializer,
@@ -24,7 +25,6 @@ from metering_billing.serializers.model_serializers import (
     SubscriptionReadSerializer,
     SubscriptionSerializer,
     UserSerializer,
-    AlertSerializer,
 )
 from rest_framework import serializers, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -161,6 +161,8 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         return Subscription.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
+        if serializer.validated_data["start_date"] <= datetime.now().date():
+            serializer.validated_data["status"] = "active"
         serializer.save(organization=parse_organization(self.request))
 
     def get_serializer_class(self):
