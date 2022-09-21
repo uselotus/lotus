@@ -78,11 +78,14 @@ function CustomerDetail(props: {
                 Content of Tab Pane 1
               </Tabs.TabPane>
               <Tabs.TabPane tab="Subscriptions" key="subscriptions">
-                <SubscriptionView
-                  subscriptions={customerSubscriptions}
-                  plans={props.plans}
-                  onChange={addSubscriptions}
-                />
+                <div key={props.customer.customer_id}>
+                  <SubscriptionView
+                    key={props.customer.customer_id}
+                    subscriptions={customerSubscriptions}
+                    plans={props.plans}
+                    onChange={addSubscriptions}
+                  />
+                </div>
               </Tabs.TabPane>
               <Tabs.TabPane disabled={true} tab="History" key="history">
                 <p>History</p>

@@ -19,7 +19,6 @@ import "react-toastify/dist/ReactToastify.css";
 import { Metrics } from "../api/api";
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
 import { Plan } from "../api/api";
-import { conversionMomentValue } from "@ant-design/pro-components";
 
 interface ComponentDisplay {
   metric: string;
@@ -193,11 +192,11 @@ const CreatePlan = () => {
               style={{ margin: "0 8px" }}
               onClick={showUserModal}
             >
-              Add Usage Component
+              Add Plan Component
             </Button>
           </Form.Item>
           <Form.Item
-            label="Usage Components"
+            label="Plan Components"
             shouldUpdate={(prevValues, curValues) =>
               prevValues.components !== curValues.components
             }
