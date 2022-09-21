@@ -7,8 +7,8 @@ export interface SubscriptionTotals {
 }
 
 export interface CreateSubscriptionType {
-  customer: string;
-  billing_plan: string;
+  customer_id: string;
+  billing_plan_id: string;
   start_date?: string;
 }
 

@@ -78,7 +78,7 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "property_name",
             "aggregation_type",
             "carries_over",
-            "metric_name",
+            "billable_metric_name",
         )
 
 

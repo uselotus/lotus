@@ -37,8 +37,8 @@ function CustomerDetail(props: {
     const today = dayjs().format("YYYY-MM-DD");
 
     const newSubscription: CreateSubscriptionType = {
-      customer: props.customer.customer_id,
-      billing_plan: subscription.billing_plan_id,
+      customer_id: props.customer.customer_id,
+      billing_plan_id: subscription.billing_plan_id,
       start_date: today,
     };
 
