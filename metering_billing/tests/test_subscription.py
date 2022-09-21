@@ -5,17 +5,7 @@ from datetime import datetime, timedelta
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from lotus.urls import router
-from metering_billing.models import (
-    BillableMetric,
-    BillingPlan,
-    Event,
-    Invoice,
-    Organization,
-    PlanComponent,
-    Subscription,
-    User,
-)
+from metering_billing.models import BillableMetric, BillingPlan, PlanComponent
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
