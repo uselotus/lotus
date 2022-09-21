@@ -305,7 +305,8 @@ class PeriodMetricUsageView(APIView):
             metric_dict = return_dict[str(metric)]
             for obj in usage_summary:
                 customer, date, qty = [
-                    obj[key] for key in ["customer_name", "time_created_quantized", "usage_qty"]
+                    obj[key]
+                    for key in ["customer_name", "time_created_quantized", "usage_qty"]
                 ]
                 if str(date) not in metric_dict["data"]:
                     metric_dict["data"][str(date)] = {
