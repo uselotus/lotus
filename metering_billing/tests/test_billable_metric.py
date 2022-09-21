@@ -64,6 +64,7 @@ def billable_metric_test_common_setup(
             setup_dict["org2_billable_metrics"] = add_billable_metrics_to_org(
                 org2, n=num_billable_metrics
             )
+        print("noooo")
 
         return setup_dict
 
@@ -192,6 +193,7 @@ class TestInsertBillableMetric:
             content_type="application/json",
         )
 
+        print(response.data)
         assert response.status_code == status.HTTP_409_CONFLICT
         assert (
             len(get_billable_metrics_in_org(setup_dict["org"]))

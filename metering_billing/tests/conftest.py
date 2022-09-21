@@ -102,7 +102,9 @@ def add_billable_metrics_to_org():
     from metering_billing.models import BillableMetric
 
     def do_add_billable_metrics_to_org(organization, n):
-        bm_set = baker.make(BillableMetric, _quantity=n, organization=organization)
+        bm_set = baker.make(
+            BillableMetric, _quantity=n, organization=organization, _fill_optional=True
+        )
         return bm_set
 
     return do_add_billable_metrics_to_org
