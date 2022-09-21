@@ -199,7 +199,11 @@ class BillableMetric(models.Model):
             )
 
     def save(self, *args, **kwargs):
-        if not self.billable_metric_name or self.billable_metric_name == "":
+        if (
+            not self.billable_metric_name
+            or self.billable_metric_name == ""
+            or self.billable_metric_name == " "
+        ):
             self.billable_metric_name = self.default_name()
         super().save(*args, **kwargs)
 
@@ -224,6 +228,9 @@ class BillableMetric(models.Model):
 
     def get_aggregation_type(self):
         return self.aggregation_type
+
+    def __str__(self):
+        return self.billable_metric_name
 
 
 class PlanComponent(models.Model):
