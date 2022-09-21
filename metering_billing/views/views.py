@@ -1,36 +1,22 @@
-import collections
-from datetime import timedelta
 from decimal import Decimal
 
-import dateutil.parser as parser
 import stripe
 from django.db.models import Q
 from django.http import JsonResponse
-from django.shortcuts import get_list_or_404, get_object_or_404
 from drf_spectacular.utils import extend_schema
 from lotus.settings import STRIPE_SECRET_KEY
-from metering_billing.models import (
-    APIToken,
-    BillableMetric,
-    BillingPlan,
-    Customer,
-    Event,
-    Invoice,
-    Organization,
-    PlanComponent,
-    Subscription,
-)
+from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
+from metering_billing.utils import dates_bwn_twodates
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..auth_utils import parse_organization
 from ..utils import (
-    calculate_plan_component_daily_revenue,
+    calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
     make_all_decimals_floats,
@@ -136,11 +122,6 @@ class InitializeStripeView(APIView):
         return JsonResponse({"Success": True})
 
 
-def dates_bwn_twodates(start_date, end_date):
-    for n in range((end_date - start_date).days + 1):
-        yield start_date + timedelta(n)
-
-
 class PeriodMetricRevenueView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -210,19 +191,20 @@ class PeriodMetricRevenueView(APIView):
                             f"total_revenue_period_{p_num}"
                         ] += billing_plan.flat_rate.amount
                     for plan_component in billing_plan.components.all():
-                        usage_cost_per_day = calculate_plan_component_daily_revenue(
-                            sub.customer,
+                        usage_cost_per_day = calculate_sub_pc_usage_revenue(
                             plan_component,
+                            sub.customer,
                             sub.start_date,
                             sub.end_date,
                             p_start,
                             p_end,
+                            time_period_agg="date",
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
                         ][plan_component.billable_metric.id]
-                        for date, usage_cost in usage_cost_per_day.items():
-                            usage_cost = Decimal(usage_cost)
+                        for date, d in usage_cost_per_day.items():
+                            usage_cost = Decimal(d["revenue"])
                             metric_dict["data"][str(date)] += usage_cost
                             metric_dict["total_revenue"] += usage_cost
                             return_dict[f"total_revenue_period_{p_num}"] += usage_cost
