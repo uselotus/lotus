@@ -27,6 +27,10 @@ class EventPreviewRequestSerializer(serializers.Serializer):
     page = serializers.IntegerField(required=True)
 
 
+class DraftInvoiceRequestSerializer(serializers.Serializer):
+    customer_id = serializers.CharField(required=True)
+
+
 class CustomerNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer

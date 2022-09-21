@@ -61,7 +61,7 @@ class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
         fields = ("start_date", "end_date", "billing_plan")
 
 
-def generate_invoice(subscription):
+def generate_invoice(subscription, draft=False):
     """
     Generate an invoice for a subscription.
     """
@@ -91,9 +91,11 @@ def generate_invoice(subscription):
     amount_cents = int(
         amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100)
     )
-    if organization.stripe_id is not None:
+    if draft:
+        status = "draft"
+        payment_intent_id = None
+    elif organization.stripe_id is not None:
         if customer.payment_provider_id is not None:
-            print(organization.stripe_id, customer.payment_provider_id, amount_cents)
             payment_intent = stripe.PaymentIntent.create(
                 amount=amount_cents,
                 currency=str.lower(customer.currency),
@@ -117,6 +119,7 @@ def generate_invoice(subscription):
     subscription_serializer = InvoiceSubscriptionSerializer(subscription)
 
     make_all_decimals_floats(usage_dict)
+    print(Invoice.objects.all().count())
     invoice = Invoice.objects.create(
         cost_due=amount_cents / 100,
         issue_date=subscription.end_date,
@@ -127,19 +130,21 @@ def generate_invoice(subscription):
         payment_intent_id=payment_intent_id,
         line_items=usage_dict,
     )
+    print(Invoice.objects.all().count())
 
-    invoice_data = {
-        invoice: {
-            "cost_due": amount_cents / 100,
-            "issue_date": subscription.end_date,
-            "organization": org_serializer.data,
-            "customer": customer_serializer.data,
-            "subscription": subscription_serializer.data,
-            "status": status,
-            "payment_intent_id": payment_intent_id,
-            "line_items": usage_dict,
+    if not draft:
+        invoice_data = {
+            invoice: {
+                "cost_due": amount_cents / 100,
+                "issue_date": subscription.end_date,
+                "organization": org_serializer.data,
+                "customer": customer_serializer.data,
+                "subscription": subscription_serializer.data,
+                "status": status,
+                "payment_intent_id": payment_intent_id,
+                "line_items": usage_dict,
+            }
         }
-    }
-    invoice_created_webhook(invoice_data, organization)
+        invoice_created_webhook(invoice_data, organization)
 
     return invoice

@@ -336,10 +336,36 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/draft_invoice/:
+    get:
+      operationId: draft_invoice_retrieve
+      description: Pagination-enabled endpoint for retrieving an organization's event
+        stream.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      tags:
+      - draft_invoice
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
   /api/event_preview/:
     get:
       operationId: event_preview_retrieve
-      description: Get the most recent 10 events
+      description: Pagination-enabled endpoint for retrieving an organization's event
+        stream.
       parameters:
       - in: query
         name: page
@@ -357,7 +383,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PeriodMetricUsageResponse'
+                $ref: '#/components/schemas/EventPreview'
           description: ''
   /api/invoices/:
     get:
@@ -1528,6 +1554,48 @@ components:
       required:
       - customer_usages
       - date
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        event_name:
+          type: string
+          maxLength: 200
+        time_created:
+          type: string
+          format: date-time
+        properties:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        idempotency_id:
+          type: string
+          maxLength: 255
+        organization:
+          type: integer
+        customer:
+          type: integer
+      required:
+      - customer
+      - event_name
+      - id
+      - idempotency_id
+      - organization
+      - time_created
+    EventPreview:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        total_pages:
+          type: integer
+      required:
+      - events
+      - total_pages
     IntervalEnum:
       enum:
       - week
@@ -1591,6 +1659,7 @@ components:
       - requires_action
       - processing
       - succeeded
+      - draft
       - organization_not_connected_to_stripe
       - customer_not_connected_to_stripe
       type: string

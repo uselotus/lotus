@@ -46,9 +46,11 @@ def calculate_invoice():
                 "Error generating invoice for subscription {}".format(old_subscription)
             )
             continue
-        # End the old subscription
+        # End the old subscription and delete draft invoices
         old_subscription.status = "ended"
         old_subscription.save()
+        now = datetime.datetime.now(timezone.utc).date()
+        Invoice.objects.filter(issue_date__lt=now, status="draft").delete()
         # Renew the subscription
         if old_subscription.auto_renew:
             subscription_kwargs = {

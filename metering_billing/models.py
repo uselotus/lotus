@@ -350,12 +350,14 @@ class Invoice(models.Model):
         REQUIRES_ACTION = "requires_action"
         PROCESSING = "processing"
         SUCCEEDED = "succeeded"
+        DRAFT = "draft"
 
     INVOICE_STATUS_CHOICES = Choices(
         (INVOICE_STATUS_TYPES.REQUIRES_PAYMENT_METHOD, _("Requires Payment Method")),
         (INVOICE_STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
         (INVOICE_STATUS_TYPES.PROCESSING, _("Processing")),
         (INVOICE_STATUS_TYPES.SUCCEEDED, _("Succeeded")),
+        (INVOICE_STATUS_TYPES.DRAFT, _("Draft")),
         (
             INVOICE_STATUS_TYPES.ORG_NOT_CONNECTED_TO_STRIPE,
             _("Organization Not Connected to Stripe"),

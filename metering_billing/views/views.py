@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
 from lotus.settings import STRIPE_SECRET_KEY
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
@@ -413,16 +414,16 @@ class CustomerWithRevenueView(APIView):
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
-class EventPreview(APIView):
+class EventPreviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[EventPreviewRequestSerializer],
-        responses={200: PeriodMetricUsageResponseSerializer},
+        responses={200: EventPreviewSerializer},
     )
     def get(self, request, format=None):
         """
-        Get the most recent 10 events
+        Pagination-enabled endpoint for retrieving an organization's event stream.
         """
         serializer = EventPreviewRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
@@ -435,11 +436,39 @@ class EventPreview(APIView):
         page_obj = paginator.get_page(page_number)
         ret = {}
         ret["total_pages"] = paginator.num_pages
-        ret[
-            "events"
-        ] = (
-            page_obj.object_list
-        )  # EventSerializer(page_obj.object_list, many=True).data
+        ret["events"] = page_obj.object_list
         serializer = EventPreviewSerializer(ret)
 
         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+
+class DraftInvoiceView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        parameters=[DraftInvoiceRequestSerializer],
+        responses={200: InvoiceSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Pagination-enabled endpoint for retrieving an organization's event stream.
+        """
+        organization = parse_organization(request)
+        serializer = DraftInvoiceRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        try:
+            customer = Customer.objects.get(
+                organization=organization,
+                customer_id=serializer.validated_data.get("customer_id"),
+            )
+        except:
+            return JsonResponse(
+                {"error": "Customer not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        subs = Subscription.objects.filter(
+            customer=customer, organization=organization, status="active"
+        )
+        invoices = [generate_invoice(sub, draft=True) for sub in subs]
+        ret = InvoiceSerializer(invoices, many=True).data
+        return JsonResponse(ret, status=status.HTTP_200_OK, safe=False)
