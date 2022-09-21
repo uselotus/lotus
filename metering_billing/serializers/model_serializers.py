@@ -176,8 +176,15 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionReadSerializer(SubscriptionSerializer):
-    class Meta(SubscriptionSerializer.Meta):
-        fields = SubscriptionSerializer.Meta.fields + ("id",)
+    class Meta:
+        model = Subscription
+        fields = (
+            "customer",
+            "billing_plan",
+            "start_date",
+            "end_date",
+            "status",
+        )
 
     customer = CustomerSerializer()
     billing_plan = BillingPlanReadSerializer()

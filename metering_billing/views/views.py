@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import stripe
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
@@ -294,7 +295,9 @@ class PeriodMetricUsageView(APIView):
         metrics = BillableMetric.objects.filter(organization=organization)
         return_dict = {}
         for metric in metrics:
-            usage_summary = get_metric_usage(metric, q_start, q_end, daily=True)
+            usage_summary = get_metric_usage(
+                metric, q_start, q_end, time_period_agg="date"
+            )
             return_dict[str(metric)] = {
                 "data": {},
                 "total_usage": 0,
@@ -408,3 +411,35 @@ class CustomerWithRevenueView(APIView):
         ret = serializer.validated_data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
+
+
+class EventPreview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[EventPreviewRequestSerializer],
+        responses={200: PeriodMetricUsageResponseSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Get the most recent 10 events
+        """
+        serializer = EventPreviewRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        page_number = serializer.validated_data.get("page")
+        organization = parse_organization(request)
+        events = Event.objects.filter(organization=organization).order_by(
+            "-time_created"
+        )
+        paginator = Paginator(events, per_page=20)
+        page_obj = paginator.get_page(page_number)
+        ret = {}
+        ret["total_pages"] = paginator.num_pages
+        ret[
+            "events"
+        ] = (
+            page_obj.object_list
+        )  # EventSerializer(page_obj.object_list, many=True).data
+        serializer = EventPreviewSerializer(ret)
+
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
