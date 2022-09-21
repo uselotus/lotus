@@ -5,6 +5,7 @@ from django.db.models import Q
 from metering_billing.auth_utils import parse_organization
 from metering_billing.exceptions import OverlappingSubscription
 from metering_billing.models import (
+    Alert,
     APIToken,
     BillableMetric,
     BillingPlan,
@@ -15,7 +16,6 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
     User,
-    Alert,
 )
 from metering_billing.permissions import HasUserAPIKey
 from rest_framework import serializers
@@ -77,7 +77,7 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name",
             "property_name",
             "aggregation_type",
-            "recurring",
+            "carries_over",
             "metric_name",  # read-only b/c MethodField, ignored in deserialization
         )
 

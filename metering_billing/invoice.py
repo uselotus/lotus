@@ -12,7 +12,7 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.utils import (
-    calculate_plan_component_usage_and_revenue,
+    calculate_sub_pc_usage_revenue,
     make_all_decimals_floats,
 )
 
@@ -70,14 +70,12 @@ def generate_invoice(subscription):
     billing_plan = subscription.billing_plan
     usage_dict = {"components": {}}
     for plan_component in billing_plan.components.all():
-        pc_usg_and_rev = calculate_plan_component_usage_and_revenue(
-            customer, plan_component, subscription.start_date, subscription.end_date
+        pc_usg_and_rev = calculate_sub_pc_usage_revenue(
+            plan_component, customer, subscription.start_date, subscription.end_date
         )
         usage_dict["components"][str(plan_component)] = pc_usg_and_rev
     components = usage_dict["components"]
-    usage_dict["usage_revenue_due"] = sum(
-        v["usage_revenue"] for _, v in components.items()
-    )
+    usage_dict["usage_revenue_due"] = sum(v["revenue"] for _, v in components.items())
     if billing_plan.pay_in_advance:
         if subscription.auto_renew:
             usage_dict["flat_revenue_due"] = billing_plan.flat_rate.amount

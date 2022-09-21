@@ -14,6 +14,54 @@ from model_utils import Choices
 from rest_framework_api_key.models import AbstractAPIKey
 
 
+class AGGREGATION_TYPES(object):
+    COUNT = "count"
+    SUM = "sum"
+    MAX = "max"
+    UNIQUE = "unique"
+
+
+AGGREGATION_CHOICES = Choices(
+    (AGGREGATION_TYPES.COUNT, _("Count")),
+    (AGGREGATION_TYPES.SUM, _("Sum")),
+    (AGGREGATION_TYPES.MAX, _("Max")),
+    (AGGREGATION_TYPES.UNIQUE, _("Unique")),
+)
+
+
+class EVENT_TYPES(object):
+    AGGREGATION = "aggregation"
+    STATEFUL = "stateful"
+
+
+EVENT_CHOICES = Choices(
+    (EVENT_TYPES.AGGREGATION, _("Aggregatable")),
+    (EVENT_TYPES.STATEFUL, _("State Logging")),
+)
+
+
+class INTERVAL_TYPES(object):
+    WEEK = "week"
+    MONTH = "month"
+    YEAR = "year"
+
+
+INTERVAL_CHOICES = Choices(
+    (INTERVAL_TYPES.WEEK, _("Week")),
+    (INTERVAL_TYPES.MONTH, _("Month")),
+    (INTERVAL_TYPES.YEAR, _("Year")),
+)
+
+
+class STATE_LOG_FREQ_DUR_TYPES(object):
+    DAY = "day"
+
+
+STATE_LOG_FREQ_DUR_CHOICES = Choices(
+    (STATE_LOG_FREQ_DUR_TYPES.DAY, _("Day")),
+)
+
+
 class Organization(models.Model):
     PAYMENT_PLANS = Choices(
         ("self_hosted_free", _("Self-Hosted Free")),
@@ -109,22 +157,10 @@ class Event(models.Model):
 
 
 class BillableMetric(models.Model):
-    class AGGREGATION_TYPES(object):
-        COUNT = "count"
-        SUM = "sum"
-        MAX = "max"
-        UNIQUE = "unique"
-
-    AGGREGATION_CHOICES = Choices(
-        (AGGREGATION_TYPES.COUNT, _("Count")),
-        (AGGREGATION_TYPES.SUM, _("Sum")),
-        (AGGREGATION_TYPES.MAX, _("Max")),
-        (AGGREGATION_TYPES.UNIQUE, _("Unique")),
-    )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
     property_name = models.CharField(max_length=200, blank=True, null=True)
-    recurring = models.BooleanField(default=False)
+    carries_over = models.BooleanField(default=False)
     aggregation_type = models.CharField(
         max_length=10,
         choices=AGGREGATION_CHOICES,
@@ -132,9 +168,23 @@ class BillableMetric(models.Model):
         blank=False,
         null=False,
     )
+    event_type = models.CharField(
+        max_length=20,
+        choices=EVENT_CHOICES,
+        default=EVENT_CHOICES.aggregation,
+        blank=False,
+        null=False,
+    )
+    stateful_freq_num = models.IntegerField(default=1, blank=True, null=True)
+    stateful_freq_unit = models.CharField(
+        max_length=20,
+        choices=STATE_LOG_FREQ_DUR_CHOICES,
+        blank=True,
+        null=True,
+    )
 
     def __str__(self):
-        if self.aggregation_type == self.AGGREGATION_TYPES.COUNT:
+        if self.aggregation_type == AGGREGATION_TYPES.COUNT:
             return str(self.aggregation_type) + " of " + str(self.event_name)
         else:
             return (
@@ -197,17 +247,6 @@ class BillingPlan(models.Model):
     flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
     """
-
-    class INTERVAL_TYPES(object):
-        WEEK = "week"
-        MONTH = "month"
-        YEAR = "year"
-
-    INTERVAL_CHOICES = Choices(
-        (INTERVAL_TYPES.WEEK, _("Week")),
-        (INTERVAL_TYPES.MONTH, _("Month")),
-        (INTERVAL_TYPES.YEAR, _("Year")),
-    )
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     time_created = models.DateTimeField(auto_now=True)
