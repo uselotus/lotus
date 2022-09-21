@@ -220,8 +220,7 @@ class PeriodMetricRevenueView(APIView):
                     {"date": k, "metric_revenue": v} for k, v in dic["data"].items()
                 ]
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
@@ -266,16 +265,15 @@ class PeriodSubscriptionsView(APIView):
         return_dict["period_2_total_subscriptions"] = len(p2_subs)
         return_dict["period_2_new_subscriptions"] = len(p2_new_subs)
 
-        serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        serializer = PeriodSubscriptionsResponseSerializer(return_dict)
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -307,7 +305,8 @@ class PeriodMetricUsageView(APIView):
             metric_dict = return_dict[str(metric)]
             for obj in usage_summary:
                 customer, date, qty = [
-                    obj[key] for key in ["customer_name", "date_created", "usage_qty"]
+                    obj[key]
+                    for key in ["customer_name", "time_created_quantized", "usage_qty"]
                 ]
                 if str(date) not in metric_dict["data"]:
                     metric_dict["data"][str(date)] = {
@@ -343,9 +342,8 @@ class PeriodMetricUsageView(APIView):
                 for k, v in metric_d["data"].items()
             ]
         return_dict = {"metrics": return_dict}
-        serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        serializer = PeriodMetricUsageResponseSerializer(return_dict)
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
@@ -380,7 +378,7 @@ class SettingsView(APIView):
 
 class CustomerWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: CustomerRevenueSummarySerializer},
@@ -407,9 +405,8 @@ class CustomerWithRevenueView(APIView):
             serializer = CustomerRevenueSerializer(data=customer_dict)
             serializer.is_valid(raise_exception=True)
             customers_dict["customers"].append(serializer.validated_data)
-        serializer = CustomerRevenueSummarySerializer(data=customers_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        serializer = CustomerRevenueSummarySerializer(customers_dict)
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
