@@ -74,8 +74,7 @@ Best if you want to keep your data local or want full control and extensibility.
 2. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
 3. Build and run the Docker Image!
    ```sh
-   export DOCKER_BUILDKIT=0 && 
-   docker-compose --env-file env/.env -f docker-compose.prod.yaml up --build
+   docker-compose --env-file env/.env.prod -f docker-compose.prod.yaml up --build
    ```
 You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
 
@@ -105,7 +104,6 @@ In order to develop locally, we recommend using Docker to set up the environment
 2. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
 3. Build and run the Docker Image!
    ```sh
-   export DOCKER_BUILDKIT=0 && 
    docker-compose --env-file env/.env.dev -f docker-compose.dev.yaml up --build
    ```
 You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.

@@ -13,10 +13,10 @@ services:
 
   backend:
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.backend
       target: build
     expose:
       - 8000
@@ -36,7 +36,7 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: frontend.Dockerfile
+      dockerfile: Dockerfile.frontend
       target: production
     stdin_open: true
     ports:
@@ -50,14 +50,14 @@ services:
     image: redis:7-alpine
     command: redis-server
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
 
   celery:
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.backend
       target: build
     command: celery -A lotus worker -l info
     depends_on:
@@ -66,11 +66,11 @@ services:
 
   celery-beat:
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
     restart: on-failure
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.backend
       target: build
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:

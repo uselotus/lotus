@@ -119,7 +119,6 @@ def generate_invoice(subscription, draft=False):
     subscription_serializer = InvoiceSubscriptionSerializer(subscription)
 
     make_all_decimals_floats(usage_dict)
-    print(Invoice.objects.all().count())
     invoice = Invoice.objects.create(
         cost_due=amount_cents / 100,
         issue_date=subscription.end_date,
@@ -130,7 +129,6 @@ def generate_invoice(subscription, draft=False):
         payment_intent_id=payment_intent_id,
         line_items=usage_dict,
     )
-    print(Invoice.objects.all().count())
 
     if not draft:
         invoice_data = {

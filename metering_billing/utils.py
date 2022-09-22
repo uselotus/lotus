@@ -9,11 +9,8 @@ from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
 
 from metering_billing.models import Event, Subscription
-from metering_billing.serializers.internal_serializers import (
-    SubscriptionUsageSerializer,
-)
 from metering_billing.serializers.model_serializers import (
-    BillingPlanSerializer,
+    BillingPlanReadSerializer,
     PlanComponentReadSerializer,
 )
 
@@ -51,7 +48,7 @@ def get_metric_usage(
             f"time_created__{time_period_annotation}"
         )
     # try filtering by the metric's desired property_name
-    if metric.property_name is not None:
+    if metric.property_name is not None and metric.property_name != "":
         filter_kwargs["properties__has_key"] = metric.property_name
     # input the correct aggregation type
     if metric.aggregation_type == "count":
@@ -345,7 +342,6 @@ def get_subscription_usage_and_revenue(subscription):
     sub_dict["components"] = []
     # set up the billing plan for this subscription
     plan = subscription.billing_plan
-    sub_dict["billing_plan"] = BillingPlanSerializer(plan).data
     # set up other details of the subscription
     plan_start_date = subscription.start_date
     plan_end_date = subscription.end_date
@@ -360,9 +356,6 @@ def get_subscription_usage_and_revenue(subscription):
             plan_start_date,
             plan_end_date,
         )
-        plan_component_summary["plan_component"] = PlanComponentReadSerializer(
-            plan_component
-        ).data
         sub_dict["components"].append(plan_component_summary)
     sub_dict["usage_revenue_due"] = sum(
         component["revenue"] for component in sub_dict["components"]
@@ -371,9 +364,8 @@ def get_subscription_usage_and_revenue(subscription):
     sub_dict["total_revenue_due"] = (
         sub_dict["flat_revenue_due"] + sub_dict["usage_revenue_due"]
     )
-    serializer = SubscriptionUsageSerializer(data=sub_dict)
-    serializer.is_valid(raise_exception=True)
-    return serializer.validated_data
+    del sub_dict["components"]
+    return sub_dict
 
 
 def get_customer_usage_and_revenue(customer):
@@ -383,6 +375,7 @@ def get_customer_usage_and_revenue(customer):
     subscription_usages = {"subscriptions": []}
     for subscription in customer_subscriptions:
         sub_dict = get_subscription_usage_and_revenue(subscription)
+        sub_dict["billing_plan_name"] = subscription.billing_plan.name
         subscription_usages["subscriptions"].append(sub_dict)
 
     return subscription_usages
