@@ -30,7 +30,10 @@ from metering_billing.views.model_views import (
     UserViewSet,
 )
 from metering_billing.views.views import (
+    APIKeyCreate,
     CustomerWithRevenueView,
+    DraftInvoiceView,
+    EventPreviewView,
     InitializeStripeView,
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
@@ -73,6 +76,9 @@ urlpatterns = [
         PeriodSubscriptionsView.as_view(),
         name="period_subscriptions",
     ),
+    path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
+    path("api/event_preview/", EventPreviewView.as_view(), name="event_preview"),
+    path("api/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
     path("api/stripe/", InitializeStripeView.as_view(), name="stripe_initialize"),
     path("api/login/", auth_views.login_view, name="api-login"),
     path("api/logout/", auth_views.logout_view, name="api-logout"),

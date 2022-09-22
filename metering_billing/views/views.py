@@ -1,36 +1,24 @@
-import collections
-from datetime import timedelta
 from decimal import Decimal
 
-import dateutil.parser as parser
 import stripe
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
-from django.shortcuts import get_list_or_404, get_object_or_404
 from drf_spectacular.utils import extend_schema
 from lotus.settings import STRIPE_SECRET_KEY
-from metering_billing.models import (
-    APIToken,
-    BillableMetric,
-    BillingPlan,
-    Customer,
-    Event,
-    Invoice,
-    Organization,
-    PlanComponent,
-    Subscription,
-)
+from metering_billing.invoice import generate_invoice
+from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
+from metering_billing.utils import dates_bwn_twodates
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..auth_utils import parse_organization
 from ..utils import (
-    calculate_plan_component_daily_revenue,
+    calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
     make_all_decimals_floats,
@@ -136,11 +124,6 @@ class InitializeStripeView(APIView):
         return JsonResponse({"Success": True})
 
 
-def dates_bwn_twodates(start_date, end_date):
-    for n in range((end_date - start_date).days + 1):
-        yield start_date + timedelta(n)
-
-
 class PeriodMetricRevenueView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -210,19 +193,20 @@ class PeriodMetricRevenueView(APIView):
                             f"total_revenue_period_{p_num}"
                         ] += billing_plan.flat_rate.amount
                     for plan_component in billing_plan.components.all():
-                        usage_cost_per_day = calculate_plan_component_daily_revenue(
-                            sub.customer,
+                        usage_cost_per_day = calculate_sub_pc_usage_revenue(
                             plan_component,
+                            sub.customer,
                             sub.start_date,
                             sub.end_date,
                             p_start,
                             p_end,
+                            time_period_agg="date",
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
                         ][plan_component.billable_metric.id]
-                        for date, usage_cost in usage_cost_per_day.items():
-                            usage_cost = Decimal(usage_cost)
+                        for date, d in usage_cost_per_day.items():
+                            usage_cost = Decimal(d["revenue"])
                             metric_dict["data"][str(date)] += usage_cost
                             metric_dict["total_revenue"] += usage_cost
                             return_dict[f"total_revenue_period_{p_num}"] += usage_cost
@@ -236,8 +220,7 @@ class PeriodMetricRevenueView(APIView):
                     {"date": k, "metric_revenue": v} for k, v in dic["data"].items()
                 ]
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
@@ -282,16 +265,15 @@ class PeriodSubscriptionsView(APIView):
         return_dict["period_2_total_subscriptions"] = len(p2_subs)
         return_dict["period_2_new_subscriptions"] = len(p2_new_subs)
 
-        serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        serializer = PeriodSubscriptionsResponseSerializer(return_dict)
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -312,7 +294,9 @@ class PeriodMetricUsageView(APIView):
         metrics = BillableMetric.objects.filter(organization=organization)
         return_dict = {}
         for metric in metrics:
-            usage_summary = get_metric_usage(metric, q_start, q_end, daily=True)
+            usage_summary = get_metric_usage(
+                metric, q_start, q_end, time_period_agg="date"
+            )
             return_dict[str(metric)] = {
                 "data": {},
                 "total_usage": 0,
@@ -321,7 +305,8 @@ class PeriodMetricUsageView(APIView):
             metric_dict = return_dict[str(metric)]
             for obj in usage_summary:
                 customer, date, qty = [
-                    obj[key] for key in ["customer_name", "date_created", "usage_qty"]
+                    obj[key]
+                    for key in ["customer_name", "time_created_quantized", "usage_qty"]
                 ]
                 if str(date) not in metric_dict["data"]:
                     metric_dict["data"][str(date)] = {
@@ -357,16 +342,43 @@ class PeriodMetricUsageView(APIView):
                 for k, v in metric_d["data"].items()
             ]
         return_dict = {"metrics": return_dict}
-        serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        serializer = PeriodMetricUsageResponseSerializer(return_dict)
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
+class APIKeyCreate(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Revokes the current API key and returns a new one.
+        """
+        organization = parse_organization(request)
+        APIToken.objects.filter(organization=organization).delete()
+        api_key, key = APIToken.objects.create_key(
+            name="new_api_key", organization=organization
+        )
+        return JsonResponse({"api_key": key}, status=status.HTTP_200_OK)
+
+
+class SettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        return JsonResponse(
+            {"organization": organization.company_name}, status=status.HTTP_200_OK
+        )
+
+
 class CustomerWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: CustomerRevenueSummarySerializer},
@@ -393,8 +405,67 @@ class CustomerWithRevenueView(APIView):
             serializer = CustomerRevenueSerializer(data=customer_dict)
             serializer.is_valid(raise_exception=True)
             customers_dict["customers"].append(serializer.validated_data)
-        serializer = CustomerRevenueSummarySerializer(data=customers_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
+        serializer = CustomerRevenueSummarySerializer(customers_dict)
+        ret = serializer.data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
+
+
+class EventPreviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[EventPreviewRequestSerializer],
+        responses={200: EventPreviewSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Pagination-enabled endpoint for retrieving an organization's event stream.
+        """
+        serializer = EventPreviewRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        page_number = serializer.validated_data.get("page")
+        organization = parse_organization(request)
+        events = Event.objects.filter(organization=organization).order_by(
+            "-time_created"
+        )
+        paginator = Paginator(events, per_page=20)
+        page_obj = paginator.get_page(page_number)
+        ret = {}
+        ret["total_pages"] = paginator.num_pages
+        ret["events"] = page_obj.object_list
+        serializer = EventPreviewSerializer(ret)
+
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+
+class DraftInvoiceView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        parameters=[DraftInvoiceRequestSerializer],
+        responses={200: InvoiceSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Pagination-enabled endpoint for retrieving an organization's event stream.
+        """
+        organization = parse_organization(request)
+        serializer = DraftInvoiceRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        try:
+            customer = Customer.objects.get(
+                organization=organization,
+                customer_id=serializer.validated_data.get("customer_id"),
+            )
+        except:
+            return JsonResponse(
+                {"error": "Customer not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        subs = Subscription.objects.filter(
+            customer=customer, organization=organization, status="active"
+        )
+        invoices = [generate_invoice(sub, draft=True) for sub in subs]
+        ret = InvoiceSerializer(invoices, many=True).data
+        return JsonResponse(ret, status=status.HTTP_200_OK, safe=False)

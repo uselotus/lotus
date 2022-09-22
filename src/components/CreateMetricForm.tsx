@@ -1,4 +1,4 @@
-import { Modal, Form, Input, Select } from "antd";
+import { Modal, Form, Input, Select, Checkbox } from "antd";
 import { MetricType } from "../types/metric-type";
 const { Option } = Select;
 
@@ -64,6 +64,7 @@ const CreateMetricForm = (props: {
         >
           <Select defaultValue={"count"}>
             <Option value="count">count</Option>
+            <Option value="unique">unique</Option>
             <Option value="sum">sum</Option>
             <Option value="max">max</Option>
           </Select>
@@ -76,7 +77,8 @@ const CreateMetricForm = (props: {
         >
           {({ getFieldValue }) =>
             getFieldValue("aggregation_type") === "sum" ||
-            getFieldValue("aggregation_type") === "max" ? (
+            getFieldValue("aggregation_type") === "max" ||
+            getFieldValue("aggregation_type") == "unique" ? (
               <Form.Item
                 name="property_name"
                 label="Property Name"
@@ -86,6 +88,9 @@ const CreateMetricForm = (props: {
               </Form.Item>
             ) : null
           }
+        </Form.Item>
+        <Form.Item name="recurring">
+          <Checkbox>Recurring?</Checkbox>
         </Form.Item>
       </Form>
     </Modal>

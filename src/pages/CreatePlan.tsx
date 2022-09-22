@@ -8,6 +8,8 @@ import {
   InputNumber,
   PageHeader,
   List,
+  Radio,
+  Divider,
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -186,46 +188,53 @@ const CreatePlan = () => {
           <Form.Item name="pay_in_advance">
             <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
           </Form.Item>
-          <Form.Item>
-            <Button
-              htmlType="button"
-              style={{ margin: "0 8px" }}
-              onClick={showUserModal}
-            >
-              Add Plan Component
-            </Button>
-          </Form.Item>
-          <Form.Item
-            label="Plan Components"
-            shouldUpdate={(prevValues, curValues) =>
-              prevValues.components !== curValues.components
-            }
-          >
-            {({ getFieldValue }) => {
-              const components: ComponentDisplay[] =
-                getFieldValue("components") || [];
-              console.log(components);
-              return components.length ? (
-                <List grid={{ gutter: 16, column: 4 }}>
-                  {components.map((component, index) => (
-                    <List.Item key={index} className="user">
-                      <Card title={component.metric}>
-                        <p>
-                          <b>Cost:</b> {component.cost_per_metric} per{" "}
-                          {component.metric_amount_per_cost} events{" "}
-                        </p>
-                        <br />
-                        <p>
-                          <b>Free Amount Per Billing Cycle:</b>{" "}
-                          {component.free_amount}
-                        </p>
-                      </Card>
-                    </List.Item>
-                  ))}
-                </List>
-              ) : null;
-            }}
-          </Form.Item>
+          <div className="grid grid-cols-1">
+            <div className=" flex flex-col border border-grey1 my-2 mx-2 px-2 py-2 place-items-center	">
+              <Form.Item>
+                <Button
+                  htmlType="button"
+                  style={{ margin: "0 8px" }}
+                  onClick={showUserModal}
+                >
+                  Add Usage Component
+                </Button>
+              </Form.Item>
+              <Form.Item
+                label="Usage Components"
+                className="self-start"
+                shouldUpdate={(prevValues, curValues) =>
+                  prevValues.components !== curValues.components
+                }
+              >
+                {({ getFieldValue }) => {
+                  const components: ComponentDisplay[] =
+                    getFieldValue("components") || [];
+                  console.log(components);
+                  return components.length ? (
+                    <List grid={{ gutter: 16, column: 4 }}>
+                      {components.map((component, index) => (
+                        <List.Item key={index} className="user">
+                          <Card title={component.metric}>
+                            <p>
+                              <b>Cost:</b> {component.cost_per_metric} per{" "}
+                              {component.metric_amount_per_cost} events{" "}
+                            </p>
+                            <br />
+                            <p>
+                              <b>Free Amount Per Billing Cycle:</b>{" "}
+                              {component.free_amount}
+                            </p>
+                          </Card>
+                        </List.Item>
+                      ))}
+                    </List>
+                  ) : null;
+                }}
+              </Form.Item>
+            </div>
+            <Divider type="vertical" />
+            <div className=" my-2 mx-2 px-2 py-2"></div>
+          </div>
 
           <Form.Item>
             <Button type="primary" className="bg-info" htmlType="submit">

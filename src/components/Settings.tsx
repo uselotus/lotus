@@ -5,6 +5,7 @@ import { useQuery } from "react-query";
 import { StripeConnect, Alerts } from "../api/api";
 import { useNavigate } from "react-router-dom";
 import { Divider, Button, Modal, List, Card } from "antd";
+import { APIToken } from "../api/api";
 
 const Settings: FC = () => {
   const navigate = useNavigate();
@@ -34,6 +35,9 @@ const Settings: FC = () => {
   } = useQuery<StripeStatusType>(["urls"], Alerts.getUrls);
 
   const getKey = () => {
+    APIToken.newAPIToken().then((data) => {
+      setApiKey(data.api_key);
+    });
     setVisible(true);
   };
 
@@ -92,8 +96,9 @@ const Settings: FC = () => {
             Your previous key has been revoked
           </p>
           <p className="text-lg font-main">
-            Your new key is: 2j234oujl25hlou234
+            Your new key is: {apiKey ? apiKey : "Loading..."}
           </p>
+          <p></p>
         </div>
       </Modal>
     </div>

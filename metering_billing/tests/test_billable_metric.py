@@ -1,10 +1,19 @@
 import json
 
 import pytest
+from dateutil import parser
+from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from lotus.urls import router
-from metering_billing.models import BillableMetric
+from metering_billing.models import (
+    BillableMetric,
+    BillingPlan,
+    Customer,
+    Event,
+    PlanComponent,
+)
+from metering_billing.utils import calculate_sub_pc_usage_revenue, get_metric_usage
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -183,6 +192,7 @@ class TestInsertBillableMetric:
             content_type="application/json",
         )
 
+        print(response.data)
         assert response.status_code == status.HTTP_409_CONFLICT
         assert (
             len(get_billable_metrics_in_org(setup_dict["org"]))
@@ -191,3 +201,116 @@ class TestInsertBillableMetric:
         assert (
             len(get_billable_metrics_in_org(setup_dict["org2"])) == num_billable_metrics
         )
+
+
+@pytest.mark.django_db(transaction=True)
+class TestCalculateBillableMetric:
+    def test_count_unique(self, billable_metric_test_common_setup):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = BillableMetric.objects.create(
+            organization=setup_dict["org"],
+            property_name="test_property",
+            event_name="test_event",
+            aggregation_type="unique",
+        )
+        time_created = parser.parse("2021-01-01T06:00:00Z")
+        customer = baker.make(Customer, organization=setup_dict["org"])
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "foo"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "bar"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        metric_usage_qs = get_metric_usage(
+            billable_metric,
+            query_start_date="2021-01-01",
+            query_end_date="2021-01-01",
+            customer=customer,
+        )
+        metric_usage = sum(metric_usage_qs.values_list("usage_qty", flat=True))
+
+        assert metric_usage == 2
+
+    def test_stateful(self, billable_metric_test_common_setup):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = BillableMetric.objects.create(
+            organization=setup_dict["org"],
+            event_name="number_of_users",
+            property_name="number",
+            aggregation_type="max",
+            event_type="stateful",
+            carries_over=True,
+        )
+        time_created = parser.parse("2021-01-01T06:00:00Z")
+        customer = baker.make(Customer, organization=setup_dict["org"])
+        event_times = [time_created] + [
+            time_created + relativedelta(days=i) for i in range(19)
+        ]
+        properties = (
+            3 * [{"number": 1}]
+            + 3 * [{"number": 2}]
+            + 3 * [{"number": 3}]
+            + 3 * [{"number": 4}]
+            + 3 * [{"number": 5}]
+            + 3 * [{"number": 6}]
+            + [{"number": 3}]
+        )
+        baker.make(
+            Event,
+            event_name="number_of_users",
+            properties=iter(properties),
+            organization=setup_dict["org"],
+            time_created=iter(event_times),
+            customer=customer,
+            _quantity=19,
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            free_metric_quantity=3,
+            cost_per_metric=100,
+            metric_amount_per_cost=1,
+        )
+        billing_plan = BillingPlan.objects.create(
+            organization=setup_dict["org"],
+            interval="month",
+            flat_rate=0,
+            pay_in_advance=True,
+            name="test_plan",
+        )
+        billing_plan.components.add(plan_component)
+        billing_plan.save()
+
+        usage_revenue_dict = calculate_sub_pc_usage_revenue(
+            plan_component,
+            customer=customer,
+            plan_start_date="2021-01-01",
+            plan_end_date="2021-01-30",
+            time_period_agg="date",
+        )
+        metric_usage = sum(d["usage_qty"] for _, d in usage_revenue_dict.items())
+        metric_revenue = sum(d["revenue"] for _, d in usage_revenue_dict.items())
+
+        assert metric_usage == 101
+        assert metric_revenue == 1800

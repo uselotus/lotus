@@ -336,6 +336,55 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/draft_invoice/:
+    get:
+      operationId: draft_invoice_retrieve
+      description: Pagination-enabled endpoint for retrieving an organization's event
+        stream.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      tags:
+      - draft_invoice
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+          description: ''
+  /api/event_preview/:
+    get:
+      operationId: event_preview_retrieve
+      description: Pagination-enabled endpoint for retrieving an organization's event
+        stream.
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+        required: true
+      tags:
+      - event_preview
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventPreview'
+          description: ''
   /api/invoices/:
     get:
       operationId: invoices_list
@@ -653,6 +702,19 @@ paths:
       - OrganizationApiKeyAuth: []
       responses:
         '204':
+          description: No response body
+  /api/new_api_key/:
+    get:
+      operationId: new_api_key_retrieve
+      description: Revokes the current API key and returns a new one.
+      tags:
+      - new_api_key
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
           description: No response body
   /api/period_metric_revenue/:
     get:
@@ -1110,6 +1172,18 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/track/:
+    post:
+      operationId: track_create
+      tags:
+      - track
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/users/:
     get:
       operationId: users_list
@@ -1276,6 +1350,7 @@ components:
       - count
       - sum
       - max
+      - unique
       type: string
     BillableMetric:
       type: object
@@ -1292,13 +1367,14 @@ components:
           maxLength: 200
         aggregation_type:
           $ref: '#/components/schemas/AggregationTypeEnum'
-        metric_name:
+        carries_over:
+          type: boolean
+        billable_metric_name:
           type: string
-          readOnly: true
+          maxLength: 200
       required:
       - event_name
       - id
-      - metric_name
     BillingPlan:
       type: object
       properties:
@@ -1320,6 +1396,9 @@ components:
           exclusiveMinimum: true
         pay_in_advance:
           type: boolean
+        billing_plan_id:
+          type: string
+          maxLength: 255
         name:
           type: string
           maxLength: 200
@@ -1358,6 +1437,9 @@ components:
           exclusiveMinimum: true
         pay_in_advance:
           type: boolean
+        billing_plan_id:
+          type: string
+          maxLength: 255
         name:
           type: string
           maxLength: 200
@@ -1472,6 +1554,48 @@ components:
       required:
       - customer_usages
       - date
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        event_name:
+          type: string
+          maxLength: 200
+        time_created:
+          type: string
+          format: date-time
+        properties:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        idempotency_id:
+          type: string
+          maxLength: 255
+        organization:
+          type: integer
+        customer:
+          type: integer
+      required:
+      - customer
+      - event_name
+      - id
+      - idempotency_id
+      - organization
+      - time_created
+    EventPreview:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        total_pages:
+          type: integer
+      required:
+      - events
+      - total_pages
     IntervalEnum:
       enum:
       - week
@@ -1535,7 +1659,9 @@ components:
       - requires_action
       - processing
       - succeeded
-      - not_connected_to_stripe
+      - draft
+      - organization_not_connected_to_stripe
+      - customer_not_connected_to_stripe
       type: string
     PatchedBillableMetric:
       type: object
@@ -1552,9 +1678,11 @@ components:
           maxLength: 200
         aggregation_type:
           $ref: '#/components/schemas/AggregationTypeEnum'
-        metric_name:
+        carries_over:
+          type: boolean
+        billable_metric_name:
           type: string
-          readOnly: true
+          maxLength: 200
     PatchedBillingPlan:
       type: object
       properties:
@@ -1576,6 +1704,9 @@ components:
           exclusiveMinimum: true
         pay_in_advance:
           type: boolean
+        billing_plan_id:
+          type: string
+          maxLength: 255
         name:
           type: string
           maxLength: 200
@@ -1670,17 +1801,22 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        max_amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
     PatchedSubscription:
       type: object
       properties:
-        customer:
+        customer_id:
           type: string
-        billing_plan:
+        billing_plan_id:
           type: string
         start_date:
-          type: string
-          format: date
-        end_date:
           type: string
           format: date
         status:
@@ -1826,6 +1962,14 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        max_amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
       required:
       - billable_metric
       - cost_per_metric
@@ -1855,6 +1999,14 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        max_amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
         id:
           type: integer
           readOnly: true
@@ -1871,22 +2023,18 @@ components:
     Subscription:
       type: object
       properties:
-        customer:
+        customer_id:
           type: string
-        billing_plan:
+        billing_plan_id:
           type: string
         start_date:
-          type: string
-          format: date
-        end_date:
           type: string
           format: date
         status:
           $ref: '#/components/schemas/Status2b4Enum'
       required:
-      - billing_plan
-      - customer
-      - end_date
+      - billing_plan_id
+      - customer_id
       - start_date
     SubscriptionRead:
       type: object
@@ -1903,14 +2051,10 @@ components:
           format: date
         status:
           $ref: '#/components/schemas/Status2b4Enum'
-        id:
-          type: integer
-          readOnly: true
       required:
       - billing_plan
       - customer
       - end_date
-      - id
       - start_date
     User:
       type: object

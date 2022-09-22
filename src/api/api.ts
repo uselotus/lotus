@@ -78,6 +78,7 @@ export const Authentication = {
     password: string
   ): Promise<{ username: string; password: string }> =>
     requests.post("api/login/", { username, password }),
+  logout: (): Promise<{}> => requests.post("api/logout/", {}),
 };
 
 export const GetRevenue = {
@@ -126,4 +127,11 @@ export const Metrics = {
   getMetrics: (): Promise<MetricNameType[]> => requests.get("api/metrics/"),
   createMetric: (post: MetricType): Promise<MetricType> =>
     requests.post("api/metrics/", post),
+  deleteMetric: (id: number): Promise<{}> =>
+    requests.delete(`api/metrics/${id}`),
+};
+
+export const APIToken = {
+  newAPIToken: (): Promise<{ api_key: string }> =>
+    requests.get("api/new_api_key/", {}),
 };

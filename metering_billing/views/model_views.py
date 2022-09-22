@@ -3,6 +3,7 @@ from datetime import datetime
 from django.db import IntegrityError
 from metering_billing.exceptions import DuplicateCustomerID
 from metering_billing.models import (
+    Alert,
     BillableMetric,
     BillingPlan,
     Customer,
@@ -13,6 +14,7 @@ from metering_billing.models import (
 )
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.model_serializers import (
+    AlertSerializer,
     BillableMetricSerializer,
     BillingPlanReadSerializer,
     BillingPlanSerializer,
@@ -30,13 +32,31 @@ from rest_framework.permissions import IsAuthenticated
 from ..auth_utils import parse_organization
 
 
+class AlertViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint that allows alerts to be viewed or edited.
+    """
+
+    queryset = Alert.objects.all()
+    serializer_class = AlertSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return super().get_queryset().filter(organization=organization)
+
+    def perform_create(self, serializer):
+        organization = parse_organization(self.request)
+        serializer.save(organization=organization)
+
+
 class UserViewSet(viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Users.
     """
 
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -141,6 +161,8 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         return Subscription.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
+        if serializer.validated_data["start_date"] <= datetime.now().date():
+            serializer.validated_data["status"] = "active"
         serializer.save(organization=parse_organization(self.request))
 
     def get_serializer_class(self):

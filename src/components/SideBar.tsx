@@ -7,12 +7,13 @@ import {
   SettingOutlined,
   BookOutlined,
   BorderlessTableOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
-import { GearIcon, ImageIcon, SunIcon } from "@radix-ui/react-icons";
 
 import { useNavigate, useLocation } from "react-router";
 import logo from "../assets/images/corner_logo.svg";
 import "./SideBar.css";
+import { Authentication } from "../api/api";
 
 const SideBar: FC = () => {
   const navigate = useNavigate();
@@ -39,21 +40,28 @@ const SideBar: FC = () => {
     navigate("/metrics");
   };
 
+  const handleLogoutClick = () => {
+    Authentication.logout().then(() => {
+      window.location.reload();
+      navigate("/");
+    });
+  };
+
   return (
     <div>
-      <div
-        style={{
-          height: "32px",
-          margin: "16px",
-        }}
-      >
-        <img src={logo} alt="lotus" />
-      </div>
       <Menu
         mode="vertical"
         selectedKeys={[location.pathname]}
         className="min-h-screen"
       >
+        <div
+          style={{
+            height: "100%",
+            margin: "30px",
+          }}
+        >
+          <img src={logo} alt="lotus" />
+        </div>
         <Menu.Item key="/dashboard" onClick={handleDashboardClick}>
           <BarChartOutlined />
           <span> Dashboard</span>
@@ -75,6 +83,19 @@ const SideBar: FC = () => {
           <span> Subscriptions</span>
         </Menu.Item> */}
         <Divider />
+        <Menu.Item key="/docs">
+          <BookOutlined />
+          <span>
+            {" "}
+            <a
+              target="_blank"
+              rel="noreferrer"
+              href="https://docs.uselotus.io/docs/intro"
+            >
+              Docs
+            </a>
+          </span>
+        </Menu.Item>
         <Menu.Item
           key="/settings"
           onClick={handleSettingsClick}
@@ -82,6 +103,10 @@ const SideBar: FC = () => {
         >
           <SettingOutlined />
           <span> Settings</span>
+        </Menu.Item>
+        <Menu.Item key="logout" onClick={handleLogoutClick}>
+          <LogoutOutlined />
+          <span> Logout</span>
         </Menu.Item>
       </Menu>
     </div>

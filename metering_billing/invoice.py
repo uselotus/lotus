@@ -12,9 +12,11 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.utils import (
-    calculate_plan_component_usage_and_revenue,
+    calculate_sub_pc_usage_revenue,
     make_all_decimals_floats,
 )
+
+from .webhooks import invoice_created_webhook
 
 
 # Invoice Serializers
@@ -59,7 +61,7 @@ class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
         fields = ("start_date", "end_date", "billing_plan")
 
 
-def generate_invoice(subscription):
+def generate_invoice(subscription, draft=False):
     """
     Generate an invoice for a subscription.
     """
@@ -68,14 +70,12 @@ def generate_invoice(subscription):
     billing_plan = subscription.billing_plan
     usage_dict = {"components": {}}
     for plan_component in billing_plan.components.all():
-        pc_usg_and_rev = calculate_plan_component_usage_and_revenue(
-            customer, plan_component, subscription.start_date, subscription.end_date
+        pc_usg_and_rev = calculate_sub_pc_usage_revenue(
+            plan_component, customer, subscription.start_date, subscription.end_date
         )
         usage_dict["components"][str(plan_component)] = pc_usg_and_rev
     components = usage_dict["components"]
-    usage_dict["usage_revenue_due"] = sum(
-        v["usage_revenue"] for _, v in components.items()
-    )
+    usage_dict["usage_revenue_due"] = sum(v["revenue"] for _, v in components.items())
     if billing_plan.pay_in_advance:
         if subscription.auto_renew:
             usage_dict["flat_revenue_due"] = billing_plan.flat_rate.amount
@@ -91,9 +91,11 @@ def generate_invoice(subscription):
     amount_cents = int(
         amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100)
     )
-    if organization.stripe_id is not None:
+    if draft:
+        status = "draft"
+        payment_intent_id = None
+    elif organization.stripe_id is not None:
         if customer.payment_provider_id is not None:
-            print(organization.stripe_id, customer.payment_provider_id, amount_cents)
             payment_intent = stripe.PaymentIntent.create(
                 amount=amount_cents,
                 currency=str.lower(customer.currency),
@@ -117,6 +119,7 @@ def generate_invoice(subscription):
     subscription_serializer = InvoiceSubscriptionSerializer(subscription)
 
     make_all_decimals_floats(usage_dict)
+    print(Invoice.objects.all().count())
     invoice = Invoice.objects.create(
         cost_due=amount_cents / 100,
         issue_date=subscription.end_date,
@@ -127,5 +130,21 @@ def generate_invoice(subscription):
         payment_intent_id=payment_intent_id,
         line_items=usage_dict,
     )
+    print(Invoice.objects.all().count())
+
+    if not draft:
+        invoice_data = {
+            invoice: {
+                "cost_due": amount_cents / 100,
+                "issue_date": subscription.end_date,
+                "organization": org_serializer.data,
+                "customer": customer_serializer.data,
+                "subscription": subscription_serializer.data,
+                "status": status,
+                "payment_intent_id": payment_intent_id,
+                "line_items": usage_dict,
+            }
+        }
+        invoice_created_webhook(invoice_data, organization)
 
     return invoice

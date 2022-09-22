@@ -5,6 +5,7 @@ from django.db.models import Q
 from metering_billing.auth_utils import parse_organization
 from metering_billing.exceptions import OverlappingSubscription
 from metering_billing.models import (
+    Alert,
     APIToken,
     BillableMetric,
     BillingPlan,
@@ -39,6 +40,16 @@ class EventSerializer(serializers.ModelSerializer):
         fields = "__all__"  # allowed because we never send back, just take in
 
 
+class AlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Alert
+        fields = (
+            "type",
+            "webhook_url",
+            "name",
+        )
+
+
 ## USER
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -66,13 +77,9 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name",
             "property_name",
             "aggregation_type",
-            "metric_name",  # read-only b/c MethodField, ignored in deserialization
+            "carries_over",
+            "billable_metric_name",
         )
-
-    metric_name = serializers.SerializerMethodField()
-
-    def get_metric_name(self, obj) -> str:
-        return str(obj)
 
 
 ## PLAN COMPONENT
@@ -84,6 +91,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             "free_metric_quantity",
             "cost_per_metric",
             "metric_amount_per_cost",
+            "max_amount",
         )
 
 
@@ -118,7 +126,7 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         for component_data in components_data:
             pc, _ = PlanComponent.objects.get_or_create(**component_data)
             billing_plan.components.add(pc)
-            billing_plan.save()
+        billing_plan.save()
         return billing_plan
 
 
@@ -147,25 +155,36 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = (
-            "customer",
-            "billing_plan",
+            "customer_id",
+            "billing_plan_id",
             "start_date",
             "status",
         )
 
-    customer = SlugRelatedLookupField(
-        slug_field="customer_id", queryset=Customer.objects.all(), read_only=False
+    customer_id = SlugRelatedLookupField(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        read_only=False,
+        source="customer",
     )
-    billing_plan = SlugRelatedLookupField(
+    billing_plan_id = SlugRelatedLookupField(
         slug_field="billing_plan_id",
         queryset=BillingPlan.objects.all(),
         read_only=False,
+        source="billing_plan",
     )
 
 
 class SubscriptionReadSerializer(SubscriptionSerializer):
-    class Meta(SubscriptionSerializer.Meta):
-        fields = SubscriptionSerializer.Meta.fields + ("id",)
+    class Meta:
+        model = Subscription
+        fields = (
+            "customer",
+            "billing_plan",
+            "start_date",
+            "end_date",
+            "status",
+        )
 
     customer = CustomerSerializer()
     billing_plan = BillingPlanReadSerializer()

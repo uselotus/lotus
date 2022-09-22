@@ -14,6 +14,54 @@ from model_utils import Choices
 from rest_framework_api_key.models import AbstractAPIKey
 
 
+class AGGREGATION_TYPES(object):
+    COUNT = "count"
+    SUM = "sum"
+    MAX = "max"
+    UNIQUE = "unique"
+
+
+AGGREGATION_CHOICES = Choices(
+    (AGGREGATION_TYPES.COUNT, _("Count")),
+    (AGGREGATION_TYPES.SUM, _("Sum")),
+    (AGGREGATION_TYPES.MAX, _("Max")),
+    (AGGREGATION_TYPES.UNIQUE, _("Unique")),
+)
+
+
+class EVENT_TYPES(object):
+    AGGREGATION = "aggregation"
+    STATEFUL = "stateful"
+
+
+EVENT_CHOICES = Choices(
+    (EVENT_TYPES.AGGREGATION, _("Aggregatable")),
+    (EVENT_TYPES.STATEFUL, _("State Logging")),
+)
+
+
+class INTERVAL_TYPES(object):
+    WEEK = "week"
+    MONTH = "month"
+    YEAR = "year"
+
+
+INTERVAL_CHOICES = Choices(
+    (INTERVAL_TYPES.WEEK, _("Week")),
+    (INTERVAL_TYPES.MONTH, _("Month")),
+    (INTERVAL_TYPES.YEAR, _("Year")),
+)
+
+
+class STATE_LOG_FREQ_DUR_TYPES(object):
+    DAY = "day"
+
+
+STATE_LOG_FREQ_DUR_CHOICES = Choices(
+    (STATE_LOG_FREQ_DUR_TYPES.DAY, _("Day")),
+)
+
+
 class Organization(models.Model):
     PAYMENT_PLANS = Choices(
         ("self_hosted_free", _("Self-Hosted Free")),
@@ -26,6 +74,16 @@ class Organization(models.Model):
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
+
+    def __str__(self):
+        return self.company_name
+
+
+class Alert(models.Model):
+    type = models.CharField(max_length=20, default="webhook")
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    webhook_url = models.CharField(max_length=300, blank=True, null=True)
+    name = models.CharField(max_length=100, default=" ")
 
 
 class User(AbstractUser):
@@ -99,19 +157,10 @@ class Event(models.Model):
 
 
 class BillableMetric(models.Model):
-    class AGGREGATION_TYPES(object):
-        COUNT = "count"
-        SUM = "sum"
-        MAX = "max"
-
-    AGGREGATION_CHOICES = Choices(
-        (AGGREGATION_TYPES.COUNT, _("Count")),
-        (AGGREGATION_TYPES.SUM, _("Sum")),
-        (AGGREGATION_TYPES.MAX, _("Max")),
-    )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
     property_name = models.CharField(max_length=200, blank=True, null=True)
+    carries_over = models.BooleanField(default=False)
     aggregation_type = models.CharField(
         max_length=10,
         choices=AGGREGATION_CHOICES,
@@ -119,9 +168,26 @@ class BillableMetric(models.Model):
         blank=False,
         null=False,
     )
+    event_type = models.CharField(
+        max_length=20,
+        choices=EVENT_CHOICES,
+        default=EVENT_CHOICES.aggregation,
+        blank=False,
+        null=False,
+    )
+    stateful_freq_num = models.IntegerField(default=1, blank=True, null=True)
+    stateful_freq_unit = models.CharField(
+        max_length=20,
+        choices=STATE_LOG_FREQ_DUR_CHOICES,
+        blank=True,
+        null=True,
+    )
+    billable_metric_name = models.CharField(
+        max_length=200, null=False, blank=True, default=uuid.uuid4
+    )
 
-    def __str__(self):
-        if self.aggregation_type == self.AGGREGATION_TYPES.COUNT:
+    def default_name(self):
+        if self.aggregation_type == AGGREGATION_TYPES.COUNT:
             return str(self.aggregation_type) + " of " + str(self.event_name)
         else:
             return (
@@ -132,7 +198,17 @@ class BillableMetric(models.Model):
                 + str(self.event_name)
             )
 
+    def save(self, *args, **kwargs):
+        if (
+            not self.billable_metric_name
+            or self.billable_metric_name == ""
+            or self.billable_metric_name == " "
+        ):
+            self.billable_metric_name = self.default_name()
+        super().save(*args, **kwargs)
+
     class Meta:
+        unique_together = ("organization", "billable_metric_name")
         constraints = [
             UniqueConstraint(
                 fields=[
@@ -153,6 +229,9 @@ class BillableMetric(models.Model):
     def get_aggregation_type(self):
         return self.aggregation_type
 
+    def __str__(self):
+        return self.billable_metric_name
+
 
 class PlanComponent(models.Model):
     billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
@@ -165,6 +244,10 @@ class PlanComponent(models.Model):
     )
     metric_amount_per_cost = models.DecimalField(
         decimal_places=10, max_digits=20, default=1.0
+    )
+
+    max_amount = models.DecimalField(
+        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
 
     def __str__(self):
@@ -181,17 +264,6 @@ class BillingPlan(models.Model):
     billable_metrics: a json containing a list of billable_metrics objects
     """
 
-    class INTERVAL_TYPES(object):
-        WEEK = "week"
-        MONTH = "month"
-        YEAR = "year"
-
-    INTERVAL_CHOICES = Choices(
-        (INTERVAL_TYPES.WEEK, _("Week")),
-        (INTERVAL_TYPES.MONTH, _("Month")),
-        (INTERVAL_TYPES.YEAR, _("Year")),
-    )
-
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     time_created = models.DateTimeField(auto_now=True)
     currency = models.CharField(max_length=30, default="USD")  # 30 is arbitrary
@@ -199,10 +271,10 @@ class BillingPlan(models.Model):
         max_length=5,
         choices=INTERVAL_CHOICES,
     )
-    billing_plan_id = models.CharField(max_length=255)
+    billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
     pay_in_advance = models.BooleanField()
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     description = models.CharField(max_length=256, default=" ", blank=True)
     components = models.ManyToManyField(PlanComponent, blank=True)
 
@@ -278,12 +350,14 @@ class Invoice(models.Model):
         REQUIRES_ACTION = "requires_action"
         PROCESSING = "processing"
         SUCCEEDED = "succeeded"
+        DRAFT = "draft"
 
     INVOICE_STATUS_CHOICES = Choices(
         (INVOICE_STATUS_TYPES.REQUIRES_PAYMENT_METHOD, _("Requires Payment Method")),
         (INVOICE_STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
         (INVOICE_STATUS_TYPES.PROCESSING, _("Processing")),
         (INVOICE_STATUS_TYPES.SUCCEEDED, _("Succeeded")),
+        (INVOICE_STATUS_TYPES.DRAFT, _("Draft")),
         (
             INVOICE_STATUS_TYPES.ORG_NOT_CONNECTED_TO_STRIPE,
             _("Organization Not Connected to Stripe"),

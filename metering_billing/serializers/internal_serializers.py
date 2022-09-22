@@ -14,10 +14,23 @@ from metering_billing.models import (
 )
 from rest_framework import serializers
 
-from .model_serializers import BillingPlanSerializer
+from .model_serializers import BillingPlanSerializer, EventSerializer
 
 
 ## CUSTOM SERIALIZERS
+class EventPreviewSerializer(serializers.Serializer):
+    events = EventSerializer(many=True)
+    total_pages = serializers.IntegerField(required=True)
+
+
+class EventPreviewRequestSerializer(serializers.Serializer):
+    page = serializers.IntegerField(required=True)
+
+
+class DraftInvoiceRequestSerializer(serializers.Serializer):
+    customer_id = serializers.CharField(required=True)
+
+
 class CustomerNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer

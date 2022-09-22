@@ -54,10 +54,9 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install dependencies with pipenv
+      - name: Install pipenv
         run: |
           pip install pipenv
-          pipenv install --deploy --dev
 
       - name: Cache Pipenv virtualenv
         uses: actions/cache@v1
@@ -113,10 +112,9 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install dependencies with pipenv
+      - name: Install pipenv
         run: |
           pip install pipenv
-          pipenv install --deploy --dev
 
       - name: Cache Pipenv virtualenv
         uses: actions/cache@v1

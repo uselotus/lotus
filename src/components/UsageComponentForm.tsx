@@ -61,9 +61,14 @@ function UsageComponentForm(props: {
         <Form.Item name="metric_amount_per_cost">
           <InputNumber addonBefore="per" defaultValue={1} precision={5} />
         </Form.Item>
-        <Form.Item name="free_amount" label="Free Units">
-          <InputNumber defaultValue={0} precision={5} />
-        </Form.Item>
+        <div className="grid grid-cols-2">
+          <Form.Item name="free_amount" label="Free Units">
+            <InputNumber defaultValue={0} precision={5} />
+          </Form.Item>
+          <Form.Item name="max_amount" label="Max Amount">
+            <InputNumber defaultValue={0} precision={5} />
+          </Form.Item>
+        </div>
       </Form>
     </Modal>
   );
