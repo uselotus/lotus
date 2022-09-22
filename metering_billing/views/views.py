@@ -182,13 +182,11 @@ class PeriodMetricRevenueView(APIView):
                 )
                 for sub in subs:
                     billing_plan = sub.billing_plan
-                    flat_fee_billable_date = (
-                        sub.start_date if billing_plan.pay_in_advance else sub.end_date
-                    )
-                    if (
-                        flat_fee_billable_date >= p_start
-                        and flat_fee_billable_date <= p_end
-                    ):
+                    if billing_plan.pay_in_advance:
+                        flat_bill_date = sub.start_date
+                    else:
+                        flat_bill_date = sub.end_date
+                    if flat_bill_date >= p_start and flat_bill_date <= p_end:
                         return_dict[
                             f"total_revenue_period_{p_num}"
                         ] += billing_plan.flat_rate.amount
@@ -210,17 +208,17 @@ class PeriodMetricRevenueView(APIView):
                             metric_dict["data"][str(date)] += usage_cost
                             metric_dict["total_revenue"] += usage_cost
                             return_dict[f"total_revenue_period_{p_num}"] += usage_cost
-
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
-            dailies = [v for _, v in dailies.items()]
+            dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
             return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
             for dic in dailies:
                 dic["data"] = [
                     {"date": k, "metric_revenue": v} for k, v in dic["data"].items()
                 ]
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
-        ret = serializer.data
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
@@ -265,8 +263,9 @@ class PeriodSubscriptionsView(APIView):
         return_dict["period_2_total_subscriptions"] = len(p2_subs)
         return_dict["period_2_new_subscriptions"] = len(p2_new_subs)
 
-        serializer = PeriodSubscriptionsResponseSerializer(return_dict)
-        ret = serializer.data
+        serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
@@ -342,8 +341,9 @@ class PeriodMetricUsageView(APIView):
                 for k, v in metric_d["data"].items()
             ]
         return_dict = {"metrics": return_dict}
-        serializer = PeriodMetricUsageResponseSerializer(return_dict)
-        ret = serializer.data
+        serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
@@ -399,14 +399,14 @@ class CustomerWithRevenueView(APIView):
             customer_dict["customer_name"] = customer.name
             customer_dict["customer_id"] = customer.customer_id
             customer_dict["subscriptions"] = [
-                x["billing_plan"]["name"] for x in sub_usg_summaries["subscriptions"]
+                x["billing_plan_name"] for x in sub_usg_summaries["subscriptions"]
             ]
-
             serializer = CustomerRevenueSerializer(data=customer_dict)
             serializer.is_valid(raise_exception=True)
             customers_dict["customers"].append(serializer.validated_data)
-        serializer = CustomerRevenueSummarySerializer(customers_dict)
-        ret = serializer.data
+        serializer = CustomerRevenueSummarySerializer(data=customers_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
         make_all_decimals_floats(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
@@ -433,7 +433,7 @@ class EventPreviewView(APIView):
         page_obj = paginator.get_page(page_number)
         ret = {}
         ret["total_pages"] = paginator.num_pages
-        ret["events"] = page_obj.object_list
+        ret["events"] = list(page_obj.object_list)
         serializer = EventPreviewSerializer(ret)
 
         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
@@ -467,5 +467,5 @@ class DraftInvoiceView(APIView):
             customer=customer, organization=organization, status="active"
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
-        ret = InvoiceSerializer(invoices, many=True).data
-        return JsonResponse(ret, status=status.HTTP_200_OK, safe=False)
+        serializer = InvoiceSerializer(invoices, many=True)
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
