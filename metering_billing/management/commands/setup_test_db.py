@@ -2,9 +2,11 @@ import datetime
 import itertools
 import os
 import random
+import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import timezone
 
+from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.models import (
@@ -87,32 +89,46 @@ class Command(BaseCommand):
         )
         bp.components.add(pc1, pc2, pc3, pc4)
         bp.save()
-        old_sub_start = datetime.now() - timedelta(days=45)
-        old_sub_end = datetime.now() - timedelta(days=16)
-        new_sub_start = datetime.now() - timedelta(days=15)
-        new_sub_end = datetime.now() + timedelta(days=14)
+        old_sub_start_date = (
+            datetime.date.today() - relativedelta(months=1) - relativedelta(days=15)
+        )
+        old_sub_end_date = old_sub_start_date + relativedelta(months=1)
+        new_sub_start_date = old_sub_end_date + relativedelta(days=1)
+        new_sub_end_date = new_sub_start_date + relativedelta(months=1)
+        old_sub_start_time = datetime.datetime.combine(
+            old_sub_start_date, datetime.time.min, tzinfo=timezone.utc
+        )
+        old_sub_end_time = datetime.datetime.combine(
+            old_sub_end_date, datetime.time.max, tzinfo=timezone.utc
+        )
+        new_sub_start_time = datetime.datetime.combine(
+            new_sub_start_date, datetime.time.min, tzinfo=timezone.utc
+        )
+        new_sub_end_time = datetime.datetime.combine(
+            new_sub_end_date, datetime.time.max, tzinfo=timezone.utc
+        )
         for customer in customer_set:
             Subscription.objects.create(
                 organization=organization,
                 customer=customer,
                 billing_plan=bp,
-                start_date=old_sub_start.date(),
-                end_date=old_sub_end.date(),
+                start_date=old_sub_start_date,
+                end_date=old_sub_end_date,
                 status="ended",
             )
             Subscription.objects.create(
                 organization=organization,
                 customer=customer,
                 billing_plan=bp,
-                start_date=new_sub_start.date(),
-                end_date=new_sub_end.date(),
+                start_date=new_sub_start_date,
+                end_date=new_sub_end_date,
                 status="active",
             )
 
         for customer in customer_set:
             for start, end in [
-                (old_sub_start, old_sub_end),
-                (new_sub_start, new_sub_end),
+                (old_sub_start_time, old_sub_end_time),
+                (new_sub_start_time, new_sub_end_time),
             ]:
                 n = int(random.gauss(10_000, 500) // 1)
                 baker.make(
@@ -143,7 +159,7 @@ def random_date(start, end, n):
     for _ in range(n):
         yield (
             start
-            + timedelta(
+            + relativedelta(
                 # Get a random amount of seconds between `start` and `end`
                 seconds=random.randint(0, int((end - start).total_seconds())),
             )

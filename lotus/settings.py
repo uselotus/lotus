@@ -39,6 +39,7 @@ POSTGRES_USER = config("POSTGRES_USER", default="lotus")
 POSTGRES_PASSWORD = config("POSTGRES_PASSWORD", default="lotus")
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 SENTRY_DSN = config("SENTRY_DSN", default="")
+SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 
 if SENTRY_DSN != "":
     sentry_sdk.init(
@@ -251,11 +252,9 @@ LOGGING = {
 
 INTERNAL_IPS = ["127.0.0.1"]
 if DOCKERIZED:
-    hostname, _, ips = socket.gethostbyname_ex("frontend")
-    INTERNAL_IPS += [ip for ip in ips]
     hostname, _, ips = socket.gethostbyname_ex("backend")
     INTERNAL_IPS += [ip for ip in ips]
-    INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
+    INTERNAL_IPS += [ip[: ip.rfind(".")] + f".{x}" for ip in ips for x in range(10)]
 
 
 VITE_APP_DIR = BASE_DIR / "src"

@@ -82,7 +82,9 @@ def start_subscriptions():
 
 @shared_task
 def update_invoice_status():
-    incomplete_invoices = Invoice.objects.filter(~Q(status="succeeded"))
+    incomplete_invoices = Invoice.objects.filter(
+        ~Q(status="succeeded") & ~Q(status="draft")
+    )
     for incomplete_invoice in incomplete_invoices:
         p_intent = stripe.PaymentIntent.retrieve(incomplete_invoice.payment_intent_id)
         if p_intent.status != incomplete_invoice.status:

@@ -1,7 +1,7 @@
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import stripe
-from lotus.settings import STRIPE_SECRET_KEY
+from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
 from rest_framework import serializers
 
 from metering_billing.models import (
@@ -18,6 +18,7 @@ from metering_billing.utils import (
 
 from .webhooks import invoice_created_webhook
 
+stripe.api_key = STRIPE_SECRET_KEY
 
 # Invoice Serializers
 class InvoiceOrganizationSerializer(serializers.ModelSerializer):
@@ -94,16 +95,20 @@ def generate_invoice(subscription, draft=False):
     if draft:
         status = "draft"
         payment_intent_id = None
-    elif organization.stripe_id is not None:
+    elif organization.stripe_id is not None or (
+        SELF_HOSTED and STRIPE_SECRET_KEY != ""
+    ):
         if customer.payment_provider_id is not None:
-            payment_intent = stripe.PaymentIntent.create(
-                amount=amount_cents,
-                currency=str.lower(customer.currency),
-                payment_method_types=["card"],
-                customer=customer.payment_provider_id,
-                description=f"Invoice from {organization.company_name}",
-                stripe_account=organization.stripe_id,
-            )
+            payment_intent_kwargs = {
+                "amount": amount_cents,
+                "currency": billing_plan.currency,
+                "customer": customer.payment_provider_id,
+                "payment_method_types": ["card"],
+                "description": f"Invoice for {organization.company_name}",
+            }
+            if not SELF_HOSTED:
+                payment_intent_kwargs["stripe_account"] = organization.stripe_id
+            payment_intent = stripe.PaymentIntent.create(**payment_intent_kwargs)
             status = payment_intent.status
             payment_intent_id = payment_intent.id
         else:

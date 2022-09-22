@@ -5,7 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
-from lotus.settings import STRIPE_SECRET_KEY
+from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
@@ -31,11 +31,11 @@ def import_stripe_customers(organization):
     """
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
-    if organization.stripe_id:
-        stripe_customers_response = stripe.Customer.list(
-            stripe_account=organization.stripe_id
-        )
-
+    if organization.stripe_id or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
+        stripe_cust_kwargs = {}
+        if organization.stripe_id:
+            stripe_cust_kwargs["stripe_account"] = organization.stripe_id
+        stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
         for stripe_customer in stripe_customers_response.auto_paging_iter():
             try:
                 customer = Customer.objects.get(
@@ -45,27 +45,6 @@ def import_stripe_customers(organization):
                 customer.save()
             except Customer.DoesNotExist:
                 pass
-
-
-def issue_stripe_payment_intent(invoice):
-
-    cost_due = int(invoice.cost_due * 100)
-    currency = (invoice.currency).lower()
-
-    stripe.PaymentIntent.create(
-        amount=cost_due,
-        currency=currency,
-        payment_method_types=["card"],
-        stripe_account=invoice.organization.stripe_id,
-    )
-
-
-def retrive_stripe_payment_intent(invoice):
-    payment_intent = stripe.PaymentIntent.retrieve(
-        invoice.payment_intent_id,
-        stripe_account=invoice.organization.stripe_id,
-    )
-    return payment_intent
 
 
 class InitializeStripeView(APIView):
@@ -80,7 +59,9 @@ class InitializeStripeView(APIView):
 
         stripe_id = organization.stripe_id
 
-        if stripe_id and len(stripe_id) > 0:
+        if (stripe_id and len(stripe_id) > 0) or (
+            SELF_HOSTED and STRIPE_SECRET_KEY != ""
+        ):
             return JsonResponse({"connected": True})
         else:
             return JsonResponse({"connected": False})
