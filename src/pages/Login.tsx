@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import CustomerTable from "../components/CustomerTable";
+import CustomerTable from "../components/Customers/CustomerTable";
 import { CustomerType } from "../types/customer-type";
 import { Customer } from "../api/api";
 import * as Toast from "@radix-ui/react-toast";
