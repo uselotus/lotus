@@ -11,6 +11,7 @@ import CreateMetricForm, {
 } from "../components/CreateMetricForm";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import EventPreivew from "../components/EventPreview";
 
 const defaultMetricState: CreateMetricState = {
   title: "Create a new Metric",
@@ -25,7 +26,7 @@ const ViewMetrics: FC = () => {
   const [metricState, setMetricState] =
     useState<CreateMetricState>(defaultMetricState);
 
-  const { data, isLoading }: UseQueryResult<MetricType[]> = useQuery<
+  const { data, isLoading, isError }: UseQueryResult<MetricType[]> = useQuery<
     MetricType[]
   >(["metric_list"], () =>
     Metrics.getMetrics().then((res) => {
@@ -76,20 +77,19 @@ const ViewMetrics: FC = () => {
       </div>
 
       <div className="grid grid-cols-2">
-        <div>
+        <div className="flex flex-col">
           {isLoading || data === undefined ? (
             <LoadingSpinner />
           ) : (
             <MetricTable metricArray={data} />
           )}
+          {isError && <div className=" text-danger">Something went wrong</div>}
         </div>
         <Card className="flex flex-row justify-center bg-light">
-          <h1 className="text-2xl font-main mb-5">Event Stream</h1>
+          <h1 className="text-2xl font-main mb-5 align-center">Event Stream</h1>
           <Divider />
           <div>
-            <p className=" text-bold">
-              Realtime Event Stream Preview Coming Soon
-            </p>
+            <EventPreivew />
           </div>
         </Card>
       </div>

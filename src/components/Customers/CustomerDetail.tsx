@@ -6,7 +6,7 @@ import { CreateSubscriptionType } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "../../api/api";
 import SubscriptionView from "./CustomerSubscriptionView";
-import { useMutation } from "react-query";
+import { useMutation, useQueryClient } from "react-query";
 import dayjs from "dayjs";
 
 const { Option } = Select;
@@ -19,6 +19,8 @@ function CustomerDetail(props: {
   changePlan: (plan_id: string, customer_id: string) => void;
 }) {
   const [form] = Form.useForm();
+  const queryClient = useQueryClient();
+
   const [currentTab, setCurrentTab] = useState("subscriptions");
   const [customerSubscriptions, setCustomerSubscriptions] = useState<string[]>(
     props.customer.subscriptions
@@ -27,7 +29,9 @@ function CustomerDetail(props: {
   const mutation = useMutation(
     (post: CreateSubscriptionType) => Customer.subscribe(post),
     {
-      onSuccess: () => {},
+      onSettled: () => {
+        queryClient.invalidateQueries(["customer_list"]);
+      },
     }
   );
 
@@ -78,11 +82,14 @@ function CustomerDetail(props: {
                 Content of Tab Pane 1
               </Tabs.TabPane>
               <Tabs.TabPane tab="Subscriptions" key="subscriptions">
-                <SubscriptionView
-                  subscriptions={customerSubscriptions}
-                  plans={props.plans}
-                  onChange={addSubscriptions}
-                />
+                <div key={props.customer.customer_id}>
+                  <SubscriptionView
+                    key={props.customer.customer_id}
+                    subscriptions={customerSubscriptions}
+                    plans={props.plans}
+                    onChange={addSubscriptions}
+                  />
+                </div>
               </Tabs.TabPane>
               <Tabs.TabPane disabled={true} tab="History" key="history">
                 <p>History</p>

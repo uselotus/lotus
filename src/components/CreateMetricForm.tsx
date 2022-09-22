@@ -1,4 +1,4 @@
-import { Modal, Form, Input, Select, Checkbox } from "antd";
+import { Modal, Form, Input, Select, Checkbox, Tooltip } from "antd";
 import { MetricType } from "../types/metric-type";
 const { Option } = Select;
 
@@ -89,9 +89,28 @@ const CreateMetricForm = (props: {
             ) : null
           }
         </Form.Item>
-        <Form.Item name="recurring">
-          <Checkbox>Recurring?</Checkbox>
-        </Form.Item>
+        <Tooltip
+          placement="left"
+          title="If checked, the metric will persist across subscriptions."
+        >
+          <Form.Item name="carries_over">
+            <Checkbox>Carries Over?</Checkbox>
+          </Form.Item>
+        </Tooltip>
+        <Tooltip placement="left" title="Define a display name for this metric">
+          <Form.Item
+            name="billable_metric_name"
+            label="Metric Name"
+            rules={[
+              {
+                required: true,
+                message: "Please define a unique name for this metric",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+        </Tooltip>
       </Form>
     </Modal>
   );

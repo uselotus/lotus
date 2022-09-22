@@ -17,6 +17,7 @@ import {
   StripeStatusType,
 } from "../types/stripe-type";
 import Cookies from "universal-cookie";
+import { EventPages } from "../types/event-type";
 
 const cookies = new Cookies();
 
@@ -129,6 +130,11 @@ export const Metrics = {
     requests.post("api/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>
     requests.delete(`api/metrics/${id}`),
+};
+
+export const Events = {
+  getEventPreviews: (page: number): Promise<EventPages> =>
+    requests.get("api/event_preview/", { params: { page } }),
 };
 
 export const APIToken = {

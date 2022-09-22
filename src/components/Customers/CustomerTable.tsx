@@ -155,6 +155,7 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
         onCancel={onCancel}
       />
       <CustomerDetail
+        key={customerState.customer_id}
         visible={customerVisible}
         onCancel={onDetailCancel}
         changePlan={changePlan}

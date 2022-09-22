@@ -14,7 +14,7 @@ from metering_billing.models import (
 )
 from rest_framework import serializers
 
-from .model_serializers import BillingPlanSerializer, EventSerializer
+from .model_serializers import BillingPlanReadSerializer, EventSerializer
 
 
 ## CUSTOM SERIALIZERS
@@ -63,11 +63,6 @@ class PeriodComparisonRequestSerializer(serializers.Serializer):
 
 # CUSTOMER USAGE AND REVENUE SERIALIZERS GO HERE
 class SubscriptionUsageSerializer(serializers.Serializer):
-    class Meta:
-        model = Subscription
-        fields = ("id", "start_date", "end_date", "status", "billing_plan")
-
-    billing_plan = BillingPlanSerializer()
     usage_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     flat_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)

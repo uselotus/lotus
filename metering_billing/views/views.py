@@ -5,7 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
-from lotus.settings import STRIPE_SECRET_KEY
+from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
@@ -31,11 +31,11 @@ def import_stripe_customers(organization):
     """
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
-    if organization.stripe_id:
-        stripe_customers_response = stripe.Customer.list(
-            stripe_account=organization.stripe_id
-        )
-
+    if organization.stripe_id or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
+        stripe_cust_kwargs = {}
+        if organization.stripe_id:
+            stripe_cust_kwargs["stripe_account"] = organization.stripe_id
+        stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
         for stripe_customer in stripe_customers_response.auto_paging_iter():
             try:
                 customer = Customer.objects.get(
@@ -45,27 +45,6 @@ def import_stripe_customers(organization):
                 customer.save()
             except Customer.DoesNotExist:
                 pass
-
-
-def issue_stripe_payment_intent(invoice):
-
-    cost_due = int(invoice.cost_due * 100)
-    currency = (invoice.currency).lower()
-
-    stripe.PaymentIntent.create(
-        amount=cost_due,
-        currency=currency,
-        payment_method_types=["card"],
-        stripe_account=invoice.organization.stripe_id,
-    )
-
-
-def retrive_stripe_payment_intent(invoice):
-    payment_intent = stripe.PaymentIntent.retrieve(
-        invoice.payment_intent_id,
-        stripe_account=invoice.organization.stripe_id,
-    )
-    return payment_intent
 
 
 class InitializeStripeView(APIView):
@@ -80,7 +59,9 @@ class InitializeStripeView(APIView):
 
         stripe_id = organization.stripe_id
 
-        if stripe_id and len(stripe_id) > 0:
+        if (stripe_id and len(stripe_id) > 0) or (
+            SELF_HOSTED and STRIPE_SECRET_KEY != ""
+        ):
             return JsonResponse({"connected": True})
         else:
             return JsonResponse({"connected": False})
@@ -182,13 +163,11 @@ class PeriodMetricRevenueView(APIView):
                 )
                 for sub in subs:
                     billing_plan = sub.billing_plan
-                    flat_fee_billable_date = (
-                        sub.start_date if billing_plan.pay_in_advance else sub.end_date
-                    )
-                    if (
-                        flat_fee_billable_date >= p_start
-                        and flat_fee_billable_date <= p_end
-                    ):
+                    if billing_plan.pay_in_advance:
+                        flat_bill_date = sub.start_date
+                    else:
+                        flat_bill_date = sub.end_date
+                    if flat_bill_date >= p_start and flat_bill_date <= p_end:
                         return_dict[
                             f"total_revenue_period_{p_num}"
                         ] += billing_plan.flat_rate.amount
@@ -210,10 +189,9 @@ class PeriodMetricRevenueView(APIView):
                             metric_dict["data"][str(date)] += usage_cost
                             metric_dict["total_revenue"] += usage_cost
                             return_dict[f"total_revenue_period_{p_num}"] += usage_cost
-
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
-            dailies = [v for _, v in dailies.items()]
+            dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
             return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
             for dic in dailies:
                 dic["data"] = [
@@ -275,7 +253,7 @@ class PeriodSubscriptionsView(APIView):
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -307,7 +285,8 @@ class PeriodMetricUsageView(APIView):
             metric_dict = return_dict[str(metric)]
             for obj in usage_summary:
                 customer, date, qty = [
-                    obj[key] for key in ["customer_name", "date_created", "usage_qty"]
+                    obj[key]
+                    for key in ["customer_name", "time_created_quantized", "usage_qty"]
                 ]
                 if str(date) not in metric_dict["data"]:
                     metric_dict["data"][str(date)] = {
@@ -380,7 +359,7 @@ class SettingsView(APIView):
 
 class CustomerWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: CustomerRevenueSummarySerializer},
@@ -401,9 +380,8 @@ class CustomerWithRevenueView(APIView):
             customer_dict["customer_name"] = customer.name
             customer_dict["customer_id"] = customer.customer_id
             customer_dict["subscriptions"] = [
-                x["billing_plan"]["name"] for x in sub_usg_summaries["subscriptions"]
+                x["billing_plan_name"] for x in sub_usg_summaries["subscriptions"]
             ]
-
             serializer = CustomerRevenueSerializer(data=customer_dict)
             serializer.is_valid(raise_exception=True)
             customers_dict["customers"].append(serializer.validated_data)
@@ -436,7 +414,7 @@ class EventPreviewView(APIView):
         page_obj = paginator.get_page(page_number)
         ret = {}
         ret["total_pages"] = paginator.num_pages
-        ret["events"] = page_obj.object_list
+        ret["events"] = list(page_obj.object_list)
         serializer = EventPreviewSerializer(ret)
 
         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
@@ -470,5 +448,5 @@ class DraftInvoiceView(APIView):
             customer=customer, organization=organization, status="active"
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
-        ret = InvoiceSerializer(invoices, many=True).data
-        return JsonResponse(ret, status=status.HTTP_200_OK, safe=False)
+        serializer = InvoiceSerializer(invoices, many=True)
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)

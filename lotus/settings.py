@@ -13,40 +13,37 @@ import os
 import re
 import socket
 from pathlib import Path
-import posthog
 
 import dj_database_url
 import django_heroku
-import environ
+import posthog
 import sentry_sdk
-from dotenv import load_dotenv
+from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
-env = environ.Env(
-    # set casting, default value
-    DEBUG=(bool, False),
-    PROFILER_ENABLED=(bool, False),
-    DOCKERIZED=(bool, False),
-    ON_HEROKU=(bool, False),
-    POSTGRES_NAME=(str, "lotus"),
-    POSTGRES_USER=(str, "lotus"),
-    POSTGRES_PASSWORD=(str, "lotus"),
-    EVENT_CACHE_FLUSH_SECONDS=(int, 300),
-    EVENT_CACHE_FLUSH_COUNT=(int, 500),
-)
-EVENT_CACHE_FLUSH_SECONDS = env("EVENT_CACHE_FLUSH_SECONDS")
-EVENT_CACHE_FLUSH_COUNT = env("EVENT_CACHE_FLUSH_COUNT")
-DOCKERIZED = env("DOCKERIZED")
-ON_HEROKU = env("ON_HEROKU")
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-local_env_file = BASE_DIR / "env/.env"
-if local_env_file.is_file():
-    environ.Env.read_env(local_env_file)
 
-try:
+EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
+EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
+DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
+ON_HEROKU = config("ON_HEROKU", default=False, cast=bool)
+DEBUG = config("DEBUG", default=False, cast=bool)
+PROFILER_ENABLED = config("PROFILER_ENABLED", default=False, cast=bool)
+SECRET_KEY = config("SECRET_KEY", default="")
+if SECRET_KEY == "":
+    SECRET_KEY = os.urandom(32)
+    print("SECRET_KEY not set. Defaulting to a random one.")
+POSTGRES_DB_NAME = config("POSTGRES_DB_NAME", default="lotus")
+POSTGRES_USER = config("POSTGRES_USER", default="lotus")
+POSTGRES_PASSWORD = config("POSTGRES_PASSWORD", default="lotus")
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+SENTRY_DSN = config("SENTRY_DSN", default="")
+SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
+
+if SENTRY_DSN != "":
     sentry_sdk.init(
-        dsn=os.environ["SENTRY_DSN"],
+        dsn=SENTRY_DSN,
         integrations=[
             DjangoIntegration(),
         ],
@@ -58,21 +55,14 @@ try:
         # django.contrib.auth) you may enable sending PII data.
         send_default_pii=True,
     )
-except KeyError:
-    pass
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env("SECRET_KEY")
 API_KEY_CUSTOM_HEADER = "X-API-KEY"
 
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("DEBUG")
-PROFILER_ENABLED = env("PROFILER_ENABLED")
 
 # posthog.project_api_key(env("POSTHOG_API_KEY"))
 # posthog.debug = DEBUG
@@ -153,7 +143,6 @@ AUTH_USER_MODEL = "metering_billing.User"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
-
 if os.environ.get("DATABASE_URL"):
     DATABASES = {
         "default": dj_database_url.parse(
@@ -167,9 +156,9 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": env("POSTGRES_NAME"),
-            "USER": env("POSTGRES_USER"),
-            "PASSWORD": env("POSTGRES_PASSWORD"),
+            "NAME": POSTGRES_DB_NAME,
+            "USER": POSTGRES_USER,
+            "PASSWORD": POSTGRES_PASSWORD,
             "HOST": "db" if DOCKERIZED else "localhost",
             "PORT": 5432,
         }
@@ -195,8 +184,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Stripe Settings
-STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 
 # redis settings
 if os.environ.get("REDIS_URL"):
@@ -265,11 +252,9 @@ LOGGING = {
 
 INTERNAL_IPS = ["127.0.0.1"]
 if DOCKERIZED:
-    hostname, _, ips = socket.gethostbyname_ex("frontend")
-    INTERNAL_IPS += [ip for ip in ips]
     hostname, _, ips = socket.gethostbyname_ex("backend")
     INTERNAL_IPS += [ip for ip in ips]
-    INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
+    INTERNAL_IPS += [ip[: ip.rfind(".")] + f".{x}" for ip in ips for x in range(10)]
 
 
 VITE_APP_DIR = BASE_DIR / "src"

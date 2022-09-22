@@ -6,18 +6,16 @@ services:
       - 5432
     volumes:
       - ./pgdata:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: lotus
-      POSTGRES_PASSWORD: lotus
-      POSTGRES_DB: lotus
+    env_file:
+      - ./env/.env.prod
 
   backend:
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
     build:
       context: .
-      dockerfile: Dockerfile
-      target: build
+      dockerfile: Dockerfile.backend
+      target: production
     expose:
       - 8000
     volumes:
@@ -36,7 +34,7 @@ services:
     restart: always
     build:
       context: .
-      dockerfile: frontend.Dockerfile
+      dockerfile: Dockerfile.frontend
       target: production
     stdin_open: true
     ports:
@@ -50,15 +48,15 @@ services:
     image: redis:7-alpine
     command: redis-server
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
 
   celery:
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
     build:
       context: .
-      dockerfile: Dockerfile
-      target: build
+      dockerfile: Dockerfile.backend
+      target: production
     command: celery -A lotus worker -l info
     depends_on:
       - redis
@@ -66,12 +64,12 @@ services:
 
   celery-beat:
     env_file:
-      - ./env/.env
+      - ./env/.env.prod
     restart: on-failure
     build:
       context: .
-      dockerfile: Dockerfile
-      target: build
+      dockerfile: Dockerfile.backend
+      target: production
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
       - celery

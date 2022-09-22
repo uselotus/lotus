@@ -10,6 +10,8 @@ interface Props {
 
 const SubscriptionView: FC<Props> = ({ subscriptions, plans, onChange }) => {
   const [selectedPlan, setSelectedPlan] = useState<string>();
+  const [form] = Form.useForm();
+
   const [idtoPlan, setIDtoPlan] = useState<{ [key: string]: PlanType }>({});
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
@@ -42,6 +44,7 @@ const SubscriptionView: FC<Props> = ({ subscriptions, plans, onChange }) => {
     if (selectedPlan) {
       onChange(idtoPlan[selectedPlan]);
     }
+    form.resetFields();
   };
 
   if (subscriptions.length === 0) {
@@ -50,7 +53,7 @@ const SubscriptionView: FC<Props> = ({ subscriptions, plans, onChange }) => {
         <h3 className="text-xl font-main m-3">No Subscription</h3>
         <p className="font-bold">Please attatch a Plan</p>
         <div className=" h-3/6">
-          <Form onFinish={handleSubmit} name="create_subscription">
+          <Form onFinish={handleSubmit} form={form} name="create_subscription">
             <Form.Item name="plan">
               <Select
                 showSearch

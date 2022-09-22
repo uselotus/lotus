@@ -1,7 +1,7 @@
 # ---------------------------------------
-# Build
+# Production
 # ---------------------------------------
-FROM --platform=linux/amd64 python:3.9-bullseye AS build
+FROM --platform=linux/amd64 python:3.9-bullseye AS production
 ENV PYTHONUNBUFFERED 1
 #make lotus user
 WORKDIR /lotus
@@ -16,8 +16,5 @@ COPY ./manage.py ./
 # ---------------------------------------
 # Development
 # ---------------------------------------
-FROM build AS development
-# ---------------------------------------
-# Production
-# ---------------------------------------
-FROM development AS production
+FROM production AS development
+RUN pipenv install --system --deploy --ignore-pipfile --dev

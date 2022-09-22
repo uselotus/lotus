@@ -54,10 +54,9 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install dependencies with pipenv
+      - name: Install pipenv
         run: |
           pip install pipenv
-          pipenv install --deploy --dev
 
       - name: Cache Pipenv virtualenv
         uses: actions/cache@v1
@@ -100,10 +99,35 @@ jobs:
   codestyle:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: lotus
+          POSTGRES_PASSWORD: lotus
+          SSLMODE: PREFER
+        ports:
+          - 5432:5432
+        # needed because the postgres container does not provide a healthcheck
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      
+      redis:
+        image: redis
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     environment: Development
 
     env:
+      REDIS_HOST: localhost
+      DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DEBUG: False
 
     steps:
       - uses: actions/checkout@v3
@@ -113,10 +137,9 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install dependencies with pipenv
+      - name: Install pipenv
         run: |
           pip install pipenv
-          pipenv install --deploy --dev
 
       - name: Cache Pipenv virtualenv
         uses: actions/cache@v1
@@ -134,6 +157,13 @@ jobs:
           PIPENV_CACHE_DIR: ~/.pipenv/pipcache
         run: pipenv install --deploy --dev
         if: steps.pipenv-cache.outputs.cache-hit != 'true'
+
+      - name: Migrate
+        env:
+          PIPENV_NOSPIN: "true"
+          WORKON_HOME: ~/.pipenv/virtualenvs
+        run: |
+          pipenv run python manage.py migrate --noinput
 
       - name: Codestyle Check
         env:
