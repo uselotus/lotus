@@ -14,10 +14,12 @@ from .models import (
     PlanComponent,
     Subscription,
     User,
+    Alert,
 )
 
 # Register your models here.
 admin.site.register(Customer)
+admin.site.register(Alert)
 admin.site.register(Event)
 admin.site.register(BillingPlan)
 admin.site.register(Subscription)
