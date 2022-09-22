@@ -37,7 +37,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = "__all__"  # allowed because we never send back, just take in
+        fields = (
+            "event_name",
+            "properties",
+            "time_created",
+            "idempotency_id",
+            "customer_id",
+        )
+
+    customer_id = serializers.CharField(source="customer.customer_id")
 
 
 class AlertSerializer(serializers.ModelSerializer):
