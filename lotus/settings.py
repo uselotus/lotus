@@ -259,7 +259,10 @@ if DOCKERIZED:
         _, _, ips = socket.gethostbyname_ex("frontend")
         INTERNAL_IPS.extend(ips)
     except socket.gaierror:
-        print("tried to get frontend container ip but failed, current internal ips:", INTERNAL_IPS)
+        print(
+            "tried to get frontend container ip but failed, current internal ips:",
+            INTERNAL_IPS,
+        )
         pass
 
 VITE_APP_DIR = BASE_DIR / "src"
