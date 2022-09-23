@@ -10,17 +10,10 @@ const ViewCustomers: FC = () => {
   const queryClient = useQueryClient();
 
   const { data, isLoading }: UseQueryResult<CustomerSummary> =
-    useQuery<CustomerSummary>(
-      ["customer_list"],
-      () =>
-        Customer.getCustomers().then((res) => {
-          return res;
-        }),
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries(["customer_list"]);
-        },
-      }
+    useQuery<CustomerSummary>(["customer_list"], () =>
+      Customer.getCustomers().then((res) => {
+        return res;
+      })
     );
 
   return (
