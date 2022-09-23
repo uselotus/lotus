@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
 import re
-import socket
 from pathlib import Path
 
 import dj_database_url
@@ -252,10 +251,19 @@ LOGGING = {
 
 INTERNAL_IPS = ["127.0.0.1"]
 if DOCKERIZED:
-    hostname, _, ips = socket.gethostbyname_ex("backend")
-    INTERNAL_IPS += [ip for ip in ips]
-    INTERNAL_IPS += [ip[: ip.rfind(".")] + f".{x}" for ip in ips for x in range(10)]
+    import socket
 
+    hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+    INTERNAL_IPS += [".".join(ip.split(".")[:-1] + ["1"]) for ip in ips]
+    try:
+        _, _, ips = socket.gethostbyname_ex("frontend")
+        INTERNAL_IPS.extend(ips)
+    except socket.gaierror:
+        print(
+            "tried to get frontend container ip but failed, current internal ips:",
+            INTERNAL_IPS,
+        )
+        pass
 
 VITE_APP_DIR = BASE_DIR / "src"
 
