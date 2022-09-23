@@ -304,11 +304,13 @@ class Subscription(models.Model):
         ACTIVE = "active"
         ENDED = "ended"
         NOT_STARTED = "not_started"
+        CANCELED = "canceled"
 
     SUB_STATUS_CHOICES = Choices(
         (SUB_STATUS_TYPES.ACTIVE, _("Active")),
         (SUB_STATUS_TYPES.ENDED, _("Ended")),
         (SUB_STATUS_TYPES.NOT_STARTED, _("Not Started")),
+        (SUB_STATUS_TYPES.CANCELED, _("Canceled")),
     )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)

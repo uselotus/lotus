@@ -1,10 +1,18 @@
 from metering_billing.models import BillingPlan, Customer
 from rest_framework import serializers
 
-from .model_serializers import BillingPlanReadSerializer, EventSerializer
-
+from .model_serializers import EventSerializer
 
 ## CUSTOM SERIALIZERS
+
+
+class CancelSubscriptionRequestSerializer(serializers.Serializer):
+    # customer_id = serializers.CharField()
+    # billing_plan_id = serializers.CharField()
+    bill_now = serializers.BooleanField(default=True)
+    subscription_pk = serializers.IntegerField()
+
+
 class RegistrationDetailSerializer(serializers.Serializer):
     company_name = serializers.CharField()
     industry = serializers.CharField()

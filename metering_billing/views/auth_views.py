@@ -103,13 +103,14 @@ class RegisterView(APIView):
         if existing_user_num > 0:
             msg = f"User with email already exists"
             return JsonResponse({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
-        Organization.objects.create(
+        org = Organization.objects.create(
             company_name=reg_dict["company_name"],
         )
         User.objects.create_user(
             email=reg_dict["email"],
             username=reg_dict["username"],
             password=reg_dict["password"],
+            organization=org,
         )
         return JsonResponse(
             {"detail": "Successfully registered."}, status=status.HTTP_201_CREATED

@@ -62,13 +62,14 @@ class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
         fields = ("start_date", "end_date", "billing_plan")
 
 
-def generate_invoice(subscription, draft=False):
+def generate_invoice(subscription, draft=False, issue_date=None):
     """
     Generate an invoice for a subscription.
     """
     customer = subscription.customer
     organization = subscription.organization
     billing_plan = subscription.billing_plan
+    issue_date = issue_date if issue_date else subscription.end_date
     usage_dict = {"components": {}}
     for plan_component in billing_plan.components.all():
         pc_usg_and_rev = calculate_sub_pc_usage_revenue(
@@ -126,7 +127,7 @@ def generate_invoice(subscription, draft=False):
     make_all_decimals_floats(usage_dict)
     invoice = Invoice.objects.create(
         cost_due=amount_cents / 100,
-        issue_date=subscription.end_date,
+        issue_date=issue_date,
         organization=org_serializer.data,
         customer=customer_serializer.data,
         subscription=subscription_serializer.data,
@@ -139,7 +140,7 @@ def generate_invoice(subscription, draft=False):
         invoice_data = {
             invoice: {
                 "cost_due": amount_cents / 100,
-                "issue_date": subscription.end_date,
+                "issue_date": issue_date,
                 "organization": org_serializer.data,
                 "customer": customer_serializer.data,
                 "subscription": subscription_serializer.data,

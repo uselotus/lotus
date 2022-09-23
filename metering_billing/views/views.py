@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 
 import stripe
@@ -452,3 +453,47 @@ class DraftInvoiceView(APIView):
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = InvoiceSerializer(invoices, many=True)
         return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+
+
+class CancelSubscriptionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[CancelSubscriptionRequestSerializer],
+    )
+    def post(self, request, format=None):
+        serializer = CancelSubscriptionRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        sub_pk = serializer.validated_data["subscription_pk"]
+        bill_now = serializer.validated_data["bill_now"]
+        try:
+            sub = Subscription.objects.get(pk=sub_pk)
+        except:
+            return JsonResponse(
+                {"error": "Subscription not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if sub.status == "ended":
+            return JsonResponse(
+                {"error": "Subscription already ended"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        elif sub.status == "not_started":
+            Subscription.objects.get(pk=sub_pk).delete()
+            return JsonResponse(
+                {"success": "Subscription hadn't started, has been deleted"},
+                status=status.HTTP_200_OK,
+            )
+        sub.status = "canceled"
+        sub.save()
+        if bill_now:
+            generate_invoice(sub, issue_date=datetime.datetime.now().date())
+            return JsonResponse(
+                {"success": "Created invoice and payment intent for subscription"},
+                status=status.HTTP_201_CREATED,
+            )
+        else:
+            return JsonResponse(
+                {"success": "Subscription ended without generating invoice."},
+                status=status.HTTP_200_OK,
+            )
