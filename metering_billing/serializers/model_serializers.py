@@ -45,7 +45,11 @@ class EventSerializer(serializers.ModelSerializer):
             "customer_id",
         )
 
-    customer_id = serializers.CharField(source="customer.customer_id")
+    customer_id = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field="customer_id",
+        source="customer",
+    )
 
 
 class AlertSerializer(serializers.ModelSerializer):

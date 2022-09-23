@@ -409,7 +409,7 @@ class EventPreviewView(APIView):
         organization = parse_organization(request)
         events = Event.objects.filter(organization=organization).order_by(
             "-time_created"
-        )
+        ).select_related('customer')
         paginator = Paginator(events, per_page=20)
         page_obj = paginator.get_page(page_number)
         ret = {}
