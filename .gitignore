@@ -104,10 +104,10 @@ celerybeat.pid
 *.sage.py
 
 # Environments
+env/.env
+env/.env.dev
 .env
-.env.dev
 .venv
-env/
 venv/
 ENV/
 env.bak/
@@ -176,3 +176,6 @@ node_modules
 .DS_Store
 
 pgdata/
+
+!env/.env.dev.example
+!env/.env.prod.examplex
