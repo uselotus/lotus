@@ -20,6 +20,7 @@ from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, track
+from metering_billing.views.auth_views import RegisterView
 from metering_billing.views.model_views import (
     BillableMetricViewSet,
     BillingPlanViewSet,
@@ -84,6 +85,7 @@ urlpatterns = [
     path("api/logout/", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
     path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
+    path("api/register/", RegisterView.as_view(), name="register"),
 ]
 
 if PROFILER_ENABLED:

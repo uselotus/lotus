@@ -1,23 +1,22 @@
-import datetime
-from decimal import Decimal
-
-from metering_billing.models import (
-    BillableMetric,
-    BillingPlan,
-    Customer,
-    Event,
-    Invoice,
-    Organization,
-    PlanComponent,
-    Subscription,
-    User,
-)
+from metering_billing.models import BillingPlan, Customer
 from rest_framework import serializers
 
 from .model_serializers import BillingPlanReadSerializer, EventSerializer
 
 
 ## CUSTOM SERIALIZERS
+class RegistrationDetailSerializer(serializers.Serializer):
+    company_name = serializers.CharField()
+    industry = serializers.CharField()
+    email = serializers.CharField()
+    password = serializers.CharField()
+    username = serializers.CharField()
+
+
+class RegistrationSerializer(serializers.Serializer):
+    register = RegistrationDetailSerializer()
+
+
 class EventPreviewSerializer(serializers.Serializer):
     events = EventSerializer(many=True)
     total_pages = serializers.IntegerField(required=True)
