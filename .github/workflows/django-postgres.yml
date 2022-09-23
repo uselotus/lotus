@@ -59,7 +59,7 @@ jobs:
           pip install pipenv
 
       - name: Cache Pipenv virtualenv
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         id: pipenv-cache
         with:
           path: ~/.pipenv
@@ -73,7 +73,6 @@ jobs:
           WORKON_HOME: ~/.pipenv/virtualenvs
           PIPENV_CACHE_DIR: ~/.pipenv/pipcache
         run: pipenv install --deploy --dev
-        if: steps.pipenv-cache.outputs.cache-hit != 'true'
 
       - name: Migrate
         env:
@@ -142,7 +141,7 @@ jobs:
           pip install pipenv
 
       - name: Cache Pipenv virtualenv
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         id: pipenv-cache
         with:
           path: ~/.pipenv
