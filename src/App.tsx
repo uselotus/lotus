@@ -3,6 +3,7 @@ import "./App.css";
 import { Authentication } from "./api/api";
 import { useQuery } from "react-query";
 import Login from "./pages/Login";
+import ExternalRoutes from "./config/ExternalRoutes";
 
 function App() {
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
@@ -21,7 +22,7 @@ function App() {
     if (isAuthenticated) {
       return <AppRoutes />;
     } else {
-      return <Login />;
+      return <ExternalRoutes />;
     }
   }
 }
