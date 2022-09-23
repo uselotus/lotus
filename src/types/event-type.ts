@@ -9,5 +9,5 @@ export interface EventPreviewType {
   properties?: object;
   idempotency_id: string;
   time_created: string;
-  customer: number;
+  customer_id: number;
 }

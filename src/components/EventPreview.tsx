@@ -52,7 +52,7 @@ const EventPreivew: FC = () => {
                 {event.properties ? "Properties" : "No properties"}
               </Descriptions.Item>
               <Descriptions.Item label="customer_id">
-                {event.customer}
+                {event.customer_id}
               </Descriptions.Item>
             </Descriptions>
           </List.Item>

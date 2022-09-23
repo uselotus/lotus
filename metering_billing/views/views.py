@@ -407,8 +407,10 @@ class EventPreviewView(APIView):
         serializer.is_valid(raise_exception=True)
         page_number = serializer.validated_data.get("page")
         organization = parse_organization(request)
-        events = Event.objects.filter(organization=organization).order_by(
-            "-time_created"
+        events = (
+            Event.objects.filter(organization=organization)
+            .order_by("-time_created")
+            .select_related("customer")
         )
         paginator = Paginator(events, per_page=20)
         page_obj = paginator.get_page(page_number)
