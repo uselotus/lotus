@@ -50,7 +50,7 @@ const Register: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries("session");
-        navigate("/dashboard");
+        navigate("/login");
       },
     }
   );
