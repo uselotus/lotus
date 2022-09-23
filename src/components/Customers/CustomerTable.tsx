@@ -6,8 +6,13 @@ import { CustomerType } from "../../types/customer-type";
 import { Button, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../LoadingSpinner";
-import CreateCustomerForm, { CreateCustomerState } from "../CreateCustomerForm";
-import { useMutation, useQuery, UseQueryResult } from "react-query";
+import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
+import {
+  useMutation,
+  useQuery,
+  UseQueryResult,
+  useQueryClient,
+} from "react-query";
 import { Customer, Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
 import { CreateSubscriptionType } from "../../types/subscription-type";
@@ -60,6 +65,7 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
   const [customerVisible, setCustomerVisible] = useState(false);
   const [customerState, setCustomerState] =
     useState<CreateCustomerState>(defaultCustomerState);
+  const queryClient = useQueryClient();
 
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plans"],
@@ -74,6 +80,7 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
     {
       onSuccess: () => {
         setVisible(false);
+        queryClient.invalidateQueries(["customer_list"]);
         toast.success("Customer created successfully", {
           position: toast.POSITION.TOP_CENTER,
         });

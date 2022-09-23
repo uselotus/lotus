@@ -55,6 +55,7 @@ def session_view(request):
     return JsonResponse({"isAuthenticated": True})
 
 
+@ensure_csrf_cookie
 def whoami_view(request):
     if not request.user.is_authenticated:
         return JsonResponse({"isAuthenticated": False})

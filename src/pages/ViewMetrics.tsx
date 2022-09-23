@@ -4,7 +4,12 @@ import { useNavigate } from "react-router-dom";
 import MetricTable from "../components/MetricTable";
 import { Metrics } from "../api/api";
 import { MetricType } from "../types/metric-type";
-import { useQuery, UseQueryResult, useMutation } from "react-query";
+import {
+  useQuery,
+  UseQueryResult,
+  useMutation,
+  useQueryClient,
+} from "react-query";
 import LoadingSpinner from "../components/LoadingSpinner";
 import CreateMetricForm, {
   CreateMetricState,
@@ -26,6 +31,8 @@ const ViewMetrics: FC = () => {
   const [metricState, setMetricState] =
     useState<CreateMetricState>(defaultMetricState);
 
+  const queryClient = useQueryClient();
+
   const { data, isLoading, isError }: UseQueryResult<MetricType[]> = useQuery<
     MetricType[]
   >(["metric_list"], () =>
@@ -39,6 +46,7 @@ const ViewMetrics: FC = () => {
     {
       onSuccess: () => {
         setVisible(false);
+        queryClient.invalidateQueries(["metric_list"]);
         toast.success("Successfully created metric", {
           position: toast.POSITION.TOP_CENTER,
         });
