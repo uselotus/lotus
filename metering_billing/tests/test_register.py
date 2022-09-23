@@ -87,6 +87,9 @@ class TestRegister:
         assert response.status_code == status.HTTP_201_CREATED
         assert users_before + 1 == users_after
         assert organizations_before + 1 == organizations_after
+        organization = Organization.objects.get(company_name="test")
+        user = User.objects.get(username="test", email="test")
+        assert user.organization == organization
 
     def test_register_org_exists(
         self, registration_test_common_setup, register_payload
