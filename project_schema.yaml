@@ -988,6 +988,25 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/register/:
+    post:
+      operationId: register_create
+      parameters:
+      - in: query
+        name: register
+        schema:
+          $ref: '#/components/schemas/RegistrationDetail'
+        required: true
+      tags:
+      - register
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/stripe/:
     get:
       operationId: stripe_retrieve
@@ -1557,32 +1576,26 @@ components:
     Event:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         event_name:
           type: string
           maxLength: 200
-        time_created:
-          type: string
-          format: date-time
         properties:
           type: object
           additionalProperties: {}
           nullable: true
+        time_created:
+          type: string
+          format: date-time
         idempotency_id:
           type: string
           maxLength: 255
-        organization:
-          type: integer
-        customer:
-          type: integer
+        customer_id:
+          type: string
+          readOnly: true
       required:
-      - customer
+      - customer_id
       - event_name
-      - id
       - idempotency_id
-      - organization
       - time_created
     EventPreview:
       type: object
@@ -2014,6 +2027,25 @@ components:
       - billable_metric
       - cost_per_metric
       - id
+    RegistrationDetail:
+      type: object
+      properties:
+        company_name:
+          type: string
+        industry:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        username:
+          type: string
+      required:
+      - company_name
+      - email
+      - industry
+      - password
+      - username
     Status2b4Enum:
       enum:
       - active
