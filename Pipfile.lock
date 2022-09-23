@@ -402,11 +402,11 @@
         },
         "drf-spectacular": {
             "hashes": [
-                "sha256:a59e33cfc87555dde027bc1bd0e379fbfd558e55a3abd9ebf975dee8c9e5052e",
-                "sha256:bf22390e8d0aa53d81c5abf718ad4989c4e2eab133decc411a15c7e4ae3f6baf"
+                "sha256:0befbe0520ae8ebcfcfb1b2e43be61726e7b69f71085b46e67f7072909d1cf1f",
+                "sha256:28863b528d92e40a77de6707abb6c0a813b2244793aacde82b34116b83b50dd1"
             ],
             "index": "pypi",
-            "version": "==0.24.0"
+            "version": "==0.24.1"
         },
         "faker": {
             "hashes": [
