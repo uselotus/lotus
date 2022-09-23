@@ -58,7 +58,7 @@ Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?type
 
 Once you have an account, head over to [the app](https://www.uselotus.app/) and you can start using Lotus right away.
 
-### Self-Hosted Version
+### :bust_in_silhouette: Self-Hosted Version
 
 Best if you want to keep your data local or want full control and extensibility.
 
@@ -66,15 +66,16 @@ Best if you want to keep your data local or want full control and extensibility.
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 #### :computer: Set up locally
-
-1. Clone the repo and navigate to the project
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+2. Clone the repo and navigate to the project
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-2. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
-3. Build and run the Docker Image!
+3. Change the environemnt variables located in `env/.env.prod.example` to suit your needs. If you need help you can check out [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
+4. Rename `env/.env.prod.example` to `env/.env.prod`. Make sure you don't commit your secret environment variables anywhere!
+5. Build and run the Docker Image!
    ```sh
-   docker-compose --env-file env/.env.prod -f docker-compose.prod.yaml up --build
+   docker-compose -f docker-compose.prod.yaml up --build
    ```
 You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
 
@@ -95,18 +96,21 @@ Contributions are what make the open source community such an amazing place to l
 If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply [request a feature]().
 Don't forget to give the project a star! Thanks again!
 
-### :exclamation: Local Development
+### :construction_worker: Local Development
 In order to develop locally, we recommend using Docker to set up the environment, which allows for hot reloading of both frontend and backend code.
-1. Clone the repo and navigate to the project
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+2. Clone the repo and navigate to the project
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-2. Create the necessary environment variables by following [this guide in our docs](https://docs.uselotus.io/docs/self-hosting).
-3. Build and run the Docker Image!
+3. Change the environemnt variables located in `env/.env.dev.example` to suit your needs. If you need help you can check out [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
+4. Rename `env/.env.dev.example` to `env/.env.dev`. Make sure you don't commit your secret environment variables anywhere!
+5. Build and run the Docker Image!
    ```sh
-   docker-compose --env-file env/.env.dev -f docker-compose.dev.yaml up --build
+   docker-compose -f docker-compose.dev.yaml up --build
    ```
-You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
+
+You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined. The homepage takes a minute or two to load, so be patient!
 
 If you make any changes to the backend settings, you might need to restart the Docker container.
 
