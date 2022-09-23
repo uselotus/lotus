@@ -15,11 +15,12 @@ class Command(BaseCommand):
         every_day_at_6_am, _ = CrontabSchedule.objects.get_or_create(
             minute="0", hour="6", day_of_week="*", day_of_month="*", month_of_year="*"
         )
-        every_hour, _ = CrontabSchedule.objects.get_or_create(
-            minute="0", hour="*", day_of_week="*", day_of_month="*", month_of_year="*"
+        every_hour, _ =IntervalSchedule.objects.get_or_create(
+            every=1,
+            period=IntervalSchedule.HOURS,
         )
-        every_2_minutes, _ = IntervalSchedule.objects.get_or_create(
-            every=2,
+        every_minute, _ = IntervalSchedule.objects.get_or_create(
+            every=1,
             period=IntervalSchedule.MINUTES,
         )
 
@@ -33,17 +34,17 @@ class Command(BaseCommand):
         PeriodicTask.objects.update_or_create(
             name="Check start of subscriptions",
             task="metering_billing.tasks.start_subscriptions",
-            defaults={"interval": every_2_minutes},
+            defaults={"interval": every_hour, "crontab": None},
         )
 
         PeriodicTask.objects.update_or_create(
             name="Check Payment Intent status and update invoice",
             task="metering_billing.tasks.update_invoice_status",
-            defaults={"crontab": every_hour},
+            defaults={"interval": every_hour, "crontab": None},
         )
 
         PeriodicTask.objects.update_or_create(
             name="Check cached events and flush",
             task="metering_billing.tasks.check_event_cache_flushed",
-            defaults={"interval": every_2_minutes},
+            defaults={"interval": every_hour, "crontab": None},
         )

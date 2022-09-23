@@ -86,10 +86,17 @@ def update_invoice_status():
         ~Q(status="succeeded") & ~Q(status="draft")
     )
     for incomplete_invoice in incomplete_invoices:
-        p_intent = stripe.PaymentIntent.retrieve(incomplete_invoice.payment_intent_id)
-        if p_intent.status != incomplete_invoice.status:
-            incomplete_invoice.status = p_intent.status
-            incomplete_invoice.save()
+        pi_id = incomplete_invoice.payment_intent_id
+        if pi_id is not None:
+            try:
+                pi = stripe.PaymentIntent.retrieve(pi_id)
+            except Exception as e:
+                print(e)
+                print("Error retrieving payment intent {}".format(pi_id))
+                continue
+            if pi.status != incomplete_invoice.status:
+                incomplete_invoice.status = pi.status
+                incomplete_invoice.save()
 
 
 @shared_task
