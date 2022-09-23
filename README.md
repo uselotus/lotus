@@ -101,7 +101,7 @@ In order to develop locally, we recommend using Docker to set up the environment
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-2. Create the necessary environment variables by following [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
+2. Create the necessary environment variables by following [this guide in our docs](https://docs.uselotus.io/docs/self-hosting).
 3. Build and run the Docker Image!
    ```sh
    docker-compose --env-file env/.env.dev -f docker-compose.dev.yaml up --build
