@@ -18,6 +18,7 @@ import {
 } from "../types/stripe-type";
 import Cookies from "universal-cookie";
 import { EventPages } from "../types/event-type";
+import { CreateOrgAccountType } from "../types/account-type";
 
 const cookies = new Cookies();
 
@@ -80,6 +81,12 @@ export const Authentication = {
   ): Promise<{ username: string; password: string }> =>
     requests.post("api/login/", { username, password }),
   logout: (): Promise<{}> => requests.post("api/logout/", {}),
+  registerCreate: (
+    register: CreateOrgAccountType
+  ): Promise<{ username: string; password: string }> =>
+    requests.post("api/register/", {
+      register,
+    }),
 };
 
 export const GetRevenue = {

@@ -1,6 +1,6 @@
 import React, { FC, useEffect, useState } from "react";
 import { Form, Tabs, Modal, Select } from "antd";
-import { CreateCustomerState } from "../CreateCustomerForm";
+import { CreateCustomerState } from "./CreateCustomerForm";
 import { PlanType } from "../../types/plan-type";
 import { CreateSubscriptionType } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";

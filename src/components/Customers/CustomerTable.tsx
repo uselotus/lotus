@@ -6,7 +6,7 @@ import { CustomerType } from "../../types/customer-type";
 import { Button, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../LoadingSpinner";
-import CreateCustomerForm, { CreateCustomerState } from "../CreateCustomerForm";
+import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
 import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { Customer, Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";

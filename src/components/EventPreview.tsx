@@ -38,10 +38,10 @@ const EventPreivew: FC = () => {
       <List>
         {data.events.map((event) => (
           <List.Item>
-            <Descriptions title="User Info" key={event.idempotency_id}>
-              <Descriptions.Item label="idempotency_id">
-                {event.idempotency_id}
-              </Descriptions.Item>
+            <Descriptions
+              title={event.idempotency_id}
+              key={event.idempotency_id}
+            >
               <Descriptions.Item label="event_name">
                 {event.event_name}
               </Descriptions.Item>

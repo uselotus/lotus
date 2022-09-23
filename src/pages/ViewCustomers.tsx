@@ -3,22 +3,25 @@ import CustomerTable from "../components/Customers/CustomerTable";
 import { CustomerSummary, CustomerTableItem } from "../types/customer-type";
 import { Customer } from "../api/api";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 
 const ViewCustomers: FC = () => {
   const [customers, setCustomers] = useState<CustomerTableItem[]>([]);
+  const queryClient = useQueryClient();
 
   const { data, isLoading }: UseQueryResult<CustomerSummary> =
-    useQuery<CustomerSummary>(["customer_list"], () =>
-      Customer.getCustomers().then((res) => {
-        return res;
-      })
+    useQuery<CustomerSummary>(
+      ["customer_list"],
+      () =>
+        Customer.getCustomers().then((res) => {
+          return res;
+        }),
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries(["customer_list"]);
+        },
+      }
     );
-  useEffect(() => {
-    Customer.getCustomers().then((data) => {
-      setCustomers(data.customers);
-    });
-  }, []);
 
   return (
     <div>

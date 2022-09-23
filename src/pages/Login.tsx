@@ -39,6 +39,7 @@ const Login: FC = () => {
     Authentication.login(username, password).then((data) => {
       setIsAuthenticated(true);
       queryClient.invalidateQueries("session");
+      redirectDashboard();
     });
   };
 
@@ -46,38 +47,49 @@ const Login: FC = () => {
     return (
       <>
         <div className="grid h-screen place-items-center">
-          <Card title="Login" className="flex flex-col">
-            {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
-            <Form onFinish={handleLogin} name="normal_login">
-              <Form.Item>
-                <label htmlFor="username">Username</label>
-                <Input
-                  type="text"
-                  name="username"
-                  value={username}
-                  defaultValue="username123"
-                  onChange={handleUserNameChange}
-                />
-              </Form.Item>
-              <label htmlFor="password">Password</label>
+          <div className=" space-y-4">
+            <Card title="Login" className="flex flex-col">
+              {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
+              <Form onFinish={handleLogin} name="normal_login">
+                <Form.Item>
+                  <label htmlFor="username">Username</label>
+                  <Input
+                    type="text"
+                    name="username"
+                    value={username}
+                    defaultValue="username123"
+                    onChange={handleUserNameChange}
+                  />
+                </Form.Item>
+                <label htmlFor="password">Password</label>
 
-              <Form.Item>
-                <Input
-                  type="password"
-                  name="password"
-                  value={password}
-                  defaultValue="password123"
-                  onChange={handlePasswordChange}
-                />
-                <div>
-                  {error && <small className="text-danger">{error}</small>}
-                </div>
-              </Form.Item>
-              <Form.Item>
-                <Button htmlType="submit">Login</Button>
-              </Form.Item>
-            </Form>
-          </Card>
+                <Form.Item>
+                  <Input
+                    type="password"
+                    name="password"
+                    value={password}
+                    defaultValue="password123"
+                    onChange={handlePasswordChange}
+                  />
+                  <div>
+                    {error && <small className="text-danger">{error}</small>}
+                  </div>
+                </Form.Item>
+                <Form.Item>
+                  <Button htmlType="submit">Login</Button>
+                </Form.Item>
+              </Form>
+            </Card>
+            <div>
+              <Button
+                type="primary"
+                className="ml-auto bg-info"
+                onClick={() => navigate("/register")}
+              >
+                Sign Up
+              </Button>
+            </div>
+          </div>
         </div>
       </>
     );
