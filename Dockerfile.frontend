@@ -1,7 +1,7 @@
 # ---------------------------------------
 # Development stage
 # ---------------------------------------
-FROM --platform=linux/amd64 node:18.7.0-alpine AS development
+FROM --platform=linux/amd64 node:18.9.0-alpine AS development
 WORKDIR /frontend
 COPY package*.json yarn.lock tsconfig.json \
     vite.config.ts tsconfig.node.json postcss.config.cjs\
@@ -19,7 +19,7 @@ RUN yarn run build
 # ---------------------------------------
 # Production stage
 # ---------------------------------------
-FROM nginx:1.23-alpine AS production
+FROM --platform=linux/amd64 nginx:1.23-alpine AS production
 #copy static files to nginx
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=build /frontend/src/dist /usr/share/nginx/html

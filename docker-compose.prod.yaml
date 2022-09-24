@@ -20,7 +20,7 @@ services:
       - 8000
     volumes:
       - django_static_volume:/lotus/staticfiles
-    command:  sh -c "./start_backend.prod.sh"
+    command:  sh -c "./scripts/start_backend.prod.sh"
     depends_on:
       - db
 

@@ -21,7 +21,7 @@ services:
     volumes:
       - ./lotus:/lotus/lotus
       - ./metering_billing:/lotus/metering_billing
-    command: sh -c "./start_backend.dev.sh"
+    command: sh -c "./scripts/start_backend.dev.sh"
     depends_on:
       - db
 
