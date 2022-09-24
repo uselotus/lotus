@@ -1,14 +1,14 @@
 # ---------------------------------------
-# Production
+# Build
 # ---------------------------------------
-FROM --platform=linux/amd64 python:3.9-bullseye AS production
+FROM --platform=linux/amd64 python:3.9-bullseye AS build
 ENV PYTHONUNBUFFERED 1
 #make lotus user
 WORKDIR /lotus
 # pip install optimization
 COPY Pipfile Pipfile.lock ./
 RUN pip install -U --no-cache-dir --disable-pip-version-check pipenv
-RUN pipenv install --system --deploy --ignore-pipfile 
+RUN pipenv install --system --deploy --ignore-pipfile --dev
 # copy python files,
 COPY ./lotus/ ./lotus/
 COPY ./metering_billing/ ./metering_billing/
@@ -16,5 +16,12 @@ COPY ./manage.py ./
 # ---------------------------------------
 # Development
 # ---------------------------------------
-FROM production AS development
-RUN pipenv install --system --deploy --ignore-pipfile --dev
+FROM build AS development
+COPY ./start_backend.dev.sh ./start_backend.dev.sh
+RUN chmod +x ./start_backend.dev.sh
+# ---------------------------------------
+# Production
+# ---------------------------------------
+FROM build AS production
+COPY ./start_backend.prod.sh ./start_backend.prod.sh
+RUN chmod +x ./start_backend.prod.sh

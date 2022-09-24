@@ -21,12 +21,7 @@ services:
     volumes:
       - ./lotus:/lotus/lotus
       - ./metering_billing:/lotus/metering_billing
-    command: >
-      sh -c "python3 manage.py wait_for_db && \
-              python3 manage.py migrate && \
-              python3 manage.py initadmin && \
-              python3 manage.py setup_tasks && \
-              python3 manage.py runserver 0.0.0.0:8000"
+    command: sh -c "./start_backend.dev.sh"
     depends_on:
       - db
 
