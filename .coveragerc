@@ -1,0 +1,2 @@
+[run]
+omit = */tests/*, */migrations/*, */management/*, */template_tags/*,

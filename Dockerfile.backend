@@ -1,7 +1,7 @@
 # ---------------------------------------
 # Build
 # ---------------------------------------
-FROM --platform=linux/amd64 python:3.9-bullseye AS build
+FROM --platform=linux/arm64 python:3.9-bullseye AS build
 ENV PYTHONUNBUFFERED 1
 #make lotus user
 WORKDIR /lotus
@@ -17,11 +17,12 @@ COPY ./manage.py ./
 # Development
 # ---------------------------------------
 FROM build AS development
-COPY ./start_backend.dev.sh ./start_backend.dev.sh
-RUN chmod +x ./start_backend.dev.sh
+COPY ./pytest.ini ./.coveragerc ./
+COPY ./scripts/start_backend.dev.sh ./scripts/start_backend.dev.sh
+RUN chmod +x ./scripts/start_backend.dev.sh
 # ---------------------------------------
 # Production
 # ---------------------------------------
 FROM build AS production
-COPY ./start_backend.prod.sh ./start_backend.prod.sh
-RUN chmod +x ./start_backend.prod.sh
+COPY ./scripts/start_backend.prod.sh ./scripts/start_backend.prod.sh
+RUN chmod +x ./scripts/start_backend.prod.sh

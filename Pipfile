@@ -37,6 +37,7 @@ django-redis = "*"
 flower = "*"
 posthog = "*"
 python-decouple = "*"
+pytest-cov = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"

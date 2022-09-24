@@ -99,7 +99,7 @@ Don't forget to give the project a star! Thanks again!
 ### :construction_worker: Local Development
 In order to develop locally, we recommend using Docker to set up the environment, which allows for hot reloading of both frontend and backend code.
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-2. Clone the repo and navigate to the project
+2. Clone the repo (our version, or your fork of it) and navigate to the project.
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
@@ -108,6 +108,16 @@ In order to develop locally, we recommend using Docker to set up the environment
 5. Build and run the Docker Image!
    ```sh
    docker-compose -f docker-compose.dev.yaml up --build
+   ```
+
+#### :computer: Before Committing
+1. Run tests
+   ```sh
+   chmod +x ./scripts/run-tests-docker.sh  && ./scripts/run-tests-docker.sh
+   ```
+2. Check the python code style
+   ```sh
+   chmod +x ./scripts/run-codestyle-docker.sh  && ./scripts/run-codestyle-docker.sh
    ```
 
 You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined. The homepage takes a minute or two to load, so be patient!
