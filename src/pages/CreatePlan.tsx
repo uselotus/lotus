@@ -43,9 +43,9 @@ const CreatePlan = () => {
         const newmetricMap = new Map<string, number>();
         const metricList: string[] = [];
         for (let i = 0; i < data.length; i++) {
-          if (typeof data[i].metric_name !== undefined) {
-            metricList.push(data[i].metric_name);
-            newmetricMap.set(data[i].metric_name, data[i].id);
+          if (typeof data[i].billable_metric_name !== undefined) {
+            metricList.push(data[i].billable_metric_name);
+            newmetricMap.set(data[i].billable_metric_name, data[i].id);
           }
         }
         setMetricMap(newmetricMap);

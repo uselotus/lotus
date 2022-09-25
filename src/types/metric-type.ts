@@ -3,7 +3,7 @@ export interface MetricType {
   property_name: string;
   aggregation_type: string;
   id?: number;
-  metric_name?: string;
+  billable_metric_name?: string;
 }
 
 export interface MetricNameType {
@@ -11,7 +11,7 @@ export interface MetricNameType {
   property_name: string;
   aggregation_type: string;
   id: number;
-  metric_name: string;
+  billable_metric_name: string;
 }
 
 export interface MetricUsage {

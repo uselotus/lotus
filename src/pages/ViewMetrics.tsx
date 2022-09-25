@@ -67,6 +67,7 @@ const ViewMetrics: FC = () => {
       event_name: state.event_name,
       aggregation_type: state.aggregation_type,
       property_name: state.property_name,
+      billable_metric_name: state.billable_metric_name,
     };
     mutation.mutate(metricInstance);
   };

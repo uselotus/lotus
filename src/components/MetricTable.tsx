@@ -35,6 +35,12 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
 
   const columns: ProColumns<MetricType>[] = [
     {
+      title: "Metric Name",
+      width: 120,
+      dataIndex: "billable_metric_name",
+      align: "left",
+    },
+    {
       title: "Event Name",
       width: 120,
       dataIndex: "event_name",
