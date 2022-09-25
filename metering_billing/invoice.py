@@ -73,7 +73,11 @@ def generate_invoice(subscription, draft=False, issue_date=None):
     usage_dict = {"components": {}}
     for plan_component in billing_plan.components.all():
         pc_usg_and_rev = calculate_sub_pc_usage_revenue(
-            plan_component, customer, subscription.start_date, subscription.end_date
+            plan_component,
+            plan_component.billable_metric,
+            customer,
+            subscription.start_date,
+            subscription.end_date,
         )
         usage_dict["components"][str(plan_component)] = pc_usg_and_rev
     components = usage_dict["components"]

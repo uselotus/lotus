@@ -157,10 +157,16 @@ class PeriodMetricRevenueView(APIView):
                         "total_revenue": Decimal(0),
                     }
             for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-                subs = Subscription.objects.filter(
-                    Q(start_date__range=[p_start, p_end])
-                    | Q(end_date__range=[p_start, p_end]),
-                    organization=organization,
+                subs = (
+                    Subscription.objects.filter(
+                        Q(start_date__range=[p_start, p_end])
+                        | Q(end_date__range=[p_start, p_end]),
+                        organization=organization,
+                    )
+                    .select_related("billing_plan")
+                    .select_related("customer")
+                    .prefetch_related("billing_plan__components")
+                    .prefetch_related("billing_plan__components__billable_metric")
                 )
                 for sub in subs:
                     billing_plan = sub.billing_plan
@@ -175,6 +181,7 @@ class PeriodMetricRevenueView(APIView):
                     for plan_component in billing_plan.components.all():
                         usage_cost_per_day = calculate_sub_pc_usage_revenue(
                             plan_component,
+                            plan_component.billable_metric,
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
@@ -231,19 +238,17 @@ class PeriodSubscriptionsView(APIView):
             Q(start_date__range=[p1_start, p1_end])
             | Q(end_date__range=[p1_start, p1_end]),
             organization=organization,
-        )
-        p1_new_subs = list(filter(lambda sub: sub.is_new, p1_subs))
+        ).values_list("is_new", flat=True)
         return_dict["period_1_total_subscriptions"] = len(p1_subs)
-        return_dict["period_1_new_subscriptions"] = len(p1_new_subs)
+        return_dict["period_1_new_subscriptions"] = sum(p1_subs)
 
         p2_subs = Subscription.objects.filter(
             Q(start_date__range=[p2_start, p2_end])
             | Q(end_date__range=[p2_start, p2_end]),
             organization=organization,
-        )
-        p2_new_subs = list(filter(lambda sub: sub.is_new, p2_subs))
+        ).values_list("is_new", flat=True)
         return_dict["period_2_total_subscriptions"] = len(p2_subs)
-        return_dict["period_2_new_subscriptions"] = len(p2_new_subs)
+        return_dict["period_2_new_subscriptions"] = sum(p2_subs)
 
         serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
