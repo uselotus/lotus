@@ -231,6 +231,7 @@ def calculate_stateful_pc_revenue(
 
 def calculate_pc_usage_rev_for_stateful_metric(
     plan_component,
+    billable_metric,
     customer,
     plan_start_date,
     plan_end_date,
@@ -239,7 +240,6 @@ def calculate_pc_usage_rev_for_stateful_metric(
     time_period_agg,
     time_period_annotation,
 ):
-    billable_metric = plan_component.billable_metric
     units_usage = get_metric_usage(
         billable_metric,
         query_start_date=query_start,
@@ -256,6 +256,7 @@ def calculate_pc_usage_rev_for_stateful_metric(
 
 def calculate_pc_usage_rev_for_aggregation_metric(
     plan_component,
+    billable_metric,
     customer,
     plan_start_date,
     plan_end_date,
@@ -264,7 +265,6 @@ def calculate_pc_usage_rev_for_aggregation_metric(
     time_period_agg,
     time_period_annotation,
 ):
-    billable_metric = plan_component.billable_metric
     units_usage = get_metric_usage(
         billable_metric,
         query_start_date=plan_start_date,
@@ -297,6 +297,7 @@ def calculate_pc_usage_rev_for_aggregation_metric(
 
 def calculate_sub_pc_usage_revenue(
     plan_component,
+    billable_metric,
     customer,
     plan_start_date,
     plan_end_date,
@@ -305,7 +306,6 @@ def calculate_sub_pc_usage_revenue(
     time_period_agg=None,
     time_period_annotation=None,
 ):
-    billable_metric = plan_component.billable_metric
     if query_start is None and query_end is None:
         # if we don't specify a query start or a query end, then we
         # assume we want something for the duration of plan only
@@ -321,6 +321,7 @@ def calculate_sub_pc_usage_revenue(
         query_end = parser.parse(query_end).date()
     args_dict = {
         "plan_component": plan_component,
+        "billable_metric": billable_metric,
         "customer": customer,
         "plan_start_date": plan_start_date,
         "plan_end_date": plan_end_date,
@@ -352,6 +353,7 @@ def get_subscription_usage_and_revenue(subscription):
     for plan_component in plan_components_qs:
         plan_component_summary = calculate_sub_pc_usage_revenue(
             plan_component,
+            plan_component.billable_metric,
             customer,
             plan_start_date,
             plan_end_date,
@@ -369,8 +371,14 @@ def get_subscription_usage_and_revenue(subscription):
 
 
 def get_customer_usage_and_revenue(customer):
-    customer_subscriptions = Subscription.objects.filter(
-        customer=customer, status="active", organization=customer.organization
+    customer_subscriptions = (
+        Subscription.objects.filter(
+            customer=customer, status="active", organization=customer.organization
+        )
+        .select_related("customer")
+        .prefetch_related("billing_plan__components")
+        .prefetch_related("billing_plan__components__billable_metric")
+        .select_related("billing_plan")
     )
     subscription_usages = {"subscriptions": []}
     for subscription in customer_subscriptions:

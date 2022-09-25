@@ -122,7 +122,11 @@ In order to develop locally, we recommend using Docker to set up the environment
    docker-compose -f docker-compose.dev.yaml up --build
    ```
 
-#### :computer: Before Committing
+You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined. The homepage takes a minute or two to load, so be patient!
+
+If you make any changes to the backend settings, you might need to restart the Docker container.
+
+#### :mag: Before Committing
 1. Run tests
    ```sh
    chmod +x ./scripts/run-tests-docker.sh  && ./scripts/run-tests-docker.sh
@@ -131,10 +135,6 @@ In order to develop locally, we recommend using Docker to set up the environment
    ```sh
    chmod +x ./scripts/run-codestyle-docker.sh  && ./scripts/run-codestyle-docker.sh
    ```
-
-You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined. The homepage takes a minute or two to load, so be patient!
-
-If you make any changes to the backend settings, you might need to restart the Docker container.
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project

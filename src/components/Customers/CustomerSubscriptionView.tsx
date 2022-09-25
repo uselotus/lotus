@@ -51,7 +51,7 @@ const SubscriptionView: FC<Props> = ({ subscriptions, plans, onChange }) => {
     return (
       <div className="flex flex-col items-center justify-center">
         <h3 className="text-xl font-main m-3">No Subscription</h3>
-        <p className="font-bold">Please attatch a Plan</p>
+        <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
           <Form onFinish={handleSubmit} form={form} name="create_subscription">
             <Form.Item name="plan">

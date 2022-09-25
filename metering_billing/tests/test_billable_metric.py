@@ -303,6 +303,7 @@ class TestCalculateBillableMetric:
 
         usage_revenue_dict = calculate_sub_pc_usage_revenue(
             plan_component,
+            billable_metric,
             customer=customer,
             plan_start_date="2021-01-01",
             plan_end_date="2021-01-30",
