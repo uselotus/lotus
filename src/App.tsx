@@ -2,8 +2,10 @@ import AppRoutes from "./config/Routes";
 import "./App.css";
 import { Authentication } from "./api/api";
 import { useQuery } from "react-query";
-import Login from "./pages/Login";
 import ExternalRoutes from "./config/ExternalRoutes";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import LoadingSpinner from "./components/LoadingSpinner";
 
 function App() {
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
@@ -17,12 +19,26 @@ function App() {
 
   const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="grid h-screen place-items-center">
+        <LoadingSpinner />
+      </div>
+    );
   } else {
     if (isAuthenticated) {
-      return <AppRoutes />;
+      return (
+        <div>
+          <ToastContainer autoClose={1000} />
+          <AppRoutes />
+        </div>
+      );
     } else {
-      return <ExternalRoutes />;
+      return (
+        <div>
+          <ToastContainer autoClose={1000} />
+          <ExternalRoutes />
+        </div>
+      );
     }
   }
 }

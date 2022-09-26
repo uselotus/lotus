@@ -1,9 +1,11 @@
 import React, { FC, useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Authentication } from "../api/api";
-import { Card, Input, Button, Form } from "antd";
+import { Card, Input, Button, Form, Modal } from "antd";
 import "./Login.css";
-import { useQueryClient } from "react-query";
+import { useQueryClient, useMutation } from "react-query";
+import { toast } from "react-toastify";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;
@@ -35,12 +37,29 @@ const Login: FC = () => {
     navigate("/dashboard");
   };
 
+  const mutation = useMutation(
+    (data: { username: string; password: string }) =>
+      Authentication.login(username, password),
+    {
+      onSuccess: () => {
+        setIsAuthenticated(true);
+        queryClient.refetchQueries("session");
+        redirectDashboard();
+      },
+      onError: (error) => {
+        // setError(error.message);
+        if (error.response.status === 403) {
+          toast.error("Please login again.");
+          window.location.reload();
+        } else {
+          toast.error(error.response.data.detail);
+        }
+      },
+    }
+  );
+
   const handleLogin = (event: React.FormEvent<FormElements>) => {
-    Authentication.login(username, password).then((data) => {
-      setIsAuthenticated(true);
-      queryClient.invalidateQueries("session");
-      redirectDashboard();
-    });
+    mutation.mutate({ username, password });
   };
 
   if (!isAuthenticated) {
@@ -90,23 +109,16 @@ const Login: FC = () => {
               </Button>
             </div>
           </div>
+          {mutation.isLoading && <LoadingSpinner />}
         </div>
       </>
     );
   }
+
   return (
     <div className="container mt-3">
       <div className="grid h-screen place-items-center">
-        <Card title="Logged In" className="flex flex-col">
-          <p className="text-lg mb-3">Hi {username}. You are logged in!</p>
-          <Button
-            type="primary"
-            className="ml-auto bg-info"
-            onClick={redirectDashboard}
-          >
-            Enter Dashboard
-          </Button>
-        </Card>
+        <LoadingSpinner />
       </div>
     </div>
   );

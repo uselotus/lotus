@@ -49,7 +49,7 @@ const EventPreivew: FC = () => {
                 {event.time_created}
               </Descriptions.Item>
               <Descriptions.Item label="properties">
-                {event.properties ? "Properties" : "No properties"}
+                {event.properties ? event.properties.toString() : "None"}
               </Descriptions.Item>
               <Descriptions.Item label="customer_id">
                 {event.customer_id}
