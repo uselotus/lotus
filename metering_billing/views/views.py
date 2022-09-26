@@ -1,6 +1,7 @@
 import datetime
 from decimal import Decimal
 
+import posthog
 import stripe
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -13,7 +14,7 @@ from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.utils import dates_bwn_twodates
-from rest_framework import status, viewsets
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
@@ -32,6 +33,7 @@ def import_stripe_customers(organization):
     """
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
+    num_cust_added = 0
     if organization.stripe_id or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
         stripe_cust_kwargs = {}
         if organization.stripe_id:
@@ -44,8 +46,10 @@ def import_stripe_customers(organization):
                 )
                 customer.payment_provider_id = stripe_customer.id
                 customer.save()
+                num_cust_added += 1
             except Customer.DoesNotExist:
                 pass
+    return num_cust_added
 
 
 class InitializeStripeView(APIView):
@@ -99,9 +103,17 @@ class InitializeStripeView(APIView):
 
         organization.stripe_id = connected_account_id
 
-        import_stripe_customers(organization)
+        n_cust_added = import_stripe_customers(organization)
 
         organization.save()
+
+        posthog.capture(
+            request.user.username,
+            event="connect_stripe_customers",
+            properties={
+                "num_cust_added": n_cust_added,
+            },
+        )
 
         return JsonResponse({"Success": True})
 
@@ -347,6 +359,11 @@ class APIKeyCreate(APIView):
         api_key, key = APIToken.objects.create_key(
             name="new_api_key", organization=organization
         )
+        posthog.capture(
+            request.user.username,
+            event="create_api_key",
+            properties={},
+        )
         return JsonResponse({"api_key": key}, status=status.HTTP_200_OK)
 
 
@@ -424,7 +441,14 @@ class EventPreviewView(APIView):
         ret["total_pages"] = paginator.num_pages
         ret["events"] = list(page_obj.object_list)
         serializer = EventPreviewSerializer(ret)
-
+        if page_number == 1:
+            posthog.capture(
+                request.user.username,
+                event="event_preview",
+                properties={
+                    "num_events": len(ret["events"]),
+                },
+            )
         return JsonResponse(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -457,6 +481,11 @@ class DraftInvoiceView(APIView):
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = InvoiceSerializer(invoices, many=True)
+        posthog.capture(
+            request.user.username,
+            event="draft_invoice",
+            properties={},
+        )
         return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
 
 
@@ -491,6 +520,11 @@ class CancelSubscriptionView(APIView):
             )
         sub.status = "canceled"
         sub.save()
+        posthog.capture(
+            request.user.username,
+            event="cancel_subscription",
+            properties={},
+        )
         if bill_now:
             generate_invoice(sub, issue_date=datetime.datetime.now().date())
             return JsonResponse(
