@@ -96,7 +96,7 @@ def track_event(request):
         else:
             event_list = [event_list]
     bad_events = {}
-    events_to_insert = []
+    events_to_insert = {}
     for data in event_list:
         customer_id = data["customer_id"]
         customer_cache_key = f"{organization_pk}-{customer_id}"
@@ -123,17 +123,37 @@ def track_event(request):
             bad_events[data["idempotency_id"]] = "Event idempotency already exists"
             continue
 
-        events_to_insert.append(ingest_event(data, customer_pk, organization_pk))
+        if data["idempotency_id"] in events_to_insert:
+            bad_events[
+                data["idempotency_id"]
+            ] = "Duplicate event idempotency in request"
+            continue
 
+        events_to_insert[data["idempotency_id"]] = ingest_event(
+            data, customer_pk, organization_pk
+        )
+
+    # get the events currently in cache
     cache_tup = cache.get("events_to_insert")
     now = datetime.datetime.now(timezone.utc).astimezone()
-    cached_events, last_flush_dt = cache_tup if cache_tup else ([], now)
-    cached_events.extend(events_to_insert)
+    cached_events, cached_idems, last_flush_dt = (
+        cache_tup if cache_tup else ([], set(), now)
+    )
+    # check that none of the cached events idem_id clashes with this batch's idem
+    intersecting_events = set(events_to_insert.keys()).intersection(cached_idems)
+    for repeated_idem in intersecting_events:
+        bad_events[repeated_idem] = "Event idempotency already exists"
+        events_to_insert.pop(repeated_idem)
+    # add to insert events
+    cached_events.extend(events_to_insert.values())
+    cached_idems.update(events_to_insert.keys())
+    # check if its necessary to flush
     if len(cached_events) >= EVENT_CACHE_FLUSH_COUNT:
         write_batch_events_to_db.delay(cached_events)
         last_flush_dt = now
         cached_events = []
-    cache.set("events_to_insert", (cached_events, last_flush_dt), None)
+        cached_idems = set()
+    cache.set("events_to_insert", (cached_events, cached_idems, last_flush_dt), None)
 
     if len(bad_events) > 0:
         return JsonResponse(bad_events, status=400)
