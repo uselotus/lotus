@@ -53,8 +53,9 @@ const EventPreivew: FC = () => {
                 {event.properties
                   ? Object.keys(event.properties).map((key, i) => (
                       <p key={i}>
-                        <span>property_name: {key}</span>
-                        <span>{event.properties[key]}</span>
+                        <span>
+                          {key}: {event.properties[key]}
+                        </span>
                       </p>
                     ))
                   : null}
