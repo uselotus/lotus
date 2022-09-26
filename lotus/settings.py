@@ -210,7 +210,7 @@ if DOCKERIZED or ON_HEROKU:
             "LOCATION": f"{REDIS_URL}/3",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None}
+                "CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None},
             },
         }
     }
