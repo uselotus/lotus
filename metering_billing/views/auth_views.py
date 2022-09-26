@@ -10,9 +10,11 @@ from metering_billing.serializers.internal_serializers import RegistrationSerial
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
+from django.views.decorators.csrf import csrf_exempt
 
 
 @require_POST
+@csrf_exempt
 def login_view(request):
 
     try:
@@ -49,6 +51,7 @@ def login_view(request):
 
 
 @require_POST
+@csrf_exempt
 def logout_view(request):
     if not request.user.is_authenticated:
         return JsonResponse(

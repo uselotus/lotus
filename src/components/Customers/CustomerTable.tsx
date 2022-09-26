@@ -16,8 +16,7 @@ import {
 import { Customer, Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
 import { CreateSubscriptionType } from "../../types/subscription-type";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import CustomerDetail from "./CustomerDetail";
 
 const columns: ProColumns<CustomerTableItem>[] = [
@@ -169,7 +168,6 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
         plans={data}
         customer={customerState}
       />
-      <ToastContainer autoClose={1000} />
     </div>
   );
 };

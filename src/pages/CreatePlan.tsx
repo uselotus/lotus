@@ -16,8 +16,7 @@ import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/UsageComponentForm";
 import { useMutation } from "react-query";
 import { MetricNameType } from "../types/metric-type";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import { Metrics } from "../api/api";
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
 import { Plan } from "../api/api";
@@ -248,7 +247,6 @@ const CreatePlan = () => {
           metrics={metrics}
         />
       </Form.Provider>
-      <ToastContainer />
     </div>
   );
 };

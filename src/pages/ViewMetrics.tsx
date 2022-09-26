@@ -14,8 +14,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import CreateMetricForm, {
   CreateMetricState,
 } from "../components/CreateMetricForm";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import EventPreivew from "../components/EventPreview";
 
 const defaultMetricState: CreateMetricState = {
@@ -108,7 +107,6 @@ const ViewMetrics: FC = () => {
         onSave={onSave}
         onCancel={onCancel}
       />
-      <ToastContainer />
     </div>
   );
 };
