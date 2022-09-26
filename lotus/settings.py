@@ -190,7 +190,6 @@ AUTH_PASSWORD_VALIDATORS = [
 # redis settings
 if os.environ.get("REDIS_URL"):
     REDIS_URL = os.environ.get("REDIS_URL")
-    REDIS_URL = REDIS_URL.replace("rediss://", "redis://")
 elif DOCKERIZED:
     REDIS_URL = f"redis://redis:6379"
 else:
