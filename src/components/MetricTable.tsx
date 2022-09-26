@@ -36,7 +36,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
   const columns: ProColumns<MetricType>[] = [
     {
       title: "Metric Name",
-      width: 120,
+      width: 200,
       dataIndex: "billable_metric_name",
       align: "left",
     },
@@ -62,26 +62,26 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       dataIndex: "property_name",
       align: "left",
     },
-    {
-      title: "Actions",
-      align: "right",
-      valueType: "option",
-      render: (_, record) => [
-        <a
-          key="delete"
-          onClick={() => {
-            const tableDataSource = formRef.current?.getFieldValue(
-              "table"
-            ) as MetricType[];
-            formRef.current?.setFieldsValue({
-              table: tableDataSource.filter((item) => item.id !== record?.id),
-            });
-          }}
-        >
-          <DeleteOutlined />
-        </a>,
-      ],
-    },
+    // {
+    //   title: "Actions",
+    //   align: "right",
+    //   valueType: "option",
+    //   render: (_, record) => [
+    //     <a
+    //       key="delete"
+    //       onClick={() => {
+    //         const tableDataSource = formRef.current?.getFieldValue(
+    //           "table"
+    //         ) as MetricType[];
+    //         formRef.current?.setFieldsValue({
+    //           table: tableDataSource.filter((item) => item.id !== record?.id),
+    //         });
+    //       }}
+    //     >
+    //       <DeleteOutlined />
+    //     </a>,
+    //   ],
+    // },
   ];
 
   const handleDelete = (id: number) => {
