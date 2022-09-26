@@ -19,8 +19,8 @@ class Command(BaseCommand):
             every=1,
             period=IntervalSchedule.HOURS,
         )
-        every_minute, _ = IntervalSchedule.objects.get_or_create(
-            every=1,
+        every_3_minutes, _ = IntervalSchedule.objects.get_or_create(
+            every=3,
             period=IntervalSchedule.MINUTES,
         )
 
@@ -46,5 +46,5 @@ class Command(BaseCommand):
         PeriodicTask.objects.update_or_create(
             name="Check cached events and flush",
             task="metering_billing.tasks.check_event_cache_flushed",
-            defaults={"interval": every_minute, "crontab": None},
+            defaults={"interval": every_3_minutes, "crontab": None},
         )
