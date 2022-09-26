@@ -4,6 +4,7 @@ import { List, Descriptions } from "antd";
 import { EventPreviewType, EventPages } from "../types/event-type";
 import { Events } from "../api/api";
 import LoadingSpinner from "./LoadingSpinner";
+import dayjs from "dayjs";
 
 const EventPreivew: FC = () => {
   const [page, setPage] = useState<number>(1);
@@ -46,10 +47,17 @@ const EventPreivew: FC = () => {
                 {event.event_name}
               </Descriptions.Item>
               <Descriptions.Item label="time_created">
-                {event.time_created}
+                {dayjs(event.time_created).format("YYYY-MM-DD HH:mm:ss")}
               </Descriptions.Item>
               <Descriptions.Item label="properties">
-                {event.properties ? event.properties.toString() : "None"}
+                {event.properties
+                  ? Object.keys(event.properties).map((key, i) => (
+                      <p key={i}>
+                        <span>property_name: {key}</span>
+                        <span>{event.properties[key]}</span>
+                      </p>
+                    ))
+                  : null}
               </Descriptions.Item>
               <Descriptions.Item label="customer_id">
                 {event.customer_id}
