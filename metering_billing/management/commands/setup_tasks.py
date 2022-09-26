@@ -46,5 +46,5 @@ class Command(BaseCommand):
         PeriodicTask.objects.update_or_create(
             name="Check cached events and flush",
             task="metering_billing.tasks.check_event_cache_flushed",
-            defaults={"interval": every_hour, "crontab": None},
+            defaults={"interval": every_minute, "crontab": None},
         )
