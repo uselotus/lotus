@@ -1,5 +1,16 @@
+import posthog
 import pytest
 from model_bakery import baker
+
+
+@pytest.fixture(autouse=True)
+def run_around_tests():
+    # Code that will run before your test, for example:
+    posthog.disabled = True
+    # A test function will be run at this point
+    yield
+    # Code that will run after your test, for example:
+    posthog.disabled = False
 
 
 @pytest.fixture

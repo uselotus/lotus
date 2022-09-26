@@ -1,5 +1,6 @@
 import json
 
+import posthog
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -44,7 +45,7 @@ def login_view(request):
         )
 
     login(request, user)
-    # posthog.capture('test-id', 'test-event')
+    posthog.capture(user.username, event="succesful login")
     return JsonResponse({"detail": "Successfully logged in."})
 
 
@@ -56,6 +57,7 @@ def logout_view(request):
         )
 
     logout(request)
+    posthog.capture(request.user.username, event="logout")
     return JsonResponse({"detail": "Successfully logged out."})
 
 
@@ -111,6 +113,11 @@ class RegisterView(APIView):
             username=reg_dict["username"],
             password=reg_dict["password"],
             organization=org,
+        )
+        posthog.capture(
+            reg_dict["username"],
+            event="register",
+            properties={"company_name": reg_dict["company_name"]},
         )
         return JsonResponse(
             {"detail": "Successfully registered."}, status=status.HTTP_201_CREATED

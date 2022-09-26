@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import posthog
 from django.db import IntegrityError
 from metering_billing.exceptions import DuplicateCustomerID
 from metering_billing.models import (
@@ -26,7 +27,7 @@ from metering_billing.serializers.model_serializers import (
     SubscriptionSerializer,
     UserSerializer,
 )
-from rest_framework import serializers, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from ..auth_utils import parse_organization
@@ -81,9 +82,21 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(organization=parse_organization(self.request))
+            organization = parse_organization(self.request)
+            serializer.save(organization=organization)
         except IntegrityError as e:
             raise DuplicateCustomerID
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_customer",
+                properties={},
+            )
+        return response
 
 
 class BillableMetricViewSet(viewsets.ModelViewSet):
@@ -104,6 +117,17 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         except IntegrityError as e:
             raise DuplicateCustomerID
 
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_metric",
+                properties={},
+            )
+        return response
+
 
 class PlanComponentViewSet(viewsets.ModelViewSet):
     """
@@ -123,6 +147,17 @@ class PlanComponentViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_component",
+                properties={},
+            )
+        return response
 
 
 class BillingPlanViewSet(viewsets.ModelViewSet):
@@ -148,6 +183,17 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
 
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_plan",
+                properties={},
+            )
+        return response
+
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
     """
@@ -171,6 +217,17 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         else:
             return SubscriptionSerializer
 
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_subscription",
+                properties={},
+            )
+        return response
+
 
 class InvoiceViewSet(viewsets.ModelViewSet):
     """
@@ -186,3 +243,14 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_invoice",
+                properties={},
+            )
+        return response
