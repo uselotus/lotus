@@ -6,15 +6,16 @@ from django.db import migrations
 
 
 def gen_uuid(apps, schema_editor):
-    Subscription = apps.get_model('metering_billing', 'Subscription')
+    Subscription = apps.get_model("metering_billing", "Subscription")
     for row in Subscription.objects.all():
         row.uuid = uuid.uuid4()
-        row.save(update_fields=['subscription_uid'])
+        row.save(update_fields=["subscription_uid"])
+
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0019_subscription_subscription_uid_and_more'),
+        ("metering_billing", "0019_subscription_subscription_uid_and_more"),
     ]
 
     operations = [

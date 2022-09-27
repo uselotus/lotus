@@ -8,13 +8,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0018_alter_subscription_status'),
+        ("metering_billing", "0018_alter_subscription_status"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='subscription',
-            name='subscription_uid',
+            model_name="subscription",
+            name="subscription_uid",
             field=models.CharField(blank=True, max_length=100, null=True),
         )
     ]

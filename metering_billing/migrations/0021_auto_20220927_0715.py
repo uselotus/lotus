@@ -8,17 +8,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0020_auto_20220927_0715'),
+        ("metering_billing", "0020_auto_20220927_0715"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='subscription',
-            name='subscription_uid',
-            field=models.CharField(blank=True, default=uuid.uuid4, max_length=100, null=False),
+            model_name="subscription",
+            name="subscription_uid",
+            field=models.CharField(
+                blank=True, default=uuid.uuid4, max_length=100, null=False
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='subscription',
-            unique_together={('organization', 'subscription_uid')},
+            name="subscription",
+            unique_together={("organization", "subscription_uid")},
         ),
     ]
