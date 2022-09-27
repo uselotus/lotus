@@ -5,6 +5,35 @@ info:
   description: Lotus is an open-core pricing and billing engine. We enable API companies
     to automate and optimize their custom usage-based pricing for any metric.
 paths:
+  /api/cancel_subscription/:
+    post:
+      operationId: cancel_subscription_create
+      parameters:
+      - in: query
+        name: bill_now
+        schema:
+          type: boolean
+          default: true
+      - in: query
+        name: revoke_access
+        schema:
+          type: boolean
+          default: false
+      - in: query
+        name: subscription_uid
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      tags:
+      - cancel_subscription
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/components/:
     get:
       operationId: components_list
@@ -163,6 +192,35 @@ paths:
       - OrganizationApiKeyAuth: []
       responses:
         '204':
+          description: No response body
+  /api/customer_access/:
+    get:
+      operationId: customer_access_retrieve
+      parameters:
+      - in: query
+        name: billable_metric_name
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      - in: query
+        name: feature_name
+        schema:
+          type: string
+          minLength: 1
+      tags:
+      - customer_access
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
           description: No response body
   /api/customer_summary/:
     get:
@@ -385,6 +443,165 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventPreview'
           description: ''
+  /api/features/:
+    get:
+      operationId: features_list
+      description: A simple ViewSet for viewing and editing Features.
+      tags:
+      - features
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feature'
+          description: ''
+    post:
+      operationId: features_create
+      description: A simple ViewSet for viewing and editing Features.
+      tags:
+      - features
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Feature'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Feature'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Feature'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+          description: ''
+  /api/features/{id}/:
+    get:
+      operationId: features_retrieve
+      description: A simple ViewSet for viewing and editing Features.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this feature.
+        required: true
+      tags:
+      - features
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+          description: ''
+    put:
+      operationId: features_update
+      description: A simple ViewSet for viewing and editing Features.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this feature.
+        required: true
+      tags:
+      - features
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Feature'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Feature'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Feature'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+          description: ''
+    patch:
+      operationId: features_partial_update
+      description: A simple ViewSet for viewing and editing Features.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this feature.
+        required: true
+      tags:
+      - features
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFeature'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFeature'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFeature'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+          description: ''
+    delete:
+      operationId: features_destroy
+      description: A simple ViewSet for viewing and editing Features.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this feature.
+        required: true
+      tags:
+      - features
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/invoices/:
     get:
       operationId: invoices_list
@@ -1609,6 +1826,18 @@ components:
       required:
       - events
       - total_pages
+    Feature:
+      type: object
+      properties:
+        feature_name:
+          type: string
+          maxLength: 200
+        feature_description:
+          type: string
+          nullable: true
+          maxLength: 200
+      required:
+      - feature_name
     IntervalEnum:
       enum:
       - week
@@ -1640,7 +1869,7 @@ components:
           format: uri
           nullable: true
         status:
-          $ref: '#/components/schemas/InvoiceStatusEnum'
+          $ref: '#/components/schemas/StatusEnum'
         payment_intent_id:
           type: string
           nullable: true
@@ -1666,16 +1895,6 @@ components:
       - organization
       - status
       - subscription
-    InvoiceStatusEnum:
-      enum:
-      - requires_payment_method
-      - requires_action
-      - processing
-      - succeeded
-      - draft
-      - organization_not_connected_to_stripe
-      - customer_not_connected_to_stripe
-      type: string
     PatchedBillableMetric:
       type: object
       properties:
@@ -1746,6 +1965,16 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+    PatchedFeature:
+      type: object
+      properties:
+        feature_name:
+          type: string
+          maxLength: 200
+        feature_description:
+          type: string
+          nullable: true
+          maxLength: 200
     PatchedInvoice:
       type: object
       properties:
@@ -1771,7 +2000,7 @@ components:
           format: uri
           nullable: true
         status:
-          $ref: '#/components/schemas/InvoiceStatusEnum'
+          $ref: '#/components/schemas/StatusEnum'
         payment_intent_id:
           type: string
           nullable: true
@@ -1800,21 +2029,24 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        cost_per_metric:
+          nullable: true
+        cost_per_batch:
           type: number
           format: double
           maximum: 10000000000
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        metric_amount_per_cost:
+          nullable: true
+        metric_units_per_batch:
           type: number
           format: double
           maximum: 10000000000
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        max_amount:
+          nullable: true
+        max_metric_units:
           type: number
           format: double
           maximum: 10000000000
@@ -1832,8 +2064,17 @@ components:
         start_date:
           type: string
           format: date
+        end_date:
+          type: string
+          format: date
         status:
-          $ref: '#/components/schemas/Status2b4Enum'
+          type: string
+        auto_renew:
+          type: boolean
+        is_new:
+          type: boolean
+        subscription_uid:
+          type: string
     PatchedUser:
       type: object
       properties:
@@ -1961,21 +2202,24 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        cost_per_metric:
+          nullable: true
+        cost_per_batch:
           type: number
           format: double
           maximum: 10000000000
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        metric_amount_per_cost:
+          nullable: true
+        metric_units_per_batch:
           type: number
           format: double
           maximum: 10000000000
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        max_amount:
+          nullable: true
+        max_metric_units:
           type: number
           format: double
           maximum: 10000000000
@@ -1985,7 +2229,6 @@ components:
           nullable: true
       required:
       - billable_metric
-      - cost_per_metric
     PlanComponentRead:
       type: object
       properties:
@@ -1998,21 +2241,24 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        cost_per_metric:
+          nullable: true
+        cost_per_batch:
           type: number
           format: double
           maximum: 10000000000
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        metric_amount_per_cost:
+          nullable: true
+        metric_units_per_batch:
           type: number
           format: double
           maximum: 10000000000
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        max_amount:
+          nullable: true
+        max_metric_units:
           type: number
           format: double
           maximum: 10000000000
@@ -2025,7 +2271,6 @@ components:
           readOnly: true
       required:
       - billable_metric
-      - cost_per_metric
       - id
     RegistrationDetail:
       type: object
@@ -2046,11 +2291,15 @@ components:
       - industry
       - password
       - username
-    Status2b4Enum:
+    StatusEnum:
       enum:
-      - active
-      - ended
-      - not_started
+      - requires_payment_method
+      - requires_action
+      - processing
+      - succeeded
+      - draft
+      - organization_not_connected_to_stripe
+      - customer_not_connected_to_stripe
       type: string
     Subscription:
       type: object
@@ -2062,8 +2311,17 @@ components:
         start_date:
           type: string
           format: date
+        end_date:
+          type: string
+          format: date
         status:
-          $ref: '#/components/schemas/Status2b4Enum'
+          type: string
+        auto_renew:
+          type: boolean
+        is_new:
+          type: boolean
+        subscription_uid:
+          type: string
       required:
       - billing_plan_id
       - customer_id
@@ -2082,11 +2340,10 @@ components:
           type: string
           format: date
         status:
-          $ref: '#/components/schemas/Status2b4Enum'
+          type: string
       required:
       - billing_plan
       - customer
-      - end_date
       - start_date
     User:
       type: object

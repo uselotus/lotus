@@ -29,8 +29,8 @@ interface PlanComponent {
   billable_metric: MetricType;
   id: number;
   free_metric_quantity: number;
-  cost_per_metric: number;
-  metric_amount_per_cost: number;
+  cost_per_batch: number;
+  metric_units_per_batch: number;
 }
 interface PlanSimple {
   url: string;

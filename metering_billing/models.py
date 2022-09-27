@@ -234,21 +234,33 @@ class PlanComponent(models.Model):
     billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
 
     free_metric_quantity = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0
+        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
-    cost_per_metric = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD"
+    cost_per_batch = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD", blank=True, null=True
     )
-    metric_amount_per_cost = models.DecimalField(
-        decimal_places=10, max_digits=20, default=1.0
+    metric_units_per_batch = models.DecimalField(
+        decimal_places=10, max_digits=20, blank=True, null=True
     )
 
-    max_amount = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
+    max_metric_units = models.DecimalField(
+        decimal_places=10, max_digits=20, blank=True, null=True
     )
 
     def __str__(self):
         return str(self.billable_metric)
+
+
+class Feature(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    feature_name = models.CharField(max_length=200, null=False)
+    feature_description = models.CharField(max_length=200, blank=True, null=True)
+
+    class Meta:
+        unique_together = ("organization", "feature_name")
+
+    def __str__(self):
+        return str(self.feature_name)
 
 
 class BillingPlan(models.Model):
@@ -274,6 +286,7 @@ class BillingPlan(models.Model):
     name = models.CharField(max_length=200, unique=True)
     description = models.CharField(max_length=256, default=" ", blank=True)
     components = models.ManyToManyField(PlanComponent, blank=True)
+    features = models.ManyToManyField(Feature, blank=True)
 
     def __str__(self) -> str:
         return str(self.name)

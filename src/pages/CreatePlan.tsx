@@ -23,8 +23,8 @@ import { Plan } from "../api/api";
 
 interface ComponentDisplay {
   metric: string;
-  cost_per_metric: number;
-  metric_amount_per_cost: number;
+  cost_per_batch: number;
+  metric_units_per_batch: number;
   free_amount: number;
 }
 
@@ -97,8 +97,8 @@ const CreatePlan = () => {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
               billable_metric: metricMap.get(components[i].metric),
-              cost_per_metric: components[i].cost_per_metric,
-              metric_amount_per_cost: components[i].metric_amount_per_cost,
+              cost_per_batch: components[i].cost_per_batch,
+              metric_units_per_batch: components[i].metric_units_per_batch,
               free_metric_quantity: components[i].free_amount,
             };
             usagecomponentslist.push(usagecomponent);
@@ -215,8 +215,8 @@ const CreatePlan = () => {
                         <List.Item key={index} className="user">
                           <Card title={component.metric}>
                             <p>
-                              <b>Cost:</b> {component.cost_per_metric} per{" "}
-                              {component.metric_amount_per_cost} events{" "}
+                              <b>Cost:</b> {component.cost_per_batch} per{" "}
+                              {component.metric_units_per_batch} events{" "}
                             </p>
                             <br />
                             <p>

@@ -34,8 +34,8 @@ function UsageComponentForm(props: {
         layout="vertical"
         name="component_form"
         initialValues={{
-          cost_per_metric: 0.0,
-          metric_amount_per_cost: 1,
+          cost_per_batch: 0.0,
+          metric_units_per_batch: 1,
           free_amount: 0,
         }}
       >
@@ -55,17 +55,17 @@ function UsageComponentForm(props: {
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name="cost_per_metric" label="Cost Per Unit Amount">
+        <Form.Item name="cost_per_batch" label="Cost Per Unit Amount">
           <InputNumber addonBefore="$" defaultValue={0} precision={4} />
         </Form.Item>
-        <Form.Item name="metric_amount_per_cost">
+        <Form.Item name="metric_units_per_batch">
           <InputNumber addonBefore="per" defaultValue={1} precision={5} />
         </Form.Item>
         <div className="grid grid-cols-2">
           <Form.Item name="free_amount" label="Free Units">
             <InputNumber defaultValue={0} precision={5} />
           </Form.Item>
-          <Form.Item name="max_amount" label="Max Amount">
+          <Form.Item name="max_metric_units" label="Max Amount">
             <InputNumber defaultValue={0} precision={5} />
           </Form.Item>
         </div>

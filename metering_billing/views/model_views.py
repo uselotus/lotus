@@ -8,6 +8,7 @@ from metering_billing.models import (
     BillableMetric,
     BillingPlan,
     Customer,
+    Feature,
     Invoice,
     PlanComponent,
     Subscription,
@@ -20,6 +21,7 @@ from metering_billing.serializers.model_serializers import (
     BillingPlanReadSerializer,
     BillingPlanSerializer,
     CustomerSerializer,
+    FeatureSerializer,
     InvoiceSerializer,
     PlanComponentReadSerializer,
     PlanComponentSerializer,
@@ -124,6 +126,32 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
             posthog.capture(
                 organization.company_name,
                 event=f"{self.action}_metric",
+                properties={},
+            )
+        return response
+
+
+class FeatureViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing Features.
+    """
+
+    serializer_class = FeatureSerializer
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    def get_queryset(self):
+        return Feature.objects.all()
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_feature",
                 properties={},
             )
         return response

@@ -79,8 +79,8 @@ def get_metric_usage(
 
 def calculate_plan_component_revenue(plan_component, units_usage):
     subtotal_usage = max(units_usage - plan_component.free_metric_quantity, 0)
-    metric_batches = math.ceil(subtotal_usage / plan_component.metric_amount_per_cost)
-    subtotal_cost = (metric_batches * plan_component.cost_per_metric).amount
+    metric_batches = math.ceil(subtotal_usage / plan_component.metric_units_per_batch)
+    subtotal_cost = (metric_batches * plan_component.cost_per_batch).amount
     return subtotal_cost
 
 
@@ -110,12 +110,12 @@ def calculate_daily_pc_revenue_for_additive_metric(
     for qty, date in units_usage_query:
         qty = Decimal(qty)
         billable_units = max(qty - free_units_usage_left + remainder_billable_units, 0)
-        billable_batches = billable_units // plan_component.metric_amount_per_cost
+        billable_batches = billable_units // plan_component.metric_units_per_batch
         remainder_billable_units = (
-            billable_units - billable_batches * plan_component.metric_amount_per_cost
+            billable_units - billable_batches * plan_component.metric_units_per_batch
         )
         free_units_usage_left = max(0, free_units_usage_left - qty)
-        usage_revenue = (billable_batches * plan_component.cost_per_metric).amount
+        usage_revenue = (billable_batches * plan_component.cost_per_batch).amount
         day_revenue_dict[date]["revenue"] = usage_revenue
     return day_revenue_dict
 
@@ -168,9 +168,9 @@ def calculate_daily_pc_revenue_for_cliff_metric(
         if qty > max_units_usage_outside_query and qty == max_units_usage_query:
             free_units_usage = plan_component.free_metric_quantity
             metric_batches = math.ceil(
-                (qty - free_units_usage) / plan_component.metric_amount_per_cost
+                (qty - free_units_usage) / plan_component.metric_units_per_batch
             )
-            usage_revenue = (metric_batches * plan_component.cost_per_metric).amount
+            usage_revenue = (metric_batches * plan_component.cost_per_batch).amount
             day_revenue_dict[date]["revenue"] = usage_revenue
             break
     return day_revenue_dict
@@ -213,9 +213,9 @@ def calculate_stateful_pc_revenue(
         # calculate revenue
         free_units_usage = plan_component.free_metric_quantity
         metric_batches = math.ceil(
-            (max(usage - free_units_usage, 0)) / plan_component.metric_amount_per_cost
+            (max(usage - free_units_usage, 0)) / plan_component.metric_units_per_batch
         )
-        revenue = (metric_batches * plan_component.cost_per_metric).amount
+        revenue = (metric_batches * plan_component.cost_per_batch).amount
         # add revenue and usage to the dict
         usage_revenue_dict[date] = {
             "revenue": revenue,

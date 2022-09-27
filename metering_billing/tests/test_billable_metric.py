@@ -82,15 +82,6 @@ def insert_billable_metric_payload():
 
 @pytest.mark.django_db(transaction=True)
 class TestInsertBillableMetric:
-    """Testing the POST of BillableMetrics endpoint:
-    POST: Return list of billable_metrics associated with the organization with API key / user.
-    partitions:
-        auth_method: api_key, session_auth, both
-        num_billable_metric_before_insert: 0, >0
-        user_org_and_api_key_org_different: true, false
-        billable_metric_id
-    """
-
     def test_api_key_can_create_billable_metric_empty_before(
         self,
         billable_metric_test_common_setup,
@@ -288,8 +279,8 @@ class TestCalculateBillableMetric:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             free_metric_quantity=3,
-            cost_per_metric=100,
-            metric_amount_per_cost=1,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
         )
         billing_plan = BillingPlan.objects.create(
             organization=setup_dict["org"],

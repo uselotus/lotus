@@ -56,26 +56,26 @@ class Command(BaseCommand):
         pc1 = PlanComponent.objects.create(
             billable_metric=bm_e1_1,
             free_metric_quantity=1000,
-            cost_per_metric=0.01,
-            metric_amount_per_cost=5,
+            cost_per_batch=0.01,
+            metric_units_per_batch=5,
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=bm_e1_2,
             free_metric_quantity=20_000,
-            cost_per_metric=0.005,
-            metric_amount_per_cost=250,
+            cost_per_batch=0.005,
+            metric_units_per_batch=250,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=bm_e2_1,
             free_metric_quantity=100,
-            cost_per_metric=0.50,
-            metric_amount_per_cost=1,
+            cost_per_batch=0.50,
+            metric_units_per_batch=1,
         )
         pc4 = PlanComponent.objects.create(
             billable_metric=bm_e2_2,
             free_metric_quantity=200,
-            cost_per_metric=75,
-            metric_amount_per_cost=100,
+            cost_per_batch=75,
+            metric_units_per_batch=100,
         )
         bp = BillingPlan.objects.create(
             organization=organization,

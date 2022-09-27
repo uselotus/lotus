@@ -490,7 +490,7 @@ class DraftInvoiceView(APIView):
 
 
 class CancelSubscriptionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[CancelSubscriptionRequestSerializer],
@@ -501,6 +501,7 @@ class CancelSubscriptionView(APIView):
         organization = parse_organization(request)
         sub_uid = serializer.validated_data["subscription_uid"]
         bill_now = serializer.validated_data["bill_now"]
+        revoke_access = serializer.validated_data["revoke_access"]
         try:
             sub = Subscription.objects.get(
                 organization=organization, subscription_uid=sub_uid
@@ -523,14 +524,16 @@ class CancelSubscriptionView(APIView):
                 {"success": "Subscription hadn't started, has been deleted"},
                 status=status.HTTP_200_OK,
             )
-        sub.status = "canceled"
+        sub.auto_renew = False
+        if revoke_access:
+            sub.status = "canceled"
         sub.save()
         posthog.capture(
             request.user.username,
             event="cancel_subscription",
             properties={},
         )
-        if bill_now:
+        if bill_now and revoke_access:
             generate_invoice(sub, issue_date=datetime.datetime.now().date())
             return JsonResponse(
                 {"success": "Created invoice and payment intent for subscription"},
@@ -541,3 +544,82 @@ class CancelSubscriptionView(APIView):
                 {"success": "Subscription ended without generating invoice."},
                 status=status.HTTP_200_OK,
             )
+
+
+class GetCustomerAccessView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        parameters=[GetCustomerAccessRequestSerializer],
+    )
+    def get(self, request, format=None):
+        serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        organization = parse_organization(request)
+        posthog.capture(
+            request.user.username,
+            event="get_access",
+            properties={},
+        )
+        customer_id = serializer.validated_data["customer_id"]
+        billable_metric_name = serializer.validated_data.get("billable_metric_name")
+        feature_name = serializer.validated_data.get("feature_name")
+        subscriptions = Subscription.objects.select_related(
+            "customer", "billing_plan"
+        ).filter(
+            organization=organization,
+            status="active",
+            customer__customer_id=customer_id,
+        )
+        if billable_metric_name:
+            subscriptions = subscriptions.prefetch_related(
+                "billing_plan__components", "billing_plan__components__billable_metric"
+            )
+            for sub in subscriptions:
+                for component in sub.billing_plan.components.all():
+                    if (
+                        component.billable_metric.billable_metric_name
+                        == billable_metric_name
+                    ):
+                        metric = component.billable_metric
+                        metric_limit = component.max_metric_units
+                        if not metric_limit:
+                            return JsonResponse(
+                                {"access": True},
+                                status=status.HTTP_200_OK,
+                            )
+                        metric_usage = get_metric_usage(
+                            metric,
+                            query_start_date=sub.start_date,
+                            query_end_date=sub.end_date,
+                            customer=sub.customer,
+                        )[0]
+                        metric_usage = metric_usage["usage_qty"]
+                        if metric_usage >= metric_limit:
+                            return JsonResponse(
+                                {"access": False},
+                                status=status.HTTP_200_OK,
+                            )
+                        else:
+                            return JsonResponse(
+                                {
+                                    "access": True,
+                                    "metric_usage": metric_usage,
+                                    "metric_limit": metric_limit,
+                                },
+                                status=status.HTTP_200_OK,
+                            )
+        elif feature_name:
+            subscriptions = subscriptions.prefetch_related("billing_plan__features")
+            for sub in subscriptions:
+                for feature in sub.billing_plan.features.all():
+                    if feature.feature_name == feature_name:
+                        return JsonResponse(
+                            {"access": True},
+                            status=status.HTTP_200_OK,
+                        )
+
+        return JsonResponse(
+            {"access": False},
+            status=status.HTTP_200_OK,
+        )

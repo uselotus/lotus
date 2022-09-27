@@ -11,6 +11,7 @@ from metering_billing.models import (
     BillingPlan,
     Customer,
     Event,
+    Feature,
     Invoice,
     Organization,
     PlanComponent,
@@ -94,6 +95,16 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         )
 
 
+## FEATURE
+class FeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feature
+        fields = (
+            "feature_name",
+            "feature_description",
+        )
+
+
 ## PLAN COMPONENT
 class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -101,9 +112,9 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         fields = (
             "billable_metric",
             "free_metric_quantity",
-            "cost_per_metric",
-            "metric_amount_per_cost",
-            "max_amount",
+            "cost_per_batch",
+            "metric_units_per_batch",
+            "max_metric_units",
         )
 
 

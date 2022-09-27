@@ -25,6 +25,7 @@ from metering_billing.views.model_views import (
     BillableMetricViewSet,
     BillingPlanViewSet,
     CustomerViewSet,
+    FeatureViewSet,
     InvoiceViewSet,
     PlanComponentViewSet,
     SubscriptionViewSet,
@@ -36,6 +37,7 @@ from metering_billing.views.views import (
     CustomerWithRevenueView,
     DraftInvoiceView,
     EventPreviewView,
+    GetCustomerAccessView,
     InitializeStripeView,
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
@@ -53,6 +55,7 @@ router.register(r"plans", BillingPlanViewSet, basename="plan")
 router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
 router.register(r"components", PlanComponentViewSet, basename="component")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
+router.register(r"features", FeatureViewSet, basename="feature")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -85,6 +88,11 @@ urlpatterns = [
         "api/cancel_subscription/",
         CancelSubscriptionView.as_view(),
         name="cancel_subscription",
+    ),
+    path(
+        "api/customer_access/",
+        GetCustomerAccessView.as_view(),
+        name="customer_access",
     ),
     path("api/stripe/", InitializeStripeView.as_view(), name="stripe_initialize"),
     path("api/login/", auth_views.login_view, name="api-login"),
