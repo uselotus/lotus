@@ -170,7 +170,11 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "customer_id",
             "billing_plan_id",
             "start_date",
+            "end_date",
             "status",
+            "auto_renew",
+            "is_new",
+            "subscription_uid",
         )
 
     customer_id = SlugRelatedLookupField(
@@ -185,6 +189,11 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         read_only=False,
         source="billing_plan",
     )
+    end_date = serializers.DateField(required=False)
+    status = serializers.CharField(required=False)
+    auto_renew = serializers.BooleanField(required=False)
+    is_new = serializers.BooleanField(required=False)
+    subscription_uid = serializers.CharField(required=False)
 
 
 class SubscriptionReadSerializer(SubscriptionSerializer):

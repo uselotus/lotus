@@ -143,7 +143,10 @@ class TestCancelSub:
         prev_invoices_len = Invoice.objects.all().count()
         assert len(active_subscriptions) == 1
 
-        payload = {"subscription_pk": setup_dict["subscription"].pk, "bill_now": True}
+        payload = {
+            "subscription_uid": setup_dict["subscription"].subscription_uid,
+            "bill_now": True,
+        }
         response = setup_dict["client"].post(
             reverse("cancel_subscription"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
@@ -177,7 +180,7 @@ class TestCancelSub:
         prev_invoices_len = Invoice.objects.all().count()
 
         payload = {
-            "subscription_pk": setup_dict["ns_subscription"].pk,
+            "subscription_uid": setup_dict["ns_subscription"].subscription_uid,
             "bill_now": True,
         }
         response = setup_dict["client"].post(
@@ -207,7 +210,10 @@ class TestCancelSub:
         prev_invoices_len = Invoice.objects.all().count()
         assert len(active_subscriptions) == 1
 
-        payload = {"subscription_pk": setup_dict["subscription"].pk, "bill_now": False}
+        payload = {
+            "subscription_uid": setup_dict["subscription"].subscription_uid,
+            "bill_now": False,
+        }
         response = setup_dict["client"].post(
             reverse("cancel_subscription"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
@@ -241,7 +247,7 @@ class TestCancelSub:
         prev_invoices_len = Invoice.objects.all().count()
 
         payload = {
-            "subscription_pk": setup_dict["ended_subscription"].pk,
+            "subscription_uid": setup_dict["ended_subscription"].subscription_uid,
             "bill_now": False,
         }
         response = setup_dict["client"].post(
