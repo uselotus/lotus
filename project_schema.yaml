@@ -2022,7 +2022,7 @@ components:
       properties:
         billable_metric:
           type: integer
-        free_metric_quantity:
+        free_metric_units:
           type: number
           format: double
           maximum: 10000000000
@@ -2195,7 +2195,7 @@ components:
       properties:
         billable_metric:
           type: integer
-        free_metric_quantity:
+        free_metric_units:
           type: number
           format: double
           maximum: 10000000000
@@ -2234,7 +2234,7 @@ components:
       properties:
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
-        free_metric_quantity:
+        free_metric_units:
           type: number
           format: double
           maximum: 10000000000

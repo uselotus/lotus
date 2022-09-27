@@ -86,13 +86,33 @@ class BillableMetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillableMetric
         fields = (
-            "id",
             "event_name",
             "property_name",
             "aggregation_type",
-            "carries_over",
             "billable_metric_name",
+            "aggregation_type",
+            "event_type",
+            "stateful_aggregation_period",
         )
+
+    def validate(self, data):
+        if data["event_type"] == "stateful":
+            if not data["stateful_aggregation_period"]:
+                raise serializers.ValidationError(
+                    "Stateful metric aggregation period is required for stateful aggregation type"
+                )
+            allowed_agg_types = ["max", "last"]
+            if data["aggregation_type"] not in allowed_agg_types:
+                raise serializers.ValidationError(
+                    f"Stateful aggregation type must be one of {allowed_agg_types}, selected {data['aggregation_type']}"
+                )
+        elif data["event_type"] == "aggregation":
+            allowed_agg_types = ["sum", "count", "unique", "max"]
+            if data["aggregation_type"] not in allowed_agg_types:
+                raise serializers.ValidationError(
+                    f"Aggregation metric aggregation type must be one of {allowed_agg_types}, selected {data['aggregation_type']}"
+                )
+        return data
 
 
 ## FEATURE
@@ -111,7 +131,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         model = PlanComponent
         fields = (
             "billable_metric",
-            "free_metric_quantity",
+            "free_metric_units",
             "cost_per_batch",
             "metric_units_per_batch",
             "max_metric_units",

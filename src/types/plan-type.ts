@@ -23,14 +23,14 @@ export interface CreatePlanType {
 
 export interface CreateComponent {
   billable_metric?: number;
-  free_metric_quantity: number;
+  free_metric_units: number;
   cost_per_batch: number;
   metric_units_per_batch: number;
 }
 
 export interface Component {
   billable_metric: MetricType;
-  free_metric_quantity: string;
+  free_metric_units: string;
   cost_per_batch: string;
   metric_units_per_batch: string;
   id: number;

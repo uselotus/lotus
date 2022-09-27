@@ -108,7 +108,7 @@ class InitializeStripeView(APIView):
         organization.save()
 
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="connect_stripe_customers",
             properties={
                 "num_cust_added": n_cust_added,
@@ -169,6 +169,7 @@ class PeriodMetricRevenueView(APIView):
                         "total_revenue": Decimal(0),
                     }
             for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+                total_period_rev_dict = return_dict[f"total_revenue_period_{p_num}"]
                 subs = (
                     Subscription.objects.filter(
                         Q(start_date__range=[p_start, p_end])
@@ -181,25 +182,23 @@ class PeriodMetricRevenueView(APIView):
                     .prefetch_related("billing_plan__components__billable_metric")
                 )
                 for sub in subs:
-                    billing_plan = sub.billing_plan
-                    if billing_plan.pay_in_advance:
-                        flat_bill_date = sub.start_date
-                    else:
-                        flat_bill_date = sub.end_date
+                    bp = sub.billing_plan
+                    flat_bill_date = (
+                        sub.start_date if bp.pay_in_advance else sub.end_date
+                    )
                     if flat_bill_date >= p_start and flat_bill_date <= p_end:
-                        return_dict[
-                            f"total_revenue_period_{p_num}"
-                        ] += billing_plan.flat_rate.amount
-                    for plan_component in billing_plan.components.all():
+                        total_period_rev_dict += bp.flat_rate.amount
+                    for plan_component in bp.components.all():
+                        billable_metric = plan_component.billable_metric
                         usage_cost_per_day = calculate_sub_pc_usage_revenue(
                             plan_component,
-                            plan_component.billable_metric,
+                            billable_metric,
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
                             p_start,
                             p_end,
-                            time_period_agg="date",
+                            revenue_calc_period="day",
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
@@ -208,7 +207,7 @@ class PeriodMetricRevenueView(APIView):
                             usage_cost = Decimal(d["revenue"])
                             metric_dict["data"][str(date)] += usage_cost
                             metric_dict["total_revenue"] += usage_cost
-                            return_dict[f"total_revenue_period_{p_num}"] += usage_cost
+                            total_period_rev_dict += usage_cost
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
             dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
@@ -360,7 +359,7 @@ class APIKeyCreate(APIView):
             name="new_api_key", organization=organization
         )
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="create_api_key",
             properties={},
         )
@@ -443,7 +442,7 @@ class EventPreviewView(APIView):
         serializer = EventPreviewSerializer(ret)
         if page_number == 1:
             posthog.capture(
-                request.user.username,
+                organization.company_name,
                 event="event_preview",
                 properties={
                     "num_events": len(ret["events"]),
@@ -482,7 +481,7 @@ class DraftInvoiceView(APIView):
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = InvoiceSerializer(invoices, many=True)
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="draft_invoice",
             properties={},
         )
@@ -529,7 +528,7 @@ class CancelSubscriptionView(APIView):
             sub.status = "canceled"
         sub.save()
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="cancel_subscription",
             properties={},
         )
@@ -557,7 +556,7 @@ class GetCustomerAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="get_access",
             properties={},
         )

@@ -99,7 +99,7 @@ const CreatePlan = () => {
               billable_metric: metricMap.get(components[i].metric),
               cost_per_batch: components[i].cost_per_batch,
               metric_units_per_batch: components[i].metric_units_per_batch,
-              free_metric_quantity: components[i].free_amount,
+              free_metric_units: components[i].free_amount,
             };
             usagecomponentslist.push(usagecomponent);
           }

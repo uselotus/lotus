@@ -89,14 +89,6 @@ const CreateMetricForm = (props: {
             ) : null
           }
         </Form.Item>
-        <Tooltip
-          placement="left"
-          title="If checked, the metric will persist across subscriptions."
-        >
-          <Form.Item name="carries_over">
-            <Checkbox>Carries Over?</Checkbox>
-          </Form.Item>
-        </Tooltip>
         <Tooltip placement="left" title="Define a display name for this metric">
           <Form.Item
             name="billable_metric_name"
