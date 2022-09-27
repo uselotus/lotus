@@ -116,7 +116,6 @@ class TestTrackEvent:
             events_list.append(
                 {
                     "idempotency_id": event["idempotency_id"],
-                    "customer_id": event["customer_id"],
                     "event_name": event["event_name"],
                     "properties": event["properties"],
                     "time_created": event["time_created"],

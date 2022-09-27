@@ -116,9 +116,6 @@ class Customer(models.Model):
     balance = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
-    currency = models.CharField(max_length=3, default="USD")
-
-    payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
@@ -324,9 +321,13 @@ class Subscription(models.Model):
     )
     auto_renew = models.BooleanField(default=True)
     is_new = models.BooleanField(default=True)
+    subscription_uid = models.CharField(
+        max_length=100, null=False, blank=True, default=uuid.uuid4
+    )
 
     def save(self, *args, **kwargs):
-        self.end_date = self.calculate_end_date()
+        if not self.end_date:
+            self.end_date = self.calculate_end_date()
         super(Subscription, self).save(*args, **kwargs)
 
     def calculate_end_date(self):
@@ -342,6 +343,9 @@ class Subscription(models.Model):
 
     def __str__(self):
         return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
+
+    class Meta:
+        unique_together = ("organization", "subscription_uid")
 
 
 class Invoice(models.Model):

@@ -90,6 +90,7 @@ def task_test_common_setup(
             customer=customer,
             billing_plan=billing_plan,
             start_date=datetime.now().date() - timedelta(days=35),
+            end_date=datetime.now().date() - timedelta(days=5),
             status="active",
         )
         setup_dict["subscription"] = subscription

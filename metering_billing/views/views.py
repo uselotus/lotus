@@ -498,10 +498,13 @@ class CancelSubscriptionView(APIView):
     def post(self, request, format=None):
         serializer = CancelSubscriptionRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        sub_pk = serializer.validated_data["subscription_pk"]
+        organization = parse_organization(request)
+        sub_uid = serializer.validated_data["subscription_uid"]
         bill_now = serializer.validated_data["bill_now"]
         try:
-            sub = Subscription.objects.get(pk=sub_pk)
+            sub = Subscription.objects.get(
+                organization=organization, subscription_uid=sub_uid
+            )
         except:
             return JsonResponse(
                 {"error": "Subscription not found"},
@@ -513,7 +516,9 @@ class CancelSubscriptionView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         elif sub.status == "not_started":
-            Subscription.objects.get(pk=sub_pk).delete()
+            Subscription.objects.get(
+                organization=organization, subscription_uid=sub_uid
+            ).delete()
             return JsonResponse(
                 {"success": "Subscription hadn't started, has been deleted"},
                 status=status.HTTP_200_OK,

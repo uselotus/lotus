@@ -1,4 +1,4 @@
-from metering_billing.models import BillingPlan, Customer
+from metering_billing.models import BillingPlan, Customer, Subscription
 from rest_framework import serializers
 
 from .model_serializers import EventSerializer
@@ -7,10 +7,8 @@ from .model_serializers import EventSerializer
 
 
 class CancelSubscriptionRequestSerializer(serializers.Serializer):
-    # customer_id = serializers.CharField()
-    # billing_plan_id = serializers.CharField()
     bill_now = serializers.BooleanField(default=True)
-    subscription_pk = serializers.IntegerField()
+    subscription_uid = serializers.CharField(required=True)
 
 
 class RegistrationDetailSerializer(serializers.Serializer):
