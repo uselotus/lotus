@@ -5,7 +5,6 @@ import logging
 from datetime import timezone
 from typing import Dict, Union
 
-import posthog
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -14,7 +13,7 @@ from lotus.settings import EVENT_CACHE_FLUSH_COUNT
 from metering_billing.models import APIToken, Customer, Event
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.tasks import write_batch_events_to_db
+from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
 from rest_framework.decorators import api_view
 
 logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
@@ -38,8 +37,6 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
             )
     else:
         event_data = request.body.decode("utf8")
-    if event_data is None:
-        return None
 
     return event_data
 
@@ -91,7 +88,8 @@ def track_event(request):
     organization_pk = cache.get(prefix)
     if not organization_pk:
         api_token = APIToken.objects.filter(prefix=prefix).values_list(
-            "organization", "expiry_date"
+            "organization",
+            "expiry_date",
         )
         if len(api_token) == 0:
             return HttpResponseBadRequest("Invalid API key")
@@ -105,7 +103,6 @@ def track_event(request):
             ).total_seconds()
         )
         cache.set(prefix, organization_pk, timeout)
-
     event_list = load_event(request)
     if not event_list:
         return HttpResponseBadRequest("No data provided")
@@ -166,6 +163,7 @@ def track_event(request):
     # add to insert events
     cached_events.extend(events_to_insert.values())
     cached_idems.update(events_to_insert.keys())
+    posthog_capture_track.delay(organization_pk, len(event_list), len(events_to_insert))
     # check if its necessary to flush
     if len(cached_events) >= EVENT_CACHE_FLUSH_COUNT:
         write_batch_events_to_db.delay(cached_events)
