@@ -46,7 +46,7 @@ def login_view(request):
         )
 
     login(request, user)
-    posthog.capture(user.organization.compay_name, event="succesful login")
+    posthog.capture(user.organization.company_name, event="succesful login")
     return JsonResponse({"detail": "Successfully logged in."})
 
 
