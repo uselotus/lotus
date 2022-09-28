@@ -1427,13 +1427,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/BatchEvent'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/BatchEvent'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Event'
+              $ref: '#/components/schemas/BatchEvent'
         required: true
       security:
       - cookieAuth: []
@@ -1628,6 +1628,15 @@ components:
       - unique
       - last
       type: string
+    BatchEvent:
+      type: object
+      properties:
+        batch:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+      required:
+      - batch
     BillableMetric:
       type: object
       properties:

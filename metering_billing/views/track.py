@@ -56,7 +56,9 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
 
 @csrf_exempt
 @extend_schema(
-    request=EventSerializer,
+    request=inline_serializer(
+            "BatchEventSerializer", fields={"batch": EventSerializer(many=True)}
+        ),
     responses={
         201: inline_serializer(
             name="TrackEventSuccess",
