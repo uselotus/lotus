@@ -184,15 +184,19 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "features",
         )
 
-    components = PlanComponentSerializer(many=True)
-    features = FeatureSerializer(many=True)
+    components = PlanComponentSerializer(many=True, allow_null=True, required=False)
+    features = FeatureSerializer(many=True, allow_null=True, required=False)
 
     def create(self, validated_data):
-        components_data = validated_data.pop("components")
+        components_data = validated_data.pop("components", [])
+        features_data = validated_data.pop("features", [])
         billing_plan = BillingPlan.objects.create(**validated_data)
         for component_data in components_data:
             pc, _ = PlanComponent.objects.get_or_create(**component_data)
             billing_plan.components.add(pc)
+        for feature_data in features_data:
+            f, _ = Feature.objects.get_or_create(**feature_data)
+            billing_plan.features.add(f)
         billing_plan.save()
         return billing_plan
 

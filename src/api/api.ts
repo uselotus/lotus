@@ -20,9 +20,8 @@ import Cookies from "universal-cookie";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 
-const cookies = new Cookies();
-
-axios.defaults.headers.common["X-CSRFToken"] = cookies.get("csrftoken");
+axios.defaults.xsrfCookieName = "csrftoken";
+axios.defaults.xsrfHeaderName = "X-CSRFToken";
 
 const instance = axios.create({
   timeout: 15000,
@@ -42,7 +41,7 @@ const requests = {
 
 export const Customer = {
   getCustomers: (): Promise<CustomerSummary> =>
-    requests.get("api/customer_summary/"),
+    requests.get("api/  /"),
   getACustomer: (id: number): Promise<CustomerType> =>
     requests.get(`api/customers/${id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
