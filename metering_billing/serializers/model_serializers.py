@@ -54,9 +54,10 @@ class EventSerializer(serializers.ModelSerializer):
             "customer_id",
         )
 
-    customer_id = serializers.SlugRelatedField(
-        read_only=True,
+    customer_id = SlugRelatedLookupField(
         slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        read_only=False,
         source="customer",
     )
 
@@ -172,7 +173,6 @@ class BillingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillingPlan
         fields = (
-            "time_created",
             "currency",
             "interval",
             "flat_rate",
@@ -201,9 +201,52 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         return billing_plan
 
 
+class BillingPlanUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillingPlan
+        fields = (
+            "currency",
+            "flat_rate",
+            "pay_in_advance",
+            "billing_plan_id",
+            "name",
+            "description",
+            "components",
+            "features",
+        )
+
+    components = PlanComponentSerializer(many=True, allow_null=True, required=False)
+    features = FeatureSerializer(many=True, allow_null=True, required=False)
+
+    def update(self, instance, validated_data):
+        instance.currency = validated_data.get("currency", instance.currency)
+        instance.flat_rate = validated_data.get("flat_rate", instance.content)
+        instance.pay_in_advance = validated_data.get(
+            "pay_in_advance", instance.pay_in_advance
+        )
+        instance.billing_plan_id = validated_data.get(
+            "billing_plan_id", instance.billing_plan_id
+        )
+        instance.name = validated_data.get("name", instance.name)
+        instance.description = validated_data.get("description", instance.description)
+        # deal w many to many
+        components_data = validated_data.get("components", [])
+        features_data = validated_data.get("features", [])
+        instance.components.clear()
+        instance.features.clear()
+        for component_data in components_data:
+            pc, _ = PlanComponent.objects.get_or_create(**component_data)
+            instance.components.add(pc)
+        for feature_data in features_data:
+            f, _ = Feature.objects.get_or_create(**feature_data)
+            instance.features.add(f)
+        instance.save()
+        return instance
+
+
 class BillingPlanReadSerializer(BillingPlanSerializer):
     class Meta(BillingPlanSerializer.Meta):
-        fields = BillingPlanSerializer.Meta.fields + ("id",)
+        fields = BillingPlanSerializer.Meta.fields + ("time_created",)
 
     components = PlanComponentReadSerializer(many=True)
     time_created = serializers.SerializerMethodField()

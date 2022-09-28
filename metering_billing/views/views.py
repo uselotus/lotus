@@ -6,7 +6,7 @@ import stripe
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -55,6 +55,14 @@ def import_stripe_customers(organization):
 class InitializeStripeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                "StripeConnectedResponse",
+                fields={"connected": serializers.BooleanField()},
+            )
+        },
+    )
     def get(self, request, format=None):
         """
         Check to see if user has connected their Stripe account.
@@ -67,10 +75,29 @@ class InitializeStripeView(APIView):
         if (stripe_id and len(stripe_id) > 0) or (
             SELF_HOSTED and STRIPE_SECRET_KEY != ""
         ):
-            return JsonResponse({"connected": True})
+            return JsonResponse({"connected": True}, status=200)
         else:
-            return JsonResponse({"connected": False})
+            return JsonResponse({"connected": False}, status=200)
 
+    @extend_schema(
+        request=inline_serializer(
+            "StripeConnectRequest",
+            fields={"authorization_code": serializers.CharField()},
+        ),
+        responses={
+            200: inline_serializer(
+                "StripeImportResponse",
+                fields={"success": serializers.BooleanField()},
+            ),
+            400: inline_serializer(
+                "StripeImportError",
+                fields={
+                    "success": serializers.BooleanField(),
+                    "details": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request, format=None):
         """
         Initialize Stripe after user inputs an API key.
@@ -79,7 +106,9 @@ class InitializeStripeView(APIView):
         data = request.data
 
         if data is None:
-            return JsonResponse({"details": "No data provided"}, status=400)
+            return JsonResponse(
+                {"success": False, "details": "No data provided"}, status=400
+            )
 
         organization = parse_organization(request)
         stripe_code = data["authorization_code"]
@@ -115,7 +144,7 @@ class InitializeStripeView(APIView):
             },
         )
 
-        return JsonResponse({"Success": True})
+        return JsonResponse({"success": True}, status=201)
 
 
 class PeriodMetricRevenueView(APIView):
@@ -347,6 +376,16 @@ class PeriodMetricUsageView(APIView):
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    responses={
+        200: inline_serializer(
+            name="APIKeyCreateSuccess",
+            fields={
+                "api_key": serializers.CharField(),
+            },
+        ),
+    },
+)
 class APIKeyCreate(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -494,7 +533,30 @@ class CancelSubscriptionView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
-        parameters=[CancelSubscriptionRequestSerializer],
+        request=CancelSubscriptionRequestSerializer,
+        responses={
+            200: inline_serializer(
+                name="CancelSubscriptionSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            201: inline_serializer(
+                name="CancelSubscriptionAndGenerateInvoiceSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="CancelSubscriptionFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
     )
     def post(self, request, format=None):
         serializer = CancelSubscriptionRequestSerializer(data=request.data)
@@ -509,12 +571,12 @@ class CancelSubscriptionView(APIView):
             )
         except:
             return JsonResponse(
-                {"error": "Subscription not found"},
+                {"status": "error", "detail": "Subscription not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if sub.status == "ended":
             return JsonResponse(
-                {"error": "Subscription already ended"},
+                {"status": "error", "detail": "Subscription already ended"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         elif sub.status == "not_started":
@@ -522,7 +584,10 @@ class CancelSubscriptionView(APIView):
                 organization=organization, subscription_uid=sub_uid
             ).delete()
             return JsonResponse(
-                {"success": "Subscription hadn't started, has been deleted"},
+                {
+                    "status": "success",
+                    "detail": "Subscription hadn't started, has been deleted",
+                },
                 status=status.HTTP_200_OK,
             )
         sub.auto_renew = False
@@ -537,12 +602,18 @@ class CancelSubscriptionView(APIView):
         if bill_now and revoke_access:
             generate_invoice(sub, issue_date=datetime.datetime.now().date())
             return JsonResponse(
-                {"success": "Created invoice and payment intent for subscription"},
+                {
+                    "status": "success",
+                    "detail": "Created invoice and payment intent for subscription",
+                },
                 status=status.HTTP_201_CREATED,
             )
         else:
             return JsonResponse(
-                {"success": "Subscription ended without generating invoice."},
+                {
+                    "status": "success",
+                    "detail": "Subscription ended without generating invoice",
+                },
                 status=status.HTTP_200_OK,
             )
 
@@ -552,6 +623,23 @@ class GetCustomerAccessView(APIView):
 
     @extend_schema(
         parameters=[GetCustomerAccessRequestSerializer],
+        responses={
+            200: inline_serializer(
+                name="GetCustomerAccessSuccess",
+                fields={
+                    "access": serializers.BooleanField(),
+                    "metric_usage": serializers.FloatField(required=False),
+                    "metric_limit": serializers.FloatField(required=False),
+                },
+            ),
+            400: inline_serializer(
+                name="GetCustomerAccessFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
     )
     def get(self, request, format=None):
         serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
@@ -563,14 +651,21 @@ class GetCustomerAccessView(APIView):
             properties={},
         )
         customer_id = serializer.validated_data["customer_id"]
+        try:
+            customer = Customer.objects.get(
+                organization=organization, customer_id=customer_id
+            )
+        except Customer.DoesNotExist:
+            return JsonResponse(
+                {"status": "error", "detail": "Customer not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         billable_metric_name = serializer.validated_data.get("billable_metric_name")
         feature_name = serializer.validated_data.get("feature_name")
-        subscriptions = Subscription.objects.select_related(
-            "customer", "billing_plan"
-        ).filter(
+        subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
             status="active",
-            customer__customer_id=customer_id,
+            customer=customer,
         )
         if billable_metric_name:
             subscriptions = subscriptions.prefetch_related(
@@ -593,7 +688,7 @@ class GetCustomerAccessView(APIView):
                             metric,
                             query_start_date=sub.start_date,
                             query_end_date=sub.end_date,
-                            customer=sub.customer,
+                            customer=customer,
                         )[0]
                         metric_usage = metric_usage["usage_qty"]
                         if metric_usage >= metric_limit:

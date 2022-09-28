@@ -20,6 +20,7 @@ from metering_billing.serializers.model_serializers import (
     BillableMetricSerializer,
     BillingPlanReadSerializer,
     BillingPlanSerializer,
+    BillingPlanUpdateSerializer,
     CustomerSerializer,
     FeatureSerializer,
     InvoiceSerializer,
@@ -195,10 +196,13 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "billing_plan_id"
+    http_method_names = ["get", "post", "head", "put"]
 
     def get_serializer_class(self):
         if self.action in ["list", "retrieve"]:
             return BillingPlanReadSerializer
+        elif self.update == "create":
+            return BillingPlanUpdateSerializer
         else:
             return BillingPlanSerializer
 

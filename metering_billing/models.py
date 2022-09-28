@@ -308,8 +308,8 @@ class BillingPlan(models.Model):
     pay_in_advance = models.BooleanField()
     name = models.CharField(max_length=200, unique=True)
     description = models.CharField(max_length=256, default=" ", blank=True)
-    components = models.ManyToManyField(PlanComponent, null=True, blank=True)
-    features = models.ManyToManyField(Feature, null=True, blank=True)
+    components = models.ManyToManyField(PlanComponent)
+    features = models.ManyToManyField(Feature)
 
     def __str__(self) -> str:
         return str(self.name)

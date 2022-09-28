@@ -1,13 +1,15 @@
 import json
+from ast import increment_lineno
 
 import posthog
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.models import Organization, User
-from metering_billing.serializers.internal_serializers import RegistrationSerializer
+from metering_billing.serializers.internal_serializers import *
+from metering_billing.serializers.model_serializers import *
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
@@ -81,12 +83,17 @@ def whoami_view(request):
     return JsonResponse({"username": request.user.username})
 
 
+@extend_schema(
+    request=RegistrationSerializer,
+    responses={
+        201: inline_serializer(
+            "RegistrationResponse", fields={"detail": serializers.CharField()}
+        )
+    },
+)
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
-    @extend_schema(
-        parameters=[RegistrationSerializer],
-    )
     def post(self, request, format=None):
         serializer = RegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

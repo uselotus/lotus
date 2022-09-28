@@ -2,20 +2,20 @@ import base64
 import datetime
 import json
 import logging
-import time
 from datetime import timezone
-from re import S
 from typing import Dict, Union
 
+import posthog
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import EVENT_CACHE_FLUSH_COUNT
 from metering_billing.models import APIToken, Customer, Event
+from metering_billing.serializers.internal_serializers import *
+from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import write_batch_events_to_db
 from rest_framework.decorators import api_view
-
-from ..permissions import HasUserAPIKey
 
 logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
 
@@ -58,6 +58,25 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
 
 
 @csrf_exempt
+@extend_schema(
+    request=EventSerializer,
+    responses={
+        201: inline_serializer(
+            name="TrackEventSuccess",
+            fields={
+                "success": serializers.ChoiceField(choices=["all", "some"]),
+                "failed_events": serializers.DictField(required=False),
+            },
+        ),
+        400: inline_serializer(
+            name="TrackEventFailure",
+            fields={
+                "success": serializers.ChoiceField(choices=["none"]),
+                "failed_events": serializers.DictField(),
+            },
+        ),
+    },
+)
 @api_view(http_method_names=["POST"])
 def track_event(request):
     try:
@@ -155,7 +174,13 @@ def track_event(request):
         cached_idems = set()
     cache.set("events_to_insert", (cached_events, cached_idems, last_flush_dt), None)
 
-    if len(bad_events) > 0:
-        return JsonResponse(bad_events, status=400)
+    if len(bad_events) == len(event_list):
+        return JsonResponse(
+            {"success": "none", "failed_events": bad_events}, status=400
+        )
+    elif len(bad_events) > 0:
+        return JsonResponse(
+            {"success": "some", "failed_events": bad_events}, status=201
+        )
     else:
-        return JsonResponse({"success": True}, status=201)
+        return JsonResponse({"success": "all"}, status=201)

@@ -8,32 +8,43 @@ paths:
   /api/cancel_subscription/:
     post:
       operationId: cancel_subscription_create
-      parameters:
-      - in: query
-        name: bill_now
-        schema:
-          type: boolean
-          default: true
-      - in: query
-        name: revoke_access
-        schema:
-          type: boolean
-          default: false
-      - in: query
-        name: subscription_uid
-        schema:
-          type: string
-          minLength: 1
-        required: true
       tags:
       - cancel_subscription
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelSubscriptionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CancelSubscriptionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelSubscriptionRequest'
+        required: true
       security:
       - cookieAuth: []
       - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelSubscriptionSuccess'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelSubscriptionAndGenerateInvoiceSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelSubscriptionFailure'
+          description: ''
   /api/components/:
     get:
       operationId: components_list
@@ -221,7 +232,17 @@ paths:
       - OrganizationApiKeyAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCustomerAccessSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCustomerAccessFailure'
+          description: ''
   /api/customer_summary/:
     get:
       operationId: customer_summary_retrieve
@@ -932,7 +953,11 @@ paths:
       - OrganizationApiKeyAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIKeyCreateSuccess'
+          description: ''
   /api/period_metric_revenue/:
     get:
       operationId: period_metric_revenue_retrieve
@@ -1154,76 +1179,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/BillingPlan'
           description: ''
-    patch:
-      operationId: plans_partial_update
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      parameters:
-      - in: path
-        name: billing_plan_id
-        schema:
-          type: string
-        required: true
+  /api/register/:
+    post:
+      operationId: register_create
       tags:
-      - plans
+      - register
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedBillingPlan'
+              $ref: '#/components/schemas/Registration'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedBillingPlan'
+              $ref: '#/components/schemas/Registration'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedBillingPlan'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillingPlan'
-          description: ''
-    delete:
-      operationId: plans_destroy
-      description: A simple ViewSet for viewing and editing BillingPlans.
-      parameters:
-      - in: path
-        name: billing_plan_id
-        schema:
-          type: string
+              $ref: '#/components/schemas/Registration'
         required: true
-      tags:
-      - plans
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
-  /api/register/:
-    post:
-      operationId: register_create
-      parameters:
-      - in: query
-        name: register
-        schema:
-          $ref: '#/components/schemas/RegistrationDetail'
-        required: true
-      tags:
-      - register
       security:
       - cookieAuth: []
       - basicAuth: []
       - OrganizationApiKeyAuth: []
       - {}
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResponse'
+          description: ''
   /api/stripe/:
     get:
       operationId: stripe_retrieve
@@ -1236,19 +1220,45 @@ paths:
       - OrganizationApiKeyAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeConnectedResponse'
+          description: ''
     post:
       operationId: stripe_create
       description: Initialize Stripe after user inputs an API key.
       tags:
       - stripe
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StripeConnectRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StripeConnectRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StripeConnectRequest'
+        required: true
       security:
       - cookieAuth: []
       - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeImportResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeImportError'
+          description: ''
   /api/subscriptions/:
     get:
       operationId: subscriptions_list
@@ -1413,13 +1423,35 @@ paths:
       operationId: track_create
       tags:
       - track
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Event'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Event'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Event'
+        required: true
       security:
       - cookieAuth: []
       - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
-        '200':
-          description: No response body
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackEventSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackEventFailure'
+          description: ''
   /api/users/:
     get:
       operationId: users_list
@@ -1581,19 +1613,24 @@ paths:
           description: No response body
 components:
   schemas:
+    APIKeyCreateSuccess:
+      type: object
+      properties:
+        api_key:
+          type: string
+      required:
+      - api_key
     AggregationTypeEnum:
       enum:
       - count
       - sum
       - max
       - unique
+      - last
       type: string
     BillableMetric:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         event_name:
           type: string
           maxLength: 200
@@ -1603,21 +1640,22 @@ components:
           maxLength: 200
         aggregation_type:
           $ref: '#/components/schemas/AggregationTypeEnum'
-        carries_over:
-          type: boolean
         billable_metric_name:
           type: string
           maxLength: 200
+        event_type:
+          $ref: '#/components/schemas/EventTypeEnum'
+        stateful_aggregation_period:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/StatefulAggregationPeriodEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
       required:
       - event_name
-      - id
     BillingPlan:
       type: object
       properties:
-        time_created:
-          type: string
-          format: date-time
-          readOnly: true
         currency:
           type: string
           maxLength: 30
@@ -1645,20 +1683,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
       required:
-      - components
       - flat_rate
       - interval
       - name
       - pay_in_advance
-      - time_created
     BillingPlanRead:
       type: object
       properties:
-        time_created:
-          type: string
-          format: date
-          readOnly: true
         currency:
           type: string
           maxLength: 30
@@ -1686,17 +1724,68 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponentRead'
-        id:
-          type: integer
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        time_created:
+          type: string
+          format: date
           readOnly: true
       required:
       - components
       - flat_rate
-      - id
       - interval
       - name
       - pay_in_advance
       - time_created
+    BlankEnum:
+      enum:
+      - ''
+    CancelSubscriptionAndGenerateInvoiceSuccess:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusE96Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    CancelSubscriptionFailure:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status956Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    CancelSubscriptionRequest:
+      type: object
+      properties:
+        bill_now:
+          type: boolean
+          default: true
+        revoke_access:
+          type: boolean
+          default: false
+        subscription_uid:
+          type: string
+      required:
+      - subscription_uid
+    CancelSubscriptionSuccess:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusE96Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
     Customer:
       type: object
       properties:
@@ -1808,7 +1897,6 @@ components:
           maxLength: 255
         customer_id:
           type: string
-          readOnly: true
       required:
       - customer_id
       - event_name
@@ -1826,6 +1914,11 @@ components:
       required:
       - events
       - total_pages
+    EventTypeEnum:
+      enum:
+      - aggregation
+      - stateful
+      type: string
     Feature:
       type: object
       properties:
@@ -1838,6 +1931,29 @@ components:
           maxLength: 200
       required:
       - feature_name
+    GetCustomerAccessFailure:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status956Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    GetCustomerAccessSuccess:
+      type: object
+      properties:
+        access:
+          type: boolean
+        metric_usage:
+          type: number
+          format: double
+        metric_limit:
+          type: number
+          format: double
+      required:
+      - access
     IntervalEnum:
       enum:
       - week
@@ -1869,7 +1985,7 @@ components:
           format: uri
           nullable: true
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/InvoiceStatusEnum'
         payment_intent_id:
           type: string
           nullable: true
@@ -1895,12 +2011,22 @@ components:
       - organization
       - status
       - subscription
+    InvoiceStatusEnum:
+      enum:
+      - requires_payment_method
+      - requires_action
+      - processing
+      - succeeded
+      - draft
+      - organization_not_connected_to_stripe
+      - customer_not_connected_to_stripe
+      type: string
+    NullEnum:
+      enum:
+      - null
     PatchedBillableMetric:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         event_name:
           type: string
           maxLength: 200
@@ -1910,45 +2036,17 @@ components:
           maxLength: 200
         aggregation_type:
           $ref: '#/components/schemas/AggregationTypeEnum'
-        carries_over:
-          type: boolean
         billable_metric_name:
           type: string
           maxLength: 200
-    PatchedBillingPlan:
-      type: object
-      properties:
-        time_created:
-          type: string
-          format: date-time
-          readOnly: true
-        currency:
-          type: string
-          maxLength: 30
-        interval:
-          $ref: '#/components/schemas/IntervalEnum'
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        pay_in_advance:
-          type: boolean
-        billing_plan_id:
-          type: string
-          maxLength: 255
-        name:
-          type: string
-          maxLength: 200
-        description:
-          type: string
-          maxLength: 256
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
+        event_type:
+          $ref: '#/components/schemas/EventTypeEnum'
+        stateful_aggregation_period:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/StatefulAggregationPeriodEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
     PatchedCustomer:
       type: object
       properties:
@@ -2000,7 +2098,7 @@ components:
           format: uri
           nullable: true
         status:
-          $ref: '#/components/schemas/StatusEnum'
+          $ref: '#/components/schemas/InvoiceStatusEnum'
         payment_intent_id:
           type: string
           nullable: true
@@ -2020,8 +2118,8 @@ components:
     PatchedPlanComponent:
       type: object
       properties:
-        billable_metric:
-          type: integer
+        billable_metric_id:
+          type: string
         free_metric_units:
           type: number
           format: double
@@ -2193,8 +2291,8 @@ components:
     PlanComponent:
       type: object
       properties:
-        billable_metric:
-          type: integer
+        billable_metric_id:
+          type: string
         free_metric_units:
           type: number
           format: double
@@ -2228,7 +2326,7 @@ components:
           exclusiveMinimum: true
           nullable: true
       required:
-      - billable_metric
+      - billable_metric_id
     PlanComponentRead:
       type: object
       properties:
@@ -2266,12 +2364,15 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           nullable: true
-        id:
-          type: integer
-          readOnly: true
       required:
       - billable_metric
-      - id
+    Registration:
+      type: object
+      properties:
+        register:
+          $ref: '#/components/schemas/RegistrationDetail'
+      required:
+      - register
     RegistrationDetail:
       type: object
       properties:
@@ -2291,16 +2392,57 @@ components:
       - industry
       - password
       - username
-    StatusEnum:
+    RegistrationResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    StatefulAggregationPeriodEnum:
       enum:
-      - requires_payment_method
-      - requires_action
-      - processing
-      - succeeded
-      - draft
-      - organization_not_connected_to_stripe
-      - customer_not_connected_to_stripe
+      - day
+      - hour
       type: string
+    Status956Enum:
+      enum:
+      - error
+      type: string
+    StatusE96Enum:
+      enum:
+      - success
+      type: string
+    StripeConnectRequest:
+      type: object
+      properties:
+        authorization_code:
+          type: string
+      required:
+      - authorization_code
+    StripeConnectedResponse:
+      type: object
+      properties:
+        connected:
+          type: boolean
+      required:
+      - connected
+    StripeImportError:
+      type: object
+      properties:
+        success:
+          type: boolean
+        details:
+          type: string
+      required:
+      - details
+      - success
+    StripeImportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+      - success
     Subscription:
       type: object
       properties:
@@ -2345,6 +2487,36 @@ components:
       - billing_plan
       - customer
       - start_date
+    TrackEventFailure:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/TrackEventFailureSuccessEnum'
+        failed_events:
+          type: object
+          additionalProperties: {}
+      required:
+      - failed_events
+      - success
+    TrackEventFailureSuccessEnum:
+      enum:
+      - none
+      type: string
+    TrackEventSuccess:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/TrackEventSuccessSuccessEnum'
+        failed_events:
+          type: object
+          additionalProperties: {}
+      required:
+      - success
+    TrackEventSuccessSuccessEnum:
+      enum:
+      - all
+      - some
+      type: string
     User:
       type: object
       properties:
