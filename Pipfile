@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-celery = ">=5.2.7,<5.3"
 django = "==4.0.5"
 django-cors-headers = ">=3.13.0,<3.14"
 django-cryptography = ">=1.1.0,<1.2"
@@ -38,6 +37,7 @@ flower = "*"
 posthog = "*"
 python-decouple = "*"
 pytest-cov = "*"
+celery = {extras = ["redis"], version = "*"}
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"

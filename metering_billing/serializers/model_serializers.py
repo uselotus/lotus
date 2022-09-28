@@ -21,7 +21,15 @@ from metering_billing.models import (
 from metering_billing.permissions import HasUserAPIKey
 from rest_framework import serializers
 
+
 ## EXTRANEOUS SERIALIZERS
+class SlugRelatedLookupField(serializers.SlugRelatedField):
+    def get_queryset(self):
+        queryset = self.queryset
+        request = self.context.get("request", None)
+        organization = parse_organization(request)
+        queryset.filter(organization=organization)
+        return queryset
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -130,17 +138,31 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
         fields = (
-            "billable_metric",
+            "billable_metric_id",
             "free_metric_units",
             "cost_per_batch",
             "metric_units_per_batch",
             "max_metric_units",
         )
 
+    billable_metric_id = SlugRelatedLookupField(
+        slug_field="billable_metric_id",
+        queryset=BillableMetric.objects.all(),
+        read_only=False,
+        source="billable_metric",
+    )
 
-class PlanComponentReadSerializer(PlanComponentSerializer):
-    class Meta(PlanComponentSerializer.Meta):
-        fields = PlanComponentSerializer.Meta.fields + ("id",)
+
+class PlanComponentReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanComponent
+        fields = (
+            "billable_metric",
+            "free_metric_units",
+            "cost_per_batch",
+            "metric_units_per_batch",
+            "max_metric_units",
+        )
 
     billable_metric = BillableMetricSerializer()
 
@@ -159,9 +181,11 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "components",
+            "features",
         )
 
     components = PlanComponentSerializer(many=True)
+    features = FeatureSerializer(many=True)
 
     def create(self, validated_data):
         components_data = validated_data.pop("components")
@@ -185,13 +209,6 @@ class BillingPlanReadSerializer(BillingPlanSerializer):
 
 
 ## SUBSCRIPTION
-class SlugRelatedLookupField(serializers.SlugRelatedField):
-    def get_queryset(self):
-        queryset = self.queryset
-        request = self.context.get("request", None)
-        organization = parse_organization(request)
-        queryset.filter(organization=organization)
-        return queryset
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

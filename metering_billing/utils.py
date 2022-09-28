@@ -114,10 +114,10 @@ def calculate_per_period_pc_revenue_for_additive_metric(
     free_units_usage_left = max(free_units_usage - units_usage_before_query_start, 0)
     if time_period_agg == "date":
         plan_periods = list(dates_bwn_twodates(query_start, query_end))
-    elif time_period_agg == "month":
-        plan_periods = list(months_bwn_twodates(query_start, query_end))
-    elif time_period_agg == "year":
-        plan_periods = list(years_bwn_twodates(query_start, query_end))
+    else:
+        raise NotImplementedError(
+            f"Time period aggregation {time_period_agg} not supported"
+        )
     period_revenue_dict = {
         tc_q: {"revenue": Decimal(0), "usage_qty": 0} for tc_q in plan_periods
     }
@@ -176,10 +176,10 @@ def calculate_per_period_pc_revenue_for_cliff_metric(
     )
     if time_period_agg == "date":
         plan_periods = list(dates_bwn_twodates(query_start, query_end))
-    elif time_period_agg == "month":
-        plan_periods = list(months_bwn_twodates(query_start, query_end))
-    elif time_period_agg == "year":
-        plan_periods = list(years_bwn_twodates(query_start, query_end))
+    else:
+        raise NotImplementedError(
+            f"Time period aggregation {time_period_agg} not supported"
+        )
     period_revenue_dict = {
         tc_q: {"revenue": Decimal(0), "usage_qty": 0} for tc_q in plan_periods
     }
@@ -280,21 +280,19 @@ def calculate_stateful_pc_revenue(
     if stateful_agg_period != revenue_agg_period:
         all_periods = list(usage_revenue_dict.keys())
         if revenue_agg_period == "date":
-            agged_periods = set(x.date() for x in all_periods)
+            agged_periods = set(x.date for x in all_periods)
             agged_periods = {p: {"revenue": 0, "usage_qty": {}} for p in agged_periods}
-        elif revenue_agg_period == "month":
-            agged_periods = set(x.month() for x in all_periods)
-            agged_periods = {p: {"revenue": 0, "usage_qty": {}} for p in agged_periods}
-        elif revenue_agg_period == "year":
-            agged_periods = set(x.year() for x in all_periods)
-            agged_periods = {p: {"revenue": 0, "usage_qty": {}} for p in agged_periods}
+        else:
+            raise NotImplementedError(
+                f"Time period aggregation {revenue_agg_period} not supported"
+            )
         for period in all_periods:
             if revenue_agg_period == "date":
-                agged_period = period.date()
-            elif revenue_agg_period == "month":
-                agged_period = period.month()
-            elif revenue_agg_period == "year":
-                agged_period = period.year()
+                agged_period = period.date
+            else:
+                raise NotImplementedError(
+                    f"Time period aggregation {revenue_agg_period} not supported"
+                )
             agged_periods[agged_period]["revenue"] += usage_revenue_dict[period][
                 "revenue"
             ]
@@ -486,19 +484,23 @@ def make_all_decimals_floats(json):
 
 
 def years_bwn_twodates(start_date, end_date):
-    years_btwn = abs(relativedelta(start_date, end_date).years)
+    years_btwn = relativedelta(end_date, start_date).years
     for n in range(years_btwn + 1):
-        yield start_date + relativedelta(years=n)
+        yield (start_date + relativedelta(years=n)).year
 
 
 def months_bwn_twodates(start_date, end_date):
-    months_btwn = abs(relativedelta(start_date, end_date).months)
+    months_btwn = (
+        12 * relativedelta(end_date, start_date).years
+        + relativedelta(end_date, start_date).months
+    )
     for n in range(months_btwn + 1):
-        yield start_date + relativedelta(months=n)
+        next_date = start_date + relativedelta(months=n)
+        yield (next_date.year, next_date.month)
 
 
 def dates_bwn_twodates(start_date, end_date):
-    days_btwn = abs(relativedelta(start_date, end_date).days)
+    days_btwn = (end_date - start_date).days
     for n in range(days_btwn + 1):
         yield start_date + relativedelta(days=n)
 

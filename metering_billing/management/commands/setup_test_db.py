@@ -55,26 +55,26 @@ class Command(BaseCommand):
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=bm_e1_1,
-            free_metric_units=1000,
-            cost_per_batch=0.01,
+            free_metric_units=500,
+            cost_per_batch=0.25,
             metric_units_per_batch=5,
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=bm_e1_2,
-            free_metric_units=20_000,
-            cost_per_batch=0.005,
-            metric_units_per_batch=250,
+            free_metric_units=80_000,
+            cost_per_batch=0.08,
+            metric_units_per_batch=200,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=bm_e2_1,
             free_metric_units=100,
-            cost_per_batch=0.50,
+            cost_per_batch=1.25,
             metric_units_per_batch=1,
         )
         pc4 = PlanComponent.objects.create(
             billable_metric=bm_e2_2,
             free_metric_units=200,
-            cost_per_batch=75,
+            cost_per_batch=50,
             metric_units_per_batch=100,
         )
         bp = BillingPlan.objects.create(
@@ -130,7 +130,7 @@ class Command(BaseCommand):
                 (old_sub_start_time, old_sub_end_time),
                 (new_sub_start_time, new_sub_end_time),
             ]:
-                n = int(random.gauss(10_000, 500) // 1)
+                n = int(random.gauss(5_000, 500) // 1)
                 baker.make(
                     Event,
                     organization=organization,
@@ -169,7 +169,7 @@ def random_date(start, end, n):
 def gaussian_stacktrace_len(n):
     "Generate `n` stacktrace lengths with a gaussian distribution"
     for _ in range(n):
-        yield {"stacktrace_len": round(random.gauss(205, 15), 0)}
+        yield {"stacktrace_len": round(random.gauss(300, 15), 0)}
 
 
 def gaussian_latency(n):

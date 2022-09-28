@@ -169,7 +169,7 @@ class PeriodMetricRevenueView(APIView):
                         "total_revenue": Decimal(0),
                     }
             for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-                total_period_rev_dict = return_dict[f"total_revenue_period_{p_num}"]
+                total_period_rev = Decimal(0)
                 subs = (
                     Subscription.objects.filter(
                         Q(start_date__range=[p_start, p_end])
@@ -187,7 +187,7 @@ class PeriodMetricRevenueView(APIView):
                         sub.start_date if bp.pay_in_advance else sub.end_date
                     )
                     if flat_bill_date >= p_start and flat_bill_date <= p_end:
-                        total_period_rev_dict += bp.flat_rate.amount
+                        total_period_rev += bp.flat_rate.amount
                     for plan_component in bp.components.all():
                         billable_metric = plan_component.billable_metric
                         usage_cost_per_day = calculate_sub_pc_usage_revenue(
@@ -198,7 +198,7 @@ class PeriodMetricRevenueView(APIView):
                             sub.end_date,
                             p_start,
                             p_end,
-                            revenue_calc_period="day",
+                            revenue_calc_period="daily",
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
@@ -207,7 +207,8 @@ class PeriodMetricRevenueView(APIView):
                             usage_cost = Decimal(d["revenue"])
                             metric_dict["data"][str(date)] += usage_cost
                             metric_dict["total_revenue"] += usage_cost
-                            total_period_rev_dict += usage_cost
+                            total_period_rev += usage_cost
+                return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
             dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
@@ -429,8 +430,9 @@ class EventPreviewView(APIView):
         serializer.is_valid(raise_exception=True)
         page_number = serializer.validated_data.get("page")
         organization = parse_organization(request)
+        now = datetime.datetime.now(datetime.timezone.utc)
         events = (
-            Event.objects.filter(organization=organization)
+            Event.objects.filter(organization=organization, time_created__lt=now)
             .order_by("-time_created")
             .select_related("customer")
         )

@@ -186,7 +186,10 @@ class BillableMetric(models.Model):
     )
 
     def default_name(self):
-        name = self.event_type
+        if self.event_type == EVENT_CHOICES.aggregation:
+            name = "[agg]"
+        elif self.event_type == EVENT_CHOICES.stateful:
+            name = "[state]"
         name += " " + self.aggregation_type + " of"
         if self.property_name not in ["", " ", None]:
             name += " " + self.property_name + " of"
@@ -305,8 +308,8 @@ class BillingPlan(models.Model):
     pay_in_advance = models.BooleanField()
     name = models.CharField(max_length=200, unique=True)
     description = models.CharField(max_length=256, default=" ", blank=True)
-    components = models.ManyToManyField(PlanComponent, blank=True)
-    features = models.ManyToManyField(Feature, blank=True)
+    components = models.ManyToManyField(PlanComponent, null=True, blank=True)
+    features = models.ManyToManyField(Feature, null=True, blank=True)
 
     def __str__(self) -> str:
         return str(self.name)

@@ -23,6 +23,7 @@ services:
     command:  sh -c "./scripts/start_backend.prod.sh"
     depends_on:
       - db
+      - redis
 
   frontend:
     restart: always
@@ -55,6 +56,7 @@ services:
     depends_on:
       - redis
       - backend
+    restart: on-failure
 
   celery-beat:
     env_file:

@@ -4,14 +4,25 @@ import ssl
 from celery import Celery
 from django.conf import settings
 
+from lotus.settings import ON_HEROKU
+
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.settings")
 
-celery = Celery(
-    "lotus",
-    broker_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
-    redis_backend_use_ssl={"ssl_cert_reqs": ssl.CERT_NONE},
-)
+celery_kwargs = {}
+if ON_HEROKU:
+    print("WE SHOULD NOT BE HERE")
+    # See https://devcenter.heroku.com/articles/celery-heroku#using-redis-as-a-broker
+    # for more details
+    # Heroku Redis requires SSL
+    celery_kwargs["broker_use_ssl"] = {
+        "ssl_cert_reqs": ssl.CERT_NONE,
+    }
+    celery_kwargs["redis_backend_use_ssl"] = {
+        "ssl_cert_reqs": ssl.CERT_NONE,
+    }
+
+celery = Celery("lotus", **celery_kwargs)
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.
 # - namespace='CELERY' means all celery-related configuration keys
