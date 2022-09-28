@@ -3,7 +3,7 @@ import json
 import posthog
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from drf_spectacular.utils import extend_schema
 from metering_billing.models import Organization, User
@@ -11,7 +11,6 @@ from metering_billing.serializers.internal_serializers import RegistrationSerial
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
-from django.views.decorators.csrf import csrf_exempt
 
 
 @require_POST
@@ -47,7 +46,7 @@ def login_view(request):
         )
 
     login(request, user)
-    posthog.capture(user.username, event="succesful login")
+    posthog.capture(user.organization.compay_name, event="succesful login")
     return JsonResponse({"detail": "Successfully logged in."})
 
 
@@ -60,7 +59,7 @@ def logout_view(request):
         )
 
     logout(request)
-    posthog.capture(request.user.username, event="logout")
+    posthog.capture(request.user.organization.company_name, event="logout")
     return JsonResponse({"detail": "Successfully logged out."})
 
 
@@ -118,7 +117,7 @@ class RegisterView(APIView):
             organization=org,
         )
         posthog.capture(
-            reg_dict["username"],
+            org.company_name,
             event="register",
             properties={"company_name": reg_dict["company_name"]},
         )

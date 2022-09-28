@@ -108,7 +108,7 @@ class InitializeStripeView(APIView):
         organization.save()
 
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="connect_stripe_customers",
             properties={
                 "num_cust_added": n_cust_added,
@@ -360,7 +360,7 @@ class APIKeyCreate(APIView):
             name="new_api_key", organization=organization
         )
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="create_api_key",
             properties={},
         )
@@ -443,7 +443,7 @@ class EventPreviewView(APIView):
         serializer = EventPreviewSerializer(ret)
         if page_number == 1:
             posthog.capture(
-                request.user.username,
+                organization.company_name,
                 event="event_preview",
                 properties={
                     "num_events": len(ret["events"]),
@@ -482,7 +482,7 @@ class DraftInvoiceView(APIView):
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = InvoiceSerializer(invoices, many=True)
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="draft_invoice",
             properties={},
         )
@@ -526,7 +526,7 @@ class CancelSubscriptionView(APIView):
         sub.status = "canceled"
         sub.save()
         posthog.capture(
-            request.user.username,
+            organization.company_name,
             event="cancel_subscription",
             properties={},
         )
