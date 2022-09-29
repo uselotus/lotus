@@ -1,5 +1,6 @@
-import { Modal, Form, Input, Select, Checkbox, Tooltip } from "antd";
+import { Modal, Form, Input, Select, Radio, Tooltip } from "antd";
 import { MetricType } from "../types/metric-type";
+import { Fragment, useState } from "react";
 const { Option } = Select;
 
 export interface CreateMetricState extends MetricType {
@@ -13,10 +14,11 @@ const CreateMetricForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
+  const [eventType, setEventType] = useState("aggregation");
+  const [statefulAggType, setStatefulAggType] = useState("max");
 
   form.setFieldsValue({
     event_name: props.state.event_name,
-    aggregation_type: props.state.aggregation_type,
     property_name: props.state.property_name,
   });
 
@@ -25,6 +27,7 @@ const CreateMetricForm = (props: {
       visible={props.visible}
       title={props.state.title}
       okText="Create"
+      okType="default"
       cancelText="Cancel"
       onCancel={props.onCancel}
       onOk={() => {
@@ -53,31 +56,106 @@ const CreateMetricForm = (props: {
           <Input />
         </Form.Item>
         <Form.Item
-          name="aggregation_type"
-          label="Aggregation Type"
+          name="event_type"
+          label="Type"
           rules={[
             {
               required: true,
-              message: "Unique customer_id is required",
+              message: "Metric type is required",
             },
           ]}
         >
-          <Select defaultValue={"count"}>
-            <Option value="count">count</Option>
-            <Option value="unique">unique</Option>
-            <Option value="sum">sum</Option>
-            <Option value="max">max</Option>
-          </Select>
+          <Radio.Group
+            optionType="button"
+            buttonStyle="solid"
+            value={eventType}
+            defaultValue={eventType}
+            onChange={(e) => {
+              setEventType(e.target.value);
+            }}
+          >
+            <Radio value="aggregation">Aggregation</Radio>
+            <Radio value="stateful">Stateful</Radio>
+          </Radio.Group>
         </Form.Item>
         <Form.Item
           noStyle
           shouldUpdate={(prevValues, currentValues) =>
-            prevValues.aggregation_type !== currentValues.aggregation_type
+            prevValues.event_type !== currentValues.event_type
+          }
+        >
+          {({ getFieldValue }) =>
+            getFieldValue("event_type") === "aggregation" ? (
+              <Form.Item
+                name="aggregation_type"
+                label="Aggregation Type"
+                rules={[
+                  {
+                    required: true,
+                    message: "Aggregation type is required",
+                  },
+                ]}
+              >
+                <Select defaultValue={"count"}>
+                  <Option value="count">count</Option>
+                  <Option value="unique">unique</Option>
+                  <Option value="sum">sum</Option>
+                  <Option value="max">max</Option>
+                </Select>
+              </Form.Item>
+            ) : (
+              <Fragment>
+                <Form.Item
+                  name="aggregation_type"
+                  label="Aggregation Type"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Aggregation type is required",
+                    },
+                  ]}
+                >
+                  <Select
+                    value={statefulAggType}
+                    onChange={(e) => {
+                      setStatefulAggType(e);
+                    }}
+                    defaultValue={statefulAggType}
+                  >
+                    <Option value="max">max</Option>
+                    <Option value="last">last</Option>
+                  </Select>
+                </Form.Item>
+                <Form.Item
+                  name="stateful_aggregation_period"
+                  label="Period"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Period is required",
+                    },
+                  ]}
+                >
+                  <Select defaultValue={"day"}>
+                    <Option value="day">day</Option>
+                    <Option value="hour">hour</Option>
+                  </Select>
+                </Form.Item>
+              </Fragment>
+            )
+          }
+        </Form.Item>
+        <Form.Item
+          noStyle
+          shouldUpdate={(prevValues, currentValues) =>
+            prevValues.aggregation_type !== currentValues.aggregation_type ||
+            prevValues.event_type !== currentValues.event_type
           }
         >
           {({ getFieldValue }) =>
             getFieldValue("aggregation_type") === "sum" ||
             getFieldValue("aggregation_type") === "max" ||
+            getFieldValue("aggregation_type") === "last" ||
             getFieldValue("aggregation_type") == "unique" ? (
               <Form.Item
                 name="property_name"

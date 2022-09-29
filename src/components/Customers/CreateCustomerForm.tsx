@@ -25,6 +25,7 @@ const CreateCustomerForm = (props: {
       visible={props.visible}
       title={props.state.title}
       okText="Create"
+      okType="default"
       cancelText="Cancel"
       onCancel={props.onCancel}
       onOk={() => {
