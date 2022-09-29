@@ -2143,7 +2143,7 @@ components:
     PatchedPlanComponent:
       type: object
       properties:
-        event_name:
+        billable_metric_name:
           type: string
         free_metric_units:
           type: number
@@ -2316,7 +2316,7 @@ components:
     PlanComponent:
       type: object
       properties:
-        event_name:
+        billable_metric_name:
           type: string
         free_metric_units:
           type: number
@@ -2351,7 +2351,7 @@ components:
           exclusiveMinimum: true
           nullable: true
       required:
-      - event_name
+      - billable_metric_name
     PlanComponentRead:
       type: object
       properties:
