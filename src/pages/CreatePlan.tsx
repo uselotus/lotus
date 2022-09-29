@@ -8,7 +8,6 @@ import {
   InputNumber,
   PageHeader,
   List,
-  Radio,
   Divider,
 } from "antd";
 import { useEffect, useState } from "react";
@@ -23,8 +22,8 @@ import { Plan } from "../api/api";
 
 interface ComponentDisplay {
   metric: string;
-  cost_per_metric: number;
-  metric_amount_per_cost: number;
+  cost_per_batch: number;
+  metric_units_per_batch: number;
   free_amount: number;
 }
 
@@ -33,21 +32,17 @@ const CreatePlan = () => {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [form] = Form.useForm();
-  const [metricMap, setMetricMap] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
       const data: MetricNameType[] = res;
       if (data) {
-        const newmetricMap = new Map<string, number>();
         const metricList: string[] = [];
         for (let i = 0; i < data.length; i++) {
           if (typeof data[i].billable_metric_name !== undefined) {
             metricList.push(data[i].billable_metric_name);
-            newmetricMap.set(data[i].billable_metric_name, data[i].id);
           }
         }
-        setMetricMap(newmetricMap);
         setMetrics(metricList);
       }
     });
@@ -96,10 +91,11 @@ const CreatePlan = () => {
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              billable_metric: metricMap.get(components[i].metric),
-              cost_per_metric: components[i].cost_per_metric,
-              metric_amount_per_cost: components[i].metric_amount_per_cost,
-              free_metric_quantity: components[i].free_amount,
+              billable_metric_name: components[i].metric,
+              cost_per_batch: components[i].cost_per_batch,
+              metric_units_per_batch: components[i].metric_units_per_batch,
+              free_metric_units: components[i].free_amount,
+              max_metric_units: components[i].max_metric_units,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -215,8 +211,8 @@ const CreatePlan = () => {
                         <List.Item key={index} className="user">
                           <Card title={component.metric}>
                             <p>
-                              <b>Cost:</b> {component.cost_per_metric} per{" "}
-                              {component.metric_amount_per_cost} events{" "}
+                              <b>Cost:</b> {component.cost_per_batch} per{" "}
+                              {component.metric_units_per_batch} events{" "}
                             </p>
                             <br />
                             <p>

@@ -2,20 +2,19 @@ import base64
 import datetime
 import json
 import logging
-import time
 from datetime import timezone
-from re import S
 from typing import Dict, Union
 
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import EVENT_CACHE_FLUSH_COUNT
 from metering_billing.models import APIToken, Customer, Event
-from metering_billing.tasks import write_batch_events_to_db
+from metering_billing.serializers.internal_serializers import *
+from metering_billing.serializers.model_serializers import *
+from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
 from rest_framework.decorators import api_view
-
-from ..permissions import HasUserAPIKey
 
 logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
 
@@ -38,8 +37,6 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
             )
     else:
         event_data = request.body.decode("utf8")
-    if event_data is None:
-        return None
 
     return event_data
 
@@ -58,6 +55,27 @@ def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
 
 
 @csrf_exempt
+@extend_schema(
+    request=inline_serializer(
+        "BatchEventSerializer", fields={"batch": EventSerializer(many=True)}
+    ),
+    responses={
+        201: inline_serializer(
+            name="TrackEventSuccess",
+            fields={
+                "success": serializers.ChoiceField(choices=["all", "some"]),
+                "failed_events": serializers.DictField(required=False),
+            },
+        ),
+        400: inline_serializer(
+            name="TrackEventFailure",
+            fields={
+                "success": serializers.ChoiceField(choices=["none"]),
+                "failed_events": serializers.DictField(),
+            },
+        ),
+    },
+)
 @api_view(http_method_names=["POST"])
 def track_event(request):
     try:
@@ -72,7 +90,8 @@ def track_event(request):
     organization_pk = cache.get(prefix)
     if not organization_pk:
         api_token = APIToken.objects.filter(prefix=prefix).values_list(
-            "organization", "expiry_date"
+            "organization",
+            "expiry_date",
         )
         if len(api_token) == 0:
             return HttpResponseBadRequest("Invalid API key")
@@ -86,7 +105,6 @@ def track_event(request):
             ).total_seconds()
         )
         cache.set(prefix, organization_pk, timeout)
-
     event_list = load_event(request)
     if not event_list:
         return HttpResponseBadRequest("No data provided")
@@ -147,6 +165,7 @@ def track_event(request):
     # add to insert events
     cached_events.extend(events_to_insert.values())
     cached_idems.update(events_to_insert.keys())
+    posthog_capture_track.delay(organization_pk, len(event_list), len(events_to_insert))
     # check if its necessary to flush
     if len(cached_events) >= EVENT_CACHE_FLUSH_COUNT:
         write_batch_events_to_db.delay(cached_events)
@@ -155,7 +174,13 @@ def track_event(request):
         cached_idems = set()
     cache.set("events_to_insert", (cached_events, cached_idems, last_flush_dt), None)
 
-    if len(bad_events) > 0:
-        return JsonResponse(bad_events, status=400)
+    if len(bad_events) == len(event_list):
+        return JsonResponse(
+            {"success": "none", "failed_events": bad_events}, status=400
+        )
+    elif len(bad_events) > 0:
+        return JsonResponse(
+            {"success": "some", "failed_events": bad_events}, status=201
+        )
     else:
-        return JsonResponse({"success": True}, status=201)
+        return JsonResponse({"success": "all"}, status=201)

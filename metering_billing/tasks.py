@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import datetime
 from datetime import timezone
 
+import posthog
 import stripe
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
@@ -15,7 +16,7 @@ from lotus.settings import (
 )
 
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import Event, Invoice, Subscription
+from metering_billing.models import Event, Invoice, Organization, Subscription
 from metering_billing.views.views import import_stripe_customers
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -103,6 +104,16 @@ def update_invoice_status():
 def write_batch_events_to_db(events_list):
     event_obj_list = [Event(**dict(event)) for event in events_list]
     Event.objects.bulk_create(event_obj_list)
+
+
+@shared_task
+def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events):
+    org = Organization.objects.get(pk=organization_pk)
+    posthog.capture(
+        org.company_name,
+        "track_event",
+        {"sent_events": len_sent_events, "ingested_events": len_ingested_events},
+    )
 
 
 @shared_task

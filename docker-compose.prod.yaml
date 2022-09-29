@@ -5,7 +5,7 @@ services:
     expose:
       - 5432
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - ./pgdata_prod:/var/lib/postgresql/data
     env_file:
       - ./env/.env.prod
 
@@ -23,6 +23,8 @@ services:
     command:  sh -c "./scripts/start_backend.prod.sh"
     depends_on:
       - db
+      - redis
+    restart: on-failure
 
   frontend:
     restart: always
@@ -55,6 +57,7 @@ services:
     depends_on:
       - redis
       - backend
+    restart: on-failure
 
   celery-beat:
     env_file:
@@ -71,5 +74,5 @@ services:
       - redis
 
 volumes:
-  pgdata:
+  pgdata_prod:
   django_static_volume:

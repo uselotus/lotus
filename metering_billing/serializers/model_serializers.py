@@ -11,6 +11,7 @@ from metering_billing.models import (
     BillingPlan,
     Customer,
     Event,
+    Feature,
     Invoice,
     Organization,
     PlanComponent,
@@ -20,7 +21,15 @@ from metering_billing.models import (
 from metering_billing.permissions import HasUserAPIKey
 from rest_framework import serializers
 
+
 ## EXTRANEOUS SERIALIZERS
+class SlugRelatedLookupField(serializers.SlugRelatedField):
+    def get_queryset(self):
+        queryset = self.queryset
+        request = self.context.get("request", None)
+        organization = parse_organization(request)
+        queryset.filter(organization=organization)
+        return queryset
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -45,9 +54,10 @@ class EventSerializer(serializers.ModelSerializer):
             "customer_id",
         )
 
-    customer_id = serializers.SlugRelatedField(
-        read_only=True,
+    customer_id = SlugRelatedLookupField(
         slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        read_only=False,
         source="customer",
     )
 
@@ -85,12 +95,42 @@ class BillableMetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillableMetric
         fields = (
-            "id",
             "event_name",
             "property_name",
             "aggregation_type",
-            "carries_over",
             "billable_metric_name",
+            "aggregation_type",
+            "event_type",
+            "stateful_aggregation_period",
+        )
+
+    def validate(self, data):
+        if data["event_type"] == "stateful":
+            if not data["stateful_aggregation_period"]:
+                raise serializers.ValidationError(
+                    "Stateful metric aggregation period is required for stateful aggregation type"
+                )
+            allowed_agg_types = ["max", "last"]
+            if data["aggregation_type"] not in allowed_agg_types:
+                raise serializers.ValidationError(
+                    f"Stateful aggregation type must be one of {allowed_agg_types}, selected {data['aggregation_type']}"
+                )
+        elif data["event_type"] == "aggregation":
+            allowed_agg_types = ["sum", "count", "unique", "max"]
+            if data["aggregation_type"] not in allowed_agg_types:
+                raise serializers.ValidationError(
+                    f"Aggregation metric aggregation type must be one of {allowed_agg_types}, selected {data['aggregation_type']}"
+                )
+        return data
+
+
+## FEATURE
+class FeatureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feature
+        fields = (
+            "feature_name",
+            "feature_description",
         )
 
 
@@ -99,17 +139,31 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
         fields = (
-            "billable_metric",
-            "free_metric_quantity",
-            "cost_per_metric",
-            "metric_amount_per_cost",
-            "max_amount",
+            "billable_metric_name",
+            "free_metric_units",
+            "cost_per_batch",
+            "metric_units_per_batch",
+            "max_metric_units",
         )
 
+    billable_metric_name = SlugRelatedLookupField(
+        slug_field="billable_metric_name",
+        queryset=BillableMetric.objects.all(),
+        read_only=False,
+        source="billable_metric",
+    )
 
-class PlanComponentReadSerializer(PlanComponentSerializer):
-    class Meta(PlanComponentSerializer.Meta):
-        fields = PlanComponentSerializer.Meta.fields + ("id",)
+
+class PlanComponentReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanComponent
+        fields = (
+            "billable_metric",
+            "free_metric_units",
+            "cost_per_batch",
+            "metric_units_per_batch",
+            "max_metric_units",
+        )
 
     billable_metric = BillableMetricSerializer()
 
@@ -119,7 +173,6 @@ class BillingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillingPlan
         fields = (
-            "time_created",
             "currency",
             "interval",
             "flat_rate",
@@ -128,23 +181,72 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "components",
+            "features",
         )
 
-    components = PlanComponentSerializer(many=True)
+    components = PlanComponentSerializer(many=True, allow_null=True, required=False)
+    features = FeatureSerializer(many=True, allow_null=True, required=False)
 
     def create(self, validated_data):
-        components_data = validated_data.pop("components")
+        components_data = validated_data.pop("components", [])
+        features_data = validated_data.pop("features", [])
         billing_plan = BillingPlan.objects.create(**validated_data)
         for component_data in components_data:
             pc, _ = PlanComponent.objects.get_or_create(**component_data)
             billing_plan.components.add(pc)
+        for feature_data in features_data:
+            f, _ = Feature.objects.get_or_create(**feature_data)
+            billing_plan.features.add(f)
         billing_plan.save()
         return billing_plan
 
 
+class BillingPlanUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillingPlan
+        fields = (
+            "currency",
+            "flat_rate",
+            "pay_in_advance",
+            "billing_plan_id",
+            "name",
+            "description",
+            "components",
+            "features",
+        )
+
+    components = PlanComponentSerializer(many=True, allow_null=True, required=False)
+    features = FeatureSerializer(many=True, allow_null=True, required=False)
+
+    def update(self, instance, validated_data):
+        instance.currency = validated_data.get("currency", instance.currency)
+        instance.flat_rate = validated_data.get("flat_rate", instance.content)
+        instance.pay_in_advance = validated_data.get(
+            "pay_in_advance", instance.pay_in_advance
+        )
+        instance.billing_plan_id = validated_data.get(
+            "billing_plan_id", instance.billing_plan_id
+        )
+        instance.name = validated_data.get("name", instance.name)
+        instance.description = validated_data.get("description", instance.description)
+        # deal w many to many
+        components_data = validated_data.get("components", [])
+        features_data = validated_data.get("features", [])
+        instance.components.clear()
+        instance.features.clear()
+        for component_data in components_data:
+            pc, _ = PlanComponent.objects.get_or_create(**component_data)
+            instance.components.add(pc)
+        for feature_data in features_data:
+            f, _ = Feature.objects.get_or_create(**feature_data)
+            instance.features.add(f)
+        instance.save()
+        return instance
+
+
 class BillingPlanReadSerializer(BillingPlanSerializer):
     class Meta(BillingPlanSerializer.Meta):
-        fields = BillingPlanSerializer.Meta.fields + ("id",)
+        fields = BillingPlanSerializer.Meta.fields + ("time_created",)
 
     components = PlanComponentReadSerializer(many=True)
     time_created = serializers.SerializerMethodField()
@@ -154,13 +256,6 @@ class BillingPlanReadSerializer(BillingPlanSerializer):
 
 
 ## SUBSCRIPTION
-class SlugRelatedLookupField(serializers.SlugRelatedField):
-    def get_queryset(self):
-        queryset = self.queryset
-        request = self.context.get("request", None)
-        organization = parse_organization(request)
-        queryset.filter(organization=organization)
-        return queryset
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):

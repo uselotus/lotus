@@ -22,17 +22,18 @@ export interface CreatePlanType {
 }
 
 export interface CreateComponent {
-  billable_metric?: number;
-  free_metric_quantity: number;
-  cost_per_metric: number;
-  metric_amount_per_cost: number;
+  billable_metric_name?: string;
+  free_metric_units: number;
+  cost_per_batch: number;
+  metric_units_per_batch: number;
+  max_metric_units: number;
 }
 
 export interface Component {
   billable_metric: MetricType;
-  free_metric_quantity: string;
-  cost_per_metric: string;
-  metric_amount_per_cost: string;
+  free_metric_units: string;
+  cost_per_batch: string;
+  metric_units_per_batch: string;
   id: number;
 }
 export interface PlanDisplay {

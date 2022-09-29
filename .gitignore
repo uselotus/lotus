@@ -176,7 +176,8 @@ node_modules
 .DS_Store
 
 pgdata/
+pgdata*
 pgdata_dev/
 
 !env/.env.dev.example
-!env/.env.prod.examplex
+!env/.env.prod.example

@@ -70,9 +70,9 @@ def subscription_test_common_setup(
         plan_component_set = baker.make(
             PlanComponent,
             billable_metric=itertools.cycle(metric_set),
-            free_metric_quantity=itertools.cycle([50, 0, 1]),
-            cost_per_metric=itertools.cycle([5, 0.05, 2]),
-            metric_amount_per_cost=itertools.cycle([100, 1, 1]),
+            free_metric_units=itertools.cycle([50, 0, 1]),
+            cost_per_batch=itertools.cycle([5, 0.05, 2]),
+            metric_units_per_batch=itertools.cycle([100, 1, 1]),
             _quantity=3,
         )
         setup_dict["plan_components"] = plan_component_set

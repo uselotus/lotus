@@ -8,6 +8,7 @@ from metering_billing.models import (
     BillableMetric,
     BillingPlan,
     Customer,
+    Feature,
     Invoice,
     PlanComponent,
     Subscription,
@@ -19,7 +20,9 @@ from metering_billing.serializers.model_serializers import (
     BillableMetricSerializer,
     BillingPlanReadSerializer,
     BillingPlanSerializer,
+    BillingPlanUpdateSerializer,
     CustomerSerializer,
+    FeatureSerializer,
     InvoiceSerializer,
     PlanComponentReadSerializer,
     PlanComponentSerializer,
@@ -129,6 +132,32 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         return response
 
 
+class FeatureViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing Features.
+    """
+
+    serializer_class = FeatureSerializer
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    def get_queryset(self):
+        return Feature.objects.all()
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_feature",
+                properties={},
+            )
+        return response
+
+
 class PlanComponentViewSet(viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Plan components.
@@ -167,10 +196,13 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "billing_plan_id"
+    http_method_names = ["get", "post", "head", "put"]
 
     def get_serializer_class(self):
         if self.action in ["list", "retrieve"]:
             return BillingPlanReadSerializer
+        elif self.update == "create":
+            return BillingPlanUpdateSerializer
         else:
             return BillingPlanSerializer
 

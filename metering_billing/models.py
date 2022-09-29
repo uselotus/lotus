@@ -19,6 +19,7 @@ class AGGREGATION_TYPES(object):
     SUM = "sum"
     MAX = "max"
     UNIQUE = "unique"
+    LAST = "last"
 
 
 AGGREGATION_CHOICES = Choices(
@@ -26,6 +27,7 @@ AGGREGATION_CHOICES = Choices(
     (AGGREGATION_TYPES.SUM, _("Sum")),
     (AGGREGATION_TYPES.MAX, _("Max")),
     (AGGREGATION_TYPES.UNIQUE, _("Unique")),
+    (AGGREGATION_TYPES.LAST, _("Last")),
 )
 
 
@@ -53,12 +55,14 @@ INTERVAL_CHOICES = Choices(
 )
 
 
-class STATE_LOG_FREQ_DUR_TYPES(object):
+class STATEFUL_AGG_PERIOD_TYPES(object):
     DAY = "day"
+    HOUR = "hour"
 
 
-STATE_LOG_FREQ_DUR_CHOICES = Choices(
-    (STATE_LOG_FREQ_DUR_TYPES.DAY, _("Day")),
+STATEFUL_AGG_PERIOD_CHOICES = Choices(
+    (STATEFUL_AGG_PERIOD_TYPES.DAY, _("Day")),
+    (STATEFUL_AGG_PERIOD_TYPES.HOUR, _("Hour")),
 )
 
 
@@ -157,7 +161,6 @@ class BillableMetric(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
     property_name = models.CharField(max_length=200, blank=True, null=True)
-    carries_over = models.BooleanField(default=False)
     aggregation_type = models.CharField(
         max_length=10,
         choices=AGGREGATION_CHOICES,
@@ -172,35 +175,31 @@ class BillableMetric(models.Model):
         blank=False,
         null=False,
     )
-    stateful_freq_num = models.IntegerField(default=1, blank=True, null=True)
-    stateful_freq_unit = models.CharField(
+    stateful_aggregation_period = models.CharField(
         max_length=20,
-        choices=STATE_LOG_FREQ_DUR_CHOICES,
+        choices=STATEFUL_AGG_PERIOD_CHOICES,
         blank=True,
         null=True,
     )
     billable_metric_name = models.CharField(
-        max_length=200, null=False, blank=True, default=uuid.uuid4
+        max_length=200, null=False, blank=True, default=""
     )
 
     def default_name(self):
-        if self.aggregation_type == AGGREGATION_TYPES.COUNT:
-            return str(self.aggregation_type) + " of " + str(self.event_name)
-        else:
-            return (
-                str(self.aggregation_type)
-                + " of "
-                + str(self.property_name)
-                + " : "
-                + str(self.event_name)
-            )
+        if self.event_type == EVENT_CHOICES.aggregation:
+            name = "[agg]"
+        elif self.event_type == EVENT_CHOICES.stateful:
+            name = "[state]"
+        name += " " + self.aggregation_type + " of"
+        if self.property_name not in ["", " ", None]:
+            name += " " + self.property_name + " of"
+        name += " " + self.event_name
+        if self.stateful_aggregation_period:
+            name += " per " + self.stateful_aggregation_period
+        return name[:200]
 
     def save(self, *args, **kwargs):
-        if (
-            not self.billable_metric_name
-            or self.billable_metric_name == ""
-            or self.billable_metric_name == " "
-        ):
+        if self.billable_metric_name in ["", " ", None]:
             self.billable_metric_name = self.default_name()
         super().save(*args, **kwargs)
 
@@ -213,13 +212,37 @@ class BillableMetric(models.Model):
                     "event_name",
                     "aggregation_type",
                     "property_name",
+                    "event_type",
+                    "stateful_aggregation_period",
                 ],
-                name="unique_with_property_name",
+                name="unique_with_property_name_and_sap",
             ),
             UniqueConstraint(
-                fields=["organization", "event_name", "aggregation_type"],
+                fields=[
+                    "organization",
+                    "event_name",
+                    "aggregation_type",
+                    "event_type",
+                    "stateful_aggregation_period",
+                ],
                 condition=Q(property_name=None),
-                name="unique_without_property_name",
+                name="unique_without_property_name_with_sap",
+            ),
+            UniqueConstraint(
+                fields=[
+                    "organization",
+                    "event_name",
+                    "aggregation_type",
+                    "event_type",
+                    "property_name",
+                ],
+                condition=Q(stateful_aggregation_period=None),
+                name="unique_with_property_name_without_sap",
+            ),
+            UniqueConstraint(
+                fields=["organization", "event_name", "aggregation_type", "event_type"],
+                condition=Q(stateful_aggregation_period=None) & Q(property_name=None),
+                name="unique_without_property_name_without_sap",
             ),
         ]
 
@@ -233,22 +256,34 @@ class BillableMetric(models.Model):
 class PlanComponent(models.Model):
     billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
 
-    free_metric_quantity = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0
+    free_metric_units = models.DecimalField(
+        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
-    cost_per_metric = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD"
+    cost_per_batch = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD", blank=True, null=True
     )
-    metric_amount_per_cost = models.DecimalField(
-        decimal_places=10, max_digits=20, default=1.0
+    metric_units_per_batch = models.DecimalField(
+        decimal_places=10, max_digits=20, blank=True, null=True
     )
 
-    max_amount = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
+    max_metric_units = models.DecimalField(
+        decimal_places=10, max_digits=20, blank=True, null=True
     )
 
     def __str__(self):
         return str(self.billable_metric)
+
+
+class Feature(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    feature_name = models.CharField(max_length=200, null=False)
+    feature_description = models.CharField(max_length=200, blank=True, null=True)
+
+    class Meta:
+        unique_together = ("organization", "feature_name")
+
+    def __str__(self):
+        return str(self.feature_name)
 
 
 class BillingPlan(models.Model):
@@ -273,7 +308,8 @@ class BillingPlan(models.Model):
     pay_in_advance = models.BooleanField()
     name = models.CharField(max_length=200, unique=True)
     description = models.CharField(max_length=256, default=" ", blank=True)
-    components = models.ManyToManyField(PlanComponent, blank=True)
+    components = models.ManyToManyField(PlanComponent, null=True, blank=True)
+    features = models.ManyToManyField(Feature, null=True, blank=True)
 
     def __str__(self) -> str:
         return str(self.name)

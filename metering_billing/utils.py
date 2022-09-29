@@ -1,5 +1,7 @@
 import collections
+import datetime
 import math
+from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 from dateutil import parser
@@ -14,6 +16,16 @@ from metering_billing.serializers.model_serializers import (
     PlanComponentReadSerializer,
 )
 
+rev_calc_to_agg_keyword = {
+    "daily": "date",
+    "monthly": "month",
+    "yearly": "year",
+}
+
+stateful_agg_period_to_agg_keyword = {
+    "day": "date",
+    "hour": "hour",
+}
 
 # DAILY USAGE + REVENUE METHODS
 def get_metric_usage(
@@ -22,7 +34,6 @@ def get_metric_usage(
     query_end_date=None,
     customer=None,
     time_period_agg=None,
-    time_period_annotation=None,
 ):
     filter_kwargs = {
         "organization": metric.organization,
@@ -43,10 +54,6 @@ def get_metric_usage(
     # do it day-by-day, or aggregated over the query period
     if time_period_agg:
         values_kwargs["time_created_quantized"] = F(f"time_created__{time_period_agg}")
-    if time_period_annotation:
-        annotate_kwargs["time_created_quantized"] = F(
-            f"time_created__{time_period_annotation}"
-        )
     # try filtering by the metric's desired property_name
     if metric.property_name is not None and metric.property_name != "":
         filter_kwargs["properties__has_key"] = metric.property_name
@@ -77,23 +84,25 @@ def get_metric_usage(
     return usage_summary
 
 
-def calculate_plan_component_revenue(plan_component, units_usage):
-    subtotal_usage = max(units_usage - plan_component.free_metric_quantity, 0)
-    metric_batches = math.ceil(subtotal_usage / plan_component.metric_amount_per_cost)
-    subtotal_cost = (metric_batches * plan_component.cost_per_metric).amount
+def calculate_total_pc_revenue(plan_component, units_usage):
+    if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
+        return 0
+    subtotal_usage = max(units_usage - plan_component.free_metric_units, 0)
+    metric_batches = math.ceil(subtotal_usage / plan_component.metric_units_per_batch)
+    subtotal_cost = (metric_batches * plan_component.cost_per_batch).amount
     return subtotal_cost
 
 
-def calculate_daily_pc_revenue_for_additive_metric(
-    plan_component, units_usage_per_day, query_start, query_end
+def calculate_per_period_pc_revenue_for_additive_metric(
+    plan_component, units_usage_per_day, query_start, query_end, time_period_agg
 ):
-    days_before_query_start = list(
+    usage_before_query_start = list(
         x["usage_qty"]
         for x in units_usage_per_day
         if x["time_created_quantized"] < query_start
     )
     units_usage_before_query_start = (
-        sum(days_before_query_start) if len(days_before_query_start) > 0 else 0
+        sum(usage_before_query_start) if len(usage_before_query_start) > 0 else 0
     )
     units_usage_query = [
         (x["usage_qty"], x["time_created_quantized"])
@@ -101,45 +110,55 @@ def calculate_daily_pc_revenue_for_additive_metric(
         if x["time_created_quantized"] >= query_start
         and x["time_created_quantized"] <= query_end
     ]
-    free_units_usage = plan_component.free_metric_quantity
+    free_units_usage = plan_component.free_metric_units
     free_units_usage_left = max(free_units_usage - units_usage_before_query_start, 0)
-    day_revenue_dict = {
-        x[1]: {"revenue": Decimal(0), "usage_qty": x[0]} for x in units_usage_query
+    if time_period_agg == "date":
+        plan_periods = list(dates_bwn_twodates(query_start, query_end))
+    else:
+        raise NotImplementedError(
+            f"Time period aggregation {time_period_agg} not supported"
+        )
+    period_revenue_dict = {
+        tc_q: {"revenue": Decimal(0), "usage_qty": 0} for tc_q in plan_periods
     }
+    for usg_qty, tc_q in units_usage_query:
+        period_revenue_dict[tc_q]["usage_qty"] += usg_qty
+    if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
+        return period_revenue_dict
     remainder_billable_units = 0
-    for qty, date in units_usage_query:
+    for qty, tc_q in units_usage_query:
         qty = Decimal(qty)
         billable_units = max(qty - free_units_usage_left + remainder_billable_units, 0)
-        billable_batches = billable_units // plan_component.metric_amount_per_cost
+        billable_batches = billable_units // plan_component.metric_units_per_batch
         remainder_billable_units = (
-            billable_units - billable_batches * plan_component.metric_amount_per_cost
+            billable_units - billable_batches * plan_component.metric_units_per_batch
         )
         free_units_usage_left = max(0, free_units_usage_left - qty)
-        usage_revenue = (billable_batches * plan_component.cost_per_metric).amount
-        day_revenue_dict[date]["revenue"] = usage_revenue
-    return day_revenue_dict
+        usage_revenue = (billable_batches * plan_component.cost_per_batch).amount
+        period_revenue_dict[tc_q]["revenue"] = usage_revenue
+    return period_revenue_dict
 
 
-def calculate_daily_pc_revenue_for_cliff_metric(
-    plan_component, units_usage_per_day, query_start, query_end
+def calculate_per_period_pc_revenue_for_cliff_metric(
+    plan_component, units_usage_per_day, query_start, query_end, time_period_agg
 ):
     # determine what the maximum usage was IN the plan, but OUTSIDE the query
-    days_before_query_start = list(
+    periods_before_query_start = list(
         x["usage_qty"]
         for x in units_usage_per_day
         if x["time_created_quantized"] < query_start
     )
     units_usage_before_query_start = (
-        max(days_before_query_start) if len(days_before_query_start) > 0 else 0
+        max(periods_before_query_start) if len(periods_before_query_start) > 0 else 0
     )
     units_usage_before_query_start = Decimal(units_usage_before_query_start)
-    days_after_query_end = list(
+    periods_after_query_end = list(
         x["usage_qty"]
         for x in units_usage_per_day
         if x["time_created_quantized"] > query_end
     )
     units_usage_after_query_end = (
-        max(days_after_query_end) if len(days_after_query_end) > 0 else 0
+        max(periods_after_query_end) if len(periods_after_query_end) > 0 else 0
     )
     units_usage_after_query_end = Decimal(units_usage_after_query_end)
     max_units_usage_outside_query = max(
@@ -155,43 +174,61 @@ def calculate_daily_pc_revenue_for_cliff_metric(
     max_units_usage_query = (
         max(x[0] for x in units_usage_query) if len(units_usage_query) > 0 else 0
     )
-    day_revenue_dict = {
-        x[1]: {"revenue": Decimal(0), "usage_qty": x[0]} for x in units_usage_query
+    if time_period_agg == "date":
+        plan_periods = list(dates_bwn_twodates(query_start, query_end))
+    else:
+        raise NotImplementedError(
+            f"Time period aggregation {time_period_agg} not supported"
+        )
+    period_revenue_dict = {
+        tc_q: {"revenue": Decimal(0), "usage_qty": 0} for tc_q in plan_periods
     }
+    for usg_qty, tc_q in units_usage_query:
+        period_revenue_dict[tc_q]["usage_qty"] += usg_qty
     if (
         max_units_usage_query < max_units_usage_outside_query
         or max_units_usage_query == 0
+        or plan_component.cost_per_batch == 0
+        or plan_component.cost_per_batch is None
     ):
-        return day_revenue_dict
-    for qty, date in units_usage_query:
+        return period_revenue_dict
+    for qty, tc_q in units_usage_query:
         qty = Decimal(qty)
         if qty > max_units_usage_outside_query and qty == max_units_usage_query:
-            free_units_usage = plan_component.free_metric_quantity
+            free_units_usage = plan_component.free_metric_units
             metric_batches = math.ceil(
-                (qty - free_units_usage) / plan_component.metric_amount_per_cost
+                (qty - free_units_usage) / plan_component.metric_units_per_batch
             )
-            usage_revenue = (metric_batches * plan_component.cost_per_metric).amount
-            day_revenue_dict[date]["revenue"] = usage_revenue
+            usage_revenue = (metric_batches * plan_component.cost_per_batch).amount
+            period_revenue_dict[tc_q]["revenue"] = usage_revenue
             break
-    return day_revenue_dict
+    return period_revenue_dict
 
 
 def calculate_stateful_pc_revenue(
-    plan_component, units_usage, plan_start_date, plan_end_date, customer
+    plan_component,
+    units_usage,
+    plan_start_date,
+    plan_end_date,
+    customer,
+    stateful_agg_period,
+    revenue_agg_period,
 ):
     metric = plan_component.billable_metric
-    plan_dates = list(dates_bwn_twodates(plan_start_date, plan_end_date))
-    usage_revenue_dict = {str(x): {"usage": 0, "revenue": 0} for x in plan_dates}
+    if stateful_agg_period == "date":
+        plan_periods = list(dates_bwn_twodates(plan_start_date, plan_end_date))
+    elif stateful_agg_period == "hour":
+        plan_periods = list(hours_bwn_twodates(plan_start_date, plan_end_date))
+    usage_revenue_dict = {x: {"usage": 0, "revenue": 0} for x in plan_periods}
     # sort all the events by date
-    qs_dates = {}
+    qs_periods = {}
     for x in units_usage:
-        tc = str(x["time_created_quantized"])
-        if tc not in qs_dates:
-            qs_dates[tc] = []
-        qs_dates[tc].append(x)
-    # if the plan carries over, we need to add the last usage from the previous period
-    last_event = None
-    if plan_component.billable_metric.carries_over:
+        tc = x["time_created_quantized"]
+        if tc not in qs_periods:
+            qs_periods[tc] = []
+        qs_periods[tc].append(x)
+    # sicne stateful metrics carry over, we need to add the last usage from the previous period
+    try:
         filter_kwargs = {
             "organization": metric.organization,
             "event_name": metric.event_name,
@@ -203,29 +240,67 @@ def calculate_stateful_pc_revenue(
         last_event = (
             Event.objects.filter(**filter_kwargs).order_by("-time_created").first()
         )
+    except Event.DoesNotExist:
+        last_event = None
     # for each day, calculate the usage and revenue
-    for date in sorted(usage_revenue_dict.keys()):
+    for period in sorted(usage_revenue_dict.keys()):
         # optionally add the "last" event, and calculate effective usage
-        date_events = qs_dates.get(date, [])
-        if last_event is not None and len(date_events) == 0:
-            date_events.append(last_event)
-        usage = max([x["usage_qty"] for x in date_events], default=0)
-        # calculate revenue
-        free_units_usage = plan_component.free_metric_quantity
-        metric_batches = math.ceil(
-            (max(usage - free_units_usage, 0)) / plan_component.metric_amount_per_cost
+        period_events = qs_periods.get(period, [])
+        if last_event is not None and len(period_events) == 0:
+            period_events.append(last_event)
+        period_events_ordered_asc = sorted(
+            period_events, key=lambda x: x["time_created_quantized"]
         )
-        revenue = (metric_batches * plan_component.cost_per_metric).amount
+        if metric.aggregation_type == "max":
+            usage = max([x["usage_qty"] for x in period_events], default=0)
+        elif metric.aggregation_type == "last":
+            usage = (
+                period_events_ordered_asc[-1]["usage_qty"]
+                if len(period_events_ordered_asc) > 0
+                else 0
+            )
+        # calculate revenue
+        if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
+            revenue = 0
+        else:
+            free_units_usage = plan_component.free_metric_units
+            metric_batches = math.ceil(
+                (max(usage - free_units_usage, 0))
+                / plan_component.metric_units_per_batch
+            )
+            revenue = (metric_batches * plan_component.cost_per_batch).amount
         # add revenue and usage to the dict
-        usage_revenue_dict[date] = {
+        usage_revenue_dict[period] = {
             "revenue": revenue,
             "usage_qty": usage,
         }
         # update the last event
-        if len(date_events) > 0:
-            last_event = sorted(date_events, key=lambda x: x["time_created_quantized"])[
-                -1
+        if len(period_events_ordered_asc) > 0:
+            last_event = period_events_ordered_asc[-1]
+    if stateful_agg_period != revenue_agg_period:
+        all_periods = list(usage_revenue_dict.keys())
+        if revenue_agg_period == "date":
+            agged_periods = set(x.date for x in all_periods)
+            agged_periods = {p: {"revenue": 0, "usage_qty": {}} for p in agged_periods}
+        else:
+            raise NotImplementedError(
+                f"Time period aggregation {revenue_agg_period} not supported"
+            )
+        for period in all_periods:
+            if revenue_agg_period == "date":
+                agged_period = period.date
+            else:
+                raise NotImplementedError(
+                    f"Time period aggregation {revenue_agg_period} not supported"
+                )
+            agged_periods[agged_period]["revenue"] += usage_revenue_dict[period][
+                "revenue"
             ]
+            agged_periods[agged_period]["usage_qty"][period] = usage_revenue_dict[
+                period
+            ]["usage_qty"]
+        usage_revenue_dict = agged_periods
+    usage_revenue_dict = {str(k): v for k, v in usage_revenue_dict.items()}
     return usage_revenue_dict
 
 
@@ -237,19 +312,26 @@ def calculate_pc_usage_rev_for_stateful_metric(
     plan_end_date,
     query_start,
     query_end,
-    time_period_agg,
-    time_period_annotation,
+    revenue_calc_period,
 ):
+    stateful_agg_p = billable_metric.stateful_aggregation_period
+    stateful_agg_p = stateful_agg_period_to_agg_keyword[stateful_agg_p]
     units_usage = get_metric_usage(
         billable_metric,
         query_start_date=query_start,
         query_end_date=query_end,
         customer=customer,
-        time_period_agg=time_period_agg,
-        time_period_annotation=time_period_annotation,
+        time_period_agg=stateful_agg_p,
     )
+    revenue_period_agg = rev_calc_to_agg_keyword.get(revenue_calc_period)
     usage_revenue_dict = calculate_stateful_pc_revenue(
-        plan_component, units_usage, plan_start_date, plan_end_date, customer
+        plan_component,
+        units_usage,
+        plan_start_date,
+        plan_end_date,
+        customer,
+        stateful_agg_period=stateful_agg_p,
+        revenue_agg_period=revenue_period_agg,
     )
     return usage_revenue_dict
 
@@ -262,33 +344,31 @@ def calculate_pc_usage_rev_for_aggregation_metric(
     plan_end_date,
     query_start,
     query_end,
-    time_period_agg,
-    time_period_annotation,
+    revenue_calc_period,
 ):
+    time_period_agg = rev_calc_to_agg_keyword.get(revenue_calc_period)
     units_usage = get_metric_usage(
         billable_metric,
         query_start_date=plan_start_date,
         query_end_date=plan_end_date,
         customer=customer,
         time_period_agg=time_period_agg,
-        time_period_annotation=time_period_annotation,
     )
-    if time_period_agg == "date":
+    if revenue_calc_period is not None:
         if billable_metric.aggregation_type == "max":
-            usage_revenue_dict = calculate_daily_pc_revenue_for_cliff_metric(
-                plan_component, units_usage, query_start, query_end
+            usage_revenue_dict = calculate_per_period_pc_revenue_for_cliff_metric(
+                plan_component, units_usage, query_start, query_end, time_period_agg
             )
         else:
-            usage_revenue_dict = calculate_daily_pc_revenue_for_additive_metric(
-                plan_component, units_usage, query_start, query_end
+            usage_revenue_dict = calculate_per_period_pc_revenue_for_additive_metric(
+                plan_component, units_usage, query_start, query_end, time_period_agg
             )
     else:
-        # this means this plan component is not recurring, and we want usage + revenue
-        # only during the plan
+        # this mean we only care about total revenue, don't need to break it out by x
         assert len(units_usage) <= 1, "Shouldn't have more than one row of usage"
         usg = units_usage[0]["usage_qty"] if len(units_usage) > 0 else 0
         usage_revenue_dict = {"usage_qty": usg, "revenue": 0}
-        revenue = calculate_plan_component_revenue(
+        revenue = calculate_total_pc_revenue(
             plan_component, usage_revenue_dict["usage_qty"]
         )
         usage_revenue_dict["revenue"] = revenue
@@ -303,9 +383,12 @@ def calculate_sub_pc_usage_revenue(
     plan_end_date,
     query_start=None,
     query_end=None,
-    time_period_agg=None,
-    time_period_annotation=None,
+    revenue_calc_period=None,
 ):
+    # revenue calculation needs to be daily, monthly, yearly, or over the entire query
+    assert revenue_calc_period in list(rev_calc_to_agg_keyword.keys()) + [
+        None
+    ], f"Can't calculate revenue over {revenue_calc_period} period"
     if query_start is None and query_end is None:
         # if we don't specify a query start or a query end, then we
         # assume we want something for the duration of plan only
@@ -327,8 +410,7 @@ def calculate_sub_pc_usage_revenue(
         "plan_end_date": plan_end_date,
         "query_start": query_start,
         "query_end": query_end,
-        "time_period_agg": time_period_agg,
-        "time_period_annotation": time_period_annotation,
+        "revenue_calc_period": revenue_calc_period,
     }
     if billable_metric.event_type == "stateful":
         usage_revenue_dict = calculate_pc_usage_rev_for_stateful_metric(**args_dict)
@@ -401,6 +483,35 @@ def make_all_decimals_floats(json):
                 json[key] = float(value)
 
 
+def years_bwn_twodates(start_date, end_date):
+    years_btwn = relativedelta(end_date, start_date).years
+    for n in range(years_btwn + 1):
+        yield (start_date + relativedelta(years=n)).year
+
+
+def months_bwn_twodates(start_date, end_date):
+    months_btwn = (
+        12 * relativedelta(end_date, start_date).years
+        + relativedelta(end_date, start_date).months
+    )
+    for n in range(months_btwn + 1):
+        next_date = start_date + relativedelta(months=n)
+        yield (next_date.year, next_date.month)
+
+
 def dates_bwn_twodates(start_date, end_date):
-    for n in range((end_date - start_date).days + 1):
+    days_btwn = (end_date - start_date).days
+    for n in range(days_btwn + 1):
         yield start_date + relativedelta(days=n)
+
+
+def hours_bwn_twodates(start_date, end_date):
+    start_time = datetime.datetime.combine(
+        start_date, datetime.time.min, tzinfo=timezone.utc
+    )
+    end_time = datetime.datetime.combine(
+        end_date, datetime.time.max, tzinfo=timezone.utc
+    )
+    hours_btwn = abs(relativedelta(start_time, end_time).hours)
+    for n in range(hours_btwn + 1):
+        yield start_date + relativedelta(hours=n)

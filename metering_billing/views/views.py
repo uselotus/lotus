@@ -6,7 +6,7 @@ import stripe
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -55,6 +55,14 @@ def import_stripe_customers(organization):
 class InitializeStripeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                "StripeConnectedResponse",
+                fields={"connected": serializers.BooleanField()},
+            )
+        },
+    )
     def get(self, request, format=None):
         """
         Check to see if user has connected their Stripe account.
@@ -67,10 +75,29 @@ class InitializeStripeView(APIView):
         if (stripe_id and len(stripe_id) > 0) or (
             SELF_HOSTED and STRIPE_SECRET_KEY != ""
         ):
-            return JsonResponse({"connected": True})
+            return JsonResponse({"connected": True}, status=200)
         else:
-            return JsonResponse({"connected": False})
+            return JsonResponse({"connected": False}, status=200)
 
+    @extend_schema(
+        request=inline_serializer(
+            "StripeConnectRequest",
+            fields={"authorization_code": serializers.CharField()},
+        ),
+        responses={
+            200: inline_serializer(
+                "StripeImportResponse",
+                fields={"success": serializers.BooleanField()},
+            ),
+            400: inline_serializer(
+                "StripeImportError",
+                fields={
+                    "success": serializers.BooleanField(),
+                    "details": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request, format=None):
         """
         Initialize Stripe after user inputs an API key.
@@ -79,7 +106,9 @@ class InitializeStripeView(APIView):
         data = request.data
 
         if data is None:
-            return JsonResponse({"details": "No data provided"}, status=400)
+            return JsonResponse(
+                {"success": False, "details": "No data provided"}, status=400
+            )
 
         organization = parse_organization(request)
         stripe_code = data["authorization_code"]
@@ -115,7 +144,7 @@ class InitializeStripeView(APIView):
             },
         )
 
-        return JsonResponse({"Success": True})
+        return JsonResponse({"success": True}, status=201)
 
 
 class PeriodMetricRevenueView(APIView):
@@ -169,6 +198,7 @@ class PeriodMetricRevenueView(APIView):
                         "total_revenue": Decimal(0),
                     }
             for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+                total_period_rev = Decimal(0)
                 subs = (
                     Subscription.objects.filter(
                         Q(start_date__range=[p_start, p_end])
@@ -181,25 +211,23 @@ class PeriodMetricRevenueView(APIView):
                     .prefetch_related("billing_plan__components__billable_metric")
                 )
                 for sub in subs:
-                    billing_plan = sub.billing_plan
-                    if billing_plan.pay_in_advance:
-                        flat_bill_date = sub.start_date
-                    else:
-                        flat_bill_date = sub.end_date
+                    bp = sub.billing_plan
+                    flat_bill_date = (
+                        sub.start_date if bp.pay_in_advance else sub.end_date
+                    )
                     if flat_bill_date >= p_start and flat_bill_date <= p_end:
-                        return_dict[
-                            f"total_revenue_period_{p_num}"
-                        ] += billing_plan.flat_rate.amount
-                    for plan_component in billing_plan.components.all():
+                        total_period_rev += bp.flat_rate.amount
+                    for plan_component in bp.components.all():
+                        billable_metric = plan_component.billable_metric
                         usage_cost_per_day = calculate_sub_pc_usage_revenue(
                             plan_component,
-                            plan_component.billable_metric,
+                            billable_metric,
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
                             p_start,
                             p_end,
-                            time_period_agg="date",
+                            revenue_calc_period="daily",
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
@@ -208,7 +236,8 @@ class PeriodMetricRevenueView(APIView):
                             usage_cost = Decimal(d["revenue"])
                             metric_dict["data"][str(date)] += usage_cost
                             metric_dict["total_revenue"] += usage_cost
-                            return_dict[f"total_revenue_period_{p_num}"] += usage_cost
+                            total_period_rev += usage_cost
+                return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
             dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
@@ -347,6 +376,16 @@ class PeriodMetricUsageView(APIView):
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    responses={
+        200: inline_serializer(
+            name="APIKeyCreateSuccess",
+            fields={
+                "api_key": serializers.CharField(),
+            },
+        ),
+    },
+)
 class APIKeyCreate(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -430,8 +469,9 @@ class EventPreviewView(APIView):
         serializer.is_valid(raise_exception=True)
         page_number = serializer.validated_data.get("page")
         organization = parse_organization(request)
+        now = datetime.datetime.now(datetime.timezone.utc)
         events = (
-            Event.objects.filter(organization=organization)
+            Event.objects.filter(organization=organization, time_created__lt=now)
             .order_by("-time_created")
             .select_related("customer")
         )
@@ -490,10 +530,33 @@ class DraftInvoiceView(APIView):
 
 
 class CancelSubscriptionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
-        parameters=[CancelSubscriptionRequestSerializer],
+        request=CancelSubscriptionRequestSerializer,
+        responses={
+            200: inline_serializer(
+                name="CancelSubscriptionSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            201: inline_serializer(
+                name="CancelSubscriptionAndGenerateInvoiceSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="CancelSubscriptionFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
     )
     def post(self, request, format=None):
         serializer = CancelSubscriptionRequestSerializer(data=request.data)
@@ -501,18 +564,19 @@ class CancelSubscriptionView(APIView):
         organization = parse_organization(request)
         sub_uid = serializer.validated_data["subscription_uid"]
         bill_now = serializer.validated_data["bill_now"]
+        revoke_access = serializer.validated_data["revoke_access"]
         try:
             sub = Subscription.objects.get(
                 organization=organization, subscription_uid=sub_uid
             )
         except:
             return JsonResponse(
-                {"error": "Subscription not found"},
+                {"status": "error", "detail": "Subscription not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if sub.status == "ended":
             return JsonResponse(
-                {"error": "Subscription already ended"},
+                {"status": "error", "detail": "Subscription already ended"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         elif sub.status == "not_started":
@@ -520,24 +584,160 @@ class CancelSubscriptionView(APIView):
                 organization=organization, subscription_uid=sub_uid
             ).delete()
             return JsonResponse(
-                {"success": "Subscription hadn't started, has been deleted"},
+                {
+                    "status": "success",
+                    "detail": "Subscription hadn't started, has been deleted",
+                },
                 status=status.HTTP_200_OK,
             )
-        sub.status = "canceled"
+        sub.auto_renew = False
+        if revoke_access:
+            sub.status = "canceled"
         sub.save()
         posthog.capture(
             organization.company_name,
             event="cancel_subscription",
             properties={},
         )
-        if bill_now:
+        if bill_now and revoke_access:
             generate_invoice(sub, issue_date=datetime.datetime.now().date())
             return JsonResponse(
-                {"success": "Created invoice and payment intent for subscription"},
+                {
+                    "status": "success",
+                    "detail": "Created invoice and payment intent for subscription",
+                },
                 status=status.HTTP_201_CREATED,
             )
         else:
             return JsonResponse(
-                {"success": "Subscription ended without generating invoice."},
+                {
+                    "status": "success",
+                    "detail": "Subscription ended without generating invoice",
+                },
                 status=status.HTTP_200_OK,
             )
+
+
+class GetCustomerAccessView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        parameters=[GetCustomerAccessRequestSerializer],
+        responses={
+            200: inline_serializer(
+                name="GetCustomerAccessSuccess",
+                fields={
+                    "access": serializers.BooleanField(),
+                    "usages": serializers.ListField(
+                        child=inline_serializer(
+                            name="MetricUsageSerializer",
+                            fields={
+                                "metric_name": serializers.CharField(),
+                                "metric_usage": serializers.FloatField(),
+                                "metric_limit": serializers.FloatField(),
+                                "access": serializers.BooleanField(),
+                            },
+                        ),
+                        required=False,
+                    ),
+                },
+            ),
+            400: inline_serializer(
+                name="GetCustomerAccessFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        organization = parse_organization(request)
+        posthog.capture(
+            organization.company_name,
+            event="get_access",
+            properties={},
+        )
+        customer_id = serializer.validated_data["customer_id"]
+        try:
+            customer = Customer.objects.get(
+                organization=organization, customer_id=customer_id
+            )
+        except Customer.DoesNotExist:
+            return JsonResponse(
+                {"status": "error", "detail": "Customer not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        event_name = serializer.validated_data.get("event_name")
+        feature_name = serializer.validated_data.get("feature_name")
+        subscriptions = Subscription.objects.select_related("billing_plan").filter(
+            organization=organization,
+            status="active",
+            customer=customer,
+        )
+        if event_name:
+            subscriptions = subscriptions.prefetch_related(
+                "billing_plan__components", "billing_plan__components__billable_metric"
+            )
+            metric_usages = {}
+            for sub in subscriptions:
+                for component in sub.billing_plan.components.all():
+                    if component.billable_metric.event_name == event_name:
+                        metric = component.billable_metric
+                        metric_limit = component.max_metric_units
+                        if not metric_limit:
+                            metric_usages[metric.billable_metric_name] = {
+                                "metric_usage": None,
+                                "metric_limit": None,
+                                "access": True,
+                            }
+                            continue
+                        metric_usage = get_metric_usage(
+                            metric,
+                            query_start_date=sub.start_date,
+                            query_end_date=sub.end_date,
+                            customer=customer,
+                        )[0]["usage_qty"]
+                        metric_usages[metric.billable_metric_name] = {
+                            "metric_usage": metric_usage,
+                            "metric_limit": metric_limit,
+                            "access": metric_usage <= metric_limit,
+                        }
+            if all(v["access"] for k, v in metric_usages.items()):
+                return JsonResponse(
+                    {
+                        "access": True,
+                        "usages": [
+                            v.update({"metric_name": k})
+                            for k, v in metric_usages.items()
+                        ],
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return JsonResponse(
+                    {
+                        "access": False,
+                        "usages": [
+                            v.update({"metric_name": k})
+                            for k, v in metric_usages.items()
+                        ],
+                    },
+                    status=status.HTTP_200_OK,
+                )
+        elif feature_name:
+            subscriptions = subscriptions.prefetch_related("billing_plan__features")
+            for sub in subscriptions:
+                for feature in sub.billing_plan.features.all():
+                    if feature.feature_name == feature_name:
+                        return JsonResponse(
+                            {"access": True},
+                            status=status.HTTP_200_OK,
+                        )
+
+        return JsonResponse(
+            {"access": False},
+            status=status.HTTP_200_OK,
+        )

@@ -88,9 +88,9 @@ def draft_invoice_test_common_setup(
         plan_component_set = baker.make(
             PlanComponent,
             billable_metric=itertools.cycle(metric_set),
-            free_metric_quantity=itertools.cycle([50, 0, 1]),
-            cost_per_metric=itertools.cycle([5, 0.05, 2]),
-            metric_amount_per_cost=itertools.cycle([100, 1, 1]),
+            free_metric_units=itertools.cycle([50, 0, 1]),
+            cost_per_batch=itertools.cycle([5, 0.05, 2]),
+            metric_units_per_batch=itertools.cycle([100, 1, 1]),
             _quantity=3,
         )
         setup_dict["plan_components"] = plan_component_set
@@ -132,7 +132,7 @@ def draft_invoice_test_common_setup(
 
 @pytest.mark.django_db(transaction=True)
 class TestCancelSub:
-    def test_cancel_and_generate_invoice(self, draft_invoice_test_common_setup):
+    def test_cancel_revoke_and_generate_invoice(self, draft_invoice_test_common_setup):
         setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
 
         active_subscriptions = Subscription.objects.filter(
@@ -146,6 +146,7 @@ class TestCancelSub:
         payload = {
             "subscription_uid": setup_dict["subscription"].subscription_uid,
             "bill_now": True,
+            "revoke_access": True,
         }
         response = setup_dict["client"].post(
             reverse("cancel_subscription"),
@@ -199,7 +200,9 @@ class TestCancelSub:
         assert num_after_subs + 1 == num_prev_subs
         assert new_invoices_len == prev_invoices_len
 
-    def test_cancel_and_dont_generate_invoice(self, draft_invoice_test_common_setup):
+    def test_cancel_revoke_and_dont_generate_invoice(
+        self, draft_invoice_test_common_setup
+    ):
         setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
 
         active_subscriptions = Subscription.objects.filter(
@@ -213,6 +216,7 @@ class TestCancelSub:
         payload = {
             "subscription_uid": setup_dict["subscription"].subscription_uid,
             "bill_now": False,
+            "revoke_access": True,
         }
         response = setup_dict["client"].post(
             reverse("cancel_subscription"),
@@ -264,4 +268,48 @@ class TestCancelSub:
         new_invoices_len = Invoice.objects.all().count()
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert len(ended_subs) == len(after_ended_subs)
+        assert new_invoices_len == prev_invoices_len
+
+    def test_cancel_dont_revoke(self, draft_invoice_test_common_setup):
+        setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
+
+        active_subscriptions = Subscription.objects.filter(
+            status="active",
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+        )
+        auto_renewing_subscriptions = active_subscriptions.filter(auto_renew=True)
+        prev_invoices_len = Invoice.objects.all().count()
+        assert len(active_subscriptions) == 1
+        assert len(auto_renewing_subscriptions) == 1
+
+        payload = {
+            "subscription_uid": setup_dict["subscription"].subscription_uid,
+            "revoke_access": False,
+        }
+        response = setup_dict["client"].post(
+            reverse("cancel_subscription"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        after_active_subscriptions = Subscription.objects.filter(
+            status="active",
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+        )
+        after_auto_renewing_subscriptions = active_subscriptions.filter(auto_renew=True)
+        after_canceled_subscriptions = Subscription.objects.filter(
+            status="canceled",
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+        )
+        new_invoices_len = Invoice.objects.all().count()
+        assert response.status_code == status.HTTP_200_OK
+        assert len(after_active_subscriptions) == len(active_subscriptions)
+        assert (
+            len(auto_renewing_subscriptions)
+            == len(after_auto_renewing_subscriptions) + 1
+        )
+        assert len(after_canceled_subscriptions) == 0
         assert new_invoices_len == prev_invoices_len

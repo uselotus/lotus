@@ -5,7 +5,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - ./pgdata_dev:/var/lib/postgresql/data
     env_file:
       - ./env/.env.dev
 
@@ -24,6 +24,7 @@ services:
     command: sh -c "./scripts/start_backend.dev.sh"
     depends_on:
       - db
+      - redis
 
   frontend:
     restart: always
@@ -59,6 +60,7 @@ services:
     depends_on:
       - redis
       - backend
+    restart: on-failure
 
   celery-beat:
     env_file:
@@ -75,4 +77,4 @@ services:
       - redis
 
 volumes:
-  pgdata:
+  pgdata_dev:

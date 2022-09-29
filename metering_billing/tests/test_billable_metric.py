@@ -76,21 +76,13 @@ def insert_billable_metric_payload():
         "event_name": "test_event",
         "property_name": "test_property",
         "aggregation_type": "sum",
+        "event_type": "aggregation",
     }
     return payload
 
 
 @pytest.mark.django_db(transaction=True)
 class TestInsertBillableMetric:
-    """Testing the POST of BillableMetrics endpoint:
-    POST: Return list of billable_metrics associated with the organization with API key / user.
-    partitions:
-        auth_method: api_key, session_auth, both
-        num_billable_metric_before_insert: 0, >0
-        user_org_and_api_key_org_different: true, false
-        billable_metric_id
-    """
-
     def test_api_key_can_create_billable_metric_empty_before(
         self,
         billable_metric_test_common_setup,
@@ -185,12 +177,14 @@ class TestInsertBillableMetric:
 
         payload = insert_billable_metric_payload
         payload["property_name"] = None
+        print("wooooop")
         BillableMetric.objects.create(**{**payload, "organization": setup_dict["org"]})
         response = setup_dict["client"].post(
             reverse("metric-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response)
 
         assert response.status_code == status.HTTP_409_CONFLICT
         assert (
@@ -260,7 +254,7 @@ class TestCalculateBillableMetric:
             property_name="number",
             aggregation_type="max",
             event_type="stateful",
-            carries_over=True,
+            stateful_aggregation_period="day",
         )
         time_created = parser.parse("2021-01-01T06:00:00Z")
         customer = baker.make(Customer, organization=setup_dict["org"])
@@ -287,9 +281,9 @@ class TestCalculateBillableMetric:
         )
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
-            free_metric_quantity=3,
-            cost_per_metric=100,
-            metric_amount_per_cost=1,
+            free_metric_units=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
         )
         billing_plan = BillingPlan.objects.create(
             organization=setup_dict["org"],
@@ -307,7 +301,7 @@ class TestCalculateBillableMetric:
             customer=customer,
             plan_start_date="2021-01-01",
             plan_end_date="2021-01-30",
-            time_period_agg="date",
+            revenue_calc_period="daily",
         )
         metric_usage = sum(d["usage_qty"] for _, d in usage_revenue_dict.items())
         metric_revenue = sum(d["revenue"] for _, d in usage_revenue_dict.items())
