@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
 import re
+import ssl
 from pathlib import Path
 
 import dj_database_url
@@ -210,7 +211,8 @@ if DOCKERIZED or ON_HEROKU:
             "LOCATION": f"{REDIS_URL}/3",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": None},
+                "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": ssl.CERT_NONE},
+                "CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None, "ssl": True},
             },
         }
     }
