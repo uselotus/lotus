@@ -209,16 +209,16 @@ paths:
       operationId: customer_access_retrieve
       parameters:
       - in: query
-        name: billable_metric_name
-        schema:
-          type: string
-          minLength: 1
-      - in: query
         name: customer_id
         schema:
           type: string
           minLength: 1
         required: true
+      - in: query
+        name: event_name
+        schema:
+          type: string
+          minLength: 1
       - in: query
         name: feature_name
         schema:
@@ -1955,12 +1955,10 @@ components:
       properties:
         access:
           type: boolean
-        metric_usage:
-          type: number
-          format: double
-        metric_limit:
-          type: number
-          format: double
+        usages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricUsage'
       required:
       - access
     IntervalEnum:
@@ -2030,6 +2028,24 @@ components:
       - organization_not_connected_to_stripe
       - customer_not_connected_to_stripe
       type: string
+    MetricUsage:
+      type: object
+      properties:
+        metric_name:
+          type: string
+        metric_usage:
+          type: number
+          format: double
+        metric_limit:
+          type: number
+          format: double
+        access:
+          type: boolean
+      required:
+      - access
+      - metric_limit
+      - metric_name
+      - metric_usage
     NullEnum:
       enum:
       - null
@@ -2127,7 +2143,7 @@ components:
     PatchedPlanComponent:
       type: object
       properties:
-        billable_metric_id:
+        event_name:
           type: string
         free_metric_units:
           type: number
@@ -2300,7 +2316,7 @@ components:
     PlanComponent:
       type: object
       properties:
-        billable_metric_id:
+        event_name:
           type: string
         free_metric_units:
           type: number
@@ -2335,7 +2351,7 @@ components:
           exclusiveMinimum: true
           nullable: true
       required:
-      - billable_metric_id
+      - event_name
     PlanComponentRead:
       type: object
       properties:
