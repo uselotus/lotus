@@ -11,7 +11,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.settings")
 
 celery_kwargs = {}
 if ON_HEROKU:
-    print("WE SHOULD NOT BE HERE")
     # See https://devcenter.heroku.com/articles/celery-heroku#using-redis-as-a-broker
     # for more details
     # Heroku Redis requires SSL
