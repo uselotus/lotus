@@ -67,7 +67,7 @@ def get_access_test_common_setup(
             properties=itertools.cycle(event_properties),
             _quantity=3,
         )
-        metric_set = baker.make(
+        deny_metric_set = baker.make(
             BillableMetric,
             organization=org,
             event_name="email_sent",
@@ -75,7 +75,25 @@ def get_access_test_common_setup(
             aggregation_type=itertools.cycle(["sum", "max", "count"]),
             _quantity=3,
         )
-        setup_dict["metrics"] = metric_set
+        setup_dict["deny_metrics"] = deny_metric_set
+        event_set = baker.make(
+            Event,
+            organization=org,
+            customer=customer,
+            event_name="api_call",
+            time_created=datetime.datetime.now() - relativedelta(days=1),
+            properties=itertools.cycle(event_properties),
+            _quantity=5,
+        )
+        allow_metric_set = baker.make(
+            BillableMetric,
+            organization=org,
+            event_name="api_call",
+            property_name=itertools.cycle([""]),
+            aggregation_type=itertools.cycle(["count"]),
+            _quantity=1,
+        )
+        setup_dict["allow_metrics"] = allow_metric_set
         billing_plan = baker.make(
             BillingPlan,
             organization=org,
@@ -87,12 +105,12 @@ def get_access_test_common_setup(
         )
         plan_component_set = baker.make(
             PlanComponent,  # sum char (over), max bw (ok), count (ok)
-            billable_metric=itertools.cycle(metric_set),
-            free_metric_units=itertools.cycle([50, 0, 1]),
-            cost_per_batch=itertools.cycle([5, 0.05, 2]),
-            metric_units_per_batch=itertools.cycle([100, 1, 1]),
-            max_metric_units=itertools.cycle([500, 250, 100]),
-            _quantity=3,
+            billable_metric=itertools.cycle(deny_metric_set + allow_metric_set),
+            free_metric_units=itertools.cycle([50, 0, 1, 5]),
+            cost_per_batch=itertools.cycle([5, 0.05, 50]),
+            metric_units_per_batch=itertools.cycle([100, 1, 1, 1]),
+            max_metric_units=itertools.cycle([500, 250, 10, 25]),
+            _quantity=4,
         )
         feature_set = baker.make(
             Feature,
@@ -128,16 +146,7 @@ class TestGetAccess:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "billable_metric_name": setup_dict["metrics"][1].billable_metric_name,
-        }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.json()["access"] == True
-
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "billable_metric_name": setup_dict["metrics"][2].billable_metric_name,
+            "event_name": setup_dict["allow_metrics"][0].event_name,
         }
         response = setup_dict["client"].get(reverse("customer_access"), payload)
 
@@ -149,7 +158,7 @@ class TestGetAccess:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "billable_metric_name": setup_dict["metrics"][0].billable_metric_name,
+            "event_name": setup_dict["deny_metrics"][0].event_name,
         }
         response = setup_dict["client"].get(reverse("customer_access"), payload)
 

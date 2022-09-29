@@ -179,4 +179,4 @@ pgdata/
 pgdata*
 
 !env/.env.dev.example
-!env/.env.prod.examplex
+!env/.env.prod.example

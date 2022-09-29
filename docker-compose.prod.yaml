@@ -24,6 +24,7 @@ services:
     depends_on:
       - db
       - redis
+    restart: on-failure
 
   frontend:
     restart: always

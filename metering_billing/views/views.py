@@ -688,7 +688,7 @@ class GetCustomerAccessView(APIView):
                         metric = component.billable_metric
                         metric_limit = component.max_metric_units
                         if not metric_limit:
-                            metric_usages[metric.metric_name] = {
+                            metric_usages[metric.billable_metric_name] = {
                                 "metric_usage": None,
                                 "metric_limit": None,
                                 "access": True,
@@ -700,17 +700,18 @@ class GetCustomerAccessView(APIView):
                             query_end_date=sub.end_date,
                             customer=customer,
                         )[0]["usage_qty"]
-                        metric_usages[metric.metric_name] = {
+                        metric_usages[metric.billable_metric_name] = {
                             "metric_usage": metric_usage,
                             "metric_limit": metric_limit,
                             "access": metric_usage <= metric_limit,
                         }
-            if all(v["access"] for k, v in metric_usages):
+            if all(v["access"] for k, v in metric_usages.items()):
                 return JsonResponse(
                     {
                         "access": True,
                         "usages": [
-                            v.update({"metric_name": k}) for k, v in metric_usages
+                            v.update({"metric_name": k})
+                            for k, v in metric_usages.items()
                         ],
                     },
                     status=status.HTTP_200_OK,
@@ -720,7 +721,8 @@ class GetCustomerAccessView(APIView):
                     {
                         "access": False,
                         "usages": [
-                            v.update({"metric_name": k}) for k, v in metric_usages
+                            v.update({"metric_name": k})
+                            for k, v in metric_usages.items()
                         ],
                     },
                     status=status.HTTP_200_OK,

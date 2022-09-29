@@ -57,9 +57,8 @@ def logout_view(request):
         return JsonResponse(
             {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
         )
-
-    logout(request)
     posthog.capture(request.user.organization.company_name, event="logout")
+    logout(request)
     return JsonResponse({"detail": "Successfully logged out."})
 
 
