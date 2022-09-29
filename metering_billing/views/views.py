@@ -628,8 +628,18 @@ class GetCustomerAccessView(APIView):
                 name="GetCustomerAccessSuccess",
                 fields={
                     "access": serializers.BooleanField(),
-                    "metric_usage": serializers.FloatField(required=False),
-                    "metric_limit": serializers.FloatField(required=False),
+                    "usages": serializers.ListField(
+                        child=inline_serializer(
+                            name="MetricUsageSerializer",
+                            fields={
+                                "metric_name": serializers.CharField(),
+                                "metric_usage": serializers.FloatField(),
+                                "metric_limit": serializers.FloatField(),
+                                "access": serializers.BooleanField(),
+                            },
+                        ),
+                        required=False,
+                    ),
                 },
             ),
             400: inline_serializer(
@@ -660,51 +670,61 @@ class GetCustomerAccessView(APIView):
                 {"status": "error", "detail": "Customer not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        billable_metric_id = serializer.validated_data.get("billable_metric_id")
+        event_name = serializer.validated_data.get("event_name")
         feature_name = serializer.validated_data.get("feature_name")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
             status="active",
             customer=customer,
         )
-        if billable_metric_id:
+        if event_name:
             subscriptions = subscriptions.prefetch_related(
                 "billing_plan__components", "billing_plan__components__billable_metric"
             )
+            metric_usages = {}
             for sub in subscriptions:
                 for component in sub.billing_plan.components.all():
-                    if (
-                        component.billable_metric.billable_metric_id
-                        == billable_metric_id
-                    ):
+                    if component.billable_metric.event_name == event_name:
                         metric = component.billable_metric
                         metric_limit = component.max_metric_units
                         if not metric_limit:
-                            return JsonResponse(
-                                {"access": True},
-                                status=status.HTTP_200_OK,
-                            )
+                            metric_usages[metric.metric_name] = {
+                                "metric_usage": None,
+                                "metric_limit": None,
+                                "access": True,
+                            }
+                            continue
                         metric_usage = get_metric_usage(
                             metric,
                             query_start_date=sub.start_date,
                             query_end_date=sub.end_date,
                             customer=customer,
-                        )[0]
-                        metric_usage = metric_usage["usage_qty"]
-                        if metric_usage >= metric_limit:
-                            return JsonResponse(
-                                {"access": False},
-                                status=status.HTTP_200_OK,
-                            )
-                        else:
-                            return JsonResponse(
-                                {
-                                    "access": True,
-                                    "metric_usage": metric_usage,
-                                    "metric_limit": metric_limit,
-                                },
-                                status=status.HTTP_200_OK,
-                            )
+                        )[0]["usage_qty"]
+                        metric_usages[metric.metric_name] = {
+                            "metric_usage": metric_usage,
+                            "metric_limit": metric_limit,
+                            "access": metric_usage <= metric_limit,
+                        }
+            if all(v["access"] for k, v in metric_usages):
+                return JsonResponse(
+                    {
+                        "access": True,
+                        "usages": [
+                            v.update({"metric_name": k}) for k, v in metric_usages
+                        ],
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return JsonResponse(
+                    {
+                        "access": False,
+                        "usages": [
+                            v.update({"metric_name": k}) for k, v in metric_usages
+                        ],
+                    },
+                    status=status.HTTP_200_OK,
+                )
         elif feature_name:
             subscriptions = subscriptions.prefetch_related("billing_plan__features")
             for sub in subscriptions:
