@@ -16,7 +16,6 @@ from rest_framework.views import APIView
 
 
 @require_POST
-@csrf_exempt
 def login_view(request):
 
     try:
@@ -53,7 +52,6 @@ def login_view(request):
 
 
 @require_POST
-@csrf_exempt
 def logout_view(request):
     if not request.user.is_authenticated:
         return JsonResponse(

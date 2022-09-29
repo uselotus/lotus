@@ -8,7 +8,6 @@ import {
   InputNumber,
   PageHeader,
   List,
-  Radio,
   Divider,
 } from "antd";
 import { useEffect, useState } from "react";
@@ -33,21 +32,17 @@ const CreatePlan = () => {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [form] = Form.useForm();
-  const [metricMap, setMetricMap] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
       const data: MetricNameType[] = res;
       if (data) {
-        const newmetricMap = new Map<string, number>();
         const metricList: string[] = [];
         for (let i = 0; i < data.length; i++) {
           if (typeof data[i].billable_metric_name !== undefined) {
             metricList.push(data[i].billable_metric_name);
-            newmetricMap.set(data[i].billable_metric_name, data[i].id);
           }
         }
-        setMetricMap(newmetricMap);
         setMetrics(metricList);
       }
     });
@@ -96,10 +91,11 @@ const CreatePlan = () => {
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              billable_metric: metricMap.get(components[i].metric),
+              billable_metric_name: components[i].metric,
               cost_per_batch: components[i].cost_per_batch,
               metric_units_per_batch: components[i].metric_units_per_batch,
               free_metric_units: components[i].free_amount,
+              max_metric_units: components[i].max_metric_units,
             };
             usagecomponentslist.push(usagecomponent);
           }

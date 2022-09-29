@@ -22,10 +22,11 @@ export interface CreatePlanType {
 }
 
 export interface CreateComponent {
-  billable_metric?: number;
+  billable_metric_name?: string;
   free_metric_units: number;
   cost_per_batch: number;
   metric_units_per_batch: number;
+  max_metric_units: number;
 }
 
 export interface Component {

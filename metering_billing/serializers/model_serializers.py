@@ -139,15 +139,15 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
         fields = (
-            "event_name",
+            "billable_metric_name",
             "free_metric_units",
             "cost_per_batch",
             "metric_units_per_batch",
             "max_metric_units",
         )
 
-    event_name = SlugRelatedLookupField(
-        slug_field="event_name",
+    billable_metric_name = SlugRelatedLookupField(
+        slug_field="billable_metric_name",
         queryset=BillableMetric.objects.all(),
         read_only=False,
         source="billable_metric",
