@@ -190,8 +190,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # redis settings
 if os.environ.get("REDIS_URL"):
     REDIS_URL = os.environ.get("REDIS_URL")
-else:
+elif DOCKERIZED:
     REDIS_URL = f"redis://redis:6379"
+else:
+    REDIS_URL = f"redis://localhost:6379"
 
 # Celery Settings
 CELERY_BROKER_URL = f"{REDIS_URL}/1"
