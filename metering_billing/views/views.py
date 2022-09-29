@@ -660,22 +660,22 @@ class GetCustomerAccessView(APIView):
                 {"status": "error", "detail": "Customer not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        billable_metric_name = serializer.validated_data.get("billable_metric_name")
+        billable_metric_id = serializer.validated_data.get("billable_metric_id")
         feature_name = serializer.validated_data.get("feature_name")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
             status="active",
             customer=customer,
         )
-        if billable_metric_name:
+        if billable_metric_id:
             subscriptions = subscriptions.prefetch_related(
                 "billing_plan__components", "billing_plan__components__billable_metric"
             )
             for sub in subscriptions:
                 for component in sub.billing_plan.components.all():
                     if (
-                        component.billable_metric.billable_metric_name
-                        == billable_metric_name
+                        component.billable_metric.billable_metric_id
+                        == billable_metric_id
                     ):
                         metric = component.billable_metric
                         metric_limit = component.max_metric_units

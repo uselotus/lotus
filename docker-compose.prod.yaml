@@ -5,7 +5,7 @@ services:
     expose:
       - 5432
     volumes:
-      - ./pgdata:/var/lib/postgresql/data
+      - ./pgdata_prod:/var/lib/postgresql/data
     env_file:
       - ./env/.env.prod
 
@@ -73,5 +73,5 @@ services:
       - redis
 
 volumes:
-  pgdata:
+  pgdata_prod:
   django_static_volume:

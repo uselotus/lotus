@@ -47,7 +47,7 @@ static
 #general
 README.md
 node_modules
-pgdata
+pgdata*
 static
 
 dump.rdb

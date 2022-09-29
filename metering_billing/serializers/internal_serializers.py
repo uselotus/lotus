@@ -8,17 +8,17 @@ from .model_serializers import EventSerializer
 
 class GetCustomerAccessRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=True)
-    billable_metric_name = serializers.CharField(required=False)
+    billable_metric_id = serializers.CharField(required=False)
     feature_name = serializers.CharField(required=False)
 
     def validate(self, data):
-        if not data.get("billable_metric_name") and not data.get("feature_name"):
+        if not data.get("billable_metric_id") and not data.get("feature_name"):
             raise serializers.ValidationError(
-                "Must provide either billable_metric_name or feature_name"
+                "Must provide either billable_metric_id or feature_name"
             )
-        if data.get("billable_metric_name") and data.get("feature_name"):
+        if data.get("billable_metric_id") and data.get("feature_name"):
             raise serializers.ValidationError(
-                "Cannot provide both billable_metric_name and feature_name"
+                "Cannot provide both billable_metric_id and feature_name"
             )
         return data
 
