@@ -431,7 +431,7 @@ def get_customer_usage_and_revenue(customer):
 
 
 def make_all_decimals_floats(json):
-    if type(json) in [dict, list, Decimal, collections.OrderedDict]:
+    if type(json) in [dict, collections.OrderedDict]:
         for key, value in json.items():
             if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
                 make_all_decimals_floats(value)
@@ -440,6 +440,9 @@ def make_all_decimals_floats(json):
                     make_all_decimals_floats(item)
             elif isinstance(value, Decimal):
                 json[key] = float(value)
+    if isinstance(json, list):
+        for item in json:
+            make_all_decimals_floats(item)
 
 
 def make_all_dates_times_strings(json):

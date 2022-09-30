@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0024_alter_billingplan_components_and_more'),
+        ("metering_billing", "0024_alter_billingplan_components_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customer',
-            name='billing_address',
+            model_name="customer",
+            name="billing_address",
             field=models.CharField(blank=True, max_length=500, null=True),
         ),
         migrations.AddField(
-            model_name='customer',
-            name='email',
+            model_name="customer",
+            name="email",
             field=models.EmailField(blank=True, max_length=100, null=True),
         ),
     ]

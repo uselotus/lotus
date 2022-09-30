@@ -29,8 +29,16 @@ def calculate_invoice():
     ending_subscriptions = list(
         Subscription.objects.filter(status="active", end_date__lt=now)
     )
-    invoice_sub_uids_seen = Invoice.values_list("subscription__subscription_uid", flat=True)
-    ended_subs_no_invoice = Subscription.objects.filter(status="ended", end_date__lt=now).exclude(subscription_uid__in=invoice_sub_uids_seen)
+    invoice_sub_uids_seen = Invoice.objects.values_list(
+        "subscription__subscription_uid", flat=True
+    )
+    ended_subs_no_invoice = Subscription.objects.filter(
+        status="ended", end_date__lt=now
+    )
+    if len(invoice_sub_uids_seen) > 0:
+        ended_subs_no_invoice = ended_subs_no_invoice.exclude(
+            subscription_uid__in=invoice_sub_uids_seen
+        )
     ending_subscriptions.extend(ended_subs_no_invoice)
 
     # prefetch organization customer stripe keys
@@ -52,12 +60,13 @@ def calculate_invoice():
             )
             continue
         # End the old subscription and delete draft invoices
+        already_ended = old_subscription.status == "ended"
         old_subscription.status = "ended"
         old_subscription.save()
         now = datetime.datetime.now(timezone.utc).date()
         Invoice.objects.filter(issue_date__lt=now, status="draft").delete()
         # Renew the subscription
-        if old_subscription.auto_renew:
+        if old_subscription.auto_renew and not already_ended:
             subscription_kwargs = {
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
@@ -67,7 +76,7 @@ def calculate_invoice():
                 "is_new": False,
             }
             sub = Subscription.objects.create(**subscription_kwargs)
-            if sub.end_date >= now and sub.start_date <= now:
+            if sub.start_date <= now <= sub.end_date:
                 sub.status = "active"
             else:
                 sub.status = "ended"

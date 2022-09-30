@@ -90,7 +90,7 @@ class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ("billing_plan_name", "end_date", "auto_renew")
-        list_serializer_class = FilterActiveSubscriptionSerializer 
+        list_serializer_class = FilterActiveSubscriptionSerializer
 
     billing_plan_name = serializers.CharField(source="billing_plan.name")
 
@@ -121,7 +121,7 @@ class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
             "auto_renew",
             "status",
         )
-        list_serializer_class = FilterActiveSubscriptionSerializer 
+        list_serializer_class = FilterActiveSubscriptionSerializer
 
     billing_plan_name = serializers.CharField(source="billing_plan.name")
 
@@ -160,16 +160,14 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = (
-            "customer_id",
-            "total_revenue_due"
-        )
+        fields = ("customer_id", "total_revenue_due")
 
     total_revenue_due = serializers.SerializerMethodField()
 
     def get_total_revenue_due(self, obj):
         total_revenue_due = self.context.get("total_revenue_due")
         return total_revenue_due
+
 
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:

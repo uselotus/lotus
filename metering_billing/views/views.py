@@ -430,27 +430,24 @@ class CustomersSummaryView(APIView):
         Get the current settings for the organization.
         """
         organization = parse_organization(request)
-        customers = (
-            Customer.objects.filter(organization=organization)
-            .prefetch_related(
-                Prefetch(
-                    "subscription_set",
-                    queryset=Subscription.objects.filter(organization=organization),
-                    to_attr="subscriptions",
-                ),
-                Prefetch(
-                    "subscription_set__billing_plan",
-                    queryset=BillingPlan.objects.filter(organization=organization),
-                    to_attr="billing_plans",
-                )
-            )
+        customers = Customer.objects.filter(organization=organization).prefetch_related(
+            Prefetch(
+                "subscription_set",
+                queryset=Subscription.objects.filter(organization=organization),
+                to_attr="subscriptions",
+            ),
+            Prefetch(
+                "subscription_set__billing_plan",
+                queryset=BillingPlan.objects.filter(organization=organization),
+                to_attr="billing_plans",
+            ),
         )
         serializer = CustomerSummarySerializer(customers, many=True)
         return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
 
 
 class CustomerDetailView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -470,14 +467,14 @@ class CustomerDetailView(APIView):
                     "subscription_set__billing_plan",
                     queryset=BillingPlan.objects.filter(organization=organization),
                     to_attr="billing_plans",
-                )
+                ),
             )
             .get()
         )
         sub_usg_summaries = get_customer_usage_and_revenue(customer)
         total_revenue_due = sum(
             x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
-        )   
+        )
         invoices = Invoice.objects.filter(
             organization__company_name=organization.company_name,
             customer__customer_id=customer.customer_id,
@@ -494,7 +491,7 @@ class CustomerDetailView(APIView):
 
 class CustomersWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         responses={200: CustomerRevenueSummarySerializer},
