@@ -301,7 +301,7 @@ class TestCalculateBillableMetric:
             customer=customer,
             plan_start_date="2021-01-01",
             plan_end_date="2021-01-30",
-            revenue_calc_period="daily",
+            revenue_granularity="daily",
         )
         metric_usage = sum(d["usage_qty"] for _, d in usage_revenue_dict.items())
         metric_revenue = sum(d["revenue"] for _, d in usage_revenue_dict.items())
