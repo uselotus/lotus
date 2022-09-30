@@ -13,7 +13,12 @@ from metering_billing.models import (
     Event,
     PlanComponent,
 )
-from metering_billing.utils import calculate_sub_pc_usage_revenue, get_metric_usage
+from metering_billing.utils import (
+    RevenueCalcGranularity,
+    calculate_sub_pc_usage_revenue,
+    dates_bwn_twodates,
+    get_metric_usage,
+)
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -301,10 +306,8 @@ class TestCalculateBillableMetric:
             customer=customer,
             plan_start_date="2021-01-01",
             plan_end_date="2021-01-30",
-            revenue_granularity="daily",
+            revenue_granularity=RevenueCalcGranularity.DAILY,
         )
-        metric_usage = sum(d["usage_qty"] for _, d in usage_revenue_dict.items())
         metric_revenue = sum(d["revenue"] for _, d in usage_revenue_dict.items())
 
-        assert metric_usage == 101
-        assert metric_revenue == 1800
+        assert int(round(float(metric_revenue), 0)) == 60
