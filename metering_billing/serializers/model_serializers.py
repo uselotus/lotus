@@ -80,10 +80,17 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 ## CUSTOMER
+class FilterActiveSubscriptionSerializer(serializers.ListSerializer):
+    def to_representation(self, data):
+        data = data.filter(status="active")
+        return super(FilterActiveSubscriptionSerializer, self).to_representation(data)
+
+
 class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ("billing_plan_name", "end_date", "auto_renew")
+        list_serializer_class = FilterActiveSubscriptionSerializer 
 
     billing_plan_name = serializers.CharField(source="billing_plan.name")
 
@@ -114,6 +121,7 @@ class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
             "auto_renew",
             "status",
         )
+        list_serializer_class = FilterActiveSubscriptionSerializer 
 
     billing_plan_name = serializers.CharField(source="billing_plan.name")
 
@@ -124,7 +132,8 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         fields = (
             "customer_id",
             "email",
-            "balance" "billing_address",
+            "balance",
+            "billing_address",
             "customer_name",
             "invoices",
             "total_revenue_due",
@@ -132,7 +141,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         )
 
     customer_name = serializers.CharField(source="name")
-    subscriptions = SubscriptionCustomerSummarySerializer(
+    subscriptions = SubscriptionCustomerDetailSerializer(
         read_only=True, many=True, source="subscription_set"
     )
     invoices = serializers.SerializerMethodField()
@@ -140,6 +149,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 
     def get_invoices(self, obj):
         timeline = self.context.get("invoices")
+        timeline = InvoiceSerializer(timeline, many=True).data
         return timeline
 
     def get_total_revenue_due(self, obj):
