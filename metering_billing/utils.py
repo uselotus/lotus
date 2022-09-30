@@ -128,9 +128,10 @@ def get_metric_usage(
             pass
 
     if metric.aggregation_type == "last":
-        query = query.order_by(
-            Trunc(F("time_created"), time_period_agg), "-time_created"
-        ).distinct(Trunc(F("time_created"), time_period_agg))
+        if len(query) > 0:
+            query = query.order_by(
+                Trunc(F("time_created"), time_period_agg), "-time_created"
+            ).distinct(Trunc(F("time_created"), time_period_agg))
 
     usage_summary = query
     for x in usage_summary:

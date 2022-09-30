@@ -370,6 +370,7 @@ class PeriodMetricUsageView(APIView):
                 }
                 for k, v in metric_d["data"].items()
             ]
+            metric_d["data"] = sorted(metric_d["data"], key=lambda x: x["date"])
         return_dict = {"metrics": return_dict}
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
