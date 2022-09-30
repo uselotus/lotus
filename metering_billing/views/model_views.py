@@ -2,6 +2,7 @@ from datetime import datetime
 
 import posthog
 from django.db import IntegrityError
+from django.db.models import Count, Q
 from metering_billing.exceptions import DuplicateCustomerID
 from metering_billing.models import (
     Alert,
@@ -208,8 +209,16 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return BillingPlan.objects.filter(organization=organization).prefetch_related(
-            "components"
+        return (
+            BillingPlan.objects.filter(organization=organization)
+            .prefetch_related(
+                "components",
+            )
+            .annotate(
+                active_subscriptions=Count(
+                    "subscription__pk", filter=Q(subscription__status="active")
+                )
+            )
         )
 
     def perform_create(self, serializer):

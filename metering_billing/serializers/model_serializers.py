@@ -335,10 +335,14 @@ class BillingPlanUpdateSerializer(serializers.ModelSerializer):
 
 class BillingPlanReadSerializer(BillingPlanSerializer):
     class Meta(BillingPlanSerializer.Meta):
-        fields = BillingPlanSerializer.Meta.fields + ("time_created",)
+        fields = BillingPlanSerializer.Meta.fields + (
+            "time_created",
+            "active_subscriptions",
+        )
 
     components = PlanComponentReadSerializer(many=True)
     time_created = serializers.SerializerMethodField()
+    active_subscriptions = serializers.IntegerField()
 
     def get_time_created(self, obj) -> datetime.date:
         return str(obj.time_created.date())
