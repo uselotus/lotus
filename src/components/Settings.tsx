@@ -74,7 +74,7 @@ const Settings: FC = () => {
       </div>
       <Divider />
       <div className="mt-10 flex flex-row">
-        <Button onClick={getKey}>New API Key</Button>
+        <Button onClick={getKey}>Revoke API Key</Button>
       </div>
       <Divider />
       <div className="mt-10 flex flex-row">
@@ -89,7 +89,14 @@ const Settings: FC = () => {
             ))}
         </List> */}
       </div>
-      <Modal visible={visible} onCancel={closeModal}>
+      <Modal
+        visible={visible}
+        footer={
+          <Button key="ok" onClick={closeModal}>
+            Ok
+          </Button>
+        }
+      >
         <div className="flex flex-col">
           <p className="text-2xl font-main">New API Key</p>
           <p className="text-lg font-main">

@@ -10,6 +10,7 @@ import { Divider, Layout } from "antd";
 import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import CreatePlan from "../pages/CreatePlan";
 import ViewMetrics from "../pages/ViewMetrics";
+import EditPlan from "../pages/EditPlan";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -49,6 +50,9 @@ const AppRoutes: FC = () => {
               <Route path="/" element={<Dashboard />} />
               <Route path="/plans" element={<ViewPlans />} />
               <Route path="create-plan" element={<CreatePlan />} />
+              <Route path="/plan">
+                <Route path=":planId" element={<EditPlan />} />
+              </Route>
               <Route path="/customers" element={<ViewCustomers />} />
               <Route path="/metrics" element={<ViewMetrics />} />
               <Route path="/customers-create" element={<CreatePlan />} />
