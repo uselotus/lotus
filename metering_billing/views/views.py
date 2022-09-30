@@ -4,7 +4,7 @@ from decimal import Decimal
 import posthog
 import stripe
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
@@ -13,7 +13,7 @@ from metering_billing.models import APIToken, BillableMetric, Customer, Subscrip
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.utils import dates_bwn_twodates
+from metering_billing.utils import RevenueCalcGranularity, dates_bwn_twodates
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -23,6 +23,8 @@ from ..utils import (
     calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
+    make_all_dates_times_strings,
+    make_all_datetimes_dates,
     make_all_decimals_floats,
 )
 
@@ -192,8 +194,7 @@ class PeriodMetricRevenueView(APIView):
                     ] = {
                         "metric": str(billable_metric),
                         "data": {
-                            str(x): Decimal(0)
-                            for x in dates_bwn_twodates(p_start, p_end)
+                            x: Decimal(0) for x in dates_bwn_twodates(p_start, p_end)
                         },
                         "total_revenue": Decimal(0),
                     }
@@ -215,28 +216,27 @@ class PeriodMetricRevenueView(APIView):
                     flat_bill_date = (
                         sub.start_date if bp.pay_in_advance else sub.end_date
                     )
-                    if flat_bill_date >= p_start and flat_bill_date <= p_end:
+                    if p_start <= flat_bill_date <= p_end:
                         total_period_rev += bp.flat_rate.amount
                     for plan_component in bp.components.all():
                         billable_metric = plan_component.billable_metric
-                        usage_cost_per_day = calculate_sub_pc_usage_revenue(
+                        revenue_per_day = calculate_sub_pc_usage_revenue(
                             plan_component,
                             billable_metric,
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
-                            p_start,
-                            p_end,
-                            revenue_calc_period="daily",
+                            revenue_granularity=RevenueCalcGranularity.DAILY,
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
-                        ][plan_component.billable_metric.id]
-                        for date, d in usage_cost_per_day.items():
-                            usage_cost = Decimal(d["revenue"])
-                            metric_dict["data"][str(date)] += usage_cost
-                            metric_dict["total_revenue"] += usage_cost
-                            total_period_rev += usage_cost
+                        ][billable_metric.id]
+                        for date, d in revenue_per_day.items():
+                            if date in metric_dict["data"]:
+                                usage_cost = Decimal(d["revenue"])
+                                metric_dict["data"][date] += usage_cost
+                                metric_dict["total_revenue"] += usage_cost
+                                total_period_rev += usage_cost
                 return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
@@ -250,6 +250,7 @@ class PeriodMetricRevenueView(APIView):
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         make_all_decimals_floats(ret)
+        make_all_dates_times_strings(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
@@ -322,7 +323,7 @@ class PeriodMetricUsageView(APIView):
         return_dict = {}
         for metric in metrics:
             usage_summary = get_metric_usage(
-                metric, q_start, q_end, time_period_agg="date"
+                metric, q_start, q_end, time_period_agg="day"
             )
             return_dict[str(metric)] = {
                 "data": {},
@@ -335,6 +336,7 @@ class PeriodMetricUsageView(APIView):
                     obj[key]
                     for key in ["customer_name", "time_created_quantized", "usage_qty"]
                 ]
+                date = date.date()
                 if str(date) not in metric_dict["data"]:
                     metric_dict["data"][str(date)] = {
                         "total_usage": Decimal(0),
@@ -368,6 +370,7 @@ class PeriodMetricUsageView(APIView):
                 }
                 for k, v in metric_d["data"].items()
             ]
+            metric_d["data"] = sorted(metric_d["data"], key=lambda x: x["date"])
         return_dict = {"metrics": return_dict}
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
@@ -419,7 +422,67 @@ class SettingsView(APIView):
         )
 
 
-class CustomerWithRevenueView(APIView):
+class CustomersSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customers = (
+            Customer.objects.filter(organization=organization)
+            .prefetch_related(
+                Prefetch(
+                    "subscription_set",
+                    queryset=Subscription.objects.filter(organization=organization),
+                )
+            )
+            .select_related("billing_plan")
+        )
+        serializer = CustomerSummarySerializer(customers, many=True)
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+
+
+class CustomerDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customer_id = request.query_params["customer_id"]
+        customer = (
+            Customer.objects.filter(organization=organization, customer_id=customer_id)
+            .prefetch_related(
+                Prefetch(
+                    "subscription_set",
+                    queryset=Subscription.objects.filter(organization=organization),
+                )
+            )
+            .select_related("billing_plan")
+            .get()
+        )
+        sub_usg_summaries = get_customer_usage_and_revenue(customer)
+        total_revenue_due = sum(
+            x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
+        )
+        invoices = Invoice.objects.filter(
+            organization__company_name=organization.company_name,
+            customer__customer_id=customer.customer_id,
+        )
+        serializer = CustomerDetailSerializer(
+            customer,
+            context={
+                "total_revenue_due": total_revenue_due,
+                "invoices": invoices,
+            },
+        )
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+
+class CustomersWithRevenueView(APIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -432,26 +495,21 @@ class CustomerWithRevenueView(APIView):
         """
         organization = parse_organization(request)
         customers = Customer.objects.filter(organization=organization)
-        customers_dict = {"customers": []}
+        cust = []
         for customer in customers:
-            customer_dict = {}
             sub_usg_summaries = get_customer_usage_and_revenue(customer)
-            customer_dict["total_revenue_due"] = sum(
+            customer_total_revenue_due = sum(
                 x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
             )
-            customer_dict["customer_name"] = customer.name
-            customer_dict["customer_id"] = customer.customer_id
-            customer_dict["subscriptions"] = [
-                x["billing_plan_name"] for x in sub_usg_summaries["subscriptions"]
-            ]
-            serializer = CustomerRevenueSerializer(data=customer_dict)
-            serializer.is_valid(raise_exception=True)
-            customers_dict["customers"].append(serializer.validated_data)
-        serializer = CustomerRevenueSummarySerializer(data=customers_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
-        make_all_decimals_floats(ret)
-        return JsonResponse(ret, status=status.HTTP_200_OK)
+            serializer = CustomerWithRevenueSerializer(
+                customer,
+                context={
+                    "total_revenue_due": customer_total_revenue_due,
+                },
+            )
+            cust.append(serializer.data)
+        make_all_decimals_floats(cust)
+        return JsonResponse(cust, status=status.HTTP_200_OK, safe=False)
 
 
 class EventPreviewView(APIView):

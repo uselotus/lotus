@@ -34,7 +34,9 @@ from metering_billing.views.model_views import (
 from metering_billing.views.views import (
     APIKeyCreate,
     CancelSubscriptionView,
-    CustomerWithRevenueView,
+    CustomerDetailView,
+    CustomersSummaryView,
+    CustomersWithRevenueView,
     DraftInvoiceView,
     EventPreviewView,
     GetCustomerAccessView,
@@ -63,8 +65,18 @@ urlpatterns = [
     path("api/track/", csrf_exempt(track.track_event), name="track_event"),
     path(
         "api/customer_summary/",
-        CustomerWithRevenueView.as_view(),
+        CustomersSummaryView.as_view(),
         name="customer_summary",
+    ),
+    path(
+        "api/customer_detail/",
+        CustomerDetailView.as_view(),
+        name="customer_detail",
+    ),
+    path(
+        "api/customer_totals/",
+        CustomersWithRevenueView.as_view(),
+        name="customer_totals",
     ),
     path(
         "api/period_metric_usage/",
