@@ -425,6 +425,9 @@ class SettingsView(APIView):
 class CustomersSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: CustomerSummarySerializer},
+    )
     def get(self, request, format=None):
         """
         Get the current settings for the organization.
@@ -449,6 +452,9 @@ class CustomersSummaryView(APIView):
 class CustomerDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={200: CustomerDetailSerializer},
+    )
     def get(self, request, format=None):
         """
         Get the current settings for the organization.
@@ -494,7 +500,7 @@ class CustomersWithRevenueView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
-        responses={200: CustomerRevenueSummarySerializer},
+        responses={200: CustomerWithRevenueSerializer(many=True)},
     )
     def get(self, request, format=None):
         """

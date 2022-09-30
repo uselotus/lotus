@@ -153,7 +153,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         return timeline
 
     def get_total_revenue_due(self, obj):
-        total_revenue_due = self.context.get("total_revenue_due")
+        total_revenue_due = float(self.context.get("total_revenue_due"))
         return total_revenue_due
 
 
@@ -165,7 +165,7 @@ class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     total_revenue_due = serializers.SerializerMethodField()
 
     def get_total_revenue_due(self, obj):
-        total_revenue_due = self.context.get("total_revenue_due")
+        total_revenue_due = float(self.context.get("total_revenue_due"))
         return total_revenue_due
 
 
