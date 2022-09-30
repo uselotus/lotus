@@ -1,3 +1,4 @@
+import email
 import uuid
 
 from dateutil.parser import isoparse
@@ -113,6 +114,7 @@ class Customer(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
+    email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(max_length=40)
     currency = models.CharField(max_length=3, default="USD")
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
@@ -120,6 +122,7 @@ class Customer(models.Model):
     balance = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
+    billing_address = models.CharField(max_length=500, blank=True, null=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)

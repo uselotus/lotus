@@ -80,6 +80,87 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 ## CUSTOMER
+class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ("billing_plan_name", "end_date", "auto_renew")
+
+    billing_plan_name = serializers.CharField(source="billing_plan.name")
+
+
+class CustomerSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_name",
+            "customer_id",
+            "subscriptions",
+        )
+
+    subscriptions = SubscriptionCustomerSummarySerializer(
+        read_only=True, many=True, source="subscription_set"
+    )
+    customer_name = serializers.CharField(source="name")
+
+
+class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = (
+            "billing_plan_name",
+            "subscription_uid",
+            "start_date",
+            "end_date",
+            "auto_renew",
+            "status",
+        )
+
+    billing_plan_name = serializers.CharField(source="billing_plan.name")
+
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_id",
+            "email",
+            "balance" "billing_address",
+            "customer_name",
+            "invoices",
+            "total_revenue_due",
+            "subscriptions",
+        )
+
+    customer_name = serializers.CharField(source="name")
+    subscriptions = SubscriptionCustomerSummarySerializer(
+        read_only=True, many=True, source="subscription_set"
+    )
+    invoices = serializers.SerializerMethodField()
+    total_revenue_due = serializers.SerializerMethodField()
+
+    def get_invoices(self, obj):
+        timeline = self.context.get("invoices")
+        return timeline
+
+    def get_total_revenue_due(self, obj):
+        total_revenue_due = self.context.get("total_revenue_due")
+        return total_revenue_due
+
+
+class CustomerWithRevenueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_id",
+            "total_revenue_due"
+        )
+
+    total_revenue_due = serializers.SerializerMethodField()
+
+    def get_total_revenue_due(self, obj):
+        total_revenue_due = self.context.get("total_revenue_due")
+        return total_revenue_due
+
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer

@@ -4,7 +4,7 @@ from decimal import Decimal
 import posthog
 import stripe
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
@@ -419,7 +419,67 @@ class SettingsView(APIView):
         )
 
 
-class CustomerWithRevenueView(APIView):
+class CustomersSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customers = (
+            Customer.objects.filter(organization=organization)
+            .prefetch_related(
+                Prefetch(
+                    "subscription_set",
+                    queryset=Subscription.objects.filter(organization=organization),
+                )
+            )
+            .select_related("billing_plan")
+        )
+        serializer = CustomerSummarySerializer(customers, many=True)
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+
+
+class CustomerDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customer_id = request.query_params["customer_id"]
+        customer = (
+            Customer.objects.filter(organization=organization, customer_id=customer_id)
+            .prefetch_related(
+                Prefetch(
+                    "subscription_set",
+                    queryset=Subscription.objects.filter(organization=organization),
+                )
+            )
+            .select_related("billing_plan")
+            .get()
+        )
+        sub_usg_summaries = get_customer_usage_and_revenue(customer)
+        total_revenue_due = sum(
+            x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
+        )
+        invoices = Invoice.objects.filter(
+            organization__company_name=organization.company_name,
+            customer__customer_id=customer.customer_id,
+        )
+        serializer = CustomerDetailSerializer(
+            customer,
+            context={
+                "total_revenue_due": total_revenue_due,
+                "invoices": invoices,
+            },
+        )
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+
+class CustomersWithRevenueView(APIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -432,26 +492,21 @@ class CustomerWithRevenueView(APIView):
         """
         organization = parse_organization(request)
         customers = Customer.objects.filter(organization=organization)
-        customers_dict = {"customers": []}
+        cust = []
         for customer in customers:
-            customer_dict = {}
             sub_usg_summaries = get_customer_usage_and_revenue(customer)
-            customer_dict["total_revenue_due"] = sum(
+            customer_total_revenue_due = sum(
                 x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
             )
-            customer_dict["customer_name"] = customer.name
-            customer_dict["customer_id"] = customer.customer_id
-            customer_dict["subscriptions"] = [
-                x["billing_plan_name"] for x in sub_usg_summaries["subscriptions"]
-            ]
-            serializer = CustomerRevenueSerializer(data=customer_dict)
-            serializer.is_valid(raise_exception=True)
-            customers_dict["customers"].append(serializer.validated_data)
-        serializer = CustomerRevenueSummarySerializer(data=customers_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
-        make_all_decimals_floats(ret)
-        return JsonResponse(ret, status=status.HTTP_200_OK)
+            serializer = CustomerWithRevenueSerializer(
+                customer,
+                context={
+                    "total_revenue_due": customer_total_revenue_due,
+                },
+            )
+            cust.append(serializer.data)
+        make_all_decimals_floats(cust)
+        return JsonResponse(cust, status=status.HTTP_200_OK, safe=False)
 
 
 class EventPreviewView(APIView):
