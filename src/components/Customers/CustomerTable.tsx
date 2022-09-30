@@ -43,7 +43,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
   {
     title: "Outstanding Revenue",
     width: 120,
-    render: (_, record) => <p>${record.total_revenue_due}</p>,
+    render: (_, record) => <p>${record.total_revenue_due.toFixed(2)}</p>,
     dataIndex: "total_revenue_due",
   },
 ];

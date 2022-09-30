@@ -27,9 +27,15 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         fake = Faker()
-        username = os.getenv("ADMIN_USERNAME")
-        admin = User.objects.get(username=username)
-        organization = admin.organization
+        user, created = User.objects.get_or_create(username="test", email="test")
+        if created:
+            user.set_password("test")
+            user.save()
+        if user.organization is None:
+            organization, _ = Organization.objects.get_or_create(company_name="test")
+            user.organization = organization
+            user.save()
+        organization = user.organization
         customer_set = baker.make(
             Customer,
             _quantity=10,
@@ -37,45 +43,58 @@ class Command(BaseCommand):
             name=(fake.unique.company() for _ in range(10)),
             customer_id=(fake.unique.ean() for _ in range(10)),
         )
-        bm_e1_1, bm_e1_2 = baker.make(
+        bm_e1_1, bm_e1_2, bm_e1_3, bm_e1_4 = baker.make(
             BillableMetric,
             organization=organization,
             event_name="raise_issue",
-            property_name=itertools.cycle(["", "stacktrace_len"]),
-            aggregation_type=itertools.cycle(["count", "sum"]),
-            _quantity=2,
+            property_name=itertools.cycle(["", "stacktrace_len", "latency", "project"]),
+            aggregation_type=itertools.cycle(["count", "sum", "max", "unique"]),
+            event_type="aggregation",
+            _quantity=4,
         )
-        bm_e2_1, bm_e2_2 = baker.make(
+        (bm_e2_1,) = baker.make(
             BillableMetric,
             organization=organization,
-            event_name="send_alert",
-            property_name=itertools.cycle(["", "latency"]),
-            aggregation_type=itertools.cycle(["count", "max"]),
-            _quantity=2,
+            event_name="log_num_users",
+            property_name=itertools.cycle(
+                [
+                    "qty",
+                ]
+            ),
+            aggregation_type=itertools.cycle(["max"]),
+            stateful_aggregation_period="day",
+            event_type="stateful",
+            _quantity=1,
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=bm_e1_1,
             free_metric_units=500,
-            cost_per_batch=0.25,
-            metric_units_per_batch=5,
+            cost_per_batch=0.75,
+            metric_units_per_batch=10,
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=bm_e1_2,
-            free_metric_units=80_000,
-            cost_per_batch=0.08,
-            metric_units_per_batch=200,
+            free_metric_units=250_000,
+            cost_per_batch=0.60,
+            metric_units_per_batch=10000,
         )
         pc3 = PlanComponent.objects.create(
-            billable_metric=bm_e2_1,
-            free_metric_units=100,
-            cost_per_batch=1.25,
-            metric_units_per_batch=1,
+            billable_metric=bm_e1_3,
+            free_metric_units=200,
+            cost_per_batch=22.50,
+            metric_units_per_batch=50,
         )
         pc4 = PlanComponent.objects.create(
-            billable_metric=bm_e2_2,
-            free_metric_units=200,
-            cost_per_batch=50,
-            metric_units_per_batch=100,
+            billable_metric=bm_e1_4,
+            free_metric_units=1,
+            cost_per_batch=15,
+            metric_units_per_batch=1,
+        )
+        pc5 = PlanComponent.objects.create(
+            billable_metric=bm_e2_1,
+            free_metric_units=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
         )
         bp = BillingPlan.objects.create(
             organization=organization,
@@ -83,11 +102,11 @@ class Command(BaseCommand):
             name="Sentry Basic Plan",
             description="Sentry Basic Plan for event ingestion and alerting",
             currency="USD",
-            flat_rate=30,
+            flat_rate=200,
             pay_in_advance=True,
             billing_plan_id="sentry-basic-plan",
         )
-        bp.components.add(pc1, pc2, pc3, pc4)
+        bp.components.add(pc1, pc2, pc3, pc4, pc5)
         bp.save()
         old_sub_start_date = (
             datetime.date.today() - relativedelta(months=1) - relativedelta(days=15)
@@ -115,6 +134,7 @@ class Command(BaseCommand):
                 start_date=old_sub_start_date,
                 end_date=old_sub_end_date,
                 status="ended",
+                is_new=True,
             )
             Subscription.objects.create(
                 organization=organization,
@@ -123,6 +143,7 @@ class Command(BaseCommand):
                 start_date=new_sub_start_date,
                 end_date=new_sub_end_date,
                 status="active",
+                is_new=False,
             )
 
         for customer in customer_set:
@@ -136,18 +157,18 @@ class Command(BaseCommand):
                     organization=organization,
                     customer=customer,
                     event_name="raise_issue",
-                    properties=gaussian_stacktrace_len(n),
+                    properties=gaussian_raise_issue(n),
                     time_created=random_date(start, end, n),
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
                 )
-                n = int(random.gauss(1_000, 100) // 1)
+                n = int(random.gauss(6, 1.5) // 1)
                 baker.make(
                     Event,
                     organization=organization,
                     customer=customer,
-                    event_name="send_alert",
-                    properties=gaussian_latency(n),
+                    event_name="log_num_users",
+                    properties=gaussian_users(n),
                     time_created=random_date(start, end, n),
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
@@ -166,13 +187,19 @@ def random_date(start, end, n):
         ).replace(tzinfo=timezone.utc)
 
 
-def gaussian_stacktrace_len(n):
+def gaussian_raise_issue(n):
     "Generate `n` stacktrace lengths with a gaussian distribution"
     for _ in range(n):
-        yield {"stacktrace_len": round(random.gauss(300, 15), 0)}
+        yield {
+            "stacktrace_len": round(random.gauss(300, 15), 0),
+            "latency": round(max(random.gauss(350, 50), 0), 2),
+            "project": random.choice(["project1", "project2", "project3"]),
+        }
 
 
-def gaussian_latency(n):
+def gaussian_users(n):
     "Generate `n` latencies with a gaussian distribution"
     for _ in range(n):
-        yield {"latency": round(max(random.gauss(350, 50), 0), 2)}
+        yield {
+            "qty": round(random.gauss(3, 1), 0),
+        }
