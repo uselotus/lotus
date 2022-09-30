@@ -182,14 +182,12 @@ class TestInsertBillableMetric:
 
         payload = insert_billable_metric_payload
         payload["property_name"] = None
-        print("wooooop")
         BillableMetric.objects.create(**{**payload, "organization": setup_dict["org"]})
         response = setup_dict["client"].post(
             reverse("metric-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response)
 
         assert response.status_code == status.HTTP_409_CONFLICT
         assert (
