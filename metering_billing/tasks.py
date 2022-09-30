@@ -29,6 +29,10 @@ def calculate_invoice():
     ending_subscriptions = list(
         Subscription.objects.filter(status="active", end_date__lt=now)
     )
+    invoice_sub_uids_seen = Invoice.values_list("subscription__subscription_uid", flat=True)
+    ended_subs_no_invoice = Subscription.objects.filter(status="ended", end_date__lt=now).exclude(subscription_uid__in=invoice_sub_uids_seen)
+    ending_subscriptions.extend(ended_subs_no_invoice)
+
     # prefetch organization customer stripe keys
     orgs_seen = set()
     for sub in ending_subscriptions:
