@@ -13,7 +13,7 @@ from metering_billing.models import APIToken, BillableMetric, Customer, Subscrip
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.utils import dates_bwn_twodates
+from metering_billing.utils import RevenueCalcGranularity, dates_bwn_twodates
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -23,6 +23,8 @@ from ..utils import (
     calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
+    make_all_dates_times_strings,
+    make_all_datetimes_dates,
     make_all_decimals_floats,
 )
 
@@ -192,8 +194,7 @@ class PeriodMetricRevenueView(APIView):
                     ] = {
                         "metric": str(billable_metric),
                         "data": {
-                            str(x): Decimal(0)
-                            for x in dates_bwn_twodates(p_start, p_end)
+                            x: Decimal(0) for x in dates_bwn_twodates(p_start, p_end)
                         },
                         "total_revenue": Decimal(0),
                     }
@@ -215,28 +216,27 @@ class PeriodMetricRevenueView(APIView):
                     flat_bill_date = (
                         sub.start_date if bp.pay_in_advance else sub.end_date
                     )
-                    if flat_bill_date >= p_start and flat_bill_date <= p_end:
+                    if p_start <= flat_bill_date <= p_end:
                         total_period_rev += bp.flat_rate.amount
                     for plan_component in bp.components.all():
                         billable_metric = plan_component.billable_metric
-                        usage_cost_per_day = calculate_sub_pc_usage_revenue(
+                        revenue_per_day = calculate_sub_pc_usage_revenue(
                             plan_component,
                             billable_metric,
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
-                            p_start,
-                            p_end,
-                            revenue_calc_period="daily",
+                            revenue_granularity=RevenueCalcGranularity.DAILY,
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
-                        ][plan_component.billable_metric.id]
-                        for date, d in usage_cost_per_day.items():
-                            usage_cost = Decimal(d["revenue"])
-                            metric_dict["data"][str(date)] += usage_cost
-                            metric_dict["total_revenue"] += usage_cost
-                            total_period_rev += usage_cost
+                        ][billable_metric.id]
+                        for date, d in revenue_per_day.items():
+                            if date in metric_dict["data"]:
+                                usage_cost = Decimal(d["revenue"])
+                                metric_dict["data"][date] += usage_cost
+                                metric_dict["total_revenue"] += usage_cost
+                                total_period_rev += usage_cost
                 return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
         for p_num in [1, 2]:
             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
@@ -250,6 +250,7 @@ class PeriodMetricRevenueView(APIView):
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         make_all_decimals_floats(ret)
+        make_all_dates_times_strings(ret)
         return JsonResponse(ret, status=status.HTTP_200_OK)
 
 
@@ -322,7 +323,7 @@ class PeriodMetricUsageView(APIView):
         return_dict = {}
         for metric in metrics:
             usage_summary = get_metric_usage(
-                metric, q_start, q_end, time_period_agg="date"
+                metric, q_start, q_end, time_period_agg="day"
             )
             return_dict[str(metric)] = {
                 "data": {},
@@ -335,6 +336,7 @@ class PeriodMetricUsageView(APIView):
                     obj[key]
                     for key in ["customer_name", "time_created_quantized", "usage_qty"]
                 ]
+                date = date.date()
                 if str(date) not in metric_dict["data"]:
                     metric_dict["data"][str(date)] = {
                         "total_usage": Decimal(0),
@@ -368,6 +370,7 @@ class PeriodMetricUsageView(APIView):
                 }
                 for k, v in metric_d["data"].items()
             ]
+            metric_d["data"] = sorted(metric_d["data"], key=lambda x: x["date"])
         return_dict = {"metrics": return_dict}
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)

@@ -3,18 +3,25 @@ import datetime
 import math
 from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from enum import Enum
 
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-from django.db.models import Count, F, FloatField, Max, Sum
+from django.db.models import Count, F, FloatField, Max, Min, Sum
 from django.db.models.fields.json import KeyTextTransform
-from django.db.models.functions import Cast
+from django.db.models.functions import Cast, Trunc
 
 from metering_billing.models import Event, Subscription
 from metering_billing.serializers.model_serializers import (
     BillingPlanReadSerializer,
     PlanComponentReadSerializer,
 )
+
+
+class RevenueCalcGranularity(Enum):
+    DAILY = "day"
+    TOTAL = None
+
 
 rev_calc_to_agg_keyword = {
     "daily": "date",
@@ -27,6 +34,11 @@ stateful_agg_period_to_agg_keyword = {
     "hour": "hour",
 }
 
+
+def convert_to_decimal(value):
+    return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
+
+
 # DAILY USAGE + REVENUE METHODS
 def get_metric_usage(
     metric,
@@ -34,52 +46,96 @@ def get_metric_usage(
     query_end_date=None,
     customer=None,
     time_period_agg=None,
+    only_billable_usage=False,
 ):
+    now = datetime.datetime.now(timezone.utc)
     filter_kwargs = {
         "organization": metric.organization,
         "event_name": metric.event_name,
+        "time_created__lt": now,
     }
-    values_kwargs = {"org": F("organization")}
-    annotate_kwargs = {}
+    pre_groupby_ann_kwargs = {}
+    groupby_kwargs = {"customer_name": F("customer__name")}
+    groupby_aggregation_kwargs = {}
+
     # handle date range
     if query_start_date is not None:
         filter_kwargs["time_created__date__gte"] = query_start_date
     if query_end_date is not None:
         filter_kwargs["time_created__date__lte"] = query_end_date
-    # do it in aggregate, or by customer
+    # filter by customer if its a single one
     if customer is not None:
         filter_kwargs["customer"] = customer
-    else:
-        values_kwargs["customer_name"] = F("customer__name")
     # do it day-by-day, or aggregated over the query period
     if time_period_agg:
-        values_kwargs["time_created_quantized"] = F(f"time_created__{time_period_agg}")
+        groupby_kwargs["time_created_quantized"] = Trunc(
+            F("time_created"), time_period_agg
+        )
     # try filtering by the metric's desired property_name
     if metric.property_name is not None and metric.property_name != "":
         filter_kwargs["properties__has_key"] = metric.property_name
+        pre_groupby_ann_kwargs["property_value"] = F(
+            f"properties__{metric.property_name}"
+        )
     # input the correct aggregation type
     if metric.aggregation_type == "count":
-        annotate_kwargs["usage_qty"] = Count("pk")
+        groupby_aggregation_kwargs["usage_qty"] = Count("pk")
     elif metric.aggregation_type == "unique":
-        annotate_kwargs["usage_qty"] = Count(
-            f"properties__{metric.property_name}", distinct=True
+        if only_billable_usage:
+            # for unique, the billable usage only comes from the first time a person is seen
+            # in the query period. First, we remove the group by day
+            groupby_kwargs.pop("time_created_quantized", None)
+            # then we group by the property value
+            groupby_kwargs["property_value"] = F("property_value")
+            # then we get the min time created for each property value
+            groupby_aggregation_kwargs["time_created_quantized"] = Min(
+                Trunc(F("time_created"), time_period_agg)
+            )
+        groupby_aggregation_kwargs["usage_qty"] = Count(
+            F("property_value"), distinct=True
         )
+    elif metric.aggregation_type == "max":
+        if only_billable_usage:
+            # for max, the billable usage only comes from the single max event in the query period
+            # However, we also need the date of this event, and if we aggregate, we lose that info.
+            # so what we do is we still aggregate per day, but after the query is executed just
+            # order by the max value and take the first one
+            # groupby_kwargs.pop("time_created_quantized", None)
+            pass
+        groupby_aggregation_kwargs["usage_qty"] = Max(
+            Cast(F("property_value"), FloatField())
+        )
+    elif metric.aggregation_type == "last":
+        # in the case of a last aggregation, we want to get the last event in the query period
+        # our strategy will be to get rid of any groupbys and just use order by and distinct
+        groupby_kwargs = {}
+        groupby_aggregation_kwargs = {}
     else:
-        aggregation_type = Sum if metric.aggregation_type == "sum" else Max
-        annotate_kwargs["usage_qty"] = aggregation_type(
-            Cast(KeyTextTransform(metric.property_name, "properties"), FloatField())
+        # sum
+        groupby_aggregation_kwargs["usage_qty"] = Sum(
+            Cast(F("property_value"), FloatField())
         )
-    query = (
-        Event.objects.filter(**filter_kwargs)
-        .values(**values_kwargs)
-        .annotate(**annotate_kwargs)
-    )
+
+    query = Event.objects.filter(**filter_kwargs)
+    query = query.annotate(**pre_groupby_ann_kwargs)
+    query = query.values(**groupby_kwargs)
+    query = query.annotate(**groupby_aggregation_kwargs)
+
+    if metric.aggregation_type == "max" and only_billable_usage:
+        try:
+            query = query.order_by("-usage_qty", "time_created_quantized")[:1]
+        except:  # this queryset is empty
+            pass
+
+    if metric.aggregation_type == "last":
+        if len(query) > 0:
+            query = query.order_by(
+                Trunc(F("time_created"), time_period_agg), "-time_created"
+            ).distinct(Trunc(F("time_created"), time_period_agg))
 
     usage_summary = query
     for x in usage_summary:
-        x["usage_qty"] = Decimal(x["usage_qty"]).quantize(
-            Decimal(".0000000001"), rounding=ROUND_UP
-        )
+        x["usage_qty"] = convert_to_decimal(x["usage_qty"])
 
     return usage_summary
 
@@ -93,172 +149,114 @@ def calculate_total_pc_revenue(plan_component, units_usage):
     return subtotal_cost
 
 
-def calculate_per_period_pc_revenue_for_additive_metric(
-    plan_component, units_usage_per_day, query_start, query_end, time_period_agg
+def calculate_per_period_pc_revenue_for_aggregation_metric(
+    plan_component, units_usage_per_day
 ):
-    usage_before_query_start = list(
-        x["usage_qty"]
-        for x in units_usage_per_day
-        if x["time_created_quantized"] < query_start
-    )
-    units_usage_before_query_start = (
-        sum(usage_before_query_start) if len(usage_before_query_start) > 0 else 0
-    )
-    units_usage_query = [
-        (x["usage_qty"], x["time_created_quantized"])
-        for x in units_usage_per_day
-        if x["time_created_quantized"] >= query_start
-        and x["time_created_quantized"] <= query_end
+    coalesced_usage = {}
+    for x in units_usage_per_day:
+        tc_q = x["time_created_quantized"]
+        if tc_q not in coalesced_usage:
+            coalesced_usage[tc_q] = 0
+        coalesced_usage[tc_q] += x["usage_qty"]
+    usages = [
+        {"time_created_quantized": k, "usage_qty": v}
+        for k, v in coalesced_usage.items()
     ]
-    free_units_usage = plan_component.free_metric_units
-    free_units_usage_left = max(free_units_usage - units_usage_before_query_start, 0)
-    if time_period_agg == "date":
-        plan_periods = list(dates_bwn_twodates(query_start, query_end))
-    else:
-        raise NotImplementedError(
-            f"Time period aggregation {time_period_agg} not supported"
-        )
-    period_revenue_dict = {
-        tc_q: {"revenue": Decimal(0), "usage_qty": 0} for tc_q in plan_periods
-    }
-    for usg_qty, tc_q in units_usage_query:
-        period_revenue_dict[tc_q]["usage_qty"] += usg_qty
-    if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
-        return period_revenue_dict
+    sorted_usage = sorted(usages, key=lambda x: x["time_created_quantized"])
+    period_revenue_dict = {}
+    free_units_usage_left = plan_component.free_metric_units
     remainder_billable_units = 0
-    for qty, tc_q in units_usage_query:
-        qty = Decimal(qty)
-        billable_units = max(qty - free_units_usage_left + remainder_billable_units, 0)
-        billable_batches = billable_units // plan_component.metric_units_per_batch
-        remainder_billable_units = (
-            billable_units - billable_batches * plan_component.metric_units_per_batch
-        )
-        free_units_usage_left = max(0, free_units_usage_left - qty)
-        usage_revenue = (billable_batches * plan_component.cost_per_batch).amount
-        period_revenue_dict[tc_q]["revenue"] = usage_revenue
-    return period_revenue_dict
-
-
-def calculate_per_period_pc_revenue_for_cliff_metric(
-    plan_component, units_usage_per_day, query_start, query_end, time_period_agg
-):
-    # determine what the maximum usage was IN the plan, but OUTSIDE the query
-    periods_before_query_start = list(
-        x["usage_qty"]
-        for x in units_usage_per_day
-        if x["time_created_quantized"] < query_start
-    )
-    units_usage_before_query_start = (
-        max(periods_before_query_start) if len(periods_before_query_start) > 0 else 0
-    )
-    units_usage_before_query_start = Decimal(units_usage_before_query_start)
-    periods_after_query_end = list(
-        x["usage_qty"]
-        for x in units_usage_per_day
-        if x["time_created_quantized"] > query_end
-    )
-    units_usage_after_query_end = (
-        max(periods_after_query_end) if len(periods_after_query_end) > 0 else 0
-    )
-    units_usage_after_query_end = Decimal(units_usage_after_query_end)
-    max_units_usage_outside_query = max(
-        units_usage_before_query_start, units_usage_after_query_end
-    )
-    # go through each day in the query and determine the usage revenue... x if max, 0 otherwise
-    units_usage_query = [
-        (x["usage_qty"], x["time_created_quantized"])
-        for x in units_usage_per_day
-        if x["time_created_quantized"] >= query_start
-        and x["time_created_quantized"] <= query_end
-    ]
-    max_units_usage_query = (
-        max(x[0] for x in units_usage_query) if len(units_usage_query) > 0 else 0
-    )
-    if time_period_agg == "date":
-        plan_periods = list(dates_bwn_twodates(query_start, query_end))
-    else:
-        raise NotImplementedError(
-            f"Time period aggregation {time_period_agg} not supported"
-        )
-    period_revenue_dict = {
-        tc_q: {"revenue": Decimal(0), "usage_qty": 0} for tc_q in plan_periods
-    }
-    for usg_qty, tc_q in units_usage_query:
-        period_revenue_dict[tc_q]["usage_qty"] += usg_qty
-    if (
-        max_units_usage_query < max_units_usage_outside_query
-        or max_units_usage_query == 0
-        or plan_component.cost_per_batch == 0
-        or plan_component.cost_per_batch is None
-    ):
-        return period_revenue_dict
-    for qty, tc_q in units_usage_query:
-        qty = Decimal(qty)
-        if qty > max_units_usage_outside_query and qty == max_units_usage_query:
-            free_units_usage = plan_component.free_metric_units
-            metric_batches = math.ceil(
-                (qty - free_units_usage) / plan_component.metric_units_per_batch
+    for x in sorted_usage:
+        qty = Decimal(x["usage_qty"])
+        tc_q = x["time_created_quantized"]
+        period_revenue_dict[tc_q] = {"usage_qty": qty, "revenue": 0}
+        if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
+            pass
+        else:
+            billable_units = max(
+                qty - free_units_usage_left + remainder_billable_units, 0
             )
-            usage_revenue = (metric_batches * plan_component.cost_per_batch).amount
+            billable_batches = billable_units // plan_component.metric_units_per_batch
+            remainder_billable_units = (
+                billable_units
+                - billable_batches * plan_component.metric_units_per_batch
+            )
+            free_units_usage_left = max(0, free_units_usage_left - qty)
+            usage_revenue = (billable_batches * plan_component.cost_per_batch).amount
             period_revenue_dict[tc_q]["revenue"] = usage_revenue
-            break
     return period_revenue_dict
 
 
-def calculate_stateful_pc_revenue(
+def calculate_pc_usage_rev_for_stateful_metric(
     plan_component,
-    units_usage,
+    billable_metric,
+    customer,
     plan_start_date,
     plan_end_date,
-    customer,
-    stateful_agg_period,
-    revenue_agg_period,
+    revenue_granularity,
 ):
-    metric = plan_component.billable_metric
-    if stateful_agg_period == "date":
-        plan_periods = list(dates_bwn_twodates(plan_start_date, plan_end_date))
-    elif stateful_agg_period == "hour":
-        plan_periods = list(hours_bwn_twodates(plan_start_date, plan_end_date))
-    usage_revenue_dict = {x: {"usage": 0, "revenue": 0} for x in plan_periods}
-    # sort all the events by date
-    qs_periods = {}
-    for x in units_usage:
-        tc = x["time_created_quantized"]
-        if tc not in qs_periods:
-            qs_periods[tc] = []
-        qs_periods[tc].append(x)
-    # sicne stateful metrics carry over, we need to add the last usage from the previous period
-    try:
-        filter_kwargs = {
-            "organization": metric.organization,
-            "event_name": metric.event_name,
-            "time_created__date__lt": plan_start_date,
-            "customer": customer,
-        }
-        if metric.property_name is not None:
-            filter_kwargs["properties__has_key"] = metric.property_name
-        last_event = (
-            Event.objects.filter(**filter_kwargs).order_by("-time_created").first()
+
+    stateful_agg_p = billable_metric.stateful_aggregation_period
+    # get all the relevant events
+    now = datetime.datetime.now(timezone.utc)
+    event_set = Event.objects.filter(
+        organization=billable_metric.organization,
+        event_name=billable_metric.event_name,
+        time_created__date__gte=plan_start_date,
+        time_created__date__lte=plan_end_date,
+        time_created__lt=now,
+        customer=customer,
+        properties__has_key=billable_metric.property_name,
+    ).annotate(property_value=F("properties__" + billable_metric.property_name))
+    last_event = (
+        Event.objects.filter(
+            organization=billable_metric.organization,
+            event_name=billable_metric.event_name,
+            time_created__date__lt=plan_start_date,
+            customer=customer,
+            properties__has_key=billable_metric.property_name,
         )
-    except Event.DoesNotExist:
-        last_event = None
-    # for each day, calculate the usage and revenue
-    for period in sorted(usage_revenue_dict.keys()):
+        .order_by("-time_created")
+        .annotate(property_value=F("properties__" + billable_metric.property_name))
+        .first()
+    )
+
+    # quantize first according to the stateful period
+    if stateful_agg_p == "day":
+        plan_periods = list(dates_bwn_twodates(plan_start_date, plan_end_date))
+        prorated_cost_per_batch = convert_to_decimal(
+            (plan_component.cost_per_batch / len(plan_periods)).amount
+        )
+        quantize_event_time = lambda x: x.date()
+    elif stateful_agg_p == "hour":
+        plan_periods = list(hours_bwn_twodates(plan_start_date, plan_end_date))
+        prorated_cost_per_batch = convert_to_decimal(
+            (plan_component.cost_per_batch / len(plan_periods)).amount
+        )
+        quantize_event_time = lambda x: x.replace(minute=0, second=0, microsecond=0)
+    event_period_dict = {}
+    for event in event_set:
+        tc_q = quantize_event_time(event.time_created)
+        if tc_q not in event_period_dict:
+            event_period_dict[tc_q] = []
+        event_period_dict[tc_q].append(event)
+    # for each period, get the events and calculate the usage and revenue
+    usage_revenue_dict = {}
+    for period in plan_periods:
         # optionally add the "last" event, and calculate effective usage
-        period_events = qs_periods.get(period, [])
+        period_events = event_period_dict.get(period, [])
         if last_event is not None and len(period_events) == 0:
             period_events.append(last_event)
-        period_events_ordered_asc = sorted(
-            period_events, key=lambda x: x["time_created_quantized"]
-        )
-        if metric.aggregation_type == "max":
-            usage = max([x["usage_qty"] for x in period_events], default=0)
-        elif metric.aggregation_type == "last":
+        period_events_ordered_asc = sorted(period_events, key=lambda x: x.time_created)
+        if billable_metric.aggregation_type == "max":
+            usage = max([x.property_value for x in period_events], default=0)
+        elif billable_metric.aggregation_type == "last":
             usage = (
-                period_events_ordered_asc[-1]["usage_qty"]
+                period_events_ordered_asc[-1].property_value
                 if len(period_events_ordered_asc) > 0
                 else 0
             )
+        usage = convert_to_decimal(usage)
         # calculate revenue
         if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
             revenue = 0
@@ -268,7 +266,7 @@ def calculate_stateful_pc_revenue(
                 (max(usage - free_units_usage, 0))
                 / plan_component.metric_units_per_batch
             )
-            revenue = (metric_batches * plan_component.cost_per_batch).amount
+            revenue = metric_batches * prorated_cost_per_batch
         # add revenue and usage to the dict
         usage_revenue_dict[period] = {
             "revenue": revenue,
@@ -277,63 +275,31 @@ def calculate_stateful_pc_revenue(
         # update the last event
         if len(period_events_ordered_asc) > 0:
             last_event = period_events_ordered_asc[-1]
-    if stateful_agg_period != revenue_agg_period:
-        all_periods = list(usage_revenue_dict.keys())
-        if revenue_agg_period == "date":
-            agged_periods = set(x.date for x in all_periods)
-            agged_periods = {p: {"revenue": 0, "usage_qty": {}} for p in agged_periods}
-        else:
-            raise NotImplementedError(
-                f"Time period aggregation {revenue_agg_period} not supported"
-            )
-        for period in all_periods:
-            if revenue_agg_period == "date":
-                agged_period = period.date
+
+    # now we need to re-quantize the usage_revenue_dict according to the revenue granularity
+    if revenue_granularity == RevenueCalcGranularity.DAILY:
+        re_quantized_usage_revenue_dict = {}
+        for period, d in usage_revenue_dict.items():
+            if not isinstance(period, datetime.date):
+                dt = period.date
             else:
-                raise NotImplementedError(
-                    f"Time period aggregation {revenue_agg_period} not supported"
-                )
-            agged_periods[agged_period]["revenue"] += usage_revenue_dict[period][
-                "revenue"
-            ]
-            agged_periods[agged_period]["usage_qty"][period] = usage_revenue_dict[
-                period
-            ]["usage_qty"]
-        usage_revenue_dict = agged_periods
-    usage_revenue_dict = {str(k): v for k, v in usage_revenue_dict.items()}
-    return usage_revenue_dict
-
-
-def calculate_pc_usage_rev_for_stateful_metric(
-    plan_component,
-    billable_metric,
-    customer,
-    plan_start_date,
-    plan_end_date,
-    query_start,
-    query_end,
-    revenue_calc_period,
-):
-    stateful_agg_p = billable_metric.stateful_aggregation_period
-    stateful_agg_p = stateful_agg_period_to_agg_keyword[stateful_agg_p]
-    units_usage = get_metric_usage(
-        billable_metric,
-        query_start_date=query_start,
-        query_end_date=query_end,
-        customer=customer,
-        time_period_agg=stateful_agg_p,
-    )
-    revenue_period_agg = rev_calc_to_agg_keyword.get(revenue_calc_period)
-    usage_revenue_dict = calculate_stateful_pc_revenue(
-        plan_component,
-        units_usage,
-        plan_start_date,
-        plan_end_date,
-        customer,
-        stateful_agg_period=stateful_agg_p,
-        revenue_agg_period=revenue_period_agg,
-    )
-    return usage_revenue_dict
+                dt = period
+            if dt not in re_quantized_usage_revenue_dict:
+                re_quantized_usage_revenue_dict[dt] = {
+                    "revenue": 0,
+                    "usages": [],
+                }
+            re_quantized_usage_revenue_dict[dt]["revenue"] += d["revenue"]
+            re_quantized_usage_revenue_dict[dt]["usages"].append(d["usage_qty"])
+    elif revenue_granularity == RevenueCalcGranularity.TOTAL:
+        re_quantized_usage_revenue_dict = {
+            "revenue": sum([d["revenue"] for d in usage_revenue_dict.values()]),
+        }
+    else:
+        raise NotImplementedError(
+            f"Time period aggregation {revenue_granularity} not supported"
+        )
+    return re_quantized_usage_revenue_dict
 
 
 def calculate_pc_usage_rev_for_aggregation_metric(
@@ -342,37 +308,36 @@ def calculate_pc_usage_rev_for_aggregation_metric(
     customer,
     plan_start_date,
     plan_end_date,
-    query_start,
-    query_end,
-    revenue_calc_period,
+    revenue_granularity,
 ):
-    time_period_agg = rev_calc_to_agg_keyword.get(revenue_calc_period)
     units_usage = get_metric_usage(
         billable_metric,
         query_start_date=plan_start_date,
         query_end_date=plan_end_date,
         customer=customer,
-        time_period_agg=time_period_agg,
+        time_period_agg=revenue_granularity.value,
+        only_billable_usage=revenue_granularity != RevenueCalcGranularity.TOTAL,
     )
-    if revenue_calc_period is not None:
-        if billable_metric.aggregation_type == "max":
-            usage_revenue_dict = calculate_per_period_pc_revenue_for_cliff_metric(
-                plan_component, units_usage, query_start, query_end, time_period_agg
-            )
-        else:
-            usage_revenue_dict = calculate_per_period_pc_revenue_for_additive_metric(
-                plan_component, units_usage, query_start, query_end, time_period_agg
-            )
-    else:
+    if revenue_granularity == RevenueCalcGranularity.TOTAL:
         # this mean we only care about total revenue, don't need to break it out by x
         assert len(units_usage) <= 1, "Shouldn't have more than one row of usage"
-        usg = units_usage[0]["usage_qty"] if len(units_usage) > 0 else 0
-        usage_revenue_dict = {"usage_qty": usg, "revenue": 0}
-        revenue = calculate_total_pc_revenue(
-            plan_component, usage_revenue_dict["usage_qty"]
+        if len(units_usage) > 0:
+            usg = units_usage[0]["usage_qty"]
+            revenue = calculate_total_pc_revenue(plan_component, usg)
+            usage_revenue_dict = {"usage_qty": usg, "revenue": revenue}
+        else:
+            usage_revenue_dict = {"usage_qty": 0, "revenue": 0}
+    else:
+        usage_revenue_dict = calculate_per_period_pc_revenue_for_aggregation_metric(
+            plan_component, units_usage
         )
-        usage_revenue_dict["revenue"] = revenue
-    return usage_revenue_dict
+    ret_dict = {}
+    for k, v in usage_revenue_dict.items():
+        if isinstance(k, datetime.datetime):
+            ret_dict[k.date()] = v
+        else:
+            ret_dict[k] = v
+    return ret_dict
 
 
 def calculate_sub_pc_usage_revenue(
@@ -381,41 +346,35 @@ def calculate_sub_pc_usage_revenue(
     customer,
     plan_start_date,
     plan_end_date,
-    query_start=None,
-    query_end=None,
-    revenue_calc_period=None,
+    revenue_granularity=RevenueCalcGranularity.TOTAL,
 ):
     # revenue calculation needs to be daily, monthly, yearly, or over the entire query
-    assert revenue_calc_period in list(rev_calc_to_agg_keyword.keys()) + [
-        None
-    ], f"Can't calculate revenue over {revenue_calc_period} period"
-    if query_start is None and query_end is None:
-        # if we don't specify a query start or a query end, then we
-        # assume we want something for the duration of plan only
-        query_start = plan_start_date
-        query_end = plan_end_date
+    assert isinstance(
+        revenue_granularity, RevenueCalcGranularity
+    ), "revenue_granularity must be part of RevenueCalcGranularity enum"
     if type(plan_start_date) == str:
         plan_start_date = parser.parse(plan_start_date).date()
     if type(plan_end_date) == str:
         plan_end_date = parser.parse(plan_end_date).date()
-    if type(query_start) == str:
-        query_start = parser.parse(query_start).date()
-    if type(query_end) == str:
-        query_end = parser.parse(query_end).date()
     args_dict = {
         "plan_component": plan_component,
         "billable_metric": billable_metric,
         "customer": customer,
         "plan_start_date": plan_start_date,
         "plan_end_date": plan_end_date,
-        "query_start": query_start,
-        "query_end": query_end,
-        "revenue_calc_period": revenue_calc_period,
+        "revenue_granularity": revenue_granularity,
     }
     if billable_metric.event_type == "stateful":
         usage_revenue_dict = calculate_pc_usage_rev_for_stateful_metric(**args_dict)
     else:
         usage_revenue_dict = calculate_pc_usage_rev_for_aggregation_metric(**args_dict)
+    for k, _ in usage_revenue_dict.items():
+        if revenue_granularity == RevenueCalcGranularity.TOTAL:
+            assert isinstance(k, str), "Total revenue should be a string"
+        elif revenue_granularity == RevenueCalcGranularity.DAILY:
+            assert isinstance(
+                k, datetime.date
+            ), f"Daily revenue should be a date (Key {k} is not)"
     return usage_revenue_dict
 
 
@@ -481,6 +440,43 @@ def make_all_decimals_floats(json):
                     make_all_decimals_floats(item)
             elif isinstance(value, Decimal):
                 json[key] = float(value)
+
+
+def make_all_dates_times_strings(json):
+    if type(json) in [
+        dict,
+        list,
+        datetime.datetime,
+        datetime.date,
+        collections.OrderedDict,
+    ]:
+        for key, value in json.items():
+            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
+                make_all_dates_times_strings(value)
+            elif isinstance(value, list):
+                for item in value:
+                    make_all_dates_times_strings(item)
+            elif isinstance(value, datetime.datetime) or isinstance(
+                value, datetime.date
+            ):
+                json[key] = str(value)
+
+
+def make_all_datetimes_dates(json):
+    if type(json) in [
+        dict,
+        list,
+        datetime.datetime,
+        collections.OrderedDict,
+    ]:
+        for key, value in json.items():
+            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
+                make_all_dates_times_strings(value)
+            elif isinstance(value, list):
+                for item in value:
+                    make_all_dates_times_strings(item)
+            elif isinstance(value, datetime.datetime):
+                json[key] = value.date()
 
 
 def years_bwn_twodates(start_date, end_date):
