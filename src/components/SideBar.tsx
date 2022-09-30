@@ -58,6 +58,7 @@ const SideBar: FC = () => {
           style={{
             height: "100%",
             margin: "30px",
+            background: "#000000",
           }}
         >
           <img src={logo} alt="lotus" />

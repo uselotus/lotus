@@ -5,7 +5,9 @@ import { PlanType } from "../../types/plan-type";
 import { CreateSubscriptionType } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "../../api/api";
-import SubscriptionView from "./CustomerSubscriptionView";
+import SubscriptionView, {
+  cancelSubscriptionType,
+} from "./CustomerSubscriptionView";
 import { useMutation, useQueryClient } from "react-query";
 import dayjs from "dayjs";
 
@@ -35,6 +37,23 @@ function CustomerDetail(props: {
     }
   );
 
+  const cancelMutation = useMutation(
+    (post: cancelSubscriptionType) => Customer.cancelSubscription(post),
+    {
+      onSettled: () => {
+        queryClient.invalidateQueries(["customer_list"]);
+      },
+    }
+  );
+
+  const cancelSubscription = (props: {
+    subscription_uid: string;
+    bill_now: boolean;
+    revoke_access: boolean;
+  }) => {
+    cancelMutation.mutate(props);
+  };
+
   const addSubscriptions = (subscription: any) => {
     setCustomerSubscriptions([...customerSubscriptions, subscription.name]);
     console.log(subscription, "subscription");
@@ -50,7 +69,6 @@ function CustomerDetail(props: {
   };
 
   const onClick = (e) => {
-    console.log("click ", e);
     setCurrentTab(e.key);
   };
 
@@ -59,7 +77,10 @@ function CustomerDetail(props: {
       visible={props.visible}
       title={props.customer.title}
       onCancel={props.onCancel}
+      okType="default"
+      onOk={props.onCancel}
       style={{ width: "80%" }}
+      footer={null}
     >
       {props.plans === undefined ? (
         <div>
@@ -88,11 +109,12 @@ function CustomerDetail(props: {
                     subscriptions={customerSubscriptions}
                     plans={props.plans}
                     onChange={addSubscriptions}
+                    onCancel={cancelSubscription}
                   />
                 </div>
               </Tabs.TabPane>
-              <Tabs.TabPane disabled={true} tab="History" key="history">
-                <p>History</p>
+              <Tabs.TabPane disabled={true} tab="Invoices" key="invoices">
+                <p>Invoices</p>
               </Tabs.TabPane>
             </Tabs>
           </div>

@@ -19,6 +19,7 @@ import {
 import Cookies from "universal-cookie";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
+import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 
 axios.defaults.xsrfCookieName = "csrftoken";
 axios.defaults.xsrfHeaderName = "X-CSRFToken";
@@ -48,6 +49,10 @@ export const Customer = {
     requests.post("api/customers/", post),
   subscribe: (post: CreateSubscriptionType): Promise<CreateSubscriptionType> =>
     requests.post("api/subscriptions/", post),
+  cancelSubscription: (
+    post: cancelSubscriptionType
+  ): Promise<cancelSubscriptionType> =>
+    requests.post("api/cancel_subscription/", post),
 };
 
 export const Plan = {
@@ -131,7 +136,7 @@ export const Metrics = {
     requests.get("api/period_metric_usage/", {
       params: { start_date, end_date, top_n_customers },
     }),
-  getMetrics: (): Promise<MetricNameType[]> => requests.get("api/metrics/"),
+  getMetrics: (): Promise<MetricType[]> => requests.get("api/metrics/"),
   createMetric: (post: MetricType): Promise<MetricType> =>
     requests.post("api/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>

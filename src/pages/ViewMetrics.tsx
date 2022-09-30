@@ -22,6 +22,8 @@ const defaultMetricState: CreateMetricState = {
   event_name: "",
   aggregation_type: "",
   property_name: "",
+  event_type: "",
+  stateful_aggregation_period: "",
 };
 
 const ViewMetrics: FC = () => {
@@ -95,7 +97,7 @@ const ViewMetrics: FC = () => {
           )}
           {isError && <div className=" text-danger">Something went wrong</div>}
         </div>
-        <Card className="flex flex-row justify-center bg-light">
+        <Card className="flex flex-row justify-center bg-light h-full">
           <h1 className="text-2xl font-main mb-5 align-center">Event Stream</h1>
           <Divider />
           <div>

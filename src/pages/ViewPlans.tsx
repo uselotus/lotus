@@ -46,8 +46,7 @@ const ViewPlans: FC = () => {
         <List
           bordered={false}
           dataSource={plans}
-          grid={{ gutter: 16, column: 3 }}
-          className="w-"
+          className="w-full"
           renderItem={(item) => (
             <List.Item key={item.name}>
               <PlanDisplayBasic plan={item} />
