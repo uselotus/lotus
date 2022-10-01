@@ -53,39 +53,32 @@ def get_access_test_common_setup(
         setup_dict["client"] = client
         (customer,) = add_customers_to_org(org, n=1)
         setup_dict["customer"] = customer
-        event_properties = (
-            {"num_characters": 350, "peak_bandwith": 65},
-            {"num_characters": 125, "peak_bandwith": 148},
-            {"num_characters": 543, "peak_bandwith": 16},
-        )
         event_set = baker.make(
             Event,
             organization=org,
             customer=customer,
             event_name="email_sent",
             time_created=datetime.datetime.now() - relativedelta(days=1),
-            properties=itertools.cycle(event_properties),
-            _quantity=3,
+            _quantity=5,
         )
-        deny_metric_set = baker.make(
+        deny_limit_metric_set = baker.make(
             BillableMetric,
             organization=org,
             event_name="email_sent",
-            property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),
-            aggregation_type=itertools.cycle(["sum", "max", "count"]),
-            _quantity=3,
+            property_name=itertools.cycle([""]),
+            aggregation_type=itertools.cycle(["count"]),
+            _quantity=1,
         )
-        setup_dict["deny_metrics"] = deny_metric_set
+        setup_dict["deny_limit_metrics"] = deny_limit_metric_set
         event_set = baker.make(
             Event,
             organization=org,
             customer=customer,
             event_name="api_call",
             time_created=datetime.datetime.now() - relativedelta(days=1),
-            properties=itertools.cycle(event_properties),
             _quantity=5,
         )
-        allow_metric_set = baker.make(
+        allow_limit_metric_set = baker.make(
             BillableMetric,
             organization=org,
             event_name="api_call",
@@ -93,7 +86,16 @@ def get_access_test_common_setup(
             aggregation_type=itertools.cycle(["count"]),
             _quantity=1,
         )
-        setup_dict["allow_metrics"] = allow_metric_set
+        setup_dict["allow_limit_metrics"] = allow_limit_metric_set
+        allow_free_metric_set = baker.make(
+            BillableMetric,
+            organization=org,
+            event_name="bogus_event",
+            property_name=itertools.cycle([""]),
+            aggregation_type=itertools.cycle(["count"]),
+            _quantity=1,
+        )
+        setup_dict["allow_free_metrics"] = allow_free_metric_set
         billing_plan = baker.make(
             BillingPlan,
             organization=org,
@@ -105,24 +107,26 @@ def get_access_test_common_setup(
         )
         plan_component_set = baker.make(
             PlanComponent,  # sum char (over), max bw (ok), count (ok)
-            billable_metric=itertools.cycle(deny_metric_set + allow_metric_set),
-            free_metric_units=itertools.cycle([50, 0, 1, 5]),
-            cost_per_batch=itertools.cycle([5, 0.05, 50]),
-            metric_units_per_batch=itertools.cycle([100, 1, 1, 1]),
-            max_metric_units=itertools.cycle([500, 250, 10, 25]),
-            _quantity=4,
+            billable_metric=itertools.cycle(
+                deny_limit_metric_set + allow_limit_metric_set + allow_free_metric_set
+            ),
+            free_metric_units=itertools.cycle([1, 1, 20]),
+            cost_per_batch=itertools.cycle([10, 10, 10]),
+            metric_units_per_batch=itertools.cycle([1, 1, 1]),
+            max_metric_units=itertools.cycle([3, 6, 20]),
+            _quantity=3,
         )
         feature_set = baker.make(
             Feature,
             organization=org,
-            feature_name=itertools.cycle(["feature1", "feature2", "feature3"]),
-            _quantity=3,
+            feature_name=itertools.cycle(["feature1", "feature2"]),
+            _quantity=2,
         )
         setup_dict["plan_components"] = plan_component_set
         billing_plan.components.add(*plan_component_set)
         billing_plan.save()
         setup_dict["features"] = feature_set
-        billing_plan.features.add(*feature_set[:2])
+        billing_plan.features.add(*feature_set[:1])
         billing_plan.save()
         setup_dict["billing_plan"] = billing_plan
         subscription = baker.make(
@@ -141,27 +145,54 @@ def get_access_test_common_setup(
 
 @pytest.mark.django_db(transaction=True)
 class TestGetAccess:
-    def test_get_access_bm_allow(self, get_access_test_common_setup):
+    def test_get_access_limit_bm_allow(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "event_name": setup_dict["allow_metrics"][0].event_name,
+            "event_name": setup_dict["allow_limit_metrics"][0].event_name,
+            "event_limit_type": "limit",
         }
         response = setup_dict["client"].get(reverse("customer_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["access"] == True
 
-    def test_get_access_bm_deny(self, get_access_test_common_setup):
+    def test_get_access_limit_bm_deny(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "event_name": setup_dict["deny_metrics"][0].event_name,
+            "event_name": setup_dict["deny_limit_metrics"][0].event_name,
+            "event_limit_type": "limit",
         }
         response = setup_dict["client"].get(reverse("customer_access"), payload)
 
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["access"] == False
+
+    def test_get_access_free_bm_allow(self, get_access_test_common_setup):
+        setup_dict = get_access_test_common_setup(auth_method="api_key")
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "event_name": setup_dict["allow_free_metrics"][0].event_name,
+            "event_limit_type": "free",
+        }
+        response = setup_dict["client"].get(reverse("customer_access"), payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["access"] == True
+
+    def test_get_access_free_bm_deny(self, get_access_test_common_setup):
+        setup_dict = get_access_test_common_setup(auth_method="api_key")
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "event_name": setup_dict["allow_limit_metrics"][0].event_name,
+            "event_limit_type": "free",
+        }
+        response = setup_dict["client"].get(reverse("customer_access"), payload)
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["access"] == False
 
@@ -177,21 +208,12 @@ class TestGetAccess:
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["access"] == True
 
-        payload = {
-            "customer_id": setup_dict["customer"].customer_id,
-            "feature_name": setup_dict["features"][1].feature_name,
-        }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.json()["access"] == True
-
     def test_get_access_feature_deny(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "feature_name": setup_dict["features"][2].feature_name,
+            "feature_name": setup_dict["features"][1].feature_name,
         }
         response = setup_dict["client"].get(reverse("customer_access"), payload)
 

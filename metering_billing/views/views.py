@@ -743,6 +743,7 @@ class GetCustomerAccessView(APIView):
             )
         event_name = serializer.validated_data.get("event_name")
         feature_name = serializer.validated_data.get("feature_name")
+        event_limit_type = serializer.validated_data.get("event_limit_type")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
             status="active",
@@ -757,7 +758,10 @@ class GetCustomerAccessView(APIView):
                 for component in sub.billing_plan.components.all():
                     if component.billable_metric.event_name == event_name:
                         metric = component.billable_metric
-                        metric_limit = component.max_metric_units
+                        if event_limit_type == "free":
+                            metric_limit = component.free_metric_units
+                        elif event_limit_type == "limit":
+                            metric_limit = component.max_metric_units
                         if not metric_limit:
                             metric_usages[metric.billable_metric_name] = {
                                 "metric_usage": None,
@@ -770,11 +774,16 @@ class GetCustomerAccessView(APIView):
                             query_start_date=sub.start_date,
                             query_end_date=sub.end_date,
                             customer=customer,
-                        )[0]["usage_qty"]
+                        )
+                        metric_usage = list(metric_usage)
+                        if len(metric_usage) > 0:
+                            metric_usage = metric_usage[0]["usage_qty"]
+                        else:
+                            metric_usage = 0
                         metric_usages[metric.billable_metric_name] = {
                             "metric_usage": metric_usage,
                             "metric_limit": metric_limit,
-                            "access": metric_usage <= metric_limit,
+                            "access": metric_usage < metric_limit,
                         }
             if all(v["access"] for k, v in metric_usages.items()):
                 return JsonResponse(

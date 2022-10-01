@@ -10,6 +10,9 @@ class GetCustomerAccessRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=True)
     event_name = serializers.CharField(required=False)
     feature_name = serializers.CharField(required=False)
+    event_limit_type = serializers.ChoiceField(
+        choices=["free", "limit"], required=False
+    )
 
     def validate(self, data):
         if not data.get("event_name") and not data.get("feature_name"):
@@ -19,6 +22,10 @@ class GetCustomerAccessRequestSerializer(serializers.Serializer):
         if data.get("event_name") and data.get("feature_name"):
             raise serializers.ValidationError(
                 "Cannot provide both event_name and feature_name"
+            )
+        if data.get("event_name") and not data.get("event_limit_type"):
+            raise serializers.ValidationError(
+                "Must provide event_limit_type when providing event_name"
             )
         return data
 
