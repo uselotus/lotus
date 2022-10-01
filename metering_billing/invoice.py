@@ -11,6 +11,7 @@ from metering_billing.models import (
     Organization,
     Subscription,
 )
+from metering_billing.serializers.model_serializers import InvoiceSerializer
 from metering_billing.utils import (
     calculate_sub_pc_usage_revenue,
     make_all_decimals_floats,
@@ -59,7 +60,7 @@ class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ("start_date", "end_date", "billing_plan")
+        fields = ("start_date", "end_date", "billing_plan", "subscription_uid")
 
 
 def generate_invoice(subscription, draft=False, issue_date=None):
@@ -97,13 +98,23 @@ def generate_invoice(subscription, draft=False, issue_date=None):
     amount_cents = int(
         amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100)
     )
+
+    customer_connected_to_pp = customer.payment_provider_id != ""
+    org_pp_id = None
+    if customer_connected_to_pp:
+        cust_pp_type = customer.payment_provider
+        org_pps = organization.payment_provider_ids
+        if cust_pp_type in org_pps:
+            org_pp_id = org_pps[cust_pp_type]
+
+    status = "unpaid"
     if draft:
         status = "draft"
-        payment_intent_id = None
-    elif organization.stripe_id is not None or (
+        external_payment_obj_id = None
+    elif (customer_connected_to_pp and org_pp_id) or (
         SELF_HOSTED and STRIPE_SECRET_KEY != ""
     ):
-        if customer.payment_provider_id is not None:
+        if customer.payment_provider == "stripe":
             payment_intent_kwargs = {
                 "amount": amount_cents,
                 "currency": billing_plan.currency,
@@ -112,16 +123,14 @@ def generate_invoice(subscription, draft=False, issue_date=None):
                 "description": f"Invoice for {organization.company_name}",
             }
             if not SELF_HOSTED:
-                payment_intent_kwargs["stripe_account"] = organization.stripe_id
+                payment_intent_kwargs["stripe_account"] = org_pp_id
             payment_intent = stripe.PaymentIntent.create(**payment_intent_kwargs)
-            status = payment_intent.status
-            payment_intent_id = payment_intent.id
+            external_payment_obj_id = payment_intent.id
+            # can be extensible by adding an elif depending on payment provider workflow
         else:
-            status = "customer_not_connected_to_stripe"
-            payment_intent_id = None
+            external_payment_obj_id = None
     else:
-        status = "organization_not_connected_to_stripe"
-        payment_intent_id = None
+        external_payment_obj_id = None
 
     # Create the invoice
     org_serializer = InvoiceOrganizationSerializer(organization)
@@ -132,27 +141,18 @@ def generate_invoice(subscription, draft=False, issue_date=None):
     invoice = Invoice.objects.create(
         cost_due=amount_cents / 100,
         issue_date=issue_date,
+        org_connected_to_cust_payment_provider=org_pp_id != None,
+        cust_connected_to_payment_provider=customer_connected_to_pp,
         organization=org_serializer.data,
         customer=customer_serializer.data,
         subscription=subscription_serializer.data,
-        status=status,
-        payment_intent_id=payment_intent_id,
+        payment_status=status,
+        external_payment_obj_id=external_payment_obj_id,
         line_items=usage_dict,
     )
 
     if not draft:
-        invoice_data = {
-            invoice: {
-                "cost_due": amount_cents / 100,
-                "issue_date": issue_date,
-                "organization": org_serializer.data,
-                "customer": customer_serializer.data,
-                "subscription": subscription_serializer.data,
-                "status": status,
-                "payment_intent_id": payment_intent_id,
-                "line_items": usage_dict,
-            }
-        }
+        invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
 
     return invoice

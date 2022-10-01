@@ -48,7 +48,7 @@ const SideBar: FC = () => {
   };
 
   return (
-    <div>
+    <div className="h-full">
       <Menu
         mode="vertical"
         selectedKeys={[location.pathname]}
@@ -58,6 +58,7 @@ const SideBar: FC = () => {
           style={{
             height: "100%",
             margin: "30px",
+            background: "#000000",
           }}
         >
           <img src={logo} alt="lotus" />
@@ -104,6 +105,7 @@ const SideBar: FC = () => {
           <SettingOutlined />
           <span> Settings</span>
         </Menu.Item>
+        <Divider className="self-end" />
         <Menu.Item key="logout" onClick={handleLogoutClick}>
           <LogoutOutlined />
           <span> Logout</span>

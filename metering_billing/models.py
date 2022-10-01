@@ -1,3 +1,4 @@
+import email
 import uuid
 
 from dateutil.parser import isoparse
@@ -28,6 +29,10 @@ AGGREGATION_CHOICES = Choices(
     (AGGREGATION_TYPES.MAX, _("Max")),
     (AGGREGATION_TYPES.UNIQUE, _("Unique")),
     (AGGREGATION_TYPES.LAST, _("Last")),
+)
+
+SUPPORTED_PAYMENT_PROVIDERS = Choices(
+    ("stripe", _("Stripe")),
 )
 
 
@@ -74,6 +79,7 @@ class Organization(models.Model):
     )
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, blank=True, null=True)
+    payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
@@ -94,6 +100,7 @@ class User(AbstractUser):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True
     )
+    email = models.EmailField(unique=True)
 
 
 class Customer(models.Model):
@@ -113,13 +120,21 @@ class Customer(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
+    email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(max_length=40)
     currency = models.CharField(max_length=3, default="USD")
+    payment_provider = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        choices=SUPPORTED_PAYMENT_PROVIDERS,
+    )
     payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
     balance = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
+    billing_address = models.CharField(max_length=500, blank=True, null=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
@@ -386,28 +401,18 @@ class Subscription(models.Model):
 
 class Invoice(models.Model):
     class INVOICE_STATUS_TYPES(object):
-        ORG_NOT_CONNECTED_TO_STRIPE = "organization_not_connected_to_stripe"
-        CUST_NOT_CONNECTED_TO_STRIPE = "customer_not_connected_to_stripe"
-        REQUIRES_PAYMENT_METHOD = "requires_payment_method"
-        REQUIRES_ACTION = "requires_action"
-        PROCESSING = "processing"
-        SUCCEEDED = "succeeded"
+        # REQUIRES_PAYMENT_METHOD = "requires_payment_method"
+        # REQUIRES_ACTION = "requires_action"
+        # PROCESSING = "processing"
+        # SUCCEEDED = "succeeded"
         DRAFT = "draft"
+        PAID = "paid"
+        UNPAID = "unpaid"
 
     INVOICE_STATUS_CHOICES = Choices(
-        (INVOICE_STATUS_TYPES.REQUIRES_PAYMENT_METHOD, _("Requires Payment Method")),
-        (INVOICE_STATUS_TYPES.REQUIRES_ACTION, _("Requires Action")),
-        (INVOICE_STATUS_TYPES.PROCESSING, _("Processing")),
-        (INVOICE_STATUS_TYPES.SUCCEEDED, _("Succeeded")),
         (INVOICE_STATUS_TYPES.DRAFT, _("Draft")),
-        (
-            INVOICE_STATUS_TYPES.ORG_NOT_CONNECTED_TO_STRIPE,
-            _("Organization Not Connected to Stripe"),
-        ),
-        (
-            INVOICE_STATUS_TYPES.CUST_NOT_CONNECTED_TO_STRIPE,
-            _("Customer Not Connected to Stripe"),
-        ),
+        (INVOICE_STATUS_TYPES.PAID, _("Paid")),
+        (INVOICE_STATUS_TYPES.UNPAID, _("Unpaid")),
     )
 
     cost_due = MoneyField(
@@ -415,8 +420,10 @@ class Invoice(models.Model):
     )
     issue_date = models.DateTimeField(max_length=100, auto_now=True)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
-    status = models.CharField(max_length=40, choices=INVOICE_STATUS_CHOICES)
-    payment_intent_id = models.CharField(max_length=240, null=True, blank=True)
+    org_connected_to_cust_payment_provider = models.BooleanField(default=False)
+    cust_connected_to_payment_provider = models.BooleanField(default=False)
+    payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS_CHOICES)
+    external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
     line_items = models.JSONField()
     organization = models.JSONField()
     customer = models.JSONField()

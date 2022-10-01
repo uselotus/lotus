@@ -38,6 +38,7 @@ posthog = "*"
 python-decouple = "*"
 pytest-cov = "*"
 celery = {extras = ["redis"], version = "*"}
+social-auth-app-django = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"

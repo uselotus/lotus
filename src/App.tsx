@@ -11,11 +11,12 @@ function App() {
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
     Authentication.getSession().then((res) => {
       return res;
-    });
+    },
+    );
 
   const { data: sessionData, isLoading } = useQuery<{
     isAuthenticated: boolean;
-  }>(["session"], fetchSessionInfo);
+  }>(["session"], fetchSessionInfo, {refetchInterval: 60000,});
 
   const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
   if (isLoading) {

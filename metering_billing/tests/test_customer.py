@@ -124,6 +124,7 @@ def insert_customer_payload():
         "balance": 30,
         "currency": "USD",
         "payment_provider_id": "test_payment_provider_id",
+        "payment_provider": "stripe",
         "properties": {},
     }
     return payload

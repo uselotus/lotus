@@ -4,7 +4,7 @@ from decimal import Decimal
 import posthog
 import stripe
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
@@ -36,16 +36,18 @@ def import_stripe_customers(organization):
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
     num_cust_added = 0
-    if organization.stripe_id or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
+    org_ppis = organization.payment_provider_ids
+    if "stripe" in org_ppis or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
         stripe_cust_kwargs = {}
-        if organization.stripe_id:
-            stripe_cust_kwargs["stripe_account"] = organization.stripe_id
+        if org_ppis.get("stripe") != "":
+            stripe_cust_kwargs["stripe_account"] = org_ppis.get("stripe")
         stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
         for stripe_customer in stripe_customers_response.auto_paging_iter():
             try:
                 customer = Customer.objects.get(
                     organization=organization, name=stripe_customer.name
                 )
+                customer.payment_provider = "stripe"
                 customer.payment_provider_id = stripe_customer.id
                 customer.save()
                 num_cust_added += 1
@@ -71,8 +73,8 @@ class InitializeStripeView(APIView):
         """
 
         organization = parse_organization(request)
-
-        stripe_id = organization.stripe_id
+        org_ppis = organization.payment_provider_ids
+        stripe_id = org_ppis.get("stripe")
 
         if (stripe_id and len(stripe_id) > 0) or (
             SELF_HOSTED and STRIPE_SECRET_KEY != ""
@@ -132,7 +134,8 @@ class InitializeStripeView(APIView):
 
         connected_account_id = response["stripe_user_id"]
 
-        organization.stripe_id = connected_account_id
+        organization.payment_provider_ids.stripe = connected_account_id
+        organization.save()
 
         n_cust_added = import_stripe_customers(organization)
 
@@ -150,7 +153,7 @@ class InitializeStripeView(APIView):
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -255,7 +258,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -422,12 +425,85 @@ class SettingsView(APIView):
         )
 
 
-class CustomerWithRevenueView(APIView):
+class CustomersSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: CustomerSummarySerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customers = Customer.objects.filter(organization=organization).prefetch_related(
+            Prefetch(
+                "subscription_set",
+                queryset=Subscription.objects.filter(organization=organization),
+                to_attr="subscriptions",
+            ),
+            Prefetch(
+                "subscription_set__billing_plan",
+                queryset=BillingPlan.objects.filter(organization=organization),
+                to_attr="billing_plans",
+            ),
+        )
+        serializer = CustomerSummarySerializer(customers, many=True)
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+
+
+class CustomerDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: CustomerDetailSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customer_id = request.query_params.get("customer_id")
+        customer = (
+            Customer.objects.filter(organization=organization, customer_id=customer_id)
+            .prefetch_related(
+                Prefetch(
+                    "subscription_set",
+                    queryset=Subscription.objects.filter(organization=organization),
+                    to_attr="subscriptions",
+                ),
+                Prefetch(
+                    "subscription_set__billing_plan",
+                    queryset=BillingPlan.objects.filter(organization=organization),
+                    to_attr="billing_plans",
+                ),
+            )
+            .get()
+        )
+        sub_usg_summaries = get_customer_usage_and_revenue(customer)
+        total_revenue_due = sum(
+            x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
+        )
+        invoices = Invoice.objects.filter(
+            organization__company_name=organization.company_name,
+            customer__customer_id=customer.customer_id,
+        )
+        serializer = CustomerDetailSerializer(
+            customer,
+            context={
+                "total_revenue_due": total_revenue_due,
+                "invoices": invoices,
+            },
+        )
+        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+
+
+class CustomersWithRevenueView(APIView):
 
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        responses={200: CustomerRevenueSummarySerializer},
+        responses={200: CustomerWithRevenueSerializer(many=True)},
     )
     def get(self, request, format=None):
         """
@@ -435,26 +511,21 @@ class CustomerWithRevenueView(APIView):
         """
         organization = parse_organization(request)
         customers = Customer.objects.filter(organization=organization)
-        customers_dict = {"customers": []}
+        cust = []
         for customer in customers:
-            customer_dict = {}
             sub_usg_summaries = get_customer_usage_and_revenue(customer)
-            customer_dict["total_revenue_due"] = sum(
+            customer_total_revenue_due = sum(
                 x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
             )
-            customer_dict["customer_name"] = customer.name
-            customer_dict["customer_id"] = customer.customer_id
-            customer_dict["subscriptions"] = [
-                x["billing_plan_name"] for x in sub_usg_summaries["subscriptions"]
-            ]
-            serializer = CustomerRevenueSerializer(data=customer_dict)
-            serializer.is_valid(raise_exception=True)
-            customers_dict["customers"].append(serializer.validated_data)
-        serializer = CustomerRevenueSummarySerializer(data=customers_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
-        make_all_decimals_floats(ret)
-        return JsonResponse(ret, status=status.HTTP_200_OK)
+            serializer = CustomerWithRevenueSerializer(
+                customer,
+                context={
+                    "total_revenue_due": customer_total_revenue_due,
+                },
+            )
+            cust.append(serializer.data)
+        make_all_decimals_floats(cust)
+        return JsonResponse(cust, status=status.HTTP_200_OK, safe=False)
 
 
 class EventPreviewView(APIView):
@@ -496,7 +567,7 @@ class EventPreviewView(APIView):
 
 
 class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
@@ -675,6 +746,7 @@ class GetCustomerAccessView(APIView):
             )
         event_name = serializer.validated_data.get("event_name")
         feature_name = serializer.validated_data.get("feature_name")
+        event_limit_type = serializer.validated_data.get("event_limit_type")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
             status="active",
@@ -689,7 +761,10 @@ class GetCustomerAccessView(APIView):
                 for component in sub.billing_plan.components.all():
                     if component.billable_metric.event_name == event_name:
                         metric = component.billable_metric
-                        metric_limit = component.max_metric_units
+                        if event_limit_type == "free":
+                            metric_limit = component.free_metric_units
+                        elif event_limit_type == "total":
+                            metric_limit = component.max_metric_units
                         if not metric_limit:
                             metric_usages[metric.billable_metric_name] = {
                                 "metric_usage": None,
@@ -702,11 +777,16 @@ class GetCustomerAccessView(APIView):
                             query_start_date=sub.start_date,
                             query_end_date=sub.end_date,
                             customer=customer,
-                        )[0]["usage_qty"]
+                        )
+                        metric_usage = list(metric_usage)
+                        if len(metric_usage) > 0:
+                            metric_usage = metric_usage[0]["usage_qty"]
+                        else:
+                            metric_usage = 0
                         metric_usages[metric.billable_metric_name] = {
                             "metric_usage": metric_usage,
                             "metric_limit": metric_limit,
-                            "access": metric_usage <= metric_limit,
+                            "access": metric_usage < metric_limit,
                         }
             if all(v["access"] for k, v in metric_usages.items()):
                 return JsonResponse(

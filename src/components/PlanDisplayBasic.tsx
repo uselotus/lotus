@@ -1,65 +1,94 @@
 import React, { FC } from "react";
 import { PlanType } from "../types/plan-type";
-import { Card, Divider, List } from "antd";
+import { Card, Menu, Dropdown, List, Statistic } from "antd";
 import { Plan } from "../api/api";
 
 function PlanDisplayBasic(props: { plan: PlanType }) {
+  const planMenu = (
+    <Menu>
+      <Menu.Item key="0">
+        <a href="#">Edit</a>
+      </Menu.Item>
+      <Menu.Item key="1">
+        <a href="#">Delete</a>
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
-    <Card className="my-5">
-      <div className="space-y-4">
-        <div className="flex space-x-4 flex-row items-center ">
+    <Card
+      className="my-5 w-full"
+      extra={
+        <Dropdown overlay={planMenu} trigger={["click"]}>
+          <a className="text-lg font-bold" onClick={(e) => e.preventDefault()}>
+            ... <i className="fas fa-ellipsis-v"></i>
+          </a>
+        </Dropdown>
+      }
+      title={
+        <div className="flex space-x-4 flex-row items-center space-y-4">
           <div className="font-bold text-2xl">{props.plan.name}</div>
         </div>
-        <Divider />
-        <p className="text-base">{props.plan.description}</p>
+      }
+    >
+      <div className="grid grid-cols-3 justify-items-stretch font-main">
+        <div className="space-y-4">
+          <p className="text-base">{props.plan.description}</p>
 
-        <div className="grid gap-4 grid-rows-2 justify-between">
-          <div className="grid grid-cols-2 flex-col">
-            <p>
-              <b>Plan id:</b> {props.plan.billing_plan_id}
-            </p>
-            <p>
-              <b>Date Created:</b> {props.plan.time_created}
-            </p>
+          <div className="grid gap-4 grid-rows-3 justify-between space-y-4">
+            <div className="flex-col">
+              <p>
+                <b>Plan id:</b> {props.plan.billing_plan_id}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 flex-col gap-5">
+              <p>
+                {" "}
+                <b>Interval</b>: {props.plan.interval}
+              </p>
+              <p>
+                {" "}
+                <b>Recurring Price</b>: ${props.plan.flat_rate}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-5">
+              <p>
+                <b>Date Created:</b> {props.plan.time_created}
+              </p>
+              <p>
+                {" "}
+                <b>Pay In Advance</b>: Yes
+              </p>
+            </div>
           </div>
-          <div className="grid grid-cols-2 flex-col gap-5">
-            <p>
-              {" "}
-              <b>Interval</b>: {props.plan.interval}
-            </p>
-            <p>
-              {" "}
-              <b>Recurring Price</b>: ${props.plan.flat_rate}
-            </p>
-          </div>
-          <p>
-            {" "}
-            <b>Pay In Advance</b>: Yes
-          </p>
         </div>
-        <div className="flex">
+        <div className="flex self-center">
           <List
+            className="flex flex-row w-full"
             dataSource={props.plan.components}
             renderItem={(item) => (
-              <List.Item>
+              <List.Item className="w-full">
                 <Card>
-                  <p className="text-base font-main mb-3">
+                  <p className="text-base font-main mb-2">
                     Metric: <b>{item.billable_metric.event_name}</b>
                   </p>
 
                   <p className="font-main">
                     {" "}
-                    Aggregation Type:{" "}
-                    <b>{item.billable_metric.aggregation_type}</b>
+                    Cost: ${item.cost_per_batch} per{" "}
+                    {item.metric_units_per_batch}
                   </p>
                   <p className="font-main">
                     {" "}
-                    Property: <b>{item.billable_metric.property_name}</b>
+                    Free Units: <b>{item.free_metric_units}</b>
                   </p>
                 </Card>
               </List.Item>
             )}
           />
+        </div>
+        <div className="justify-self-end self-center">
+          <Statistic title="Active Subscriptions" value={112893} />
         </div>
       </div>
     </Card>

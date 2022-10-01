@@ -59,8 +59,12 @@ export default defineConfig({
       less: {
         javascriptEnabled: true, //
         modifyVars: {
-          // "primary-color": "#DEC27D",
-          // compact: true,
+          white: "#333",
+          "component-background": "#777",
+          "primary-color": "#1DA57A",
+          "link-color": "#1DA57A",
+          "border-radius-base": "2px",
+          "font-family": "Inter, sans-serif",
         },
       },
     },

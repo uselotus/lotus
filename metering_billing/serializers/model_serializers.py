@@ -39,7 +39,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "id",
             "company_name",
             "payment_plan",
-            "stripe_id",
+            "payment_provider_ids",
         )
 
 
@@ -80,6 +80,95 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 ## CUSTOMER
+class FilterActiveSubscriptionSerializer(serializers.ListSerializer):
+    def to_representation(self, data):
+        data = data.filter(status="active")
+        return super(FilterActiveSubscriptionSerializer, self).to_representation(data)
+
+
+class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ("billing_plan_name", "end_date", "auto_renew")
+        list_serializer_class = FilterActiveSubscriptionSerializer
+
+    billing_plan_name = serializers.CharField(source="billing_plan.name")
+
+
+class CustomerSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_name",
+            "customer_id",
+            "subscriptions",
+        )
+
+    subscriptions = SubscriptionCustomerSummarySerializer(
+        read_only=True, many=True, source="subscription_set"
+    )
+    customer_name = serializers.CharField(source="name")
+
+
+class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = (
+            "billing_plan_name",
+            "subscription_uid",
+            "start_date",
+            "end_date",
+            "auto_renew",
+            "status",
+        )
+        list_serializer_class = FilterActiveSubscriptionSerializer
+
+    billing_plan_name = serializers.CharField(source="billing_plan.name")
+
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_id",
+            "email",
+            "balance",
+            "billing_address",
+            "customer_name",
+            "invoices",
+            "total_revenue_due",
+            "subscriptions",
+        )
+
+    customer_name = serializers.CharField(source="name")
+    subscriptions = SubscriptionCustomerDetailSerializer(
+        read_only=True, many=True, source="subscription_set"
+    )
+    invoices = serializers.SerializerMethodField()
+    total_revenue_due = serializers.SerializerMethodField()
+
+    def get_invoices(self, obj):
+        timeline = self.context.get("invoices")
+        timeline = InvoiceSerializer(timeline, many=True).data
+        return timeline
+
+    def get_total_revenue_due(self, obj):
+        total_revenue_due = float(self.context.get("total_revenue_due"))
+        return total_revenue_due
+
+
+class CustomerWithRevenueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ("customer_id", "total_revenue_due")
+
+    total_revenue_due = serializers.SerializerMethodField()
+
+    def get_total_revenue_due(self, obj):
+        total_revenue_due = float(self.context.get("total_revenue_due"))
+        return total_revenue_due
+
+
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
@@ -246,10 +335,14 @@ class BillingPlanUpdateSerializer(serializers.ModelSerializer):
 
 class BillingPlanReadSerializer(BillingPlanSerializer):
     class Meta(BillingPlanSerializer.Meta):
-        fields = BillingPlanSerializer.Meta.fields + ("time_created",)
+        fields = BillingPlanSerializer.Meta.fields + (
+            "time_created",
+            "active_subscriptions",
+        )
 
     components = PlanComponentReadSerializer(many=True)
     time_created = serializers.SerializerMethodField()
+    active_subscriptions = serializers.IntegerField()
 
     def get_time_created(self, obj) -> datetime.date:
         return str(obj.time_created.date())

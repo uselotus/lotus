@@ -1,8 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 import {
-  CustomerSummary,
-  CustomerTableItem,
+  CustomerPlus,
+  CustomerDetail,
   CustomerType,
+  CustomerTotal,
 } from "../types/customer-type";
 import { PlanType, CreatePlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
@@ -19,6 +20,7 @@ import {
 import Cookies from "universal-cookie";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
+import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 
 axios.defaults.xsrfCookieName = "csrftoken";
 axios.defaults.xsrfHeaderName = "X-CSRFToken";
@@ -40,7 +42,7 @@ const requests = {
 };
 
 export const Customer = {
-  getCustomers: (): Promise<CustomerSummary> =>
+  getCustomers: (): Promise<CustomerPlus[]> =>
     requests.get("api/customer_summary/"),
   getACustomer: (id: number): Promise<CustomerType> =>
     requests.get(`api/customers/${id}`),
@@ -48,6 +50,14 @@ export const Customer = {
     requests.post("api/customers/", post),
   subscribe: (post: CreateSubscriptionType): Promise<CreateSubscriptionType> =>
     requests.post("api/subscriptions/", post),
+  cancelSubscription: (
+    post: cancelSubscriptionType
+  ): Promise<cancelSubscriptionType> =>
+    requests.post("api/cancel_subscription/", post),
+  getCustomerTotals: (): Promise<CustomerTotal[]> =>
+    requests.get("api/customer_totals/"),
+  getCustomerDetail: (customer_id: string): Promise<CustomerDetail> =>
+    requests.get(`api/customer_detail/`, { params: { customer_id } }),
 };
 
 export const Plan = {
@@ -131,7 +141,7 @@ export const Metrics = {
     requests.get("api/period_metric_usage/", {
       params: { start_date, end_date, top_n_customers },
     }),
-  getMetrics: (): Promise<MetricNameType[]> => requests.get("api/metrics/"),
+  getMetrics: (): Promise<MetricType[]> => requests.get("api/metrics/"),
   createMetric: (post: MetricType): Promise<MetricType> =>
     requests.post("api/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>

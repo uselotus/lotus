@@ -1,10 +1,15 @@
 import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
-import { CustomerTableItem } from "../../types/customer-type";
+import {
+  CustomerPlus,
+  CustomerSummary,
+  CustomerTableItem,
+  CustomerTotal,
+  CustomerDetailSubscription,
+} from "../../types/customer-type";
 import { CustomerType } from "../../types/customer-type";
 import { Button, Tag } from "antd";
-import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../LoadingSpinner";
 import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
 import {
@@ -37,7 +42,11 @@ const columns: ProColumns<CustomerTableItem>[] = [
     width: 120,
     dataIndex: "subscriptions",
     render: (_, record) => (
-      <Tag color={"default"}>{record.subscriptions[0]}</Tag>
+      <div>
+        {record.subscriptions.map((sub) => (
+          <Tag color={"default"}>{sub.billing_plan_name}</Tag>
+        ))}
+      </div>
     ),
   },
   {
@@ -49,7 +58,8 @@ const columns: ProColumns<CustomerTableItem>[] = [
 ];
 
 interface Props {
-  customerArray: CustomerTableItem[];
+  customerArray: CustomerPlus[];
+  totals: CustomerTotal[] | undefined;
 }
 
 const defaultCustomerState: CreateCustomerState = {
@@ -57,14 +67,41 @@ const defaultCustomerState: CreateCustomerState = {
   name: "",
   customer_id: "",
   subscriptions: [],
+  total_revenue_due: 0,
 };
 
-const CustomerTable: FC<Props> = ({ customerArray }) => {
+const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   const [visible, setVisible] = useState(false);
   const [customerVisible, setCustomerVisible] = useState(false);
   const [customerState, setCustomerState] =
     useState<CreateCustomerState>(defaultCustomerState);
+  const [tableData, setTableData] = useState<CustomerTableItem[]>();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (customerArray !== undefined) {
+      const dataInstance: CustomerTableItem[] = [];
+      if (totals !== undefined) {
+        for (let i = 0; i < customerArray.length; i++) {
+          const entry: CustomerTableItem = {
+            ...customerArray[i],
+            ...totals[i],
+          };
+          dataInstance.push(entry);
+        }
+      } else {
+        for (let i = 0; i < customerArray.length; i++) {
+          const entry: CustomerTableItem = {
+            ...customerArray[i],
+            total_revenue_due: 0.0,
+          };
+          dataInstance.push(entry);
+        }
+      }
+      setTableData(dataInstance);
+      console.log(dataInstance);
+    }
+  }, [customerArray, totals]);
 
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
     ["plans"],
@@ -106,6 +143,7 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
       name: record.customer_name,
       customer_id: record.customer_id,
       subscriptions: record.subscriptions,
+      total_revenue_due: record.total_revenue_due,
     });
   };
   const openCustomerModal = () => {
@@ -120,7 +158,7 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
   const onSave = (state: CreateCustomerState) => {
     const customerInstance: CustomerType = {
       customer_id: state.customer_id,
-      name: state.name,
+      customer_name: state.name,
     };
     mutation.mutate(customerInstance);
   };
@@ -128,7 +166,7 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
     <div>
       <ProTable<CustomerTableItem>
         columns={columns}
-        dataSource={customerArray}
+        dataSource={tableData}
         rowKey="customer_id"
         onRow={(record, rowIndex) => {
           return {
@@ -166,7 +204,7 @@ const CustomerTable: FC<Props> = ({ customerArray }) => {
         onCancel={onDetailCancel}
         changePlan={changePlan}
         plans={data}
-        customer={customerState}
+        customer_id={customerState.customer_id}
       />
     </div>
   );
