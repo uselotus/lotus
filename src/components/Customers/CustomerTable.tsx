@@ -180,6 +180,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           showTotal: (total, range) => (
             <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
           ),
+          pageSize: 10,
         }}
         options={false}
         toolBarRender={() => [

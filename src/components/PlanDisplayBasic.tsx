@@ -9,7 +9,7 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
       <Menu.Item key="0">
         <a href="#">Edit</a>
       </Menu.Item>
-      <Menu.Item key="1">
+      <Menu.Item key="1" disabled={props.plan.active_subscriptions !== 0}>
         <a href="#">Delete</a>
       </Menu.Item>
     </Menu>
@@ -27,7 +27,7 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
       }
       title={
         <div className="flex space-x-4 flex-row items-center space-y-4">
-          <div className="font-bold text-2xl">{props.plan.name}</div>
+          <h2>{props.plan.name}</h2>
         </div>
       }
     >
@@ -35,7 +35,7 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
         <div className="space-y-4">
           <p className="text-base">{props.plan.description}</p>
 
-          <div className="grid gap-4 grid-rows-3 justify-between space-y-4">
+          <div className="grid gap-4 grid-rows-3 justify-between">
             <div className="flex-col">
               <p>
                 <b>Plan id:</b> {props.plan.billing_plan_id}
@@ -63,6 +63,7 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
           </div>
         </div>
         <div className="flex self-center">
+          {/* <Dropdown
           <List
             className="flex flex-row w-full"
             dataSource={props.plan.components}
@@ -85,10 +86,13 @@ function PlanDisplayBasic(props: { plan: PlanType }) {
                 </Card>
               </List.Item>
             )}
-          />
+          /> */}
         </div>
-        <div className="justify-self-end self-center">
-          <Statistic title="Active Subscriptions" value={112893} />
+        <div className="justify-self-center self-center">
+          <div className="font-main font-bold text-4xl text-center">
+            {props.plan.active_subscriptions}
+          </div>
+          <h3>Active Subscriptions</h3>
         </div>
       </div>
     </Card>

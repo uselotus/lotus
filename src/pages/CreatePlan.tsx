@@ -142,49 +142,49 @@ const CreatePlan = () => {
           onFinishFailed={onFinishFailed}
           autoComplete="off"
         >
-          <Form.Item
-            label="Plan Name"
-            name="name"
-            rules={[
-              {
-                required: true,
-                message: "Please Name Your Plan",
-              },
-            ]}
-          >
-            <Input placeholder="Ex: Starter Plan" />
-          </Form.Item>
-          <Form.Item label="Description" name="description">
-            <Input
-              type="textarea"
-              placeholder="Ex: Cheapest plan for small scale businesses"
-            />
-          </Form.Item>
-          <Form.Item
-            label="Billing Interval"
-            name="billing_interval"
-            rules={[
-              {
-                required: true,
-                message: "Please select an interval",
-              },
-            ]}
-          >
-            <Select>
-              <Select.Option value="week">Weekly</Select.Option>
-              <Select.Option value="month">Monthly</Select.Option>
-              <Select.Option value="year">Yearly</Select.Option>
-            </Select>
-          </Form.Item>
+          <div className="grid grid-cols-2 space-x-4">
+            <div className="mx-2 my-2">
+              <Form.Item
+                label="Plan Name"
+                name="name"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please Name Your Plan",
+                  },
+                ]}
+              >
+                <Input placeholder="Ex: Starter Plan" />
+              </Form.Item>
+              <Form.Item label="Description" name="description">
+                <Input
+                  type="textarea"
+                  placeholder="Ex: Cheapest plan for small scale businesses"
+                />
+              </Form.Item>
+              <Form.Item
+                label="Billing Interval"
+                name="billing_interval"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please select an interval",
+                  },
+                ]}
+              >
+                <Select>
+                  <Select.Option value="week">Weekly</Select.Option>
+                  <Select.Option value="month">Monthly</Select.Option>
+                  <Select.Option value="year">Yearly</Select.Option>
+                </Select>
+              </Form.Item>
 
-          <Form.Item name="flat_rate" label="Recurring Cost">
-            <InputNumber addonBefore="$" defaultValue={0} precision={2} />
-          </Form.Item>
-          <Form.Item name="pay_in_advance">
-            <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
-          </Form.Item>
-          <div className="grid grid-cols-1">
-            <div className=" flex flex-col border border-grey1 my-2 mx-2 px-2 py-2 place-items-center	">
+              <Form.Item name="flat_rate" label="Recurring Cost">
+                <InputNumber addonBefore="$" defaultValue={0} precision={2} />
+              </Form.Item>
+              <Form.Item name="pay_in_advance">
+                <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
+              </Form.Item>
               <Form.Item>
                 <Button
                   htmlType="button"
@@ -194,6 +194,8 @@ const CreatePlan = () => {
                   Add Usage Component
                 </Button>
               </Form.Item>
+            </div>
+            <div>
               <Form.Item
                 label="Usage Components"
                 className="self-start"
@@ -226,9 +228,14 @@ const CreatePlan = () => {
                   ) : null;
                 }}
               </Form.Item>
+              <Form.Item
+                label="Features"
+                className="self-start"
+                shouldUpdate={(prevValues, curValues) =>
+                  prevValues.components !== curValues.components
+                }
+              ></Form.Item>
             </div>
-            <Divider type="vertical" />
-            <div className=" my-2 mx-2 px-2 py-2"></div>
           </div>
 
           <Form.Item>

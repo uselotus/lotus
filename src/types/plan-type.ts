@@ -9,6 +9,7 @@ export interface PlanType {
   id: number;
   time_created: string;
   billing_plan_id: string;
+  active_subscriptions: number;
 }
 
 export interface CreatePlanType {

@@ -1,6 +1,15 @@
 import React, { FC, Fragment, useEffect, useState } from "react";
 import { PlanType } from "../../types/plan-type";
-import { Card, List, Form, Select, Button, Dropdown, Menu } from "antd";
+import {
+  Card,
+  List,
+  Form,
+  Select,
+  Button,
+  Dropdown,
+  Menu,
+  Statistic,
+} from "antd";
 import { CustomerDetailSubscription } from "../../types/customer-type";
 
 interface Props {
@@ -85,28 +94,25 @@ const SubscriptionView: FC<Props> = ({
       items={[
         {
           label: (
-            <Button onClick={() => cancelAcessBillNowSubscription()}>
-              {" "}
+            <span onClick={() => cancelAcessBillNowSubscription()}>
               Cancel and Bill Now
-            </Button>
+            </span>
           ),
           key: "0",
         },
         {
           label: (
-            <Button onClick={() => cancelDontBillSubscription()}>
-              {" "}
+            <span onClick={() => cancelDontBillSubscription()}>
               Cancel Without Billing
-            </Button>
+            </span>
           ),
           key: "1",
         },
         {
           label: (
-            <Button onClick={() => cancelDontRenewSubscriptions()}>
-              {" "}
+            <span onClick={() => cancelDontRenewSubscriptions()}>
               Cancel Renewal
-            </Button>
+            </span>
           ),
           key: "1",
         },
@@ -140,7 +146,10 @@ const SubscriptionView: FC<Props> = ({
               </Select>
             </Form.Item>
             <Form.Item>
-              <Button htmlType="submit"> Attatch Plan</Button>
+              <Button htmlType="submit">
+                {" "}
+                Attatch Plan and Start Subscription
+              </Button>
             </Form.Item>
           </Form>
         </div>
@@ -149,29 +158,37 @@ const SubscriptionView: FC<Props> = ({
   }
   return (
     <div className="mt-auto">
-      <h2 className="text-left">Active Plan</h2>
+      <h2 className="text-left mb-2">Active Plan</h2>
       <div className="flex flex-col justify-center">
         <List>
           {subscriptions.map((subscription) => (
             <List.Item>
               <Card className=" bg-grey3 w-7/12">
-                <div className="grid grid-cols-3 items-stretch">
+                <div className="grid grid-cols-2 items-stretch">
                   <h2 className="font-main font-bold">
                     {subscription.billing_plan_name}
                   </h2>
                   <div className="flex flex-col justify-center space-y-3">
-                    <p>Subscriptions ID: {subscription.subscription_uid}</p>
-                    <p>Start Date: {subscription.start_date}</p>
-                    <p>End Date: {subscription.end_date}</p>
-                    <p>Renews: {subscription.auto_renew ? "yes" : "no"}</p>
+                    <p>
+                      <b>Subscription Id:</b> {subscription.subscription_uid}
+                    </p>
+                    <p>
+                      <b>Start Date:</b> {subscription.start_date}
+                    </p>
+                    <p>
+                      <b>End Date:</b> {subscription.end_date}
+                    </p>
+                    <p>
+                      <b>Renews:</b> {subscription.auto_renew ? "yes" : "no"}
+                    </p>
                   </div>
                 </div>
               </Card>
             </List.Item>
           ))}
         </List>
-        <div className="grid grid-cols-2">
-          <Dropdown overlay={cancelMenu} trigger={["click"]}>
+        <div className="grid grid-cols-2 w-7/12">
+          <Dropdown overlay={cancelMenu} disabled={true} trigger={["click"]}>
             <Button>Switch Plan</Button>
           </Dropdown>
           <Dropdown overlay={cancelMenu} trigger={["click"]}>

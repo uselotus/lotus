@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Button, Form, Input, InputNumber, Modal, Radio, Select } from "antd";
+import {
+  Button,
+  Checkbox,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Radio,
+  Select,
+} from "antd";
+import "./UsageComponentForm.css";
 
 const { Option } = Select;
 
@@ -9,14 +19,17 @@ function UsageComponentForm(props: {
   metrics: string[];
 }) {
   const [form] = Form.useForm();
+  const [isFree, setIsFree] = useState(false);
+  const [isLimit, setIsLimit] = useState(false);
 
   return (
     <Modal
       visible={props.visible}
-      title="Add A Usage Pricing Component"
+      title="Create Component"
       okText="Create"
       okType="default"
       cancelText="Cancel"
+      width={600}
       onCancel={props.onCancel}
       onOk={() => {
         form
@@ -31,7 +44,7 @@ function UsageComponentForm(props: {
     >
       <Form
         form={form}
-        layout="vertical"
+        layout="horizontal"
         name="component_form"
         initialValues={{
           cost_per_batch: 0.0,
@@ -55,13 +68,23 @@ function UsageComponentForm(props: {
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name="cost_per_batch" label="Cost Per Unit Amount">
-          <InputNumber addonBefore="$" defaultValue={0} precision={4} />
-        </Form.Item>
-        <Form.Item name="metric_units_per_batch">
-          <InputNumber addonBefore="per" defaultValue={1} precision={5} />
-        </Form.Item>
-        <div className="grid grid-cols-2">
+        <div className="grid grid-cols-2 space-x-4">
+          <Checkbox
+            name="is_free"
+            checked={isFree}
+            onChange={() => setIsFree(!isFree)}
+          >
+            Charge For This Metric?
+          </Checkbox>
+          <Checkbox
+            name="is_limit"
+            checked={isLimit}
+            onChange={() => setIsLimit(!isLimit)}
+          >
+            Does This Metric Have A Limit?
+          </Checkbox>
+        </div>
+        <div className="grid grid-cols-2 space-x-4 my-5">
           <Form.Item name="free_amount" label="Free Units">
             <InputNumber defaultValue={0} precision={5} />
           </Form.Item>
@@ -69,6 +92,13 @@ function UsageComponentForm(props: {
             <InputNumber defaultValue={0} precision={5} />
           </Form.Item>
         </div>
+        <h3>Tiers</h3>
+        <Form.Item name="cost_per_batch" label="Cost Per Unit Amount">
+          <InputNumber addonBefore="$" defaultValue={0} precision={4} />
+        </Form.Item>
+        <Form.Item name="metric_units_per_batch">
+          <InputNumber addonBefore="per" defaultValue={1} precision={5} />
+        </Form.Item>
       </Form>
     </Modal>
   );

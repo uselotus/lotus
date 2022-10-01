@@ -69,7 +69,7 @@ function RevenueBarGraph(props: {
   }
   return (
     <div>
-      <h2>Revenue by Metric</h2>
+      <h2>Revenue Accrued</h2>
       <Column {...config} />
     </div>
   );
