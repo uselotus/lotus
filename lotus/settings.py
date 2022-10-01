@@ -148,7 +148,7 @@ AUTH_USER_MODEL = "metering_billing.User"
 AUTHENTICATION_BACKENDS = ["metering_billing.auth_utils.EmailOrUsernameModelBackend"]
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_AGE = 2 * 60 * 60 # set just 10 seconds to test
+SESSION_COOKIE_AGE = 2 * 60 * 60  # set just 10 seconds to test
 SESSION_SAVE_EVERY_REQUEST = True
 
 # Database
