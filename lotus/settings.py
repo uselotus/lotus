@@ -13,6 +13,7 @@ import os
 import re
 import ssl
 from pathlib import Path
+from telnetlib import AUTHENTICATION
 
 import dj_database_url
 import django_heroku
@@ -91,6 +92,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "metering_billing",
+    "social_django",
     "djmoney",
     "django_extensions",
     "django_celery_beat",
@@ -143,6 +145,12 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 AUTH_USER_MODEL = "metering_billing.User"
+AUTHENTICATION_BACKENDS = ["metering_billing.auth_utils.EmailOrUsernameModelBackend"]
+SOCIAL_AUTH_JSONFIELD_ENABLED = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 2 * 60 * 60 # set just 10 seconds to test
+SESSION_SAVE_EVERY_REQUEST = True
+
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -299,6 +307,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "metering_billing.permissions.HasUserAPIKey",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "COERCE_DECIMAL_TO_STRING": False,

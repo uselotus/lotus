@@ -95,6 +95,7 @@ class User(AbstractUser):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True
     )
+    email = models.EmailField(unique=True)
 
 
 class Customer(models.Model):

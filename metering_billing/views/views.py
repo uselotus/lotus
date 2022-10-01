@@ -150,7 +150,7 @@ class InitializeStripeView(APIView):
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -255,7 +255,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -497,7 +497,7 @@ class CustomerDetailView(APIView):
 
 class CustomersWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         responses={200: CustomerWithRevenueSerializer(many=True)},
@@ -564,7 +564,7 @@ class EventPreviewView(APIView):
 
 
 class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
