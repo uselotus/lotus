@@ -1,12 +1,6 @@
 @import url("https://rsms.me/inter/inter.css");
 @tailwind base;
 
-@layer base {
-  h1 {
-    @apply text-3xl font-main;
-  }
-}
-
 @tailwind components;
 @tailwind utilities;
 
@@ -17,6 +11,30 @@ html {
   html {
     font-family: "Inter var", sans-serif;
   }
+}
+
+h1 {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 100%;
+  /* identical to box height, or 32px */
+
+  letter-spacing: -0.06em;
+
+  /* Black */
+
+  color: #1d1d1f;
+}
+
+h2 {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 100%;
+  color: #1d1d1f;
 }
 
 html,

@@ -1,8 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 import {
-  CustomerSummary,
-  CustomerTableItem,
+  CustomerPlus,
+  CustomerDetail,
   CustomerType,
+  CustomerTotal,
 } from "../types/customer-type";
 import { PlanType, CreatePlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
@@ -41,7 +42,7 @@ const requests = {
 };
 
 export const Customer = {
-  getCustomers: (): Promise<CustomerSummary> =>
+  getCustomers: (): Promise<CustomerPlus[]> =>
     requests.get("api/customer_summary/"),
   getACustomer: (id: number): Promise<CustomerType> =>
     requests.get(`api/customers/${id}`),
@@ -53,6 +54,10 @@ export const Customer = {
     post: cancelSubscriptionType
   ): Promise<cancelSubscriptionType> =>
     requests.post("api/cancel_subscription/", post),
+  getCustomerTotals: (): Promise<CustomerTotal[]> =>
+    requests.get("api/customer_totals/"),
+  getCustomerDetail: (customer_id: string): Promise<CustomerDetail> =>
+    requests.get(`api/customer_detail/`, { params: { customer_id } }),
 };
 
 export const Plan = {
