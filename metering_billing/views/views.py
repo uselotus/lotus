@@ -760,7 +760,7 @@ class GetCustomerAccessView(APIView):
                         metric = component.billable_metric
                         if event_limit_type == "free":
                             metric_limit = component.free_metric_units
-                        elif event_limit_type == "limit":
+                        elif event_limit_type == "total":
                             metric_limit = component.max_metric_units
                         if not metric_limit:
                             metric_usages[metric.billable_metric_name] = {
