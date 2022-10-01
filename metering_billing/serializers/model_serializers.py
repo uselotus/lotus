@@ -147,12 +147,12 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     invoices = serializers.SerializerMethodField()
     total_revenue_due = serializers.SerializerMethodField()
 
-    def get_invoices(self, obj):
+    def get_invoices(self, obj) -> dict:
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
         return timeline
 
-    def get_total_revenue_due(self, obj):
+    def get_total_revenue_due(self, obj) -> float:
         total_revenue_due = float(self.context.get("total_revenue_due"))
         return total_revenue_due
 
@@ -164,7 +164,7 @@ class CustomerWithRevenueSerializer(serializers.ModelSerializer):
 
     total_revenue_due = serializers.SerializerMethodField()
 
-    def get_total_revenue_due(self, obj):
+    def get_total_revenue_due(self, obj) -> float:
         total_revenue_due = float(self.context.get("total_revenue_due"))
         return total_revenue_due
 
@@ -288,49 +288,6 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             billing_plan.features.add(f)
         billing_plan.save()
         return billing_plan
-
-
-class BillingPlanUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BillingPlan
-        fields = (
-            "currency",
-            "flat_rate",
-            "pay_in_advance",
-            "billing_plan_id",
-            "name",
-            "description",
-            "components",
-            "features",
-        )
-
-    components = PlanComponentSerializer(many=True, allow_null=True, required=False)
-    features = FeatureSerializer(many=True, allow_null=True, required=False)
-
-    def update(self, instance, validated_data):
-        instance.currency = validated_data.get("currency", instance.currency)
-        instance.flat_rate = validated_data.get("flat_rate", instance.content)
-        instance.pay_in_advance = validated_data.get(
-            "pay_in_advance", instance.pay_in_advance
-        )
-        instance.billing_plan_id = validated_data.get(
-            "billing_plan_id", instance.billing_plan_id
-        )
-        instance.name = validated_data.get("name", instance.name)
-        instance.description = validated_data.get("description", instance.description)
-        # deal w many to many
-        components_data = validated_data.get("components", [])
-        features_data = validated_data.get("features", [])
-        instance.components.clear()
-        instance.features.clear()
-        for component_data in components_data:
-            pc, _ = PlanComponent.objects.get_or_create(**component_data)
-            instance.components.add(pc)
-        for feature_data in features_data:
-            f, _ = Feature.objects.get_or_create(**feature_data)
-            instance.features.add(f)
-        instance.save()
-        return instance
 
 
 class BillingPlanReadSerializer(BillingPlanSerializer):

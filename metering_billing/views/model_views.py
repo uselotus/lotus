@@ -21,7 +21,6 @@ from metering_billing.serializers.model_serializers import (
     BillableMetricSerializer,
     BillingPlanReadSerializer,
     BillingPlanSerializer,
-    BillingPlanUpdateSerializer,
     CustomerSerializer,
     FeatureSerializer,
     InvoiceSerializer,
@@ -191,26 +190,18 @@ class PlanComponentViewSet(viewsets.ModelViewSet):
         return response
 
 
-class BillingPlanViewSet(
-    mixins.CreateModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet,
-):
+class BillingPlanViewSet(viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing BillingPlans.
     """
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "billing_plan_id"
-    http_method_names = ["get", "post", "head", "put"]
+    http_method_names = ["get", "post", "head", "delete"]
 
     def get_serializer_class(self):
         if self.action in ["list", "retrieve"]:
             return BillingPlanReadSerializer
-        elif self.update == "create":
-            return BillingPlanUpdateSerializer
         else:
             return BillingPlanSerializer
 
@@ -258,17 +249,13 @@ class BillingPlanViewSet(
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class SubscriptionViewSet(
-    mixins.CreateModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.ListModelMixin,
-    viewsets.GenericViewSet,
-):
+class SubscriptionViewSet(viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Subscriptions.
     """
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
+    http_method_names = ["get", "post", "head"]
 
     def get_queryset(self):
         organization = parse_organization(self.request)

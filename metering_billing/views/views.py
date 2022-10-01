@@ -856,6 +856,11 @@ class UpdateBillingPlanView(APIView):
         updated_billing_plan_obj = BillingPlan.objects.create(**updated_billing_plan)
         update_behavior = serializer.validated_data["update_behavior"]
 
+        posthog.capture(
+            organization.company_name,
+            event="update_billing_plan",
+            properties={},
+        )
         if update_behavior == "replace_immediately":
             today = datetime.date.today()
             sub_qs = Subscription.objects.filter(
@@ -882,7 +887,7 @@ class UpdateBillingPlanView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
-        else:
+        elif update_behavior == "replace_on_renewal":
             old_billing_plan_obj.scheduled_for_deletion = True
             old_billing_plan_obj.replacement_billing_plan = updated_billing_plan_obj
             BillingPlan.objects.filter(

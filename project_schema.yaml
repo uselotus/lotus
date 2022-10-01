@@ -24,7 +24,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -32,12 +31,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CancelSubscriptionSuccess'
-          description: ''
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CancelSubscriptionAndGenerateInvoiceSuccess'
           description: ''
         '400':
           content:
@@ -53,7 +46,6 @@ paths:
       - components
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -83,7 +75,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -107,7 +98,6 @@ paths:
       - components
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -142,7 +132,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -176,7 +165,6 @@ paths:
               $ref: '#/components/schemas/PatchedPlanComponent'
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -199,7 +187,6 @@ paths:
       - components
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '204':
@@ -215,6 +202,14 @@ paths:
           minLength: 1
         required: true
       - in: query
+        name: event_limit_type
+        schema:
+          enum:
+          - free
+          - total
+          type: string
+          minLength: 1
+      - in: query
         name: event_name
         schema:
           type: string
@@ -228,7 +223,6 @@ paths:
       - customer_access
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -243,22 +237,55 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetCustomerAccessFailure'
           description: ''
-  /api/customer_summary/:
+  /api/customer_detail/:
     get:
-      operationId: customer_summary_retrieve
-      description: Return current usage for a customer during a given billing period.
+      operationId: customer_detail_retrieve
+      description: Get the current settings for the organization.
       tags:
-      - customer_summary
+      - customer_detail
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerRevenueSummary'
+                $ref: '#/components/schemas/CustomerDetail'
+          description: ''
+  /api/customer_summary/:
+    get:
+      operationId: customer_summary_retrieve
+      description: Get the current settings for the organization.
+      tags:
+      - customer_summary
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerSummary'
+          description: ''
+  /api/customer_totals/:
+    get:
+      operationId: customer_totals_list
+      description: Return current usage for a customer during a given billing period.
+      tags:
+      - customer_totals
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CustomerWithRevenue'
           description: ''
   /api/customers/:
     get:
@@ -268,7 +295,6 @@ paths:
       - customers
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -298,7 +324,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -321,7 +346,6 @@ paths:
       - customers
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -355,7 +379,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -388,7 +411,6 @@ paths:
               $ref: '#/components/schemas/PatchedCustomer'
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -410,7 +432,6 @@ paths:
       - customers
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '204':
@@ -431,7 +452,6 @@ paths:
       - draft_invoice
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -455,7 +475,6 @@ paths:
       - event_preview
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -472,7 +491,6 @@ paths:
       - features
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -502,7 +520,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -526,7 +543,6 @@ paths:
       - features
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -561,7 +577,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -595,7 +610,6 @@ paths:
               $ref: '#/components/schemas/PatchedFeature'
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -618,7 +632,6 @@ paths:
       - features
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '204':
@@ -631,7 +644,6 @@ paths:
       - invoices
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -661,7 +673,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -685,7 +696,6 @@ paths:
       - invoices
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -720,7 +730,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -754,7 +763,6 @@ paths:
               $ref: '#/components/schemas/PatchedInvoice'
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -777,7 +785,6 @@ paths:
       - invoices
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '204':
@@ -790,7 +797,6 @@ paths:
       - metrics
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -820,7 +826,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -844,7 +849,6 @@ paths:
       - metrics
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -879,7 +883,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -913,7 +916,6 @@ paths:
               $ref: '#/components/schemas/PatchedBillableMetric'
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -936,7 +938,6 @@ paths:
       - metrics
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '204':
@@ -949,7 +950,6 @@ paths:
       - new_api_key
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -991,7 +991,6 @@ paths:
       - period_metric_revenue
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1025,7 +1024,6 @@ paths:
       - period_metric_usage
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1066,7 +1064,6 @@ paths:
       - period_subscriptions
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1083,7 +1080,6 @@ paths:
       - plans
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1113,7 +1109,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -1136,7 +1131,6 @@ paths:
       - plans
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1145,8 +1139,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/BillingPlanRead'
           description: ''
-    put:
-      operationId: plans_update
+    delete:
+      operationId: plans_destroy
       description: A simple ViewSet for viewing and editing BillingPlans.
       parameters:
       - in: path
@@ -1156,29 +1150,12 @@ paths:
         required: true
       tags:
       - plans
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/BillingPlan'
-        required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BillingPlan'
-          description: ''
+        '204':
+          description: No response body
   /api/register/:
     post:
       operationId: register_create
@@ -1198,7 +1175,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       - {}
       responses:
@@ -1216,7 +1192,6 @@ paths:
       - stripe
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1244,7 +1219,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1267,7 +1241,6 @@ paths:
       - subscriptions
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1297,7 +1270,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -1321,7 +1293,6 @@ paths:
       - subscriptions
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1330,94 +1301,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/SubscriptionRead'
           description: ''
-    put:
-      operationId: subscriptions_update
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
-        required: true
-      tags:
-      - subscriptions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-        required: true
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-          description: ''
-    patch:
-      operationId: subscriptions_partial_update
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
-        required: true
-      tags:
-      - subscriptions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscription'
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-          description: ''
-    delete:
-      operationId: subscriptions_destroy
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
-        required: true
-      tags:
-      - subscriptions
-      security:
-      - cookieAuth: []
-      - basicAuth: []
-      - OrganizationApiKeyAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/track/:
     post:
       operationId: track_create
@@ -1437,7 +1320,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -1452,6 +1334,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/TrackEventFailure'
           description: ''
+  /api/update_billing_plan/:
+    post:
+      operationId: update_billing_plan_create
+      tags:
+      - update_billing_plan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBillingPlanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdateBillingPlanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdateBillingPlanRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBillingPlanSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBillingPlanFailure'
+          description: ''
   /api/users/:
     get:
       operationId: users_list
@@ -1460,7 +1375,6 @@ paths:
       - users
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1490,7 +1404,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '201':
@@ -1514,7 +1427,6 @@ paths:
       - users
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1549,7 +1461,6 @@ paths:
         required: true
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1583,7 +1494,6 @@ paths:
               $ref: '#/components/schemas/PatchedUser'
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
@@ -1606,7 +1516,6 @@ paths:
       - users
       security:
       - cookieAuth: []
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '204':
@@ -1742,7 +1651,10 @@ components:
           type: string
           format: date
           readOnly: true
+        active_subscriptions:
+          type: integer
       required:
+      - active_subscriptions
       - components
       - flat_rate
       - interval
@@ -1752,16 +1664,6 @@ components:
     BlankEnum:
       enum:
       - ''
-    CancelSubscriptionAndGenerateInvoiceSuccess:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/StatusE96Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
     CancelSubscriptionFailure:
       type: object
       properties:
@@ -1775,14 +1677,14 @@ components:
     CancelSubscriptionRequest:
       type: object
       properties:
+        subscription_uid:
+          type: string
         bill_now:
           type: boolean
-          default: true
+          default: false
         revoke_access:
           type: boolean
           default: false
-        subscription_uid:
-          type: string
       required:
       - subscription_uid
     CancelSubscriptionSuccess:
@@ -1814,6 +1716,49 @@ components:
       required:
       - customer_id
       - name
+    CustomerDetail:
+      type: object
+      properties:
+        customer_id:
+          type: string
+          maxLength: 40
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 100
+        balance:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        billing_address:
+          type: string
+          nullable: true
+          maxLength: 500
+        customer_name:
+          type: string
+        invoices:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        total_revenue_due:
+          type: number
+          format: double
+          readOnly: true
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCustomerDetail'
+          readOnly: true
+      required:
+      - customer_id
+      - customer_name
+      - invoices
+      - subscriptions
+      - total_revenue_due
     CustomerName:
       type: object
       properties:
@@ -1822,38 +1767,36 @@ components:
           maxLength: 100
       required:
       - name
-    CustomerRevenue:
+    CustomerSummary:
       type: object
       properties:
-        subscriptions:
-          type: array
-          items:
-            type: string
-        total_revenue_due:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
         customer_name:
           type: string
         customer_id:
           type: string
+          maxLength: 40
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCustomerSummary'
+          readOnly: true
       required:
       - customer_id
       - customer_name
       - subscriptions
-      - total_revenue_due
-    CustomerRevenueSummary:
+    CustomerWithRevenue:
       type: object
       properties:
-        customers:
-          type: array
-          items:
-            $ref: '#/components/schemas/CustomerRevenue'
+        customer_id:
+          type: string
+          maxLength: 40
+        total_revenue_due:
+          type: number
+          format: double
+          readOnly: true
       required:
-      - customers
+      - customer_id
+      - total_revenue_due
     DayMetricRevenue:
       type: object
       properties:
@@ -1991,9 +1934,13 @@ components:
           type: string
           format: uri
           nullable: true
-        status:
-          $ref: '#/components/schemas/InvoiceStatusEnum'
-        payment_intent_id:
+        org_connected_to_cust_payment_provider:
+          type: boolean
+        cust_connected_to_payment_provider:
+          type: boolean
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatusEnum'
+        external_payment_obj_id:
           type: string
           nullable: true
           maxLength: 240
@@ -2016,18 +1963,8 @@ components:
       - issue_date
       - line_items
       - organization
-      - status
+      - payment_status
       - subscription
-    InvoiceStatusEnum:
-      enum:
-      - requires_payment_method
-      - requires_action
-      - processing
-      - succeeded
-      - draft
-      - organization_not_connected_to_stripe
-      - customer_not_connected_to_stripe
-      type: string
     MetricUsage:
       type: object
       properties:
@@ -2122,9 +2059,13 @@ components:
           type: string
           format: uri
           nullable: true
-        status:
-          $ref: '#/components/schemas/InvoiceStatusEnum'
-        payment_intent_id:
+        org_connected_to_cust_payment_provider:
+          type: boolean
+        cust_connected_to_payment_provider:
+          type: boolean
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatusEnum'
+        external_payment_obj_id:
           type: string
           nullable: true
           maxLength: 240
@@ -2177,27 +2118,6 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           nullable: true
-    PatchedSubscription:
-      type: object
-      properties:
-        customer_id:
-          type: string
-        billing_plan_id:
-          type: string
-        start_date:
-          type: string
-          format: date
-        end_date:
-          type: string
-          format: date
-        status:
-          type: string
-        auto_renew:
-          type: boolean
-        is_new:
-          type: boolean
-        subscription_uid:
-          type: string
     PatchedUser:
       type: object
       properties:
@@ -2210,6 +2130,12 @@ components:
         password:
           type: string
           maxLength: 128
+    PaymentStatusEnum:
+      enum:
+      - draft
+      - paid
+      - unpaid
+      type: string
     PeriodMetricRevenueResponse:
       type: object
       properties:
@@ -2493,6 +2419,48 @@ components:
       - billing_plan_id
       - customer_id
       - start_date
+    SubscriptionCustomerDetail:
+      type: object
+      properties:
+        billing_plan_name:
+          type: string
+        subscription_uid:
+          type: string
+          maxLength: 100
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        auto_renew:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/SubscriptionCustomerDetailStatusEnum'
+      required:
+      - billing_plan_name
+      - end_date
+      - start_date
+    SubscriptionCustomerDetailStatusEnum:
+      enum:
+      - active
+      - ended
+      - not_started
+      - canceled
+      type: string
+    SubscriptionCustomerSummary:
+      type: object
+      properties:
+        billing_plan_name:
+          type: string
+        end_date:
+          type: string
+          format: date
+        auto_renew:
+          type: boolean
+      required:
+      - billing_plan_name
+      - end_date
     SubscriptionRead:
       type: object
       properties:
@@ -2542,6 +2510,44 @@ components:
       - all
       - some
       type: string
+    UpdateBehaviorEnum:
+      enum:
+      - replace_immediately
+      - replace_on_renewal
+      type: string
+    UpdateBillingPlanFailure:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status956Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    UpdateBillingPlanRequest:
+      type: object
+      properties:
+        old_billing_plan_id:
+          type: string
+        updated_billing_plan:
+          $ref: '#/components/schemas/BillingPlan'
+        update_behavior:
+          $ref: '#/components/schemas/UpdateBehaviorEnum'
+      required:
+      - old_billing_plan_id
+      - update_behavior
+      - updated_billing_plan
+    UpdateBillingPlanSuccess:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusE96Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
     User:
       type: object
       properties:
@@ -2562,9 +2568,6 @@ components:
       type: apiKey
       in: header
       name: X-API-KEY
-    basicAuth:
-      type: http
-      scheme: basic
     cookieAuth:
       type: apiKey
       in: cookie
