@@ -160,7 +160,7 @@ const SubscriptionView: FC<Props> = ({
                     {subscription.billing_plan_name}
                   </h2>
                   <div className="flex flex-col justify-center space-y-3">
-                    <p>Subscriptions ID: {subscription.subscription_uid}</p>
+                    <p>Subscription ID: {subscription.subscription_uid}</p>
                     <p>Start Date: {subscription.start_date}</p>
                     <p>End Date: {subscription.end_date}</p>
                     <p>Renews: {subscription.auto_renew ? "yes" : "no"}</p>

@@ -1,7 +1,7 @@
 from metering_billing.models import BillingPlan, Customer, Subscription
 from rest_framework import serializers
 
-from .model_serializers import EventSerializer
+from .model_serializers import BillingPlanSerializer, EventSerializer
 
 ## CUSTOM SERIALIZERS
 
@@ -34,6 +34,14 @@ class CancelSubscriptionRequestSerializer(serializers.Serializer):
     bill_now = serializers.BooleanField(default=True)
     revoke_access = serializers.BooleanField(default=False)
     subscription_uid = serializers.CharField(required=True)
+
+
+class UpdateBillingPlanRequestSerializer(serializers.Serializer):
+    old_billing_plan_id = serializers.BooleanField(default=True)
+    updated_billing_plan = BillingPlanSerializer()
+    update_behavior = serializers.ChoiceField(
+        choices=["replace_immediately", "replace_on_current_end"]
+    )
 
 
 class RegistrationDetailSerializer(serializers.Serializer):

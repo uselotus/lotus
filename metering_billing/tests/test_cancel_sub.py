@@ -165,7 +165,7 @@ class TestCancelSub:
             customer=setup_dict["customer"],
         )
         new_invoices_len = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_200_OK
         assert len(after_active_subscriptions) + 1 == len(active_subscriptions)
         assert len(after_canceled_subscriptions) == 1
         assert new_invoices_len == prev_invoices_len + 1

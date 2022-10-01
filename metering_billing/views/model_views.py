@@ -31,8 +31,9 @@ from metering_billing.serializers.model_serializers import (
     SubscriptionSerializer,
     UserSerializer,
 )
-from rest_framework import serializers, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from ..auth_utils import parse_organization
 
@@ -190,7 +191,13 @@ class PlanComponentViewSet(viewsets.ModelViewSet):
         return response
 
 
-class BillingPlanViewSet(viewsets.ModelViewSet):
+class BillingPlanViewSet(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
     """
     A simple ViewSet for viewing and editing BillingPlans.
     """
@@ -235,8 +242,28 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
             )
         return response
 
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        num_sub_plan = Subscription.objects.filter(
+            billing_plan=obj, status="active"
+        ).count()
+        if num_sub_plan > 0:
+            return Response(
+                data={
+                    "message": "Billing Plan has associated active subscriptions. Cannot delete."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_destroy(obj)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-class SubscriptionViewSet(viewsets.ModelViewSet):
+
+class SubscriptionViewSet(
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
     """
     A simple ViewSet for viewing and editing Subscriptions.
     """

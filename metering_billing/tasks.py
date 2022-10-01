@@ -67,10 +67,19 @@ def calculate_invoice():
         Invoice.objects.filter(issue_date__lt=now, payment_status="draft").delete()
         # Renew the subscription
         if old_subscription.auto_renew and not already_ended:
+            new_bp = old_subscription.billing_plan
+            if new_bp.scheduled_for_deletion:
+                replacement_bp = new_bp.replacement_billing_plan
+                num_with_bp = Subscription.objects.filter(
+                    status="active", billing_plan=new_bp
+                ).count()
+                if num_with_bp == 0:
+                    new_bp.delete()
+                new_bp = replacement_bp
             subscription_kwargs = {
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
-                "billing_plan": old_subscription.billing_plan,
+                "billing_plan": new_bp,
                 "start_date": old_subscription.end_date + relativedelta(days=+1),
                 "auto_renew": True,
                 "is_new": False,

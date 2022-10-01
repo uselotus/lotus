@@ -325,12 +325,26 @@ class BillingPlan(models.Model):
     description = models.CharField(max_length=256, default=" ", blank=True)
     components = models.ManyToManyField(PlanComponent, null=True, blank=True)
     features = models.ManyToManyField(Feature, null=True, blank=True)
+    scheduled_for_deletion = models.BooleanField(default=False)
+    replacement_billing_plan = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL
+    )
 
     def __str__(self) -> str:
         return str(self.name)
 
     class Meta:
         unique_together = ("organization", "billing_plan_id")
+
+    def calculate_end_date(self, start_date):
+        if self.interval == "week":
+            return start_date + relativedelta(weeks=+1) - relativedelta(days=+1)
+        elif self.interval == "month":
+            return start_date + relativedelta(months=+1) - relativedelta(days=+1)
+        elif self.interval == "year":
+            return start_date + relativedelta(years=+1) - relativedelta(days=+1)
+        else:
+            raise ValueError("End date not calculated correctly")
 
 
 class TsTzRange(Func):
@@ -378,19 +392,8 @@ class Subscription(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.end_date:
-            self.end_date = self.calculate_end_date()
+            self.end_date = self.billing_plan.calculate_end_date(self.start_date)
         super(Subscription, self).save(*args, **kwargs)
-
-    def calculate_end_date(self):
-        start_date_parsed = self.start_date
-        if self.billing_plan.interval == "week":
-            return start_date_parsed + relativedelta(weeks=+1) - relativedelta(days=+1)
-        elif self.billing_plan.interval == "month":
-            return start_date_parsed + relativedelta(months=+1) - relativedelta(days=+1)
-        elif self.billing_plan.interval == "year":
-            return start_date_parsed + relativedelta(years=+1) - relativedelta(days=+1)
-        else:
-            raise ValueError("End date not calculated correctly")
 
     def __str__(self):
         return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
