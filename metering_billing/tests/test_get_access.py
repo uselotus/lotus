@@ -151,7 +151,7 @@ class TestGetAccess:
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["allow_limit_metrics"][0].event_name,
-            "event_limit_type": "limit",
+            "event_limit_type": "total",
         }
         response = setup_dict["client"].get(reverse("customer_access"), payload)
 
@@ -164,10 +164,9 @@ class TestGetAccess:
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["deny_limit_metrics"][0].event_name,
-            "event_limit_type": "limit",
+            "event_limit_type": "total",
         }
         response = setup_dict["client"].get(reverse("customer_access"), payload)
-
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["access"] == False
 

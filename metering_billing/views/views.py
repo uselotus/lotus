@@ -36,16 +36,18 @@ def import_stripe_customers(organization):
     If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
     """
     num_cust_added = 0
-    if organization.stripe_id or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
+    org_ppis = organization.payment_provider_ids
+    if "stripe" in org_ppis or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
         stripe_cust_kwargs = {}
-        if organization.stripe_id:
-            stripe_cust_kwargs["stripe_account"] = organization.stripe_id
+        if org_ppis.get("stripe") != "":
+            stripe_cust_kwargs["stripe_account"] = org_ppis.get("stripe")
         stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
         for stripe_customer in stripe_customers_response.auto_paging_iter():
             try:
                 customer = Customer.objects.get(
                     organization=organization, name=stripe_customer.name
                 )
+                customer.payment_provider = "stripe"
                 customer.payment_provider_id = stripe_customer.id
                 customer.save()
                 num_cust_added += 1
@@ -71,8 +73,8 @@ class InitializeStripeView(APIView):
         """
 
         organization = parse_organization(request)
-
-        stripe_id = organization.stripe_id
+        org_ppis = organization.payment_provider_ids
+        stripe_id = org_ppis.get("stripe")
 
         if (stripe_id and len(stripe_id) > 0) or (
             SELF_HOSTED and STRIPE_SECRET_KEY != ""
@@ -132,7 +134,8 @@ class InitializeStripeView(APIView):
 
         connected_account_id = response["stripe_user_id"]
 
-        organization.stripe_id = connected_account_id
+        organization.payment_provider_ids.stripe = connected_account_id
+        organization.save()
 
         n_cust_added = import_stripe_customers(organization)
 

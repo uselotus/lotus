@@ -38,6 +38,7 @@ def task_test_common_setup(
             invoice_settings={"default_payment_method": "pm_card_visa"},
         )
         customer.payment_provider_id = stripe_cust.id
+        customer.payment_provider = "stripe"
         customer.save()
         setup_dict["customer"] = customer
         event_properties = (
@@ -142,13 +143,13 @@ class TestUpdateInvoiceStatus:
         invoice = baker.make(
             Invoice,
             issue_date=setup_dict["subscription"].end_date,
-            status="requires_payment_method",
-            payment_intent_id=payment_intent.id,
+            payment_status="unpaid",
+            external_payment_obj_id=payment_intent.id,
         )
 
-        assert invoice.status != "succeeded"
+        assert invoice.payment_status != "paid"
 
         update_invoice_status()
 
         invoice = Invoice.objects.filter(id=invoice.id).first()
-        assert invoice.status == "succeeded"
+        assert invoice.payment_status == "paid"

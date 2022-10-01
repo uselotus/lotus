@@ -137,10 +137,6 @@ def get_metric_usage(
     for x in usage_summary:
         x["usage_qty"] = convert_to_decimal(x["usage_qty"])
 
-    if metric.event_name == "email_sent":
-        print("teh fuck")
-        print(query)
-        print("exiting")
     return usage_summary
 
 

@@ -11,7 +11,7 @@ class GetCustomerAccessRequestSerializer(serializers.Serializer):
     event_name = serializers.CharField(required=False)
     feature_name = serializers.CharField(required=False)
     event_limit_type = serializers.ChoiceField(
-        choices=["free", "limit"], required=False
+        choices=["free", "total"], required=False
     )
 
     def validate(self, data):
