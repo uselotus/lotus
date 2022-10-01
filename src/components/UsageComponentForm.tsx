@@ -19,7 +19,7 @@ function UsageComponentForm(props: {
   metrics: string[];
 }) {
   const [form] = Form.useForm();
-  const [isFree, setIsFree] = useState(false);
+  const [isFree, setIsFree] = useState(true);
   const [isLimit, setIsLimit] = useState(false);
 
   return (
@@ -29,7 +29,7 @@ function UsageComponentForm(props: {
       okText="Create"
       okType="default"
       cancelText="Cancel"
-      width={600}
+      width={700}
       onCancel={props.onCancel}
       onOk={() => {
         form
@@ -68,10 +68,10 @@ function UsageComponentForm(props: {
             ))}
           </Select>
         </Form.Item>
-        <div className="grid grid-cols-2 space-x-4">
+        <div className="grid grid-cols-2 space-x-4 my-4">
           <Checkbox
             name="is_free"
-            checked={isFree}
+            checked={!isFree}
             onChange={() => setIsFree(!isFree)}
           >
             Charge For This Metric?
@@ -88,17 +88,40 @@ function UsageComponentForm(props: {
           <Form.Item name="free_amount" label="Free Units">
             <InputNumber defaultValue={0} precision={5} />
           </Form.Item>
-          <Form.Item name="max_metric_units" label="Max Amount">
-            <InputNumber defaultValue={0} precision={5} />
+          <Form.Item label="Max Amount">
+            <InputNumber precision={5} disabled={!isLimit} />
           </Form.Item>
         </div>
-        <h3>Tiers</h3>
-        <Form.Item name="cost_per_batch" label="Cost Per Unit Amount">
-          <InputNumber addonBefore="$" defaultValue={0} precision={4} />
-        </Form.Item>
-        <Form.Item name="metric_units_per_batch">
-          <InputNumber addonBefore="per" defaultValue={1} precision={5} />
-        </Form.Item>
+        {isFree ? null : (
+          <div>
+            <div className=" bg-grey3 mx-2 my-5">
+              <h3 className="py-2 px-3">Tiers</h3>
+            </div>
+            <div className="flex flex-row items-center space-x-2">
+              <p>From</p>
+              <Form.Item name="free_amount">
+                <InputNumber
+                  defaultValue={0}
+                  precision={4}
+                  value={form.getFieldValue("free_amount")}
+                />
+              </Form.Item>
+              <p>To</p>
+              <Form.Item name="max_metric_units">
+                <InputNumber precision={4} disabled={!isLimit} />
+              </Form.Item>
+              <p>, $</p>
+              <Form.Item name="cost_per_batch">
+                <InputNumber defaultValue={0} precision={4} />
+              </Form.Item>
+              <p>To</p>
+              <Form.Item name="metric_units_per_batch">
+                <InputNumber defaultValue={1} precision={5} />
+              </Form.Item>
+              <p>Units</p>
+            </div>
+          </div>
+        )}
       </Form>
     </Modal>
   );

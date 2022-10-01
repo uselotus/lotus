@@ -13,12 +13,14 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/UsageComponentForm";
-import { useMutation } from "react-query";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { MetricNameType } from "../types/metric-type";
 import { toast } from "react-toastify";
-import { Metrics } from "../api/api";
+import { Features, Metrics } from "../api/api";
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
 import { Plan } from "../api/api";
+import { FeatureType } from "../types/feature-type";
+import FeatureForm from "../components/FeatureForm";
 
 interface ComponentDisplay {
   metric: string;
@@ -29,9 +31,16 @@ interface ComponentDisplay {
 
 const CreatePlan = () => {
   const [visible, setVisible] = useState(false);
+  const [featureVisible, setFeatureVisible] = useState(false);
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [form] = Form.useForm();
+  const [planFeatures, setPlanFeatures] = useState<string[]>([]);
+
+  const addFeatures = (newFeatures: string[]) => {
+    setPlanFeatures([...planFeatures, ...newFeatures]);
+    setFeatureVisible(false);
+  };
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -47,6 +56,18 @@ const CreatePlan = () => {
       }
     });
   }, []);
+
+  const {
+    data: features,
+    isLoading,
+    isError,
+  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
+    ["feature_list"],
+    () =>
+      Features.getFeatures().then((res) => {
+        return res;
+      })
+  );
 
   const mutation = useMutation(
     (post: CreatePlanType) => Plan.createPlan(post),
@@ -75,6 +96,14 @@ const CreatePlan = () => {
 
   const showUserModal = () => {
     setVisible(true);
+  };
+
+  const hideFeatureModal = () => {
+    setFeatureVisible(false);
+  };
+
+  const showFeatureModal = () => {
+    setFeatureVisible(true);
   };
 
   const goBackPage = () => {
@@ -108,6 +137,7 @@ const CreatePlan = () => {
           pay_in_advance: values.pay_in_advance,
           interval: values.billing_interval,
           components: usagecomponentslist,
+          features: planFeatures,
         };
         mutation.mutate(plan);
         form.resetFields();
@@ -185,17 +215,28 @@ const CreatePlan = () => {
               <Form.Item name="pay_in_advance">
                 <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
               </Form.Item>
-              <Form.Item>
-                <Button
-                  htmlType="button"
-                  style={{ margin: "0 8px" }}
-                  onClick={showUserModal}
-                >
-                  Add Usage Component
-                </Button>
-              </Form.Item>
+              <div className="flex flex-row justify-center">
+                <Form.Item>
+                  <Button
+                    htmlType="button"
+                    style={{ margin: "0 8px" }}
+                    onClick={showUserModal}
+                  >
+                    Add Component
+                  </Button>
+                </Form.Item>
+                <Form.Item>
+                  <Button
+                    htmlType="button"
+                    style={{ margin: "0 8px" }}
+                    onClick={showFeatureModal}
+                  >
+                    Add Feature(s)
+                  </Button>
+                </Form.Item>
+              </div>
             </div>
-            <div>
+            <div className="grid grid-rows-2">
               <Form.Item
                 label="Usage Components"
                 className="self-start"
@@ -234,7 +275,15 @@ const CreatePlan = () => {
                 shouldUpdate={(prevValues, curValues) =>
                   prevValues.components !== curValues.components
                 }
-              ></Form.Item>
+              >
+                <List grid={{ gutter: 16, column: 4 }}>
+                  {planFeatures.map((feature, index) => (
+                    <List.Item key={index}>
+                      <Card title={feature}></Card>
+                    </List.Item>
+                  ))}
+                </List>
+              </Form.Item>
             </div>
           </div>
 
@@ -248,6 +297,12 @@ const CreatePlan = () => {
           visible={visible}
           onCancel={hideUserModal}
           metrics={metrics}
+        />
+        <FeatureForm
+          visible={featureVisible}
+          onCancel={hideFeatureModal}
+          features={features}
+          onAddFeatures={addFeatures}
         />
       </Form.Provider>
     </div>

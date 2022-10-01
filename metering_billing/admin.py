@@ -15,11 +15,13 @@ from .models import (
     Subscription,
     User,
     Alert,
+    Feature,
 )
 
 # Register your models here.
 admin.site.register(Customer)
 admin.site.register(Alert)
+admin.site.register(Feature)
 admin.site.register(Event)
 admin.site.register(BillingPlan)
 admin.site.register(Subscription)

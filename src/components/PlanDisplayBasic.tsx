@@ -3,14 +3,22 @@ import { PlanType } from "../types/plan-type";
 import { Card, Menu, Dropdown, List, Statistic } from "antd";
 import { Plan } from "../api/api";
 
-function PlanDisplayBasic(props: { plan: PlanType }) {
+function PlanDisplayBasic(props: {
+  plan: PlanType;
+  deletePlan: (billing_plan_id: string) => void;
+}) {
   const planMenu = (
     <Menu>
       <Menu.Item key="0">
         <a href="#">Edit</a>
       </Menu.Item>
       <Menu.Item key="1" disabled={props.plan.active_subscriptions !== 0}>
-        <a href="#">Delete</a>
+        <a
+          href="#"
+          onClick={() => props.deletePlan(props.plan.billing_plan_id)}
+        >
+          Delete
+        </a>
       </Menu.Item>
     </Menu>
   );
