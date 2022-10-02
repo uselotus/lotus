@@ -1,12 +1,9 @@
 import datetime
-from decimal import Decimal
 
-from django.db.models import Q
 from metering_billing.auth_utils import parse_organization
 from metering_billing.exceptions import OverlappingSubscription
 from metering_billing.models import (
     Alert,
-    APIToken,
     BillableMetric,
     BillingPlan,
     Customer,
@@ -18,7 +15,6 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.permissions import HasUserAPIKey
 from rest_framework import serializers
 
 
@@ -221,7 +217,6 @@ class FeatureSerializer(serializers.ModelSerializer):
             "feature_name",
             "feature_description",
         )
-
 
 ## PLAN COMPONENT
 class PlanComponentSerializer(serializers.ModelSerializer):

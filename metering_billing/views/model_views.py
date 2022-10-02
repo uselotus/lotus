@@ -295,3 +295,30 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 properties={},
             )
         return response
+
+
+class AlertViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing Alerts.
+    """
+
+    serializer_class = AlertSerializer
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return Alert.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_alert",
+                properties={},
+            )
+        return response
