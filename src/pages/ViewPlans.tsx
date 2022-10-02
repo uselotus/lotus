@@ -5,22 +5,46 @@ import { Plan } from "../api/api";
 import { PlanType } from "../types/plan-type";
 import PlanDisplayBasic from "../components/PlanDisplayBasic";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import {
+  useQuery,
+  UseQueryResult,
+  useMutation,
+  useQueryClient,
+} from "react-query";
 
 const ViewPlans: FC = () => {
-  const [plans, setPlans] = useState<PlanType[]>([]);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    Plan.getPlans().then((data) => {
-      setPlans(data);
-    });
-  }, []);
+  const queryClient = useQueryClient();
 
   const navigateCreatePlan = () => {
     navigate("/create-plan");
   };
 
-  const [loading, setLoading] = useState(false);
+  const {
+    data: plans,
+    isLoading,
+    isError,
+  }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(["plan_list"], () =>
+    Plan.getPlans().then((res) => {
+      return res;
+    })
+  );
+
+  const mutation = useMutation((post: string) => Plan.deletePlan(post), {
+    onSuccess: () => {
+      toast.success("Successfully deleted Plan");
+      queryClient.invalidateQueries(["plan_list"]);
+    },
+
+    onError: (e) => {
+      toast.error("Error deleting plan");
+    },
+  });
+
+  const deletePlan = (billing_plan_id: string) => {
+    mutation.mutate(billing_plan_id);
+  };
 
   return (
     <div>
@@ -40,7 +64,6 @@ const ViewPlans: FC = () => {
         style={{
           overflow: "auto",
           padding: "0 16px",
-          border: "1px solid rgba(140, 140, 140, 0.35)",
         }}
       >
         <List
@@ -49,7 +72,7 @@ const ViewPlans: FC = () => {
           className="w-full"
           renderItem={(item) => (
             <List.Item key={item.name}>
-              <PlanDisplayBasic plan={item} />
+              <PlanDisplayBasic plan={item} deletePlan={deletePlan} />
             </List.Item>
           )}
         />

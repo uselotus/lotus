@@ -128,9 +128,7 @@ function CustomerDetail(props: {
                       <p>Email: {data.email}</p>
                       <p>Billing Address: {data.billing_address}</p>
                     </div>
-                    <div className="space-y-3">
-                      <h2>Timeline</h2>
-                    </div>
+                    <div className="space-y-3">{/* <h2>Timeline</h2> */}</div>
                   </div>
                 ) : (
                   <h2> No Data </h2>
