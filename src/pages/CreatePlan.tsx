@@ -174,6 +174,8 @@ const CreatePlan = () => {
         >
           <div className="grid grid-cols-2 space-x-4">
             <div className="mx-2 my-2">
+              <h2 className="mb-4">Plan Info</h2>
+
               <Form.Item
                 label="Plan Name"
                 name="name"
@@ -237,58 +239,69 @@ const CreatePlan = () => {
               </div>
             </div>
             <div className="grid grid-rows-2">
-              <Form.Item
-                label="Usage Components"
-                className="self-start"
-                shouldUpdate={(prevValues, curValues) =>
-                  prevValues.components !== curValues.components
-                }
-              >
-                {({ getFieldValue }) => {
-                  const components: ComponentDisplay[] =
-                    getFieldValue("components") || [];
-                  console.log(components);
-                  return components.length ? (
-                    <List grid={{ gutter: 16, column: 4 }}>
-                      {components.map((component, index) => (
-                        <List.Item key={index} className="user">
-                          <Card title={component.metric}>
-                            <p>
-                              <b>Cost:</b> {component.cost_per_batch} per{" "}
-                              {component.metric_units_per_batch} events{" "}
-                            </p>
-                            <br />
-                            <p>
-                              <b>Free Amount Per Billing Cycle:</b>{" "}
-                              {component.free_amount}
-                            </p>
-                          </Card>
-                        </List.Item>
-                      ))}
-                    </List>
-                  ) : null;
-                }}
-              </Form.Item>
-              <Form.Item
-                label="Features"
-                className="self-start"
-                shouldUpdate={(prevValues, curValues) =>
-                  prevValues.components !== curValues.components
-                }
-              >
-                <List grid={{ gutter: 16, column: 4 }}>
-                  {planFeatures.map((feature, index) => (
-                    <List.Item key={index}>
-                      <Card title={feature}></Card>
-                    </List.Item>
-                  ))}
-                </List>
-              </Form.Item>
+              <div className="flex flex-col space-y-4">
+                <h2>Added Components</h2>
+                <Form.Item
+                  className="self-start"
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  {({ getFieldValue }) => {
+                    const components: ComponentDisplay[] =
+                      getFieldValue("components") || [];
+                    console.log(components);
+                    return components.length ? (
+                      <List grid={{ gutter: 16, column: 4 }}>
+                        {components.map((component, index) => (
+                          <List.Item key={index} className="user">
+                            <Card title={component.metric}>
+                              <p>
+                                <b>Cost:</b> {component.cost_per_batch} per{" "}
+                                {component.metric_units_per_batch} events{" "}
+                              </p>
+                              <br />
+                              <p>
+                                <b>Free Amount Per Billing Cycle:</b>{" "}
+                                {component.free_amount}
+                              </p>
+                            </Card>
+                          </List.Item>
+                        ))}
+                      </List>
+                    ) : null;
+                  }}
+                </Form.Item>
+              </div>
+
+              <div className="flex flex-col space-y-4 overflow-auto">
+                <h2>Added Features</h2>
+                <Form.Item
+                  className="self-start"
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <List grid={{ gutter: 16, column: 4 }}>
+                    {planFeatures.map((feature, index) => (
+                      <List.Item key={index}>
+                        <div className="container max-w-sm bg-grey3">
+                          <h3>{feature}</h3>
+                        </div>
+                      </List.Item>
+                    ))}
+                  </List>
+                </Form.Item>
+              </div>
             </div>
           </div>
 
           <Form.Item>
-            <Button type="primary" className="bg-info" htmlType="submit">
+            <Button
+              type="primary"
+              className="bg-black justify-self-end"
+              htmlType="submit"
+            >
               Submit
             </Button>
           </Form.Item>

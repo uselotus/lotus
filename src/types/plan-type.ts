@@ -1,4 +1,5 @@
 import { MetricType } from "./metric-type";
+import { FeatureType } from "./feature-type";
 export interface PlanType {
   name: string;
   components: Component[];
@@ -10,6 +11,7 @@ export interface PlanType {
   time_created: string;
   billing_plan_id: string;
   active_subscriptions: number;
+  features: FeatureType[];
 }
 
 export interface CreatePlanType {
@@ -35,6 +37,7 @@ export interface Component {
   free_metric_units: string;
   cost_per_batch: string;
   metric_units_per_batch: string;
+  max_metric_units: string;
   id: number;
 }
 export interface PlanDisplay {

@@ -62,6 +62,14 @@ export const Plan = {
     requests.post("api/plans/", post),
   deletePlan: (billing_plan_id: string): Promise<PlanType> =>
     requests.delete(`api/plans/${billing_plan_id}`),
+  updatePlan: (
+    old_billing_plan_id: string,
+    updated_billing_plan: CreatePlanType,
+    updateBehavior: string
+  ): Promise<PlanType> =>
+    requests.post(`api/update_billing_plan/`, {
+      params: { old_billing_plan_id, updated_billing_plan, updateBehavior },
+    }),
 };
 
 export const StripeConnect = {
