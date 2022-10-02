@@ -12,19 +12,19 @@ from metering_billing.models import APIToken, BillableMetric, Customer, Subscrip
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.utils import RevenueCalcGranularity, dates_bwn_twodates
+from metering_billing.view_utils import RevenueCalcGranularity, dates_bwn_twodates
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..auth_utils import parse_organization
-from ..utils import (
+from ..invoice import generate_adjustment_invoice
+from ..utils import make_all_dates_times_strings, make_all_decimals_floats
+from ..view_utils import (
     calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
-    make_all_dates_times_strings,
-    make_all_decimals_floats,
 )
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -853,7 +853,7 @@ class UpdateBillingPlanView(APIView):
             organization=organization, billing_plan_id=old_billing_plan_id
         )
         updated_billing_plan = serializer.validated_data["updated_billing_plan"]
-        updated_billing_plan_obj = BillingPlan.objects.create(**updated_billing_plan)
+        updated_bp = BillingPlan.objects.create(**updated_billing_plan)
         update_behavior = serializer.validated_data["update_behavior"]
 
         posthog.capture(
@@ -869,7 +869,7 @@ class UpdateBillingPlanView(APIView):
             )
             for sub in sub_qs:
                 start = sub.start_date
-                updated_end = updated_billing_plan_obj.calculate_end_date(start)
+                updated_end = updated_bp.calculate_end_date(start)
                 if updated_end < today:
                     return Response(
                         {
@@ -878,7 +878,7 @@ class UpdateBillingPlanView(APIView):
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-            sub_qs.update(billing_plan=updated_billing_plan_obj)
+            sub_qs.update(billing_plan=updated_bp)
             old_billing_plan_obj.delete()
             return Response(
                 {
@@ -889,10 +889,10 @@ class UpdateBillingPlanView(APIView):
             )
         elif update_behavior == "replace_on_renewal":
             old_billing_plan_obj.scheduled_for_deletion = True
-            old_billing_plan_obj.replacement_billing_plan = updated_billing_plan_obj
+            old_billing_plan_obj.replacement_billing_plan = updated_bp
             BillingPlan.objects.filter(
                 replacement_billing_plan=old_billing_plan_obj
-            ).update(replacement_billing_plan=updated_billing_plan_obj)
+            ).update(replacement_billing_plan=updated_bp)
             old_billing_plan_obj.save()
             return Response(
                 {
@@ -901,3 +901,82 @@ class UpdateBillingPlanView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
+
+
+class UpdateSubscriptionBillingPlanView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        request=UpdateSubscriptionBillingPlanRequestSerializer,
+        responses={
+            200: inline_serializer(
+                name="UpdateSubscriptionBillingPlanSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="UpdateSubscriptionBillingPlanFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        serializer = UpdateSubscriptionBillingPlanRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        organization = parse_organization(request)
+
+        subscription_uid = serializer.validated_data["subscription_uid"]
+        try:
+            sub = Subscription.objects.get(
+                organization=organization,
+                subscription_uid=subscription_uid,
+                status="active",
+            ).select_related("billing_plan")
+        except Subscription.DoesNotExist:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Subscription with id {subscription_uid} not found.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_billing_plan_id = serializer.validated_data["new_billing_plan_id"]
+        try:
+            updated_bp = BillingPlan.objects.get(
+                organization=organization, billing_plan_id=new_billing_plan_id
+            )
+        except BillingPlan.DoesNotExist:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Billing plan with id {new_billing_plan_id} not found.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        sub.billing_plan = updated_bp
+        sub.save()
+        if updated_bp.pay_in_advance:
+            new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
+            prorated_cost = sum(new_sub_daily_cost_dict.values())
+            due = prorated_cost - sub.customer.balance - sub.flat_fee_already_billed
+            if due < 0:
+                customer = sub.customer
+                customer.balance = abs(due)
+            elif due > 0:
+                today = datetime.date.today()
+                generate_adjustment_invoice(sub, today, due)
+                sub.flat_fee_already_billed += due
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Subscription {subscription_uid} updated to use billing plan {new_billing_plan_id}.",
+            },
+            status=status.HTTP_200_OK,
+        )

@@ -173,10 +173,12 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
-            "name",
+            "customer_name",
             "customer_id",
             "balance",
         )
+
+    customer_name = serializers.CharField(source="name")
 
 
 ## BILLABLE METRIC

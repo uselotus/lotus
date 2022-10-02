@@ -7,18 +7,26 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0027_rename_payment_intent_id_invoice_external_payment_obj_id_and_more'),
+        (
+            "metering_billing",
+            "0027_rename_payment_intent_id_invoice_external_payment_obj_id_and_more",
+        ),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='billingplan',
-            name='replacement_billing_plan',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='metering_billing.billingplan'),
+            model_name="billingplan",
+            name="replacement_billing_plan",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="metering_billing.billingplan",
+            ),
         ),
         migrations.AddField(
-            model_name='billingplan',
-            name='scheduled_for_deletion',
+            model_name="billingplan",
+            name="scheduled_for_deletion",
             field=models.BooleanField(default=False),
         ),
     ]

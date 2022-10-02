@@ -140,7 +140,7 @@ const SubscriptionView: FC<Props> = ({
               </Select>
             </Form.Item>
             <Form.Item>
-              <Button htmlType="submit"> Attatch Plan</Button>
+              <Button htmlType="submit"> Attach Plan</Button>
             </Form.Item>
           </Form>
         </div>

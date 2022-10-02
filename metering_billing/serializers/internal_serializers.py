@@ -36,6 +36,11 @@ class CancelSubscriptionRequestSerializer(serializers.Serializer):
     revoke_access = serializers.BooleanField(default=False)
 
 
+class UpdateSubscriptionBillingPlanRequestSerializer(serializers.Serializer):
+    subscription_uid = serializers.CharField(required=True)
+    new_billing_plan_id = serializers.CharField(required=True)
+
+
 class UpdateBillingPlanRequestSerializer(serializers.Serializer):
     old_billing_plan_id = serializers.CharField()
     updated_billing_plan = BillingPlanSerializer()
