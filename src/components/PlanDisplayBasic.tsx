@@ -150,6 +150,9 @@ function PlanDisplayBasic(props: {
           </div>
           <h3>Active Subscriptions</h3>
         </div>
+        <div className="justify-self-end self-center">
+          <Statistic title="Active Subscriptions" value={112893} />
+        </div>
       </div>
     </Card>
   );

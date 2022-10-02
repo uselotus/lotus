@@ -10,6 +10,7 @@ import {
   Menu,
   Statistic,
 } from "antd";
+
 import { CustomerDetailSubscription } from "../../types/customer-type";
 
 interface Props {
