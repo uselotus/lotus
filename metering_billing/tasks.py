@@ -64,7 +64,7 @@ def calculate_invoice():
         old_subscription.status = "ended"
         old_subscription.save()
         now = datetime.datetime.now(timezone.utc).date()
-        Invoice.objects.filter(issue_date__lt=now, status="draft").delete()
+        Invoice.objects.filter(issue_date__lt=now, payment_status="draft").delete()
         # Renew the subscription
         if old_subscription.auto_renew and not already_ended:
             subscription_kwargs = {
@@ -96,11 +96,9 @@ def start_subscriptions():
 
 @shared_task
 def update_invoice_status():
-    incomplete_invoices = Invoice.objects.filter(
-        ~Q(status="succeeded") & ~Q(status="draft")
-    )
+    incomplete_invoices = Invoice.objects.filter(Q(payment_status="unpaid"))
     for incomplete_invoice in incomplete_invoices:
-        pi_id = incomplete_invoice.payment_intent_id
+        pi_id = incomplete_invoice.external_payment_obj_id
         if pi_id is not None:
             try:
                 pi = stripe.PaymentIntent.retrieve(pi_id)
@@ -108,8 +106,8 @@ def update_invoice_status():
                 print(e)
                 print("Error retrieving payment intent {}".format(pi_id))
                 continue
-            if pi.status != incomplete_invoice.status:
-                incomplete_invoice.status = pi.status
+            if pi.status == "succeeded":
+                incomplete_invoice.payment_status = "paid"
                 incomplete_invoice.save()
 
 

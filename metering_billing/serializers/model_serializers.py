@@ -39,7 +39,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "id",
             "company_name",
             "payment_plan",
-            "stripe_id",
+            "payment_provider_ids",
         )
 
 
