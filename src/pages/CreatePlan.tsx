@@ -13,12 +13,14 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/UsageComponentForm";
-import { useMutation } from "react-query";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { MetricNameType } from "../types/metric-type";
 import { toast } from "react-toastify";
-import { Metrics } from "../api/api";
+import { Features, Metrics } from "../api/api";
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
 import { Plan } from "../api/api";
+import { FeatureType } from "../types/feature-type";
+import FeatureForm from "../components/FeatureForm";
 
 interface ComponentDisplay {
   metric: string;
@@ -29,9 +31,16 @@ interface ComponentDisplay {
 
 const CreatePlan = () => {
   const [visible, setVisible] = useState(false);
+  const [featureVisible, setFeatureVisible] = useState(false);
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [form] = Form.useForm();
+  const [planFeatures, setPlanFeatures] = useState<string[]>([]);
+
+  const addFeatures = (newFeatures: string[]) => {
+    setPlanFeatures([...planFeatures, ...newFeatures]);
+    setFeatureVisible(false);
+  };
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -47,6 +56,18 @@ const CreatePlan = () => {
       }
     });
   }, []);
+
+  const {
+    data: features,
+    isLoading,
+    isError,
+  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
+    ["feature_list"],
+    () =>
+      Features.getFeatures().then((res) => {
+        return res;
+      })
+  );
 
   const mutation = useMutation(
     (post: CreatePlanType) => Plan.createPlan(post),
@@ -75,6 +96,14 @@ const CreatePlan = () => {
 
   const showUserModal = () => {
     setVisible(true);
+  };
+
+  const hideFeatureModal = () => {
+    setFeatureVisible(false);
+  };
+
+  const showFeatureModal = () => {
+    setFeatureVisible(true);
   };
 
   const goBackPage = () => {
@@ -108,6 +137,7 @@ const CreatePlan = () => {
           pay_in_advance: values.pay_in_advance,
           interval: values.billing_interval,
           components: usagecomponentslist,
+          features: planFeatures,
         };
         mutation.mutate(plan);
         form.resetFields();
@@ -142,97 +172,136 @@ const CreatePlan = () => {
           onFinishFailed={onFinishFailed}
           autoComplete="off"
         >
-          <Form.Item
-            label="Plan Name"
-            name="name"
-            rules={[
-              {
-                required: true,
-                message: "Please Name Your Plan",
-              },
-            ]}
-          >
-            <Input placeholder="Ex: Starter Plan" />
-          </Form.Item>
-          <Form.Item label="Description" name="description">
-            <Input
-              type="textarea"
-              placeholder="Ex: Cheapest plan for small scale businesses"
-            />
-          </Form.Item>
-          <Form.Item
-            label="Billing Interval"
-            name="billing_interval"
-            rules={[
-              {
-                required: true,
-                message: "Please select an interval",
-              },
-            ]}
-          >
-            <Select>
-              <Select.Option value="week">Weekly</Select.Option>
-              <Select.Option value="month">Monthly</Select.Option>
-              <Select.Option value="year">Yearly</Select.Option>
-            </Select>
-          </Form.Item>
+          <div className="grid grid-cols-2 space-x-4">
+            <div className="mx-2 my-2">
+              <h2 className="mb-4">Plan Info</h2>
 
-          <Form.Item name="flat_rate" label="Recurring Cost">
-            <InputNumber addonBefore="$" defaultValue={0} precision={2} />
-          </Form.Item>
-          <Form.Item name="pay_in_advance">
-            <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
-          </Form.Item>
-          <div className="grid grid-cols-1">
-            <div className=" flex flex-col border border-grey1 my-2 mx-2 px-2 py-2 place-items-center	">
-              <Form.Item>
-                <Button
-                  htmlType="button"
-                  style={{ margin: "0 8px" }}
-                  onClick={showUserModal}
-                >
-                  Add Usage Component
-                </Button>
+              <Form.Item
+                label="Plan Name"
+                name="name"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please Name Your Plan",
+                  },
+                ]}
+              >
+                <Input placeholder="Ex: Starter Plan" />
+              </Form.Item>
+              <Form.Item label="Description" name="description">
+                <Input
+                  type="textarea"
+                  placeholder="Ex: Cheapest plan for small scale businesses"
+                />
               </Form.Item>
               <Form.Item
-                label="Usage Components"
-                className="self-start"
-                shouldUpdate={(prevValues, curValues) =>
-                  prevValues.components !== curValues.components
-                }
+                label="Billing Interval"
+                name="billing_interval"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please select an interval",
+                  },
+                ]}
               >
-                {({ getFieldValue }) => {
-                  const components: ComponentDisplay[] =
-                    getFieldValue("components") || [];
-                  console.log(components);
-                  return components.length ? (
-                    <List grid={{ gutter: 16, column: 4 }}>
-                      {components.map((component, index) => (
-                        <List.Item key={index} className="user">
-                          <Card title={component.metric}>
-                            <p>
-                              <b>Cost:</b> {component.cost_per_batch} per{" "}
-                              {component.metric_units_per_batch} events{" "}
-                            </p>
-                            <br />
-                            <p>
-                              <b>Free Amount Per Billing Cycle:</b>{" "}
-                              {component.free_amount}
-                            </p>
-                          </Card>
-                        </List.Item>
-                      ))}
-                    </List>
-                  ) : null;
-                }}
+                <Select>
+                  <Select.Option value="week">Weekly</Select.Option>
+                  <Select.Option value="month">Monthly</Select.Option>
+                  <Select.Option value="year">Yearly</Select.Option>
+                </Select>
               </Form.Item>
+
+              <Form.Item name="flat_rate" label="Recurring Cost">
+                <InputNumber addonBefore="$" defaultValue={0} precision={2} />
+              </Form.Item>
+              <Form.Item name="pay_in_advance">
+                <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
+              </Form.Item>
+              <div className="flex flex-row justify-center">
+                <Form.Item>
+                  <Button
+                    htmlType="button"
+                    style={{ margin: "0 8px" }}
+                    onClick={showUserModal}
+                  >
+                    Add Component
+                  </Button>
+                </Form.Item>
+                <Form.Item>
+                  <Button
+                    htmlType="button"
+                    style={{ margin: "0 8px" }}
+                    onClick={showFeatureModal}
+                  >
+                    Add Feature(s)
+                  </Button>
+                </Form.Item>
+              </div>
             </div>
-            <Divider type="vertical" />
-            <div className=" my-2 mx-2 px-2 py-2"></div>
+            <div className="grid grid-rows-2">
+              <div className="flex flex-col space-y-4">
+                <h2>Added Components</h2>
+                <Form.Item
+                  className="self-start"
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  {({ getFieldValue }) => {
+                    const components: ComponentDisplay[] =
+                      getFieldValue("components") || [];
+                    console.log(components);
+                    return components.length ? (
+                      <List grid={{ gutter: 16, column: 4 }}>
+                        {components.map((component, index) => (
+                          <List.Item key={index} className="user">
+                            <Card title={component.metric}>
+                              <p>
+                                <b>Cost:</b> {component.cost_per_batch} per{" "}
+                                {component.metric_units_per_batch} events{" "}
+                              </p>
+                              <br />
+                              <p>
+                                <b>Free Amount Per Billing Cycle:</b>{" "}
+                                {component.free_amount}
+                              </p>
+                            </Card>
+                          </List.Item>
+                        ))}
+                      </List>
+                    ) : null;
+                  }}
+                </Form.Item>
+              </div>
+
+              <div className="flex flex-col space-y-4 overflow-auto">
+                <h2>Added Features</h2>
+                <Form.Item
+                  className="self-start"
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <List grid={{ gutter: 16, column: 4 }}>
+                    {planFeatures.map((feature, index) => (
+                      <List.Item key={index}>
+                        <div className="container max-w-sm bg-grey3">
+                          <h3>{feature}</h3>
+                        </div>
+                      </List.Item>
+                    ))}
+                  </List>
+                </Form.Item>
+              </div>
+            </div>
           </div>
 
           <Form.Item>
-            <Button type="primary" className="bg-info" htmlType="submit">
+            <Button
+              type="primary"
+              className="bg-black justify-self-end"
+              htmlType="submit"
+            >
               Submit
             </Button>
           </Form.Item>
@@ -241,6 +310,12 @@ const CreatePlan = () => {
           visible={visible}
           onCancel={hideUserModal}
           metrics={metrics}
+        />
+        <FeatureForm
+          visible={featureVisible}
+          onCancel={hideFeatureModal}
+          features={features}
+          onAddFeatures={addFeatures}
         />
       </Form.Provider>
     </div>

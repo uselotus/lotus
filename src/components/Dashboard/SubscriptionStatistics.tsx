@@ -36,6 +36,8 @@ function SubscriptionStatistics(props: { range: any[] }) {
             valueStyle={{
               fontSize: "1.875rem",
               lineHeight: "2.25rem",
+              fontWeight: 700,
+              fontFamily: "Inter",
             }}
             precision={0}
             className="text-3xl"
@@ -49,6 +51,8 @@ function SubscriptionStatistics(props: { range: any[] }) {
             valueStyle={{
               fontSize: "1.875rem",
               lineHeight: "2.25rem",
+              fontWeight: 700,
+              fontFamily: "Inter",
             }}
             precision={0}
           />
