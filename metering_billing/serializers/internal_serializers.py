@@ -1,7 +1,12 @@
-from metering_billing.models import BillingPlan, Customer, Subscription
+from metering_billing.auth_utils import parse_organization
+from metering_billing.models import BillableMetric, BillingPlan, Customer
 from rest_framework import serializers
 
-from .model_serializers import BillingPlanSerializer, EventSerializer
+from .model_serializers import (
+    BillableMetricSerializer,
+    BillingPlanSerializer,
+    EventSerializer,
+)
 
 ## CUSTOM SERIALIZERS
 
@@ -47,6 +52,21 @@ class UpdateBillingPlanRequestSerializer(serializers.Serializer):
     update_behavior = serializers.ChoiceField(
         choices=["replace_immediately", "replace_on_renewal"]
     )
+
+    def create(self, validated_data):
+        request = self.context.get("request", None)
+        org = parse_organization(request)
+        validated_data["updated_billing_plan"]["organization"] = org
+        for component in validated_data["updated_billing_plan"]["components"]:
+            bm = component.pop("billable_metric")
+            component["billable_metric_name"] = bm.billable_metric_name
+        serializer = BillingPlanSerializer(
+            data=validated_data["updated_billing_plan"], context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.validated_data["organization"] = org
+        billing_plan = serializer.save()
+        return billing_plan
 
 
 class RegistrationDetailSerializer(serializers.Serializer):

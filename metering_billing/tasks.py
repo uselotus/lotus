@@ -32,14 +32,12 @@ def calculate_invoice():
     invoice_sub_uids_seen = Invoice.objects.values_list(
         "subscription__subscription_uid", flat=True
     )
-    ended_subs_no_invoice = Subscription.objects.filter(
-        status="ended", end_date__lt=now
-    )
+
     if len(invoice_sub_uids_seen) > 0:
-        ended_subs_no_invoice = ended_subs_no_invoice.exclude(
-            subscription_uid__in=invoice_sub_uids_seen
-        )
-    ending_subscriptions.extend(ended_subs_no_invoice)
+        ended_subs_no_invoice = Subscription.objects.filter(
+            status="ended", end_date__lt=now
+        ).exclude(subscription_uid__in=invoice_sub_uids_seen)
+        ending_subscriptions.extend(ended_subs_no_invoice)
 
     # prefetch organization customer stripe keys
     orgs_seen = set()
@@ -68,6 +66,8 @@ def calculate_invoice():
         # Renew the subscription
         if old_subscription.auto_renew and not already_ended:
             new_bp = old_subscription.billing_plan
+            # if we'e scheduled this plan for deletion, check if its still active in subs
+            # otherwise just renew with the new plan
             if new_bp.scheduled_for_deletion:
                 replacement_bp = new_bp.replacement_billing_plan
                 num_with_bp = Subscription.objects.filter(

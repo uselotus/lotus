@@ -267,7 +267,7 @@ class BillingPlan(models.Model):
     billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
     pay_in_advance = models.BooleanField()
-    name = models.CharField(max_length=200, unique=True)
+    name = models.CharField(max_length=200)
     description = models.CharField(max_length=256, default=" ", blank=True)
     components = models.ManyToManyField(PlanComponent, null=True, blank=True)
     features = models.ManyToManyField(Feature, null=True, blank=True)

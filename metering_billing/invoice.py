@@ -19,6 +19,14 @@ from .webhooks import invoice_created_webhook
 
 stripe.api_key = STRIPE_SECRET_KEY
 
+
+def turn_decimal_into_cents(amount):
+    """
+    Turn a decimal into cents.
+    """
+    return int(amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100))
+
+
 # Invoice Serializers
 class InvoiceOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -87,15 +95,19 @@ def generate_invoice(subscription, draft=False, issue_date=None):
         else:
             usage_dict["flat_revenue_due"] = 0
     else:
-        usage_dict["flat_revenue_due"] = billing_plan.flat_rate.amount
+        new_sub_daily_cost_dict = subscription.prorated_flat_costs_dict
+        total_cost = sum(new_sub_daily_cost_dict.values())
+        due = total_cost - float(subscription.flat_fee_already_billed)
+        usage_dict["flat_revenue_due"] = max(due, 0)
+        if due < 0:
+            subscription.customer.balance += abs(due)
+
     usage_dict["flat_revenue_due"] = Decimal(usage_dict["flat_revenue_due"])
     usage_dict["total_revenue_due"] = (
         usage_dict["flat_revenue_due"] + usage_dict["usage_revenue_due"]
     )
     amount = usage_dict["total_revenue_due"]
-    amount_cents = int(
-        amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100)
-    )
+    amount_cents = turn_decimal_into_cents(amount)
 
     customer_connected_to_pp = customer.payment_provider_id != ""
     org_pp_id = None
@@ -163,9 +175,7 @@ def generate_adjustment_invoice(subscription, issue_date, amount):
     customer = subscription.customer
     organization = subscription.organization
     billing_plan = subscription.billing_plan
-    amount_cents = int(
-        amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100)
-    )
+    amount_cents = turn_decimal_into_cents(amount)
 
     customer_connected_to_pp = customer.payment_provider_id != ""
     org_pp_id = None
