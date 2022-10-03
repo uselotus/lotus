@@ -304,6 +304,7 @@ class AlertViewSet(viewsets.ModelViewSet):
 
     serializer_class = AlertSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
+    http_method_names = ["get", "post", "head", "put", "delete"]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
