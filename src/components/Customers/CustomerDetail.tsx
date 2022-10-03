@@ -39,11 +39,16 @@ function CustomerDetail(props: {
   >([]);
 
   const { data, isLoading }: UseQueryResult<CustomerDetailType> =
-    useQuery<CustomerDetailType>(["customer_detail", props.customer_id], () =>
-      Customer.getCustomerDetail(props.customer_id).then((res) => {
-        setCustomerSubscriptions(res.subscriptions);
-        return res;
-      })
+    useQuery<CustomerDetailType>(
+      ["customer_detail", props.customer_id],
+      () =>
+        Customer.getCustomerDetail(props.customer_id).then((res) => {
+          setCustomerSubscriptions(res.subscriptions);
+          return res;
+        }),
+      {
+        enabled: props.visible,
+      }
     );
 
   const mutation = useMutation(
