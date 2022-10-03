@@ -18,7 +18,12 @@ import { useMutation } from "react-query";
 import { MetricNameType } from "../types/metric-type";
 import { toast } from "react-toastify";
 import { Metrics } from "../api/api";
-import { CreatePlanType, CreateComponent, PlanType } from "../types/plan-type";
+import {
+  CreatePlanType,
+  CreateComponent,
+  PlanType,
+  UpdatePlanType,
+} from "../types/plan-type";
 import { Plan } from "../api/api";
 
 interface ComponentDisplay {
@@ -62,16 +67,7 @@ const EditPlan = () => {
   }, []);
 
   const mutation = useMutation(
-    (data: {
-      old_billing_plan_id: string;
-      updated_billing_plan: CreatePlanType;
-      updateBehavior: string;
-    }) =>
-      Plan.updatePlan(
-        data.old_billing_plan_id,
-        data.updated_billing_plan,
-        data.updateBehavior
-      ),
+    (data: UpdatePlanType) => Plan.updatePlan(data),
     {
       onSuccess: () => {
         toast.success("Successfully updated Plan", {
@@ -141,7 +137,7 @@ const EditPlan = () => {
         mutation.mutate({
           old_billing_plan_id: plan.billing_plan_id,
           updated_billing_plan: newPlan,
-          updateBehavior: values.update_behavior,
+          update_behavior: values.update_behavior,
         });
         form.resetFields();
       })

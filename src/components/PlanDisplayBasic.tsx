@@ -32,7 +32,7 @@ function PlanDisplayBasic(props: {
     <Menu className=" bg-light">
       {props.plan.components.map((component) => (
         <Menu.Item key={component.id} className="border-2 bg-white">
-          <div className="flex flex-row">
+          <div className="my-4 flex flex-row">
             <h3 className="self-start">
               {component.billable_metric.billable_metric_name}
             </h3>
@@ -49,7 +49,7 @@ function PlanDisplayBasic(props: {
     <Menu>
       {props.plan.features.map((feature) => (
         <Menu.Item key={feature.feature_name}>
-          <div className=" h- flex flex-row">
+          <div className="my-4 flex flex-row">
             <h3 className="self-start">{feature.feature_name}</h3>
           </div>
         </Menu.Item>
@@ -106,8 +106,8 @@ function PlanDisplayBasic(props: {
         </div>
         <div className="grid grid-cols-2 self-center h-1/2 space-x-4">
           <Dropdown overlay={componentMenu} autoFocus={false}>
-            <div className=" bg-white hover:bg-black hover:text-white mr-2 flex flex-row items-center border-black border-2">
-              <h3 className="my-3 mx-3 self-center text-inherit">
+            <div className="group bg-white hover:bg-black  mr-2 flex flex-row items-center border-black border-2">
+              <h3 className="my-3 mx-3 self-center group-hover:text-white">
                 Components: {props.plan.components.length}
               </h3>
               <ArrowDownOutlined />
@@ -149,9 +149,6 @@ function PlanDisplayBasic(props: {
             {props.plan.active_subscriptions}
           </div>
           <h3>Active Subscriptions</h3>
-        </div>
-        <div className="justify-self-end self-center">
-          <Statistic title="Active Subscriptions" value={112893} />
         </div>
       </div>
     </Card>

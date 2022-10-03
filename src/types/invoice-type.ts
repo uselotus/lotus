@@ -3,7 +3,7 @@ export interface InvoiceType {
   cost_due_currency: string;
   id: number;
   issue_date: string;
-  status: string;
+  payment_status: string;
   line_items: LineItem[];
   customer: InvoiceCustomer;
 }

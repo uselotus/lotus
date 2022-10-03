@@ -19,6 +19,7 @@ import {
   CustomerDetailSubscription,
 } from "../../types/customer-type";
 import "./CustomerDetail.css";
+import CustomerInvoiceView from "./CustomerInvoices";
 
 const { Option } = Select;
 
@@ -147,8 +148,8 @@ function CustomerDetail(props: {
                   </div>
                 ) : null}
               </Tabs.TabPane>
-              <Tabs.TabPane disabled={true} tab="Invoices" key="invoices">
-                <p>Invoices</p>
+              <Tabs.TabPane tab="Invoices" key="invoices">
+                <CustomerInvoiceView invoices={data?.invoices} />
               </Tabs.TabPane>{" "}
             </Tabs>
           </div>

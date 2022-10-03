@@ -71,7 +71,7 @@ const Login: FC = () => {
               {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
               <Form onFinish={handleLogin} name="normal_login">
                 <Form.Item>
-                  <label htmlFor="username">Username</label>
+                  <label htmlFor="username">Username or Email</label>
                   <Input
                     type="text"
                     name="username"

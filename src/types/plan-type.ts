@@ -14,6 +14,11 @@ export interface PlanType {
   features: FeatureType[];
 }
 
+export interface UpdatePlanType {
+  old_billing_plan_id: string;
+  updated_billing_plan: CreatePlanType;
+  update_behavior: string;
+}
 export interface CreatePlanType {
   name: string;
   components: CreateComponent[];
