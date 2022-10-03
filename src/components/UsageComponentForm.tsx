@@ -86,9 +86,9 @@ function UsageComponentForm(props: {
         </div>
         <div className="grid grid-cols-2 space-x-4 my-5">
           <Form.Item name="free_amount" label="Free Units">
-            <InputNumber defaultValue={0} precision={5} />
+            <InputNumber defaultValue={0} precision={5} disabled={isFree} />
           </Form.Item>
-          <Form.Item label="Max Amount">
+          <Form.Item name="max_amount" label="Max Amount">
             <InputNumber precision={5} disabled={!isLimit} />
           </Form.Item>
         </div>
@@ -108,13 +108,18 @@ function UsageComponentForm(props: {
               </Form.Item>
               <p>To</p>
               <Form.Item name="max_metric_units">
-                <InputNumber precision={4} disabled={!isLimit} />
+                <InputNumber 
+                  defaultValue={0}
+                  precision={4} 
+                  disabled={!isLimit} 
+                  value={form.getFieldValue("max_amount")}
+                />
               </Form.Item>
               <p>, $</p>
               <Form.Item name="cost_per_batch">
                 <InputNumber defaultValue={0} precision={4} />
               </Form.Item>
-              <p>To</p>
+              <p>Per</p>
               <Form.Item name="metric_units_per_batch">
                 <InputNumber defaultValue={1} precision={5} />
               </Form.Item>

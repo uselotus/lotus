@@ -844,16 +844,17 @@ class UpdateBillingPlanView(APIView):
         },
     )
     def post(self, request, format=None):
-        serializer = UpdateBillingPlanRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
+        serializer = UpdateBillingPlanRequestSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
 
         old_billing_plan_id = serializer.validated_data["old_billing_plan_id"]
-        old_billing_plan_obj = BillingPlan.objects.get(
+        old_bp = BillingPlan.objects.get(
             organization=organization, billing_plan_id=old_billing_plan_id
         )
-        updated_billing_plan = serializer.validated_data["updated_billing_plan"]
-        updated_bp = BillingPlan.objects.create(**updated_billing_plan)
+        updated_bp = serializer.save()
         update_behavior = serializer.validated_data["update_behavior"]
 
         posthog.capture(
@@ -865,7 +866,7 @@ class UpdateBillingPlanView(APIView):
             today = datetime.date.today()
             sub_qs = Subscription.objects.filter(
                 organization=organization,
-                billing_plan=old_billing_plan_obj,
+                billing_plan=old_bp,
             )
             for sub in sub_qs:
                 start = sub.start_date
@@ -878,8 +879,28 @@ class UpdateBillingPlanView(APIView):
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-            sub_qs.update(billing_plan=updated_bp)
-            old_billing_plan_obj.delete()
+            if updated_bp.pay_in_advance and not old_bp.pay_in_advance:
+                # need to bill the customer immediately for the flat fee (prorated)
+                for sub in sub_qs:
+                    sub.billing_plan = updated_bp
+                    sub.save()
+                    new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
+                    prorated_cost = sum(new_sub_daily_cost_dict.values())
+                    due = (
+                        prorated_cost
+                        - sub.customer.balance
+                        - sub.flat_fee_already_billed
+                    )
+                    sub.flat_fee_already_billed = prorated_cost
+                    sub.save()
+                    if due > 0:
+                        sub.customer.balance = 0
+                        today = datetime.date.today()
+                        generate_adjustment_invoice(sub, today, due)
+                    else:
+                        sub.customer.balance = abs(due)
+                    sub.customer.save()
+            old_bp.delete()
             return Response(
                 {
                     "status": "success",
@@ -888,12 +909,12 @@ class UpdateBillingPlanView(APIView):
                 status=status.HTTP_200_OK,
             )
         elif update_behavior == "replace_on_renewal":
-            old_billing_plan_obj.scheduled_for_deletion = True
-            old_billing_plan_obj.replacement_billing_plan = updated_bp
-            BillingPlan.objects.filter(
-                replacement_billing_plan=old_billing_plan_obj
-            ).update(replacement_billing_plan=updated_bp)
-            old_billing_plan_obj.save()
+            old_bp.scheduled_for_deletion = True
+            old_bp.replacement_billing_plan = updated_bp
+            BillingPlan.objects.filter(replacement_billing_plan=old_bp).update(
+                replacement_billing_plan=updated_bp
+            )
+            old_bp.save()
             return Response(
                 {
                     "status": "success",
@@ -973,6 +994,9 @@ class UpdateSubscriptionBillingPlanView(APIView):
                 today = datetime.date.today()
                 generate_adjustment_invoice(sub, today, due)
                 sub.flat_fee_already_billed += due
+                sub.save()
+                sub.customer.balance = 0
+                sub.customer.save()
         return Response(
             {
                 "status": "success",

@@ -1700,9 +1700,8 @@ components:
     Customer:
       type: object
       properties:
-        name:
+        customer_name:
           type: string
-          maxLength: 100
         customer_id:
           type: string
           maxLength: 40
@@ -1715,7 +1714,7 @@ components:
           exclusiveMinimum: true
       required:
       - customer_id
-      - name
+      - customer_name
     CustomerDetail:
       type: object
       properties:
@@ -2012,9 +2011,8 @@ components:
     PatchedCustomer:
       type: object
       properties:
-        name:
+        customer_name:
           type: string
-          maxLength: 100
         customer_id:
           type: string
           maxLength: 40
