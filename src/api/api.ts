@@ -61,9 +61,7 @@ export const Plan = {
   createPlan: (post: CreatePlanType): Promise<CreatePlanType> =>
     requests.post("api/plans/", post),
   deletePlan: (billing_plan_id: string): Promise<PlanType> =>
-    requests.delete(`api/plans/`, {
-      data: { billing_plan_id },
-    }),
+    requests.delete(`api/plans/${billing_plan_id}/`),
   updatePlan: (post: UpdatePlanType): Promise<PlanType> =>
     requests.post(`api/update_billing_plan/`, post),
 };
