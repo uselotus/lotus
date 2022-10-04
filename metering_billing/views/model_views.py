@@ -214,7 +214,8 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
             )
             .annotate(
                 active_subscriptions=Count(
-                    "current_billing_plan__pk", filter=Q(current_billing_plan__status="active")
+                    "current_billing_plan__pk",
+                    filter=Q(current_billing_plan__status="active"),
                 )
             )
         )

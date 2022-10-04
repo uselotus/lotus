@@ -373,13 +373,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "org_connected_to_cust_payment_provider",
             "external_payment_obj_id",
             "line_items",
-            "organization" ,
+            "organization",
             "customer",
             "subscription",
         )
 
-    cost_due = serializers.DecimalField(max_digits=10, decimal_places=2, source="cost_due.amount")
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
     cost_due_currency = serializers.CharField(source="cost_due.currency")
+
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -390,10 +393,12 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
             "cust_connected_to_payment_provider",
             "org_connected_to_cust_payment_provider",
             "line_items",
-            "organization" ,
+            "organization",
             "customer",
             "subscription",
         )
 
-    cost_due = serializers.DecimalField(max_digits=10, decimal_places=2, source="cost_due.amount")
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
     cost_due_currency = serializers.CharField(source="cost_due.currency")

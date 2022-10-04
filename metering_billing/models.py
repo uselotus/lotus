@@ -42,7 +42,7 @@ class Organization(models.Model):
                 raise ValueError(
                     f"Payment provider {k} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
                 )
-        super(Subscription, self).save(*args, **kwargs)
+        super(Organization, self).save(*args, **kwargs)
 
 
 class Alert(models.Model):

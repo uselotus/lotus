@@ -42,6 +42,8 @@ class InvoiceCustomerSerializer(serializers.ModelSerializer):
             "customer_name",
             "customer_id",
         )
+    
+    customer_name = serializers.CharField(source="name")
 
 
 class InvoiceBillingPlanSerializer(serializers.ModelSerializer):
@@ -168,7 +170,9 @@ def generate_invoice(subscription, draft=False, issue_date=None):
         posthog.capture(
             subscription.organization.company_name,
             "generate_invoice",
-            {"amount": amount,},
+            {
+                "amount": amount,
+            },
         )
 
     return invoice
@@ -234,9 +238,11 @@ def generate_adjustment_invoice(subscription, issue_date, amount):
     invoice_data = InvoiceSerializer(invoice).data
     invoice_created_webhook(invoice_data, organization)
     posthog.capture(
-            subscription.organization.company_name,
-            "generate_adjustment_invoice",
-            {"amount": amount,},
-        )
+        subscription.organization.company_name,
+        "generate_adjustment_invoice",
+        {
+            "amount": amount,
+        },
+    )
 
     return invoice

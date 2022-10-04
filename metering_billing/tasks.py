@@ -124,7 +124,7 @@ def update_invoice_status():
                 incomplete_invoice.payment_status = "paid"
                 incomplete_invoice.save()
                 posthog.capture(
-                    incomplete_invoice.organization.company_name,
+                    incomplete_invoice.organization["company_name"],
                     "invoice_status_succeeded",
                 )
 
