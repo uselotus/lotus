@@ -123,6 +123,10 @@ def update_invoice_status():
             if pi.status == "succeeded":
                 incomplete_invoice.payment_status = "paid"
                 incomplete_invoice.save()
+                posthog.capture(
+                    incomplete_invoice.organization.company_name,
+                    "invoice_status_succeeded",
+                )
 
 
 @shared_task

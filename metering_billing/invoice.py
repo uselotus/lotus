@@ -1,5 +1,6 @@
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
+import posthog
 import stripe
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
 from rest_framework import serializers
@@ -164,6 +165,11 @@ def generate_invoice(subscription, draft=False, issue_date=None):
     if not draft:
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
+        posthog.capture(
+            subscription.organization.company_name,
+            "generate_invoice",
+            {"amount": amount,},
+        )
 
     return invoice
 
@@ -227,5 +233,10 @@ def generate_adjustment_invoice(subscription, issue_date, amount):
 
     invoice_data = InvoiceSerializer(invoice).data
     invoice_created_webhook(invoice_data, organization)
+    posthog.capture(
+            subscription.organization.company_name,
+            "generate_adjustment_invoice",
+            {"amount": amount,},
+        )
 
     return invoice
