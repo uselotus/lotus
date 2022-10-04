@@ -8,6 +8,7 @@ export interface PlanType {
   flat_rate: number;
   currency: string;
   id: number;
+  pay_in_advance: boolean;
   time_created: string;
   billing_plan_id: string;
   active_subscriptions: number;
