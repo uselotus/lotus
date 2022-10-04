@@ -144,7 +144,7 @@ class TestCancelSub:
         assert len(active_subscriptions) == 1
 
         payload = {
-            "subscription_id: setup_dict["subscription"].subscription_id,
+            "subscription_id": setup_dict["subscription"].subscription_id,
             "bill_now": True,
             "revoke_access": True,
         }

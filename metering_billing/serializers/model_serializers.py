@@ -282,10 +282,12 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         components_data = validated_data.pop("components", [])
         features_data = validated_data.pop("features", [])
         billing_plan = BillingPlan.objects.create(**validated_data)
+        org = billing_plan.organization
         for component_data in components_data:
             pc, _ = PlanComponent.objects.get_or_create(**component_data)
             billing_plan.components.add(pc)
         for feature_data in features_data:
+            feature_data["organization"] = org
             f, _ = Feature.objects.get_or_create(**feature_data)
             billing_plan.features.add(f)
         billing_plan.save()
