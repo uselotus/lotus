@@ -46,6 +46,7 @@ function UsageComponentForm(props: {
         form={form}
         layout="horizontal"
         name="component_form"
+        className="usage-form1"
         initialValues={{
           cost_per_batch: 0.0,
           metric_units_per_batch: 1,
@@ -72,14 +73,26 @@ function UsageComponentForm(props: {
           <Checkbox
             name="is_free"
             checked={!isFree}
-            onChange={() => setIsFree(!isFree)}
+            onChange={() => {
+              setIsFree(!isFree);
+              if (!isFree) {
+                form.setFieldsValue({
+                  free_amount: 0,
+                });
+              }
+            }}
           >
             Charge For This Metric?
           </Checkbox>
           <Checkbox
             name="is_limit"
             checked={isLimit}
-            onChange={() => setIsLimit(!isLimit)}
+            onChange={() => {
+              setIsLimit(!isLimit);
+              if (isLimit) {
+                form.setFieldsValue({ max_metric_units: 0 });
+              }
+            }}
           >
             Does This Metric Have A Limit?
           </Checkbox>
@@ -88,7 +101,7 @@ function UsageComponentForm(props: {
           <Form.Item name="free_amount" label="Free Units">
             <InputNumber defaultValue={0} precision={5} disabled={isFree} />
           </Form.Item>
-          <Form.Item name="max_amount" label="Max Amount">
+          <Form.Item name="max_metric_units" label="Max Amount">
             <InputNumber precision={5} disabled={!isLimit} />
           </Form.Item>
         </div>
@@ -108,11 +121,11 @@ function UsageComponentForm(props: {
               </Form.Item>
               <p>To</p>
               <Form.Item name="max_metric_units">
-                <InputNumber 
+                <InputNumber
                   defaultValue={0}
-                  precision={4} 
-                  disabled={!isLimit} 
-                  value={form.getFieldValue("max_amount")}
+                  precision={4}
+                  disabled={!isLimit}
+                  value={form.getFieldValue("max_metric_units")}
                 />
               </Form.Item>
               <p>, $</p>
