@@ -284,11 +284,17 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         billing_plan = BillingPlan.objects.create(**validated_data)
         org = billing_plan.organization
         for component_data in components_data:
-            pc, _ = PlanComponent.objects.get_or_create(**component_data)
+            try:
+                pc, _ = PlanComponent.objects.get_or_create(**component_data)
+            except PlanComponent.MultipleObjectsReturned:
+                pc = PlanComponent.objects.filter(**component_data).first()
             billing_plan.components.add(pc)
         for feature_data in features_data:
             feature_data["organization"] = org
-            f, _ = Feature.objects.get_or_create(**feature_data)
+            try:
+                f, _ = Feature.objects.get_or_create(**feature_data)
+            except PlanComponent.MultipleObjectsReturned:
+                f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)
         billing_plan.save()
         return billing_plan
