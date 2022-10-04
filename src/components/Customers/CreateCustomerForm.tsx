@@ -1,4 +1,5 @@
 import { Modal, Form, Input } from "antd";
+import React from "react";
 
 export interface CreateCustomerState {
   name: string;

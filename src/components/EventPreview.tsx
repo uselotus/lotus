@@ -60,9 +60,11 @@ const EventPreivew: FC = () => {
                   {event.properties &&
                     Object.keys(event.properties).map((keyName, i) => (
                       <li className="travelcompany-input" key={i}>
-                        <span className="input-label">
-                          {keyName} : {event.properties[keyName]}
-                        </span>
+                        {event.properties !== undefined && (
+                          <span className="input-label">
+                            {keyName} : {event.properties[keyName]}{" "}
+                          </span>
+                        )}
                       </li>
                     ))}
                 </div>
