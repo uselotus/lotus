@@ -318,7 +318,12 @@ class Subscription(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
-    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, null=False)
+    billing_plan = models.ForeignKey(
+        BillingPlan,
+        related_name="current_billing_plan",
+        on_delete=models.CASCADE,
+        null=False,
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(
@@ -327,6 +332,12 @@ class Subscription(models.Model):
         default=SUB_STATUS_CHOICES.not_started,
     )
     auto_renew = models.BooleanField(default=True)
+    auto_renew_billing_plan = models.ForeignKey(
+        BillingPlan,
+        related_name="next_billing_plan",
+        on_delete=models.CASCADE,
+        null=True,
+    )
     is_new = models.BooleanField(default=True)
     subscription_uid = models.CharField(
         max_length=100, null=False, blank=True, default=uuid.uuid4

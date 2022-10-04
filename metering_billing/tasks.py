@@ -65,7 +65,10 @@ def calculate_invoice():
         Invoice.objects.filter(issue_date__lt=now, payment_status="draft").delete()
         # Renew the subscription
         if old_subscription.auto_renew and not already_ended:
-            new_bp = old_subscription.billing_plan
+            if old_subscription.auto_renew_billing_plan:
+                new_bp = old_subscription.auto_renew_billing_plan
+            else:
+                new_bp = old_subscription.billing_plan
             # if we'e scheduled this plan for deletion, check if its still active in subs
             # otherwise just renew with the new plan
             if new_bp.scheduled_for_deletion:

@@ -1367,6 +1367,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/UpdateBillingPlanFailure'
           description: ''
+  /api/update_subscription/:
+    post:
+      operationId: update_subscription_create
+      tags:
+      - update_subscription
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionBillingPlanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionBillingPlanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionBillingPlanRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateSubscriptionBillingPlanSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateSubscriptionBillingPlanFailure'
+          description: ''
   /api/users/:
     get:
       operationId: users_list
@@ -2537,6 +2570,39 @@ components:
       - update_behavior
       - updated_billing_plan
     UpdateBillingPlanSuccess:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusE96Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    UpdateSubscriptionBillingPlanFailure:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status956Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    UpdateSubscriptionBillingPlanRequest:
+      type: object
+      properties:
+        subscription_uid:
+          type: string
+        new_billing_plan_id:
+          type: string
+        update_behavior:
+          $ref: '#/components/schemas/UpdateBehaviorEnum'
+      required:
+      - new_billing_plan_id
+      - subscription_uid
+      - update_behavior
+    UpdateSubscriptionBillingPlanSuccess:
       type: object
       properties:
         status:

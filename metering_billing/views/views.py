@@ -981,26 +981,38 @@ class UpdateSubscriptionBillingPlanView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        sub.billing_plan = updated_bp
-        sub.save()
-        if updated_bp.pay_in_advance:
-            new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
-            prorated_cost = sum(new_sub_daily_cost_dict.values())
-            due = prorated_cost - sub.customer.balance - sub.flat_fee_already_billed
-            if due < 0:
-                customer = sub.customer
-                customer.balance = abs(due)
-            elif due > 0:
-                today = datetime.date.today()
-                generate_adjustment_invoice(sub, today, due)
-                sub.flat_fee_already_billed += due
-                sub.save()
-                sub.customer.balance = 0
-                sub.customer.save()
-        return Response(
-            {
-                "status": "success",
-                "detail": f"Subscription {subscription_uid} updated to use billing plan {new_billing_plan_id}.",
-            },
-            status=status.HTTP_200_OK,
-        )
+        update_behavior = serializer.validated_data["update_behavior"]
+        if update_behavior == "replace_immediately":
+            sub.billing_plan = updated_bp
+            sub.save()
+            if updated_bp.pay_in_advance:
+                new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
+                prorated_cost = sum(new_sub_daily_cost_dict.values())
+                due = prorated_cost - sub.customer.balance - sub.flat_fee_already_billed
+                if due < 0:
+                    customer = sub.customer
+                    customer.balance = abs(due)
+                elif due > 0:
+                    today = datetime.date.today()
+                    generate_adjustment_invoice(sub, today, due)
+                    sub.flat_fee_already_billed += due
+                    sub.save()
+                    sub.customer.balance = 0
+                    sub.customer.save()
+            return Response(
+                {
+                    "status": "success",
+                    "detail": f"Subscription {subscription_uid} updated to use billing plan {new_billing_plan_id}.",
+                },
+                status=status.HTTP_200_OK,
+            )
+        elif update_behavior == "replace_on_renewal":
+            sub.auto_renew_billing_plan = updated_bp
+            sub.save()
+            return Response(
+                {
+                    "status": "success",
+                    "detail": f"Subscription {subscription_uid} scheduled to be updated to use billing plan {new_billing_plan_id} on next renewal.",
+                },
+                status=status.HTTP_200_OK,
+            )

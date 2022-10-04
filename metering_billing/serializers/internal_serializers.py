@@ -44,6 +44,9 @@ class CancelSubscriptionRequestSerializer(serializers.Serializer):
 class UpdateSubscriptionBillingPlanRequestSerializer(serializers.Serializer):
     subscription_uid = serializers.CharField(required=True)
     new_billing_plan_id = serializers.CharField(required=True)
+    update_behavior = serializers.ChoiceField(
+        choices=["replace_immediately", "replace_on_renewal"]
+    )
 
 
 class UpdateBillingPlanRequestSerializer(serializers.Serializer):
