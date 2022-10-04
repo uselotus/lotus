@@ -1,42 +1,39 @@
 import { Table, Tag } from "antd";
+import { FC, useState } from "react";
+import React from "react";
+import { InvoiceType } from "../../types/invoice-type";
 
 interface Props {
-    invoices:
+  invoices: InvoiceType[] | undefined;
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
   const [invoiceVisible, setInvoiceVisible] = useState(false);
-  const [invoiceState, setInvoiceState] = useState<InvoiceState>({
-    title: "Create an Invoice",
-    customer_id: "",
-    invoice_id: "",
-    amount: 0,
-    due_date: "",
-    status: "unpaid",
-    subscription_uid: "",
-  });
+  const [invoiceState, setInvoiceState] = useState<InvoiceType>();
 
   const columns = [
     {
       title: "Invoice ID",
-      dataIndex: "invoice_id",
-      key: "invoice_id",
+      dataIndex: "id",
+      key: "id",
     },
     {
       title: "Amount",
-      dataIndex: "amount",
-      key: "amount",
-      render: (amount: number) => <span>${amount}</span>,
+      dataIndex: "cost_due",
+      key: "cost_due",
+      render: (cost_due: string) => (
+        <span>${parseFloat(cost_due).toFixed(2)}</span>
+      ),
     },
     {
-      title: "Due Date",
-      dataIndex: "due_date",
-      key: "due_date",
-      render: (due_date: string) => <span>{due_date}</span>,
+      title: "Issue Date",
+      dataIndex: "issue_date",
+      key: "issue_date",
+      render: (issue_date: string) => <span>{issue_date}</span>,
     },
     {
       title: "Status",
-      dataIndex: "status",
+      dataIndex: "payment_status",
       key: "status",
       render: (status: string) => (
         <Tag color={status === "paid" ? "green" : "red"} key={status}>
@@ -44,23 +41,20 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
         </Tag>
       ),
     },
-    {
-      title: "Subscription UID",
-      dataIndex: "subscription_uid",
-      key: "subscription_uid",
-      render: (subscription_uid: string) => (
-        <span>{subscription_uid.substring(0, 10)}...</span>
-      ),
-    },
   ];
 
   return (
     <div>
-      <Table
-        columns={columns}
-        dataSource={tableData}
-        pagination={{ pageSize: 10 }}
-      />
+      <h2 className="mb-3">Invoices</h2>
+      {invoices !== undefined ? (
+        <Table
+          columns={columns}
+          dataSource={invoices}
+          pagination={{ pageSize: 10 }}
+        />
+      ) : (
+        <p>No invoices found</p>
+      )}
     </div>
   );
 };

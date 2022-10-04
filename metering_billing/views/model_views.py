@@ -21,7 +21,6 @@ from metering_billing.serializers.model_serializers import (
     BillableMetricSerializer,
     BillingPlanReadSerializer,
     BillingPlanSerializer,
-    BillingPlanUpdateSerializer,
     CustomerSerializer,
     FeatureSerializer,
     InvoiceSerializer,
@@ -31,8 +30,9 @@ from metering_billing.serializers.model_serializers import (
     SubscriptionSerializer,
     UserSerializer,
 )
-from rest_framework import serializers, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from ..auth_utils import parse_organization
 
@@ -197,13 +197,11 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "billing_plan_id"
-    http_method_names = ["get", "post", "head", "put"]
+    http_method_names = ["get", "post", "head", "delete"]
 
     def get_serializer_class(self):
         if self.action in ["list", "retrieve"]:
             return BillingPlanReadSerializer
-        elif self.update == "create":
-            return BillingPlanUpdateSerializer
         else:
             return BillingPlanSerializer
 
@@ -216,7 +214,8 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
             )
             .annotate(
                 active_subscriptions=Count(
-                    "subscription__pk", filter=Q(subscription__status="active")
+                    "current_billing_plan__pk",
+                    filter=Q(current_billing_plan__status="active"),
                 )
             )
         )
@@ -235,6 +234,21 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
             )
         return response
 
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        num_sub_plan = Subscription.objects.filter(
+            billing_plan=obj, status="active"
+        ).count()
+        if num_sub_plan > 0:
+            return Response(
+                data={
+                    "message": "Billing Plan has associated active subscriptions. Cannot delete."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        self.perform_destroy(obj)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class SubscriptionViewSet(viewsets.ModelViewSet):
     """
@@ -242,6 +256,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
+    http_method_names = ["get", "post", "head"]
 
     def get_queryset(self):
         organization = parse_organization(self.request)

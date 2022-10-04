@@ -59,7 +59,7 @@ function RevenueBarGraph(props: {
       ],
     },
   };
-  if (props.isLoading || props.data === undefined || props.data.length === 0) {
+  if (props.isLoading || props.data === undefined) {
     return (
       <div className="flex flex-col justify-center">
         <h3>No Revenue Data</h3>

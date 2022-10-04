@@ -115,7 +115,7 @@ class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = (
             "billing_plan_name",
-            "subscription_uid",
+            "subscription_id",
             "start_date",
             "end_date",
             "auto_renew",
@@ -147,12 +147,12 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     invoices = serializers.SerializerMethodField()
     total_revenue_due = serializers.SerializerMethodField()
 
-    def get_invoices(self, obj):
+    def get_invoices(self, obj) -> list:
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
         return timeline
 
-    def get_total_revenue_due(self, obj):
+    def get_total_revenue_due(self, obj) -> float:
         total_revenue_due = float(self.context.get("total_revenue_due"))
         return total_revenue_due
 
@@ -164,7 +164,7 @@ class CustomerWithRevenueSerializer(serializers.ModelSerializer):
 
     total_revenue_due = serializers.SerializerMethodField()
 
-    def get_total_revenue_due(self, obj):
+    def get_total_revenue_due(self, obj) -> float:
         total_revenue_due = float(self.context.get("total_revenue_due"))
         return total_revenue_due
 
@@ -173,10 +173,12 @@ class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
-            "name",
+            "customer_name",
             "customer_id",
             "balance",
         )
+
+    customer_name = serializers.CharField(source="name")
 
 
 ## BILLABLE METRIC
@@ -280,57 +282,22 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         components_data = validated_data.pop("components", [])
         features_data = validated_data.pop("features", [])
         billing_plan = BillingPlan.objects.create(**validated_data)
+        org = billing_plan.organization
         for component_data in components_data:
-            pc, _ = PlanComponent.objects.get_or_create(**component_data)
+            try:
+                pc, _ = PlanComponent.objects.get_or_create(**component_data)
+            except PlanComponent.MultipleObjectsReturned:
+                pc = PlanComponent.objects.filter(**component_data).first()
             billing_plan.components.add(pc)
         for feature_data in features_data:
-            f, _ = Feature.objects.get_or_create(**feature_data)
+            feature_data["organization"] = org
+            try:
+                f, _ = Feature.objects.get_or_create(**feature_data)
+            except PlanComponent.MultipleObjectsReturned:
+                f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)
         billing_plan.save()
         return billing_plan
-
-
-class BillingPlanUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BillingPlan
-        fields = (
-            "currency",
-            "flat_rate",
-            "pay_in_advance",
-            "billing_plan_id",
-            "name",
-            "description",
-            "components",
-            "features",
-        )
-
-    components = PlanComponentSerializer(many=True, allow_null=True, required=False)
-    features = FeatureSerializer(many=True, allow_null=True, required=False)
-
-    def update(self, instance, validated_data):
-        instance.currency = validated_data.get("currency", instance.currency)
-        instance.flat_rate = validated_data.get("flat_rate", instance.content)
-        instance.pay_in_advance = validated_data.get(
-            "pay_in_advance", instance.pay_in_advance
-        )
-        instance.billing_plan_id = validated_data.get(
-            "billing_plan_id", instance.billing_plan_id
-        )
-        instance.name = validated_data.get("name", instance.name)
-        instance.description = validated_data.get("description", instance.description)
-        # deal w many to many
-        components_data = validated_data.get("components", [])
-        features_data = validated_data.get("features", [])
-        instance.components.clear()
-        instance.features.clear()
-        for component_data in components_data:
-            pc, _ = PlanComponent.objects.get_or_create(**component_data)
-            instance.components.add(pc)
-        for feature_data in features_data:
-            f, _ = Feature.objects.get_or_create(**feature_data)
-            instance.features.add(f)
-        instance.save()
-        return instance
 
 
 class BillingPlanReadSerializer(BillingPlanSerializer):
@@ -362,7 +329,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "status",
             "auto_renew",
             "is_new",
-            "subscription_uid",
+            "subscription_id",
         )
 
     customer_id = SlugRelatedLookupField(
@@ -381,7 +348,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     status = serializers.CharField(required=False)
     auto_renew = serializers.BooleanField(required=False)
     is_new = serializers.BooleanField(required=False)
-    subscription_uid = serializers.CharField(required=False)
+    subscription_id = serializers.CharField(required=False)
 
 
 class SubscriptionReadSerializer(SubscriptionSerializer):
@@ -403,4 +370,41 @@ class SubscriptionReadSerializer(SubscriptionSerializer):
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
-        fields = "__all__"
+        fields = (
+            "cost_due",
+            "cost_due_currency",
+            "issue_date",
+            "payment_status",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "external_payment_obj_id",
+            "line_items",
+            "organization",
+            "customer",
+            "subscription",
+        )
+
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
+    cost_due_currency = serializers.CharField(source="cost_due.currency")
+
+
+class DraftInvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = (
+            "cost_due",
+            "cost_due_currency",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "line_items",
+            "organization",
+            "customer",
+            "subscription",
+        )
+
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
+    cost_due_currency = serializers.CharField(source="cost_due.currency")

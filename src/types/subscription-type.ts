@@ -20,6 +20,12 @@ export interface SubscriptionType {
   total_revenue_due: number;
 }
 
+export interface UpdateSubscriptionType {
+  subscription_id: string;
+  new_billing_plan_id: string;
+  update_behavior: string;
+}
+
 interface ComponentType {
   units_usage: number;
   usage_revenue: number;

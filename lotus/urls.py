@@ -44,6 +44,8 @@ from metering_billing.views.views import (
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
+    UpdateBillingPlanView,
+    UpdateSubscriptionBillingPlanView,
 )
 from rest_framework import routers
 
@@ -100,6 +102,16 @@ urlpatterns = [
         "api/cancel_subscription/",
         CancelSubscriptionView.as_view(),
         name="cancel_subscription",
+    ),
+    path(
+        "api/update_billing_plan/",
+        UpdateBillingPlanView.as_view(),
+        name="update_billing_plan",
+    ),
+    path(
+        "api/update_subscription/",
+        UpdateSubscriptionBillingPlanView.as_view(),
+        name="update_subscription",
     ),
     path(
         "api/customer_access/",

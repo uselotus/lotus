@@ -21,11 +21,11 @@ interface Props {
 }
 interface SubscriptionType {
   billing_plan_name: string;
-  subscription_uid: string;
+  subscription_id: string;
   auto_renew: boolean;
 }
 export interface cancelSubscriptionType {
-  subscription_uid: string;
+  subscription_id: string;
   bill_now: boolean;
   revoke_access: boolean;
 }
@@ -53,7 +53,7 @@ const SubscriptionView: FC<Props> = ({
 
   const cancelAcessBillNowSubscription = () => {
     cancelSubscription({
-      subscription_uid: subscriptions[0].subscription_uid,
+      subscription_id: subscriptions[0].subscription_id,
       bill_now: true,
       revoke_access: true,
     });
@@ -61,14 +61,14 @@ const SubscriptionView: FC<Props> = ({
 
   const cancelDontBillSubscription = () => {
     cancelSubscription({
-      subscription_uid: subscriptions[0].subscription_uid,
+      subscription_id: subscriptions[0].subscription_id,
       bill_now: false,
       revoke_access: true,
     });
   };
   const cancelDontRenewSubscriptions = () => {
     cancelSubscription({
-      subscription_uid: subscriptions[0].subscription_uid,
+      subscription_id: subscriptions[0].subscription_id,
       bill_now: false,
       revoke_access: false,
     });
@@ -171,7 +171,7 @@ const SubscriptionView: FC<Props> = ({
                   </h2>
                   <div className="flex flex-col justify-center space-y-3">
                     <p>
-                      <b>Subscription Id:</b> {subscription.subscription_uid}
+                      <b>Subscription Id:</b> {subscription.subscription_id}
                     </p>
                     <p>
                       <b>Start Date:</b> {subscription.start_date}

@@ -13,13 +13,24 @@ import {
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import UsageComponentForm from "../components/UsageComponentForm";
-import { useMutation } from "react-query";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { MetricNameType } from "../types/metric-type";
 import { toast } from "react-toastify";
 import { Metrics } from "../api/api";
-import { CreatePlanType, CreateComponent, PlanType } from "../types/plan-type";
+import {
+  CreatePlanType,
+  CreateComponent,
+  PlanType,
+  UpdatePlanType,
+} from "../types/plan-type";
 import { Plan } from "../api/api";
+import { FeatureType } from "../types/feature-type";
+import { DeleteOutlined } from "@ant-design/icons";
+import React from "react";
+import { Features } from "../api/api";
+import FeatureForm from "../components/Plans/FeatureForm";
+import { useQueryClient } from "react-query";
 
 interface ComponentDisplay {
   metric: string;
@@ -42,9 +53,31 @@ const EditPlan = () => {
   const [selectedComponent, setSelectedComponent] =
     useState<ComponentDisplay>();
 
+  const queryClient = useQueryClient();
+
   const { plan } = location.state as CustomizedState;
 
-  const [planFeatures, setPlanFeatures] = useState<string[]>([]);
+  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
+    plan.features
+  );
+  const addFeatures = (newFeatures: FeatureType[]) => {
+    setPlanFeatures([...planFeatures, ...newFeatures]);
+    setFeatureVisible(false);
+  };
+
+  useEffect(() => {
+    const initialComponents: any[] = plan.components.map((component) => {
+      return {
+        metric: component.billable_metric.billable_metric_name,
+        cost_per_batch: component.cost_per_batch,
+        metric_units_per_batch: component.metric_units_per_batch,
+        free_metric_units: component.free_metric_units,
+        max_metric_units: component.max_metric_units,
+      };
+    });
+    console.log(initialComponents);
+    form.setFieldsValue({ components: initialComponents });
+  }, [plan.components]);
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -62,21 +95,13 @@ const EditPlan = () => {
   }, []);
 
   const mutation = useMutation(
-    (data: {
-      old_billing_plan_id: string;
-      updated_billing_plan: CreatePlanType;
-      updateBehavior: string;
-    }) =>
-      Plan.updatePlan(
-        data.old_billing_plan_id,
-        data.updated_billing_plan,
-        data.updateBehavior
-      ),
+    (data: UpdatePlanType) => Plan.updatePlan(data),
     {
       onSuccess: () => {
         toast.success("Successfully updated Plan", {
           position: toast.POSITION.TOP_CENTER,
         });
+        queryClient.invalidateQueries(["plan_list"]);
         navigate("/plans");
       },
       onError: () => {
@@ -86,6 +111,22 @@ const EditPlan = () => {
       },
     }
   );
+
+  const {
+    data: features,
+    isLoading,
+    isError,
+  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
+    ["feature_list"],
+    () =>
+      Features.getFeatures().then((res) => {
+        return res;
+      })
+  );
+  const removeFeature = (e) => {
+    const name = e.target.getAttribute("name");
+    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== name));
+  };
 
   const onFinishFailed = (errorInfo: any) => {
     console.log("Failed:", errorInfo);
@@ -117,6 +158,7 @@ const EditPlan = () => {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components = form.getFieldValue("components");
+        console.log("components", components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -137,11 +179,12 @@ const EditPlan = () => {
           pay_in_advance: values.pay_in_advance,
           interval: values.billing_interval,
           components: usagecomponentslist,
+          features: planFeatures,
         };
         mutation.mutate({
           old_billing_plan_id: plan.billing_plan_id,
           updated_billing_plan: newPlan,
-          updateBehavior: values.update_behavior,
+          update_behavior: values.update_behavior,
         });
         form.resetFields();
       })
@@ -275,18 +318,23 @@ const EditPlan = () => {
                       getFieldValue("components") || [];
                     console.log(components);
                     return components.length ? (
-                      <List grid={{ gutter: 16, column: 4 }}>
+                      <List grid={{ gutter: 10, column: 3 }}>
                         {components.map((component, index) => (
-                          <List.Item key={index} className="user">
+                          <List.Item key={index} style={{ width: "250px" }}>
                             <Card title={component.metric}>
                               <p>
-                                <b>Cost:</b> {component.cost_per_batch} per{" "}
-                                {component.metric_units_per_batch} events{" "}
+                                <b>Cost:</b> ${component.cost_per_batch} per{" "}
+                                {component.metric_units_per_batch}{" "}
+                                {component.metric_units_per_batch === 1
+                                  ? "unit"
+                                  : "units"}{" "}
                               </p>
                               <br />
                               <p>
-                                <b>Free Amount Per Billing Cycle:</b>{" "}
-                                {component.free_amount}
+                                <b>Free Units:</b> {component.free_metric_units}
+                              </p>
+                              <p>
+                                <b>Max Units:</b> {component.max_metric_units}
                               </p>
                             </Card>
                           </List.Item>
@@ -300,20 +348,25 @@ const EditPlan = () => {
               <div className="flex flex-col space-y-4 overflow-auto">
                 <h2>Added Features</h2>
                 <Form.Item
-                  className="self-start"
+                  className="w-1/2"
                   shouldUpdate={(prevValues, curValues) =>
                     prevValues.components !== curValues.components
                   }
                 >
-                  <List grid={{ gutter: 16, column: 4 }}>
-                    {planFeatures.map((feature, index) => (
-                      <List.Item key={index}>
-                        <div className="container max-w-sm bg-grey3">
-                          <h3>{feature}</h3>
-                        </div>
-                      </List.Item>
-                    ))}
-                  </List>
+                  {planFeatures.map((feature, index) => (
+                    <div
+                      key={index}
+                      className="flex flex-row items-center h-10 p-3 bg-grey3"
+                    >
+                      <h3 className="justify-self-center">
+                        {feature.feature_name}
+                      </h3>
+                      <div className="">
+                        {" "}
+                        <DeleteOutlined />
+                      </div>
+                    </div>
+                  ))}
                 </Form.Item>
               </div>
             </div>
@@ -330,6 +383,12 @@ const EditPlan = () => {
           onCancel={hideUserModal}
           metrics={metrics}
           component={selectedComponent}
+        />
+        <FeatureForm
+          visible={featureVisible}
+          onCancel={hideFeatureModal}
+          features={features}
+          onAddFeatures={addFeatures}
         />
       </Form.Provider>
     </div>

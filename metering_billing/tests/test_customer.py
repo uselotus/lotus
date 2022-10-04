@@ -119,7 +119,7 @@ class TestGetCustomers:
 @pytest.fixture
 def insert_customer_payload():
     payload = {
-        "name": "test_customer",
+        "customer_name": "test_customer",
         "customer_id": "test_customer_id",
         "balance": 30,
         "currency": "USD",

@@ -8,12 +8,18 @@ export interface PlanType {
   flat_rate: number;
   currency: string;
   id: number;
+  pay_in_advance: boolean;
   time_created: string;
   billing_plan_id: string;
   active_subscriptions: number;
   features: FeatureType[];
 }
 
+export interface UpdatePlanType {
+  old_billing_plan_id: string;
+  updated_billing_plan: CreatePlanType;
+  update_behavior: string;
+}
 export interface CreatePlanType {
   name: string;
   components: CreateComponent[];
@@ -22,6 +28,7 @@ export interface CreatePlanType {
   flat_rate: number;
   pay_in_advance: boolean;
   currency?: string;
+  features: FeatureType[];
 }
 
 export interface CreateComponent {

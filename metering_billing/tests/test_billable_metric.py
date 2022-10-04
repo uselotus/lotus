@@ -13,10 +13,9 @@ from metering_billing.models import (
     Event,
     PlanComponent,
 )
-from metering_billing.utils import (
+from metering_billing.view_utils import (
     RevenueCalcGranularity,
     calculate_sub_pc_usage_revenue,
-    dates_bwn_twodates,
     get_metric_usage,
 )
 from model_bakery import baker

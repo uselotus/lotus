@@ -8,11 +8,10 @@ import {
   InputNumber,
   PageHeader,
   List,
-  Divider,
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import UsageComponentForm from "../components/UsageComponentForm";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { MetricNameType } from "../types/metric-type";
 import { toast } from "react-toastify";
@@ -20,13 +19,16 @@ import { Features, Metrics } from "../api/api";
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
-import FeatureForm from "../components/FeatureForm";
+import FeatureForm from "../components/Plans/FeatureForm";
+import { DeleteOutlined } from "@ant-design/icons";
+import React from "react";
 
 interface ComponentDisplay {
   metric: string;
   cost_per_batch: number;
   metric_units_per_batch: number;
-  free_amount: number;
+  free_metric_units: number;
+  max_metric_units: number;
 }
 
 const CreatePlan = () => {
@@ -35,9 +37,9 @@ const CreatePlan = () => {
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [form] = Form.useForm();
-  const [planFeatures, setPlanFeatures] = useState<string[]>([]);
+  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
 
-  const addFeatures = (newFeatures: string[]) => {
+  const addFeatures = (newFeatures: FeatureType[]) => {
     setPlanFeatures([...planFeatures, ...newFeatures]);
     setFeatureVisible(false);
   };
@@ -76,6 +78,7 @@ const CreatePlan = () => {
         toast.success("Successfully created Plan", {
           position: toast.POSITION.TOP_CENTER,
         });
+        form.resetFields();
         navigate("/plans");
       },
       onError: () => {
@@ -85,10 +88,12 @@ const CreatePlan = () => {
       },
     }
   );
-
-  const onFinishFailed = (errorInfo: any) => {
-    console.log("Failed:", errorInfo);
+  const removeFeature = (e) => {
+    const name = e.target.getAttribute("name");
+    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== name));
   };
+
+  const onFinishFailed = (errorInfo: any) => {};
 
   const hideUserModal = () => {
     setVisible(false);
@@ -111,7 +116,6 @@ const CreatePlan = () => {
   };
 
   const submitPricingPlan = () => {
-    console.log("Submit Pricing Plan");
     form
       .validateFields()
       .then((values) => {
@@ -140,7 +144,6 @@ const CreatePlan = () => {
           features: planFeatures,
         };
         mutation.mutate(plan);
-        form.resetFields();
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
@@ -242,7 +245,7 @@ const CreatePlan = () => {
               <div className="flex flex-col space-y-4">
                 <h2>Added Components</h2>
                 <Form.Item
-                  className="self-start"
+                  className=""
                   shouldUpdate={(prevValues, curValues) =>
                     prevValues.components !== curValues.components
                   }
@@ -252,18 +255,23 @@ const CreatePlan = () => {
                       getFieldValue("components") || [];
                     console.log(components);
                     return components.length ? (
-                      <List grid={{ gutter: 16, column: 4 }}>
+                      <List grid={{ gutter: 10, column: 3 }}>
                         {components.map((component, index) => (
-                          <List.Item key={index} className="user">
+                          <List.Item key={index} style={{ width: "250px" }}>
                             <Card title={component.metric}>
                               <p>
-                                <b>Cost:</b> {component.cost_per_batch} per{" "}
-                                {component.metric_units_per_batch} events{" "}
+                                <b>Cost:</b> ${component.cost_per_batch} per{" "}
+                                {component.metric_units_per_batch}{" "}
+                                {component.metric_units_per_batch === 1
+                                  ? "unit"
+                                  : "units"}{" "}
                               </p>
                               <br />
                               <p>
-                                <b>Free Amount Per Billing Cycle:</b>{" "}
-                                {component.free_amount}
+                                <b>Free Units:</b> {component.free_metric_units}
+                              </p>
+                              <p>
+                                <b>Max Units:</b> {component.max_metric_units}
                               </p>
                             </Card>
                           </List.Item>
@@ -275,22 +283,27 @@ const CreatePlan = () => {
               </div>
 
               <div className="flex flex-col space-y-4 overflow-auto">
-                <h2>Added Features</h2>
+                <h2 className="mb-4">Added Features</h2>
                 <Form.Item
-                  className="self-start"
+                  className="w-1/2"
                   shouldUpdate={(prevValues, curValues) =>
                     prevValues.components !== curValues.components
                   }
                 >
-                  <List grid={{ gutter: 16, column: 4 }}>
-                    {planFeatures.map((feature, index) => (
-                      <List.Item key={index}>
-                        <div className="container max-w-sm bg-grey3">
-                          <h3>{feature}</h3>
-                        </div>
-                      </List.Item>
-                    ))}
-                  </List>
+                  {planFeatures.map((feature, index) => (
+                    <div
+                      key={index}
+                      className="flex flex-row items-center h-10 p-3 bg-grey3"
+                    >
+                      <h3 className="justify-self-center">
+                        {feature.feature_name}
+                      </h3>
+                      <div onClick={(feature) => removeFeature}>
+                        {" "}
+                        <DeleteOutlined />
+                      </div>
+                    </div>
+                  ))}
                 </Form.Item>
               </div>
             </div>

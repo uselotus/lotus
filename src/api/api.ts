@@ -5,7 +5,7 @@ import {
   CustomerTotal,
   CustomerDetailType,
 } from "../types/customer-type";
-import { PlanType, CreatePlanType } from "../types/plan-type";
+import { PlanType, CreatePlanType, UpdatePlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -17,7 +17,6 @@ import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
-
 
 axios.defaults.xsrfCookieName = "csrftoken";
 axios.defaults.xsrfHeaderName = "X-CSRFToken";
@@ -35,7 +34,7 @@ const requests = {
   post: (url: string, body: {}, headers?: {}) =>
     instance.post(url, body, headers).then(responseBody),
   put: (url: string, body: {}) => instance.put(url, body).then(responseBody),
-  delete: (url: string) => instance.delete(url).then(responseBody),
+  delete: (url: string, params?: {}) => instance.delete(url).then(responseBody),
 };
 
 export const Customer = {
@@ -47,6 +46,10 @@ export const Customer = {
     requests.post("api/customers/", post),
   subscribe: (post: CreateSubscriptionType): Promise<CreateSubscriptionType> =>
     requests.post("api/subscriptions/", post),
+  updateSubscription: (
+    post: UpdateSubscriptionType
+  ): Promise<UpdateSubscriptionType> =>
+    requests.put("api/update_subscription/", post),
   cancelSubscription: (
     post: cancelSubscriptionType
   ): Promise<cancelSubscriptionType> =>
@@ -62,15 +65,9 @@ export const Plan = {
   createPlan: (post: CreatePlanType): Promise<CreatePlanType> =>
     requests.post("api/plans/", post),
   deletePlan: (billing_plan_id: string): Promise<PlanType> =>
-    requests.delete(`api/plans/${billing_plan_id}`),
-  updatePlan: (
-    old_billing_plan_id: string,
-    updated_billing_plan: CreatePlanType,
-    updateBehavior: string
-  ): Promise<PlanType> =>
-    requests.post(`api/update_billing_plan/`, {
-      params: { old_billing_plan_id, updated_billing_plan, updateBehavior },
-    }),
+    requests.delete(`api/plans/${billing_plan_id}/`),
+  updatePlan: (post: UpdatePlanType): Promise<PlanType> =>
+    requests.post(`api/update_billing_plan/`, post),
 };
 
 export const StripeConnect = {

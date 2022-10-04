@@ -29,17 +29,15 @@ def calculate_invoice():
     ending_subscriptions = list(
         Subscription.objects.filter(status="active", end_date__lt=now)
     )
-    invoice_sub_uids_seen = Invoice.objects.values_list(
-        "subscription__subscription_uid", flat=True
+    invoice_sub_ids_seen = Invoice.objects.values_list(
+        "subscription__subscription_id", flat=True
     )
-    ended_subs_no_invoice = Subscription.objects.filter(
-        status="ended", end_date__lt=now
-    )
-    if len(invoice_sub_uids_seen) > 0:
-        ended_subs_no_invoice = ended_subs_no_invoice.exclude(
-            subscription_uid__in=invoice_sub_uids_seen
-        )
-    ending_subscriptions.extend(ended_subs_no_invoice)
+
+    if len(invoice_sub_ids_seen) > 0:
+        ended_subs_no_invoice = Subscription.objects.filter(
+            status="ended", end_date__lt=now
+        ).exclude(subscription_id__in=invoice_sub_ids_seen)
+        ending_subscriptions.extend(ended_subs_no_invoice)
 
     # prefetch organization customer stripe keys
     orgs_seen = set()
@@ -67,15 +65,31 @@ def calculate_invoice():
         Invoice.objects.filter(issue_date__lt=now, payment_status="draft").delete()
         # Renew the subscription
         if old_subscription.auto_renew and not already_ended:
+            if old_subscription.auto_renew_billing_plan:
+                new_bp = old_subscription.auto_renew_billing_plan
+            else:
+                new_bp = old_subscription.billing_plan
+            # if we'e scheduled this plan for deletion, check if its still active in subs
+            # otherwise just renew with the new plan
+            if new_bp.scheduled_for_deletion:
+                replacement_bp = new_bp.replacement_billing_plan
+                num_with_bp = Subscription.objects.filter(
+                    status="active", billing_plan=new_bp
+                ).count()
+                if num_with_bp == 0:
+                    new_bp.delete()
+                new_bp = replacement_bp
             subscription_kwargs = {
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
-                "billing_plan": old_subscription.billing_plan,
+                "billing_plan": new_bp,
                 "start_date": old_subscription.end_date + relativedelta(days=+1),
                 "auto_renew": True,
                 "is_new": False,
             }
             sub = Subscription.objects.create(**subscription_kwargs)
+            if new_bp.pay_in_advance:
+                sub.flat_fee_already_billed = new_bp.flat_rate
             if sub.start_date <= now <= sub.end_date:
                 sub.status = "active"
             else:
@@ -109,6 +123,10 @@ def update_invoice_status():
             if pi.status == "succeeded":
                 incomplete_invoice.payment_status = "paid"
                 incomplete_invoice.save()
+                posthog.capture(
+                    incomplete_invoice.organization["company_name"],
+                    "invoice_status_succeeded",
+                )
 
 
 @shared_task
