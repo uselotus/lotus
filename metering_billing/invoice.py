@@ -39,7 +39,7 @@ class InvoiceCustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
-            "name",
+            "customer_name",
             "customer_id",
         )
 
@@ -67,7 +67,7 @@ class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subscription
-        fields = ("start_date", "end_date", "billing_plan", "subscription_uid")
+        fields = ("start_date", "end_date", "billing_plan", "subscription_id")
 
 
 def generate_invoice(subscription, draft=False, issue_date=None):

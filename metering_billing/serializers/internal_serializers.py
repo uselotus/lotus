@@ -36,13 +36,13 @@ class GetCustomerAccessRequestSerializer(serializers.Serializer):
 
 
 class CancelSubscriptionRequestSerializer(serializers.Serializer):
-    subscription_uid = serializers.CharField(required=True)
+    subscription_id = serializers.CharField(required=True)
     bill_now = serializers.BooleanField(default=False)
     revoke_access = serializers.BooleanField(default=False)
 
 
 class UpdateSubscriptionBillingPlanRequestSerializer(serializers.Serializer):
-    subscription_uid = serializers.CharField(required=True)
+    subscription_id = serializers.CharField(required=True)
     new_billing_plan_id = serializers.CharField(required=True)
     update_behavior = serializers.ChoiceField(
         choices=["replace_immediately", "replace_on_renewal"]

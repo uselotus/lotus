@@ -144,7 +144,7 @@ class TestCancelSub:
         assert len(active_subscriptions) == 1
 
         payload = {
-            "subscription_uid": setup_dict["subscription"].subscription_uid,
+            "subscription_id: setup_dict["subscription"].subscription_id,
             "bill_now": True,
             "revoke_access": True,
         }
@@ -181,7 +181,7 @@ class TestCancelSub:
         prev_invoices_len = Invoice.objects.all().count()
 
         payload = {
-            "subscription_uid": setup_dict["ns_subscription"].subscription_uid,
+            "subscription_id": setup_dict["ns_subscription"].subscription_id,
             "bill_now": True,
         }
         response = setup_dict["client"].post(
@@ -214,7 +214,7 @@ class TestCancelSub:
         assert len(active_subscriptions) == 1
 
         payload = {
-            "subscription_uid": setup_dict["subscription"].subscription_uid,
+            "subscription_id": setup_dict["subscription"].subscription_id,
             "bill_now": False,
             "revoke_access": True,
         }
@@ -251,7 +251,7 @@ class TestCancelSub:
         prev_invoices_len = Invoice.objects.all().count()
 
         payload = {
-            "subscription_uid": setup_dict["ended_subscription"].subscription_uid,
+            "subscription_id": setup_dict["ended_subscription"].subscription_id,
             "bill_now": False,
         }
         response = setup_dict["client"].post(
@@ -284,7 +284,7 @@ class TestCancelSub:
         assert len(auto_renewing_subscriptions) == 1
 
         payload = {
-            "subscription_uid": setup_dict["subscription"].subscription_uid,
+            "subscription_id": setup_dict["subscription"].subscription_id,
             "revoke_access": False,
         }
         response = setup_dict["client"].post(

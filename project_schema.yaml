@@ -1710,7 +1710,7 @@ components:
     CancelSubscriptionRequest:
       type: object
       properties:
-        subscription_uid:
+        subscription_id:
           type: string
         bill_now:
           type: boolean
@@ -1719,7 +1719,7 @@ components:
           type: boolean
           default: false
       required:
-      - subscription_uid
+      - subscription_id
     CancelSubscriptionSuccess:
       type: object
       properties:
@@ -2444,7 +2444,7 @@ components:
           type: boolean
         is_new:
           type: boolean
-        subscription_uid:
+        subscription_id:
           type: string
       required:
       - billing_plan_id
@@ -2455,7 +2455,7 @@ components:
       properties:
         billing_plan_name:
           type: string
-        subscription_uid:
+        subscription_id:
           type: string
           maxLength: 100
         start_date:
@@ -2592,7 +2592,7 @@ components:
     UpdateSubscriptionBillingPlanRequest:
       type: object
       properties:
-        subscription_uid:
+        subscription_id:
           type: string
         new_billing_plan_id:
           type: string
@@ -2600,7 +2600,7 @@ components:
           $ref: '#/components/schemas/UpdateBehaviorEnum'
       required:
       - new_billing_plan_id
-      - subscription_uid
+      - subscription_id
       - update_behavior
     UpdateSubscriptionBillingPlanSuccess:
       type: object

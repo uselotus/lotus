@@ -339,7 +339,7 @@ class Subscription(models.Model):
         null=True,
     )
     is_new = models.BooleanField(default=True)
-    subscription_uid = models.CharField(
+    subscription_id = models.CharField(
         max_length=100, null=False, blank=True, default=uuid.uuid4
     )
     prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
@@ -364,7 +364,7 @@ class Subscription(models.Model):
         return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
 
     class Meta:
-        unique_together = ("organization", "subscription_uid")
+        unique_together = ("organization", "subscription_id")
 
 
 class Invoice(models.Model):

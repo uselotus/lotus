@@ -115,7 +115,7 @@ class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = (
             "billing_plan_name",
-            "subscription_uid",
+            "subscription_id",
             "start_date",
             "end_date",
             "auto_renew",
@@ -147,7 +147,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     invoices = serializers.SerializerMethodField()
     total_revenue_due = serializers.SerializerMethodField()
 
-    def get_invoices(self, obj) -> dict:
+    def get_invoices(self, obj) -> list:
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
         return timeline
@@ -321,7 +321,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "status",
             "auto_renew",
             "is_new",
-            "subscription_uid",
+            "subscription_id",
         )
 
     customer_id = SlugRelatedLookupField(
@@ -340,7 +340,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     status = serializers.CharField(required=False)
     auto_renew = serializers.BooleanField(required=False)
     is_new = serializers.BooleanField(required=False)
-    subscription_uid = serializers.CharField(required=False)
+    subscription_id = serializers.CharField(required=False)
 
 
 class SubscriptionReadSerializer(SubscriptionSerializer):
@@ -362,4 +362,36 @@ class SubscriptionReadSerializer(SubscriptionSerializer):
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
-        fields = "__all__"
+        fields = (
+            "cost_due",
+            "cost_due_currency",
+            "issue_date",
+            "payment_status",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "external_payment_obj_id",
+            "line_items",
+            "organization" ,
+            "customer",
+            "subscription",
+        )
+
+    cost_due = serializers.DecimalField(max_digits=10, decimal_places=2, source="cost_due.amount")
+    cost_due_currency = serializers.CharField(source="cost_due.currency")
+
+class DraftInvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = (
+            "cost_due",
+            "cost_due_currency",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "line_items",
+            "organization" ,
+            "customer",
+            "subscription",
+        )
+
+    cost_due = serializers.DecimalField(max_digits=10, decimal_places=2, source="cost_due.amount")
+    cost_due_currency = serializers.CharField(source="cost_due.currency")

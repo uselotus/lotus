@@ -36,7 +36,7 @@ interface CustomerSubscription {
 }
 
 export interface CustomerDetailSubscription extends CustomerSubscription {
-  subscription_uid: string;
+  subscription_id: string;
   start_date: string;
   status: string;
 }

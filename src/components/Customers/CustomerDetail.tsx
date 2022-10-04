@@ -72,7 +72,7 @@ function CustomerDetail(props: {
   );
 
   const cancelSubscription = (props: {
-    subscription_uid: string;
+    subscription_id: string;
     bill_now: boolean;
     revoke_access: boolean;
   }) => {

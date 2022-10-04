@@ -573,7 +573,7 @@ class DraftInvoiceView(APIView):
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
-        responses={200: InvoiceSerializer},
+        responses={200: DraftInvoiceSerializer},
     )
     def get(self, request, format=None):
         """
@@ -596,7 +596,7 @@ class DraftInvoiceView(APIView):
             customer=customer, organization=organization, status="active"
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
-        serializer = InvoiceSerializer(invoices, many=True)
+        serializer = DraftInvoiceSerializer(invoices, many=True)
         posthog.capture(
             organization.company_name,
             event="draft_invoice",
@@ -631,12 +631,12 @@ class CancelSubscriptionView(APIView):
         serializer = CancelSubscriptionRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
-        sub_uid = serializer.validated_data["subscription_uid"]
+        sub_id = serializer.validated_data["subscription_id"]
         bill_now = serializer.validated_data["bill_now"]
         revoke_access = serializer.validated_data["revoke_access"]
         try:
             sub = Subscription.objects.get(
-                organization=organization, subscription_uid=sub_uid
+                organization=organization, subscription_id=sub_id
             )
         except:
             return Response(
@@ -650,7 +650,7 @@ class CancelSubscriptionView(APIView):
             )
         elif sub.status == "not_started":
             Subscription.objects.get(
-                organization=organization, subscription_uid=sub_uid
+                organization=organization, subscription_id=sub_id
             ).delete()
             return Response(
                 {
@@ -951,18 +951,18 @@ class UpdateSubscriptionBillingPlanView(APIView):
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
 
-        subscription_uid = serializer.validated_data["subscription_uid"]
+        subscription_id = serializer.validated_data["subscription_id"]
         try:
             sub = Subscription.objects.get(
                 organization=organization,
-                subscription_uid=subscription_uid,
+                subscription_id=subscription_id,
                 status="active",
             ).select_related("billing_plan")
         except Subscription.DoesNotExist:
             return Response(
                 {
                     "status": "error",
-                    "detail": f"Subscription with id {subscription_uid} not found.",
+                    "detail": f"Subscription with id {subscription_id} not found.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -1002,7 +1002,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
             return Response(
                 {
                     "status": "success",
-                    "detail": f"Subscription {subscription_uid} updated to use billing plan {new_billing_plan_id}.",
+                    "detail": f"Subscription {subscription_id} updated to use billing plan {new_billing_plan_id}.",
                 },
                 status=status.HTTP_200_OK,
             )
@@ -1012,7 +1012,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
             return Response(
                 {
                     "status": "success",
-                    "detail": f"Subscription {subscription_uid} scheduled to be updated to use billing plan {new_billing_plan_id} on next renewal.",
+                    "detail": f"Subscription {subscription_id} scheduled to be updated to use billing plan {new_billing_plan_id} on next renewal.",
                 },
                 status=status.HTTP_200_OK,
             )
