@@ -1,8 +1,10 @@
-@import "antd/dist/antd.css";
-@import "@ant-design/pro-components/dist/components.css";
-
+@import 'antd/dist/antd.css';
+@import '@ant-design/pro-components/dist/components.css';
+@import url('https://fonts.googleapis.com/css?family=Inter');
+body {
+  font-family: 'Inter', sans-serif;
+}
 .App {
   text-align: center;
   margin: 0 30%;
-  font-family: "Inter", sans-serif;
 }
