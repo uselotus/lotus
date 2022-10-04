@@ -136,7 +136,9 @@ class InitializeStripeView(APIView):
 
         connected_account_id = response["stripe_user_id"]
 
-        organization.payment_provider_ids.stripe = connected_account_id
+        org_pp_ids = organization.payment_provider_ids
+        org_pp_ids["stripe"] = connected_account_id
+        organization.payment_provider_ids = org_pp_ids
         organization.save()
 
         n_cust_added = import_stripe_customers(organization)
