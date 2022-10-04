@@ -36,6 +36,14 @@ class Organization(models.Model):
     def __str__(self):
         return self.company_name
 
+    def save(self, *args, **kwargs):
+        for k, _ in self.payment_provider_ids.items():
+            if k not in SUPPORTED_PAYMENT_PROVIDERS:
+                raise ValueError(
+                    f"Payment provider {k} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+                )
+        super(Subscription, self).save(*args, **kwargs)
+
 
 class Alert(models.Model):
     type = models.CharField(max_length=20, default="webhook")
