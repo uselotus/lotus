@@ -13,7 +13,7 @@ import {
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import UsageComponentForm from "../components/UsageComponentForm";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation } from "react-query";
 import { MetricNameType } from "../types/metric-type";
 import { toast } from "react-toastify";
@@ -25,6 +25,9 @@ import {
   UpdatePlanType,
 } from "../types/plan-type";
 import { Plan } from "../api/api";
+import { FeatureType } from "../types/feature-type";
+import { DeleteOutlined } from "@ant-design/icons";
+import React from "react";
 
 interface ComponentDisplay {
   metric: string;
@@ -49,7 +52,13 @@ const EditPlan = () => {
 
   const { plan } = location.state as CustomizedState;
 
-  const [planFeatures, setPlanFeatures] = useState<string[]>([]);
+  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
+    plan.features
+  );
+  const addFeatures = (newFeatures: FeatureType[]) => {
+    setPlanFeatures([...planFeatures, ...newFeatures]);
+    setFeatureVisible(false);
+  };
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -82,6 +91,11 @@ const EditPlan = () => {
       },
     }
   );
+
+  const removeFeature = (e) => {
+    const name = e.target.getAttribute("name");
+    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== name));
+  };
 
   const onFinishFailed = (errorInfo: any) => {
     console.log("Failed:", errorInfo);
@@ -304,8 +318,17 @@ const EditPlan = () => {
                   <List grid={{ gutter: 16, column: 4 }}>
                     {planFeatures.map((feature, index) => (
                       <List.Item key={index}>
-                        <div className="container max-w-sm bg-grey3">
-                          <h3>{feature}</h3>
+                        <div className="container flex flex-row bg-grey3">
+                          <h3>{feature.feature_name}</h3>
+                          <div className="self-right" nam>
+                            {" "}
+                            <span
+                              name={feature.feature_name}
+                              onClick={removeFeature}
+                            >
+                              <DeleteOutlined />
+                            </span>
+                          </div>
                         </div>
                       </List.Item>
                     ))}

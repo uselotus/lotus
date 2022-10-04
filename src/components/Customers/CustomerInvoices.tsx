@@ -1,6 +1,7 @@
 import { Table, Tag } from "antd";
 import { FC, useState } from "react";
-import { InvoiceType } from "../types/invoice-type";
+import React from "react";
+import { InvoiceType } from "../../types/invoice-type";
 
 interface Props {
   invoices: InvoiceType[] | undefined;
@@ -20,7 +21,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       title: "Amount",
       dataIndex: "cost_due",
       key: "cost_due",
-      render: (cost_due: number) => (
+      render: (cost_due: string) => (
         <span>${parseFloat(cost_due).toFixed(2)}</span>
       ),
     },

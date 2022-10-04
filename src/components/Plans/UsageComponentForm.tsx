@@ -117,6 +117,7 @@ function UsageComponentForm(props: {
                   defaultValue={0}
                   precision={4}
                   value={form.getFieldValue("free_amount")}
+                  bordered={false}
                 />
               </Form.Item>
               <p>To</p>
@@ -125,6 +126,7 @@ function UsageComponentForm(props: {
                   defaultValue={0}
                   precision={4}
                   disabled={!isLimit}
+                  bordered={false}
                   value={form.getFieldValue("max_metric_units")}
                 />
               </Form.Item>

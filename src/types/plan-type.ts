@@ -27,6 +27,7 @@ export interface CreatePlanType {
   flat_rate: number;
   pay_in_advance: boolean;
   currency?: string;
+  features: FeatureType[];
 }
 
 export interface CreateComponent {
