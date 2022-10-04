@@ -46,6 +46,10 @@ export const Customer = {
     requests.post("api/customers/", post),
   subscribe: (post: CreateSubscriptionType): Promise<CreateSubscriptionType> =>
     requests.post("api/subscriptions/", post),
+  updateSubscription: (
+    post: UpdateSubscriptionType
+  ): Promise<UpdateSubscriptionType> =>
+    requests.put("api/update_subscription/", post),
   cancelSubscription: (
     post: cancelSubscriptionType
   ): Promise<cancelSubscriptionType> =>

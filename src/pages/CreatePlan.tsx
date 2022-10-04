@@ -88,6 +88,10 @@ const CreatePlan = () => {
       },
     }
   );
+  const removeFeature = (e) => {
+    const name = e.target.getAttribute("name");
+    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== name));
+  };
 
   const onFinishFailed = (errorInfo: any) => {};
 
@@ -253,7 +257,7 @@ const CreatePlan = () => {
                     return components.length ? (
                       <List grid={{ gutter: 10, column: 3 }}>
                         {components.map((component, index) => (
-                          <List.Item key={index}>
+                          <List.Item key={index} style={{ width: "250px" }}>
                             <Card title={component.metric}>
                               <p>
                                 <b>Cost:</b> ${component.cost_per_batch} per{" "}
@@ -294,7 +298,7 @@ const CreatePlan = () => {
                       <h3 className="justify-self-center">
                         {feature.feature_name}
                       </h3>
-                      <div className="">
+                      <div onClick={(feature) => removeFeature}>
                         {" "}
                         <DeleteOutlined />
                       </div>
