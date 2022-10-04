@@ -145,7 +145,7 @@ class TestUpdateInvoiceStatus:
             issue_date=setup_dict["subscription"].end_date,
             payment_status="unpaid",
             external_payment_obj_id=payment_intent.id,
-            organization={"company_name":"bogus"},
+            organization={"company_name": "bogus"},
         )
 
         assert invoice.payment_status != "paid"

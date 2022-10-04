@@ -42,7 +42,7 @@ class InvoiceCustomerSerializer(serializers.ModelSerializer):
             "customer_name",
             "customer_id",
         )
-    
+
     customer_name = serializers.CharField(source="name")
 
 
