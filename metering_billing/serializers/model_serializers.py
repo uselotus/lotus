@@ -300,14 +300,25 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         return billing_plan
 
 
-class BillingPlanReadSerializer(BillingPlanSerializer):
-    class Meta(BillingPlanSerializer.Meta):
-        fields = BillingPlanSerializer.Meta.fields + (
+class BillingPlanReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BillingPlan
+        fields = (
+            "currency",
+            "interval",
+            "flat_rate",
+            "pay_in_advance",
+            "billing_plan_id",
+            "name",
+            "description",
+            "components",
+            "features",
             "time_created",
             "active_subscriptions",
         )
 
     components = PlanComponentReadSerializer(many=True)
+    features = FeatureSerializer(many=True, allow_null=True, required=False)
     time_created = serializers.SerializerMethodField()
     active_subscriptions = serializers.IntegerField()
 
@@ -363,7 +374,7 @@ class SubscriptionReadSerializer(SubscriptionSerializer):
         )
 
     customer = CustomerSerializer()
-    billing_plan = BillingPlanReadSerializer()
+    billing_plan = BillingPlanSerializer()
 
 
 ## INVOICE

@@ -207,7 +207,7 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return (
+        qs = (
             BillingPlan.objects.filter(organization=organization)
             .prefetch_related(
                 "components",
@@ -219,6 +219,7 @@ class BillingPlanViewSet(viewsets.ModelViewSet):
                 )
             )
         )
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
