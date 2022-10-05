@@ -144,7 +144,7 @@ const CreatePlan = () => {
       .validateFields()
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = []
-        const components = form.getFieldValue('components')
+        const components: any = Object.values(componentsData)
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
