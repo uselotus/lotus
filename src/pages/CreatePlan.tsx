@@ -13,6 +13,7 @@ import {
   Divider,
   Radio,
   Affix,
+  Space,
 } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -25,7 +26,7 @@ import { CreatePlanType, CreateComponent } from '../types/plan-type'
 import { Plan } from '../api/api'
 import { FeatureType } from '../types/feature-type'
 import FeatureForm from '../components/Plans/FeatureForm'
-import { DeleteOutlined, ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons'
+import { DeleteOutlined, ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons'
 import React from 'react'
 
 interface ComponentDisplay {
@@ -158,6 +159,13 @@ const CreatePlan = () => {
           <Button onClick={goBackPage} icon={<ArrowLeftOutlined />} type='default' size='large'>
             Back
           </Button>,
+          <Button
+            onClick={goBackPage}
+            className='bg-black text-white justify-self-end'
+            size='large'
+          >
+            Create Plan <SaveOutlined />
+          </Button>,
         ]}
       />
       <Form.Provider
@@ -183,50 +191,82 @@ const CreatePlan = () => {
         >
           <Row gutter={24}>
             <Col span={12}>
-              <Card title='Plan Information'>
-                {/* <h2 className='mb-4'>Plan Information</h2> */}
-                <Form.Item
-                  label='Plan Name'
-                  name='name'
-                  rules={[
-                    {
-                      required: true,
-                      message: 'Please Name Your Plan',
-                    },
-                  ]}
-                >
-                  <Input placeholder='Ex: Starter Plan' />
-                </Form.Item>
-                <Form.Item label='Description' name='description'>
-                  <Input
-                    type='textarea'
-                    placeholder='Ex: Cheapest plan for small scale businesses'
-                  />
-                </Form.Item>
-                <Form.Item
-                  label='Billing Interval'
-                  name='billing_interval'
-                  rules={[
-                    {
-                      required: true,
-                      message: 'Please select an interval',
-                    },
-                  ]}
-                >
-                  <Radio.Group>
-                    <Radio value='week'>Weekly</Radio>
-                    <Radio value='month'>Monthly</Radio>
-                    <Radio value='yearly'>Yearly</Radio>
-                  </Radio.Group>
-                </Form.Item>
+              <Row gutter={[24, 24]}>
+                <Col span='24'>
+                  <Card title='Plan Information'>
+                    <Form.Item
+                      label='Plan Name'
+                      name='name'
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Please Name Your Plan',
+                        },
+                      ]}
+                    >
+                      <Input placeholder='Ex: Starter Plan' />
+                    </Form.Item>
+                    <Form.Item label='Description' name='description'>
+                      <Input
+                        type='textarea'
+                        placeholder='Ex: Cheapest plan for small scale businesses'
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label='Billing Interval'
+                      name='billing_interval'
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Please select an interval',
+                        },
+                      ]}
+                    >
+                      <Radio.Group>
+                        <Radio value='week'>Weekly</Radio>
+                        <Radio value='month'>Monthly</Radio>
+                        <Radio value='yearly'>Yearly</Radio>
+                      </Radio.Group>
+                    </Form.Item>
 
-                <Form.Item name='flat_rate' label='Recurring Cost'>
-                  <InputNumber addonBefore='$' defaultValue={0} precision={2} />
-                </Form.Item>
-                <Form.Item name='pay_in_advance' label='Pay In Advance'>
-                  <Checkbox defaultChecked={true} />
-                </Form.Item>
-              </Card>
+                    <Form.Item name='flat_rate' label='Recurring Cost'>
+                      <InputNumber addonBefore='$' defaultValue={0} precision={2} />
+                    </Form.Item>
+                    <Form.Item name='pay_in_advance' label='Pay In Advance'>
+                      <Checkbox defaultChecked={true} />
+                    </Form.Item>
+                  </Card>
+                </Col>
+                <Col span='24'>
+                  <Card
+                    title='Added Features'
+                    extra={[
+                      <Button htmlType='button' onClick={showFeatureModal}>
+                        Add Feature
+                      </Button>,
+                    ]}
+                  >
+                    <Form.Item
+                      wrapperCol={{ span: 24 }}
+                      shouldUpdate={(prevValues, curValues) =>
+                        prevValues.components !== curValues.components
+                      }
+                    >
+                      <Row gutter={[12, 12]}>
+                        {planFeatures.map((feature, index) => (
+                          <Col key={index} span={24}>
+                            <Card bodyStyle={{ backgroundColor: '#CCA43B69' }}>
+                              <h3 className='justify-self-center'>
+                                {feature.feature_name} <DeleteOutlined />
+                              </h3>
+                            </Card>
+                          </Col>
+                        ))}
+                      </Row>
+                    </Form.Item>
+                  </Card>
+                </Col>
+              </Row>
             </Col>
 
             <Col span={12}>
@@ -240,9 +280,8 @@ const CreatePlan = () => {
                       </Button>,
                     ]}
                   >
-                    {/* <h2>Added Components</h2> */}
                     <Form.Item
-                      className=''
+                      wrapperCol={{ span: 24 }}
                       shouldUpdate={(prevValues, curValues) =>
                         prevValues.components !== curValues.components
                       }
@@ -250,11 +289,13 @@ const CreatePlan = () => {
                       {({ getFieldValue }) => {
                         const components: ComponentDisplay[] = getFieldValue('components') || []
                         console.log(components)
+
                         return components.length ? (
-                          <List grid={{ gutter: 10, column: 3 }}>
+                          <Row gutter={[12, 12]}>
                             {components.map((component, index) => (
-                              <List.Item key={index} style={{ width: '250px' }}>
-                                <Card title={component.metric} type='inner'>
+                              <Col span='12'>
+                                <Card type='inner' bodyStyle={{ backgroundColor: '#F7F8FD' }}>
+                                  <h3>{component.metric}</h3>
                                   <p>
                                     <b>Cost:</b> ${component.cost_per_batch} per{' '}
                                     {component.metric_units_per_batch}{' '}
@@ -268,52 +309,24 @@ const CreatePlan = () => {
                                     <b>Max Units:</b> {component.max_metric_units}
                                   </p>
                                 </Card>
-                              </List.Item>
+                              </Col>
                             ))}
-                          </List>
+                          </Row>
                         ) : null
                       }}
-                    </Form.Item>
-                  </Card>
-                </Col>
-                <Col span={24}>
-                  <Card
-                    title='Added Features'
-                    extra={[
-                      <Button htmlType='button' onClick={showUserModal}>
-                        Add Feature
-                      </Button>,
-                    ]}
-                  >
-                    {/* // <h2 className='mb-4'>Added Features</h2> */}
-                    <Form.Item
-                      className='w-1/2'
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.components !== curValues.components
-                      }
-                    >
-                      {planFeatures.map((feature, index) => (
-                        <div key={index} className='flex flex-row items-center h-10 p-3 bg-grey3'>
-                          <h3 className='justify-self-center'>{feature.feature_name}</h3>
-                          <div onClick={(feature) => removeFeature}>
-                            {' '}
-                            <DeleteOutlined />
-                          </div>
-                        </div>
-                      ))}
                     </Form.Item>
                   </Card>
                 </Col>
               </Row>
             </Col>
           </Row>
-          <div className='absolute bottom-20 right-10 '>
+          {/* <div className='absolute bottom-20 right-10 '>
             <Form.Item>
               <Button type='primary' className='bg-black justify-self-end' htmlType='submit'>
                 Submit
               </Button>
             </Form.Item>
-          </div>
+          </div> */}
         </Form>
         <UsageComponentForm visible={visible} onCancel={hideUserModal} metrics={metrics} />
         <FeatureForm
