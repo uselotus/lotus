@@ -571,7 +571,7 @@ class EventPreviewView(APIView):
 
 
 class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
