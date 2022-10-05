@@ -12,6 +12,7 @@ from django.db.models import Q
 from lotus.settings import (
     EVENT_CACHE_FLUSH_COUNT,
     EVENT_CACHE_FLUSH_SECONDS,
+    POSTHOG_PERSON,
     STRIPE_SECRET_KEY,
 )
 
@@ -124,7 +125,9 @@ def update_invoice_status():
                 incomplete_invoice.payment_status = "paid"
                 incomplete_invoice.save()
                 posthog.capture(
-                    incomplete_invoice.organization["company_name"],
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else incomplete_invoice.organization["company_name"],
                     "invoice_status_succeeded",
                 )
 
@@ -139,7 +142,7 @@ def write_batch_events_to_db(events_list):
 def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events):
     org = Organization.objects.get(pk=organization_pk)
     posthog.capture(
-        org.company_name,
+        POSTHOG_PERSON if POSTHOG_PERSON else org.company_name,
         "track_event",
         {"sent_events": len_sent_events, "ingested_events": len_ingested_events},
     )

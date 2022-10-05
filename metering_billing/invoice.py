@@ -2,7 +2,12 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import posthog
 import stripe
-from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
+from lotus.settings import (
+    POSTHOG_PERSON,
+    SELF_HOST_STRIPE_WORKING,
+    SELF_HOSTED,
+    STRIPE_SECRET_KEY,
+)
 from rest_framework import serializers
 
 from metering_billing.models import (
@@ -124,9 +129,7 @@ def generate_invoice(subscription, draft=False, issue_date=None):
     if draft:
         status = "draft"
         external_payment_obj_id = None
-    elif (customer_connected_to_pp and org_pp_id) or (
-        SELF_HOSTED and STRIPE_SECRET_KEY != ""
-    ):
+    elif (customer_connected_to_pp and org_pp_id) or (SELF_HOST_STRIPE_WORKING):
         if customer.payment_provider == "stripe":
             payment_intent_kwargs = {
                 "amount": amount_cents,
@@ -168,7 +171,9 @@ def generate_invoice(subscription, draft=False, issue_date=None):
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
         posthog.capture(
-            subscription.organization.company_name,
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else subscription.organization.company_name,
             "generate_invoice",
             {
                 "amount": amount,
@@ -196,9 +201,7 @@ def generate_adjustment_invoice(subscription, issue_date, amount):
             org_pp_id = org_pps[cust_pp_type]
 
     status = "unpaid"
-    if (customer_connected_to_pp and org_pp_id) or (
-        SELF_HOSTED and STRIPE_SECRET_KEY != ""
-    ):
+    if (customer_connected_to_pp and org_pp_id) or (SELF_HOST_STRIPE_WORKING):
         if customer.payment_provider == "stripe":
             payment_intent_kwargs = {
                 "amount": amount_cents,
@@ -238,7 +241,7 @@ def generate_adjustment_invoice(subscription, issue_date, amount):
     invoice_data = InvoiceSerializer(invoice).data
     invoice_created_webhook(invoice_data, organization)
     posthog.capture(
-        subscription.organization.company_name,
+        POSTHOG_PERSON if POSTHOG_PERSON else subscription.organization.company_name,
         "generate_adjustment_invoice",
         {
             "amount": amount,
