@@ -22,7 +22,7 @@ import UsageComponentForm from '../components/Plans/UsageComponentForm'
 import { useMutation, useQuery, UseQueryResult } from 'react-query'
 import { MetricNameType } from '../types/metric-type'
 import { toast } from 'react-toastify'
-import { Features, Metrics } from '../api/api'
+import { Features } from '../api/api'
 import { CreatePlanType, CreateComponent } from '../types/plan-type'
 import { Plan } from '../api/api'
 import { FeatureType } from '../types/feature-type'
@@ -37,35 +37,19 @@ interface ComponentDisplay {
   metric_units_per_batch: number
   free_metric_units: number
   max_metric_units: number
+  id: number
 }
 
 const CreatePlan = () => {
-  const [visible, setVisible] = useState(false)
-  const [featureVisible, setFeatureVisible] = useState(false)
+  const [componentVisible, setcomponentVisible] = useState<boolean>()
+  const [featureVisible, setFeatureVisible] = useState<boolean>(false)
   const navigate = useNavigate()
-  const [metrics, setMetrics] = useState<string[]>([])
+  const [componentsData, setComponentsData] = useState<any>({})
   const [form] = Form.useForm()
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([])
+  const [editComponentItem, setEditComponentsItem] = useState<any>({})
 
-  const addFeatures = (newFeatures: FeatureType[]) => {
-    setPlanFeatures([...planFeatures, ...newFeatures])
-    setFeatureVisible(false)
-  }
-
-  useEffect(() => {
-    Metrics.getMetrics().then((res) => {
-      const data: MetricNameType[] = res
-      if (data) {
-        const metricList: string[] = []
-        for (let i = 0; i < data.length; i++) {
-          if (typeof data[i].billable_metric_name !== undefined) {
-            metricList.push(data[i].billable_metric_name)
-          }
-        }
-        setMetrics(metricList)
-      }
-    })
-  }, [])
+  console.log('componentsData', componentsData)
 
   const {
     data: features,
@@ -91,21 +75,58 @@ const CreatePlan = () => {
       })
     },
   })
-  const removeFeature = (e) => {
-    const name = e.target.getAttribute('name')
-    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== name))
+
+  const addFeatures = (newFeatures: FeatureType[]) => {
+    setPlanFeatures([...planFeatures, ...newFeatures])
+    setFeatureVisible(false)
+  }
+
+  const editFeatures = (feature_name: string) => {
+    const currentFeature = planFeatures.filter((item) => item.feature_name === feature_name)[0]
+    setFeatureVisible(true)
+  }
+
+  const removeFeature = (feature_name: string) => {
+    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== feature_name))
   }
 
   const onFinishFailed = (errorInfo: any) => {}
 
-  const hideUserModal = () => {
-    setVisible(false)
+  const hideComponentModal = () => {
+    setcomponentVisible(false)
   }
 
-  const showUserModal = () => {
-    setVisible(true)
+  const showComponentModal = () => {
+    setcomponentVisible(true)
   }
 
+  const handleComponentAdd = (newData: any) => {
+    const old = componentsData
+    console.log('editComponentItem', Object.values(editComponentItem))
+    console.log('old', old)
+    if (Object.values(editComponentItem).length > 0) {
+      old[Object.keys(editComponentItem)[0]] = newData
+    } else {
+      const uniqueID = new Date().getTime()
+      old[uniqueID] = newData
+    }
+
+    setComponentsData(old)
+  }
+
+  const handleComponentEdit = (id: any) => {
+    setcomponentVisible(true)
+    const components = componentsData
+
+    setEditComponentsItem({ [id]: components[id] })
+  }
+
+  const deleteComponent = (id: number) => {
+    const components = componentsData
+    delete components[id]
+
+    setComponentsData({ ...components })
+  }
   const hideFeatureModal = () => {
     setFeatureVisible(false)
   }
@@ -158,11 +179,18 @@ const CreatePlan = () => {
       <PageHeader
         title='Create Plan'
         extra={[
-          <Button onClick={goBackPage} icon={<ArrowLeftOutlined />} type='default' size='large'>
+          <Button
+            key={'back'}
+            onClick={goBackPage}
+            icon={<ArrowLeftOutlined />}
+            type='default'
+            size='large'
+          >
             Back
           </Button>,
           <Button
-            onClick={goBackPage}
+            key='create'
+            onClick={() => form.submit()}
             className='bg-black text-white justify-self-end'
             size='large'
           >
@@ -170,16 +198,7 @@ const CreatePlan = () => {
           </Button>,
         ]}
       />
-      <Form.Provider
-        onFormFinish={(name, { values, forms }) => {
-          if (name === 'component_form') {
-            const { create_plan } = forms
-            const components = create_plan.getFieldValue('components') || []
-            create_plan.setFieldsValue({ components: [...components, values] })
-            setVisible(false)
-          }
-        }}
-      >
+      <Form.Provider>
         <Form
           form={form}
           name='create_plan'
@@ -262,8 +281,17 @@ const CreatePlan = () => {
                                 title={feature.feature_name}
                                 size='small'
                                 extra={[
-                                  <Button type='text' icon={<EditOutlined />} />,
-                                  <Button type='text' icon={<DeleteOutlined />} danger />,
+                                  <Button
+                                    type='text'
+                                    icon={<EditOutlined />}
+                                    onClick={() => editFeatures(feature.feature_name)}
+                                  />,
+                                  <Button
+                                    type='text'
+                                    icon={<DeleteOutlined />}
+                                    danger
+                                    onClick={() => removeFeature(feature.feature_name)}
+                                  />,
                                 ]}
                               />
                             </Paper>
@@ -282,7 +310,7 @@ const CreatePlan = () => {
                   <Card
                     title='Added Components'
                     extra={[
-                      <Button htmlType='button' onClick={showUserModal}>
+                      <Button htmlType='button' onClick={() => showComponentModal()}>
                         Add Component
                       </Button>,
                     ]}
@@ -293,56 +321,64 @@ const CreatePlan = () => {
                         prevValues.components !== curValues.components
                       }
                     >
-                      {({ getFieldValue }) => {
-                        const components: ComponentDisplay[] = getFieldValue('components') || []
-                        console.log(components)
-
-                        return components.length ? (
-                          <Row gutter={[12, 12]}>
-                            {components.map((component, index) => (
-                              <Col span='24'>
-                                <Paper>
-                                  <Descriptions
-                                    title={component.metric}
-                                    size='small'
-                                    extra={[
-                                      <Button type='text' icon={<EditOutlined />} />,
-                                      <Button type='text' icon={<DeleteOutlined />} danger />,
-                                    ]}
-                                  >
-                                    <Descriptions.Item label='Cost'>
-                                      ${component.cost_per_batch} per{' '}
-                                      {component.metric_units_per_batch}{' '}
-                                      {component.metric_units_per_batch === 1 ? 'unit' : 'units'}
-                                    </Descriptions.Item>
-                                    <Descriptions.Item label='Free Units'>
-                                      {component.free_metric_units}
-                                    </Descriptions.Item>
-                                    <Descriptions.Item label='Max Units'>
-                                      {component.max_metric_units}
-                                    </Descriptions.Item>
-                                  </Descriptions>
-                                </Paper>
-                              </Col>
-                            ))}
-                          </Row>
-                        ) : null
-                      }}
+                      <Row gutter={[12, 12]}>
+                        {Object.entries(componentsData)?.map(
+                          ([key, component]: any, index: number) => (
+                            <Col span='24' key={index}>
+                              <Paper>
+                                <Descriptions
+                                  title={component?.metric}
+                                  size='small'
+                                  extra={[
+                                    <Button
+                                      key='edit'
+                                      type='text'
+                                      icon={<EditOutlined />}
+                                      onClick={() => handleComponentEdit(key)}
+                                    />,
+                                    <Button
+                                      key='delete'
+                                      type='text'
+                                      icon={<DeleteOutlined />}
+                                      danger
+                                      onClick={() => deleteComponent(key)}
+                                    />,
+                                  ]}
+                                >
+                                  <Descriptions.Item label='Cost'>
+                                    ${component.cost_per_batch} per{' '}
+                                    {component.metric_units_per_batch}{' '}
+                                    {component.metric_units_per_batch === 1 ? 'unit' : 'units'}
+                                  </Descriptions.Item>
+                                  <Descriptions.Item label='Free Units'>
+                                    {component.free_metric_units}
+                                  </Descriptions.Item>
+                                  <Descriptions.Item label='Max Units'>
+                                    {component.max_metric_units}
+                                  </Descriptions.Item>
+                                </Descriptions>
+                              </Paper>
+                            </Col>
+                          ),
+                        )}
+                      </Row>
                     </Form.Item>
                   </Card>
                 </Col>
               </Row>
             </Col>
           </Row>
-          {/* <div className='absolute bottom-20 right-10 '>
-            <Form.Item>
-              <Button type='primary' className='bg-black justify-self-end' htmlType='submit'>
-                Submit
-              </Button>
-            </Form.Item>
-          </div> */}
         </Form>
-        <UsageComponentForm visible={visible} onCancel={hideUserModal} metrics={metrics} />
+        {componentVisible && (
+          <UsageComponentForm
+            visible={componentVisible}
+            onCancel={hideComponentModal}
+            componentsData={componentsData}
+            handleComponentAdd={handleComponentAdd}
+            editComponentItem={Object.values(editComponentItem)[0]}
+            setEditComponentsItem={setEditComponentsItem}
+          />
+        )}
         <FeatureForm
           visible={featureVisible}
           onCancel={hideFeatureModal}
