@@ -361,6 +361,21 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     is_new = serializers.BooleanField(required=False)
     subscription_id = serializers.CharField(required=False)
 
+    def validate(self, data):
+        sd = data["start_date"]
+        ed = data["billing_plan"].calculate_end_date(sd)
+        num_existing_subs = Subscription.objects.filter(
+            Q(start_date__range=(sd, ed))
+            | Q(end_date__range=(sd, ed)),
+            customer__customer_id=data["customer"].customer_id,
+            billing_plan__billing_plan_id=data["billing_plan"].billing_plan_id,
+        ).count()
+        if num_existing_subs > 0:
+            raise serializers.ValidationError(
+                f"Customer already has an active subscription to this plan"
+            )
+        return data
+
 
 class SubscriptionReadSerializer(SubscriptionSerializer):
     class Meta:
