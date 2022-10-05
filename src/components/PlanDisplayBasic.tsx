@@ -98,7 +98,7 @@ function PlanDisplayBasic(props: {
               </Button>
             </Dropdown>
             <Dropdown overlay={featureMenue}>
-              <Button>
+              <Button className='bg-[#CCA43B69]'>
                 Features: {props.plan.components.length} <ArrowDownOutlined />
               </Button>
             </Dropdown>
