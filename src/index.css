@@ -9,6 +9,7 @@ html {
 }
 @supports (font-variation-settings: normal) {
   html {
+    font-size: 16px;
     font-family: 'Inter var', sans-serif;
   }
 }
@@ -66,4 +67,19 @@ a {
 
 .ant-descriptions-header {
   margin-bottom: 0;
+}
+
+.ant-descriptions-title {
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 700;
+}
+
+.ant-descriptions-small .ant-descriptions-title {
+  font-size: 16px;
+  line-height: 18px;
+}
+
+.ant-descriptions-item-label {
+  opacity: 0.4;
 }

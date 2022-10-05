@@ -11,7 +11,7 @@ export const Paper = (props: Props | any) => {
     <div
       {...props}
       className={[
-        'p-4 rounded-lg',
+        'py-4 px-8 rounded-lg',
         props.color === 'gold' ? 'bg-[#CCA43B69]' : 'bg-[#F7F8FD]',
       ].join(' ')}
     />
