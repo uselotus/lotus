@@ -6,7 +6,7 @@ import stripe
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
+from lotus.settings import POSTHOG_PERSON, SELF_HOST_STRIPE_WORKING, STRIPE_SECRET_KEY
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
@@ -36,7 +36,7 @@ def import_stripe_customers(organization):
     """
     num_cust_added = 0
     org_ppis = organization.payment_provider_ids
-    if "stripe" in org_ppis or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
+    if "stripe" in org_ppis or (SELF_HOST_STRIPE_WORKING):
         stripe_cust_kwargs = {}
         if org_ppis.get("stripe") != "":
             stripe_cust_kwargs["stripe_account"] = org_ppis.get("stripe")
@@ -75,9 +75,7 @@ class InitializeStripeView(APIView):
         org_ppis = organization.payment_provider_ids
         stripe_id = org_ppis.get("stripe")
 
-        if (stripe_id and len(stripe_id) > 0) or (
-            SELF_HOSTED and STRIPE_SECRET_KEY != ""
-        ):
+        if (stripe_id and len(stripe_id) > 0) or (SELF_HOST_STRIPE_WORKING):
             return Response({"connected": True}, status=status.HTTP_200_OK)
         else:
             return Response({"connected": False}, status=status.HTTP_200_OK)
@@ -144,7 +142,7 @@ class InitializeStripeView(APIView):
         organization.save()
 
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="connect_stripe_customers",
             properties={
                 "num_cust_added": n_cust_added,
@@ -407,7 +405,7 @@ class APIKeyCreate(APIView):
             name="new_api_key", organization=organization
         )
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="create_api_key",
             properties={},
         )
@@ -559,7 +557,7 @@ class EventPreviewView(APIView):
         serializer = EventPreviewSerializer(ret)
         if page_number == 1:
             posthog.capture(
-                organization.company_name,
+                POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
                 event="event_preview",
                 properties={
                     "num_events": len(ret["events"]),
@@ -569,7 +567,7 @@ class EventPreviewView(APIView):
 
 
 class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
@@ -598,7 +596,7 @@ class DraftInvoiceView(APIView):
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="draft_invoice",
             properties={},
         )
@@ -664,7 +662,7 @@ class CancelSubscriptionView(APIView):
             sub.status = "canceled"
         sub.save()
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="cancel_subscription",
             properties={},
         )
@@ -725,7 +723,7 @@ class GetCustomerAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="get_access",
             properties={},
         )
@@ -858,7 +856,7 @@ class UpdateBillingPlanView(APIView):
         update_behavior = serializer.validated_data["update_behavior"]
 
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="update_billing_plan",
             properties={},
         )

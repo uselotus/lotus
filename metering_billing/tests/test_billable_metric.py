@@ -97,7 +97,7 @@ class TestInsertBillableMetric:
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
+            auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
 
@@ -175,7 +175,7 @@ class TestInsertBillableMetric:
         num_billable_metrics = 3
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
+            auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
 
@@ -204,7 +204,7 @@ class TestCalculateBillableMetric:
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
+            auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
         billable_metric = BillableMetric.objects.create(

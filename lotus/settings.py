@@ -41,6 +41,9 @@ POSTGRES_PASSWORD = config("POSTGRES_PASSWORD", default="lotus")
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
 SENTRY_DSN = config("SENTRY_DSN", default="")
 SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
+PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
+PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
+SELF_HOST_STRIPE_WORKING = SELF_HOSTED and STRIPE_SECRET_KEY != ""
 
 if SENTRY_DSN != "":
     sentry_sdk.init(
@@ -65,11 +68,18 @@ if SENTRY_DSN != "":
 API_KEY_CUSTOM_HEADER = "X-API-KEY"
 
 try:
-    posthog.project_api_key = config("POSTHOG_API_KEY")
+    posthog.project_api_key = config(
+        "POSTHOG_API_KEY", default="phc_6HB6j1Hp68ESe2FpvodVwF48oisXYpot5Ymc06SbY9M"
+    )
     posthog.host = "https://app.posthog.com"
     posthog.debug = DEBUG
 except:
     posthog.disabled = True
+
+
+if not PRODUCT_ANALYTICS_OPT_IN:
+    posthog.disabled = True
+POSTHOG_PERSON = hash(SECRET_KEY) if SELF_HOSTED else None
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
@@ -212,17 +222,7 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "America/New_York"
 
-if DOCKERIZED and not ON_HEROKU:
-    CACHES = {
-        "default": {
-            "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/3",
-            "OPTIONS": {
-                "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            },
-        }
-    }
-elif DOCKERIZED or ON_HEROKU:
+if ON_HEROKU:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
@@ -231,6 +231,16 @@ elif DOCKERIZED or ON_HEROKU:
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": ssl.CERT_NONE},
                 "CONNECTION_POOL_KWARGS": {"ssl_cert_reqs": None},
+            },
+        }
+    }
+elif DOCKERIZED:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": f"{REDIS_URL}/3",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
             },
         }
     }
