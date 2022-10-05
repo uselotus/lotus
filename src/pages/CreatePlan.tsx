@@ -14,6 +14,7 @@ import {
   Radio,
   Affix,
   Space,
+  Descriptions,
 } from 'antd'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -26,8 +27,9 @@ import { CreatePlanType, CreateComponent } from '../types/plan-type'
 import { Plan } from '../api/api'
 import { FeatureType } from '../types/feature-type'
 import FeatureForm from '../components/Plans/FeatureForm'
-import { DeleteOutlined, ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons'
+import { DeleteOutlined, ArrowLeftOutlined, SaveOutlined, EditOutlined } from '@ant-design/icons'
 import React from 'react'
+import { Paper } from '../components/base/Paper'
 
 interface ComponentDisplay {
   metric: string
@@ -255,11 +257,16 @@ const CreatePlan = () => {
                       <Row gutter={[12, 12]}>
                         {planFeatures.map((feature, index) => (
                           <Col key={index} span={24}>
-                            <Card bodyStyle={{ backgroundColor: '#CCA43B69' }}>
-                              <h3 className='justify-self-center'>
-                                {feature.feature_name} <DeleteOutlined />
-                              </h3>
-                            </Card>
+                            <Paper color='gold'>
+                              <Descriptions
+                                title={feature.feature_name}
+                                size='small'
+                                extra={[
+                                  <Button type='text' icon={<EditOutlined />} />,
+                                  <Button type='text' icon={<DeleteOutlined />} danger />,
+                                ]}
+                              />
+                            </Paper>
                           </Col>
                         ))}
                       </Row>
@@ -293,22 +300,29 @@ const CreatePlan = () => {
                         return components.length ? (
                           <Row gutter={[12, 12]}>
                             {components.map((component, index) => (
-                              <Col span='12'>
-                                <Card type='inner' bodyStyle={{ backgroundColor: '#F7F8FD' }}>
-                                  <h3>{component.metric}</h3>
-                                  <p>
-                                    <b>Cost:</b> ${component.cost_per_batch} per{' '}
-                                    {component.metric_units_per_batch}{' '}
-                                    {component.metric_units_per_batch === 1 ? 'unit' : 'units'}{' '}
-                                  </p>
-                                  <br />
-                                  <p>
-                                    <b>Free Units:</b> {component.free_metric_units}
-                                  </p>
-                                  <p>
-                                    <b>Max Units:</b> {component.max_metric_units}
-                                  </p>
-                                </Card>
+                              <Col span='24'>
+                                <Paper>
+                                  <Descriptions
+                                    title={component.metric}
+                                    size='small'
+                                    extra={[
+                                      <Button type='text' icon={<EditOutlined />} />,
+                                      <Button type='text' icon={<DeleteOutlined />} danger />,
+                                    ]}
+                                  >
+                                    <Descriptions.Item label='Cost'>
+                                      ${component.cost_per_batch} per{' '}
+                                      {component.metric_units_per_batch}{' '}
+                                      {component.metric_units_per_batch === 1 ? 'unit' : 'units'}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label='Free Units'>
+                                      {component.free_metric_units}
+                                    </Descriptions.Item>
+                                    <Descriptions.Item label='Max Units'>
+                                      {component.max_metric_units}
+                                    </Descriptions.Item>
+                                  </Descriptions>
+                                </Paper>
                               </Col>
                             ))}
                           </Row>

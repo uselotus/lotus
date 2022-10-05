@@ -1,20 +1,20 @@
-@import url("https://rsms.me/inter/inter.css");
-@tailwind base;
+@import url('https://rsms.me/inter/inter.css');
+/* @tailwind base; */
 
 @tailwind components;
 @tailwind utilities;
 
 html {
-  font-family: "Inter", sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 @supports (font-variation-settings: normal) {
   html {
-    font-family: "Inter var", sans-serif;
+    font-family: 'Inter var', sans-serif;
   }
 }
 
 h1 {
-  font-family: "Inter";
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 700;
   font-size: 32px;
@@ -29,7 +29,7 @@ h1 {
 }
 
 h2 {
-  font-family: "Inter";
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 700;
   font-size: 26px;
@@ -38,7 +38,7 @@ h2 {
 }
 
 h3 {
-  font-family: "Inter";
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 500;
   font-size: 16px;
@@ -57,9 +57,13 @@ a {
 }
 
 .ant-modal-title {
-  font-family: "Inter";
+  font-family: 'Inter';
   font-style: normal;
   font-weight: 700;
   font-size: 26px;
   line-height: 100%;
+}
+
+.ant-descriptions-header {
+  margin-bottom: 0;
 }
