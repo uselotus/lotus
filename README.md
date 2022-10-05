@@ -37,7 +37,6 @@
    <a href="https://github.com/uselotus/lotus/commits/main"><img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/uselotus/lotus?color=8b55e3"/></a>
    <a href="https://github.com/uselotus/lotus/actions/workflows/django-postgres.yml"><img alt="Build Passing" src="https://github.com/uselotus/lotus/actions/workflows/django-postgres.yml/badge.svg?style=flat"/></a>
    <a href="https://twitter.com/uselotusio"><img src="https://img.shields.io/twitter/follow/uselotusio?style=flat&color=1DA1F2"></a>
-   <a href="https://www.ycombinator.com/companies/lotus"><img src="https://img.shields.io/badge/Backed%20by-Y%20Combinator-%23f26625"></a>
 </p>
 
 
