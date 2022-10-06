@@ -49,10 +49,10 @@ const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const navigate = useNavigate();
-  const [componentsData, setComponentsData] = useState<any>({});
+  const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
-  const [editComponentItem, setEditComponentsItem] = useState<any>({});
+  const [editComponentItem, setEditComponentsItem] = useState<any>();
 
   console.log("componentsData", componentsData);
 
@@ -116,30 +116,37 @@ const CreatePlan = () => {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
-    console.log("editComponentItem", Object.values(editComponentItem));
-    console.log("old", old);
-    if (Object.values(editComponentItem).length > 0) {
-      old[Object.keys(editComponentItem)[0]] = newData;
-    } else {
-      const uniqueID = new Date().getTime();
-      old[uniqueID] = newData;
-    }
+    console.log("editComponentItem", editComponentItem);
 
-    setComponentsData(old);
+    if (editComponentItem) {
+      const index = componentsData.findIndex(
+        (item) => item.id === editComponentItem.id
+      );
+      old[index] = newData;
+      setComponentsData(old);
+    } else {
+      const newComponentsData = [
+        ...old,
+        {
+          ...newData,
+          id: Math.floor(Math.random() * 1000),
+        },
+      ];
+      setComponentsData(newComponentsData);
+    }
+    setEditComponentsItem(undefined);
+    setcomponentVisible(false);
   };
 
   const handleComponentEdit = (id: any) => {
-    setcomponentVisible(true);
-    const components = componentsData;
+    const currentComponent = componentsData.filter((item) => item.id === id)[0];
 
-    setEditComponentsItem({ [id]: components[id] });
+    setEditComponentsItem(currentComponent);
+    setcomponentVisible(true);
   };
 
   const deleteComponent = (id: number) => {
-    const components = componentsData;
-    delete components[id];
-
-    setComponentsData({ ...components });
+    setComponentsData(componentsData.filter((item) => item.id !== id));
   };
   const hideFeatureModal = () => {
     setFeatureVisible(false);
@@ -347,41 +354,47 @@ const CreatePlan = () => {
                       }
                     >
                       <Row gutter={[12, 12]}>
-                        {Object.entries(componentsData)?.map(
-                          ([key, component]: any, index: number) => (
+                        {componentsData?.map(
+                          (component: any, index: number) => (
                             <Col span="24" key={index}>
                               <Paper>
                                 <Descriptions
                                   title={component?.metric}
                                   size="small"
+                                  column={2}
                                   extra={[
                                     <Button
                                       key="edit"
                                       type="text"
                                       icon={<EditOutlined />}
-                                      onClick={() => handleComponentEdit(key)}
+                                      onClick={() =>
+                                        handleComponentEdit(component.id)
+                                      }
                                     />,
                                     <Button
                                       key="delete"
                                       type="text"
                                       icon={<DeleteOutlined />}
                                       danger
-                                      onClick={() => deleteComponent(key)}
+                                      onClick={() =>
+                                        deleteComponent(component.id)
+                                      }
                                     />,
                                   ]}
                                 >
-                                  <Descriptions.Item label="Cost">
-                                    ${component.cost_per_batch} per{" "}
-                                    {component.metric_units_per_batch}{" "}
-                                    {component.metric_units_per_batch === 1
-                                      ? "unit"
-                                      : "units"}
+                                  <Descriptions.Item label="Cost" span={4}>
+                                    {component.cost_per_batch
+                                      ? `$${component.cost_per_batch} / ${component.metric_units_per_batch} Unit(s)`
+                                      : "Free"}
                                   </Descriptions.Item>
-                                  <Descriptions.Item label="Free Units">
-                                    {component.free_metric_units}
+                                  <Descriptions.Item
+                                    label="Free Units"
+                                    span={1}
+                                  >
+                                    {component.free_amount ?? "Unlimited"}
                                   </Descriptions.Item>
-                                  <Descriptions.Item label="Max Units">
-                                    {component.max_metric_units}
+                                  <Descriptions.Item label="Max Units" span={1}>
+                                    {component.max_metric_units ?? "Unlimited"}
                                   </Descriptions.Item>
                                 </Descriptions>
                               </Paper>
@@ -402,7 +415,7 @@ const CreatePlan = () => {
             onCancel={hideComponentModal}
             componentsData={componentsData}
             handleComponentAdd={handleComponentAdd}
-            editComponentItem={Object.values(editComponentItem)[0]}
+            editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
           />
         )}

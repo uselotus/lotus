@@ -33,8 +33,12 @@ function UsageComponentForm({
 }: Props) {
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
-  const [isFree, setIsFree] = useState(true);
-  const [isLimit, setIsLimit] = useState(false);
+  const [isCharge, setIsCharge] = useState(
+    editComponentItem?.free_amount !== undefined ? true : false
+  );
+  const [isLimit, setIsLimit] = useState(
+    editComponentItem?.max_metric_units ? true : false
+  );
   const initalData = editComponentItem ?? {
     cost_per_batch: 0.0,
     metric_units_per_batch: 1,
@@ -64,6 +68,9 @@ function UsageComponentForm({
       okType="default"
       cancelText="Cancel"
       width={700}
+      okButtonProps={{
+        className: "bg-black text-white justify-self-end",
+      }}
       onCancel={() => {
         onCancel();
         form.resetFields();
@@ -74,7 +81,8 @@ function UsageComponentForm({
           .validateFields()
           .then((values) => {
             handleComponentAdd(values);
-            onCancel();
+            console.log("values", values);
+
             form.submit();
           })
           .catch((info) => {
@@ -88,22 +96,26 @@ function UsageComponentForm({
         name="component_form"
         initialValues={initalData}
       >
-        <Form.Item
-          name="metric"
-          label="Metric"
-          rules={[
-            {
-              required: true,
-              message: "Please select a metric",
-            },
-          ]}
-        >
-          <Select>
-            {metrics?.map((metric_name) => (
-              <Option value={metric_name}>{metric_name}</Option>
-            ))}
-          </Select>
-        </Form.Item>
+        <div className="grid grid-cols-12 space-x-4 mt-4">
+          <p className="col-span-1 pt-1">Metric:</p>
+
+          <Form.Item
+            className="col-span-11"
+            name="metric"
+            rules={[
+              {
+                required: true,
+                message: "Please select a metric",
+              },
+            ]}
+          >
+            <Select>
+              {metrics?.map((metric_name) => (
+                <Option value={metric_name}>{metric_name}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </div>
 
         <div className="grid grid-cols-2 space-x-4 mt-4">
           <div>
@@ -111,12 +123,11 @@ function UsageComponentForm({
               Charge For This Metric?{" "}
               <Switch
                 checkedChildren="YES"
-                defaultChecked
                 unCheckedChildren="NO"
-                checked={!isFree}
+                checked={isCharge}
                 onChange={() => {
-                  setIsFree(!isFree);
-                  if (!isFree) {
+                  setIsCharge(!isCharge);
+                  if (!isCharge) {
                     form.setFieldsValue({
                       free_amount: 0,
                     });
@@ -125,10 +136,9 @@ function UsageComponentForm({
               />
             </div>
             <div className=" space-x-4 mb-4">
-              {!isFree && (
+              {isCharge && (
                 <Form.Item name="free_amount" label="Free Units">
                   <InputNumber<string>
-                    disabled={isFree}
                     defaultValue="0"
                     style={{
                       width: "100%",
@@ -148,13 +158,14 @@ function UsageComponentForm({
               Does This Metric Have A Limit?{" "}
               <Switch
                 checkedChildren="YES"
-                defaultChecked
                 unCheckedChildren="NO"
                 checked={isLimit}
                 onChange={() => {
                   setIsLimit(!isLimit);
-                  if (isLimit) {
-                    form.setFieldsValue({ max_metric_units: 0 });
+                  if (!isLimit) {
+                    form.setFieldsValue({
+                      max_metric_units: 1,
+                    });
                   }
                 }}
               />
@@ -164,7 +175,7 @@ function UsageComponentForm({
                 <Form.Item name="max_metric_units" label="Max Units">
                   <InputNumber<string>
                     disabled={!isLimit}
-                    defaultValue="0"
+                    defaultValue="1"
                     style={{
                       width: "100%",
                     }}
@@ -179,7 +190,7 @@ function UsageComponentForm({
           </div>
         </div>
 
-        {isFree ? null : (
+        {isCharge ? (
           <div>
             <p>Price per unit</p>
             <div className="grid grid-cols-2 space-x-4 mt-4">
@@ -194,7 +205,6 @@ function UsageComponentForm({
                     defaultValue="1"
                     precision={5}
                     min="0"
-                    max="10"
                     step="0.00001"
                     stringMode
                   />
@@ -202,7 +212,7 @@ function UsageComponentForm({
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </Form>
     </Modal>
   );

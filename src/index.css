@@ -78,6 +78,7 @@ a {
 .ant-descriptions-small .ant-descriptions-title {
   font-size: 16px;
   line-height: 18px;
+  width: 80%;
 }
 
 .ant-descriptions-item-label {
