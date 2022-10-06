@@ -1858,9 +1858,6 @@ components:
     PlanComponentRead:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
         free_metric_units:
@@ -1897,7 +1894,6 @@ components:
           nullable: true
       required:
       - billable_metric
-      - id
     Registration:
       type: object
       properties:
