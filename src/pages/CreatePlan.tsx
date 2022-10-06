@@ -246,7 +246,7 @@ const CreatePlan = () => {
                       <Radio.Group>
                         <Radio value='week'>Weekly</Radio>
                         <Radio value='month'>Monthly</Radio>
-                        <Radio value='yearly'>Yearly</Radio>
+                        <Radio value='year'>Yearly</Radio>
                       </Radio.Group>
                     </Form.Item>
 
@@ -379,12 +379,14 @@ const CreatePlan = () => {
             setEditComponentsItem={setEditComponentsItem}
           />
         )}
-        <FeatureForm
-          visible={featureVisible}
-          onCancel={hideFeatureModal}
-          features={features}
-          onAddFeatures={addFeatures}
-        />
+        {featureVisible && (
+          <FeatureForm
+            visible={featureVisible}
+            onCancel={hideFeatureModal}
+            features={features}
+            onAddFeatures={addFeatures}
+          />
+        )}
       </Form.Provider>
     </div>
   )
