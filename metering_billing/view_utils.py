@@ -122,7 +122,7 @@ def calculate_total_pc_revenue(plan_component, units_usage):
         return 0
     subtotal_usage = max(units_usage - plan_component.free_metric_units, 0)
     metric_batches = math.ceil(subtotal_usage / plan_component.metric_units_per_batch)
-    subtotal_cost = (metric_batches * plan_component.cost_per_batch).amount
+    subtotal_cost = metric_batches * plan_component.cost_per_batch
     return subtotal_cost
 
 
@@ -159,7 +159,7 @@ def calculate_per_period_pc_revenue_for_aggregation_metric(
                 - billable_batches * plan_component.metric_units_per_batch
             )
             free_units_usage_left = max(0, free_units_usage_left - qty)
-            usage_revenue = (billable_batches * plan_component.cost_per_batch).amount
+            usage_revenue = billable_batches * plan_component.cost_per_batch
             period_revenue_dict[tc_q]["revenue"] = usage_revenue
     return period_revenue_dict
 
@@ -202,13 +202,13 @@ def calculate_pc_usage_rev_for_stateful_metric(
     if stateful_agg_p == "day":
         plan_periods = list(dates_bwn_twodates(plan_start_date, plan_end_date))
         prorated_cost_per_batch = convert_to_decimal(
-            (plan_component.cost_per_batch / len(plan_periods)).amount
+            plan_component.cost_per_batch / len(plan_periods)
         )
         quantize_event_time = lambda x: x.date()
     elif stateful_agg_p == "hour":
         plan_periods = list(hours_bwn_twodates(plan_start_date, plan_end_date))
         prorated_cost_per_batch = convert_to_decimal(
-            (plan_component.cost_per_batch / len(plan_periods)).amount
+            plan_component.cost_per_batch / len(plan_periods)
         )
         quantize_event_time = lambda x: x.replace(minute=0, second=0, microsecond=0)
     event_period_dict = {}

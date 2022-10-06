@@ -172,9 +172,16 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = FeatureSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "head", "delete"]
+    permission_classes_per_method = {
+        "list": [IsAuthenticated | HasUserAPIKey],
+        "retrieve": [IsAuthenticated | HasUserAPIKey],
+        "create": [IsAuthenticated | HasUserAPIKey],
+        "destroy": [IsAuthenticated],
+    }
 
     def get_queryset(self):
-        return Feature.objects.all()
+        organization = parse_organization(self.request)
+        return Feature.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))

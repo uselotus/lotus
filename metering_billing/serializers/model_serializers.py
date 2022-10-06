@@ -249,6 +249,7 @@ class PlanComponentReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
         fields = (
+            "id",
             "billable_metric",
             "free_metric_units",
             "cost_per_batch",
@@ -362,17 +363,28 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     subscription_id = serializers.CharField(required=False)
 
     def validate(self, data):
+        # check no existing subs
         sd = data["start_date"]
         ed = data["billing_plan"].calculate_end_date(sd)
         num_existing_subs = Subscription.objects.filter(
-            Q(start_date__range=(sd, ed))
-            | Q(end_date__range=(sd, ed)),
+            Q(start_date__range=(sd, ed)) | Q(end_date__range=(sd, ed)),
             customer__customer_id=data["customer"].customer_id,
             billing_plan__billing_plan_id=data["billing_plan"].billing_plan_id,
         ).count()
         if num_existing_subs > 0:
             raise serializers.ValidationError(
                 f"Customer already has an active subscription to this plan"
+            )
+
+        # check that customer and billing_plan currencies match
+        customer_currency = data["customer"].balance.currency
+        billing_plan_currency = data["billing_plan"].flat_rate.currency
+        print("heloooooo")
+        print(customer_currency)
+        print(billing_plan_currency)
+        if customer_currency != billing_plan_currency:
+            raise serializers.ValidationError(
+                f"Customer currency {customer_currency} does not match billing plan currency {billing_plan_currency}"
             )
         return data
 

@@ -71,7 +71,6 @@ class Customer(models.Model):
         currency (str): The currency the customer is paying in.
         payment_provider_id (str): The id of the payment provider the customer is using.
         properties (dict): An extendable dictionary of properties, useful for filtering, etc.
-        balance (:obj:`djmoney.models.fields.MoneyField`): The outstanding balance of the customer.
     """
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
@@ -229,8 +228,8 @@ class PlanComponent(models.Model):
     free_metric_units = models.DecimalField(
         decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
-    cost_per_batch = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", blank=True, null=True
+    cost_per_batch = models.DecimalField(
+        decimal_places=10, max_digits=20, blank=True, null=True
     )
     metric_units_per_batch = models.DecimalField(
         decimal_places=10, max_digits=20, blank=True, null=True
