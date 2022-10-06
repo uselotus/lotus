@@ -22,6 +22,7 @@ from django.views.generic import TemplateView
 from metering_billing.views import auth_views, track
 from metering_billing.views.auth_views import RegisterView
 from metering_billing.views.model_views import (
+    AlertViewSet,
     BillableMetricViewSet,
     BillingPlanViewSet,
     CustomerViewSet,
@@ -30,6 +31,7 @@ from metering_billing.views.model_views import (
     PlanComponentViewSet,
     SubscriptionViewSet,
     UserViewSet,
+    WebhookViewSet,
 )
 from metering_billing.views.views import (
     APIKeyCreate,
@@ -60,6 +62,7 @@ router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
 router.register(r"components", PlanComponentViewSet, basename="component")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
+router.register(r"webhooks", WebhookViewSet, basename="webhook")
 
 urlpatterns = [
     path("admin/", admin.site.urls),

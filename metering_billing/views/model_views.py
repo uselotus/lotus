@@ -47,26 +47,30 @@ class PermissionPolicyMixin:
         except AttributeError:
             handler = None
 
-        if (
-            handler
-            and self.permission_classes_per_method
-            and self.permission_classes_per_method.get(handler.__name__)
-        ):
-            self.permission_classes = self.permission_classes_per_method.get(
-                handler.__name__
-            )
+        try:
+            if (
+                handler
+                and self.permission_classes_per_method
+                and self.permission_classes_per_method.get(handler.__name__)
+            ):
+                self.permission_classes = self.permission_classes_per_method.get(
+                    handler.__name__
+                )
+        except:
+            pass
 
         super().check_permissions(request)
 
 
-class AlertViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     API endpoint that allows alerts to be viewed or edited.
     """
 
-    queryset = Alert.objects.all()
+    queryset = Alert.objects.filter(type="webhook")
     serializer_class = AlertSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "delete"]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -380,6 +384,34 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
                 event=f"{self.action}_invoice",
+                properties={},
+            )
+        return response
+
+
+class AlertViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing Alerts.
+    """
+
+    serializer_class = AlertSerializer
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    http_method_names = ["get", "post", "head", "put", "delete"]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return Alert.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_alert",
                 properties={},
             )
         return response
