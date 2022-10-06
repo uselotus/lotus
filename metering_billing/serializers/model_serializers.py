@@ -379,9 +379,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         # check that customer and billing_plan currencies match
         customer_currency = data["customer"].balance.currency
         billing_plan_currency = data["billing_plan"].flat_rate.currency
-        print("heloooooo")
-        print(customer_currency)
-        print(billing_plan_currency)
         if customer_currency != billing_plan_currency:
             raise serializers.ValidationError(
                 f"Customer currency {customer_currency} does not match billing plan currency {billing_plan_currency}"
