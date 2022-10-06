@@ -1,7 +1,12 @@
-from metering_billing.models import BillingPlan, Customer, Subscription
+from metering_billing.auth_utils import parse_organization
+from metering_billing.models import BillableMetric, BillingPlan, Customer
 from rest_framework import serializers
 
-from .model_serializers import EventSerializer
+from .model_serializers import (
+    BillableMetricSerializer,
+    BillingPlanSerializer,
+    EventSerializer,
+)
 
 ## CUSTOM SERIALIZERS
 
@@ -31,9 +36,40 @@ class GetCustomerAccessRequestSerializer(serializers.Serializer):
 
 
 class CancelSubscriptionRequestSerializer(serializers.Serializer):
-    bill_now = serializers.BooleanField(default=True)
+    subscription_id = serializers.CharField(required=True)
+    bill_now = serializers.BooleanField(default=False)
     revoke_access = serializers.BooleanField(default=False)
-    subscription_uid = serializers.CharField(required=True)
+
+
+class UpdateSubscriptionBillingPlanRequestSerializer(serializers.Serializer):
+    subscription_id = serializers.CharField(required=True)
+    new_billing_plan_id = serializers.CharField(required=True)
+    update_behavior = serializers.ChoiceField(
+        choices=["replace_immediately", "replace_on_renewal"]
+    )
+
+
+class UpdateBillingPlanRequestSerializer(serializers.Serializer):
+    old_billing_plan_id = serializers.CharField()
+    updated_billing_plan = BillingPlanSerializer()
+    update_behavior = serializers.ChoiceField(
+        choices=["replace_immediately", "replace_on_renewal"]
+    )
+
+    def create(self, validated_data):
+        request = self.context.get("request", None)
+        org = parse_organization(request)
+        validated_data["updated_billing_plan"]["organization"] = org
+        for component in validated_data["updated_billing_plan"]["components"]:
+            bm = component.pop("billable_metric")
+            component["billable_metric_name"] = bm.billable_metric_name
+        serializer = BillingPlanSerializer(
+            data=validated_data["updated_billing_plan"], context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.validated_data["organization"] = org
+        billing_plan = serializer.save()
+        return billing_plan
 
 
 class RegistrationDetailSerializer(serializers.Serializer):

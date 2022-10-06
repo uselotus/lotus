@@ -19,6 +19,7 @@ import {
   CustomerDetailSubscription,
 } from "../../types/customer-type";
 import "./CustomerDetail.css";
+import CustomerInvoiceView from "./CustomerInvoices";
 
 const { Option } = Select;
 
@@ -38,11 +39,16 @@ function CustomerDetail(props: {
   >([]);
 
   const { data, isLoading }: UseQueryResult<CustomerDetailType> =
-    useQuery<CustomerDetailType>(["customer_detail", props.customer_id], () =>
-      Customer.getCustomerDetail(props.customer_id).then((res) => {
-        setCustomerSubscriptions(res.subscriptions);
-        return res;
-      })
+    useQuery<CustomerDetailType>(
+      ["customer_detail", props.customer_id],
+      () =>
+        Customer.getCustomerDetail(props.customer_id).then((res) => {
+          setCustomerSubscriptions(res.subscriptions);
+          return res;
+        }),
+      {
+        enabled: props.visible,
+      }
     );
 
   const mutation = useMutation(
@@ -66,7 +72,7 @@ function CustomerDetail(props: {
   );
 
   const cancelSubscription = (props: {
-    subscription_uid: string;
+    subscription_id: string;
     bill_now: boolean;
     revoke_access: boolean;
   }) => {
@@ -128,9 +134,7 @@ function CustomerDetail(props: {
                       <p>Email: {data.email}</p>
                       <p>Billing Address: {data.billing_address}</p>
                     </div>
-                    <div className="space-y-3">
-                      <h2>Timeline</h2>
-                    </div>
+                    <div className="space-y-3">{/* <h2>Timeline</h2> */}</div>
                   </div>
                 ) : (
                   <h2> No Data </h2>
@@ -149,8 +153,8 @@ function CustomerDetail(props: {
                   </div>
                 ) : null}
               </Tabs.TabPane>
-              <Tabs.TabPane disabled={true} tab="Invoices" key="invoices">
-                <p>Invoices</p>
+              <Tabs.TabPane tab="Invoices" key="invoices">
+                <CustomerInvoiceView invoices={data?.invoices} />
               </Tabs.TabPane>{" "}
             </Tabs>
           </div>

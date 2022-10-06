@@ -1,6 +1,6 @@
 import { Modal, Form, Input, Select, Radio, Tooltip } from "antd";
 import { MetricType } from "../types/metric-type";
-import { Fragment, useState } from "react";
+import React, { Fragment, useState } from "react";
 const { Option } = Select;
 
 export interface CreateMetricState extends MetricType {

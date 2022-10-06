@@ -1,82 +1,30 @@
-import email
+import datetime
 import uuid
 
-from dateutil.parser import isoparse
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
-from django.db.models.signals import post_save
-from django.utils.translation import gettext_lazy as _
 from djmoney.models.fields import MoneyField
 from model_utils import Choices
 from rest_framework_api_key.models import AbstractAPIKey
 
-
-class AGGREGATION_TYPES(object):
-    COUNT = "count"
-    SUM = "sum"
-    MAX = "max"
-    UNIQUE = "unique"
-    LAST = "last"
-
-
-AGGREGATION_CHOICES = Choices(
-    (AGGREGATION_TYPES.COUNT, _("Count")),
-    (AGGREGATION_TYPES.SUM, _("Sum")),
-    (AGGREGATION_TYPES.MAX, _("Max")),
-    (AGGREGATION_TYPES.UNIQUE, _("Unique")),
-    (AGGREGATION_TYPES.LAST, _("Last")),
-)
-
-SUPPORTED_PAYMENT_PROVIDERS = Choices(
-    ("stripe", _("Stripe")),
-)
-
-
-class EVENT_TYPES(object):
-    AGGREGATION = "aggregation"
-    STATEFUL = "stateful"
-
-
-EVENT_CHOICES = Choices(
-    (EVENT_TYPES.AGGREGATION, _("Aggregatable")),
-    (EVENT_TYPES.STATEFUL, _("State Logging")),
-)
-
-
-class INTERVAL_TYPES(object):
-    WEEK = "week"
-    MONTH = "month"
-    YEAR = "year"
-
-
-INTERVAL_CHOICES = Choices(
-    (INTERVAL_TYPES.WEEK, _("Week")),
-    (INTERVAL_TYPES.MONTH, _("Month")),
-    (INTERVAL_TYPES.YEAR, _("Year")),
-)
-
-
-class STATEFUL_AGG_PERIOD_TYPES(object):
-    DAY = "day"
-    HOUR = "hour"
-
-
-STATEFUL_AGG_PERIOD_CHOICES = Choices(
-    (STATEFUL_AGG_PERIOD_TYPES.DAY, _("Day")),
-    (STATEFUL_AGG_PERIOD_TYPES.HOUR, _("Hour")),
+from metering_billing.utils import (
+    AGGREGATION_CHOICES,
+    EVENT_CHOICES,
+    INTERVAL_CHOICES,
+    INVOICE_STATUS_CHOICES,
+    PAYMENT_PLANS,
+    STATEFUL_AGG_PERIOD_CHOICES,
+    SUB_STATUS_CHOICES,
+    SUPPORTED_PAYMENT_PROVIDERS,
+    dates_bwn_twodates,
 )
 
 
 class Organization(models.Model):
-    PAYMENT_PLANS = Choices(
-        ("self_hosted_free", _("Self-Hosted Free")),
-        ("cloud", _("Cloud")),
-        ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
-    )
     company_name = models.CharField(max_length=100, default=" ")
     stripe_id = models.CharField(max_length=110, blank=True, null=True)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
@@ -87,6 +35,14 @@ class Organization(models.Model):
 
     def __str__(self):
         return self.company_name
+
+    def save(self, *args, **kwargs):
+        for k, _ in self.payment_provider_ids.items():
+            if k not in SUPPORTED_PAYMENT_PROVIDERS:
+                raise ValueError(
+                    f"Payment provider {k} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+                )
+        super(Organization, self).save(*args, **kwargs)
 
 
 class Alert(models.Model):
@@ -270,7 +226,6 @@ class BillableMetric(models.Model):
 
 class PlanComponent(models.Model):
     billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
-
     free_metric_units = models.DecimalField(
         decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
@@ -280,7 +235,6 @@ class PlanComponent(models.Model):
     metric_units_per_batch = models.DecimalField(
         decimal_places=10, max_digits=20, blank=True, null=True
     )
-
     max_metric_units = models.DecimalField(
         decimal_places=10, max_digits=20, blank=True, null=True
     )
@@ -321,16 +275,30 @@ class BillingPlan(models.Model):
     billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
     pay_in_advance = models.BooleanField()
-    name = models.CharField(max_length=200, unique=True)
+    name = models.CharField(max_length=200)
     description = models.CharField(max_length=256, default=" ", blank=True)
     components = models.ManyToManyField(PlanComponent, null=True, blank=True)
     features = models.ManyToManyField(Feature, null=True, blank=True)
+    scheduled_for_deletion = models.BooleanField(default=False)
+    replacement_billing_plan = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL
+    )
 
     def __str__(self) -> str:
         return str(self.name)
 
     class Meta:
         unique_together = ("organization", "billing_plan_id")
+
+    def calculate_end_date(self, start_date):
+        if self.interval == "week":
+            return start_date + relativedelta(weeks=+1) - relativedelta(days=+1)
+        elif self.interval == "month":
+            return start_date + relativedelta(months=+1) - relativedelta(days=+1)
+        elif self.interval == "year":
+            return start_date + relativedelta(years=+1) - relativedelta(days=+1)
+        else:
+            raise ValueError("End date not calculated correctly")
 
 
 class TsTzRange(Func):
@@ -348,21 +316,14 @@ class Subscription(models.Model):
     status: The status of the subscription, active or ended.
     """
 
-    class SUB_STATUS_TYPES(object):
-        ACTIVE = "active"
-        ENDED = "ended"
-        NOT_STARTED = "not_started"
-        CANCELED = "canceled"
-
-    SUB_STATUS_CHOICES = Choices(
-        (SUB_STATUS_TYPES.ACTIVE, _("Active")),
-        (SUB_STATUS_TYPES.ENDED, _("Ended")),
-        (SUB_STATUS_TYPES.NOT_STARTED, _("Not Started")),
-        (SUB_STATUS_TYPES.CANCELED, _("Canceled")),
-    )
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
-    billing_plan = models.ForeignKey(BillingPlan, on_delete=models.CASCADE, null=False)
+    billing_plan = models.ForeignKey(
+        BillingPlan,
+        related_name="current_billing_plan",
+        on_delete=models.CASCADE,
+        null=False,
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(
@@ -371,50 +332,42 @@ class Subscription(models.Model):
         default=SUB_STATUS_CHOICES.not_started,
     )
     auto_renew = models.BooleanField(default=True)
+    auto_renew_billing_plan = models.ForeignKey(
+        BillingPlan,
+        related_name="next_billing_plan",
+        on_delete=models.CASCADE,
+        null=True,
+    )
     is_new = models.BooleanField(default=True)
-    subscription_uid = models.CharField(
+    subscription_id = models.CharField(
         max_length=100, null=False, blank=True, default=uuid.uuid4
+    )
+    prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
+    flat_fee_already_billed = models.DecimalField(
+        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
 
     def save(self, *args, **kwargs):
         if not self.end_date:
-            self.end_date = self.calculate_end_date()
+            self.end_date = self.billing_plan.calculate_end_date(self.start_date)
+        flat_cost_dict = self.prorated_flat_costs_dict
+        today = datetime.date.today()
+        dates_bwn = list(dates_bwn_twodates(self.start_date, self.end_date))
+        for day in dates_bwn:
+            if day >= today:
+                flat_cost_dict[str(day)] = float(
+                    self.billing_plan.flat_rate.amount
+                ) / len(dates_bwn)
         super(Subscription, self).save(*args, **kwargs)
-
-    def calculate_end_date(self):
-        start_date_parsed = self.start_date
-        if self.billing_plan.interval == "week":
-            return start_date_parsed + relativedelta(weeks=+1) - relativedelta(days=+1)
-        elif self.billing_plan.interval == "month":
-            return start_date_parsed + relativedelta(months=+1) - relativedelta(days=+1)
-        elif self.billing_plan.interval == "year":
-            return start_date_parsed + relativedelta(years=+1) - relativedelta(days=+1)
-        else:
-            raise ValueError("End date not calculated correctly")
 
     def __str__(self):
         return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
 
     class Meta:
-        unique_together = ("organization", "subscription_uid")
+        unique_together = ("organization", "subscription_id")
 
 
 class Invoice(models.Model):
-    class INVOICE_STATUS_TYPES(object):
-        # REQUIRES_PAYMENT_METHOD = "requires_payment_method"
-        # REQUIRES_ACTION = "requires_action"
-        # PROCESSING = "processing"
-        # SUCCEEDED = "succeeded"
-        DRAFT = "draft"
-        PAID = "paid"
-        UNPAID = "unpaid"
-
-    INVOICE_STATUS_CHOICES = Choices(
-        (INVOICE_STATUS_TYPES.DRAFT, _("Draft")),
-        (INVOICE_STATUS_TYPES.PAID, _("Paid")),
-        (INVOICE_STATUS_TYPES.UNPAID, _("Unpaid")),
-    )
-
     cost_due = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )

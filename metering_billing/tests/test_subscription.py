@@ -5,7 +5,12 @@ from datetime import datetime, timedelta
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from metering_billing.models import BillableMetric, BillingPlan, PlanComponent
+from metering_billing.models import (
+    BillableMetric,
+    BillingPlan,
+    PlanComponent,
+    Subscription,
+)
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -94,6 +99,7 @@ def subscription_test_common_setup(
             "billing_plan_id": billing_plan.billing_plan_id,
         }
         setup_dict["payload"] = payload
+        setup_dict["customer"] = customer
 
         return setup_dict
 
@@ -172,3 +178,30 @@ class TestInsertSubscription:
 
         assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
         assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
+
+    def test_deny_overlapping_subscriptions(
+        self, subscription_test_common_setup, get_subscriptions_in_org
+    ):
+        # covers user_org_and_api_key_org_different = True
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        Subscription.objects.create(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+            billing_plan=setup_dict["billing_plan"],
+            status="active",
+            start_date=datetime.now().date() - timedelta(days=20),
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-list"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions + 1

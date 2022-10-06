@@ -5,27 +5,26 @@ import posthog
 import stripe
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
-from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, inline_serializer
-from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
+from lotus.settings import POSTHOG_PERSON, SELF_HOST_STRIPE_WORKING, STRIPE_SECRET_KEY
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.utils import RevenueCalcGranularity, dates_bwn_twodates
+from metering_billing.view_utils import RevenueCalcGranularity, dates_bwn_twodates
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..auth_utils import parse_organization
-from ..utils import (
+from ..invoice import generate_adjustment_invoice
+from ..utils import make_all_dates_times_strings, make_all_decimals_floats
+from ..view_utils import (
     calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
-    make_all_dates_times_strings,
-    make_all_datetimes_dates,
-    make_all_decimals_floats,
 )
 
 stripe.api_key = STRIPE_SECRET_KEY
@@ -37,7 +36,7 @@ def import_stripe_customers(organization):
     """
     num_cust_added = 0
     org_ppis = organization.payment_provider_ids
-    if "stripe" in org_ppis or (SELF_HOSTED and STRIPE_SECRET_KEY != ""):
+    if "stripe" in org_ppis or (SELF_HOST_STRIPE_WORKING):
         stripe_cust_kwargs = {}
         if org_ppis.get("stripe") != "":
             stripe_cust_kwargs["stripe_account"] = org_ppis.get("stripe")
@@ -76,12 +75,10 @@ class InitializeStripeView(APIView):
         org_ppis = organization.payment_provider_ids
         stripe_id = org_ppis.get("stripe")
 
-        if (stripe_id and len(stripe_id) > 0) or (
-            SELF_HOSTED and STRIPE_SECRET_KEY != ""
-        ):
-            return JsonResponse({"connected": True}, status=200)
+        if (stripe_id and len(stripe_id) > 0) or (SELF_HOST_STRIPE_WORKING):
+            return Response({"connected": True}, status=status.HTTP_200_OK)
         else:
-            return JsonResponse({"connected": False}, status=200)
+            return Response({"connected": False}, status=status.HTTP_200_OK)
 
     @extend_schema(
         request=inline_serializer(
@@ -110,8 +107,9 @@ class InitializeStripeView(APIView):
         data = request.data
 
         if data is None:
-            return JsonResponse(
-                {"success": False, "details": "No data provided"}, status=400
+            return Response(
+                {"success": False, "details": "No data provided"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         organization = parse_organization(request)
@@ -123,18 +121,22 @@ class InitializeStripeView(APIView):
                 code=stripe_code,
             )
         except:
-            return JsonResponse(
-                {"success": False, "details": "Invalid authorization code"}, status=400
+            return Response(
+                {"success": False, "details": "Invalid authorization code"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if "error" in response:
-            return JsonResponse(
-                {"success": False, "details": response["error"]}, status=400
+            return Response(
+                {"success": False, "details": response["error"]},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         connected_account_id = response["stripe_user_id"]
 
-        organization.payment_provider_ids.stripe = connected_account_id
+        org_pp_ids = organization.payment_provider_ids
+        org_pp_ids["stripe"] = connected_account_id
+        organization.payment_provider_ids = org_pp_ids
         organization.save()
 
         n_cust_added = import_stripe_customers(organization)
@@ -142,14 +144,14 @@ class InitializeStripeView(APIView):
         organization.save()
 
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="connect_stripe_customers",
             properties={
                 "num_cust_added": n_cust_added,
             },
         )
 
-        return JsonResponse({"success": True}, status=201)
+        return Response({"success": True}, status=status.HTTP_201_CREATED)
 
 
 class PeriodMetricRevenueView(APIView):
@@ -254,7 +256,7 @@ class PeriodMetricRevenueView(APIView):
         ret = serializer.validated_data
         make_all_decimals_floats(ret)
         make_all_dates_times_strings(ret)
-        return JsonResponse(ret, status=status.HTTP_200_OK)
+        return Response(ret, status=status.HTTP_200_OK)
 
 
 class PeriodSubscriptionsView(APIView):
@@ -299,7 +301,7 @@ class PeriodSubscriptionsView(APIView):
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         make_all_decimals_floats(ret)
-        return JsonResponse(ret, status=status.HTTP_200_OK)
+        return Response(ret, status=status.HTTP_200_OK)
 
 
 class PeriodMetricUsageView(APIView):
@@ -379,7 +381,7 @@ class PeriodMetricUsageView(APIView):
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         make_all_decimals_floats(ret)
-        return JsonResponse(ret, status=status.HTTP_200_OK)
+        return Response(ret, status=status.HTTP_200_OK)
 
 
 @extend_schema(
@@ -405,11 +407,11 @@ class APIKeyCreate(APIView):
             name="new_api_key", organization=organization
         )
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="create_api_key",
             properties={},
         )
-        return JsonResponse({"api_key": key}, status=status.HTTP_200_OK)
+        return Response({"api_key": key}, status=status.HTTP_200_OK)
 
 
 class SettingsView(APIView):
@@ -420,7 +422,7 @@ class SettingsView(APIView):
         Get the current settings for the organization.
         """
         organization = parse_organization(request)
-        return JsonResponse(
+        return Response(
             {"organization": organization.company_name}, status=status.HTTP_200_OK
         )
 
@@ -449,7 +451,7 @@ class CustomersSummaryView(APIView):
             ),
         )
         serializer = CustomerSummarySerializer(customers, many=True)
-        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomerDetailView(APIView):
@@ -495,7 +497,7 @@ class CustomerDetailView(APIView):
                 "invoices": invoices,
             },
         )
-        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomersWithRevenueView(APIView):
@@ -525,7 +527,7 @@ class CustomersWithRevenueView(APIView):
             )
             cust.append(serializer.data)
         make_all_decimals_floats(cust)
-        return JsonResponse(cust, status=status.HTTP_200_OK, safe=False)
+        return Response(cust, status=status.HTTP_200_OK)
 
 
 class EventPreviewView(APIView):
@@ -557,21 +559,21 @@ class EventPreviewView(APIView):
         serializer = EventPreviewSerializer(ret)
         if page_number == 1:
             posthog.capture(
-                organization.company_name,
+                POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
                 event="event_preview",
                 properties={
                     "num_events": len(ret["events"]),
                 },
             )
-        return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class DraftInvoiceView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
-        responses={200: InvoiceSerializer},
+        responses={200: DraftInvoiceSerializer},
     )
     def get(self, request, format=None):
         """
@@ -586,7 +588,7 @@ class DraftInvoiceView(APIView):
                 customer_id=serializer.validated_data.get("customer_id"),
             )
         except:
-            return JsonResponse(
+            return Response(
                 {"error": "Customer not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -594,13 +596,13 @@ class DraftInvoiceView(APIView):
             customer=customer, organization=organization, status="active"
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
-        serializer = InvoiceSerializer(invoices, many=True)
+        serializer = DraftInvoiceSerializer(invoices, many=True)
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="draft_invoice",
             properties={},
         )
-        return JsonResponse(serializer.data, status=status.HTTP_200_OK, safe=False)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CancelSubscriptionView(APIView):
@@ -611,13 +613,6 @@ class CancelSubscriptionView(APIView):
         responses={
             200: inline_serializer(
                 name="CancelSubscriptionSuccess",
-                fields={
-                    "status": serializers.ChoiceField(choices=["success"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-            201: inline_serializer(
-                name="CancelSubscriptionAndGenerateInvoiceSuccess",
                 fields={
                     "status": serializers.ChoiceField(choices=["success"]),
                     "detail": serializers.CharField(),
@@ -636,28 +631,28 @@ class CancelSubscriptionView(APIView):
         serializer = CancelSubscriptionRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
-        sub_uid = serializer.validated_data["subscription_uid"]
+        sub_id = serializer.validated_data["subscription_id"]
         bill_now = serializer.validated_data["bill_now"]
         revoke_access = serializer.validated_data["revoke_access"]
         try:
             sub = Subscription.objects.get(
-                organization=organization, subscription_uid=sub_uid
+                organization=organization, subscription_id=sub_id
             )
         except:
-            return JsonResponse(
+            return Response(
                 {"status": "error", "detail": "Subscription not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if sub.status == "ended":
-            return JsonResponse(
+            return Response(
                 {"status": "error", "detail": "Subscription already ended"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         elif sub.status == "not_started":
             Subscription.objects.get(
-                organization=organization, subscription_uid=sub_uid
+                organization=organization, subscription_id=sub_id
             ).delete()
-            return JsonResponse(
+            return Response(
                 {
                     "status": "success",
                     "detail": "Subscription hadn't started, has been deleted",
@@ -669,21 +664,21 @@ class CancelSubscriptionView(APIView):
             sub.status = "canceled"
         sub.save()
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="cancel_subscription",
             properties={},
         )
         if bill_now and revoke_access:
             generate_invoice(sub, issue_date=datetime.datetime.now().date())
-            return JsonResponse(
+            return Response(
                 {
                     "status": "success",
                     "detail": "Created invoice and payment intent for subscription",
                 },
-                status=status.HTTP_201_CREATED,
+                status=status.HTTP_200_OK,
             )
         else:
-            return JsonResponse(
+            return Response(
                 {
                     "status": "success",
                     "detail": "Subscription ended without generating invoice",
@@ -730,7 +725,7 @@ class GetCustomerAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
         posthog.capture(
-            organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
             event="get_access",
             properties={},
         )
@@ -740,7 +735,7 @@ class GetCustomerAccessView(APIView):
                 organization=organization, customer_id=customer_id
             )
         except Customer.DoesNotExist:
-            return JsonResponse(
+            return Response(
                 {"status": "error", "detail": "Customer not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -789,7 +784,7 @@ class GetCustomerAccessView(APIView):
                             "access": metric_usage < metric_limit,
                         }
             if all(v["access"] for k, v in metric_usages.items()):
-                return JsonResponse(
+                return Response(
                     {
                         "access": True,
                         "usages": [
@@ -800,7 +795,7 @@ class GetCustomerAccessView(APIView):
                     status=status.HTTP_200_OK,
                 )
             else:
-                return JsonResponse(
+                return Response(
                     {
                         "access": False,
                         "usages": [
@@ -815,12 +810,209 @@ class GetCustomerAccessView(APIView):
             for sub in subscriptions:
                 for feature in sub.billing_plan.features.all():
                     if feature.feature_name == feature_name:
-                        return JsonResponse(
+                        return Response(
                             {"access": True},
                             status=status.HTTP_200_OK,
                         )
 
-        return JsonResponse(
+        return Response(
             {"access": False},
             status=status.HTTP_200_OK,
         )
+
+
+class UpdateBillingPlanView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        request=UpdateBillingPlanRequestSerializer,
+        responses={
+            200: inline_serializer(
+                name="UpdateBillingPlanSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="UpdateBillingPlanFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        serializer = UpdateBillingPlanRequestSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        old_billing_plan_id = serializer.validated_data["old_billing_plan_id"]
+        old_bp = BillingPlan.objects.get(
+            organization=organization, billing_plan_id=old_billing_plan_id
+        )
+        updated_bp = serializer.save()
+        update_behavior = serializer.validated_data["update_behavior"]
+
+        posthog.capture(
+            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
+            event="update_billing_plan",
+            properties={},
+        )
+        if update_behavior == "replace_immediately":
+            today = datetime.date.today()
+            sub_qs = Subscription.objects.filter(
+                organization=organization,
+                billing_plan=old_bp,
+            )
+            for sub in sub_qs:
+                start = sub.start_date
+                updated_end = updated_bp.calculate_end_date(start)
+                if updated_end < today:
+                    return Response(
+                        {
+                            "status": "error",
+                            "detail": "At least one subscription would have an updated end date in the past. Please choose a different update behavior.",
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            if updated_bp.pay_in_advance and not old_bp.pay_in_advance:
+                # need to bill the customer immediately for the flat fee (prorated)
+                for sub in sub_qs:
+                    sub.billing_plan = updated_bp
+                    sub.save()
+                    new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
+                    prorated_cost = sum(new_sub_daily_cost_dict.values())
+                    due = (
+                        prorated_cost
+                        - sub.customer.balance
+                        - sub.flat_fee_already_billed
+                    )
+                    sub.flat_fee_already_billed = prorated_cost
+                    sub.save()
+                    if due > 0:
+                        sub.customer.balance = 0
+                        today = datetime.date.today()
+                        generate_adjustment_invoice(sub, today, due)
+                    else:
+                        sub.customer.balance = abs(due)
+                    sub.customer.save()
+            old_bp.delete()
+            return Response(
+                {
+                    "status": "success",
+                    "detail": "All subscriptions updated with new plan and old plan deleted.",
+                },
+                status=status.HTTP_200_OK,
+            )
+        elif update_behavior == "replace_on_renewal":
+            old_bp.scheduled_for_deletion = True
+            old_bp.replacement_billing_plan = updated_bp
+            BillingPlan.objects.filter(replacement_billing_plan=old_bp).update(
+                replacement_billing_plan=updated_bp
+            )
+            old_bp.save()
+            return Response(
+                {
+                    "status": "success",
+                    "detail": "Billing plan scheduled for deletion. Auto-renews of subscriptions with this plan will use the updated version instead. Subscriptions set to be renewed with this plan will now be renewed with the updated plan. Once there are no more subscriptions using this plan, it will be deleted.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+
+class UpdateSubscriptionBillingPlanView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        request=UpdateSubscriptionBillingPlanRequestSerializer,
+        responses={
+            200: inline_serializer(
+                name="UpdateSubscriptionBillingPlanSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="UpdateSubscriptionBillingPlanFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        serializer = UpdateSubscriptionBillingPlanRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        organization = parse_organization(request)
+
+        subscription_id = serializer.validated_data["subscription_id"]
+        try:
+            sub = Subscription.objects.get(
+                organization=organization,
+                subscription_id=subscription_id,
+                status="active",
+            ).select_related("billing_plan")
+        except Subscription.DoesNotExist:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Subscription with id {subscription_id} not found.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_billing_plan_id = serializer.validated_data["new_billing_plan_id"]
+        try:
+            updated_bp = BillingPlan.objects.get(
+                organization=organization, billing_plan_id=new_billing_plan_id
+            )
+        except BillingPlan.DoesNotExist:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Billing plan with id {new_billing_plan_id} not found.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        update_behavior = serializer.validated_data["update_behavior"]
+        if update_behavior == "replace_immediately":
+            sub.billing_plan = updated_bp
+            sub.save()
+            if updated_bp.pay_in_advance:
+                new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
+                prorated_cost = sum(new_sub_daily_cost_dict.values())
+                due = prorated_cost - sub.customer.balance - sub.flat_fee_already_billed
+                if due < 0:
+                    customer = sub.customer
+                    customer.balance = abs(due)
+                elif due > 0:
+                    today = datetime.date.today()
+                    generate_adjustment_invoice(sub, today, due)
+                    sub.flat_fee_already_billed += due
+                    sub.save()
+                    sub.customer.balance = 0
+                    sub.customer.save()
+            return Response(
+                {
+                    "status": "success",
+                    "detail": f"Subscription {subscription_id} updated to use billing plan {new_billing_plan_id}.",
+                },
+                status=status.HTTP_200_OK,
+            )
+        elif update_behavior == "replace_on_renewal":
+            sub.auto_renew_billing_plan = updated_bp
+            sub.save()
+            return Response(
+                {
+                    "status": "success",
+                    "detail": f"Subscription {subscription_id} scheduled to be updated to use billing plan {new_billing_plan_id} on next renewal.",
+                },
+                status=status.HTTP_200_OK,
+            )

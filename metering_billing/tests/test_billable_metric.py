@@ -13,10 +13,9 @@ from metering_billing.models import (
     Event,
     PlanComponent,
 )
-from metering_billing.utils import (
+from metering_billing.view_utils import (
     RevenueCalcGranularity,
     calculate_sub_pc_usage_revenue,
-    dates_bwn_twodates,
     get_metric_usage,
 )
 from model_bakery import baker
@@ -98,7 +97,7 @@ class TestInsertBillableMetric:
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
+            auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
 
@@ -176,7 +175,7 @@ class TestInsertBillableMetric:
         num_billable_metrics = 3
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
+            auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
 
@@ -205,7 +204,7 @@ class TestCalculateBillableMetric:
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
+            auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
         billable_metric = BillableMetric.objects.create(

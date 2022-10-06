@@ -79,7 +79,7 @@ const ViewMetrics: FC = () => {
   return (
     <div>
       <div className="flex flex-row w-full">
-        <h1 className="text-3xl font-main mb-5">Billable Metrics</h1>
+        <h1 className="text-3xl font-main mb-5">Metrics</h1>
         <Button
           type="primary"
           className="ml-auto bg-info"

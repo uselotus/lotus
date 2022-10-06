@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from drf_spectacular.utils import extend_schema, inline_serializer
+from lotus.settings import POSTHOG_PERSON
 from metering_billing.models import Organization, User
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
@@ -47,7 +48,10 @@ def login_view(request):
         )
 
     login(request, user)
-    posthog.capture(user.organization.company_name, event="succesful login")
+    posthog.capture(
+        POSTHOG_PERSON if POSTHOG_PERSON else user.organization.company_name,
+        event="succesful login",
+    )
     return JsonResponse({"detail": "Successfully logged in."})
 
 
@@ -57,7 +61,10 @@ def logout_view(request):
         return JsonResponse(
             {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
         )
-    posthog.capture(request.user.organization.company_name, event="logout")
+    posthog.capture(
+        POSTHOG_PERSON if POSTHOG_PERSON else request.user.organization.company_name,
+        event="logout",
+    )
     logout(request)
     return JsonResponse({"detail": "Successfully logged out."})
 
@@ -121,7 +128,7 @@ class RegisterView(APIView):
             organization=org,
         )
         posthog.capture(
-            org.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else org.company_name,
             event="register",
             properties={"company_name": reg_dict["company_name"]},
         )

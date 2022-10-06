@@ -52,7 +52,15 @@ const columns: ProColumns<CustomerTableItem>[] = [
   {
     title: "Outstanding Revenue",
     width: 120,
-    render: (_, record) => <p>${record.total_revenue_due.toFixed(2)}</p>,
+    render: (_, record) => (
+      <div>
+        {record.total_revenue_due !== undefined ? (
+          <p>${record.total_revenue_due.toFixed(2)}</p>
+        ) : (
+          <p>${0.0}</p>
+        )}
+      </div>
+    ),
     dataIndex: "total_revenue_due",
   },
 ];
@@ -117,6 +125,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       onSuccess: () => {
         setVisible(false);
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries(["customer_totals"]);
         toast.success("Customer created successfully", {
           position: toast.POSITION.TOP_CENTER,
         });
@@ -161,6 +170,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       customer_name: state.name,
     };
     mutation.mutate(customerInstance);
+    onCancel();
   };
   return (
     <div>
@@ -180,6 +190,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           showTotal: (total, range) => (
             <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
           ),
+          pageSize: 10,
         }}
         options={false}
         toolBarRender={() => [

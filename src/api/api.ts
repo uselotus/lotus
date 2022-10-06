@@ -1,26 +1,22 @@
 import axios, { AxiosResponse } from "axios";
 import {
   CustomerPlus,
-  CustomerDetail,
   CustomerType,
   CustomerTotal,
+  CustomerDetailType,
 } from "../types/customer-type";
-import { PlanType, CreatePlanType } from "../types/plan-type";
+import { PlanType, CreatePlanType, UpdatePlanType } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
   CreateSubscriptionType,
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
-import {
-  StripeConnectType,
-  StripeOauthType,
-  StripeStatusType,
-} from "../types/stripe-type";
-import Cookies from "universal-cookie";
+import { StripeOauthType, StripeStatusType } from "../types/stripe-type";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
+import { FeatureType } from "../types/feature-type";
 
 axios.defaults.xsrfCookieName = "csrftoken";
 axios.defaults.xsrfHeaderName = "X-CSRFToken";
@@ -38,7 +34,7 @@ const requests = {
   post: (url: string, body: {}, headers?: {}) =>
     instance.post(url, body, headers).then(responseBody),
   put: (url: string, body: {}) => instance.put(url, body).then(responseBody),
-  delete: (url: string) => instance.delete(url).then(responseBody),
+  delete: (url: string, params?: {}) => instance.delete(url).then(responseBody),
 };
 
 export const Customer = {
@@ -50,13 +46,17 @@ export const Customer = {
     requests.post("api/customers/", post),
   subscribe: (post: CreateSubscriptionType): Promise<CreateSubscriptionType> =>
     requests.post("api/subscriptions/", post),
+  updateSubscription: (
+    post: UpdateSubscriptionType
+  ): Promise<UpdateSubscriptionType> =>
+    requests.put("api/update_subscription/", post),
   cancelSubscription: (
     post: cancelSubscriptionType
   ): Promise<cancelSubscriptionType> =>
     requests.post("api/cancel_subscription/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerDetail> =>
+  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
     requests.get(`api/customer_detail/`, { params: { customer_id } }),
 };
 
@@ -64,6 +64,10 @@ export const Plan = {
   getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
   createPlan: (post: CreatePlanType): Promise<CreatePlanType> =>
     requests.post("api/plans/", post),
+  deletePlan: (billing_plan_id: string): Promise<PlanType> =>
+    requests.delete(`api/plans/${billing_plan_id}/`),
+  updatePlan: (post: UpdatePlanType): Promise<PlanType> =>
+    requests.post(`api/update_billing_plan/`, post),
 };
 
 export const StripeConnect = {
@@ -130,6 +134,12 @@ export const GetSubscriptions = {
         period_2_end_date,
       },
     }),
+};
+
+export const Features = {
+  getFeatures: (): Promise<FeatureType[]> => requests.get("api/features/"),
+  createFeature: (post: FeatureType): Promise<FeatureType> =>
+    requests.post("api/features/", post),
 };
 
 export const Metrics = {
