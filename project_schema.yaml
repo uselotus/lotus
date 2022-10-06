@@ -1117,6 +1117,91 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
           description: ''
+  /api/webhooks/:
+    get:
+      operationId: webhooks_list
+      description: API endpoint that allows alerts to be viewed or edited.
+      tags:
+      - webhooks
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+          description: ''
+    post:
+      operationId: webhooks_create
+      description: API endpoint that allows alerts to be viewed or edited.
+      tags:
+      - webhooks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Alert'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Alert'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Alert'
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+          description: ''
+  /api/webhooks/{id}/:
+    get:
+      operationId: webhooks_retrieve
+      description: API endpoint that allows alerts to be viewed or edited.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this alert.
+        required: true
+      tags:
+      - webhooks
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+          description: ''
+    delete:
+      operationId: webhooks_destroy
+      description: API endpoint that allows alerts to be viewed or edited.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this alert.
+        required: true
+      tags:
+      - webhooks
+      security:
+      - cookieAuth: []
+      - OrganizationApiKeyAuth: []
+      responses:
+        '204':
+          description: No response body
 components:
   schemas:
     APIKeyCreateSuccess:
@@ -1134,6 +1219,19 @@ components:
       - unique
       - last
       type: string
+    Alert:
+      type: object
+      properties:
+        type:
+          type: string
+          maxLength: 20
+        webhook_url:
+          type: string
+          nullable: true
+          maxLength: 300
+        name:
+          type: string
+          maxLength: 100
     BatchEvent:
       type: object
       properties:
@@ -1760,6 +1858,9 @@ components:
     PlanComponentRead:
       type: object
       properties:
+        id:
+          type: integer
+          readOnly: true
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
         free_metric_units:
@@ -1796,6 +1897,7 @@ components:
           nullable: true
       required:
       - billable_metric
+      - id
     Registration:
       type: object
       properties:
@@ -1946,7 +2048,7 @@ components:
         customer:
           $ref: '#/components/schemas/Customer'
         billing_plan:
-          $ref: '#/components/schemas/BillingPlanRead'
+          $ref: '#/components/schemas/BillingPlan'
         start_date:
           type: string
           format: date

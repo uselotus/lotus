@@ -47,26 +47,30 @@ class PermissionPolicyMixin:
         except AttributeError:
             handler = None
 
-        if (
-            handler
-            and self.permission_classes_per_method
-            and self.permission_classes_per_method.get(handler.__name__)
-        ):
-            self.permission_classes = self.permission_classes_per_method.get(
-                handler.__name__
-            )
+        try:
+            if (
+                handler
+                and self.permission_classes_per_method
+                and self.permission_classes_per_method.get(handler.__name__)
+            ):
+                self.permission_classes = self.permission_classes_per_method.get(
+                    handler.__name__
+                )
+        except:
+            pass
 
         super().check_permissions(request)
 
 
-class AlertViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     API endpoint that allows alerts to be viewed or edited.
     """
 
-    queryset = Alert.objects.all()
+    queryset = Alert.objects.filter(type="webhook")
     serializer_class = AlertSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "delete"]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
