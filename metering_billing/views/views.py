@@ -2,11 +2,10 @@ import datetime
 from decimal import Decimal
 
 import posthog
-import stripe
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from lotus.settings import POSTHOG_PERSON, SELF_HOST_STRIPE_WORKING, STRIPE_SECRET_KEY
+from lotus.settings import POSTHOG_PERSON
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
@@ -19,139 +18,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from ..auth_utils import parse_organization
-from ..invoice import generate_adjustment_invoice
+from ..invoice import generate_invoice
 from ..utils import make_all_dates_times_strings, make_all_decimals_floats
 from ..view_utils import (
     calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
     get_metric_usage,
 )
-
-stripe.api_key = STRIPE_SECRET_KEY
-
-
-def import_stripe_customers(organization):
-    """
-    If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
-    """
-    num_cust_added = 0
-    org_ppis = organization.payment_provider_ids
-    if "stripe" in org_ppis or (SELF_HOST_STRIPE_WORKING):
-        stripe_cust_kwargs = {}
-        if org_ppis.get("stripe") != "":
-            stripe_cust_kwargs["stripe_account"] = org_ppis.get("stripe")
-        stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
-        for stripe_customer in stripe_customers_response.auto_paging_iter():
-            try:
-                customer = Customer.objects.get(
-                    organization=organization, name=stripe_customer.name
-                )
-                customer.payment_provider = "stripe"
-                customer.payment_provider_id = stripe_customer.id
-                customer.save()
-                num_cust_added += 1
-            except Customer.DoesNotExist:
-                pass
-    return num_cust_added
-
-
-class InitializeStripeView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        responses={
-            200: inline_serializer(
-                "StripeConnectedResponse",
-                fields={"connected": serializers.BooleanField()},
-            )
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Check to see if user has connected their Stripe account.
-        """
-
-        organization = parse_organization(request)
-        org_ppis = organization.payment_provider_ids
-        stripe_id = org_ppis.get("stripe")
-
-        if (stripe_id and len(stripe_id) > 0) or (SELF_HOST_STRIPE_WORKING):
-            return Response({"connected": True}, status=status.HTTP_200_OK)
-        else:
-            return Response({"connected": False}, status=status.HTTP_200_OK)
-
-    @extend_schema(
-        request=inline_serializer(
-            "StripeConnectRequest",
-            fields={"authorization_code": serializers.CharField()},
-        ),
-        responses={
-            200: inline_serializer(
-                "StripeImportResponse",
-                fields={"success": serializers.BooleanField()},
-            ),
-            400: inline_serializer(
-                "StripeImportError",
-                fields={
-                    "success": serializers.BooleanField(),
-                    "details": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        """
-        Initialize Stripe after user inputs an API key.
-        """
-
-        data = request.data
-
-        if data is None:
-            return Response(
-                {"success": False, "details": "No data provided"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        organization = parse_organization(request)
-        stripe_code = data["authorization_code"]
-
-        try:
-            response = stripe.OAuth.token(
-                grant_type="authorization_code",
-                code=stripe_code,
-            )
-        except:
-            return Response(
-                {"success": False, "details": "Invalid authorization code"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if "error" in response:
-            return Response(
-                {"success": False, "details": response["error"]},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        connected_account_id = response["stripe_user_id"]
-
-        org_pp_ids = organization.payment_provider_ids
-        org_pp_ids["stripe"] = connected_account_id
-        organization.payment_provider_ids = org_pp_ids
-        organization.save()
-
-        n_cust_added = import_stripe_customers(organization)
-
-        organization.save()
-
-        posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
-            event="connect_stripe_customers",
-            properties={
-                "num_cust_added": n_cust_added,
-            },
-        )
-
-        return Response({"success": True}, status=status.HTTP_201_CREATED)
 
 
 class PeriodMetricRevenueView(APIView):
@@ -896,7 +769,7 @@ class UpdateBillingPlanView(APIView):
                     if due > 0:
                         sub.customer.balance = 0
                         today = datetime.date.today()
-                        generate_adjustment_invoice(sub, today, due)
+                        generate_invoice(sub, draft=False, issue_date=today, amount=due)
                     else:
                         sub.customer.balance = abs(due)
                     sub.customer.save()
@@ -994,7 +867,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
                     customer.balance = abs(due)
                 elif due > 0:
                     today = datetime.date.today()
-                    generate_adjustment_invoice(sub, today, due)
+                    generate_invoice(sub, draft=False, issue_date=today, amount=due)
                     sub.flat_fee_already_billed += due
                     sub.save()
                     sub.customer.balance = 0

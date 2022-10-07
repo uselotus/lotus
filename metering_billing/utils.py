@@ -49,8 +49,13 @@ AGGREGATION_CHOICES = Choices(
     (AGGREGATION_TYPES.LAST, _("Last")),
 )
 
+
+class PAYMENT_PROVIDERS(object):
+    STRIPE = "stripe"
+
+
 SUPPORTED_PAYMENT_PROVIDERS = Choices(
-    ("stripe", _("Stripe")),
+    (PAYMENT_PROVIDERS.STRIPE, _("Stripe")),
 )
 
 
@@ -209,3 +214,10 @@ def hours_bwn_twodates(start_date, end_date):
     hours_btwn = abs(relativedelta(start_time, end_time).hours)
     for n in range(hours_btwn + 1):
         yield start_date + relativedelta(hours=n)
+
+
+def turn_decimal_into_cents(amount):
+    """
+    Turn a decimal into cents.
+    """
+    return int(amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100))

@@ -52,6 +52,8 @@ def draft_invoice_test_common_setup(
             setup_dict["user"] = user
         setup_dict["client"] = client
         (customer,) = add_customers_to_org(org, n=1)
+        customer.payment_provider = "stripe"
+        customer.save()
         setup_dict["customer"] = customer
         event_properties = (
             {"num_characters": 350, "peak_bandwith": 65},

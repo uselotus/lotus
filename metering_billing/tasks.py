@@ -18,7 +18,6 @@ from lotus.settings import (
 
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import Event, Invoice, Organization, Subscription
-from metering_billing.views.views import import_stripe_customers
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -41,12 +40,12 @@ def calculate_invoice():
         ending_subscriptions.extend(ended_subs_no_invoice)
 
     # prefetch organization customer stripe keys
-    orgs_seen = set()
-    for sub in ending_subscriptions:
-        org_pk = sub.organization.pk
-        if org_pk not in orgs_seen:
-            orgs_seen.add(org_pk)
-            import_stripe_customers(sub.organization)
+    # orgs_seen = set()
+    # for sub in ending_subscriptions:
+    #     org_pk = sub.organization.pk
+    #     if org_pk not in orgs_seen:
+    #         orgs_seen.add(org_pk)
+    #         import_stripe_customers(sub.organization)
     # now generate invoices and new subs
     for old_subscription in ending_subscriptions:
         # Generate the invoice
