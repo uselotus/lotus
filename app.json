@@ -30,9 +30,6 @@
     "ADMIN_EMAIL":{
       "value": "example@example.com"
     },
-    "STRIPE_API_KEY":{
-      "value": "123"
-    },
     "STRIPE_SECRET_KEY":{
       "value": "1234"
     },
