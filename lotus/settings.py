@@ -67,17 +67,12 @@ if SENTRY_DSN != "":
 # SECURITY WARNING: keep the secret key used in production secret!
 API_KEY_CUSTOM_HEADER = "X-API-KEY"
 
-try:
-    posthog.project_api_key = config(
-        "POSTHOG_API_KEY", default="phc_6HB6j1Hp68ESe2FpvodVwF48oisXYpot5Ymc06SbY9M"
-    )
-    posthog.host = "https://app.posthog.com"
-    posthog.debug = DEBUG
-except:
-    posthog.disabled = True
+posthog.project_api_key = config(
+    "POSTHOG_API_KEY", default="phc_6HB6j1Hp68ESe2FpvodVwF48oisXYpot5Ymc06SbY9M"
+)
+posthog.host = "https://app.posthog.com"
 
-
-if not PRODUCT_ANALYTICS_OPT_IN:
+if not PRODUCT_ANALYTICS_OPT_IN or DEBUG:
     posthog.disabled = True
 POSTHOG_PERSON = hash(SECRET_KEY) if SELF_HOSTED else None
 
