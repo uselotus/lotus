@@ -19,7 +19,7 @@ from metering_billing.utils import (
 )
 
 
-class PaymentProcessor(abc.ABC, APIView):
+class PaymentProvider(abc.ABC, APIView):
     @abc.abstractmethod
     def __init__(self):
         """This method will be called from settings.py when checking to see if the payment processor is allowed. You should implement this to capture the necessary credentials from the environment variables and store them in the class instance."""
@@ -58,7 +58,7 @@ class PaymentProcessor(abc.ABC, APIView):
     @extend_schema(
         responses={
             200: inline_serializer(
-                "PaymentProcessorConnectedResponse",
+                "PaymentProviderConnectedResponse",
                 fields={"connected": serializers.BooleanField()},
             )
         },
@@ -82,7 +82,7 @@ class PaymentProcessor(abc.ABC, APIView):
         pass
 
 
-class StripeConnector(PaymentProcessor):
+class StripeConnector(PaymentProvider):
     permission_classes = [IsAuthenticated]
 
     def __init__(self):
