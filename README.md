@@ -67,8 +67,6 @@ Best for convenience and fast deployment.
 
 Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details. 
 
-Once you have an account, head over to [the app](https://www.uselotus.app/) and you can start using Lotus right away.
-
 ### :bust_in_silhouette: Self-Hosted Version
 
 Best if you want to keep your data local or want full control and extensibility.
