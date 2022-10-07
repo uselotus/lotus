@@ -262,7 +262,6 @@ class BillingPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillingPlan
         fields = (
-            "currency",
             "interval",
             "flat_rate",
             "pay_in_advance",
@@ -302,7 +301,6 @@ class BillingPlanReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillingPlan
         fields = (
-            "currency",
             "interval",
             "flat_rate",
             "pay_in_advance",
