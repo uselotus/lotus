@@ -26,7 +26,6 @@ from metering_billing.utils import (
 
 class Organization(models.Model):
     company_name = models.CharField(max_length=100, default=" ")
-    stripe_id = models.CharField(max_length=110, blank=True, null=True)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
@@ -68,7 +67,6 @@ class Customer(models.Model):
     Attributes:
         name (str): The name of the customer.
         customer_id (str): A :model:`metering_billing.Organization`'s internal designation for the customer.
-        currency (str): The currency the customer is paying in.
         payment_provider_id (str): The id of the payment provider the customer is using.
         properties (dict): An extendable dictionary of properties, useful for filtering, etc.
     """
@@ -77,7 +75,6 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(max_length=40)
-    currency = models.CharField(max_length=3, default="USD")
     payment_provider = models.CharField(
         max_length=100,
         blank=True,
@@ -258,7 +255,6 @@ class BillingPlan(models.Model):
     """
     Billing_ID: Id for this specific plan
     time_created: self-explanatory
-    currency: self-explanatory
     interval: determines whether plan charges weekly, monthly, or yearly
     flat_rate: amount to charge every week, month, or year (depending on choice of interval)
     billable_metrics: a json containing a list of billable_metrics objects
@@ -266,7 +262,6 @@ class BillingPlan(models.Model):
 
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     time_created = models.DateTimeField(auto_now=True)
-    currency = models.CharField(max_length=30, default="USD")  # 30 is arbitrary
     interval = models.CharField(
         max_length=5,
         choices=INTERVAL_CHOICES,
@@ -376,6 +371,9 @@ class Invoice(models.Model):
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS_CHOICES)
     external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
+    external_payment_obj_type = models.CharField(
+        choices=SUPPORTED_PAYMENT_PROVIDERS, max_length=40, null=True, blank=True
+    )
     line_items = models.JSONField()
     organization = models.JSONField()
     customer = models.JSONField()

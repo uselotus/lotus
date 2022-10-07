@@ -19,6 +19,7 @@ from django.shortcuts import render
 from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
+from metering_billing.payment_providers import StripeConnector
 from metering_billing.views import auth_views, track
 from metering_billing.views.auth_views import RegisterView
 from metering_billing.views.model_views import (
@@ -42,7 +43,6 @@ from metering_billing.views.views import (
     DraftInvoiceView,
     EventPreviewView,
     GetCustomerAccessView,
-    InitializeStripeView,
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
@@ -121,7 +121,7 @@ urlpatterns = [
         GetCustomerAccessView.as_view(),
         name="customer_access",
     ),
-    path("api/stripe/", InitializeStripeView.as_view(), name="stripe_initialize"),
+    path("api/stripe/", StripeConnector.as_view(), name="stripe_initialize"),
     path("api/login/", auth_views.login_view, name="api-login"),
     path("api/logout/", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
