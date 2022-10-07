@@ -1,91 +1,116 @@
-import React, { useState } from 'react'
-import { FeatureType } from '../../types/feature-type'
-import { Button, Divider, Modal, Select, Input } from 'antd'
-import { features } from 'process'
+import React, { useState } from "react";
+import { FeatureType } from "../../types/feature-type";
+import { Button, Divider, Modal, Select, Input, message } from "antd";
+import { Features } from "../../api/api";
+import { UseQueryResult, useQuery } from "react-query";
 
-const { Option } = Select
+const { Option } = Select;
 
 const FeatureForm = (props: {
-  visible: boolean | FeatureType
-  onCancel: () => void
-  features: FeatureType[] | undefined
-  onAddFeatures: (features: FeatureType[]) => void
+  visible: boolean;
+  onCancel: () => void;
+  onAddFeatures: (features: FeatureType[]) => void;
 }) => {
-  const [newFeatures, setNewFeatures] = useState<FeatureType[]>([])
-  const [createdFeatureName, setCreatedFeatureName] = useState<string>('')
-  const [createdFeatureDescription, setCreatedFeatureDescription] = useState<string>('')
+  const [newFeatures, setNewFeatures] = useState<FeatureType[]>([]);
+  const [createdFeatureName, setCreatedFeatureName] = useState<string>("");
+  const [createdFeatureDescription, setCreatedFeatureDescription] =
+    useState<string>("");
+
+  const {
+    data: features,
+    isLoading,
+    isError,
+  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
+    ["feature_list"],
+    () =>
+      Features.getFeatures().then((res) => {
+        return res;
+      })
+  );
 
   const addExistingFeatureToList = (feature_add_list: string[]) => {
-    if (props.features !== undefined) {
-      for (let i = 0; i < feature_add_list.length; i++) {
-        setNewFeatures([
-          ...newFeatures,
-          props.features.find((f) => f.feature_name == feature_add_list[i]),
-        ])
+    console.log(feature_add_list);
+
+    const newFeatureList: FeatureType[] = [];
+    for (let i = 0; i < feature_add_list.length; i++) {
+      const feature = features?.find(
+        (f) => f.feature_name === feature_add_list[i]
+      );
+      if (feature) {
+        newFeatureList.push(feature);
       }
     }
-  }
+    setNewFeatures(newFeatureList);
+  };
 
   const addnewFeatureToList = () => {
-    if (createdFeatureName !== '') {
-      const newFeature: FeatureType = {
-        feature_name: createdFeatureName,
-        feature_description: createdFeatureDescription,
+    if (createdFeatureName !== "") {
+      const featureExists = newFeatures?.find(
+        (f) => f.feature_name.toLowerCase() === createdFeatureName.toLowerCase()
+      );
+      if (featureExists) {
+        message.error("Feature already exists");
+      } else {
+        const newFeature: FeatureType = {
+          feature_name: createdFeatureName,
+          feature_description: createdFeatureDescription,
+        };
+        setNewFeatures([...newFeatures, newFeature]);
+        setCreatedFeatureName("");
+        setCreatedFeatureDescription("");
       }
-      setNewFeatures([...newFeatures, newFeature])
-      setCreatedFeatureName('')
-      setCreatedFeatureDescription('')
     }
-  }
+  };
   return (
     <Modal
       visible={props.visible}
-      title={'Add Features'}
-      okText='Add'
-      okType='default'
-      cancelText='Cancel'
+      title={"Add Features"}
+      okText="Add"
+      okType="default"
+      cancelText="Cancel"
+      okButtonProps={{
+        className: "bg-black text-white",
+      }}
       onCancel={props.onCancel}
       onOk={() => {
-        props.onAddFeatures(newFeatures)
+        props.onAddFeatures(newFeatures);
       }}
     >
-      <div className='grid grid-row-3'>
-        <div className='flex flex-col'>
+      <div className="grid grid-row-3">
+        <div className="flex flex-col">
           <Select
-            showSearch
-            mode='multiple'
-            placeholder='Select A Feature'
-            optionFilterProp='children'
-            onChange={addExistingFeatureToList}
+            mode="multiple"
+            allowClear
+            placeholder="Select Feature"
             value={newFeatures.map((f) => f.feature_name)}
-            filterOption={(input, option) =>
-              (option!.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-            }
-          >
-            {props.features?.map((feat) => (
-              <Option value={feat.feature_name}>{feat.feature_name}</Option>
-            ))}
-          </Select>
+            loading={isLoading}
+            optionLabelProp="label"
+            onChange={addExistingFeatureToList}
+            options={features?.map((f) => ({
+              value: f.feature_name,
+              label: f.feature_name,
+            }))}
+          />
         </div>
         <Divider />
-        <div className='flex flex-col space-y-3'>
-          <h3>Add A New Feature</h3>
+        <div className="flex flex-col space-y-3">
+          <h3>Create new feature</h3>
           <Input
-            placeholder={'Feature Name'}
+            placeholder={"Feature Name"}
             value={createdFeatureName}
             onChange={(e) => setCreatedFeatureName(e.target.value)}
           ></Input>
           <Input
-            placeholder={'Feature Description'}
+            placeholder={"Feature Description"}
             value={createdFeatureDescription}
             onChange={(e) => setCreatedFeatureDescription(e.target.value)}
           ></Input>
 
-          <Button onClick={addnewFeatureToList}>Add Feature</Button>
+          <Button onClick={addnewFeatureToList}> Create</Button>
         </div>
       </div>
     </Modal>
-  )
-}
+  );
+};
 
-export default FeatureForm
+export default FeatureForm;

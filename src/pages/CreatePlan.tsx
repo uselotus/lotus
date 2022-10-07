@@ -22,7 +22,7 @@ import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { MetricNameType } from "../types/metric-type";
 import { toast } from "react-toastify";
-import { Features } from "../api/api";
+
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
@@ -53,20 +53,6 @@ const CreatePlan = () => {
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] = useState<any>();
-
-  console.log("componentsData", componentsData);
-
-  const {
-    data: features,
-    isLoading,
-    isError,
-  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
-    ["feature_list"],
-    () =>
-      Features.getFeatures().then((res) => {
-        return res;
-      })
-  );
 
   const mutation = useMutation(
     (post: CreatePlanType) => Plan.createPlan(post),
@@ -423,7 +409,6 @@ const CreatePlan = () => {
           <FeatureForm
             visible={featureVisible}
             onCancel={hideFeatureModal}
-            features={features}
             onAddFeatures={addFeatures}
           />
         )}
