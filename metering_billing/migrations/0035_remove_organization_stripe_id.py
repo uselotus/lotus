@@ -6,12 +6,15 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0034_remove_billingplan_currency_remove_customer_currency_and_more'),
+        (
+            "metering_billing",
+            "0034_remove_billingplan_currency_remove_customer_currency_and_more",
+        ),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='organization',
-            name='stripe_id',
+            model_name="organization",
+            name="stripe_id",
         ),
     ]
