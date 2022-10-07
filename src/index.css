@@ -96,3 +96,11 @@ a {
 .ant-switch-checked {
   background-color: #cca43b;
 }
+
+.ant-picker {
+  border-radius: 100px;
+  border-color: #1d1d1d;
+}
+.ant-page-header-heading-title {
+  overflow: visible;
+}

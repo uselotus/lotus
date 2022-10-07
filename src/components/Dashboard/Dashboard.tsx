@@ -13,6 +13,7 @@ import RevenueBarGraph from "./RevenueBarGraph";
 
 import { Content } from "antd/lib/layout/layout";
 import { PageLayout } from "../base/PageLayout";
+import { CustomerByPlanPie } from "./CustomerByPlanPie";
 
 const DatePicker = generatePicker<Dayjs>(dayjsGenerateConfig);
 const { RangePicker } = DatePicker;
@@ -40,7 +41,6 @@ const Dashboard: FC = () => {
       title={"Dashboard"}
       extra={[
         <RangePicker
-          bordered={false}
           format={dateFormat}
           defaultValue={dateRange}
           onCalendarChange={(dates) => {
@@ -49,31 +49,39 @@ const Dashboard: FC = () => {
         />,
       ]}
     >
-      <Row>
+      <Row gutter={[16, 16]}>
         <Col span="24">
-          <div className="grid grid-cols-2 justify-center ">
-            <Card className="max-w-lg">
+          <div className="grid grid-cols-12 justify-center align-baseline space-x-4">
+            <div className="col-span-8">
               <RevenueDisplay
                 total_revenue_1={data?.total_revenue_period_1}
                 total_revenue_2={data?.total_revenue_period_2}
                 isLoading={isLoading}
               />
-            </Card>
-            <Card className="max-w-lg">
+            </div>
+            <div className="col-span-4">
               <SubscriptionStatistics range={dateRange} />
-            </Card>
+            </div>
           </div>
-          <Divider />
-          <div className="my-10">
-            <RevenueBarGraph
-              data={data?.daily_usage_revenue_period_1}
-              isLoading={isLoading}
-            />
+        </Col>
+        <Col span="24">
+          <div className="grid grid-cols-12 justify-center space-x-4">
+            <div className="col-span-8">
+              <RevenueBarGraph
+                data={data?.daily_usage_revenue_period_1}
+                isLoading={isLoading}
+              />
+            </div>
+            <div className="col-span-4">
+              <CustomerByPlanPie
+                data={data?.daily_usage_revenue_period_1}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
-          <Divider />
-          <div>
-            <MetricBarGraph range={dateRange} />
-          </div>
+        </Col>
+        <Col span="24">
+          <MetricBarGraph range={dateRange} />
         </Col>
       </Row>
     </PageLayout>

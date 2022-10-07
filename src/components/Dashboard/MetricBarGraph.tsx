@@ -6,6 +6,7 @@ import { Select } from "antd";
 import { useQuery, UseQueryResult } from "react-query";
 import { MetricUsage } from "../../types/metric-type";
 import { Metrics } from "../../api/api";
+import { Paper } from "../base/Paper";
 
 const { Option } = Select;
 
@@ -106,7 +107,7 @@ function MetricBarGraph(props: { range: any }) {
   };
 
   return (
-    <div className="">
+    <Paper>
       <h2>Metric Usage By Customer</h2>
       <Select
         defaultValue="Select Metric"
@@ -123,7 +124,7 @@ function MetricBarGraph(props: { range: any }) {
       <div>
         <Column {...config} />
       </div>
-    </div>
+    </Paper>
   );
 }
 

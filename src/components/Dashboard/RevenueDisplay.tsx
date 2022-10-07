@@ -5,6 +5,7 @@ import { Statistic, Card } from "antd";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import { useQuery, UseQueryResult } from "react-query";
 import LoadingSpinner from "../LoadingSpinner";
+import { Paper } from "../base/Paper";
 
 const computePercentageChange = (
   current: number | undefined,
@@ -39,36 +40,29 @@ function RevenueDisplay(props: {
     );
   }
   return (
-    <div className="px-2 py-2">
-      <h1 className="text-xl font-main mb-4">Total Revenue</h1>
+    <Paper>
+      <h1 className="text-base font-normal mb-4">Total Revenue</h1>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
-        <h2 className="text-3xl">$ {props.total_revenue_1}</h2>
+        <span className="text-3xl font-bold">
+          {new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+          }).format(props.total_revenue_1)}
+        </span>
         <div>
           {percentageChange >= 0 ? (
-            <Statistic
-              value={percentageChange}
-              valueStyle={{
-                color: "#3f8600",
-                fontSize: "1.875rem",
-                lineHeight: "2.25rem",
-              }}
-              precision={2}
-              suffix="%"
-              className="text-3xl"
-            />
+            <span className="text-[#34B220] text-3xl">
+              +{percentageChange.toFixed(2)}%{" "}
+            </span>
           ) : (
-            <Statistic
-              value={percentageChange}
-              valueStyle={{
-                color: "#cf1322",
-              }}
-              precision={2}
-              suffix="%"
-            />
+            <span className="text-[#cf1322] text-3xl">
+              -{percentageChange.toFixed(0)}%{" "}
+            </span>
           )}
+          <span>Previous-period</span>
         </div>
       </div>
-    </div>
+    </Paper>
   );
 }
 
