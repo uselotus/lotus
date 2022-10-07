@@ -29,8 +29,6 @@ const FeatureForm = (props: {
   );
 
   const addExistingFeatureToList = (feature_add_list: string[]) => {
-    console.log(feature_add_list);
-
     const newFeatureList: FeatureType[] = [];
     for (let i = 0; i < feature_add_list.length; i++) {
       const feature = features?.find(

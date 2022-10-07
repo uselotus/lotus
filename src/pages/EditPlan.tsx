@@ -4,20 +4,18 @@ import {
   Form,
   Card,
   Input,
-  Select,
   InputNumber,
-  PageHeader,
-  List,
-  Divider,
+  Row,
+  Col,
   Radio,
+  Descriptions,
 } from "antd";
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
-import { useMutation, useQuery, UseQueryResult } from "react-query";
-import { MetricNameType } from "../types/metric-type";
+import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
-import { Metrics } from "../api/api";
+
 import {
   CreatePlanType,
   CreateComponent,
@@ -26,32 +24,29 @@ import {
 } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
-import { DeleteOutlined } from "@ant-design/icons";
-import React from "react";
-import { Features } from "../api/api";
 import FeatureForm from "../components/Plans/FeatureForm";
-import { useQueryClient } from "react-query";
+import {
+  DeleteOutlined,
+  ArrowLeftOutlined,
+  SaveOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
+import React from "react";
+import { Paper } from "../components/base/Paper";
+import { PageLayout } from "../components/base/PageLayout";
 
-interface ComponentDisplay {
-  metric: string;
-  cost_per_batch: number;
-  metric_units_per_batch: number;
-  free_metric_units: number;
-  max_metric_units: number;
-}
 interface CustomizedState {
   plan: PlanType;
 }
 
 const EditPlan = () => {
-  const [visible, setVisible] = useState(false);
-  const navigate = useNavigate();
-  const [metrics, setMetrics] = useState<string[]>([]);
-  const [form] = Form.useForm();
+  const [componentVisible, setcomponentVisible] = useState<boolean>();
+  const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const location = useLocation();
-  const [featureVisible, setFeatureVisible] = useState(false);
-  const [selectedComponent, setSelectedComponent] =
-    useState<ComponentDisplay>();
+  const navigate = useNavigate();
+  const [componentsData, setComponentsData] = useState<any>([]);
+  const [form] = Form.useForm();
+  const [editComponentItem, setEditComponentsItem] = useState<any>();
 
   const queryClient = useQueryClient();
 
@@ -60,10 +55,6 @@ const EditPlan = () => {
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
     plan.features
   );
-  const addFeatures = (newFeatures: FeatureType[]) => {
-    setPlanFeatures([...planFeatures, ...newFeatures]);
-    setFeatureVisible(false);
-  };
 
   useEffect(() => {
     const initialComponents: any[] = plan.components.map((component) => {
@@ -76,23 +67,8 @@ const EditPlan = () => {
       };
     });
     console.log(initialComponents);
-    form.setFieldsValue({ components: initialComponents });
+    setComponentsData(initialComponents);
   }, [plan.components]);
-
-  useEffect(() => {
-    Metrics.getMetrics().then((res) => {
-      const data: MetricNameType[] = res;
-      if (data) {
-        const metricList: string[] = [];
-        for (let i = 0; i < data.length; i++) {
-          if (typeof data[i].billable_metric_name !== undefined) {
-            metricList.push(data[i].billable_metric_name);
-          }
-        }
-        setMetrics(metricList);
-      }
-    });
-  }, []);
 
   const mutation = useMutation(
     (data: UpdatePlanType) => Plan.updatePlan(data),
@@ -112,38 +88,67 @@ const EditPlan = () => {
     }
   );
 
-  const {
-    data: features,
-    isLoading,
-    isError,
-  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
-    ["feature_list"],
-    () =>
-      Features.getFeatures().then((res) => {
-        return res;
-      })
-  );
-  const removeFeature = (e) => {
-    const name = e.target.getAttribute("name");
-    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== name));
+  const addFeatures = (newFeatures: FeatureType[]) => {
+    setPlanFeatures([...planFeatures, ...newFeatures]);
+    setFeatureVisible(false);
   };
 
-  const onFinishFailed = (errorInfo: any) => {
-    console.log("Failed:", errorInfo);
+  const editFeatures = (feature_name: string) => {
+    const currentFeature = planFeatures.filter(
+      (item) => item.feature_name === feature_name
+    )[0];
+    setFeatureVisible(true);
   };
 
-  const hideUserModal = () => {
-    setVisible(false);
+  const removeFeature = (feature_name: string) => {
+    setPlanFeatures(
+      planFeatures.filter((item) => item.feature_name !== feature_name)
+    );
   };
 
-  const showUserModal = () => {
-    setVisible(true);
+  const onFinishFailed = (errorInfo: any) => {};
+
+  const hideComponentModal = () => {
+    setcomponentVisible(false);
   };
 
-  const goBackPage = () => {
-    navigate(-1);
+  const showComponentModal = () => {
+    setcomponentVisible(true);
   };
 
+  const handleComponentAdd = (newData: any) => {
+    const old = componentsData;
+
+    if (editComponentItem) {
+      const index = componentsData.findIndex(
+        (item) => item.id === editComponentItem.id
+      );
+      old[index] = newData;
+      setComponentsData(old);
+    } else {
+      const newComponentsData = [
+        ...old,
+        {
+          ...newData,
+          id: Math.floor(Math.random() * 1000),
+        },
+      ];
+      setComponentsData(newComponentsData);
+    }
+    setEditComponentsItem(undefined);
+    setcomponentVisible(false);
+  };
+
+  const handleComponentEdit = (id: any) => {
+    const currentComponent = componentsData.filter((item) => item.id === id)[0];
+
+    setEditComponentsItem(currentComponent);
+    setcomponentVisible(true);
+  };
+
+  const deleteComponent = (id: number) => {
+    setComponentsData(componentsData.filter((item) => item.id !== id));
+  };
   const hideFeatureModal = () => {
     setFeatureVisible(false);
   };
@@ -151,14 +156,17 @@ const EditPlan = () => {
   const showFeatureModal = () => {
     setFeatureVisible(true);
   };
+
+  const goBackPage = () => {
+    navigate(-1);
+  };
+
   const submitPricingPlan = () => {
-    console.log("Submit Pricing Plan");
     form
       .validateFields()
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
-        const components = form.getFieldValue("components");
-        console.log("components", components);
+        const components: any = Object.values(componentsData);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -186,7 +194,6 @@ const EditPlan = () => {
           updated_billing_plan: newPlan,
           update_behavior: values.update_behavior,
         });
-        form.resetFields();
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
@@ -194,28 +201,32 @@ const EditPlan = () => {
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        className="site-page-header"
-        onBack={goBackPage}
-        title="Update Plan"
-      />
-      <Form.Provider
-        onFormFinish={(name, { values, forms }) => {
-          if (name === "component_form") {
-            const { create_plan } = forms;
-            const components = create_plan.getFieldValue("components") || [];
-            create_plan.setFieldsValue({ components: [...components, values] });
-            setVisible(false);
-          }
-        }}
-      >
+    <PageLayout
+      title={`Update Plan: ${plan.name}`}
+      extra={[
+        <Button
+          key={"back"}
+          onClick={goBackPage}
+          icon={<ArrowLeftOutlined />}
+          type="default"
+          size="large"
+        >
+          Back
+        </Button>,
+        <Button
+          key="create"
+          onClick={() => form.submit()}
+          className="bg-black text-white justify-self-end"
+          size="large"
+        >
+          Update Plan <SaveOutlined />
+        </Button>,
+      ]}
+    >
+      <Form.Provider>
         <Form
           form={form}
           name="create_plan"
-          onFinish={submitPricingPlan}
-          onFinishFailed={onFinishFailed}
-          autoComplete="off"
           initialValues={{
             name: plan.name,
             description: plan.description,
@@ -223,175 +234,225 @@ const EditPlan = () => {
             pay_in_advance: plan.pay_in_advance,
             billing_interval: plan.interval,
           }}
+          onFinish={submitPricingPlan}
+          onFinishFailed={onFinishFailed}
+          autoComplete="off"
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 16 }}
+          labelAlign="left"
         >
-          <div className="grid grid-cols-2 space-x-4">
-            <div className="mx-2 my-2">
-              <h2 className="mb-4">Plan Info</h2>
-              <Form.Item
-                label="Plan Name"
-                name="name"
-                rules={[
-                  {
-                    required: true,
-                    message: "Please Name Your Plan",
-                  },
-                ]}
-              >
-                <Input placeholder="Ex: Starter Plan" />
-              </Form.Item>
-              <Form.Item label="Description" name="description">
-                <Input
-                  type="textarea"
-                  placeholder="Ex: Cheapest plan for small scale businesses"
-                />
-              </Form.Item>
-              <Form.Item
-                label="Billing Interval"
-                name="billing_interval"
-                rules={[
-                  {
-                    required: true,
-                    message: "Please select an interval",
-                  },
-                ]}
-              >
-                <Select>
-                  <Select.Option value="week">Weekly</Select.Option>
-                  <Select.Option value="month">Monthly</Select.Option>
-                  <Select.Option value="year">Yearly</Select.Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item name="flat_rate" label="Recurring Cost">
-                <InputNumber addonBefore="$" defaultValue={0} precision={2} />
-              </Form.Item>
-              <Form.Item name="pay_in_advance">
-                <Checkbox defaultChecked={true}>Pay In Advance </Checkbox>
-              </Form.Item>
-              <Form.Item
-                name="update_behavior"
-                label="When To Update Plan"
-                rules={[
-                  {
-                    required: true,
-                    message: "Please select an update behavior",
-                  },
-                ]}
-              >
-                <Radio.Group optionType="button" buttonStyle="solid">
-                  <Radio value="replace_immediately">Update Immediately</Radio>
-                  <Radio value="replace_on_renewal"> Update On Renewal</Radio>
-                </Radio.Group>
-              </Form.Item>
-              <div className="flex flex-row justify-center">
-                <Form.Item>
-                  <Button
-                    htmlType="button"
-                    style={{ margin: "0 8px" }}
-                    onClick={showUserModal}
-                  >
-                    Add Component
-                  </Button>
-                </Form.Item>
-                <Form.Item>
-                  <Button
-                    htmlType="button"
-                    style={{ margin: "0 8px" }}
-                    onClick={showFeatureModal}
-                  >
-                    Add Feature(s)
-                  </Button>
-                </Form.Item>
-              </div>
-            </div>
-            <div className="grid grid-rows-2">
-              <div className="flex flex-col space-y-4">
-                <h2>Added Components</h2>
-                <Form.Item
-                  className="self-start"
-                  shouldUpdate={(prevValues, curValues) =>
-                    prevValues.components !== curValues.components
-                  }
-                >
-                  {({ getFieldValue }) => {
-                    const components: ComponentDisplay[] =
-                      getFieldValue("components") || [];
-                    console.log(components);
-                    return components.length ? (
-                      <List grid={{ gutter: 10, column: 3 }}>
-                        {components.map((component, index) => (
-                          <List.Item key={index} style={{ width: "250px" }}>
-                            <Card title={component.metric}>
-                              <p>
-                                <b>Cost:</b> ${component.cost_per_batch} per{" "}
-                                {component.metric_units_per_batch}{" "}
-                                {component.metric_units_per_batch === 1
-                                  ? "unit"
-                                  : "units"}{" "}
-                              </p>
-                              <br />
-                              <p>
-                                <b>Free Units:</b> {component.free_metric_units}
-                              </p>
-                              <p>
-                                <b>Max Units:</b> {component.max_metric_units}
-                              </p>
-                            </Card>
-                          </List.Item>
-                        ))}
-                      </List>
-                    ) : null;
-                  }}
-                </Form.Item>
-              </div>
-
-              <div className="flex flex-col space-y-4 overflow-auto">
-                <h2>Added Features</h2>
-                <Form.Item
-                  className="w-1/2"
-                  shouldUpdate={(prevValues, curValues) =>
-                    prevValues.components !== curValues.components
-                  }
-                >
-                  {planFeatures.map((feature, index) => (
-                    <div
-                      key={index}
-                      className="flex flex-row items-center h-10 p-3 bg-grey3"
+          <Row gutter={24}>
+            <Col span={12}>
+              <Row gutter={[24, 24]}>
+                <Col span="24">
+                  <Card title="Plan Information">
+                    <Form.Item
+                      label="Plan Name"
+                      name="name"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please Name Your Plan",
+                        },
+                      ]}
                     >
-                      <h3 className="justify-self-center">
-                        {feature.feature_name}
-                      </h3>
-                      <div className="">
-                        {" "}
-                        <DeleteOutlined />
-                      </div>
-                    </div>
-                  ))}
-                </Form.Item>
-              </div>
-            </div>
-          </div>
+                      <Input placeholder="Ex: Starter Plan" />
+                    </Form.Item>
+                    <Form.Item label="Description" name="description">
+                      <Input
+                        type="textarea"
+                        placeholder="Ex: Cheapest plan for small scale businesses"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="Billing Interval"
+                      name="billing_interval"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please select an interval",
+                        },
+                      ]}
+                    >
+                      <Radio.Group>
+                        <Radio value="week">Weekly</Radio>
+                        <Radio value="month">Monthly</Radio>
+                        <Radio value="year">Yearly</Radio>
+                      </Radio.Group>
+                    </Form.Item>
 
-          <Form.Item>
-            <Button type="primary" className="bg-info" htmlType="submit">
-              Update Plan
-            </Button>
-          </Form.Item>
+                    <Form.Item name="flat_rate" label="Recurring Cost">
+                      <InputNumber
+                        addonBefore="$"
+                        defaultValue={0}
+                        precision={2}
+                      />
+                    </Form.Item>
+                    <Form.Item name="pay_in_advance" label="Pay In Advance">
+                      <Checkbox defaultChecked={true} />
+                    </Form.Item>
+                    <Form.Item
+                      name="update_behavior"
+                      label="When To Update Plan"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please select an update behavior",
+                        },
+                      ]}
+                    >
+                      <Radio.Group optionType="button" buttonStyle="solid">
+                        <Radio value="replace_immediately">Immediately</Radio>
+                        <Radio value="replace_on_renewal">On Renewal</Radio>
+                      </Radio.Group>
+                    </Form.Item>
+                  </Card>
+                </Col>
+                <Col span="24">
+                  <Card
+                    title="Added Features"
+                    extra={[
+                      <Button htmlType="button" onClick={showFeatureModal}>
+                        Add Feature
+                      </Button>,
+                    ]}
+                  >
+                    <Form.Item
+                      wrapperCol={{ span: 24 }}
+                      shouldUpdate={(prevValues, curValues) =>
+                        prevValues.components !== curValues.components
+                      }
+                    >
+                      <Row gutter={[12, 12]}>
+                        {planFeatures.map((feature, index) => (
+                          <Col key={index} span={24}>
+                            <Paper color="gold">
+                              <Descriptions
+                                title={feature.feature_name}
+                                size="small"
+                                extra={[
+                                  <Button
+                                    type="text"
+                                    icon={<EditOutlined />}
+                                    onClick={() =>
+                                      editFeatures(feature.feature_name)
+                                    }
+                                  />,
+                                  <Button
+                                    type="text"
+                                    icon={<DeleteOutlined />}
+                                    danger
+                                    onClick={() =>
+                                      removeFeature(feature.feature_name)
+                                    }
+                                  />,
+                                ]}
+                              />
+                            </Paper>
+                          </Col>
+                        ))}
+                      </Row>
+                    </Form.Item>
+                  </Card>
+                </Col>
+              </Row>
+            </Col>
+
+            <Col span={12}>
+              <Row gutter={[24, 24]}>
+                <Col span={24}>
+                  <Card
+                    title="Added Components"
+                    extra={[
+                      <Button
+                        htmlType="button"
+                        onClick={() => showComponentModal()}
+                      >
+                        Add Component
+                      </Button>,
+                    ]}
+                  >
+                    <Form.Item
+                      wrapperCol={{ span: 24 }}
+                      shouldUpdate={(prevValues, curValues) =>
+                        prevValues.components !== curValues.components
+                      }
+                    >
+                      <Row gutter={[12, 12]}>
+                        {componentsData?.map(
+                          (component: any, index: number) => (
+                            <Col span="24" key={index}>
+                              <Paper>
+                                <Descriptions
+                                  title={component?.metric}
+                                  size="small"
+                                  column={2}
+                                  extra={[
+                                    <Button
+                                      key="edit"
+                                      type="text"
+                                      icon={<EditOutlined />}
+                                      onClick={() =>
+                                        handleComponentEdit(component.id)
+                                      }
+                                    />,
+                                    <Button
+                                      key="delete"
+                                      type="text"
+                                      icon={<DeleteOutlined />}
+                                      danger
+                                      onClick={() =>
+                                        deleteComponent(component.id)
+                                      }
+                                    />,
+                                  ]}
+                                >
+                                  <Descriptions.Item label="Cost" span={4}>
+                                    {component.cost_per_batch
+                                      ? `$${component.cost_per_batch} / ${component.metric_units_per_batch} Unit(s)`
+                                      : "Free"}
+                                  </Descriptions.Item>
+                                  <Descriptions.Item
+                                    label="Free Units"
+                                    span={1}
+                                  >
+                                    {component.free_amount ?? "Unlimited"}
+                                  </Descriptions.Item>
+                                  <Descriptions.Item label="Max Units" span={1}>
+                                    {component.max_metric_units ?? "Unlimited"}
+                                  </Descriptions.Item>
+                                </Descriptions>
+                              </Paper>
+                            </Col>
+                          )
+                        )}
+                      </Row>
+                    </Form.Item>
+                  </Card>
+                </Col>
+              </Row>
+            </Col>
+          </Row>
         </Form>
-        <UsageComponentForm
-          visible={visible}
-          onCancel={hideUserModal}
-          metrics={metrics}
-          component={selectedComponent}
-        />
-        <FeatureForm
-          visible={featureVisible}
-          onCancel={hideFeatureModal}
-          features={features}
-          onAddFeatures={addFeatures}
-        />
+        {componentVisible && (
+          <UsageComponentForm
+            visible={componentVisible}
+            onCancel={hideComponentModal}
+            componentsData={componentsData}
+            handleComponentAdd={handleComponentAdd}
+            editComponentItem={editComponentItem}
+            setEditComponentsItem={setEditComponentsItem}
+          />
+        )}
+        {featureVisible && (
+          <FeatureForm
+            visible={featureVisible}
+            onCancel={hideFeatureModal}
+            onAddFeatures={addFeatures}
+          />
+        )}
       </Form.Provider>
-    </div>
+    </PageLayout>
   );
 };
 
