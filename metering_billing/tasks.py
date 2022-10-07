@@ -29,9 +29,9 @@ def calculate_invoice():
     ending_subscriptions = list(
         Subscription.objects.filter(status="active", end_date__lt=now)
     )
-    invoice_sub_ids_seen = Invoice.objects.filter(~Q(payment_status="draft")).values_list(
-        "subscription__subscription_id", flat=True
-    )
+    invoice_sub_ids_seen = Invoice.objects.filter(
+        ~Q(payment_status="draft")
+    ).values_list("subscription__subscription_id", flat=True)
 
     if len(invoice_sub_ids_seen) > 0:
         ended_subs_no_invoice = Subscription.objects.filter(
