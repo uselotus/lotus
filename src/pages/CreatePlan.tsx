@@ -35,6 +35,7 @@ import {
 } from "@ant-design/icons";
 import React from "react";
 import { Paper } from "../components/base/Paper";
+import { PageLayout } from "../components/base/PageLayout";
 
 interface ComponentDisplay {
   metric: string;
@@ -182,29 +183,28 @@ const CreatePlan = () => {
   };
 
   return (
-    <div className="flex flex-col">
-      <PageHeader
-        title="Create Plan"
-        extra={[
-          <Button
-            key={"back"}
-            onClick={goBackPage}
-            icon={<ArrowLeftOutlined />}
-            type="default"
-            size="large"
-          >
-            Back
-          </Button>,
-          <Button
-            key="create"
-            onClick={() => form.submit()}
-            className="bg-black text-white justify-self-end"
-            size="large"
-          >
-            Create Plan <SaveOutlined />
-          </Button>,
-        ]}
-      />
+    <PageLayout
+      title="Create Plan"
+      extra={[
+        <Button
+          key={"back"}
+          onClick={goBackPage}
+          icon={<ArrowLeftOutlined />}
+          type="default"
+          size="large"
+        >
+          Back
+        </Button>,
+        <Button
+          key="create"
+          onClick={() => form.submit()}
+          className="bg-black text-white justify-self-end"
+          size="large"
+        >
+          Create Plan <SaveOutlined />
+        </Button>,
+      ]}
+    >
       <Form.Provider>
         <Form
           form={form}
@@ -413,7 +413,7 @@ const CreatePlan = () => {
           />
         )}
       </Form.Provider>
-    </div>
+    </PageLayout>
   );
 };
 

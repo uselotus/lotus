@@ -22,6 +22,7 @@ import {
   useMutation,
   useQueryClient,
 } from "react-query";
+import { PageLayout } from "../components/base/PageLayout";
 
 const ViewPlans: FC = () => {
   const navigate = useNavigate();
@@ -57,20 +58,19 @@ const ViewPlans: FC = () => {
   };
 
   return (
-    <div>
-      <PageHeader
-        title="Plans"
-        extra={[
-          <Button
-            onClick={navigateCreatePlan}
-            className="bg-black text-white justify-self-end"
-            size="large"
-            key={"create-plan"}
-          >
-            Create Plan
-          </Button>,
-        ]}
-      />
+    <PageLayout
+      title="Plans"
+      extra={[
+        <Button
+          onClick={navigateCreatePlan}
+          className="bg-black text-white justify-self-end"
+          size="large"
+          key={"create-plan"}
+        >
+          Create Plan
+        </Button>,
+      ]}
+    >
       <Row gutter={[0, 24]}>
         {plans?.map((item, key) => (
           <Col span={24} key={key}>
@@ -78,7 +78,7 @@ const ViewPlans: FC = () => {
           </Col>
         ))}
       </Row>
-    </div>
+    </PageLayout>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { Card, Divider } from "antd";
+import { Card, Col, Divider, PageHeader, Row } from "antd";
 import RevenueDisplay from "./RevenueDisplay";
 import SubscriptionStatistics from "./SubscriptionStatistics";
 import MetricBarGraph from "./MetricBarGraph";
@@ -10,6 +10,9 @@ import { useQuery, UseQueryResult } from "react-query";
 import { RevenueType } from "../../types/revenue-type";
 import { GetRevenue } from "../../api/api";
 import RevenueBarGraph from "./RevenueBarGraph";
+
+import { Content } from "antd/lib/layout/layout";
+import { PageLayout } from "../base/PageLayout";
 
 const DatePicker = generatePicker<Dayjs>(dayjsGenerateConfig);
 const { RangePicker } = DatePicker;
@@ -33,44 +36,47 @@ const Dashboard: FC = () => {
     );
 
   return (
-    <div>
-      <div className="flex flex-row items-center">
-        <h1 className="text-3xl font-main mb-10">Dashboard</h1>
-        <div className="items-center ml-auto">
-          <RangePicker
-            bordered={false}
-            format={dateFormat}
-            defaultValue={dateRange}
-            onCalendarChange={(dates) => {
-              setDateRange(dates);
-            }}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 justify-center ">
-        <Card className="max-w-lg">
-          <RevenueDisplay
-            total_revenue_1={data?.total_revenue_period_1}
-            total_revenue_2={data?.total_revenue_period_2}
-            isLoading={isLoading}
-          />
-        </Card>
-        <Card className="max-w-lg">
-          <SubscriptionStatistics range={dateRange} />
-        </Card>
-      </div>
-      <Divider />
-      <div className="my-10">
-        <RevenueBarGraph
-          data={data?.daily_usage_revenue_period_1}
-          isLoading={isLoading}
-        />
-      </div>
-      <Divider />
-      <div>
-        <MetricBarGraph range={dateRange} />
-      </div>
-    </div>
+    <PageLayout
+      title={"Dashboard"}
+      extra={[
+        <RangePicker
+          bordered={false}
+          format={dateFormat}
+          defaultValue={dateRange}
+          onCalendarChange={(dates) => {
+            setDateRange(dates);
+          }}
+        />,
+      ]}
+    >
+      <Row>
+        <Col span="24">
+          <div className="grid grid-cols-2 justify-center ">
+            <Card className="max-w-lg">
+              <RevenueDisplay
+                total_revenue_1={data?.total_revenue_period_1}
+                total_revenue_2={data?.total_revenue_period_2}
+                isLoading={isLoading}
+              />
+            </Card>
+            <Card className="max-w-lg">
+              <SubscriptionStatistics range={dateRange} />
+            </Card>
+          </div>
+          <Divider />
+          <div className="my-10">
+            <RevenueBarGraph
+              data={data?.daily_usage_revenue_period_1}
+              isLoading={isLoading}
+            />
+          </div>
+          <Divider />
+          <div>
+            <MetricBarGraph range={dateRange} />
+          </div>
+        </Col>
+      </Row>
+    </PageLayout>
   );
 };
 
