@@ -1,8 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import vitePluginImp from "vite-plugin-imp";
-import { splitVendorChunkPlugin } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -19,6 +17,23 @@ export default defineConfig({
     //   },
     // },
   },
+  base: process.env.mode === "production" ? "/static/" : "./",
+  publicDir: "./public",
+  root: "./src",
+  resolve: {
+    alias: [{ find: /^~/, replacement: "" }],
+  },
+  plugins: [
+    react(),
+    vitePluginImp({
+      libList: [
+        {
+          libName: "antd",
+          style: (name) => `antd/es/${name}/style`,
+        },
+      ],
+    }),
+  ],
   server: {
     host: true,
     hmr: {
@@ -32,39 +47,26 @@ export default defineConfig({
       usePolling: true,
     },
   },
-  base: process.env.mode === "production" ? "/static/" : "./",
-  publicDir: "./public",
-  root: "./src",
-  resolve: {
-    alias: [{ find: /^~/, replacement: "" }],
-  },
-
-  plugins: [
-    react(),
-    splitVendorChunkPlugin(),
-    tsconfigPaths(),
-    vitePluginImp({
-      optimize: true,
-      libList: [
-        {
-          libName: "antd",
-          libDirectory: "es",
-          style: (name) => `antd/es/${name}/style`,
-        },
-      ],
-    }),
-  ],
   css: {
     preprocessorOptions: {
       less: {
-        javascriptEnabled: true, //
+        javascriptEnabled: true,
         modifyVars: {
-          white: "#333",
-          "component-background": "#777",
-          "primary-color": "#1DA57A",
+          "primary-color": "#1D1D1F",
           "link-color": "#1DA57A",
-          "border-radius-base": "2px",
+          "highlight-color": "#CCA43B",
+          black: "#1D1D1F",
+          white: "#F7F8FD",
+          "border-radius-base": "4px",
+          "typography-title-font-weight": 700,
+          "height-base": "48px",
+          "border-color-base": "#1D1D1F",
+          "font-size-base": "16px",
           "font-family": "Inter, sans-serif",
+          "heading-1-size": "32px",
+          "heading-2-size": "26px",
+          "heading-3-size": "16px",
+          "heading-4-size": "14px",
         },
       },
     },
