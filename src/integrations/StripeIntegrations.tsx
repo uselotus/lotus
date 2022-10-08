@@ -1,10 +1,14 @@
 import React, { FC, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { StripeConnect } from "../api/api";
+import { StripeIntegration } from "./api";
 import { StripeOauthType } from "../types/stripe-type";
 import { useQuery, UseQueryResult } from "react-query";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+
+export const stripeIntegrationDetails = {
+  name: "Stripe",
+};
 
 const StripeRedirect: FC = () => {
   let [searchParams, setSearchParams] = useSearchParams();
@@ -17,7 +21,7 @@ const StripeRedirect: FC = () => {
 
   useEffect(() => {
     if (code !== "") {
-      StripeConnect.connectStripe(code)
+      StripeIntegration.connectStripe(code)
         .then((data) => {
           setConnected(data.success);
         })

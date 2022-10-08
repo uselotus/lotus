@@ -1,6 +1,6 @@
 import React, { FC } from "react";
 import { Card, Col, Row } from "antd";
-import Settings from "../components/Settings";
+import Settings from "../components/Settings/Settings";
 
 const ViewSettings: FC = () => {
   return (

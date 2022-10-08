@@ -12,7 +12,6 @@ import {
   CreateSubscriptionType,
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
-import { StripeOauthType, StripeStatusType } from "../types/stripe-type";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
@@ -68,13 +67,6 @@ export const Plan = {
     requests.delete(`api/plans/${billing_plan_id}/`),
   updatePlan: (post: UpdatePlanType): Promise<PlanType> =>
     requests.post(`api/update_billing_plan/`, post),
-};
-
-export const StripeConnect = {
-  getStripeConnectionStatus: (): Promise<StripeStatusType> =>
-    requests.get("api/stripe/"),
-  connectStripe: (authorization_code: string): Promise<StripeOauthType> =>
-    requests.post("api/stripe/", { authorization_code }),
 };
 
 export const Alerts = {
