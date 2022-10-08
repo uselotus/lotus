@@ -29,7 +29,6 @@ function RevenueBarGraph(props: {
             revenue: props.data[i].data[k].metric_revenue,
             type: metric,
           });
-          console.log(compressedArray);
         }
       }
       setData(compressedArray);

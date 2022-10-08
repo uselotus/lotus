@@ -198,8 +198,9 @@ const CreatePlan = () => {
         <Button
           key="create"
           onClick={() => form.submit()}
-          className="bg-black text-white justify-self-end"
+          // className="bg-black text-white justify-self-end"
           size="large"
+          type="primary"
         >
           Create Plan <SaveOutlined />
         </Button>,
