@@ -2,20 +2,24 @@ import datetime
 
 from django.db.models import Q
 from metering_billing.auth_utils import parse_organization
+from metering_billing.billable_metrics import AggregationHandler, PersistentHandler
 from metering_billing.exceptions import OverlappingSubscription
 from metering_billing.models import (
     Alert,
     BillableMetric,
     BillingPlan,
+    CategoricalFilter,
     Customer,
     Event,
     Feature,
     Invoice,
+    NumericFilter,
     Organization,
     PlanComponent,
     Subscription,
     User,
 )
+from metering_billing.utils import METRIC_TYPES
 from rest_framework import serializers
 
 
@@ -179,6 +183,18 @@ class CustomerSerializer(serializers.ModelSerializer):
 
 
 ## BILLABLE METRIC
+class CategoricalFilterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CategoricalFilter
+        fields = ("property_name", "operator", "comparison_value")
+
+
+class NumericFilterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NumericFilter
+        fields = ("property_name", "operator", "comparison_value")
+
+
 class BillableMetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillableMetric
@@ -186,30 +202,64 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name",
             "property_name",
             "aggregation_type",
+            "metric_type",
             "billable_metric_name",
-            "aggregation_type",
-            "event_type",
-            "stateful_aggregation_period",
+            "numeric_filters",
+            "categorical_filters",
+            "properties",
         )
 
-    def validate(self, data):
-        if data["event_type"] == "stateful":
-            if not data["stateful_aggregation_period"]:
-                raise serializers.ValidationError(
-                    "Stateful metric aggregation period is required for stateful aggregation type"
-                )
-            allowed_agg_types = ["max", "last"]
-            if data["aggregation_type"] not in allowed_agg_types:
-                raise serializers.ValidationError(
-                    f"Stateful aggregation type must be one of {allowed_agg_types}, selected {data['aggregation_type']}"
-                )
-        elif data["event_type"] == "aggregation":
-            allowed_agg_types = ["sum", "count", "unique", "max"]
-            if data["aggregation_type"] not in allowed_agg_types:
-                raise serializers.ValidationError(
-                    f"Aggregation metric aggregation type must be one of {allowed_agg_types}, selected {data['aggregation_type']}"
-                )
-        return data
+    numeric_filters = NumericFilterSerializer(
+        many=True, allow_null=True, required=False
+    )
+    categorical_filters = CategoricalFilterSerializer(
+        many=True, allow_null=True, required=False
+    )
+    properties = serializers.JSONField(allow_null=True, required=False)
+
+    def custom_name(self, validated_data) -> str:
+        name = validated_data.get("billable_metric_name", None)
+        if name in [None, "", " "]:
+            name = f"[{validated_data['metric_type'][:4]}]"
+            name += " " + validated_data["aggregation_type"] + " of"
+            if validated_data["property_name"] not in ["", " ", None]:
+                name += " " + validated_data["property_name"] + " of"
+            name += " " + validated_data["event_name"]
+            validated_data["billable_metric_name"] = name[:200]
+        return name
+
+    def create(self, validated_data):
+        # edit custom name and pop filters + properties
+        validated_data["billable_metric_name"] = self.custom_name(validated_data)
+        num_filter_data = validated_data.pop("numeric_filters", [])
+        cat_filter_data = validated_data.pop("categorical_filters", [])
+
+        properties = validated_data.pop("properties", {})
+
+        if validated_data["metric_type"] == METRIC_TYPES.AGGREGATION:
+            properties = AggregationHandler.validate_properties(properties)
+        elif validated_data["metric_type"] == METRIC_TYPES.STATEFUL:
+            properties = PersistentHandler.validate_properties(properties)
+
+        bm = BillableMetric.objects.create(**validated_data)
+
+        # get filters
+        for num_filter in num_filter_data:
+            try:
+                nf, _ = NumericFilter.objects.get_or_create(**num_filter)
+            except NumericFilter.MultipleObjectsReturned:
+                nf = NumericFilter.objects.filter(**num_filter).first()
+            bm.numeric_filters.add(nf)
+        for cat_filter in cat_filter_data:
+            try:
+                cf, _ = CategoricalFilter.objects.get_or_create(**cat_filter)
+            except CategoricalFilter.MultipleObjectsReturned:
+                cf = CategoricalFilter.objects.filter(**cat_filter).first()
+            bm.categorical_filters.add(cf)
+        bm.properties = properties
+        bm.save()
+
+        return bm
 
 
 ## FEATURE
@@ -290,7 +340,7 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             feature_data["organization"] = org
             try:
                 f, _ = Feature.objects.get_or_create(**feature_data)
-            except PlanComponent.MultipleObjectsReturned:
+            except Feature.MultipleObjectsReturned:
                 f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)
         billing_plan.save()

@@ -4,8 +4,7 @@ export interface MetricType {
   aggregation_type: string;
   id?: number;
   billable_metric_name?: string;
-  event_type: string;
-  stateful_aggregation_period?: string;
+  metric_type: string;
 }
 
 export interface MetricNameType {

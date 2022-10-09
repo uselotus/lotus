@@ -26,12 +26,12 @@ class PaymentProvider(abc.ABC, APIView):
         pass
 
     @abc.abstractmethod
-    def customer_connected(self, customer) -> bool:
+    def customer_connected(self, customer: Customer) -> bool:
         """This method will be called in order to gate calls to generate_payment_object."""
         pass
 
     @abc.abstractmethod
-    def organization_connected(self, organization) -> bool:
+    def organization_connected(self, organization: Organization) -> bool:
         """This method will be called in order to gate calls to generate_payment_object. If the organization is not connected, then won't generate a payment object for the organization."""
         pass
 
@@ -110,7 +110,7 @@ class StripeConnector(PaymentProvider):
 
     def generate_payment_object(self, customer, amount, organization):
         stripe.api_key = self.secret_key
-        amount_cents = turn_decimal_into_cents(amount)
+        amount_cents = turn_decimal_into_cents(amount * 100)
         payment_intent_kwargs = {
             "amount": amount_cents,
             "currency": customer.balance.currency,
