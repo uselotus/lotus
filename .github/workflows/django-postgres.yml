@@ -58,7 +58,7 @@ jobs:
 
       - name: Install pipenv
         run: |
-          pip install pipenv
+          pip install pipenv --upgrade
 
       - name: Install Dependencies
         env:
@@ -131,7 +131,7 @@ jobs:
 
       - name: Install pipenv
         run: |
-          pip install pipenv
+          pip install pipenv --upgrade
 
       - name: Install Dependencies
         env:
