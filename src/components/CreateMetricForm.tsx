@@ -56,7 +56,7 @@ const CreateMetricForm = (props: {
           <Input />
         </Form.Item>
         <Form.Item
-          name="event_type"
+          name="metric_type"
           label="Type"
           rules={[
             {
@@ -81,11 +81,11 @@ const CreateMetricForm = (props: {
         <Form.Item
           noStyle
           shouldUpdate={(prevValues, currentValues) =>
-            prevValues.event_type !== currentValues.event_type
+            prevValues.metric_type !== currentValues.metric_type
           }
         >
           {({ getFieldValue }) =>
-            getFieldValue("event_type") === "aggregation" ? (
+            getFieldValue("metric_type") === "aggregation" ? (
               <Form.Item
                 name="aggregation_type"
                 label="Aggregation Type"
@@ -123,7 +123,7 @@ const CreateMetricForm = (props: {
                     defaultValue={statefulAggType}
                   >
                     <Option value="max">max</Option>
-                    <Option value="last">last</Option>
+                    <Option value="latest">last</Option>
                   </Select>
                 </Form.Item>
                 <Form.Item
@@ -149,13 +149,13 @@ const CreateMetricForm = (props: {
           noStyle
           shouldUpdate={(prevValues, currentValues) =>
             prevValues.aggregation_type !== currentValues.aggregation_type ||
-            prevValues.event_type !== currentValues.event_type
+            prevValues.metric_type !== currentValues.metric_type
           }
         >
           {({ getFieldValue }) =>
             getFieldValue("aggregation_type") === "sum" ||
             getFieldValue("aggregation_type") === "max" ||
-            getFieldValue("aggregation_type") === "last" ||
+            getFieldValue("aggregation_type") === "latest" ||
             getFieldValue("aggregation_type") == "unique" ? (
               <Form.Item
                 name="property_name"

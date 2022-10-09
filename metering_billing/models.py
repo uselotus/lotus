@@ -13,11 +13,12 @@ from rest_framework_api_key.models import AbstractAPIKey
 
 from metering_billing.utils import (
     AGGREGATION_CHOICES,
-    EVENT_CHOICES,
+    CATEGORICAL_FILTER_OPERATOR_CHOICES,
     INTERVAL_CHOICES,
     INVOICE_STATUS_CHOICES,
+    METRIC_TYPE_CHOICES,
+    NUMERIC_FILTER_OPERATOR_CHOICES,
     PAYMENT_PLANS,
-    STATEFUL_AGG_PERIOD_CHOICES,
     SUB_STATUS_CHOICES,
     SUPPORTED_PAYMENT_PROVIDERS,
     dates_bwn_twodates,
@@ -124,6 +125,20 @@ class Event(models.Model):
         return str(self.event_name) + "-" + str(self.idempotency_id)
 
 
+class NumericFilter(models.Model):
+    property_name = models.CharField(max_length=100)
+    operator = models.CharField(max_length=10, choices=NUMERIC_FILTER_OPERATOR_CHOICES)
+    comparison_value = models.FloatField()
+
+
+class CategoricalFilter(models.Model):
+    property_name = models.CharField(max_length=100)
+    operator = models.CharField(
+        max_length=10, choices=CATEGORICAL_FILTER_OPERATOR_CHOICES
+    )
+    comparison_value = models.JSONField()
+
+
 class BillableMetric(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
@@ -135,40 +150,19 @@ class BillableMetric(models.Model):
         blank=False,
         null=False,
     )
-    event_type = models.CharField(
+    metric_type = models.CharField(
         max_length=20,
-        choices=EVENT_CHOICES,
-        default=EVENT_CHOICES.aggregation,
+        choices=METRIC_TYPE_CHOICES,
+        default=METRIC_TYPE_CHOICES.aggregation,
         blank=False,
         null=False,
     )
-    stateful_aggregation_period = models.CharField(
-        max_length=20,
-        choices=STATEFUL_AGG_PERIOD_CHOICES,
-        blank=True,
-        null=True,
-    )
     billable_metric_name = models.CharField(
-        max_length=200, null=False, blank=True, default=""
+        max_length=200, null=False, blank=True, default=uuid.uuid4
     )
-
-    def default_name(self):
-        if self.event_type == EVENT_CHOICES.aggregation:
-            name = "[agg]"
-        elif self.event_type == EVENT_CHOICES.stateful:
-            name = "[state]"
-        name += " " + self.aggregation_type + " of"
-        if self.property_name not in ["", " ", None]:
-            name += " " + self.property_name + " of"
-        name += " " + self.event_name
-        if self.stateful_aggregation_period:
-            name += " per " + self.stateful_aggregation_period
-        return name[:200]
-
-    def save(self, *args, **kwargs):
-        if self.billable_metric_name in ["", " ", None]:
-            self.billable_metric_name = self.default_name()
-        super().save(*args, **kwargs)
+    numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
+    categorical_filters = models.ManyToManyField(CategoricalFilter, blank=True)
+    properties = models.JSONField(default=dict, blank=True, null=True)
 
     class Meta:
         unique_together = ("organization", "billable_metric_name")
@@ -179,37 +173,19 @@ class BillableMetric(models.Model):
                     "event_name",
                     "aggregation_type",
                     "property_name",
-                    "event_type",
-                    "stateful_aggregation_period",
+                    "metric_type",
                 ],
-                name="unique_with_property_name_and_sap",
+                name="unique_with_property_name",
             ),
             UniqueConstraint(
                 fields=[
                     "organization",
                     "event_name",
                     "aggregation_type",
-                    "event_type",
-                    "stateful_aggregation_period",
+                    "metric_type",
                 ],
                 condition=Q(property_name=None),
-                name="unique_without_property_name_with_sap",
-            ),
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "event_name",
-                    "aggregation_type",
-                    "event_type",
-                    "property_name",
-                ],
-                condition=Q(stateful_aggregation_period=None),
-                name="unique_with_property_name_without_sap",
-            ),
-            UniqueConstraint(
-                fields=["organization", "event_name", "aggregation_type", "event_type"],
-                condition=Q(stateful_aggregation_period=None) & Q(property_name=None),
-                name="unique_without_property_name_without_sap",
+                name="unique_without_property_name",
             ),
         ]
 

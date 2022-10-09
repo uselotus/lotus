@@ -58,33 +58,29 @@ jobs:
 
       - name: Install pipenv
         run: |
-          pip install pipenv
+          python -m pip install --upgrade pipenv wheel && pipenv update
 
-      - name: Install Dependencies
-        env:
-          PIPENV_NOSPIN: "true"
-          WORKON_HOME: ~/.pipenv/virtualenvs
-          PIPENV_CACHE_DIR: ~/.pipenv/pipcache
-        run: pipenv install --deploy --dev
+      - id: cache-pipenv
+        uses: actions/cache@v1
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: Install dependencies
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          pipenv install --dev --system
 
       - name: Migrate
-        env:
-          PIPENV_NOSPIN: "true"
-          WORKON_HOME: ~/.pipenv/virtualenvs
+        
         run: |
           pipenv run python manage.py migrate --noinput
 
       - name: Test Pytest
-        env:
-          PIPENV_NOSPIN: "true"
-          WORKON_HOME: ~/.pipenv/virtualenvs
         run: |
           pipenv run pytest -k "not test_tasks"
 
       - name: Test Setup Tasks
-        env:
-          PIPENV_NOSPIN: "true"
-          WORKON_HOME: ~/.pipenv/virtualenvs
         run: |
           pipenv run python manage.py setup_tasks
 
@@ -131,25 +127,23 @@ jobs:
 
       - name: Install pipenv
         run: |
-          pip install pipenv
+          python -m pip install --upgrade pipenv wheel && pipenv update
 
-      - name: Install Dependencies
-        env:
-          PIPENV_NOSPIN: "true"
-          WORKON_HOME: ~/.pipenv/virtualenvs
-          PIPENV_CACHE_DIR: ~/.pipenv/pipcache
-        run: pipenv install --deploy --dev
+      - id: cache-pipenv
+        uses: actions/cache@v1
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: Install dependencies
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          pipenv install --dev --system
 
       - name: Migrate
-        env:
-          PIPENV_NOSPIN: "true"
-          WORKON_HOME: ~/.pipenv/virtualenvs
         run: |
           pipenv run python manage.py migrate --noinput
 
       - name: Codestyle Check
-        env:
-          PIPENV_NOSPIN: "true"
-          WORKON_HOME: ~/.pipenv/virtualenvs
         run: |
           pipenv run black --check .

@@ -30,26 +30,24 @@ django-heroku = "*"
 django-celery-beat = "*"
 django-vite = "*"
 drf-spectacular = "*"
-model-bakery = "*"
 faker = "*"
 django-redis = "*"
-flower = "*"
 posthog = "*"
 python-decouple = "*"
-pytest-cov = "*"
 celery = {extras = ["redis"], version = "*"}
 social-auth-app-django = "*"
+model-bakery = "*"
 
 [dev-packages]
 pylint = ">=2.14.5,<2.15"
 black = "*"
 platformdirs = "*"
 isort = "*"
-model-bakery = "*"
 pytest-django = "*"
 pytest = "*"
 locust = "*"
 django-silk = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.9"

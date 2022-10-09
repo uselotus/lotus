@@ -19,6 +19,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
+from metering_billing.serializers.model_serializers import BillableMetricSerializer
 from model_bakery import baker
 
 
@@ -49,7 +50,7 @@ class Command(BaseCommand):
             event_name="raise_issue",
             property_name=itertools.cycle(["", "stacktrace_len", "latency", "project"]),
             aggregation_type=itertools.cycle(["count", "sum", "max", "unique"]),
-            event_type="aggregation",
+            metric_type="aggregation",
             _quantity=4,
         )
         (bm_e2_1,) = baker.make(
@@ -62,10 +63,16 @@ class Command(BaseCommand):
                 ]
             ),
             aggregation_type=itertools.cycle(["max"]),
-            stateful_aggregation_period="day",
-            event_type="stateful",
+            metric_type="stateful",
             _quantity=1,
         )
+        for bm in [bm_e1_1, bm_e1_2, bm_e1_3, bm_e1_4, bm_e2_1]:
+            serializer = BillableMetricSerializer(bm)
+            dict_repr = serializer.data
+            dict_repr.pop("billable_metric_name")
+            new_name = serializer.custom_name(dict_repr)
+            bm.billable_metric_name = new_name
+            bm.save()
         pc1 = PlanComponent.objects.create(
             billable_metric=bm_e1_1,
             free_metric_units=500,
@@ -101,7 +108,6 @@ class Command(BaseCommand):
             interval="month",
             name="Sentry Basic Plan",
             description="Sentry Basic Plan for event ingestion and alerting",
-            currency="USD",
             flat_rate=200,
             pay_in_advance=True,
             billing_plan_id="sentry-basic-plan",

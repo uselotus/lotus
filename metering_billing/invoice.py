@@ -14,7 +14,12 @@ from metering_billing.models import (
 )
 from metering_billing.payment_providers import StripeConnector
 from metering_billing.serializers.model_serializers import InvoiceSerializer
-from metering_billing.utils import PAYMENT_PROVIDERS, make_all_decimals_floats
+from metering_billing.utils import (
+    PAYMENT_PROVIDERS,
+    make_all_dates_times_strings,
+    make_all_datetimes_dates,
+    make_all_decimals_floats,
+)
 from metering_billing.view_utils import calculate_sub_pc_usage_revenue
 
 from .webhooks import invoice_created_webhook
@@ -89,9 +94,10 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             )
             usage_dict["components"][str(plan_component)] = pc_usg_and_rev
         components = usage_dict["components"]
-        usage_dict["usage_revenue_due"] = sum(
-            v["revenue"] for _, v in components.items()
-        )
+        usage_dict["usage_revenue_due"] = 0
+        for pc_name, pc_dict in components.items():
+            for period, period_dict in pc_dict.items():
+                usage_dict["usage_revenue_due"] += period_dict["revenue"]
         if billing_plan.pay_in_advance:
             if subscription.auto_renew:
                 usage_dict["flat_revenue_due"] = billing_plan.flat_rate.amount
@@ -111,6 +117,10 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         )
         amount = usage_dict["total_revenue_due"]
         make_all_decimals_floats(usage_dict)
+        print("pre")
+        make_all_datetimes_dates(usage_dict)
+        print("post")
+        make_all_dates_times_strings(usage_dict)
         line_item = usage_dict
 
     # create kwargs for invoice
@@ -146,7 +156,10 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             invoice_kwargs["external_payment_obj_type"] = customer.payment_provider
 
     # Create the invoice
+    print("chill")
+    print(line_item)
     invoice = Invoice.objects.create(**invoice_kwargs)
+    print("donezo")
 
     if not draft:
         invoice_data = InvoiceSerializer(invoice).data
