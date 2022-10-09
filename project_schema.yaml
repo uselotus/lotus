@@ -836,7 +836,8 @@ paths:
   /api/stripe/:
     get:
       operationId: stripe_retrieve
-      description: Check to see if user has connected their Stripe account.
+      description: A payment processor's GET method will be used to determine whether
+        the organization that sent the request is connected to the given payment processor.
       tags:
       - stripe
       security:
@@ -844,44 +845,21 @@ paths:
       - OrganizationApiKeyAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StripeConnectedResponse'
-          description: ''
+          description: No response body
     post:
       operationId: stripe_create
-      description: Initialize Stripe after user inputs an API key.
+      description: A payment processor's POST method will be used to connect the organization
+        that sent the request to the given payment processor. You must access the
+        payment_provider_ids field of the organization and the payment processor's
+        name as a key and the organization's payment processor id as its value.
       tags:
       - stripe
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StripeConnectRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/StripeConnectRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/StripeConnectRequest'
-        required: true
       security:
       - cookieAuth: []
       - OrganizationApiKeyAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StripeImportResponse'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StripeImportError'
-          description: ''
+          description: No response body
   /api/subscriptions/:
     get:
       operationId: subscriptions_list
@@ -1217,7 +1195,9 @@ components:
       - sum
       - max
       - unique
-      - last
+      - latest
+      - average
+      - min
       type: string
     Alert:
       type: object
@@ -1253,25 +1233,30 @@ components:
           maxLength: 200
         aggregation_type:
           $ref: '#/components/schemas/AggregationTypeEnum'
+        metric_type:
+          $ref: '#/components/schemas/MetricTypeEnum'
         billable_metric_name:
           type: string
           maxLength: 200
-        event_type:
-          $ref: '#/components/schemas/EventTypeEnum'
-        stateful_aggregation_period:
+        numeric_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/NumericFilter'
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/StatefulAggregationPeriodEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
+        categorical_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoricalFilter'
+          nullable: true
+        properties:
+          type: object
+          additionalProperties: {}
+          nullable: true
       required:
       - event_name
     BillingPlan:
       type: object
       properties:
-        currency:
-          type: string
-          maxLength: 30
         interval:
           $ref: '#/components/schemas/IntervalEnum'
         flat_rate:
@@ -1310,9 +1295,6 @@ components:
     BillingPlanRead:
       type: object
       properties:
-        currency:
-          type: string
-          maxLength: 30
         interval:
           $ref: '#/components/schemas/IntervalEnum'
         flat_rate:
@@ -1356,9 +1338,6 @@ components:
       - name
       - pay_in_advance
       - time_created
-    BlankEnum:
-      enum:
-      - ''
     CancelSubscriptionFailure:
       type: object
       properties:
@@ -1392,6 +1371,26 @@ components:
       required:
       - detail
       - status
+    CategoricalFilter:
+      type: object
+      properties:
+        property_name:
+          type: string
+          maxLength: 100
+        operator:
+          $ref: '#/components/schemas/CategoricalFilterOperatorEnum'
+        comparison_value:
+          type: object
+          additionalProperties: {}
+      required:
+      - comparison_value
+      - operator
+      - property_name
+    CategoricalFilterOperatorEnum:
+      enum:
+      - isin
+      - isnotin
+      type: string
     Customer:
       type: object
       properties:
@@ -1595,11 +1594,6 @@ components:
       required:
       - events
       - total_pages
-    EventTypeEnum:
-      enum:
-      - aggregation
-      - stateful
-      type: string
     Feature:
       type: object
       properties:
@@ -1686,6 +1680,11 @@ components:
       - organization
       - payment_status
       - subscription
+    MetricTypeEnum:
+      enum:
+      - aggregation
+      - stateful
+      type: string
     MetricUsage:
       type: object
       properties:
@@ -1704,9 +1703,29 @@ components:
       - metric_limit
       - metric_name
       - metric_usage
-    NullEnum:
+    NumericFilter:
+      type: object
+      properties:
+        property_name:
+          type: string
+          maxLength: 100
+        operator:
+          $ref: '#/components/schemas/NumericFilterOperatorEnum'
+        comparison_value:
+          type: number
+          format: double
+      required:
+      - comparison_value
+      - operator
+      - property_name
+    NumericFilterOperatorEnum:
       enum:
-      - null
+      - gte
+      - gt
+      - eq
+      - lt
+      - lte
+      type: string
     PaymentStatusEnum:
       enum:
       - draft
@@ -1858,6 +1877,9 @@ components:
     PlanComponentRead:
       type: object
       properties:
+        id:
+          type: integer
+          readOnly: true
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
         free_metric_units:
@@ -1894,6 +1916,7 @@ components:
           nullable: true
       required:
       - billable_metric
+      - id
     Registration:
       type: object
       properties:
@@ -1927,11 +1950,6 @@ components:
           type: string
       required:
       - detail
-    StatefulAggregationPeriodEnum:
-      enum:
-      - day
-      - hour
-      type: string
     Status956Enum:
       enum:
       - error
@@ -1940,37 +1958,6 @@ components:
       enum:
       - success
       type: string
-    StripeConnectRequest:
-      type: object
-      properties:
-        authorization_code:
-          type: string
-      required:
-      - authorization_code
-    StripeConnectedResponse:
-      type: object
-      properties:
-        connected:
-          type: boolean
-      required:
-      - connected
-    StripeImportError:
-      type: object
-      properties:
-        success:
-          type: boolean
-        details:
-          type: string
-      required:
-      - details
-      - success
-    StripeImportResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-      required:
-      - success
     Subscription:
       type: object
       properties:

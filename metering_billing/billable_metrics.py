@@ -255,9 +255,9 @@ class AggregationHandler(BillableMetricHandler):
             return properties
 
 
-class PersistentHandler(BillableMetricHandler):
+class StatefulHandler(BillableMetricHandler):
     """
-    The key difference between a persistent handler and an aggregation handler is that the persistent handler has state across time periods. Even when given a blocked off time period, it'll look for previous values of the event/property in question and use those as a starting point. A common example of a metric that woudl fit under the Persistent pattern would be the number of seats a product has available. When we go into a new billing period, the number of seats doesn't magically disappear... we have to keep track of it. We currently support two types of events: quantity_logging and delta_logging. Quantity logging would look like sending events to the API that say we have x users at the moment. Delta logging would be like sending events that say we added x users or removed x users. The persistent handler will look at the previous value of the metric and add/subtract the delta to get the new value.
+    The key difference between a stateful handler and an aggregation handler is that the stateful handler has state across time periods. Even when given a blocked off time period, it'll look for previous values of the event/property in question and use those as a starting point. A common example of a metric that woudl fit under the Stateful pattern would be the number of seats a product has available. When we go into a new billing period, the number of seats doesn't magically disappear... we have to keep track of it. We currently support two types of events: quantity_logging and delta_logging. Quantity logging would look like sending events to the API that say we have x users at the moment. Delta logging would be like sending events that say we added x users or removed x users. The stateful handler will look at the previous value of the metric and add/subtract the delta to get the new value.
     """
 
     def __init__(self, billable_metric: BillableMetric):
@@ -277,12 +277,12 @@ class PersistentHandler(BillableMetricHandler):
         ), f"Aggregation type {self.aggregation_type} is not allowed for this billable metric handler."
         assert (
             self.property_name != ""
-        ), "Property name must be set for a persistent billable metric."
+        ), "Property name must be set for a stateful billable metric."
 
     def get_usage(
         self, granularity, start_date, end_date, customer=None, billable_only=False
     ):
-        # quick note on billable only. Since the persistent keeps track of some udnerlying state,
+        # quick note on billable only. Since the stateful keeps track of some udnerlying state,
         # then billable only doesn't make sense since all the usage is billable (there's always) an
         # underlying state. So we'll just ignore it.
         now = datetime.datetime.now(datetime.timezone.utc)

@@ -2,7 +2,7 @@ import datetime
 
 from django.db.models import Q
 from metering_billing.auth_utils import parse_organization
-from metering_billing.billable_metrics import AggregationHandler, PersistentHandler
+from metering_billing.billable_metrics import AggregationHandler, StatefulHandler
 from metering_billing.exceptions import OverlappingSubscription
 from metering_billing.models import (
     Alert,
@@ -239,7 +239,7 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         if validated_data["metric_type"] == METRIC_TYPES.AGGREGATION:
             properties = AggregationHandler.validate_properties(properties)
         elif validated_data["metric_type"] == METRIC_TYPES.STATEFUL:
-            properties = PersistentHandler.validate_properties(properties)
+            properties = StatefulHandler.validate_properties(properties)
 
         bm = BillableMetric.objects.create(**validated_data)
 
