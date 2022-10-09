@@ -65,7 +65,7 @@ jobs:
           PIPENV_NOSPIN: "true"
           WORKON_HOME: ~/.pipenv/virtualenvs
           PIPENV_CACHE_DIR: ~/.pipenv/pipcache
-        run: pipenv install --deploy --dev
+        run: pipenv lock && pipenv install --deploy --dev
 
       - name: Migrate
         env:
@@ -138,7 +138,7 @@ jobs:
           PIPENV_NOSPIN: "true"
           WORKON_HOME: ~/.pipenv/virtualenvs
           PIPENV_CACHE_DIR: ~/.pipenv/pipcache
-        run: pipenv install --deploy --dev
+        run: pipenv lock && pipenv install --deploy --dev
 
       - name: Migrate
         env:
