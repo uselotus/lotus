@@ -60,14 +60,7 @@ jobs:
         run: |
           python -m pip install --upgrade pipenv wheel && pipenv update
 
-      - id: cache-pipenv
-        uses: actions/cache@v1
-        with:
-          path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
-
       - name: Install dependencies
-        if: steps.cache-pipenv.outputs.cache-hit != 'true'
         run: |
           pipenv install --dev --system
 
@@ -129,14 +122,7 @@ jobs:
         run: |
           python -m pip install --upgrade pipenv wheel && pipenv update
 
-      - id: cache-pipenv
-        uses: actions/cache@v1
-        with:
-          path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
-
       - name: Install dependencies
-        if: steps.cache-pipenv.outputs.cache-hit != 'true'
         run: |
           pipenv install --dev --system
 

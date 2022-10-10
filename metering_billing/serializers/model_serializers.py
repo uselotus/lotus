@@ -19,7 +19,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import METRIC_TYPES
+from metering_billing.utils import METRIC_TYPES, SUB_STATUS_TYPES
 from rest_framework import serializers
 
 
@@ -83,7 +83,7 @@ class UserSerializer(serializers.ModelSerializer):
 ## CUSTOMER
 class FilterActiveSubscriptionSerializer(serializers.ListSerializer):
     def to_representation(self, data):
-        data = data.filter(status="active")
+        data = data.filter(status=SUB_STATUS_TYPES.ACTIVE)
         return super(FilterActiveSubscriptionSerializer, self).to_representation(data)
 
 

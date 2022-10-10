@@ -1,24 +1,14 @@
-import datetime
-import math
-from datetime import timezone
 from decimal import Decimal
 
 from dateutil import parser
-from django.db.models import Count, F, FloatField, Max, Min, Sum
-from django.db.models.functions import Cast, Trunc
 
-from metering_billing.billable_metrics import (
-    METRIC_HANDLER_MAP,
-    AggregationHandler,
-    StatefulHandler,
-)
-from metering_billing.models import Event, Subscription
+from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.models import Subscription
 from metering_billing.utils import (
     METRIC_TYPES,
+    SUB_STATUS_TYPES,
     RevenueCalcGranularity,
     convert_to_decimal,
-    dates_bwn_twodates,
-    hours_bwn_twodates,
     periods_bwn_twodates,
 )
 
@@ -147,7 +137,9 @@ def get_subscription_usage_and_revenue(subscription):
 def get_customer_usage_and_revenue(customer):
     customer_subscriptions = (
         Subscription.objects.filter(
-            customer=customer, status="active", organization=customer.organization
+            customer=customer,
+            status=SUB_STATUS_TYPES.ACTIVE,
+            organization=customer.organization,
         )
         .select_related("customer")
         .prefetch_related("billing_plan__components")

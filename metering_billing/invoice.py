@@ -15,6 +15,7 @@ from metering_billing.models import (
 from metering_billing.payment_providers import StripeConnector
 from metering_billing.serializers.model_serializers import InvoiceSerializer
 from metering_billing.utils import (
+    INVOICE_STATUS_TYPES,
     PAYMENT_PROVIDERS,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
@@ -133,7 +134,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         "organization": org_serializer.data,
         "customer": customer_serializer.data,
         "subscription": subscription_serializer.data,
-        "payment_status": "unpaid",
+        "payment_status": INVOICE_STATUS_TYPES.UNPAID,
         "external_payment_obj_id": None,
         "external_payment_obj_type": None,
         "line_items": line_item,
@@ -141,7 +142,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
 
     # adjust kwargs depending on draft + external obj creation
     if draft:
-        invoice_kwargs["payment_status"] = "draft"
+        invoice_kwargs["payment_status"] = INVOICE_STATUS_TYPES.DRAFT
     elif (
         customer.payment_provider != ""
         and payment_providers[customer.payment_provider].working()
@@ -156,10 +157,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             invoice_kwargs["external_payment_obj_type"] = customer.payment_provider
 
     # Create the invoice
-    print("chill")
-    print(line_item)
     invoice = Invoice.objects.create(**invoice_kwargs)
-    print("donezo")
 
     if not draft:
         invoice_data = InvoiceSerializer(invoice).data
