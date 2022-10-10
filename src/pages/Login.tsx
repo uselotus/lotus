@@ -100,11 +100,7 @@ const Login: FC = () => {
               </Form>
             </Card>
             <div>
-              <Button
-                type="primary"
-                className="ml-auto bg-info"
-                onClick={() => navigate("/register")}
-              >
+              <Button type="primary" onClick={() => navigate("/register")}>
                 Sign Up
               </Button>
             </div>

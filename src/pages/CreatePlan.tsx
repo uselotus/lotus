@@ -15,136 +15,144 @@ import {
   Affix,
   Space,
   Descriptions,
-} from 'antd'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import UsageComponentForm from '../components/Plans/UsageComponentForm'
-import { useMutation, useQuery, UseQueryResult } from 'react-query'
-import { MetricNameType } from '../types/metric-type'
-import { toast } from 'react-toastify'
-import { Features } from '../api/api'
-import { CreatePlanType, CreateComponent } from '../types/plan-type'
-import { Plan } from '../api/api'
-import { FeatureType } from '../types/feature-type'
-import FeatureForm from '../components/Plans/FeatureForm'
-import { DeleteOutlined, ArrowLeftOutlined, SaveOutlined, EditOutlined } from '@ant-design/icons'
-import React from 'react'
-import { Paper } from '../components/base/Paper'
+} from "antd";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import UsageComponentForm from "../components/Plans/UsageComponentForm";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
+import { MetricNameType } from "../types/metric-type";
+import { toast } from "react-toastify";
+
+import { CreatePlanType, CreateComponent } from "../types/plan-type";
+import { Plan } from "../api/api";
+import { FeatureType } from "../types/feature-type";
+import FeatureForm from "../components/Plans/FeatureForm";
+import {
+  DeleteOutlined,
+  ArrowLeftOutlined,
+  SaveOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
+import React from "react";
+import { Paper } from "../components/base/Paper";
+import { PageLayout } from "../components/base/PageLayout";
 
 interface ComponentDisplay {
-  metric: string
-  cost_per_batch: number
-  metric_units_per_batch: number
-  free_metric_units: number
-  max_metric_units: number
-  id: number
+  metric: string;
+  cost_per_batch: number;
+  metric_units_per_batch: number;
+  free_metric_units: number;
+  max_metric_units: number;
+  id: number;
 }
 
 const CreatePlan = () => {
-  const [componentVisible, setcomponentVisible] = useState<boolean>()
-  const [featureVisible, setFeatureVisible] = useState<boolean>(false)
-  const navigate = useNavigate()
-  const [componentsData, setComponentsData] = useState<any>({})
-  const [form] = Form.useForm()
-  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([])
-  const [editComponentItem, setEditComponentsItem] = useState<any>({})
+  const [componentVisible, setcomponentVisible] = useState<boolean>();
+  const [featureVisible, setFeatureVisible] = useState<boolean>(false);
+  const navigate = useNavigate();
+  const [componentsData, setComponentsData] = useState<any>([]);
+  const [form] = Form.useForm();
+  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
+  const [editComponentItem, setEditComponentsItem] = useState<any>();
 
-  console.log('componentsData', componentsData)
-
-  const {
-    data: features,
-    isLoading,
-    isError,
-  }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(['feature_list'], () =>
-    Features.getFeatures().then((res) => {
-      return res
-    }),
-  )
-
-  const mutation = useMutation((post: CreatePlanType) => Plan.createPlan(post), {
-    onSuccess: () => {
-      toast.success('Successfully created Plan', {
-        position: toast.POSITION.TOP_CENTER,
-      })
-      form.resetFields()
-      navigate('/plans')
-    },
-    onError: () => {
-      toast.error('Failed to create Plan', {
-        position: toast.POSITION.TOP_CENTER,
-      })
-    },
-  })
+  const mutation = useMutation(
+    (post: CreatePlanType) => Plan.createPlan(post),
+    {
+      onSuccess: () => {
+        toast.success("Successfully created Plan", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+        form.resetFields();
+        navigate("/plans");
+      },
+      onError: () => {
+        toast.error("Failed to create Plan", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
 
   const addFeatures = (newFeatures: FeatureType[]) => {
-    setPlanFeatures([...planFeatures, ...newFeatures])
-    setFeatureVisible(false)
-  }
+    setPlanFeatures([...planFeatures, ...newFeatures]);
+    setFeatureVisible(false);
+  };
 
   const editFeatures = (feature_name: string) => {
-    const currentFeature = planFeatures.filter((item) => item.feature_name === feature_name)[0]
-    setFeatureVisible(true)
-  }
+    const currentFeature = planFeatures.filter(
+      (item) => item.feature_name === feature_name
+    )[0];
+    setFeatureVisible(true);
+  };
 
   const removeFeature = (feature_name: string) => {
-    setPlanFeatures(planFeatures.filter((item) => item.feature_name !== feature_name))
-  }
+    setPlanFeatures(
+      planFeatures.filter((item) => item.feature_name !== feature_name)
+    );
+  };
 
-  const onFinishFailed = (errorInfo: any) => {}
+  const onFinishFailed = (errorInfo: any) => {};
 
   const hideComponentModal = () => {
-    setcomponentVisible(false)
-  }
+    setcomponentVisible(false);
+  };
 
   const showComponentModal = () => {
-    setcomponentVisible(true)
-  }
+    setcomponentVisible(true);
+  };
 
   const handleComponentAdd = (newData: any) => {
-    const old = componentsData
-    console.log('editComponentItem', Object.values(editComponentItem))
-    console.log('old', old)
-    if (Object.values(editComponentItem).length > 0) {
-      old[Object.keys(editComponentItem)[0]] = newData
-    } else {
-      const uniqueID = new Date().getTime()
-      old[uniqueID] = newData
-    }
+    const old = componentsData;
+    console.log("editComponentItem", editComponentItem);
 
-    setComponentsData(old)
-  }
+    if (editComponentItem) {
+      const index = componentsData.findIndex(
+        (item) => item.id === editComponentItem.id
+      );
+      old[index] = newData;
+      setComponentsData(old);
+    } else {
+      const newComponentsData = [
+        ...old,
+        {
+          ...newData,
+          id: Math.floor(Math.random() * 1000),
+        },
+      ];
+      setComponentsData(newComponentsData);
+    }
+    setEditComponentsItem(undefined);
+    setcomponentVisible(false);
+  };
 
   const handleComponentEdit = (id: any) => {
-    setcomponentVisible(true)
-    const components = componentsData
+    const currentComponent = componentsData.filter((item) => item.id === id)[0];
 
-    setEditComponentsItem({ [id]: components[id] })
-  }
+    setEditComponentsItem(currentComponent);
+    setcomponentVisible(true);
+  };
 
   const deleteComponent = (id: number) => {
-    const components = componentsData
-    delete components[id]
-
-    setComponentsData({ ...components })
-  }
+    setComponentsData(componentsData.filter((item) => item.id !== id));
+  };
   const hideFeatureModal = () => {
-    setFeatureVisible(false)
-  }
+    setFeatureVisible(false);
+  };
 
   const showFeatureModal = () => {
-    setFeatureVisible(true)
-  }
+    setFeatureVisible(true);
+  };
 
   const goBackPage = () => {
-    navigate(-1)
-  }
+    navigate(-1);
+  };
 
   const submitPricingPlan = () => {
     form
       .validateFields()
       .then((values) => {
-        const usagecomponentslist: CreateComponent[] = []
-        const components: any = Object.values(componentsData)
+        const usagecomponentslist: CreateComponent[] = [];
+        const components: any = Object.values(componentsData);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -153,8 +161,8 @@ const CreatePlan = () => {
               metric_units_per_batch: components[i].metric_units_per_batch,
               free_metric_units: components[i].free_amount,
               max_metric_units: components[i].max_metric_units,
-            }
-            usagecomponentslist.push(usagecomponent)
+            };
+            usagecomponentslist.push(usagecomponent);
           }
         }
 
@@ -166,103 +174,107 @@ const CreatePlan = () => {
           interval: values.billing_interval,
           components: usagecomponentslist,
           features: planFeatures,
-        }
-        mutation.mutate(plan)
+        };
+        mutation.mutate(plan);
       })
       .catch((info) => {
-        console.log('Validate Failed:', info)
-      })
-  }
+        console.log("Validate Failed:", info);
+      });
+  };
 
   return (
-    <div className='flex flex-col'>
-      <PageHeader
-        title='Create Plan'
-        extra={[
-          <Button
-            key={'back'}
-            onClick={goBackPage}
-            icon={<ArrowLeftOutlined />}
-            type='default'
-            size='large'
-          >
-            Back
-          </Button>,
-          <Button
-            key='create'
-            onClick={() => form.submit()}
-            className='bg-black text-white justify-self-end'
-            size='large'
-          >
-            Create Plan <SaveOutlined />
-          </Button>,
-        ]}
-      />
+    <PageLayout
+      title="Create Plan"
+      extra={[
+        <Button
+          key={"back"}
+          onClick={goBackPage}
+          icon={<ArrowLeftOutlined />}
+          type="default"
+          size="large"
+        >
+          Back
+        </Button>,
+        <Button
+          key="create"
+          onClick={() => form.submit()}
+          // className="bg-black text-white justify-self-end"
+          size="large"
+          type="primary"
+        >
+          Create Plan <SaveOutlined />
+        </Button>,
+      ]}
+    >
       <Form.Provider>
         <Form
           form={form}
-          name='create_plan'
+          name="create_plan"
           initialValues={{ flat_rate: 0, pay_in_advance: true }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
-          autoComplete='off'
+          autoComplete="off"
           labelCol={{ span: 8 }}
           wrapperCol={{ span: 16 }}
-          labelAlign='left'
+          labelAlign="left"
         >
           <Row gutter={24}>
             <Col span={12}>
               <Row gutter={[24, 24]}>
-                <Col span='24'>
-                  <Card title='Plan Information'>
+                <Col span="24">
+                  <Card title="Plan Information">
                     <Form.Item
-                      label='Plan Name'
-                      name='name'
+                      label="Plan Name"
+                      name="name"
                       rules={[
                         {
                           required: true,
-                          message: 'Please Name Your Plan',
+                          message: "Please Name Your Plan",
                         },
                       ]}
                     >
-                      <Input placeholder='Ex: Starter Plan' />
+                      <Input placeholder="Ex: Starter Plan" />
                     </Form.Item>
-                    <Form.Item label='Description' name='description'>
+                    <Form.Item label="Description" name="description">
                       <Input
-                        type='textarea'
-                        placeholder='Ex: Cheapest plan for small scale businesses'
+                        type="textarea"
+                        placeholder="Ex: Cheapest plan for small scale businesses"
                       />
                     </Form.Item>
                     <Form.Item
-                      label='Billing Interval'
-                      name='billing_interval'
+                      label="Billing Interval"
+                      name="billing_interval"
                       rules={[
                         {
                           required: true,
-                          message: 'Please select an interval',
+                          message: "Please select an interval",
                         },
                       ]}
                     >
                       <Radio.Group>
-                        <Radio value='week'>Weekly</Radio>
-                        <Radio value='month'>Monthly</Radio>
-                        <Radio value='year'>Yearly</Radio>
+                        <Radio value="week">Weekly</Radio>
+                        <Radio value="month">Monthly</Radio>
+                        <Radio value="year">Yearly</Radio>
                       </Radio.Group>
                     </Form.Item>
 
-                    <Form.Item name='flat_rate' label='Recurring Cost'>
-                      <InputNumber addonBefore='$' defaultValue={0} precision={2} />
+                    <Form.Item name="flat_rate" label="Recurring Cost">
+                      <InputNumber
+                        addonBefore="$"
+                        defaultValue={0}
+                        precision={2}
+                      />
                     </Form.Item>
-                    <Form.Item name='pay_in_advance' label='Pay In Advance'>
+                    <Form.Item name="pay_in_advance" label="Pay In Advance">
                       <Checkbox defaultChecked={true} />
                     </Form.Item>
                   </Card>
                 </Col>
-                <Col span='24'>
+                <Col span="24">
                   <Card
-                    title='Added Features'
+                    title="Added Features"
                     extra={[
-                      <Button htmlType='button' onClick={showFeatureModal}>
+                      <Button htmlType="button" onClick={showFeatureModal}>
                         Add Feature
                       </Button>,
                     ]}
@@ -276,21 +288,25 @@ const CreatePlan = () => {
                       <Row gutter={[12, 12]}>
                         {planFeatures.map((feature, index) => (
                           <Col key={index} span={24}>
-                            <Paper color='gold'>
+                            <Paper color="gold">
                               <Descriptions
                                 title={feature.feature_name}
-                                size='small'
+                                size="small"
                                 extra={[
                                   <Button
-                                    type='text'
+                                    type="text"
                                     icon={<EditOutlined />}
-                                    onClick={() => editFeatures(feature.feature_name)}
+                                    onClick={() =>
+                                      editFeatures(feature.feature_name)
+                                    }
                                   />,
                                   <Button
-                                    type='text'
+                                    type="text"
                                     icon={<DeleteOutlined />}
                                     danger
-                                    onClick={() => removeFeature(feature.feature_name)}
+                                    onClick={() =>
+                                      removeFeature(feature.feature_name)
+                                    }
                                   />,
                                 ]}
                               />
@@ -308,9 +324,12 @@ const CreatePlan = () => {
               <Row gutter={[24, 24]}>
                 <Col span={24}>
                   <Card
-                    title='Added Components'
+                    title="Added Components"
                     extra={[
-                      <Button htmlType='button' onClick={() => showComponentModal()}>
+                      <Button
+                        htmlType="button"
+                        onClick={() => showComponentModal()}
+                      >
                         Add Component
                       </Button>,
                     ]}
@@ -322,44 +341,52 @@ const CreatePlan = () => {
                       }
                     >
                       <Row gutter={[12, 12]}>
-                        {Object.entries(componentsData)?.map(
-                          ([key, component]: any, index: number) => (
-                            <Col span='24' key={index}>
+                        {componentsData?.map(
+                          (component: any, index: number) => (
+                            <Col span="24" key={index}>
                               <Paper>
                                 <Descriptions
                                   title={component?.metric}
-                                  size='small'
+                                  size="small"
+                                  column={2}
                                   extra={[
                                     <Button
-                                      key='edit'
-                                      type='text'
+                                      key="edit"
+                                      type="text"
                                       icon={<EditOutlined />}
-                                      onClick={() => handleComponentEdit(key)}
+                                      onClick={() =>
+                                        handleComponentEdit(component.id)
+                                      }
                                     />,
                                     <Button
-                                      key='delete'
-                                      type='text'
+                                      key="delete"
+                                      type="text"
                                       icon={<DeleteOutlined />}
                                       danger
-                                      onClick={() => deleteComponent(key)}
+                                      onClick={() =>
+                                        deleteComponent(component.id)
+                                      }
                                     />,
                                   ]}
                                 >
-                                  <Descriptions.Item label='Cost'>
-                                    ${component.cost_per_batch} per{' '}
-                                    {component.metric_units_per_batch}{' '}
-                                    {component.metric_units_per_batch === 1 ? 'unit' : 'units'}
+                                  <Descriptions.Item label="Cost" span={4}>
+                                    {component.cost_per_batch
+                                      ? `$${component.cost_per_batch} / ${component.metric_units_per_batch} Unit(s)`
+                                      : "Free"}
                                   </Descriptions.Item>
-                                  <Descriptions.Item label='Free Units'>
-                                    {component.free_metric_units}
+                                  <Descriptions.Item
+                                    label="Free Units"
+                                    span={1}
+                                  >
+                                    {component.free_amount ?? "Unlimited"}
                                   </Descriptions.Item>
-                                  <Descriptions.Item label='Max Units'>
-                                    {component.max_metric_units}
+                                  <Descriptions.Item label="Max Units" span={1}>
+                                    {component.max_metric_units ?? "Unlimited"}
                                   </Descriptions.Item>
                                 </Descriptions>
                               </Paper>
                             </Col>
-                          ),
+                          )
                         )}
                       </Row>
                     </Form.Item>
@@ -375,7 +402,7 @@ const CreatePlan = () => {
             onCancel={hideComponentModal}
             componentsData={componentsData}
             handleComponentAdd={handleComponentAdd}
-            editComponentItem={Object.values(editComponentItem)[0]}
+            editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
           />
         )}
@@ -383,13 +410,12 @@ const CreatePlan = () => {
           <FeatureForm
             visible={featureVisible}
             onCancel={hideFeatureModal}
-            features={features}
             onAddFeatures={addFeatures}
           />
         )}
       </Form.Provider>
-    </div>
-  )
-}
+    </PageLayout>
+  );
+};
 
-export default CreatePlan
+export default CreatePlan;

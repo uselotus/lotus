@@ -17,6 +17,7 @@ import CreateMetricForm, {
 import { toast } from "react-toastify";
 import EventPreivew from "../components/EventPreview";
 import "./ViewMetrics.css";
+import { PageLayout } from "../components/base/PageLayout";
 
 const defaultMetricState: CreateMetricState = {
   title: "Create a new Metric",
@@ -77,42 +78,47 @@ const ViewMetrics: FC = () => {
   };
 
   return (
-    <div>
-      <div className="flex flex-row w-full">
-        <h1 className="text-3xl font-main mb-5">Metrics</h1>
+    <PageLayout
+      title="Metrics"
+      extra={[
         <Button
-          type="primary"
-          className="ml-auto bg-info"
+          className="bg-black text-white justify-self-end"
+          size="large"
+          key={"create-plan"}
           onClick={createMetricButton}
         >
           Create Metric
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-2">
-        <div className="flex flex-col">
-          {isLoading || data === undefined ? (
-            <LoadingSpinner />
-          ) : (
-            <MetricTable metricArray={data} />
-          )}
-          {isError && <div className=" text-danger">Something went wrong</div>}
-        </div>
-        <Card className="flex flex-row justify-center bg-light h-full">
-          <h1 className="text-2xl font-main mb-5">Event Stream</h1>
-          <Divider />
-          <div>
-            <EventPreivew />
+        </Button>,
+      ]}
+    >
+      <div>
+        <div className="grid grid-cols-2">
+          <div className="flex flex-col">
+            {isLoading || data === undefined ? (
+              <LoadingSpinner />
+            ) : (
+              <MetricTable metricArray={data} />
+            )}
+            {isError && (
+              <div className=" text-danger">Something went wrong</div>
+            )}
           </div>
-        </Card>
+          <Card className="flex flex-row justify-center bg-light h-full">
+            <h1 className="text-2xl font-main mb-5">Event Stream</h1>
+            <Divider />
+            <div>
+              <EventPreivew />
+            </div>
+          </Card>
+        </div>
+        <CreateMetricForm
+          state={metricState}
+          visible={visible}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
       </div>
-      <CreateMetricForm
-        state={metricState}
-        visible={visible}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-    </div>
+    </PageLayout>
   );
 };
 

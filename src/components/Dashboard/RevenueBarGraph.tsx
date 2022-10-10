@@ -1,6 +1,7 @@
 import { Column } from "@ant-design/plots";
 import React, { useState, useEffect } from "react";
 import { RevenuePeriod } from "../../types/revenue-type";
+import { Paper } from "../base/Paper";
 import LoadingSpinner from "../LoadingSpinner";
 
 interface RevenueChartData {
@@ -28,7 +29,6 @@ function RevenueBarGraph(props: {
             revenue: props.data[i].data[k].metric_revenue,
             type: metric,
           });
-          console.log(compressedArray);
         }
       }
       setData(compressedArray);
@@ -61,17 +61,17 @@ function RevenueBarGraph(props: {
   };
   if (props.isLoading || props.data === undefined) {
     return (
-      <div className="flex flex-col justify-center">
+      <Paper>
         <h3>No Revenue Data</h3>
         <LoadingSpinner />
-      </div>
+      </Paper>
     );
   }
   return (
-    <div>
+    <Paper>
       <h2>Revenue Accrued</h2>
       <Column {...config} />
-    </div>
+    </Paper>
   );
 }
 

@@ -8,6 +8,7 @@ import {
 import { Customer } from "../api/api";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
+import { PageLayout } from "../components/base/PageLayout";
 
 const ViewCustomers: FC = () => {
   const [customers, setCustomers] = useState<CustomerTableItem[]>([]);
@@ -30,8 +31,7 @@ const ViewCustomers: FC = () => {
   );
 
   return (
-    <div>
-      <h1 className="text-3xl font-main ">Customers</h1>
+    <PageLayout title="Customers">
       <div>
         {isLoading || data === undefined ? (
           <LoadingSpinner />
@@ -39,7 +39,7 @@ const ViewCustomers: FC = () => {
           <CustomerTable customerArray={data} totals={customerTotals} />
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
