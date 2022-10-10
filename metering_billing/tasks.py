@@ -18,6 +18,7 @@ from lotus.settings import (
 
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import Event, Invoice, Organization, Subscription
+from metering_billing.utils import INVOICE_STATUS_TYPES, SUB_STATUS_TYPES
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -27,15 +28,15 @@ def calculate_invoice():
     # get ending subs
     now = datetime.date.today()
     ending_subscriptions = list(
-        Subscription.objects.filter(status="active", end_date__lt=now)
+        Subscription.objects.filter(status=SUB_STATUS_TYPES.ACTIVE, end_date__lt=now)
     )
     invoice_sub_ids_seen = Invoice.objects.filter(
-        ~Q(payment_status="draft")
+        ~Q(payment_status=INVOICE_STATUS_TYPES.DRAFT)
     ).values_list("subscription__subscription_id", flat=True)
 
     if len(invoice_sub_ids_seen) > 0:
         ended_subs_no_invoice = Subscription.objects.filter(
-            status="ended", end_date__lt=now
+            status=SUB_STATUS_TYPES.ENDED, end_date__lt=now
         ).exclude(subscription_id__in=list(invoice_sub_ids_seen))
         ending_subscriptions.extend(ended_subs_no_invoice)
 
@@ -58,11 +59,13 @@ def calculate_invoice():
             )
             continue
         # End the old subscription and delete draft invoices
-        already_ended = old_subscription.status == "ended"
-        old_subscription.status = "ended"
+        already_ended = old_subscription.status == SUB_STATUS_TYPES.ENDED
+        old_subscription.status = SUB_STATUS_TYPES.ENDED
         old_subscription.save()
         now = datetime.datetime.now(timezone.utc).date()
-        Invoice.objects.filter(issue_date__lt=now, payment_status="draft").delete()
+        Invoice.objects.filter(
+            issue_date__lt=now, payment_status=INVOICE_STATUS_TYPES.DRAFT
+        ).delete()
         # Renew the subscription
         if old_subscription.auto_renew and not already_ended:
             if old_subscription.auto_renew_billing_plan:
@@ -74,7 +77,7 @@ def calculate_invoice():
             if new_bp.scheduled_for_deletion:
                 replacement_bp = new_bp.replacement_billing_plan
                 num_with_bp = Subscription.objects.filter(
-                    status="active", billing_plan=new_bp
+                    status=SUB_STATUS_TYPES.ACTIVE, billing_plan=new_bp
                 ).count()
                 if num_with_bp == 0:
                     new_bp.delete()
@@ -91,9 +94,9 @@ def calculate_invoice():
             if new_bp.pay_in_advance:
                 sub.flat_fee_already_billed = new_bp.flat_rate
             if sub.start_date <= now <= sub.end_date:
-                sub.status = "active"
+                sub.status = SUB_STATUS_TYPES.ACTIVE
             else:
-                sub.status = "ended"
+                sub.status = SUB_STATUS_TYPES.ENDED
             sub.save()
 
 
@@ -101,16 +104,18 @@ def calculate_invoice():
 def start_subscriptions():
     now = datetime.date.today()
     starting_subscriptions = Subscription.objects.filter(
-        status="not_started", start_date__lte=now
+        status=SUB_STATUS_TYPES.NOT_STARTED, start_date__lte=now
     )
     for new_subscription in starting_subscriptions:
-        new_subscription.status = "active"
+        new_subscription.status = SUB_STATUS_TYPES.ACTIVE
         new_subscription.save()
 
 
 @shared_task
 def update_invoice_status():
-    incomplete_invoices = Invoice.objects.filter(Q(payment_status="unpaid"))
+    incomplete_invoices = Invoice.objects.filter(
+        Q(payment_status=INVOICE_STATUS_TYPES.UNPAID)
+    )
     for incomplete_invoice in incomplete_invoices:
         pi_id = incomplete_invoice.external_payment_obj_id
         if pi_id is not None:
@@ -121,7 +126,7 @@ def update_invoice_status():
                 print("Error retrieving payment intent {}".format(pi_id))
                 continue
             if pi.status == "succeeded":
-                incomplete_invoice.payment_status = "paid"
+                incomplete_invoice.payment_status = INVOICE_STATUS_TYPES.PAID
                 incomplete_invoice.save()
                 posthog.capture(
                     POSTHOG_PERSON

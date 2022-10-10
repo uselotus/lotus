@@ -8,18 +8,19 @@ from django.db import models
 from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
-from model_utils import Choices
 from rest_framework_api_key.models import AbstractAPIKey
 
 from metering_billing.utils import (
     AGGREGATION_CHOICES,
     CATEGORICAL_FILTER_OPERATOR_CHOICES,
     INTERVAL_CHOICES,
+    INTERVAL_TYPES,
     INVOICE_STATUS_CHOICES,
     METRIC_TYPE_CHOICES,
     NUMERIC_FILTER_OPERATOR_CHOICES,
     PAYMENT_PLANS,
     SUB_STATUS_CHOICES,
+    SUB_STATUS_TYPES,
     SUPPORTED_PAYMENT_PROVIDERS,
     dates_bwn_twodates,
 )
@@ -93,7 +94,9 @@ class Customer(models.Model):
         return str(self.name) + " " + str(self.customer_id)
 
     def get_billing_plan_name(self) -> str:
-        subscription_set = Subscription.objects.filter(customer=self, status="active")
+        subscription_set = Subscription.objects.filter(
+            customer=self, status=SUB_STATUS_TYPES.ACTIVE
+        )
         if subscription_set is None:
             return "None"
         return [str(sub.billing_plan) for sub in subscription_set]
@@ -261,11 +264,11 @@ class BillingPlan(models.Model):
         unique_together = ("organization", "billing_plan_id")
 
     def calculate_end_date(self, start_date):
-        if self.interval == "week":
+        if self.interval == INTERVAL_TYPES.WEEK:
             return start_date + relativedelta(weeks=+1) - relativedelta(days=+1)
-        elif self.interval == "month":
+        elif self.interval == INTERVAL_TYPES.MONTH:
             return start_date + relativedelta(months=+1) - relativedelta(days=+1)
-        elif self.interval == "year":
+        elif self.interval == INTERVAL_TYPES.YEAR:
             return start_date + relativedelta(years=+1) - relativedelta(days=+1)
         else:
             raise ValueError("End date not calculated correctly")

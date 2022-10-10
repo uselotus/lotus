@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 from ..auth_utils import parse_organization
 from ..invoice import generate_invoice
 from ..utils import (
+    SUB_STATUS_TYPES,
     convert_to_decimal,
     make_all_dates_times_strings,
     make_all_decimals_floats,
@@ -480,7 +481,7 @@ class DraftInvoiceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         subs = Subscription.objects.filter(
-            customer=customer, organization=organization, status="active"
+            customer=customer, organization=organization, status=SUB_STATUS_TYPES.ACTIVE
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)
@@ -530,12 +531,12 @@ class CancelSubscriptionView(APIView):
                 {"status": "error", "detail": "Subscription not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if sub.status == "ended":
+        if sub.status == SUB_STATUS_TYPES.ENDED:
             return Response(
                 {"status": "error", "detail": "Subscription already ended"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        elif sub.status == "not_started":
+        elif sub.status == SUB_STATUS_TYPES.NOT_STARTED:
             Subscription.objects.get(
                 organization=organization, subscription_id=sub_id
             ).delete()
@@ -548,7 +549,7 @@ class CancelSubscriptionView(APIView):
             )
         sub.auto_renew = False
         if revoke_access:
-            sub.status = "canceled"
+            sub.status = SUB_STATUS_TYPES.CANCELED
         sub.save()
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
@@ -631,7 +632,7 @@ class GetCustomerAccessView(APIView):
         event_limit_type = serializer.validated_data.get("event_limit_type")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
-            status="active",
+            status=SUB_STATUS_TYPES.ACTIVE,
             customer=customer,
         )
         if event_name:
@@ -845,7 +846,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
             sub = Subscription.objects.get(
                 organization=organization,
                 subscription_id=subscription_id,
-                status="active",
+                status=SUB_STATUS_TYPES.ACTIVE,
             ).select_related("billing_plan")
         except Subscription.DoesNotExist:
             return Response(

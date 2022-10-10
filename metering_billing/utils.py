@@ -4,7 +4,6 @@ from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 from enum import Enum
 
-from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
 from model_utils import Choices
@@ -87,17 +86,6 @@ INTERVAL_CHOICES = Choices(
 )
 
 
-class STATEFUL_AGG_PERIOD_TYPES(object):
-    DAY = "day"
-    HOUR = "hour"
-
-
-STATEFUL_AGG_PERIOD_CHOICES = Choices(
-    (STATEFUL_AGG_PERIOD_TYPES.DAY, _("Day")),
-    (STATEFUL_AGG_PERIOD_TYPES.HOUR, _("Hour")),
-)
-
-
 class RevenueCalcGranularity(Enum):
     DAILY = "day"
     TOTAL = None
@@ -129,17 +117,6 @@ CATEGORICAL_FILTER_OPERATOR_CHOICES = Choices(
     (CATEGORICAL_FILTER_OPERATORS.ISIN, _("Is in")),
     (CATEGORICAL_FILTER_OPERATORS.ISNOTIN, _("Is not in")),
 )
-
-rev_calc_to_agg_keyword = {
-    "daily": "date",
-    "monthly": "month",
-    "yearly": "year",
-}
-
-stateful_agg_period_to_agg_keyword = {
-    "day": "date",
-    "hour": "hour",
-}
 
 
 class SUB_STATUS_TYPES(object):

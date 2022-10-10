@@ -11,6 +11,7 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
 )
+from metering_billing.utils import INVOICE_STATUS_TYPES
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -121,7 +122,9 @@ class TestGenerateInvoice:
         )
         assert len(active_subscriptions) == 1
 
-        prev_invoices_len = Invoice.objects.filter(payment_status="draft").count()
+        prev_invoices_len = Invoice.objects.filter(
+            payment_status=INVOICE_STATUS_TYPES.DRAFT
+        ).count()
 
         payload = {"customer_id": setup_dict["customer"].customer_id}
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
@@ -133,6 +136,8 @@ class TestGenerateInvoice:
             customer=setup_dict["customer"],
         )
         assert len(after_active_subscriptions) == len(active_subscriptions)
-        new_invoices_len = Invoice.objects.filter(payment_status="draft").count()
+        new_invoices_len = Invoice.objects.filter(
+            payment_status=INVOICE_STATUS_TYPES.DRAFT
+        ).count()
 
         assert new_invoices_len == prev_invoices_len + 1

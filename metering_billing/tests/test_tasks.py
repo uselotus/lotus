@@ -5,21 +5,18 @@ from datetime import datetime, timedelta
 
 import pytest
 import stripe
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import (
     BillableMetric,
     BillingPlan,
     Event,
     Invoice,
-    Organization,
     PlanComponent,
     Subscription,
-    User,
 )
 from metering_billing.tasks import calculate_invoice, update_invoice_status
+from metering_billing.utils import INVOICE_STATUS_TYPES
 from model_bakery import baker
-from rest_framework import status
 
 
 @pytest.fixture
@@ -143,14 +140,14 @@ class TestUpdateInvoiceStatus:
         invoice = baker.make(
             Invoice,
             issue_date=setup_dict["subscription"].end_date,
-            payment_status="unpaid",
+            payment_status=INVOICE_STATUS_TYPES.UNPAID,
             external_payment_obj_id=payment_intent.id,
             organization={"company_name": "bogus"},
         )
 
-        assert invoice.payment_status != "paid"
+        assert invoice.payment_status != INVOICE_STATUS_TYPES.PAID
 
         update_invoice_status()
 
         invoice = Invoice.objects.filter(id=invoice.id).first()
-        assert invoice.payment_status == "paid"
+        assert invoice.payment_status == INVOICE_STATUS_TYPES.PAID
