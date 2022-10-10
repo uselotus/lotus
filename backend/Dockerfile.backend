@@ -23,6 +23,6 @@ RUN chmod +x ./scripts/start_backend.dev.sh
 # ---------------------------------------
 # Production
 # ---------------------------------------
-FROM build AS production
+FROM build AS production 
 COPY ./scripts/start_backend.prod.sh ./scripts/start_backend.prod.sh
 RUN chmod +x ./scripts/start_backend.prod.sh
