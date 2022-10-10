@@ -29,14 +29,6 @@ export default defineConfig({
     react(),
     splitVendorChunkPlugin(),
     // tsconfigPaths(),
-    vitePluginImp({
-      libList: [
-        {
-          libName: "antd",
-          style: (name) => `antd/es/${name}/style`,
-        },
-      ],
-    }),
   ],
   server: {
     host: true,
@@ -55,23 +47,6 @@ export default defineConfig({
     preprocessorOptions: {
       less: {
         javascriptEnabled: true,
-        modifyVars: {
-          "primary-color": "#1D1D1F",
-          "link-color": "#1DA57A",
-          "highlight-color": "#CCA43B",
-          black: "#1D1D1F",
-          white: "#F7F8FD",
-          "border-radius-base": "4px",
-          "typography-title-font-weight": 700,
-          "height-base": "48px",
-          "border-color-base": "#1D1D1F",
-          "font-size-base": "16px",
-          "font-family": "Inter, sans-serif",
-          "heading-1-size": "32px",
-          "heading-2-size": "26px",
-          "heading-3-size": "16px",
-          "heading-4-size": "14px",
-        },
       },
     },
   },
