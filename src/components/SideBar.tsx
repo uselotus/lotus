@@ -94,17 +94,20 @@ const SideBar: FC = () => {
         />
       </div>
 
-      <div className="mb-4">
-        <Divider className="self-end" />
-        <Menu>
-          <Menu.Item
-            key="logout"
-            onClick={handleLogoutClick}
-            icon={<LogoutOutlined />}
-          >
-            Logout
-          </Menu.Item>
-        </Menu>
+      <div className="mb-5">
+        <Menu
+          items={[
+            {
+              type: "divider",
+            },
+            {
+              key: "/logout",
+              icon: <LogoutOutlined />,
+              label: "Logout",
+              onClick: handleLogoutClick,
+            },
+          ]}
+        />
       </div>
     </div>
   );
