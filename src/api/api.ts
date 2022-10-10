@@ -17,6 +17,7 @@ import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
 
+axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 axios.defaults.xsrfCookieName = "csrftoken";
 axios.defaults.xsrfHeaderName = "X-CSRFToken";
 
