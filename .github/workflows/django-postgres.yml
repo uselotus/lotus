@@ -62,7 +62,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pipenv install --dev --system
+          pipenv install --dev
 
       - name: Migrate
         
@@ -124,7 +124,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pipenv install --dev --system
+          pipenv install --dev
 
       - name: Migrate
         run: |

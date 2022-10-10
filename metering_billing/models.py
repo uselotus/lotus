@@ -9,6 +9,7 @@ from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
 from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
 
 from metering_billing.utils import (
     AGGREGATION_CHOICES,
@@ -33,6 +34,7 @@ class Organization(models.Model):
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
+    history = HistoricalRecords()
 
     def __str__(self):
         return self.company_name
@@ -51,6 +53,7 @@ class Alert(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     webhook_url = models.CharField(max_length=300, blank=True, null=True)
     name = models.CharField(max_length=100, default=" ")
+    history = HistoricalRecords()
 
 
 class User(AbstractUser):
@@ -58,6 +61,7 @@ class User(AbstractUser):
         Organization, on_delete=models.CASCADE, null=True, blank=True
     )
     email = models.EmailField(unique=True)
+    history = HistoricalRecords()
 
 
 class Customer(models.Model):
@@ -89,6 +93,7 @@ class Customer(models.Model):
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
     billing_address = models.CharField(max_length=500, blank=True, null=True)
+    history = HistoricalRecords()
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
@@ -166,6 +171,7 @@ class BillableMetric(models.Model):
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
     categorical_filters = models.ManyToManyField(CategoricalFilter, blank=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
+    history = HistoricalRecords()
 
     class Meta:
         unique_together = ("organization", "billable_metric_name")
@@ -256,6 +262,7 @@ class BillingPlan(models.Model):
     replacement_billing_plan = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL
     )
+    history = HistoricalRecords()
 
     def __str__(self) -> str:
         return str(self.name)
@@ -319,6 +326,7 @@ class Subscription(models.Model):
     flat_fee_already_billed = models.DecimalField(
         decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
+    history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         if not self.end_date:
@@ -357,6 +365,7 @@ class Invoice(models.Model):
     organization = models.JSONField()
     customer = models.JSONField()
     subscription = models.JSONField()
+    history = HistoricalRecords()
 
 
 class APIToken(AbstractAPIKey):
