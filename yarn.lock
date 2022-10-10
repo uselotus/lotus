@@ -1180,7 +1180,7 @@
   resolved "https://registry.yarnpkg.com/@tanstack/query-core/-/query-core-4.3.8.tgz#d5f07c1d9d4f83f16f0bed7f3b245fa0e557b037"
   integrity sha512-AEUWtCNBIImFZ9tMt/P8V86kIhMHpfoJqAI1auGOLR8Wzeq7Ymiue789PJG0rKYcyViUicBZeHjggMqyEQVMfQ==
 
-"@tanstack/react-query@^4.3.9":
+"@tanstack/react-query@4.3.9":
   version "4.3.9"
   resolved "https://registry.yarnpkg.com/@tanstack/react-query/-/react-query-4.3.9.tgz#13332a1d4dd404baec24c2853883bcb3cc61ea92"
   integrity sha512-odfDW6WiSntCsCh+HFeJtUys3UnVOjfJMhykAtGtYvcklMyyDmCv9BVBt5KlSpbk/qW3kURPFCDapO+BFUlCwg==
@@ -1511,7 +1511,7 @@ babel-plugin-emotion@^10.0.27:
     find-root "^1.1.0"
     source-map "^0.5.7"
 
-babel-plugin-import@^1.13.5:
+babel-plugin-import@1.13.5:
   version "1.13.5"
   resolved "https://registry.yarnpkg.com/babel-plugin-import/-/babel-plugin-import-1.13.5.tgz#42eed1c5afd9a35ee1b1f8fe922b07c44077d753"
   integrity sha512-IkqnoV+ov1hdJVofly9pXRJmeDm9EtROfrc5i6eII0Hix2xMs5FEm8FG3ExMvazbnZBbgHIt6qdO8And6lCloQ==
@@ -3452,7 +3452,7 @@ react-content-loader@^5.0.4:
   resolved "https://registry.yarnpkg.com/react-content-loader/-/react-content-loader-5.1.4.tgz#854bafe4415dd9de07174621375bc308edd0ebb5"
   integrity sha512-hTq7pZi2GKCK6a9d3u6XStozm0QGCEjw8cSqQReiWnh2up6IwCha5R5TF0o6SY5qUDpByloEZEZtnFxpJyENFw==
 
-react-copy-to-clipboard@^5.1.0:
+react-copy-to-clipboard@5.1.0:
   version "5.1.0"
   resolved "https://registry.yarnpkg.com/react-copy-to-clipboard/-/react-copy-to-clipboard-5.1.0.tgz#09aae5ec4c62750ccb2e6421a58725eabc41255c"
   integrity sha512-k61RsNgAayIJNoy9yDsYzDe/yAZAzEbEgcz3DZMhF686LEyukcE1hzurxe85JandPUG+yTfGVFzuEw3xt8WP/A==
@@ -3485,7 +3485,7 @@ react-lifecycles-compat@^3.0.4:
   resolved "https://registry.yarnpkg.com/react-lifecycles-compat/-/react-lifecycles-compat-3.0.4.tgz#4f1a273afdfc8f3488a8c516bfda78f872352362"
   integrity sha512-fBASbA6LnOU9dOU2eW7aQ8xmYBSXUIWr+UmF9b1efZBazGNO+rcXT/icdKnYm2pTwcRylVUYwW7H1PHfLekVzA==
 
-react-loading-overlay@^1.0.1:
+react-loading-overlay@1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/react-loading-overlay/-/react-loading-overlay-1.0.1.tgz#ee3b1ad56c45bb2f1ba46d4820ba0d06cd319a91"
   integrity sha512-aUjtZ8tNXBSx+MbD2SQs0boPbeTAGTh+I5U9nWjDzMasKlYr58RJpr57c8W7uApeLpOkAGbInExRi6GamNC2bA==
