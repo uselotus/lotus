@@ -2,9 +2,9 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import posthog
 import stripe
-from lotus.settings import POSTHOG_PERSON
 from rest_framework import serializers
 
+from lotus.settings import POSTHOG_PERSON
 from metering_billing.models import (
     BillingPlan,
     Customer,
@@ -118,9 +118,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         )
         amount = usage_dict["total_revenue_due"]
         make_all_decimals_floats(usage_dict)
-        print("pre")
         make_all_datetimes_dates(usage_dict)
-        print("post")
         make_all_dates_times_strings(usage_dict)
         line_item = usage_dict
 

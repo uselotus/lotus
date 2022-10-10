@@ -6,6 +6,11 @@ from dateutil import parser
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from lotus.settings import POSTHOG_PERSON
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -13,10 +18,6 @@ from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.view_utils import RevenueCalcGranularity, periods_bwn_twodates
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from ..auth_utils import parse_organization
 from ..invoice import generate_invoice
@@ -403,7 +404,6 @@ class CustomersWithRevenueView(APIView):
         cust = []
         for customer in customers:
             sub_usg_summaries = get_customer_usage_and_revenue(customer)
-            print(sub_usg_summaries)
             customer_total_revenue_due = sum(
                 x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
             )
