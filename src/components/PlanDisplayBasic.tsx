@@ -76,13 +76,13 @@ function PlanDisplayBasic(props: {
     <Paper>
       <Descriptions
         title={props.plan.name}
-        contentStyle={{
-          fontSize: 32,
-        }}
-        className="text-4xl"
         extra={
           <Dropdown overlay={planMenu} trigger={["click"]}>
-            <Button type="text" onClick={(e) => e.preventDefault()}>
+            <Button
+              type="text"
+              size="small"
+              onClick={(e) => e.preventDefault()}
+            >
               <MoreOutlined />
             </Button>
           </Dropdown>

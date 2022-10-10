@@ -1,7 +1,6 @@
 import React, { FC } from "react";
-import { Affix, Divider, Menu, MenuItemProps } from "antd";
+import { Menu, MenuItemProps } from "antd";
 import {
-  BarChartOutlined,
   UserOutlined,
   DashboardOutlined,
   SettingOutlined,
@@ -12,9 +11,7 @@ import {
 } from "@ant-design/icons";
 
 import { useNavigate, useLocation } from "react-router";
-import "./SideBar.css";
 import { Authentication } from "../api/api";
-import { Link } from "react-router-dom";
 
 const imgUrl = new URL("./Head.png", import.meta.url).href;
 
