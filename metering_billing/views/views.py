@@ -769,11 +769,11 @@ class UpdateBillingPlanView(APIView):
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-            if updated_bp.pay_in_advance and not old_bp.pay_in_advance:
-                # need to bill the customer immediately for the flat fee (prorated)
-                for sub in sub_qs:
-                    sub.billing_plan = updated_bp
-                    sub.save()
+            # need to bill the customer immediately for the flat fee (prorated)
+            for sub in sub_qs:
+                sub.billing_plan = updated_bp
+                sub.save()
+                if updated_bp.pay_in_advance and not old_bp.pay_in_advance:
                     new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
                     prorated_cost = sum(new_sub_daily_cost_dict.values())
                     due = (
