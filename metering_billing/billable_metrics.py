@@ -427,3 +427,9 @@ class StatefulHandler(BillableMetricHandler):
             properties["initial_value"], (int, float)
         ), "initial_value must be a number"
         return properties
+
+
+METRIC_HANDLER_MAP = {
+    METRIC_TYPES.AGGREGATION: AggregationHandler,
+    METRIC_TYPES.STATEFUL: StatefulHandler,
+}
