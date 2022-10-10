@@ -88,9 +88,10 @@ function PlanDisplayBasic(props: {
           </Dropdown>
         }
       />
-      <p className="">{props.plan.description}</p>
-      <Row>
-        <Col span={12}>
+
+      <Row justify="center" align="middle">
+        <Col span={11}>
+          <p className="p-0 m-0">{props.plan.description}</p>
           <Descriptions size="small" column={2}>
             <Descriptions.Item label="Plan ID" span={2}>
               {props.plan.billing_plan_id}
@@ -108,15 +109,15 @@ function PlanDisplayBasic(props: {
           </Descriptions>
         </Col>
 
-        <Col span={8}>
+        <Col span={9}>
           <Space>
             <Dropdown overlay={componentMenu}>
-              <Button>
+              <Button style={{ width: 157 }}>
                 Components: {props.plan.components.length} <ArrowDownOutlined />
               </Button>
             </Dropdown>
             <Dropdown overlay={featureMenue}>
-              <Button className="bg-[#CCA43B69]">
+              <Button className="bg-[#CCA43B69]" style={{ width: 157 }}>
                 Features: {props.plan.features.length} <ArrowDownOutlined />
               </Button>
             </Dropdown>
