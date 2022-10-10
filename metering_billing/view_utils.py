@@ -7,7 +7,11 @@ from dateutil import parser
 from django.db.models import Count, F, FloatField, Max, Min, Sum
 from django.db.models.functions import Cast, Trunc
 
-from metering_billing.billable_metrics import AggregationHandler, StatefulHandler
+from metering_billing.billable_metrics import (
+    METRIC_HANDLER_MAP,
+    AggregationHandler,
+    StatefulHandler,
+)
 from metering_billing.models import Event, Subscription
 from metering_billing.utils import (
     METRIC_TYPES,
@@ -27,10 +31,7 @@ def get_metric_usage(
     customer=None,
     billable_only=False,
 ):
-    if metric.metric_type == METRIC_TYPES.STATEFUL:
-        handler = StatefulHandler(metric)
-    elif metric.metric_type == METRIC_TYPES.AGGREGATION:
-        handler = AggregationHandler(metric)
+    handler = METRIC_HANDLER_MAP[metric.metric_type](metric)
 
     usage = handler.get_usage(
         granularity=granularity,
