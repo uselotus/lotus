@@ -4,7 +4,6 @@ from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 from enum import Enum
 
-from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
 from model_utils import Choices
@@ -37,8 +36,10 @@ class AGGREGATION_TYPES(object):
     COUNT = "count"
     SUM = "sum"
     MAX = "max"
+    MIN = "min"
     UNIQUE = "unique"
-    LAST = "last"
+    LATEST = "latest"
+    AVERAGE = "average"
 
 
 AGGREGATION_CHOICES = Choices(
@@ -46,7 +47,9 @@ AGGREGATION_CHOICES = Choices(
     (AGGREGATION_TYPES.SUM, _("Sum")),
     (AGGREGATION_TYPES.MAX, _("Max")),
     (AGGREGATION_TYPES.UNIQUE, _("Unique")),
-    (AGGREGATION_TYPES.LAST, _("Last")),
+    (AGGREGATION_TYPES.LATEST, _("Latest")),
+    (AGGREGATION_TYPES.AVERAGE, _("Average")),
+    (AGGREGATION_TYPES.MIN, _("Min")),
 )
 
 
@@ -59,14 +62,14 @@ SUPPORTED_PAYMENT_PROVIDERS = Choices(
 )
 
 
-class EVENT_TYPES(object):
+class METRIC_TYPES(object):
     AGGREGATION = "aggregation"
     STATEFUL = "stateful"
 
 
-EVENT_CHOICES = Choices(
-    (EVENT_TYPES.AGGREGATION, _("Aggregatable")),
-    (EVENT_TYPES.STATEFUL, _("State Logging")),
+METRIC_TYPE_CHOICES = Choices(
+    (METRIC_TYPES.AGGREGATION, _("Aggregatable")),
+    (METRIC_TYPES.STATEFUL, _("State Logging")),
 )
 
 
@@ -83,32 +86,37 @@ INTERVAL_CHOICES = Choices(
 )
 
 
-class STATEFUL_AGG_PERIOD_TYPES(object):
-    DAY = "day"
-    HOUR = "hour"
-
-
-STATEFUL_AGG_PERIOD_CHOICES = Choices(
-    (STATEFUL_AGG_PERIOD_TYPES.DAY, _("Day")),
-    (STATEFUL_AGG_PERIOD_TYPES.HOUR, _("Hour")),
-)
-
-
 class RevenueCalcGranularity(Enum):
     DAILY = "day"
     TOTAL = None
 
 
-rev_calc_to_agg_keyword = {
-    "daily": "date",
-    "monthly": "month",
-    "yearly": "year",
-}
+class NUMERIC_FILTER_OPERATORS(object):
+    GTE = "gte"
+    GT = "gt"
+    EQ = "eq"
+    LT = "lt"
+    LTE = "lte"
 
-stateful_agg_period_to_agg_keyword = {
-    "day": "date",
-    "hour": "hour",
-}
+
+NUMERIC_FILTER_OPERATOR_CHOICES = Choices(
+    (NUMERIC_FILTER_OPERATORS.GTE, _("Greater than or equal to")),
+    (NUMERIC_FILTER_OPERATORS.GT, _("Greater than")),
+    (NUMERIC_FILTER_OPERATORS.EQ, _("Equal to")),
+    (NUMERIC_FILTER_OPERATORS.LT, _("Less than")),
+    (NUMERIC_FILTER_OPERATORS.LTE, _("Less than or equal to")),
+)
+
+
+class CATEGORICAL_FILTER_OPERATORS(object):
+    ISIN = "isin"
+    ISNOTIN = "isnotin"
+
+
+CATEGORICAL_FILTER_OPERATOR_CHOICES = Choices(
+    (CATEGORICAL_FILTER_OPERATORS.ISIN, _("Is in")),
+    (CATEGORICAL_FILTER_OPERATORS.ISNOTIN, _("Is not in")),
+)
 
 
 class SUB_STATUS_TYPES(object):
@@ -172,14 +180,20 @@ def make_all_datetimes_dates(json):
         datetime.datetime,
         collections.OrderedDict,
     ]:
+        key_remappings = {}
         for key, value in json.items():
+            if isinstance(key, datetime.datetime):
+                key_remappings[key] = str(key)
             if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
-                make_all_dates_times_strings(value)
+                make_all_datetimes_dates(value)
             elif isinstance(value, list):
                 for item in value:
-                    make_all_dates_times_strings(item)
+                    make_all_datetimes_dates(item)
             elif isinstance(value, datetime.datetime):
                 json[key] = value.date()
+        for old_key, new_key in key_remappings.items():
+            vals = json.pop(old_key)
+            json[new_key] = vals
 
 
 def years_bwn_twodates(start_date, end_date):
@@ -221,3 +235,37 @@ def turn_decimal_into_cents(amount):
     Turn a decimal into cents.
     """
     return int(amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100))
+
+
+def periods_bwn_twodates(granularity, start_date, end_date):
+    start_time = datetime.datetime.combine(
+        start_date, datetime.time.min, tzinfo=datetime.timezone.utc
+    )
+    end_time = datetime.datetime.combine(
+        end_date, datetime.time.max, tzinfo=datetime.timezone.utc
+    )
+    rd = relativedelta(start_time, end_time)
+    if granularity == RevenueCalcGranularity.TOTAL:
+        periods_btwn = 0
+    # elif granularity == RevenueCalcGranularity.HOUR:
+    #     periods_btwn = (
+    #         rd.years * 365 * 24 + rd.months * 30 * 24 + rd.days * 24 + rd.hours
+    #     )
+    elif granularity == RevenueCalcGranularity.DAILY:
+        periods_btwn = rd.years * 365 + rd.months * 30 + rd.days
+    # elif granularity == RevenueCalcGranularity.WEEK:
+    #     periods_btwn = rd.years * 52 + rd.months * 4 + rd.weeks
+    # elif granularity == RevenueCalcGranularity.MONTH:
+    #     periods_btwn = rd.years * 12 + rd.months
+    periods_btwn = abs(periods_btwn)
+    for n in range(periods_btwn + 1):
+        if granularity == RevenueCalcGranularity.TOTAL:
+            yield start_time
+        # elif granularity == RevenueCalcGranularity.HOUR:
+        #     yield start_time + relativedelta(hours=n)
+        elif granularity == RevenueCalcGranularity.DAILY:
+            yield start_time + relativedelta(days=n)
+        # elif granularity == RevenueCalcGranularity.WEEK:
+        #     yield start_time + relativedelta(weeks=n)
+        # elif granularity == RevenueCalcGranularity.MONTH:
+        #     yield start_time + relativedelta(months=n)

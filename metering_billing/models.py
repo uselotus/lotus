@@ -8,17 +8,20 @@ from django.db import models
 from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
-from model_utils import Choices
 from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
 
 from metering_billing.utils import (
     AGGREGATION_CHOICES,
-    EVENT_CHOICES,
+    CATEGORICAL_FILTER_OPERATOR_CHOICES,
     INTERVAL_CHOICES,
+    INTERVAL_TYPES,
     INVOICE_STATUS_CHOICES,
+    METRIC_TYPE_CHOICES,
+    NUMERIC_FILTER_OPERATOR_CHOICES,
     PAYMENT_PLANS,
-    STATEFUL_AGG_PERIOD_CHOICES,
     SUB_STATUS_CHOICES,
+    SUB_STATUS_TYPES,
     SUPPORTED_PAYMENT_PROVIDERS,
     dates_bwn_twodates,
 )
@@ -31,6 +34,7 @@ class Organization(models.Model):
     payment_plan = models.CharField(
         max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
     )
+    history = HistoricalRecords()
 
     def __str__(self):
         return self.company_name
@@ -49,6 +53,7 @@ class Alert(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     webhook_url = models.CharField(max_length=300, blank=True, null=True)
     name = models.CharField(max_length=100, default=" ")
+    history = HistoricalRecords()
 
 
 class User(AbstractUser):
@@ -56,6 +61,7 @@ class User(AbstractUser):
         Organization, on_delete=models.CASCADE, null=True, blank=True
     )
     email = models.EmailField(unique=True)
+    history = HistoricalRecords()
 
 
 class Customer(models.Model):
@@ -87,12 +93,15 @@ class Customer(models.Model):
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
     billing_address = models.CharField(max_length=500, blank=True, null=True)
+    history = HistoricalRecords()
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
 
     def get_billing_plan_name(self) -> str:
-        subscription_set = Subscription.objects.filter(customer=self, status="active")
+        subscription_set = Subscription.objects.filter(
+            customer=self, status=SUB_STATUS_TYPES.ACTIVE
+        )
         if subscription_set is None:
             return "None"
         return [str(sub.billing_plan) for sub in subscription_set]
@@ -124,6 +133,20 @@ class Event(models.Model):
         return str(self.event_name) + "-" + str(self.idempotency_id)
 
 
+class NumericFilter(models.Model):
+    property_name = models.CharField(max_length=100)
+    operator = models.CharField(max_length=10, choices=NUMERIC_FILTER_OPERATOR_CHOICES)
+    comparison_value = models.FloatField()
+
+
+class CategoricalFilter(models.Model):
+    property_name = models.CharField(max_length=100)
+    operator = models.CharField(
+        max_length=10, choices=CATEGORICAL_FILTER_OPERATOR_CHOICES
+    )
+    comparison_value = models.JSONField()
+
+
 class BillableMetric(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     event_name = models.CharField(max_length=200, null=False)
@@ -135,40 +158,20 @@ class BillableMetric(models.Model):
         blank=False,
         null=False,
     )
-    event_type = models.CharField(
+    metric_type = models.CharField(
         max_length=20,
-        choices=EVENT_CHOICES,
-        default=EVENT_CHOICES.aggregation,
+        choices=METRIC_TYPE_CHOICES,
+        default=METRIC_TYPE_CHOICES.aggregation,
         blank=False,
         null=False,
     )
-    stateful_aggregation_period = models.CharField(
-        max_length=20,
-        choices=STATEFUL_AGG_PERIOD_CHOICES,
-        blank=True,
-        null=True,
-    )
     billable_metric_name = models.CharField(
-        max_length=200, null=False, blank=True, default=""
+        max_length=200, null=False, blank=True, default=uuid.uuid4
     )
-
-    def default_name(self):
-        if self.event_type == EVENT_CHOICES.aggregation:
-            name = "[agg]"
-        elif self.event_type == EVENT_CHOICES.stateful:
-            name = "[state]"
-        name += " " + self.aggregation_type + " of"
-        if self.property_name not in ["", " ", None]:
-            name += " " + self.property_name + " of"
-        name += " " + self.event_name
-        if self.stateful_aggregation_period:
-            name += " per " + self.stateful_aggregation_period
-        return name[:200]
-
-    def save(self, *args, **kwargs):
-        if self.billable_metric_name in ["", " ", None]:
-            self.billable_metric_name = self.default_name()
-        super().save(*args, **kwargs)
+    numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
+    categorical_filters = models.ManyToManyField(CategoricalFilter, blank=True)
+    properties = models.JSONField(default=dict, blank=True, null=True)
+    history = HistoricalRecords()
 
     class Meta:
         unique_together = ("organization", "billable_metric_name")
@@ -179,37 +182,19 @@ class BillableMetric(models.Model):
                     "event_name",
                     "aggregation_type",
                     "property_name",
-                    "event_type",
-                    "stateful_aggregation_period",
+                    "metric_type",
                 ],
-                name="unique_with_property_name_and_sap",
+                name="unique_with_property_name",
             ),
             UniqueConstraint(
                 fields=[
                     "organization",
                     "event_name",
                     "aggregation_type",
-                    "event_type",
-                    "stateful_aggregation_period",
+                    "metric_type",
                 ],
                 condition=Q(property_name=None),
-                name="unique_without_property_name_with_sap",
-            ),
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "event_name",
-                    "aggregation_type",
-                    "event_type",
-                    "property_name",
-                ],
-                condition=Q(stateful_aggregation_period=None),
-                name="unique_with_property_name_without_sap",
-            ),
-            UniqueConstraint(
-                fields=["organization", "event_name", "aggregation_type", "event_type"],
-                condition=Q(stateful_aggregation_period=None) & Q(property_name=None),
-                name="unique_without_property_name_without_sap",
+                name="unique_without_property_name",
             ),
         ]
 
@@ -277,6 +262,7 @@ class BillingPlan(models.Model):
     replacement_billing_plan = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL
     )
+    history = HistoricalRecords()
 
     def __str__(self) -> str:
         return str(self.name)
@@ -285,11 +271,11 @@ class BillingPlan(models.Model):
         unique_together = ("organization", "billing_plan_id")
 
     def calculate_end_date(self, start_date):
-        if self.interval == "week":
+        if self.interval == INTERVAL_TYPES.WEEK:
             return start_date + relativedelta(weeks=+1) - relativedelta(days=+1)
-        elif self.interval == "month":
+        elif self.interval == INTERVAL_TYPES.MONTH:
             return start_date + relativedelta(months=+1) - relativedelta(days=+1)
-        elif self.interval == "year":
+        elif self.interval == INTERVAL_TYPES.YEAR:
             return start_date + relativedelta(years=+1) - relativedelta(days=+1)
         else:
             raise ValueError("End date not calculated correctly")
@@ -340,6 +326,7 @@ class Subscription(models.Model):
     flat_fee_already_billed = models.DecimalField(
         decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
+    history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         if not self.end_date:
@@ -378,6 +365,7 @@ class Invoice(models.Model):
     organization = models.JSONField()
     customer = models.JSONField()
     subscription = models.JSONField()
+    history = HistoricalRecords()
 
 
 class APIToken(AbstractAPIKey):

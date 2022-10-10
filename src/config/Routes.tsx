@@ -4,13 +4,14 @@ import Dashboard from '../components/Dashboard/Dashboard'
 import ViewPlans from '../pages/ViewPlans'
 import ViewCustomers from '../pages/ViewCustomers'
 import ViewSettings from '../pages/ViewSettings'
-import StripeRedirect from '../pages/StripeRedirect'
+import StripeRedirect from "../integrations/StripeIntegrations";
 import SideBar from '../components/SideBar'
 import { Avatar, Col, Divider, Layout, PageHeader, Row } from 'antd'
 import { MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons'
 import CreatePlan from '../pages/CreatePlan'
 import ViewMetrics from '../pages/ViewMetrics'
 import EditPlan from '../pages/EditPlan'
+
 
 const { Header, Sider, Content, Footer } = Layout
 

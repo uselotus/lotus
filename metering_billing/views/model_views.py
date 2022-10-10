@@ -4,6 +4,7 @@ import posthog
 from django.db import IntegrityError
 from django.db.models import Count, Q
 from lotus.settings import POSTHOG_PERSON
+from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateCustomerID
 from metering_billing.models import (
     Alert,
@@ -31,6 +32,7 @@ from metering_billing.serializers.model_serializers import (
     SubscriptionSerializer,
     UserSerializer,
 )
+from metering_billing.utils import INVOICE_STATUS_TYPES, METRIC_TYPES, SUB_STATUS_TYPES
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -270,7 +272,7 @@ class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             .annotate(
                 active_subscriptions=Count(
                     "current_billing_plan__pk",
-                    filter=Q(current_billing_plan__status="active"),
+                    filter=Q(current_billing_plan__status=SUB_STATUS_TYPES.ACTIVE),
                 )
             )
         )
@@ -293,7 +295,7 @@ class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
         num_sub_plan = Subscription.objects.filter(
-            billing_plan=obj, status="active"
+            billing_plan=obj, status=SUB_STATUS_TYPES.ACTIVE
         ).count()
         if num_sub_plan > 0:
             return Response(
@@ -331,7 +333,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if serializer.validated_data["start_date"] <= datetime.now().date():
-            serializer.validated_data["status"] = "active"
+            serializer.validated_data["status"] = SUB_STATUS_TYPES.ACTIVE
         serializer.save(organization=parse_organization(self.request))
 
     def get_serializer_class(self):
@@ -370,7 +372,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         organization = parse_organization(self.request)
         return Invoice.objects.filter(
-            ~Q(payment_status="draft"),
+            ~Q(payment_status=INVOICE_STATUS_TYPES.DRAFT),
             organization=organization,
         )
 

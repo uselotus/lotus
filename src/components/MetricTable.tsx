@@ -43,7 +43,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     {
       title: "Type",
       width: 100,
-      dataIndex: "event_type",
+      dataIndex: "metric_type",
       align: "left",
     },
     {

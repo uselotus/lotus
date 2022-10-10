@@ -2,11 +2,7 @@ from metering_billing.auth_utils import parse_organization
 from metering_billing.models import BillableMetric, BillingPlan, Customer
 from rest_framework import serializers
 
-from .model_serializers import (
-    BillableMetricSerializer,
-    BillingPlanSerializer,
-    EventSerializer,
-)
+from .model_serializers import BillingPlanSerializer, EventSerializer
 
 ## CUSTOM SERIALIZERS
 

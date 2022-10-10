@@ -2,6 +2,7 @@ import datetime
 from decimal import Decimal
 
 import posthog
+from dateutil import parser
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -11,7 +12,7 @@ from metering_billing.models import APIToken, BillableMetric, Customer, Subscrip
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.view_utils import RevenueCalcGranularity, dates_bwn_twodates
+from metering_billing.view_utils import RevenueCalcGranularity, periods_bwn_twodates
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -19,7 +20,12 @@ from rest_framework.views import APIView
 
 from ..auth_utils import parse_organization
 from ..invoice import generate_invoice
-from ..utils import make_all_dates_times_strings, make_all_decimals_floats
+from ..utils import (
+    SUB_STATUS_TYPES,
+    convert_to_decimal,
+    make_all_dates_times_strings,
+    make_all_decimals_floats,
+)
 from ..view_utils import (
     calculate_sub_pc_usage_revenue,
     get_customer_usage_and_revenue,
@@ -72,7 +78,10 @@ class PeriodMetricRevenueView(APIView):
                     ] = {
                         "metric": str(billable_metric),
                         "data": {
-                            x: Decimal(0) for x in dates_bwn_twodates(p_start, p_end)
+                            x: Decimal(0)
+                            for x in periods_bwn_twodates(
+                                RevenueCalcGranularity.DAILY, p_start, p_end
+                            )
                         },
                         "total_revenue": Decimal(0),
                     }
@@ -122,7 +131,8 @@ class PeriodMetricRevenueView(APIView):
             return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
             for dic in dailies:
                 dic["data"] = [
-                    {"date": k, "metric_revenue": v} for k, v in dic["data"].items()
+                    {"date": str(k.date()), "metric_revenue": v}
+                    for k, v in dic["data"].items()
                 ]
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
@@ -196,12 +206,19 @@ class PeriodMetricUsageView(APIView):
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "top_n_customers"]
         ]
+        if type(q_start) == str:
+            q_start = parser.parse(q_start).date()
+        if type(q_end) == str:
+            q_end = parser.parse(q_end).date()
 
         metrics = BillableMetric.objects.filter(organization=organization)
         return_dict = {}
         for metric in metrics:
             usage_summary = get_metric_usage(
-                metric, q_start, q_end, time_period_agg="day"
+                metric,
+                q_start,
+                q_end,
+                granularity=RevenueCalcGranularity.DAILY,
             )
             return_dict[str(metric)] = {
                 "data": {},
@@ -209,24 +226,21 @@ class PeriodMetricUsageView(APIView):
                 "top_n_customers": {},
             }
             metric_dict = return_dict[str(metric)]
-            for obj in usage_summary:
-                customer, date, qty = [
-                    obj[key]
-                    for key in ["customer_name", "time_created_quantized", "usage_qty"]
-                ]
-                date = date.date()
-                if str(date) not in metric_dict["data"]:
-                    metric_dict["data"][str(date)] = {
-                        "total_usage": Decimal(0),
-                        "customer_usages": {},
-                    }
-                date_dict = metric_dict["data"][str(date)]
-                date_dict["total_usage"] += qty
-                date_dict["customer_usages"][customer] = qty
-                metric_dict["total_usage"] += qty
-                if customer not in metric_dict["top_n_customers"]:
-                    metric_dict["top_n_customers"][customer] = 0
-                metric_dict["top_n_customers"][customer] += qty
+            for customer_name, period_dict in usage_summary.items():
+                for datetime, qty in period_dict.items():
+                    qty = convert_to_decimal(qty)
+                    if datetime not in metric_dict["data"]:
+                        metric_dict["data"][datetime] = {
+                            "total_usage": Decimal(0),
+                            "customer_usages": {},
+                        }
+                    date_dict = metric_dict["data"][datetime]
+                    date_dict["total_usage"] += qty
+                    date_dict["customer_usages"][customer_name] = qty
+                    metric_dict["total_usage"] += qty
+                    if customer_name not in metric_dict["top_n_customers"]:
+                        metric_dict["top_n_customers"][customer_name] = 0
+                    metric_dict["top_n_customers"][customer_name] += qty
             if top_n:
                 top_n_customers = sorted(
                     metric_dict["top_n_customers"].items(),
@@ -242,7 +256,7 @@ class PeriodMetricUsageView(APIView):
         for metric, metric_d in return_dict.items():
             metric_d["data"] = [
                 {
-                    "date": k,
+                    "date": str(k.date()),
                     "total_usage": v["total_usage"],
                     "customer_usages": v["customer_usages"],
                 }
@@ -389,6 +403,7 @@ class CustomersWithRevenueView(APIView):
         cust = []
         for customer in customers:
             sub_usg_summaries = get_customer_usage_and_revenue(customer)
+            print(sub_usg_summaries)
             customer_total_revenue_due = sum(
                 x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
             )
@@ -466,7 +481,7 @@ class DraftInvoiceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         subs = Subscription.objects.filter(
-            customer=customer, organization=organization, status="active"
+            customer=customer, organization=organization, status=SUB_STATUS_TYPES.ACTIVE
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)
@@ -516,12 +531,12 @@ class CancelSubscriptionView(APIView):
                 {"status": "error", "detail": "Subscription not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if sub.status == "ended":
+        if sub.status == SUB_STATUS_TYPES.ENDED:
             return Response(
                 {"status": "error", "detail": "Subscription already ended"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        elif sub.status == "not_started":
+        elif sub.status == SUB_STATUS_TYPES.NOT_STARTED:
             Subscription.objects.get(
                 organization=organization, subscription_id=sub_id
             ).delete()
@@ -534,7 +549,7 @@ class CancelSubscriptionView(APIView):
             )
         sub.auto_renew = False
         if revoke_access:
-            sub.status = "canceled"
+            sub.status = SUB_STATUS_TYPES.CANCELED
         sub.save()
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
@@ -617,7 +632,7 @@ class GetCustomerAccessView(APIView):
         event_limit_type = serializer.validated_data.get("event_limit_type")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
-            status="active",
+            status=SUB_STATUS_TYPES.ACTIVE,
             customer=customer,
         )
         if event_name:
@@ -642,15 +657,17 @@ class GetCustomerAccessView(APIView):
                             continue
                         metric_usage = get_metric_usage(
                             metric,
-                            query_start_date=sub.start_date,
-                            query_end_date=sub.end_date,
+                            sub.start_date,
+                            sub.end_date,
+                            granularity=RevenueCalcGranularity.TOTAL,
                             customer=customer,
                         )
-                        metric_usage = list(metric_usage)
+                        metric_usage = metric_usage.get(customer.name, {})
+                        metric_usage = list(metric_usage.values())
                         if len(metric_usage) > 0:
-                            metric_usage = metric_usage[0]["usage_qty"]
+                            metric_usage = metric_usage[0]
                         else:
-                            metric_usage = 0
+                            metric_usage = Decimal(0)
                         metric_usages[metric.billable_metric_name] = {
                             "metric_usage": metric_usage,
                             "metric_limit": metric_limit,
@@ -752,11 +769,11 @@ class UpdateBillingPlanView(APIView):
                         },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
-            if updated_bp.pay_in_advance and not old_bp.pay_in_advance:
-                # need to bill the customer immediately for the flat fee (prorated)
-                for sub in sub_qs:
-                    sub.billing_plan = updated_bp
-                    sub.save()
+            # need to bill the customer immediately for the flat fee (prorated)
+            for sub in sub_qs:
+                sub.billing_plan = updated_bp
+                sub.save()
+                if updated_bp.pay_in_advance and not old_bp.pay_in_advance:
                     new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
                     prorated_cost = sum(new_sub_daily_cost_dict.values())
                     due = (
@@ -829,7 +846,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
             sub = Subscription.objects.get(
                 organization=organization,
                 subscription_id=subscription_id,
-                status="active",
+                status=SUB_STATUS_TYPES.ACTIVE,
             ).select_related("billing_plan")
         except Subscription.DoesNotExist:
             return Response(

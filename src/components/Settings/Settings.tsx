@@ -1,11 +1,12 @@
 import React, { FC, useState } from "react";
 import "./Settings.css";
-import { StripeStatusType } from "../types/stripe-type";
+import { StripeStatusType } from "../../types/stripe-type";
 import { useQuery } from "react-query";
-import { StripeConnect, Alerts } from "../api/api";
+import { Alerts } from "../../api/api";
+import { StripeIntegration } from "../../integrations/api";
 import { useNavigate } from "react-router-dom";
 import { Divider, Button, Modal, List, Card } from "antd";
-import { APIToken } from "../api/api";
+import { APIToken } from "../../api/api";
 
 const Settings: FC = () => {
   const navigate = useNavigate();
@@ -19,12 +20,12 @@ const Settings: FC = () => {
   };
 
   const fetchStripeConnect = async (): Promise<StripeStatusType> =>
-    StripeConnect.getStripeConnectionStatus().then((data) => {
+    StripeIntegration.getStripeConnectionStatus().then((data) => {
       return data;
     });
 
   const { status, error, data } = useQuery<StripeStatusType>(
-    ["stripeConnect"],
+    ["stripeIntegration"],
     fetchStripeConnect
   );
 
@@ -42,7 +43,6 @@ const Settings: FC = () => {
   };
 
   const handleConnectWithStripeClick = () => {
-    const client_id: string = import.meta.env.VITE_STRIPE_CLIENT;
     const query = new URLSearchParams({
       response_type: "code",
       client_id: import.meta.env.VITE_STRIPE_CLIENT,
