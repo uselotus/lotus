@@ -61,7 +61,7 @@ export default defineConfig({
           "typography-title-font-weight": 700,
           "height-base": "48px",
           "border-color-base": "#1D1D1F",
-          "font-size-base": "16px",
+          "font-size-base": "14px",
           "font-family": "Inter, sans-serif",
           "heading-1-size": "32px",
           "heading-2-size": "26px",
