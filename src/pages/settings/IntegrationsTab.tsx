@@ -5,10 +5,11 @@ import { useQuery } from "react-query";
 import { Alerts } from "../../api/api";
 import { StripeIntegration } from "../../integrations/api";
 import { useNavigate } from "react-router-dom";
-import { Divider, Button, Modal, List, Card } from "antd";
+import { Divider, Button, Modal, List, Card, Typography, Row, Col } from "antd";
 import { APIToken } from "../../api/api";
+import { AppCard } from "./components/AppCard";
 
-const Settings: FC = () => {
+const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
   const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
   const [visible, setVisible] = useState<boolean>(false);
@@ -24,7 +25,7 @@ const Settings: FC = () => {
       return data;
     });
 
-  const { status, error, data } = useQuery<StripeStatusType>(
+  const { status, error, data, isLoading } = useQuery<StripeStatusType>(
     ["stripeIntegration"],
     fetchStripeConnect
   );
@@ -52,33 +53,37 @@ const Settings: FC = () => {
     let path: string = "https://connect.stripe.com/oauth/authorize?" + query;
     window.location.href = path;
   };
+
+  console.log("data", data);
+
   return (
     <div>
-      <h1 className="text-3xl font-main mb-10">Settings</h1>
-      <div>
-        {data?.connected === true ? (
-          <div>
-            <p className="text-danger p-2">Connected to Stripe &#x2705;</p>{" "}
-          </div>
-        ) : (
-          <div className="items-center">
-            <p className="text-danger p-2">Not Connected to Stripe </p>{" "}
-            <a
-              className="stripe-connect slate"
-              onClick={handleConnectWithStripeClick}
-            >
-              <span>Connect with</span>
-            </a>
-          </div>
-        )}
-      </div>
+      <Typography.Title level={2}>Integrations</Typography.Title>
+
+      <Row gutter={[24, 24]}>
+        {data &&
+          [1, 2, 3, 4].map((item, index) => {
+            return (
+              <Col span={6} key={index}>
+                <AppCard
+                  connected={data.connected}
+                  title="Stripe"
+                  description="Automatically charge your customers for their subscriptions."
+                  icon="https://cdn.neverbounce.com/images/integrations/square/stripe-square.png"
+                  handleClick={handleConnectWithStripeClick}
+                />
+              </Col>
+            );
+          })}
+      </Row>
+
       <Divider />
       <div className="mt-10 flex flex-row">
         <Button onClick={getKey}>Revoke API Key</Button>
       </div>
       <Divider />
       <div className="mt-10 flex flex-row">
-        <h2 className="font-main text-xl">Webhooks Urls</h2>
+        <Typography.Title level={2}>Webhook URLs</Typography.Title>
         {/* <List>
           {webhookData?.urls.map((url) => (
             <List.Item>
@@ -112,4 +117,4 @@ const Settings: FC = () => {
   );
 };
 
-export default Settings;
+export default IntegrationsTab;
