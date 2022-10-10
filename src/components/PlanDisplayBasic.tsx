@@ -46,8 +46,19 @@ function PlanDisplayBasic(props: {
     <Menu>
       {props.plan.components.map((component) => (
         <Menu.Item key={component.id} className="border-2 bg-white">
-          {component.billable_metric.billable_metric_name} $
-          {component.cost_per_batch} per {component.metric_units_per_batch}
+          <List.Item.Meta
+            style={{ width: "300px" }}
+            title={
+              <a href="https://ant.design">
+                {component.billable_metric.billable_metric_name}
+              </a>
+            }
+            description={
+              component.cost_per_batch
+                ? `$${component.cost_per_batch} / ${component.metric_units_per_batch} Unit(s)`
+                : "Free"
+            }
+          />
         </Menu.Item>
       ))}
     </Menu>
