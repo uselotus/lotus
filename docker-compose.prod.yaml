@@ -13,7 +13,7 @@ services:
     env_file:
       - ./env/.env.prod
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.backend
       target: production
     expose:
@@ -29,7 +29,7 @@ services:
   frontend:
     restart: always
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile.frontend
       target: production
     stdin_open: true
@@ -50,7 +50,7 @@ services:
     env_file:
       - ./env/.env.prod
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.backend
       target: production
     command: celery -A lotus worker -l info
@@ -64,7 +64,7 @@ services:
       - ./env/.env.prod
     restart: on-failure
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.backend
       target: production
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler

@@ -13,14 +13,14 @@ services:
     env_file:
       - ./env/.env.dev
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.backend
       target: development
     ports:
       - 8000:8000
     volumes:
-      - ./lotus:/lotus/lotus
-      - ./metering_billing:/lotus/metering_billing
+      - ./backend/lotus:/lotus/lotus
+      - ./backend/metering_billing:/lotus/metering_billing
     command: sh -c "./scripts/start_backend.dev.sh"
     depends_on:
       - db
@@ -29,15 +29,15 @@ services:
   frontend:
     restart: always
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile.frontend
       target: development
     ports:
       - 3000:3000
     command: yarn run dev --host 0.0.0.0 --port 3000
     volumes:
-      - ./src:/frontend/src:delegated
-      - ./public:/frontend/public:delegated
+      - ./frontend/src:/frontend/src:delegated
+      - ./frontend/public:/frontend/public:delegated
       - /frontend/node_modules/
     stdin_open: true
     depends_on:
@@ -53,7 +53,7 @@ services:
     env_file:
       - ./env/.env.dev
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.backend
       target: development
     command: celery -A lotus worker -l info
@@ -67,7 +67,7 @@ services:
       - ./env/.env.dev
     restart: on-failure
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.backend
       target: development
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
