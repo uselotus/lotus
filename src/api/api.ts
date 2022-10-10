@@ -72,7 +72,7 @@ export const Plan = {
 export const Alerts = {
   getUrls: (): Promise<any> => requests.get("api/webhooks/"),
   addUrl: (url: string): Promise<any> =>
-    requests.post("api/webhooks/", { url }),
+    requests.post("api/webhooks/", { webhook_url: url }),
   deleteUrl: (id: number): Promise<any> =>
     requests.delete(`api/webhooks/${id}`),
 };

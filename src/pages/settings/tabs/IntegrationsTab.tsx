@@ -1,11 +1,10 @@
 import React, { FC, useState } from "react";
 import { StripeStatusType } from "../../../types/stripe-type";
 import { useQuery } from "react-query";
-import { Alerts } from "../../../api/api";
 import { StripeIntegration } from "../../../integrations/api";
 import { useNavigate } from "react-router-dom";
-import { Divider, Button, Modal, List, Card, Typography, Row, Col } from "antd";
-import { APIToken } from "../../../api/api";
+import { Divider, Typography, Row, Col } from "antd";
+
 import { AppCard } from "../components/AppCard";
 
 const IntegrationsTab: FC = () => {
