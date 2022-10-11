@@ -14,7 +14,7 @@ services:
       - ./env/.env.dev
     build:
       context: ./backend
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
       target: development
     ports:
       - 8000:8000
@@ -30,7 +30,7 @@ services:
     restart: always
     build:
       context: ./frontend
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile
       target: development
     ports:
       - 3000:3000
@@ -54,7 +54,7 @@ services:
       - ./env/.env.dev
     build:
       context: ./backend
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
       target: development
     command: celery -A lotus worker -l info
     depends_on:
@@ -68,7 +68,7 @@ services:
     restart: on-failure
     build:
       context: ./backend
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
       target: development
     command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     depends_on:
