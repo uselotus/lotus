@@ -121,12 +121,12 @@ urlpatterns = [
         name="customer_access",
     ),
     path("api/stripe/", StripeConnector.as_view(), name="stripe_initialize"),
-    path("api/login/", auth_views.login_view, name="api-login"),
+    path("api/login/", auth_views.LoginView.as_view(), name="api-login"),
     path("api/logout/", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
-    path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
+    # path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
     path("api/register/", auth_views.RegisterView.as_view(), name="register"),
-    path("csrf/", csrf_exempt(auth_views.csrf), name="csrf"),
+    # path("csrf/", csrf_exempt(auth_views.csrf), name="csrf"),
 ]
 
 if PROFILER_ENABLED:
