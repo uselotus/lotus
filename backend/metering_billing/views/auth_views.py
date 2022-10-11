@@ -137,6 +137,6 @@ class RegisterView(APIView):
             {"detail": "Successfully registered."}, status=status.HTTP_201_CREATED
         )
 
-def csrf(request):
-    return JsonResponse({'csrfToken': get_token(request)})
 
+def csrf(request):
+    return JsonResponse({"csrfToken": get_token(request)})
