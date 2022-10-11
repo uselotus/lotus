@@ -46,8 +46,19 @@ function PlanDisplayBasic(props: {
     <Menu>
       {props.plan.components.map((component) => (
         <Menu.Item key={component.id} className="border-2 bg-white">
-          {component.billable_metric.billable_metric_name} $
-          {component.cost_per_batch} per {component.metric_units_per_batch}
+          <List.Item.Meta
+            style={{ width: "300px" }}
+            title={
+              <a href="https://ant.design">
+                {component.billable_metric.billable_metric_name}
+              </a>
+            }
+            description={
+              component.cost_per_batch
+                ? `$${component.cost_per_batch} / ${component.metric_units_per_batch} Unit(s)`
+                : "Free"
+            }
+          />
         </Menu.Item>
       ))}
     </Menu>
@@ -65,21 +76,22 @@ function PlanDisplayBasic(props: {
     <Paper>
       <Descriptions
         title={props.plan.name}
-        contentStyle={{
-          fontSize: 32,
-        }}
-        className="text-4xl"
         extra={
           <Dropdown overlay={planMenu} trigger={["click"]}>
-            <Button type="text" onClick={(e) => e.preventDefault()}>
+            <Button
+              type="text"
+              size="small"
+              onClick={(e) => e.preventDefault()}
+            >
               <MoreOutlined />
             </Button>
           </Dropdown>
         }
       />
-      <p className="">{props.plan.description}</p>
-      <Row>
-        <Col span={12}>
+
+      <Row justify="center" align="middle">
+        <Col span={11}>
+          <p className="p-0 m-0">{props.plan.description}</p>
           <Descriptions size="small" column={2}>
             <Descriptions.Item label="Plan ID" span={2}>
               {props.plan.billing_plan_id}
@@ -97,15 +109,15 @@ function PlanDisplayBasic(props: {
           </Descriptions>
         </Col>
 
-        <Col span={8}>
+        <Col span={9}>
           <Space>
             <Dropdown overlay={componentMenu}>
-              <Button>
+              <Button style={{ width: 157 }}>
                 Components: {props.plan.components.length} <ArrowDownOutlined />
               </Button>
             </Dropdown>
             <Dropdown overlay={featureMenue}>
-              <Button className="bg-[#CCA43B69]">
+              <Button className="bg-[#CCA43B69]" style={{ width: 157 }}>
                 Features: {props.plan.features.length} <ArrowDownOutlined />
               </Button>
             </Dropdown>

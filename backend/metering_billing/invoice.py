@@ -2,8 +2,6 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import posthog
 import stripe
-from rest_framework import serializers
-
 from lotus.settings import POSTHOG_PERSON
 from metering_billing.models import (
     BillingPlan,
@@ -22,6 +20,7 @@ from metering_billing.utils import (
     make_all_decimals_floats,
 )
 from metering_billing.view_utils import calculate_sub_pc_usage_revenue
+from rest_framework import serializers
 
 from .webhooks import invoice_created_webhook
 
@@ -143,6 +142,8 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         invoice_kwargs["payment_status"] = INVOICE_STATUS_TYPES.DRAFT
     elif (
         customer.payment_provider != ""
+        and customer.payment_provider is not None
+        and customer.payment_provider in payment_providers
         and payment_providers[customer.payment_provider].working()
     ):
         pp_connector = payment_providers[customer.payment_provider]

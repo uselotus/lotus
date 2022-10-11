@@ -1,17 +1,16 @@
 import React, { FC } from "react";
-import { Affix, Divider, Menu } from "antd";
+import { Menu, MenuItemProps } from "antd";
 import {
-  BarChartOutlined,
   UserOutlined,
-  UploadOutlined,
+  DashboardOutlined,
   SettingOutlined,
   BookOutlined,
   BorderlessTableOutlined,
+  LineChartOutlined,
   LogoutOutlined,
 } from "@ant-design/icons";
 
 import { useNavigate, useLocation } from "react-router";
-import "./SideBar.css";
 import { Authentication } from "../api/api";
 
 const imgUrl = new URL("./Head.png", import.meta.url).href;
@@ -20,98 +19,94 @@ const SideBar: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleCustomersClick = () => {
-    navigate("/customers");
-  };
-  const handlePlansClick = () => {
-    navigate("/plans");
-  };
-  const handleDashboardClick = () => {
-    navigate("/dashboard");
-  };
-  const handleSettingsClick = () => {
-    navigate("/settings");
-  };
-
-  const handleSubscriptionsClick = () => {
-    navigate("/subscriptions");
-  };
-
-  const handleMetricsClick = () => {
-    navigate("/metrics");
-  };
-
   const handleLogoutClick = () => {
     Authentication.logout().then(() => {
       window.location.reload();
       navigate("/");
     });
   };
+  console.log(location.pathname);
+
+  const menuItems: any = [
+    {
+      key: "/dashboard",
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
+      onClick: () => navigate("/dashboard"),
+    },
+    {
+      key: "/customers",
+      icon: <UserOutlined />,
+      label: "Customers",
+      onClick: () => navigate("/customers"),
+    },
+    {
+      key: "/plans",
+      icon: <BorderlessTableOutlined />,
+      label: "Plans",
+      onClick: () => navigate("/plans"),
+    },
+
+    {
+      key: "/metrics",
+      icon: <LineChartOutlined />,
+
+      label: "Metrics",
+      onClick: () => navigate("/metrics"),
+    },
+    {
+      type: "divider",
+    },
+    {
+      label: "Docs",
+      key: "/docs",
+      icon: <BookOutlined />,
+      onClick: () =>
+        window.open("https://docs.uselotus.io/docs/intro", "_blank"),
+    },
+    {
+      key: "/settings",
+      icon: <SettingOutlined />,
+      label: "Settings",
+      onClick: () => navigate("/settings"),
+    },
+  ];
 
   return (
-    <Menu
-      mode="vertical"
-      selectedKeys={[location.pathname]}
-      className="min-h-screen"
-      style={{ position: "fixed", zIndex: 1, width: "200px" }}
+    <div
+      className="h-screen flex flex-col justify-between"
+      style={{
+        position: "fixed",
+        zIndex: 1,
+        width: "200px",
+        borderRight: "1px solid #e8e8e8",
+      }}
     >
-      <div className="h-screen flex flex-col justify-between ">
-        <div>
-          <img src={imgUrl} alt="lotus" />
-
-          <Menu.Item key="/dashboard" onClick={handleDashboardClick}>
-            <BarChartOutlined />
-            <span> Dashboard</span>
-          </Menu.Item>
-          <Menu.Item key="/customers" onClick={handleCustomersClick}>
-            <UserOutlined />
-            <span> Customers</span>
-          </Menu.Item>
-          <Menu.Item key="/plans" onClick={handlePlansClick}>
-            <UploadOutlined />
-            <span> Plans</span>
-          </Menu.Item>
-          <Menu.Item key="/metrics" onClick={handleMetricsClick}>
-            <BorderlessTableOutlined />
-            <span> Metrics</span>
-          </Menu.Item>
-          {/* <Menu.Item key="/subscriptions" onClick={handleSubscriptionsClick}>
-          <BookOutlined />
-          <span> Subscriptions</span>
-        </Menu.Item> */}
-          <Divider />
-          <Menu.Item key="/docs">
-            <BookOutlined />
-            <span>
-              {" "}
-              <a
-                target="_blank"
-                rel="noreferrer"
-                href="https://docs.uselotus.io/docs/intro"
-              >
-                Docs
-              </a>
-            </span>
-          </Menu.Item>
-          <Menu.Item
-            key="/settings"
-            onClick={handleSettingsClick}
-            className="flex flex-row"
-          >
-            <SettingOutlined />
-            <span> Settings</span>
-          </Menu.Item>
-        </div>
-
-        <div className="mb-4">
-          <Divider className="self-end" />
-          <Menu.Item key="logout" onClick={handleLogoutClick}>
-            <LogoutOutlined />
-            <span> Logout</span>
-          </Menu.Item>
-        </div>
+      <div>
+        <img src={imgUrl} alt="lotus" className="mb-4" />
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+        />
       </div>
-    </Menu>
+
+      <div className="mb-5">
+        <Menu
+          items={[
+            {
+              type: "divider",
+            },
+            {
+              key: "/logout",
+              icon: <LogoutOutlined />,
+              label: "Logout",
+              onClick: handleLogoutClick,
+            },
+          ]}
+        />
+      </div>
+    </div>
   );
 };
 
