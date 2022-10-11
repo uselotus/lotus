@@ -154,7 +154,7 @@ class RegisterView(APIView):
         return Response({
             "detail": "Successfully registered.",
             "token": AuthToken.objects.create(user)[1]
-        })
+        }, status=status.HTTP_201_CREATED)
 
 
 # def csrf(request):
