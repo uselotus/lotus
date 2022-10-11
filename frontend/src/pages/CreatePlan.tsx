@@ -295,12 +295,14 @@ const CreatePlan = () => {
                                 extra={[
                                   <Button
                                     type="text"
+                                    size="small"
                                     icon={<EditOutlined />}
                                     onClick={() =>
                                       editFeatures(feature.feature_name)
                                     }
                                   />,
                                   <Button
+                                    size="small"
                                     type="text"
                                     icon={<DeleteOutlined />}
                                     danger
@@ -353,6 +355,7 @@ const CreatePlan = () => {
                                     <Button
                                       key="edit"
                                       type="text"
+                                      size="small"
                                       icon={<EditOutlined />}
                                       onClick={() =>
                                         handleComponentEdit(component.id)
@@ -361,6 +364,7 @@ const CreatePlan = () => {
                                     <Button
                                       key="delete"
                                       type="text"
+                                      size="small"
                                       icon={<DeleteOutlined />}
                                       danger
                                       onClick={() =>
