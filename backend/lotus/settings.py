@@ -104,7 +104,7 @@ INSTALLED_APPS = [
     "rest_framework_api_key",
     "drf_spectacular",
     "simple_history",
-    'knox'
+    "knox",
 ]
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
@@ -317,7 +317,7 @@ REST_FRAMEWORK = {
         "metering_billing.permissions.HasUserAPIKey",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        'knox.auth.TokenAuthentication',
+        "knox.auth.TokenAuthentication",
         # 'rest_framework.authentication.SessionAuthentication',
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
@@ -347,8 +347,8 @@ SPECTACULAR_SETTINGS = {
     ],
 }
 REST_KNOX = {
-    'TOKEN_TTL': timedelta(hours=2),
-    'AUTO_REFRESH': True,
+    "TOKEN_TTL": timedelta(hours=2),
+    "AUTO_REFRESH": True,
 }
 
 # Default primary key field type

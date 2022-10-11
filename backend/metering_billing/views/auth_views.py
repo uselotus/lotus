@@ -30,6 +30,7 @@ from rest_framework.views import APIView
 class LoginViewMixin(KnoxLoginView):
     authentication_classes = [BasicAuthentication]
 
+
 class LoginView(LoginViewMixin, APIView):
     permission_classes = [AllowAny]
 
@@ -67,10 +68,12 @@ class LoginView(LoginViewMixin, APIView):
             POSTHOG_PERSON if POSTHOG_PERSON else user.organization.company_name,
             event="succesful login",
         )
-        return Response({
+        return Response(
+            {
                 "detail": "Successfully logged in.",
-                "token": AuthToken.objects.create(user)[1]
-            })
+                "token": AuthToken.objects.create(user)[1],
+            }
+        )
 
 
 @require_POST
@@ -151,10 +154,13 @@ class RegisterView(APIView):
             event="register",
             properties={"company_name": reg_dict["company_name"]},
         )
-        return Response({
-            "detail": "Successfully registered.",
-            "token": AuthToken.objects.create(user)[1]
-        }, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                "detail": "Successfully registered.",
+                "token": AuthToken.objects.create(user)[1],
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 # def csrf(request):
