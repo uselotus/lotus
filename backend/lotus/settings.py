@@ -81,10 +81,7 @@ if DEBUG:
     ALLOWED_HOSTS = ["*"]
 else:
     ALLOWED_HOSTS = [
-        "*uselotus.app",
-        "www.uselotus.app",
-        "uselotus.app",
-        ".herokuapp.com",
+        "*uselotus.io",
     ]
 
 # Application definition
