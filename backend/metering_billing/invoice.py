@@ -140,20 +140,20 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     # adjust kwargs depending on draft + external obj creation
     if draft:
         invoice_kwargs["payment_status"] = INVOICE_STATUS_TYPES.DRAFT
-    elif (
-        customer.payment_provider != ""
-        and customer.payment_provider is not None
-        and customer.payment_provider in payment_providers
-        and payment_providers[customer.payment_provider].working()
-    ):
-        pp_connector = payment_providers[customer.payment_provider]
-        customer_conn = pp_connector.customer_connected(customer)
-        org_conn = pp_connector.organization_connected(organization)
-        if customer_conn and org_conn:
-            invoice_kwargs[
-                "external_payment_obj_id"
-            ] = pp_connector.generate_payment_object(customer, amount, organization)
-            invoice_kwargs["external_payment_obj_type"] = customer.payment_provider
+    else:
+        for pp, pp_id in customer.payment_provider_ids.items():
+            if pp in payment_providers and payment_providers[pp].working():
+                pp_connector = payment_providers[pp]
+                customer_conn = pp_connector.customer_connected(customer)
+                org_conn = pp_connector.organization_connected(organization)
+                if customer_conn and org_conn:
+                    invoice_kwargs[
+                        "external_payment_obj_id"
+                    ] = pp_connector.generate_payment_object(
+                        customer, amount, organization
+                    )
+                    invoice_kwargs["external_payment_obj_type"] = pp
+                    break
 
     # Create the invoice
     invoice = Invoice.objects.create(**invoice_kwargs)

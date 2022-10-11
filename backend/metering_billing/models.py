@@ -8,9 +8,6 @@ from django.db import models
 from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-
 from metering_billing.utils import (
     AGGREGATION_CHOICES,
     CATEGORICAL_FILTER_OPERATOR_CHOICES,
@@ -25,6 +22,8 @@ from metering_billing.utils import (
     SUPPORTED_PAYMENT_PROVIDERS,
     dates_bwn_twodates,
 )
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
 
 
 class Organization(models.Model):
@@ -81,13 +80,7 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(max_length=40)
-    payment_provider = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        choices=SUPPORTED_PAYMENT_PROVIDERS,
-    )
-    payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
+    payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
     balance = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
@@ -108,6 +101,14 @@ class Customer(models.Model):
 
     class Meta:
         unique_together = ("organization", "customer_id")
+
+    def save(self, *args, **kwargs):
+        for k, _ in self.payment_provider_ids.items():
+            if k not in SUPPORTED_PAYMENT_PROVIDERS:
+                raise ValueError(
+                    f"Payment provider {k} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+                )
+        super(Customer, self).save(*args, **kwargs)
 
 
 class Event(models.Model):

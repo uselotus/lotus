@@ -5,11 +5,6 @@ from typing import Optional, Union
 import stripe
 from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
-from rest_framework import serializers, status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from metering_billing.auth_utils import parse_organization
 from metering_billing.models import Customer, Organization
 from metering_billing.utils import (
@@ -17,6 +12,10 @@ from metering_billing.utils import (
     PAYMENT_PROVIDERS,
     turn_decimal_into_cents,
 )
+from rest_framework import serializers, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 class PaymentProvider(abc.ABC, APIView):
@@ -93,11 +92,9 @@ class StripeConnector(PaymentProvider):
         return self.secret_key != "" and self.secret_key != None
 
     def customer_connected(self, customer):
-        return (
-            customer.payment_provider == PAYMENT_PROVIDERS.STRIPE
-            and customer.payment_provider_id != ""
-            and customer.payment_provider_id != None
-        )
+        pp_ids = customer.payment_provider_ids
+        stripe_id = pp_ids.get(PAYMENT_PROVIDERS.STRIPE, None)
+        return stripe_id is not None
 
     def organization_connected(self, organization):
         if self.self_hosted:
@@ -114,7 +111,7 @@ class StripeConnector(PaymentProvider):
         payment_intent_kwargs = {
             "amount": amount_cents,
             "currency": customer.balance.currency,
-            "customer": customer.payment_provider_id,
+            "customer": customer.payment_provider_ids[PAYMENT_PROVIDERS.STRIPE],
             "payment_method_types": ["card"],
         }
         if not self.self_hosted:
@@ -200,7 +197,9 @@ class StripeConnector(PaymentProvider):
                     name=stripe_customer.name,
                     payment_provider=PAYMENT_PROVIDERS.STRIPE,
                 )
-                customer.payment_provider_id = stripe_customer.id
+                customer.payment_provider_ids[
+                    PAYMENT_PROVIDERS.STRIPE
+                ] = stripe_customer.id
                 customer.save()
                 num_cust_added += 1
             except Customer.DoesNotExist:
