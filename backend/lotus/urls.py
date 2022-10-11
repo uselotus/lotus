@@ -21,7 +21,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.payment_providers import StripeConnector
 from metering_billing.views import auth_views, track
-from metering_billing.views.auth_views import RegisterView
 from metering_billing.views.model_views import (
     AlertViewSet,
     BillableMetricViewSet,
@@ -126,7 +125,8 @@ urlpatterns = [
     path("api/logout/", auth_views.logout_view, name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
     path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
-    path("api/register/", RegisterView.as_view(), name="register"),
+    path("api/register/", auth_views.RegisterView.as_view(), name="register"),
+    path("csrf/", csrf_exempt(auth_views.csrf), name="csrf"),
 ]
 
 if PROFILER_ENABLED:

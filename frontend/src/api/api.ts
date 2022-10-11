@@ -17,9 +17,27 @@ import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
 
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+
+let _csrfToken = null;
+const API_HOST = import.meta.env.VITE_API_URL;
+
+async function getCsrfToken() {
+  if (_csrfToken === null) {
+    const response = await fetch(`${API_HOST}csrf/`, {
+      credentials: 'include',
+    });
+    const data = await response.json();
+    _csrfToken = data.csrfToken;
+  }
+  return _csrfToken;
+}
+
+_csrfToken = await getCsrfToken();
+
+axios.defaults.baseURL = API_HOST;
 axios.defaults.xsrfCookieName = "csrftoken";
 axios.defaults.xsrfHeaderName = "X-CSRFToken";
+axios.defaults.headers.common['X-CSRFToken'] = _csrfToken.content;
 
 const instance = axios.create({
   timeout: 15000,

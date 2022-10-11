@@ -4,6 +4,7 @@ from ast import increment_lineno
 import posthog
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -135,3 +136,7 @@ class RegisterView(APIView):
         return JsonResponse(
             {"detail": "Successfully registered."}, status=status.HTTP_201_CREATED
         )
+
+def csrf(request):
+    return JsonResponse({'csrfToken': get_token(request)})
+
