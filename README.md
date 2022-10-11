@@ -71,14 +71,6 @@ Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?type
 
 Best if you want to keep your data local or want full control and extensibility.
 
-#### :pisces: One-click Deploy with Heroku
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
-
-To get this running properly, you will need to make a couple of modifications to
-the project. Navigate to the resources dashboard for your project (`https://dashboard.heroku.com/apps/<your-app-name>/resources`) and do the following:
-1. Edit the `web`, `worker`, and `beat` dynos to have at least 1 dyno each.
-2. Update the `Heroku Data for Redis` add-on to be at at least the lowest paid tier. The free tier is not compatible with Lotus.
-3. Optionally, re-provision the `Heroku Postgres` add-on to be at at least the lowest paid tier. The free tier has only 10,000 rows, which is not enough for most Lotus use-cases.
 #### :computer: Set up locally
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 2. Clone the repo and navigate to the project
@@ -92,6 +84,8 @@ the project. Navigate to the resources dashboard for your project (`https://dash
    docker-compose -f docker-compose.prod.yaml up --build
    ```
 You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
+
+We are currently working on easy deployment options for AWS, GCP, and Azure. If you have any questions, feel free to reach out to us.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
