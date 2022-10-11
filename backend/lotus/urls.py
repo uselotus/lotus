@@ -132,5 +132,5 @@ urlpatterns = [
 if PROFILER_ENABLED:
     urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
 
-if DEBUG or ON_HEROKU:
+if DEBUG:
     urlpatterns += [re_path(".*", TemplateView.as_view(template_name="index.html"))]
