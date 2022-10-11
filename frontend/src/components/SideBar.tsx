@@ -25,7 +25,6 @@ const SideBar: FC = () => {
       navigate("/");
     });
   };
-  console.log(location.pathname);
 
   const menuItems: any = [
     {
