@@ -40,14 +40,13 @@ model-bakery = "*"
 django-simple-history = "<3.1.1"
 
 [dev-packages]
-black = "*"
 platformdirs = "*"
 isort = "*"
 pytest-django = "*"
-pytest = "*"
 locust = "*"
 django-silk = "*"
 pytest-cov = "*"
+black = "*"
 pylint = "*"
 
 [requires]
