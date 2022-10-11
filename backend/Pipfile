@@ -38,6 +38,7 @@ celery = {extras = ["redis"], version = "*"}
 social-auth-app-django = "*"
 model-bakery = "*"
 django-simple-history = "<3.1.1"
+django-rest-knox = "*"
 
 [dev-packages]
 platformdirs = "*"

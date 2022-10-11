@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 import os
 import re
 import ssl
+from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -103,6 +104,7 @@ INSTALLED_APPS = [
     "rest_framework_api_key",
     "drf_spectacular",
     "simple_history",
+    'knox'
 ]
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
@@ -113,7 +115,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    # "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -153,9 +155,9 @@ WSGI_APPLICATION = "lotus.wsgi.application"
 AUTH_USER_MODEL = "metering_billing.User"
 AUTHENTICATION_BACKENDS = ["metering_billing.auth_utils.EmailOrUsernameModelBackend"]
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_AGE = 2 * 60 * 60  # set just 10 seconds to test
-SESSION_SAVE_EVERY_REQUEST = True
+# SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# SESSION_COOKIE_AGE = 2 * 60 * 60  # set just 10 seconds to test
+# SESSION_SAVE_EVERY_REQUEST = True
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -315,7 +317,8 @@ REST_FRAMEWORK = {
         "metering_billing.permissions.HasUserAPIKey",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        'knox.auth.TokenAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "COERCE_DECIMAL_TO_STRING": False,
@@ -342,6 +345,10 @@ SPECTACULAR_SETTINGS = {
             "OrganizationApiKeyAuth": [],
         }
     ],
+}
+REST_KNOX = {
+    'TOKEN_TTL': timedelta(hours=2),
+    'AUTO_REFRESH': True,
 }
 
 # Default primary key field type

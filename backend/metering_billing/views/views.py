@@ -6,6 +6,7 @@ from dateutil import parser
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
+from knox.models import AuthToken
 from lotus.settings import POSTHOG_PERSON
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -44,7 +45,6 @@ class PeriodMetricRevenueView(APIView):
         """
         Returns the revenue for an organization in a given time period.
         """
-
         organization = parse_organization(request)
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
@@ -377,7 +377,6 @@ class CustomerDetailView(APIView):
             organization__company_name=organization.company_name,
             customer__customer_id=customer.customer_id,
         )
-        print(invoices)
         serializer = CustomerDetailSerializer(
             customer,
             context={

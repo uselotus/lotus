@@ -18,7 +18,6 @@ const ViewCustomers: FC = () => {
     CustomerPlus[]
   >(["customer_list"], () =>
     Customer.getCustomers().then((res) => {
-      console.log;
       return res;
     })
   );

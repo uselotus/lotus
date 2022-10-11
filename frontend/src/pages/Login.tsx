@@ -6,6 +6,11 @@ import "./Login.css";
 import { useQueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
+import {instance} from "../api/api";
+import axios from "axios";
+import Cookies from 'universal-cookie';
+ 
+const cookies = new Cookies();
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;
@@ -39,11 +44,15 @@ const Login: FC = () => {
 
   const mutation = useMutation(
     (data: { username: string; password: string }) =>
-      Authentication.login(username, password),
+      Authentication.login(username, password), 
     {
-      onSuccess: () => {
+      onSuccess: (response) => {
         setIsAuthenticated(true);
         queryClient.refetchQueries("session");
+        const { token, detail } = response;
+        cookies.set('Token', token);
+        instance.defaults.headers.common["Authorization"] = `Token ${token}`;
+        console.log("token", token);
         redirectDashboard();
       },
       onError: (error) => {
