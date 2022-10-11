@@ -29,14 +29,6 @@ export default defineConfig({
     react(),
     splitVendorChunkPlugin(),
     // tsconfigPaths(),
-    vitePluginImp({
-      libList: [
-        {
-          libName: "antd",
-          style: (name) => `antd/es/${name}/style`,
-        },
-      ],
-    }),
   ],
   server: {
     host: true,
@@ -55,6 +47,7 @@ export default defineConfig({
     preprocessorOptions: {
       less: {
         javascriptEnabled: true,
+<<<<<<< HEAD
         modifyVars: {
           "primary-color": "#1D1D1F",
           "link-color": "#1DA57A",
@@ -72,6 +65,8 @@ export default defineConfig({
           "heading-3-size": "16px",
           "heading-4-size": "14px",
         },
+=======
+>>>>>>> origin/gr/ant-theme-setup-without-vite-config
       },
     },
   },
