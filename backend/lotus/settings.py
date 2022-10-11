@@ -354,7 +354,6 @@ if DEBUG:
 else:
     CORS_ALLOWED_ORIGINS = [
         "https://app.uselotus.io",
-        "https://www.uselotus.app",
         "https://staging.uselotus.io",
     ]
 CORS_ALLOW_CREDENTIALS = True
@@ -377,6 +376,8 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
+CSRF_TRUSTED_ORIGINS = ['https://app.uselotus.io']
+
 
 # Heroku
 django_heroku.settings(locals())
