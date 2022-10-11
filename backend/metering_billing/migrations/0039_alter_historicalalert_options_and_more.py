@@ -6,80 +6,112 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0038_historicaluser_historicalsubscription_and_more'),
+        ("metering_billing", "0038_historicaluser_historicalsubscription_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='historicalalert',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical alert'},
+            name="historicalalert",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical alert",
+            },
         ),
         migrations.AlterModelOptions(
-            name='historicalbillablemetric',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical billable metric'},
+            name="historicalbillablemetric",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical billable metric",
+            },
         ),
         migrations.AlterModelOptions(
-            name='historicalbillingplan',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical billing plan'},
+            name="historicalbillingplan",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical billing plan",
+            },
         ),
         migrations.AlterModelOptions(
-            name='historicalcustomer',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical customer'},
+            name="historicalcustomer",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical customer",
+            },
         ),
         migrations.AlterModelOptions(
-            name='historicalinvoice',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical invoice'},
+            name="historicalinvoice",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical invoice",
+            },
         ),
         migrations.AlterModelOptions(
-            name='historicalorganization',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical organization'},
+            name="historicalorganization",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical organization",
+            },
         ),
         migrations.AlterModelOptions(
-            name='historicalsubscription',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical subscription'},
+            name="historicalsubscription",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical subscription",
+            },
         ),
         migrations.AlterModelOptions(
-            name='historicaluser',
-            options={'get_latest_by': 'history_date', 'ordering': ('-history_date', '-history_id'), 'verbose_name': 'historical user'},
+            name="historicaluser",
+            options={
+                "get_latest_by": "history_date",
+                "ordering": ("-history_date", "-history_id"),
+                "verbose_name": "historical user",
+            },
         ),
         migrations.AlterField(
-            model_name='historicalalert',
-            name='history_date',
+            model_name="historicalalert",
+            name="history_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='historicalbillablemetric',
-            name='history_date',
+            model_name="historicalbillablemetric",
+            name="history_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='historicalbillingplan',
-            name='history_date',
+            model_name="historicalbillingplan",
+            name="history_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='historicalcustomer',
-            name='history_date',
+            model_name="historicalcustomer",
+            name="history_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='historicalinvoice',
-            name='history_date',
+            model_name="historicalinvoice",
+            name="history_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='historicalorganization',
-            name='history_date',
+            model_name="historicalorganization",
+            name="history_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='historicalsubscription',
-            name='history_date',
+            model_name="historicalsubscription",
+            name="history_date",
             field=models.DateTimeField(),
         ),
         migrations.AlterField(
-            model_name='historicaluser',
-            name='history_date',
+            model_name="historicaluser",
+            name="history_date",
             field=models.DateTimeField(),
         ),
     ]
