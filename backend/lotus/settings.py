@@ -376,7 +376,7 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
-CSRF_TRUSTED_ORIGINS = ['https://app.uselotus.io']
+CSRF_TRUSTED_ORIGINS = ["https://app.uselotus.io"]
 
 
 # Heroku
