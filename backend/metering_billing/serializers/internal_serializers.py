@@ -111,6 +111,11 @@ class BillingPlanNameSerializer(serializers.ModelSerializer):
         fields = ("name",)
 
 
+class MergeCustomersRequestSerializer(serializers.Serializer):
+    customer1_id = serializers.CharField(required=True)
+    customer2_id = serializers.CharField(required=True)
+
+
 class PeriodRequestSerializer(serializers.Serializer):
     start_date = serializers.DateField()
     end_date = serializers.DateField()

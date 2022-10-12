@@ -8,9 +8,6 @@ from django.db import models
 from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
-from rest_framework_api_key.models import AbstractAPIKey
-from simple_history.models import HistoricalRecords
-
 from metering_billing.utils import (
     AGGREGATION_CHOICES,
     CATEGORICAL_FILTER_OPERATOR_CHOICES,
@@ -25,6 +22,8 @@ from metering_billing.utils import (
     SUPPORTED_PAYMENT_PROVIDERS,
     dates_bwn_twodates,
 )
+from rest_framework_api_key.models import AbstractAPIKey
+from simple_history.models import HistoricalRecords
 
 
 class Organization(models.Model):
@@ -80,20 +79,16 @@ class Customer(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
-    customer_id = models.CharField(max_length=40)
-    payment_provider = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        choices=SUPPORTED_PAYMENT_PROVIDERS,
+    customer_id = models.CharField(
+        max_length=40, blank=True, null=False, default=uuid.uuid4
     )
-    payment_provider_id = models.CharField(max_length=50, null=True, blank=True)
+    payment_providers = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
     balance = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
-    billing_address = models.CharField(max_length=500, blank=True, null=True)
     history = HistoricalRecords()
+    sources = models.JSONField(default=list, blank=True, null=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
@@ -108,6 +103,26 @@ class Customer(models.Model):
 
     class Meta:
         unique_together = ("organization", "customer_id")
+
+    def save(self, *args, **kwargs):
+        if len(self.sources) > 0:
+            assert isinstance(self.sources, list)
+            for source in self.sources:
+                assert (
+                    source in SUPPORTED_PAYMENT_PROVIDERS or source == "lotus"
+                ), f"Payment provider {source} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+        for k, v in self.payment_providers.items():
+            if k not in SUPPORTED_PAYMENT_PROVIDERS:
+                raise ValueError(
+                    f"Payment provider {k} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+                )
+            id = v.get("id")
+            if id is None:
+                raise ValueError(f"Payment provider {k} id was not provided")
+            assert (
+                k in self.sources
+            ), f"Payment provider {k} in payment providers dict but not in sources"
+        super(Customer, self).save(*args, **kwargs)
 
 
 class Event(models.Model):

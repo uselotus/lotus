@@ -125,7 +125,6 @@ class TestGenerateInvoice:
         prev_invoices_len = Invoice.objects.filter(
             payment_status=INVOICE_STATUS_TYPES.DRAFT
         ).count()
-
         payload = {"customer_id": setup_dict["customer"].customer_id}
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 

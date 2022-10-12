@@ -10,11 +10,10 @@ from metering_billing.models import (
     Organization,
     Subscription,
 )
-from metering_billing.payment_providers import StripeConnector
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.model_serializers import InvoiceSerializer
 from metering_billing.utils import (
     INVOICE_STATUS_TYPES,
-    PAYMENT_PROVIDERS,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
@@ -23,10 +22,6 @@ from metering_billing.view_utils import calculate_sub_pc_usage_revenue
 from rest_framework import serializers
 
 from .webhooks import invoice_created_webhook
-
-# initialize payment processors
-payment_providers = {}
-payment_providers[PAYMENT_PROVIDERS.STRIPE] = StripeConnector()
 
 
 # Invoice Serializers
@@ -140,20 +135,20 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     # adjust kwargs depending on draft + external obj creation
     if draft:
         invoice_kwargs["payment_status"] = INVOICE_STATUS_TYPES.DRAFT
-    elif (
-        customer.payment_provider != ""
-        and customer.payment_provider is not None
-        and customer.payment_provider in payment_providers
-        and payment_providers[customer.payment_provider].working()
-    ):
-        pp_connector = payment_providers[customer.payment_provider]
-        customer_conn = pp_connector.customer_connected(customer)
-        org_conn = pp_connector.organization_connected(organization)
-        if customer_conn and org_conn:
-            invoice_kwargs[
-                "external_payment_obj_id"
-            ] = pp_connector.generate_payment_object(customer, amount, organization)
-            invoice_kwargs["external_payment_obj_type"] = customer.payment_provider
+    else:
+        for pp in customer.payment_providers.keys():
+            if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+                pp_connector = PAYMENT_PROVIDER_MAP[pp]
+                customer_conn = pp_connector.customer_connected(customer)
+                org_conn = pp_connector.organization_connected(organization)
+                if customer_conn and org_conn:
+                    invoice_kwargs[
+                        "external_payment_obj_id"
+                    ] = pp_connector.generate_payment_object(
+                        customer, amount, organization
+                    )
+                    invoice_kwargs["external_payment_obj_type"] = pp
+                    break
 
     # Create the invoice
     invoice = Invoice.objects.create(**invoice_kwargs)

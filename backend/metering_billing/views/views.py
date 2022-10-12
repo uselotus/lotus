@@ -13,7 +13,11 @@ from metering_billing.models import APIToken, BillableMetric, Customer, Subscrip
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.view_utils import RevenueCalcGranularity, periods_bwn_twodates
+from metering_billing.view_utils import (
+    RevenueCalcGranularity,
+    periods_bwn_twodates,
+    sync_payment_provider_customers,
+)
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -905,3 +909,144 @@ class UpdateSubscriptionBillingPlanView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
+
+
+class MergeCustomersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=MergeCustomersRequestSerializer,
+        responses={
+            200: inline_serializer(
+                name="MergeCustomerSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="MergeCustomerFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        serializer = MergeCustomersRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        organization = parse_organization(request)
+
+        try:
+            cust1_id = serializer.validated_data["subscription_id"]
+            cust1 = Customer.objects.get(
+                organization=organization, customer_id=cust1_id
+            )
+        except Customer.DoesNotExist:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Customer with id {cust1_id} not found.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            cust2_id = serializer.validated_data["subscription_id"]
+            cust2 = Customer.objects.get(
+                organization=organization, customer_id=cust2_id
+            )
+        except Customer.DoesNotExist:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Customer with id {cust2_id} not found.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(set(cust1.sources) & set(cust2.sources)) > 0:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Customers {cust1_id} and {cust2_id} have overlapping sources.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_customer_dict = {
+            "organization": organization,
+            "name": cust1.name,
+            "email": cust1.email,
+            "payment_providers": cust1.payment_providers.update(
+                cust2.payment_providers
+            ),
+            "sources": cust1.sources + cust2.sources,
+            "properties": cust1.properties.update(cust2.properties),
+            "balance": cust1.balance + cust2.balance,
+        }
+        if "lotus" in cust1.sources:
+            new_customer_dict["customer_id"] = cust1.customer_id
+        elif "lotus" in cust2.sources:
+            new_customer_dict["customer_id"] = cust2.customer_id
+        else:
+            new_customer_dict["customer_id"] = cust1.customer_id
+
+        cust1.delete()
+        cust2.delete()
+        new_customer = Customer.objects.create(**new_customer_dict)
+        new_cust_id = new_customer.customer_id
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Customers w/ ids {cust1_id} and {cust2_id} were succesfully merged into customer with id {new_cust_id}.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class SyncCustomersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="SyncCustomersRequest",
+            fields={},
+        ),
+        responses={
+            200: inline_serializer(
+                name="MergeCustomerSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="MergeCustomerFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+
+        try:
+            success_providers = sync_payment_provider_customers(organization)
+        except Exception as e:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Error syncing customers: {e}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Customers succesfully imported from {success_providers}.",
+            },
+            status=status.HTTP_201_CREATED,
+        )

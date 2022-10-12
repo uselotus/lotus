@@ -3,13 +3,9 @@ from decimal import Decimal
 from typing import Optional, Union
 
 import stripe
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
 from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
-from rest_framework import serializers, status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-
 from metering_billing.auth_utils import parse_organization
 from metering_billing.models import Customer, Organization
 from metering_billing.utils import (
@@ -17,6 +13,10 @@ from metering_billing.utils import (
     PAYMENT_PROVIDERS,
     turn_decimal_into_cents,
 )
+from rest_framework import serializers, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 
 class PaymentProvider(abc.ABC, APIView):
@@ -93,11 +93,10 @@ class StripeConnector(PaymentProvider):
         return self.secret_key != "" and self.secret_key != None
 
     def customer_connected(self, customer):
-        return (
-            customer.payment_provider == PAYMENT_PROVIDERS.STRIPE
-            and customer.payment_provider_id != ""
-            and customer.payment_provider_id != None
-        )
+        pp_ids = customer.payment_providers
+        stripe_dict = pp_ids.get(PAYMENT_PROVIDERS.STRIPE, None)
+        stripe_id = stripe_dict.get("id", None)
+        return stripe_id is not None
 
     def organization_connected(self, organization):
         if self.self_hosted:
@@ -114,7 +113,7 @@ class StripeConnector(PaymentProvider):
         payment_intent_kwargs = {
             "amount": amount_cents,
             "currency": customer.balance.currency,
-            "customer": customer.payment_provider_id,
+            "customer": customer.payment_providers[PAYMENT_PROVIDERS.STRIPE]["id"],
             "payment_method_types": ["card"],
         }
         if not self.self_hosted:
@@ -182,7 +181,7 @@ class StripeConnector(PaymentProvider):
 
     def import_customers(self, organization):
         """
-        If customer exists in Stripe and also exists in Lotus (compared by matching names), then update the customer's payment provider ID from Stripe.
+        Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address), then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
         """
         num_cust_added = 0
         org_ppis = organization.payment_provider_ids
@@ -194,16 +193,53 @@ class StripeConnector(PaymentProvider):
             )
         stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
         for stripe_customer in stripe_customers_response.auto_paging_iter():
-            try:
-                customer = Customer.objects.get(
-                    organization=organization,
-                    name=stripe_customer.name,
-                    payment_provider=PAYMENT_PROVIDERS.STRIPE,
-                )
-                customer.payment_provider_id = stripe_customer.id
+            stripe_id = stripe_customer.id
+            stripe_email = stripe_customer.email
+            stripe_metadata = stripe_customer.metadata
+            stripe_name = stripe_customer.name
+            stripe_name = stripe_name if stripe_name else "no_stripe_name"
+            stripe_currency = stripe_customer.currency
+            customer = Customer.objects.filter(
+                Q(payment_providers__stripe__id=stripe_id) | Q(email=stripe_email),
+                organization=organization,
+            ).first()
+            if customer:  # customer exists in system already
+                cur_pp_dict = customer.payment_providers[PAYMENT_PROVIDERS.STRIPE]
+                cur_pp_dict["id"] = stripe_id
+                cur_pp_dict["email"] = stripe_email
+                cur_pp_dict["metadata"] = stripe_metadata
+                cur_pp_dict["name"] = stripe_name
+                cur_pp_dict["currency"] = stripe_currency
+                customer.payment_providers[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                cur_sources = customer.sources
+                if len(cur_sources) == 0:
+                    cur_sources = []
+                if PAYMENT_PROVIDERS.STRIPE not in cur_sources:
+                    cur_sources.append(PAYMENT_PROVIDERS.STRIPE)
+                customer.sources = cur_sources
                 customer.save()
+            else:
+                customer_kwargs = {
+                    "organization": organization,
+                    "name": stripe_name,
+                    "email": stripe_email,
+                    "payment_providers": {
+                        PAYMENT_PROVIDERS.STRIPE: {
+                            "id": stripe_id,
+                            "email": stripe_email,
+                            "metadata": stripe_metadata,
+                            "name": stripe_name,
+                            "currency": stripe_currency,
+                        }
+                    },
+                    "sources": [PAYMENT_PROVIDERS.STRIPE],
+                }
+                customer = Customer.objects.create(**customer_kwargs)
                 num_cust_added += 1
-            except Customer.DoesNotExist:
-                pass
 
         return num_cust_added
+
+
+PAYMENT_PROVIDER_MAP = {
+    PAYMENT_PROVIDERS.STRIPE: StripeConnector(),
+}
