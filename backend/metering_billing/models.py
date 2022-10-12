@@ -79,13 +79,14 @@ class Customer(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
-    customer_id = models.CharField(max_length=40, blank=True, null=True)
+    customer_id = models.CharField(
+        max_length=40, blank=True, null=False, default=uuid.uuid4
+    )
     payment_providers = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
     balance = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
-    billing_address = models.CharField(max_length=500, blank=True, null=True)
     history = HistoricalRecords()
     sources = models.JSONField(default=list, blank=True, null=True)
 
@@ -108,7 +109,7 @@ class Customer(models.Model):
             assert isinstance(self.sources, list)
             for source in self.sources:
                 assert (
-                    source in SUPPORTED_PAYMENT_PROVIDERS
+                    source in SUPPORTED_PAYMENT_PROVIDERS or source == "lotus"
                 ), f"Payment provider {source} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
         for k, v in self.payment_providers.items():
             if k not in SUPPORTED_PAYMENT_PROVIDERS:
