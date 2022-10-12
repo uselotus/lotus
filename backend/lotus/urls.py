@@ -46,6 +46,7 @@ from metering_billing.views.views import (
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
+    SyncCustomersView,
     UpdateBillingPlanView,
     UpdateSubscriptionBillingPlanView,
 )
@@ -124,7 +125,12 @@ urlpatterns = [
     path(
         "api/merge_customers/",
         MergeCustomersView.as_view(),
-        name="merger_customers",
+        name="merge_customers",
+    ),
+    path(
+        "api/sync_customers/",
+        SyncCustomersView.as_view(),
+        name="sync_customers",
     ),
     path("api/stripe/", StripeConnector.as_view(), name="stripe_initialize"),
     path("api/login/", auth_views.LoginView.as_view(), name="api-login"),

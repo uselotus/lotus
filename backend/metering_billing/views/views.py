@@ -13,7 +13,11 @@ from metering_billing.models import APIToken, BillableMetric, Customer, Subscrip
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.view_utils import RevenueCalcGranularity, periods_bwn_twodates
+from metering_billing.view_utils import (
+    RevenueCalcGranularity,
+    periods_bwn_twodates,
+    sync_payment_provider_customers,
+)
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -998,4 +1002,53 @@ class MergeCustomersView(APIView):
                 "detail": f"Customers w/ ids {cust1_id} and {cust2_id} were succesfully merged into customer with id {new_cust_id}.",
             },
             status=status.HTTP_200_OK,
+        )
+
+
+class SyncCustomersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="SyncCustomersRequest",
+            fields={},
+        ),
+        responses={
+            200: inline_serializer(
+                name="MergeCustomerSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="MergeCustomerFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        serializer = MergeCustomersRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        organization = parse_organization(request)
+
+        try:
+            success_providers = sync_payment_provider_customers(organization)
+        except Exception as e:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Error syncing customers: {e}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Customers succesfully imported from {success_providers}.",
+            },
+            status=status.HTTP_201_CREATED,
         )

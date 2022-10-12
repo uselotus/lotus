@@ -1,9 +1,9 @@
 from decimal import Decimal
 
 from dateutil import parser
-
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import Subscription
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     METRIC_TYPES,
     SUB_STATUS_TYPES,
@@ -153,3 +153,14 @@ def get_customer_usage_and_revenue(customer):
         subscription_usages["subscriptions"].append(sub_dict)
 
     return subscription_usages
+
+
+def sync_payment_provider_customers(organization):
+    """
+    For every payment provider an organization has, sync all customers
+    """
+    ret = []
+    for pp_name, _ in organization.payment_provider_ids.items():
+        PAYMENT_PROVIDER_MAP[pp_name].import_customers(organization)
+        ret.append(pp_name)
+    return ret

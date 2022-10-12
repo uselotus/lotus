@@ -17,8 +17,6 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Cast, Trunc
-from rest_framework import serializers, status
-
 from metering_billing.models import BillableMetric, Customer, Event
 from metering_billing.utils import (
     AGGREGATION_TYPES,
@@ -26,6 +24,7 @@ from metering_billing.utils import (
     RevenueCalcGranularity,
     periods_bwn_twodates,
 )
+from rest_framework import serializers, status
 
 
 class BillableMetricHandler(abc.ABC):

@@ -15,10 +15,11 @@ from lotus.settings import (
     POSTHOG_PERSON,
     STRIPE_SECRET_KEY,
 )
-
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import Event, Invoice, Organization, Subscription
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import INVOICE_STATUS_TYPES, SUB_STATUS_TYPES
+from metering_billing.view_utils import sync_payment_provider_customers
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -168,3 +169,10 @@ def check_event_cache_flushed():
         cached_events = []
         cached_idems = set()
         cache.set("events_to_insert", (cached_events, cached_idems, now), None)
+
+
+@shared_task
+def sync_payment_provider_customers():
+    for org in Organization.objects.all():
+        for pp in org.payment_provider_ids.keys():
+            PAYMENT_PROVIDER_MAP[pp].import_customers(org)

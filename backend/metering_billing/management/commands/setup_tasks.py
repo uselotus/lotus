@@ -48,3 +48,9 @@ class Command(BaseCommand):
             task="metering_billing.tasks.check_event_cache_flushed",
             defaults={"interval": every_3_minutes, "crontab": None},
         )
+
+        PeriodicTask.objects.update_or_create(
+            name="Sync orgs and payment providers",
+            task="metering_billing.tasks.sync_payment_provider_customers",
+            defaults={"interval": every_hour, "crontab": None},
+        )

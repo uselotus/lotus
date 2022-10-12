@@ -237,3 +237,8 @@ class StripeConnector(PaymentProvider):
                 num_cust_added += 1
 
         return num_cust_added
+
+
+PAYMENT_PROVIDER_MAP = {
+    PAYMENT_PROVIDERS.STRIPE: StripeConnector(),
+}
