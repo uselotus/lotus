@@ -160,7 +160,8 @@ def sync_payment_provider_customers(organization):
     For every payment provider an organization has, sync all customers
     """
     ret = []
-    for pp_name, _ in organization.payment_provider_ids.items():
-        PAYMENT_PROVIDER_MAP[pp_name].import_customers(organization)
-        ret.append(pp_name)
+    for pp_name, connector in PAYMENT_PROVIDER_MAP.items():
+        if connector.organization_connected(organization):
+            connector.import_customers(organization)
+            ret.append(pp_name)
     return ret

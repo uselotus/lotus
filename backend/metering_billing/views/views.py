@@ -1031,8 +1031,6 @@ class SyncCustomersView(APIView):
         },
     )
     def post(self, request, format=None):
-        serializer = MergeCustomersRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
 
         try:

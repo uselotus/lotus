@@ -197,6 +197,7 @@ class StripeConnector(PaymentProvider):
             stripe_email = stripe_customer.email
             stripe_metadata = stripe_customer.metadata
             stripe_name = stripe_customer.name
+            stripe_name = stripe_name if stripe_name else "no_stripe_name"
             stripe_currency = stripe_customer.currency
             customer = Customer.objects.filter(
                 Q(payment_providers__stripe__id=stripe_id) | Q(email=stripe_email),
@@ -210,12 +211,12 @@ class StripeConnector(PaymentProvider):
                 cur_pp_dict["name"] = stripe_name
                 cur_pp_dict["currency"] = stripe_currency
                 customer.payment_providers[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
-                cur_sources = customer.source
+                cur_sources = customer.sources
                 if len(cur_sources) == 0:
                     cur_sources = []
                 if PAYMENT_PROVIDERS.STRIPE not in cur_sources:
                     cur_sources.append(PAYMENT_PROVIDERS.STRIPE)
-                customer.source = cur_sources
+                customer.sources = cur_sources
                 customer.save()
             else:
                 customer_kwargs = {

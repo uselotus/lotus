@@ -5,10 +5,12 @@ from datetime import datetime, timedelta
 
 import pytest
 import stripe
+from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import (
     BillableMetric,
     BillingPlan,
+    Customer,
     Event,
     Invoice,
     PlanComponent,
@@ -17,12 +19,12 @@ from metering_billing.models import (
 from metering_billing.tasks import calculate_invoice, update_invoice_status
 from metering_billing.utils import INVOICE_STATUS_TYPES
 from model_bakery import baker
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
 def task_test_common_setup(
-    generate_org_and_api_key,
-    add_customers_to_org,
+    generate_org_and_api_key, add_customers_to_org, add_users_to_org
 ):
     def do_task_test_common_setup():
         setup_dict = {}
@@ -35,7 +37,8 @@ def task_test_common_setup(
             invoice_settings={"default_payment_method": "pm_card_visa"},
         )
         customer.payment_providers["stripe"] = {"id": stripe_cust.id}
-        customer.sources = ["stripe"]
+        customer.sources = ["stripe", "lotus"]
+        customer.email = "jenny.rosen@example.com"
         customer.save()
         setup_dict["customer"] = customer
         event_properties = (
@@ -93,6 +96,12 @@ def task_test_common_setup(
         )
         setup_dict["subscription"] = subscription
 
+        client = APIClient()
+        (user,) = add_users_to_org(org, n=1)
+        client.force_authenticate(user=user)
+        setup_dict["user"] = user
+        setup_dict["client"] = client
+
         return setup_dict
 
     return do_task_test_common_setup
@@ -122,8 +131,8 @@ class TestGenerateInvoiceSynchrous:
 
 
 @pytest.mark.django_db
-class TestUpdateInvoiceStatus:
-    def test_update_invoice_status(self, task_test_common_setup):
+class TestUpdateInvoiceStatusStripe:
+    def test_update_invoice_status_stripe(self, task_test_common_setup):
         setup_dict = task_test_common_setup()
 
         c_id = setup_dict["customer"].payment_providers["stripe"]["id"]
@@ -152,3 +161,60 @@ class TestUpdateInvoiceStatus:
 
         invoice = Invoice.objects.filter(id=invoice.id).first()
         assert invoice.payment_status == INVOICE_STATUS_TYPES.PAID
+
+
+@pytest.mark.django_db(transaction=True)
+class TestSyncCustomersStripe:
+    def test_add_customers_update_existing(self, task_test_common_setup):
+        setup_dict = task_test_common_setup()
+        setup_dict["customer"].payment_providers["stripe"] = {"id": "bogus"}
+        setup_dict["customer"].save()
+        customers_before = Customer.objects.all().count()
+
+        payload = {}
+        response = setup_dict["client"].post(
+            reverse("sync_customers"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        customers_after = Customer.objects.all().count()
+        assert response.status_code == 201
+        assert customers_after == customers_before
+        customer = Customer.objects.get(organization=setup_dict["org"])
+        cust_d = customer.payment_providers["stripe"]
+        assert "id" in cust_d
+        assert cust_d["id"] != "bogus"
+        assert "email" in cust_d
+        assert "metadata" in cust_d
+        assert "name" in cust_d
+        assert "currency" in cust_d
+        sources = customer.sources
+        assert "stripe" in sources
+        assert "lotus" in sources
+
+    def test_add_customers_create_new(self, task_test_common_setup):
+        setup_dict = task_test_common_setup()
+        setup_dict["customer"].delete()
+        customers_before = Customer.objects.all().count()
+
+        payload = {}
+        response = setup_dict["client"].post(
+            reverse("sync_customers"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        customers_after = Customer.objects.all().count()
+        assert response.status_code == 201
+        assert customers_after == customers_before + 1
+        customer = Customer.objects.get(organization=setup_dict["org"])
+        cust_d = customer.payment_providers["stripe"]
+        assert "id" in cust_d
+        assert "email" in cust_d
+        assert "metadata" in cust_d
+        assert "name" in cust_d
+        assert "currency" in cust_d
+        sources = customer.sources
+        assert "stripe" in sources
+        assert "lotus" not in sources
