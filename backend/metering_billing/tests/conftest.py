@@ -1,3 +1,5 @@
+import uuid
+
 import posthog
 import pytest
 from model_bakery import baker
@@ -44,7 +46,9 @@ def add_customers_to_org():
     from metering_billing.models import Customer
 
     def do_add_customers_to_org(organization, n):
-        customer_set = baker.make(Customer, _quantity=n, organization=organization)
+        customer_set = baker.make(
+            Customer, _quantity=n, organization=organization, customer_id=uuid.uuid4
+        )
         return customer_set
 
     return do_add_customers_to_org

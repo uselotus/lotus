@@ -34,7 +34,8 @@ def task_test_common_setup(
             payment_method="pm_card_visa",
             invoice_settings={"default_payment_method": "pm_card_visa"},
         )
-        customer.payment_provider_ids["stripe"] = stripe_cust.id
+        customer.payment_providers["stripe"] = {"id": stripe_cust.id}
+        customer.sources = ["stripe"]
         customer.save()
         setup_dict["customer"] = customer
         event_properties = (
@@ -125,13 +126,14 @@ class TestUpdateInvoiceStatus:
     def test_update_invoice_status(self, task_test_common_setup):
         setup_dict = task_test_common_setup()
 
+        c_id = setup_dict["customer"].payment_providers["stripe"]["id"]
         payment_intent = stripe.PaymentIntent.create(
             amount=5000,
             currency="usd",
             payment_method_types=["card"],
             payment_method="pm_card_visa",
             confirm=True,
-            customer=setup_dict["customer"].payment_provider_ids["stripe"],
+            customer=c_id,
             off_session=True,
         )
 

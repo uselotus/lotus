@@ -141,7 +141,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     if draft:
         invoice_kwargs["payment_status"] = INVOICE_STATUS_TYPES.DRAFT
     else:
-        for pp, pp_id in customer.payment_provider_ids.items():
+        for pp in customer.payment_providers.keys():
             if pp in payment_providers and payment_providers[pp].working():
                 pp_connector = payment_providers[pp]
                 customer_conn = pp_connector.customer_connected(customer)
