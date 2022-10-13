@@ -7,15 +7,15 @@ import { Title } from "../base/Typograpy/index.";
 export const CustomerByPlanPie = (props: any) => {
   const data = [
     {
-      type: "分类一",
+      type: "Plan-1",
       value: 27,
     },
     {
-      type: "分类二",
+      type: "Plan-2",
       value: 25,
     },
     {
-      type: "分类三",
+      type: "Plan-3",
       value: 18,
     },
   ];
@@ -61,7 +61,7 @@ export const CustomerByPlanPie = (props: any) => {
   };
   return (
     <Paper>
-      <Title level={2}>Customer by Plan</Title>
+      <Title level={2}>*Preview* Customer by Plan</Title>
       <div className="h-[390px]">
         <Pie {...config} />
       </div>
