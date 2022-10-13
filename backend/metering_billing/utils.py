@@ -72,6 +72,12 @@ class SUB_STATUS_TYPES(models.TextChoices):
     CANCELED = ("canceled", _("Canceled"))
 
 
+class PLAN_STATUS(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    INACTIVE = ("inactive", _("Inactive"))
+    EXPERIMENTAL = ("experimental", _("Experimental"))
+
+
 class BACKTEST_KPI_TYPES(models.TextChoices):
     TOTAL_REVENUE = ("total_revenue", _("Total Revenue"))
 

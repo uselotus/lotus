@@ -1376,6 +1376,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitutionMulti'
+          writeOnly: true
         kpis:
           type: array
           items:
@@ -1412,18 +1413,19 @@ components:
         backtest_id:
           type: string
           maxLength: 100
-        substitutions:
-          type: string
-          readOnly: true
+        backtest_substitutions:
+          type: array
+          items:
+            type: integer
         backtest_results:
           type: object
           additionalProperties: {}
           nullable: true
       required:
       - backtest_name
+      - backtest_substitutions
       - end_date
       - start_date
-      - substitutions
     BacktestSubstitutionMulti:
       type: object
       properties:
@@ -1538,6 +1540,8 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
+        status:
+          $ref: '#/components/schemas/BillingPlanStatusEnum'
       required:
       - flat_rate
       - interval
@@ -1589,6 +1593,12 @@ components:
       - name
       - pay_in_advance
       - time_created
+    BillingPlanStatusEnum:
+      enum:
+      - active
+      - deleted
+      - experimental
+      type: string
     CancelSubscriptionFailure:
       type: object
       properties:
@@ -2115,8 +2125,16 @@ components:
     PlanComponent:
       type: object
       properties:
+        id:
+          type: integer
+          readOnly: true
         billable_metric_name:
           type: string
+          writeOnly: true
+        billable_metric:
+          allOf:
+          - $ref: '#/components/schemas/BillableMetric'
+          readOnly: true
         free_metric_units:
           type: number
           format: double
@@ -2150,7 +2168,9 @@ components:
           exclusiveMinimum: true
           nullable: true
       required:
+      - billable_metric
       - billable_metric_name
+      - id
     PlanComponentRead:
       type: object
       properties:

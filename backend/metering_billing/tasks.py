@@ -18,7 +18,11 @@ from lotus.settings import (
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import Backtest, Event, Invoice, Organization, Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import INVOICE_STATUS_TYPES, SUB_STATUS_TYPES
+from metering_billing.utils import (
+    INVOICE_STATUS_TYPES,
+    SUB_STATUS_TYPES,
+    make_all_decimals_floats,
+)
 from metering_billing.view_utils import (
     get_subscription_usage_and_revenue,
     sync_payment_provider_customers,
@@ -183,12 +187,11 @@ def sync_payment_provider_customers_all_orgs():
 @shared_task
 def run_backtest(backtest_id):
     backtest = Backtest.objects.get(backtest_id=backtest_id)
-    backtest_substitutions = backtest.substitutions.all()
+    backtest_substitutions = backtest.backtest_substitutions.all()
     queries = [Q(billing_plan=x.old_plan) for x in backtest_substitutions]
     query = queries.pop()
     for item in queries:
         query |= item
-
     all_subs_time_period = Subscription.objects.filter(
         query,
         start_date__lte=backtest.end_date,
@@ -202,7 +205,7 @@ def run_backtest(backtest_id):
         sub.billing_plan = subst.new_plan
         sub.save()
         new_usage_revenue = get_subscription_usage_and_revenue(sub)
-        sub.billing_plan = subst.new_plan
+        sub.billing_plan = subst.old_plan
         sub.save()
         cur_result = {
             "old_plan": {
@@ -215,4 +218,6 @@ def run_backtest(backtest_id):
             },
         }
         results.append(cur_result)
+    make_all_decimals_floats(results)
     backtest.backtest_results = results
+    backtest.save()

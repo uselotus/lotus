@@ -25,19 +25,16 @@ from metering_billing.serializers.model_serializers import (
     BacktestDetailSerializer,
     BacktestSummarySerializer,
     BillableMetricSerializer,
-    BillingPlanReadSerializer,
     BillingPlanSerializer,
     CustomerSerializer,
     FeatureSerializer,
     InvoiceSerializer,
-    PlanComponentReadSerializer,
-    PlanComponentSerializer,
     SubscriptionReadSerializer,
     SubscriptionSerializer,
     UserSerializer,
 )
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import INVOICE_STATUS_TYPES, SUB_STATUS_TYPES
+from metering_billing.utils import INVOICE_STATUS_TYPES, PLAN_STATUS, SUB_STATUS_TYPES
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -237,50 +234,13 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.save(organization=parse_organization(self.request))
 
 
-class PlanComponentViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Plan components.
-    """
-
-    permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "delete"]
-
-    def get_serializer_class(self):
-        if self.action in ["list", "retrieve"]:
-            return PlanComponentReadSerializer
-        else:
-            return PlanComponentSerializer
-
-    def get_queryset(self):
-        return PlanComponent.objects.all()
-
-    def get_serializer_context(self):
-        context = super(PlanComponentViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
-        context.update({"organization": organization})
-        return context
-
-    def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-        if status.is_success(response.status_code):
-            organization = parse_organization(self.request)
-            posthog.capture(
-                POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
-                event=f"{self.action}_component",
-                properties={},
-            )
-        return response
-
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
-
-
 class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing BillingPlans.
     """
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
+    serializer_class = BillingPlanSerializer
     lookup_field = "billing_plan_id"
     http_method_names = [
         "get",
@@ -295,23 +255,19 @@ class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "destroy": [IsAuthenticated],
     }
 
-    def get_serializer_class(self):
-        if self.action in ["list", "retrieve"]:
-            return BillingPlanReadSerializer
-        else:
-            return BillingPlanSerializer
-
     def get_queryset(self):
         organization = parse_organization(self.request)
         qs = (
-            BillingPlan.objects.filter(organization=organization)
+            BillingPlan.objects.filter(
+                organization=organization, status=PLAN_STATUS.ACTIVE
+            )
             .prefetch_related(
                 "components",
             )
             .annotate(
                 active_subscriptions=Count(
-                    "current_billing_plan__pk",
-                    filter=Q(current_billing_plan__status=SUB_STATUS_TYPES.ACTIVE),
+                    "bp_subscription__pk",
+                    filter=Q(bp_subscription__status=SUB_STATUS_TYPES.ACTIVE),
                 )
             )
         )

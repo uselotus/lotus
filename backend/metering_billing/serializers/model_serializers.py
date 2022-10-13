@@ -21,7 +21,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import BACKTEST_KPI_TYPES, SUB_STATUS_TYPES
+from metering_billing.utils import BACKTEST_KPI_TYPES, PLAN_STATUS, SUB_STATUS_TYPES
 from rest_framework import serializers
 
 
@@ -106,9 +106,7 @@ class CustomerSummarySerializer(serializers.ModelSerializer):
             "subscriptions",
         )
 
-    subscriptions = SubscriptionCustomerSummarySerializer(
-        read_only=True, many=True, source="subscriptions"
-    )
+    subscriptions = SubscriptionCustomerSummarySerializer(read_only=True, many=True)
     customer_name = serializers.CharField(source="name")
 
 
@@ -142,9 +140,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         )
 
     customer_name = serializers.CharField(source="name")
-    subscriptions = SubscriptionCustomerDetailSerializer(
-        read_only=True, many=True, source="subscriptions"
-    )
+    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
     invoices = serializers.SerializerMethodField()
     total_revenue_due = serializers.SerializerMethodField()
 
@@ -284,10 +280,12 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             "metric_units_per_batch",
             "max_metric_units",
         )
+        read_only_fields = ('id', 'billable_metric')
 
-    id = serializers.IntegerField(source="pk", read_only=True)
-    billable_metric = BillableMetricSerializer(read_only=True)
+    # READ-ONLY
+    billable_metric = BillableMetricSerializer()
 
+    # WRITE-ONLY
     billable_metric_name = serializers.SlugRelatedField(
         slug_field="billable_metric_name",
         write_only=True,
@@ -304,9 +302,30 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         return fields
 
     def validate(self, data):
+        # fmu, cpb, and mupb must all be none or all be not none
+        together = [
+            data.get("free_metric_units"),
+            data.get("cost_per_batch"),
+            data.get("metric_units_per_batch"),
+        ]
+        if not (all(together) or not any(together)):
+            raise serializers.ValidationError(
+                "Must specify exactly all or none of free_metric_units, cost_per_batch, metric_units_per_batch. Currently, free_metric_units: {}, cost_per_batch: {}, metric_units_per_batch: {}".format(
+                    *together
+                )
+            )
+        # cant have zero or negative units per batch
         if (
-            data["free_metric_units"] is not None
-            and data["max_metric_units"] is not None
+            data.get("metric_units_per_batch") is not None
+            and data.get("metric_units_per_batch") <= 0
+        ):
+            raise serializers.ValidationError(
+                "metric_units_per_batch must be greater than 0"
+            )
+        # free units can't be greater than max units
+        if (
+            data.get("free_metric_units") is not None
+            and data.get("max_metric_units") is not None
             and data["free_metric_units"] > data["max_metric_units"]
         ):
             raise serializers.ValidationError(
@@ -322,20 +341,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         return pc
 
 
-class PlanComponentReadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PlanComponent
-        fields = (
-            "id",
-            "billable_metric",
-            "free_metric_units",
-            "cost_per_batch",
-            "metric_units_per_batch",
-            "max_metric_units",
-        )
-
-    billable_metric = BillableMetricSerializer()
-
 
 ## BILLING PLAN
 class BillingPlanSerializer(serializers.ModelSerializer):
@@ -350,10 +355,19 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "description",
             "components",
             "features",
+            "status",
         )
-
+        read_only_fields = ('time_created', 'active_subscriptions')
+    
     components = PlanComponentSerializer(many=True, allow_null=True, required=False)
     features = FeatureSerializer(many=True, allow_null=True, required=False)
+
+    # READ-ONLY
+    time_created = serializers.SerializerMethodField()
+    active_subscriptions = serializers.IntegerField()
+
+    def get_time_created(self, obj) -> datetime.date:
+        return str(obj.time_created.date())
 
     def create(self, validated_data):
         components_data = validated_data.pop("components", [])
@@ -375,31 +389,6 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             billing_plan.features.add(f)
         billing_plan.save()
         return billing_plan
-
-
-class BillingPlanReadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BillingPlan
-        fields = (
-            "interval",
-            "flat_rate",
-            "pay_in_advance",
-            "billing_plan_id",
-            "name",
-            "description",
-            "components",
-            "features",
-            "time_created",
-            "active_subscriptions",
-        )
-
-    components = PlanComponentReadSerializer(many=True)
-    features = FeatureSerializer(many=True, allow_null=True, required=False)
-    time_created = serializers.SerializerMethodField()
-    active_subscriptions = serializers.IntegerField()
-
-    def get_time_created(self, obj) -> datetime.date:
-        return str(obj.time_created.date())
 
 
 ## SUBSCRIPTION
@@ -533,14 +522,21 @@ class DraftInvoiceSerializer(serializers.ModelSerializer):
 
 
 class BacktestSubstitutionMultiSerializer(serializers.Serializer):
-    new_plan = BillingPlanSerializer()
+    new_plan = SlugRelatedLookupField(
+        slug_field="billing_plan_id",
+        queryset=BillingPlan.objects.filter(
+            Q(status=PLAN_STATUS.ACTIVE) | Q(status=PLAN_STATUS.EXPERIMENTAL)
+        ),
+        read_only=False,
+    )
     old_plans = serializers.ListSerializer(
         child=SlugRelatedLookupField(
             slug_field="billing_plan_id",
-            queryset=BillingPlan.objects.all(),
+            queryset=BillingPlan.objects.filter(
+                Q(status=PLAN_STATUS.ACTIVE) | Q(status=PLAN_STATUS.INACTIVE)
+            ),
             read_only=False,
         ),
-        allow_empty=True,
     )
 
 
@@ -554,44 +550,15 @@ class BacktestCreateSerializer(serializers.ModelSerializer):
         required=True,
     )
     substitutions = serializers.ListSerializer(
-        child=BacktestSubstitutionMultiSerializer(),
-        required=True,
-        write_only=True
+        child=BacktestSubstitutionMultiSerializer(), required=True, write_only=True
     )
 
     def create(self, validated_data):
         substitutions = validated_data.pop("substitutions")
         backtest_obj = Backtest.objects.create(**validated_data)
         for substitution_set in substitutions:
-            new_plan = substitution_set.pop("new_plan")
+            new_plan_obj = substitution_set.pop("new_plan")
             old_plans = substitution_set.pop("old_plans")
-            components_data = new_plan.pop("components", [])
-            features_data = new_plan.pop("features", [])
-
-            query = BillingPlan.objects.filter(
-                organization=self.context["organization"],
-                billing_plan_id=new_plan["billing_plan_id"],
-            )
-            if query.exists():
-                new_plan_obj = query.first()
-            else:
-                new_plan_obj = BillingPlan.objects.create(
-                    **new_plan, organization=self.context["organization"]
-                )
-                for component_data in components_data:
-                    try:
-                        pc, _ = PlanComponent.objects.get_or_create(**component_data)
-                    except PlanComponent.MultipleObjectsReturned:
-                        pc = PlanComponent.objects.filter(**component_data).first()
-                    new_plan_obj.components.add(pc)
-                for feature_data in features_data:
-                    feature_data["organization"] = self.context["organization"]
-                    try:
-                        f, _ = Feature.objects.get_or_create(**feature_data)
-                    except Feature.MultipleObjectsReturned:
-                        f = Feature.objects.filter(**feature_data).first()
-                    new_plan_obj.features.add(f)
-                new_plan_obj.save()
             for old_plan_obj in old_plans:
                 BacktestSubstitution.objects.create(
                     new_plan=new_plan_obj, old_plan=old_plan_obj, backtest=backtest_obj
@@ -612,6 +579,7 @@ class BacktestSummarySerializer(serializers.ModelSerializer):
             "backtest_id",
         )
 
+
 class BacktestSubstitutionSerializer(serializers.ModelSerializer):
     class Meta:
         model = BacktestSubstitution
@@ -619,6 +587,7 @@ class BacktestSubstitutionSerializer(serializers.ModelSerializer):
 
     new_plan = BillingPlanSerializer()
     old_plan = BillingPlanSerializer()
+
 
 class BacktestDetailSerializer(BacktestSummarySerializer):
     class Meta:
@@ -639,6 +608,3 @@ class BacktestDetailSerializer(BacktestSummarySerializer):
 
     # def get_backtest_substitutions(self, obj):
     #     return BacktestSubstitutionSerializer(obj.backtest_substitutions.all(), many=True).data
-
-
-

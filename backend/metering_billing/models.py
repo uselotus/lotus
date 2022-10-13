@@ -19,6 +19,7 @@ from metering_billing.utils import (
     NUMERIC_FILTER_OPERATORS,
     PAYMENT_PLANS,
     PAYMENT_PROVIDERS,
+    PLAN_STATUS,
     SUB_STATUS_TYPES,
     dates_bwn_twodates,
 )
@@ -291,7 +292,7 @@ class BillingPlan(models.Model):
     )
     time_created = models.DateTimeField(auto_now=True)
     interval = models.CharField(
-        max_length=5,
+        max_length=10,
         choices=INTERVAL_TYPES.choices,
     )
     billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
@@ -304,6 +305,11 @@ class BillingPlan(models.Model):
     scheduled_for_deletion = models.BooleanField(default=False)
     replacement_billing_plan = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=PLAN_STATUS.choices,
+        default=PLAN_STATUS.ACTIVE,
     )
     history = HistoricalRecords()
 
@@ -356,6 +362,7 @@ class Subscription(models.Model):
         on_delete=models.CASCADE,
         null=False,
         related_name="bp_subscriptions",
+        related_query_name="bp_subscription",
     )
     start_date = models.DateField()
     end_date = models.DateField()

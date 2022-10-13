@@ -6,8 +6,8 @@ from metering_billing.models import Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     METRIC_TYPES,
-    SUB_STATUS_TYPES,
     REVENUE_CALC_GRANULARITY,
+    SUB_STATUS_TYPES,
     convert_to_decimal,
     periods_bwn_twodates,
 )
@@ -73,8 +73,12 @@ def calculate_sub_pc_usage_revenue(
         period_usage = usage.get(period, 0)
         qty = convert_to_decimal(period_usage)
         period_revenue_dict[period] = {"usage_qty": qty, "revenue": 0}
-        if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
-            pass
+        if (
+            plan_component.cost_per_batch == 0
+            or plan_component.cost_per_batch is None
+            or plan_component.metric_units_per_batch is None
+        ):
+            continue
         else:
             billable_units = max(
                 qty - free_units_usage_left + remainder_billable_units, 0
