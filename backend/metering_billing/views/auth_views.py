@@ -1,14 +1,13 @@
 import json
-from ast import increment_lineno
 
 import posthog
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.views.decorators.http import require_POST
 from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
+from knox.views import LogoutView as KnoxLogoutView
 from lotus.settings import POSTHOG_PERSON
 from metering_billing.models import Organization, User
 from metering_billing.serializers.internal_serializers import *
@@ -21,6 +20,10 @@ from rest_framework.views import APIView
 
 
 class LoginViewMixin(KnoxLoginView):
+    authentication_classes = [BasicAuthentication]
+
+
+class LogoutViewMixin(KnoxLogoutView):
     authentication_classes = [BasicAuthentication]
 
 
@@ -69,18 +72,20 @@ class LoginView(LoginViewMixin, APIView):
         )
 
 
-@require_POST
-def logout_view(request):
-    if not request.user.is_authenticated:
-        return JsonResponse(
-            {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
+class LogoutView(LogoutViewMixin, APIView):
+    def post(self, request, format=None):
+        if not request.user.is_authenticated:
+            return JsonResponse(
+                {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        posthog.capture(
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else request.user.organization.company_name,
+            event="logout",
         )
-    posthog.capture(
-        POSTHOG_PERSON if POSTHOG_PERSON else request.user.organization.company_name,
-        event="logout",
-    )
-    logout(request)
-    return JsonResponse({"detail": "Successfully logged out."})
+        logout(request)
+        return JsonResponse({"detail": "Successfully logged out."})
 
 
 @ensure_csrf_cookie
@@ -109,7 +114,7 @@ def session_view(request):
         )
     },
 )
-class RegisterView(APIView):
+class RegisterView(LoginViewMixin, APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, format=None):

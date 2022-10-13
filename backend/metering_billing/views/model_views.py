@@ -1,11 +1,12 @@
 from datetime import datetime
 
 import posthog
-from django.db import IntegrityError
+
+# from django.db import IntegrityError
 from django.db.models import Count, Q
+from django.db.utils import IntegrityError
 from lotus.settings import POSTHOG_PERSON
-from metering_billing.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateCustomerID
+from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
 from metering_billing.models import (
     Alert,
     Backtest,
@@ -14,7 +15,6 @@ from metering_billing.models import (
     Customer,
     Feature,
     Invoice,
-    PlanComponent,
     Subscription,
     User,
 )
@@ -135,7 +135,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            serializer.save()
+            serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
             raise DuplicateCustomerID
 
@@ -144,9 +144,6 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context
-
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -191,7 +188,10 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        try:
+            serializer.save(organization=parse_organization(self.request))
+        except IntegrityError as e:
+            raise DuplicateBillableMetric
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

@@ -1,8 +1,13 @@
 from metering_billing.auth_utils import parse_organization
-from metering_billing.models import BillableMetric, BillingPlan, Customer
+from metering_billing.models import BillingPlan, Customer
+from metering_billing.utils import PLAN_STATUS
 from rest_framework import serializers
 
-from .model_serializers import BillingPlanSerializer, EventSerializer
+from .model_serializers import (
+    BillingPlanSerializer,
+    EventSerializer,
+    SlugRelatedLookupField,
+)
 
 ## CUSTOM SERIALIZERS
 
@@ -196,3 +201,11 @@ class PeriodMetricRevenueResponseSerializer(serializers.Serializer):
     total_revenue_period_1 = serializers.DecimalField(decimal_places=10, max_digits=20)
     daily_usage_revenue_period_2 = PeriodSingleMetricRevenueSerializer(many=True)
     total_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
+
+
+class ExperimentalToActiveRequestSerializer(serializers.Serializer):
+    billing_plan_id = SlugRelatedLookupField(
+        queryset=BillingPlan.objects.filter(status=PLAN_STATUS.EXPERIMENTAL),
+        slug_field="billing_plan_id",
+        read_only=False,
+    )

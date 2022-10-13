@@ -122,92 +122,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/CancelSubscriptionFailure'
           description: ''
-  /api/components/:
-    get:
-      operationId: components_list
-      description: A simple ViewSet for viewing and editing Plan components.
-      tags:
-      - components
-      security:
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlanComponentRead'
-          description: ''
-    post:
-      operationId: components_create
-      description: A simple ViewSet for viewing and editing Plan components.
-      tags:
-      - components
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PlanComponent'
-        required: true
-      security:
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanComponent'
-          description: ''
-  /api/components/{id}/:
-    get:
-      operationId: components_retrieve
-      description: A simple ViewSet for viewing and editing Plan components.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this plan component.
-        required: true
-      tags:
-      - components
-      security:
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanComponentRead'
-          description: ''
-    delete:
-      operationId: components_destroy
-      description: A simple ViewSet for viewing and editing Plan components.
-      parameters:
-      - in: path
-        name: id
-        schema:
-          type: integer
-        description: A unique integer value identifying this plan component.
-        required: true
-      tags:
-      - components
-      security:
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '204':
-          description: No response body
   /api/customer_access/:
     get:
       operationId: customer_access_retrieve
@@ -435,6 +349,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/EventPreview'
           description: ''
+  /api/experimental_to_active/:
+    post:
+      operationId: experimental_to_active_create
+      tags:
+      - experimental_to_active
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExperimentalToActiveRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExperimentalToActiveRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExperimentalToActiveRequest'
+        required: true
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentalToActiveSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExperimentalToActiveFailure'
+          description: ''
   /api/features/:
     get:
       operationId: features_list
@@ -599,6 +546,18 @@ paths:
       - OrganizationApiKeyAuth: []
         TokenAuth: []
       - {}
+      responses:
+        '200':
+          description: No response body
+  /api/logout/:
+    post:
+      operationId: logout_create
+      tags:
+      - logout
+      security:
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
       responses:
         '200':
           description: No response body
@@ -867,7 +826,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/BillingPlanRead'
+                  $ref: '#/components/schemas/BillingPlan'
           description: ''
     post:
       operationId: plans_create
@@ -916,7 +875,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BillingPlanRead'
+                $ref: '#/components/schemas/BillingPlan'
           description: ''
     delete:
       operationId: plans_destroy
@@ -953,6 +912,7 @@ paths:
               $ref: '#/components/schemas/Registration'
         required: true
       security:
+      - basicAuth: []
       - OrganizationApiKeyAuth: []
         TokenAuth: []
       - {}
@@ -1071,13 +1031,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MergeCustomerSuccess'
+                $ref: '#/components/schemas/SyncCustomerSuccess'
           description: ''
         '400':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MergeCustomerFailure'
+                $ref: '#/components/schemas/SyncCustomerFailure'
           description: ''
   /api/track/:
     post:
@@ -1430,7 +1390,7 @@ components:
       type: object
       properties:
         new_plan:
-          $ref: '#/components/schemas/BillingPlan'
+          type: string
         old_plans:
           type: array
           items:
@@ -1542,52 +1502,15 @@ components:
           nullable: true
         status:
           $ref: '#/components/schemas/BillingPlanStatusEnum'
-      required:
-      - flat_rate
-      - interval
-      - name
-      - pay_in_advance
-    BillingPlanRead:
-      type: object
-      properties:
-        interval:
-          $ref: '#/components/schemas/IntervalEnum'
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        pay_in_advance:
-          type: boolean
-        billing_plan_id:
-          type: string
-          maxLength: 255
-        name:
-          type: string
-          maxLength: 200
-        description:
-          type: string
-          maxLength: 256
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRead'
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
         time_created:
           type: string
           format: date
           readOnly: true
         active_subscriptions:
           type: integer
+          readOnly: true
       required:
       - active_subscriptions
-      - components
       - flat_rate
       - interval
       - name
@@ -1596,7 +1519,7 @@ components:
     BillingPlanStatusEnum:
       enum:
       - active
-      - deleted
+      - inactive
       - experimental
       type: string
     CancelSubscriptionFailure:
@@ -1847,6 +1770,33 @@ components:
       required:
       - events
       - total_pages
+    ExperimentalToActiveFailure:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status956Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    ExperimentalToActiveRequest:
+      type: object
+      properties:
+        billing_plan_id:
+          type: string
+      required:
+      - billing_plan_id
+    ExperimentalToActiveSuccess:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusE96Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
     Feature:
       type: object
       properties:
@@ -2125,58 +2075,9 @@ components:
     PlanComponent:
       type: object
       properties:
-        id:
-          type: integer
-          readOnly: true
         billable_metric_name:
           type: string
           writeOnly: true
-        billable_metric:
-          allOf:
-          - $ref: '#/components/schemas/BillableMetric'
-          readOnly: true
-        free_metric_units:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-          nullable: true
-        cost_per_batch:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-          nullable: true
-        metric_units_per_batch:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-          nullable: true
-        max_metric_units:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-          nullable: true
-      required:
-      - billable_metric
-      - billable_metric_name
-      - id
-    PlanComponentRead:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
         billable_metric:
           $ref: '#/components/schemas/BillableMetric'
         free_metric_units:
@@ -2213,7 +2114,7 @@ components:
           nullable: true
       required:
       - billable_metric
-      - id
+      - billable_metric_name
     Registration:
       type: object
       properties:
@@ -2347,6 +2248,26 @@ components:
       - customer
       - end_date
       - start_date
+    SyncCustomerFailure:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status956Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    SyncCustomerSuccess:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusE96Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
     TrackEventFailure:
       type: object
       properties:

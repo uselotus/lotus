@@ -22,14 +22,12 @@ from django.views.generic import TemplateView
 from metering_billing.payment_providers import StripeConnector
 from metering_billing.views import auth_views, track
 from metering_billing.views.model_views import (
-    AlertViewSet,
     BacktestViewSet,
     BillableMetricViewSet,
     BillingPlanViewSet,
     CustomerViewSet,
     FeatureViewSet,
     InvoiceViewSet,
-    PlanComponentViewSet,
     SubscriptionViewSet,
     UserViewSet,
     WebhookViewSet,
@@ -42,6 +40,7 @@ from metering_billing.views.views import (
     CustomersWithRevenueView,
     DraftInvoiceView,
     EventPreviewView,
+    ExperimentalToActiveView,
     GetCustomerAccessView,
     MergeCustomersView,
     PeriodMetricRevenueView,
@@ -61,7 +60,6 @@ router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"metrics", BillableMetricViewSet, basename="metric")
 router.register(r"plans", BillingPlanViewSet, basename="plan")
 router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
-router.register(r"components", PlanComponentViewSet, basename="component")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
@@ -135,8 +133,13 @@ urlpatterns = [
         name="sync_customers",
     ),
     path("api/stripe/", StripeConnector.as_view(), name="stripe_initialize"),
+    path(
+        "api/experimental_to_active/",
+        ExperimentalToActiveView.as_view(),
+        name="expertimental-to-active",
+    ),
     path("api/login/", auth_views.LoginView.as_view(), name="api-login"),
-    path("api/logout/", auth_views.logout_view, name="api-logout"),
+    path("api/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
     path("api/session/", auth_views.session_view, name="api-session"),
     # path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
     path("api/register/", auth_views.RegisterView.as_view(), name="register"),

@@ -272,7 +272,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
         fields = (
-            "id",
             "billable_metric_name",
             "billable_metric",
             "free_metric_units",
@@ -280,7 +279,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             "metric_units_per_batch",
             "max_metric_units",
         )
-        read_only_fields = ('id', 'billable_metric')
+        read_only_fields = ["billable_metric"]
 
     # READ-ONLY
     billable_metric = BillableMetricSerializer()
@@ -341,7 +340,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         return pc
 
 
-
 ## BILLING PLAN
 class BillingPlanSerializer(serializers.ModelSerializer):
     class Meta:
@@ -356,18 +354,23 @@ class BillingPlanSerializer(serializers.ModelSerializer):
             "components",
             "features",
             "status",
+            "time_created",
+            "active_subscriptions",
         )
-        read_only_fields = ('time_created', 'active_subscriptions')
-    
+        read_only_fields = ("time_created", "active_subscriptions")
+
     components = PlanComponentSerializer(many=True, allow_null=True, required=False)
     features = FeatureSerializer(many=True, allow_null=True, required=False)
 
     # READ-ONLY
     time_created = serializers.SerializerMethodField()
-    active_subscriptions = serializers.IntegerField()
+    active_subscriptions = serializers.SerializerMethodField()
 
     def get_time_created(self, obj) -> datetime.date:
         return str(obj.time_created.date())
+
+    def get_active_subscriptions(self, obj) -> int:
+        return obj.active_subscriptions
 
     def create(self, validated_data):
         components_data = validated_data.pop("components", [])
