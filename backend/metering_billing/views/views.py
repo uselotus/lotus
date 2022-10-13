@@ -6,7 +6,6 @@ from dateutil import parser
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from knox.models import AuthToken
 from lotus.settings import POSTHOG_PERSON
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -14,7 +13,7 @@ from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.view_utils import (
-    RevenueCalcGranularity,
+    REVENUE_CALC_GRANULARITY,
     periods_bwn_twodates,
     sync_payment_provider_customers,
 )
@@ -84,7 +83,7 @@ class PeriodMetricRevenueView(APIView):
                         "data": {
                             x: Decimal(0)
                             for x in periods_bwn_twodates(
-                                RevenueCalcGranularity.DAILY, p_start, p_end
+                                REVENUE_CALC_GRANULARITY.DAILY, p_start, p_end
                             )
                         },
                         "total_revenue": Decimal(0),
@@ -117,7 +116,7 @@ class PeriodMetricRevenueView(APIView):
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
-                            revenue_granularity=RevenueCalcGranularity.DAILY,
+                            revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
@@ -222,7 +221,7 @@ class PeriodMetricUsageView(APIView):
                 metric,
                 q_start,
                 q_end,
-                granularity=RevenueCalcGranularity.DAILY,
+                granularity=REVENUE_CALC_GRANULARITY.DAILY,
             )
             return_dict[str(metric)] = {
                 "data": {},
@@ -662,7 +661,7 @@ class GetCustomerAccessView(APIView):
                             metric,
                             sub.start_date,
                             sub.end_date,
-                            granularity=RevenueCalcGranularity.TOTAL,
+                            granularity=REVENUE_CALC_GRANULARITY.TOTAL,
                             customer=customer,
                         )
                         metric_usage = metric_usage.get(customer.name, {})
@@ -1015,14 +1014,14 @@ class SyncCustomersView(APIView):
         ),
         responses={
             200: inline_serializer(
-                name="MergeCustomerSuccess",
+                name="SyncCustomerSuccess",
                 fields={
                     "status": serializers.ChoiceField(choices=["success"]),
                     "detail": serializers.CharField(),
                 },
             ),
             400: inline_serializer(
-                name="MergeCustomerFailure",
+                name="SyncCustomerFailure",
                 fields={
                     "status": serializers.ChoiceField(choices=["error"]),
                     "detail": serializers.CharField(),
@@ -1049,4 +1048,50 @@ class SyncCustomersView(APIView):
                 "detail": f"Customers succesfully imported from {success_providers}.",
             },
             status=status.HTTP_201_CREATED,
+        )
+
+
+class ExperimentalToActiveView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=ExperimentalToActiveRequestSerializer(),
+        responses={
+            200: inline_serializer(
+                name="ExperimentalToActiveSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="ExperimentalToActiveFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        serializer = ExperimentalToActiveRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        billing_plan = serializer.validated_data["billing_plan_id"]
+        try:
+            billing_plan.status = PLAN_STATUS.ACTIVE
+        except Exception as e:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Error converting experimental plan to active plan: {e}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Plan {billing_plan} succesfully converted from experimental to active.",
+            },
+            status=status.HTTP_200_OK,
         )

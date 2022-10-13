@@ -14,7 +14,7 @@ from metering_billing.models import (
     PlanComponent,
 )
 from metering_billing.view_utils import (
-    RevenueCalcGranularity,
+    REVENUE_CALC_GRANULARITY,
     calculate_sub_pc_usage_revenue,
     get_metric_usage,
 )
@@ -237,7 +237,7 @@ class TestCalculateBillableMetric:
             billable_metric,
             query_start_date=parser.parse("2021-01-01"),
             query_end_date=parser.parse("2021-01-30"),
-            granularity=RevenueCalcGranularity.TOTAL,
+            granularity=REVENUE_CALC_GRANULARITY.TOTAL,
             customer=customer,
         )
         metric_usage = metric_usage[customer.name]
@@ -304,7 +304,7 @@ class TestCalculateBillableMetric:
             customer=customer,
             plan_start_date="2021-01-01",
             plan_end_date="2021-01-30",
-            revenue_granularity=RevenueCalcGranularity.DAILY,
+            revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
         )
         metric_revenue = sum(d["revenue"] for _, d in usage_revenue_dict.items())
 

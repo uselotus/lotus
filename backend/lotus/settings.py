@@ -318,9 +318,10 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
-        # 'rest_framework.authentication.SessionAuthentication',
+        # "metering_billing.permissions.KnoxTokenScheme",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
 SPECTACULAR_SETTINGS = {
@@ -337,12 +338,18 @@ SPECTACULAR_SETTINGS = {
                 "type": "apiKey",
                 "in": "header",
                 "name": "X-API-KEY",
-            }
+            },
+            "TokenAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "Authorization",
+            },
         }
     },
     "SECURITY": [
         {
             "OrganizationApiKeyAuth": [],
+            "TokenAuth": [],
         }
     ],
 }

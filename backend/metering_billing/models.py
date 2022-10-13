@@ -9,17 +9,18 @@ from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
 from metering_billing.utils import (
-    AGGREGATION_CHOICES,
-    CATEGORICAL_FILTER_OPERATOR_CHOICES,
-    INTERVAL_CHOICES,
+    AGGREGATION_TYPES,
+    BACKTEST_KPI_TYPES,
+    BACKTEST_STATUS_TYPES,
+    CATEGORICAL_FILTER_OPERATORS,
     INTERVAL_TYPES,
-    INVOICE_STATUS_CHOICES,
-    METRIC_TYPE_CHOICES,
-    NUMERIC_FILTER_OPERATOR_CHOICES,
+    INVOICE_STATUS_TYPES,
+    METRIC_TYPES,
+    NUMERIC_FILTER_OPERATORS,
     PAYMENT_PLANS,
-    SUB_STATUS_CHOICES,
+    PAYMENT_PROVIDERS,
+    PLAN_STATUS,
     SUB_STATUS_TYPES,
-    SUPPORTED_PAYMENT_PROVIDERS,
     dates_bwn_twodates,
 )
 from rest_framework_api_key.models import AbstractAPIKey
@@ -31,7 +32,9 @@ class Organization(models.Model):
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
-        max_length=40, choices=PAYMENT_PLANS, default=PAYMENT_PLANS.self_hosted_free
+        max_length=40,
+        choices=PAYMENT_PLANS.choices,
+        default=PAYMENT_PLANS.SELF_HOSTED_FREE,
     )
     history = HistoricalRecords()
 
@@ -40,16 +43,18 @@ class Organization(models.Model):
 
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
-            if k not in SUPPORTED_PAYMENT_PROVIDERS:
+            if k not in PAYMENT_PROVIDERS:
                 raise ValueError(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         super(Organization, self).save(*args, **kwargs)
 
 
 class Alert(models.Model):
     type = models.CharField(max_length=20, default="webhook")
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="org_alerts"
+    )
     webhook_url = models.CharField(max_length=300, blank=True, null=True)
     name = models.CharField(max_length=100, default=" ")
     history = HistoricalRecords()
@@ -57,7 +62,11 @@ class Alert(models.Model):
 
 class User(AbstractUser):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True
+        Organization,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="org_users",
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
@@ -76,7 +85,9 @@ class Customer(models.Model):
         properties (dict): An extendable dictionary of properties, useful for filtering, etc.
     """
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=False, related_name="org_customers"
+    )
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(
@@ -109,12 +120,12 @@ class Customer(models.Model):
             assert isinstance(self.sources, list)
             for source in self.sources:
                 assert (
-                    source in SUPPORTED_PAYMENT_PROVIDERS or source == "lotus"
-                ), f"Payment provider {source} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+                    source in PAYMENT_PROVIDERS or source == "lotus"
+                ), f"Payment provider {source} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
         for k, v in self.payment_providers.items():
-            if k not in SUPPORTED_PAYMENT_PROVIDERS:
+            if k not in PAYMENT_PROVIDERS:
                 raise ValueError(
-                    f"Payment provider {k} is not supported. Supported payment providers are: {SUPPORTED_PAYMENT_PROVIDERS}"
+                    f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
             id = v.get("id")
             if id is None:
@@ -134,8 +145,12 @@ class Event(models.Model):
     idempotency_id: A unique identifier for the event.
     """
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=False, related_name="+"
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, null=False, related_name="+"
+    )
     event_name = models.CharField(max_length=200, null=False)
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -150,33 +165,38 @@ class Event(models.Model):
 
 class NumericFilter(models.Model):
     property_name = models.CharField(max_length=100)
-    operator = models.CharField(max_length=10, choices=NUMERIC_FILTER_OPERATOR_CHOICES)
+    operator = models.CharField(max_length=10, choices=NUMERIC_FILTER_OPERATORS.choices)
     comparison_value = models.FloatField()
 
 
 class CategoricalFilter(models.Model):
     property_name = models.CharField(max_length=100)
     operator = models.CharField(
-        max_length=10, choices=CATEGORICAL_FILTER_OPERATOR_CHOICES
+        max_length=10, choices=CATEGORICAL_FILTER_OPERATORS.choices
     )
     comparison_value = models.JSONField()
 
 
 class BillableMetric(models.Model):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="org_billable_metrics",
+    )
     event_name = models.CharField(max_length=200, null=False)
     property_name = models.CharField(max_length=200, blank=True, null=True)
     aggregation_type = models.CharField(
         max_length=10,
-        choices=AGGREGATION_CHOICES,
-        default=AGGREGATION_CHOICES.count,
+        choices=AGGREGATION_TYPES.choices,
+        default=AGGREGATION_TYPES.COUNT,
         blank=False,
         null=False,
     )
     metric_type = models.CharField(
         max_length=20,
-        choices=METRIC_TYPE_CHOICES,
-        default=METRIC_TYPE_CHOICES.aggregation,
+        choices=METRIC_TYPES.choices,
+        default=METRIC_TYPES.AGGREGATION,
         blank=False,
         null=False,
     )
@@ -221,7 +241,9 @@ class BillableMetric(models.Model):
 
 
 class PlanComponent(models.Model):
-    billable_metric = models.ForeignKey(BillableMetric, on_delete=models.CASCADE)
+    billable_metric = models.ForeignKey(
+        BillableMetric, on_delete=models.CASCADE, related_name="+"
+    )
     free_metric_units = models.DecimalField(
         decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
     )
@@ -240,7 +262,9 @@ class PlanComponent(models.Model):
 
 
 class Feature(models.Model):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=False, related_name="org_features"
+    )
     feature_name = models.CharField(max_length=200, null=False)
     feature_description = models.CharField(max_length=200, blank=True, null=True)
 
@@ -260,11 +284,16 @@ class BillingPlan(models.Model):
     billable_metrics: a json containing a list of billable_metrics objects
     """
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="org_billing_plans",
+    )
     time_created = models.DateTimeField(auto_now=True)
     interval = models.CharField(
-        max_length=5,
-        choices=INTERVAL_CHOICES,
+        max_length=10,
+        choices=INTERVAL_TYPES.choices,
     )
     billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
@@ -276,6 +305,11 @@ class BillingPlan(models.Model):
     scheduled_for_deletion = models.BooleanField(default=False)
     replacement_billing_plan = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=PLAN_STATUS.choices,
+        default=PLAN_STATUS.ACTIVE,
     )
     history = HistoricalRecords()
 
@@ -311,25 +345,36 @@ class Subscription(models.Model):
     status: The status of the subscription, active or ended.
     """
 
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, null=False)
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=False)
-    billing_plan = models.ForeignKey(
-        BillingPlan,
-        related_name="current_billing_plan",
+    organization = models.ForeignKey(
+        Organization,
         on_delete=models.CASCADE,
         null=False,
+        related_name="org_subscriptions",
+    )
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="customer_subscriptions",
+    )
+    billing_plan = models.ForeignKey(
+        BillingPlan,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="bp_subscriptions",
+        related_query_name="bp_subscription",
     )
     start_date = models.DateField()
     end_date = models.DateField()
     status = models.CharField(
         max_length=20,
-        choices=SUB_STATUS_CHOICES,
-        default=SUB_STATUS_CHOICES.not_started,
+        choices=SUB_STATUS_TYPES.choices,
+        default=SUB_STATUS_TYPES.NOT_STARTED,
     )
     auto_renew = models.BooleanField(default=True)
     auto_renew_billing_plan = models.ForeignKey(
         BillingPlan,
-        related_name="next_billing_plan",
+        related_name="+",
         on_delete=models.CASCADE,
         null=True,
     )
@@ -371,10 +416,12 @@ class Invoice(models.Model):
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
-    payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS_CHOICES)
+    payment_status = models.CharField(
+        max_length=40, choices=INVOICE_STATUS_TYPES.choices
+    )
     external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
     external_payment_obj_type = models.CharField(
-        choices=SUPPORTED_PAYMENT_PROVIDERS, max_length=40, null=True, blank=True
+        choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     line_items = models.JSONField()
     organization = models.JSONField()
@@ -385,7 +432,7 @@ class Invoice(models.Model):
 
 class APIToken(AbstractAPIKey):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="api_keys"
+        Organization, on_delete=models.CASCADE, related_name="org_api_keys"
     )
     name = models.CharField(max_length=200, default="latest_token")
 
@@ -395,3 +442,51 @@ class APIToken(AbstractAPIKey):
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
+
+
+class Backtest(models.Model):
+    """
+    This model is used to store the results of a backtest.
+    """
+
+    backtest_name = models.CharField(max_length=100, null=False, blank=False)
+    start_date = models.DateField(null=False, blank=False)
+    end_date = models.DateField(null=False, blank=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=False, related_name="org_backtests"
+    )
+    time_created = models.DateTimeField(default=datetime.datetime.now)
+    backtest_id = models.CharField(
+        max_length=100, null=False, blank=True, default=uuid.uuid4, unique=True
+    )
+    kpis = models.JSONField(default=list)
+    backtest_results = models.JSONField(default=dict, null=True, blank=True)
+    status = models.CharField(
+        choices=BACKTEST_STATUS_TYPES.choices,
+        default=BACKTEST_STATUS_TYPES.RUNNING,
+        max_length=40,
+    )
+    history = HistoricalRecords()
+
+    def __str__(self):
+        return f"{self.backtest_name} - {self.start_date}"
+
+
+class BacktestSubstitution(models.Model):
+    """
+    This model is used to substitute a backtest for a live trading session.
+    """
+
+    backtest = models.ForeignKey(
+        Backtest, on_delete=models.CASCADE, related_name="backtest_substitutions"
+    )
+    old_plan = models.ForeignKey(
+        BillingPlan, on_delete=models.CASCADE, related_name="+"
+    )
+    new_plan = models.ForeignKey(
+        BillingPlan, on_delete=models.CASCADE, related_name="+"
+    )
+    history = HistoricalRecords()
+
+    def __str__(self):
+        return f"{self.backtest}"

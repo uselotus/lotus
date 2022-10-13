@@ -6,8 +6,8 @@ from metering_billing.models import Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     METRIC_TYPES,
+    REVENUE_CALC_GRANULARITY,
     SUB_STATUS_TYPES,
-    RevenueCalcGranularity,
     convert_to_decimal,
     periods_bwn_twodates,
 )
@@ -40,11 +40,11 @@ def calculate_sub_pc_usage_revenue(
     customer,
     plan_start_date,
     plan_end_date,
-    revenue_granularity=RevenueCalcGranularity.TOTAL,
+    revenue_granularity=REVENUE_CALC_GRANULARITY.TOTAL,
 ):
     assert isinstance(
-        revenue_granularity, RevenueCalcGranularity
-    ), "revenue_granularity must be part of RevenueCalcGranularity enum"
+        revenue_granularity, REVENUE_CALC_GRANULARITY
+    ), "revenue_granularity must be part of REVENUE_CALC_GRANULARITY enum"
     if type(plan_start_date) == str:
         plan_start_date = parser.parse(plan_start_date).date()
     if type(plan_end_date) == str:
@@ -73,8 +73,12 @@ def calculate_sub_pc_usage_revenue(
         period_usage = usage.get(period, 0)
         qty = convert_to_decimal(period_usage)
         period_revenue_dict[period] = {"usage_qty": qty, "revenue": 0}
-        if plan_component.cost_per_batch == 0 or plan_component.cost_per_batch is None:
-            pass
+        if (
+            plan_component.cost_per_batch == 0
+            or plan_component.cost_per_batch is None
+            or plan_component.metric_units_per_batch is None
+        ):
+            continue
         else:
             billable_units = max(
                 qty - free_units_usage_left + remainder_billable_units, 0
