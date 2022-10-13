@@ -39,7 +39,12 @@ interface CustomizedState {
   plan: PlanType;
 }
 
-const EditPlan = () => {
+interface Props {
+  type: string;
+  onSubstitutionchange?: (newPlan: CreatePlanType) => void;
+}
+
+const EditPlan = (props: Props) => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const location = useLocation();
@@ -189,20 +194,44 @@ const EditPlan = () => {
           components: usagecomponentslist,
           features: planFeatures,
         };
-        mutation.mutate({
-          old_billing_plan_id: plan.billing_plan_id,
-          updated_billing_plan: newPlan,
-          update_behavior: values.update_behavior,
-        });
+        if (props.type === "backtest" && props.onSubstitutionchange) {
+          props.onSubstitutionchange(newPlan);
+        } else if (props.type === "edit") {
+          mutation.mutate({
+            old_billing_plan_id: plan.billing_plan_id,
+            updated_billing_plan: newPlan,
+            update_behavior: values.update_behavior,
+          });
+        }
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
       });
   };
 
+  function returnPageTitle(): string {
+    if (props.type === "backtest") {
+      return "Backtest Plan";
+    } else if (props.type === "edit") {
+      return "Update Plan";
+    } else {
+      return "Create Plan";
+    }
+  }
+
+  function returnSubmitButtonText(): string {
+    if (props.type === "backtest") {
+      return "Finish Plan";
+    } else if (props.type === "edit") {
+      return "Update Plan";
+    } else {
+      return "Create Plan";
+    }
+  }
+
   return (
     <PageLayout
-      title={`Update Plan: ${plan.name}`}
+      title={returnPageTitle}
       extra={[
         <Button
           key={"back"}
@@ -219,7 +248,7 @@ const EditPlan = () => {
           className="bg-black text-white justify-self-end"
           size="large"
         >
-          Update Plan <SaveOutlined />
+          {returnSubmitButtonText}
         </Button>,
       ]}
     >

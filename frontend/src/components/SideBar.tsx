@@ -34,6 +34,12 @@ const SideBar: FC = () => {
       onClick: () => navigate("/dashboard"),
     },
     {
+      key: "/experiments",
+      icon: <DashboardOutlined />,
+      label: "Experiments",
+      onClick: () => navigate("/experiments"),
+    },
+    {
       key: "/customers",
       icon: <UserOutlined />,
       label: "Customers",
