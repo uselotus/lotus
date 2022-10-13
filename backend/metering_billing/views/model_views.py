@@ -8,6 +8,7 @@ from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateCustomerID
 from metering_billing.models import (
     Alert,
+    Backtest,
     BillableMetric,
     BillingPlan,
     Customer,
@@ -20,6 +21,9 @@ from metering_billing.models import (
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.model_serializers import (
     AlertSerializer,
+    BacktestCreateSerializer,
+    BacktestDetailSerializer,
+    BacktestSummarySerializer,
     BillableMetricSerializer,
     BillingPlanReadSerializer,
     BillingPlanSerializer,
@@ -32,6 +36,7 @@ from metering_billing.serializers.model_serializers import (
     SubscriptionSerializer,
     UserSerializer,
 )
+from metering_billing.tasks import run_backtest
 from metering_billing.utils import INVOICE_STATUS_TYPES, SUB_STATUS_TYPES
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -78,9 +83,14 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         return super().get_queryset().filter(organization=organization)
 
-    def perform_create(self, serializer):
+    def get_serializer_context(self):
+        context = super(WebhookViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
-        serializer.save(organization=organization)
+        context.update({"organization": organization})
+        return context
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
 
 
 class UserViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -95,6 +105,12 @@ class UserViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         organization = parse_organization(self.request)
         return User.objects.filter(organization=organization)
+
+    def get_serializer_context(self):
+        context = super(UserViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
@@ -122,10 +138,18 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            organization = parse_organization(self.request)
-            serializer.save(organization=organization)
+            serializer.save()
         except IntegrityError as e:
             raise DuplicateCustomerID
+
+    def get_serializer_context(self):
+        context = super(CustomerViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -152,11 +176,11 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         return BillableMetric.objects.filter(organization=organization)
 
-    def perform_create(self, serializer):
-        try:
-            serializer.save(organization=parse_organization(self.request))
-        except IntegrityError as e:
-            raise DuplicateCustomerID
+    def get_serializer_context(self):
+        context = super(BillableMetricViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -168,6 +192,9 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
                 properties={},
             )
         return response
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -189,8 +216,11 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         return Feature.objects.filter(organization=organization)
 
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+    def get_serializer_context(self):
+        context = super(FeatureViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -202,6 +232,9 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 properties={},
             )
         return response
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
 
 
 class PlanComponentViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -221,8 +254,11 @@ class PlanComponentViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         return PlanComponent.objects.all()
 
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+    def get_serializer_context(self):
+        context = super(PlanComponentViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -234,6 +270,9 @@ class PlanComponentViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 properties={},
             )
         return response
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
 
 
 class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -278,8 +317,11 @@ class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
         return qs
 
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+    def get_serializer_context(self):
+        context = super(BillingPlanViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -307,6 +349,9 @@ class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         self.perform_destroy(obj)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
 
 class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
@@ -326,6 +371,12 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "retrieve": [IsAuthenticated | HasUserAPIKey],
         "create": [IsAuthenticated | HasUserAPIKey],
     }
+
+    def get_serializer_context(self):
+        context = super(SubscriptionViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -376,6 +427,12 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             organization=organization,
         )
 
+    def get_serializer_context(self):
+        context = super(InvoiceViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
 
@@ -417,3 +474,59 @@ class AlertViewSet(viewsets.ModelViewSet):
                 properties={},
             )
         return response
+
+    def get_serializer_context(self):
+        context = super(AlertViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+
+class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing Backtests.
+    """
+
+    permission_classes = [IsAuthenticated]
+    lookup_field = "backtest_id"
+    http_method_names = ["get", "post", "head", "delete"]
+    permission_classes_per_method = {
+        "list": [IsAuthenticated | HasUserAPIKey],
+        "retrieve": [IsAuthenticated | HasUserAPIKey],
+        "create": [IsAuthenticated | HasUserAPIKey],
+        "destroy": [IsAuthenticated],
+    }
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return BacktestSummarySerializer
+        elif self.action == "retrieve":
+            return BacktestDetailSerializer
+        else:
+            return BacktestCreateSerializer
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return Backtest.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        backtest_obj = serializer.save(organization=parse_organization(self.request))
+        bt_id = backtest_obj.backtest_id
+        run_backtest.delay(bt_id)
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
+                event=f"{self.action}_backtest",
+                properties={},
+            )
+        return response
+
+    def get_serializer_context(self):
+        context = super(BacktestViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context

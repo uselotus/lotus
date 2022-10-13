@@ -4,11 +4,9 @@ from ast import increment_lineno
 import posthog
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
-from django.middleware.csrf import get_token
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from drf_spectacular.utils import extend_schema, inline_serializer
-from knox.auth import TokenAuthentication
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from lotus.settings import POSTHOG_PERSON
@@ -17,11 +15,6 @@ from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
-from rest_framework.decorators import (
-    api_view,
-    authentication_classes,
-    permission_classes,
-)
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -77,7 +70,6 @@ class LoginView(LoginViewMixin, APIView):
 
 
 @require_POST
-@permission_classes([TokenAuthentication])
 def logout_view(request):
     if not request.user.is_authenticated:
         return JsonResponse(

@@ -7,6 +7,7 @@ from simple_history.admin import SimpleHistoryAdmin
 from .models import (
     Alert,
     APIToken,
+    Backtest,
     BillableMetric,
     BillingPlan,
     CategoricalFilter,
@@ -33,6 +34,7 @@ admin.site.register(User, CustomAdmin)
 admin.site.register(Customer, SimpleHistoryAdmin)
 admin.site.register(Event)
 admin.site.register(NumericFilter)
+admin.site.register(Backtest)
 admin.site.register(CategoricalFilter)
 admin.site.register(BillableMetric, SimpleHistoryAdmin)
 admin.site.register(PlanComponent)

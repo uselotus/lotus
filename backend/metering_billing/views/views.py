@@ -14,7 +14,7 @@ from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.view_utils import (
-    RevenueCalcGranularity,
+    REVENUE_CALC_GRANULARITY,
     periods_bwn_twodates,
     sync_payment_provider_customers,
 )
@@ -84,7 +84,7 @@ class PeriodMetricRevenueView(APIView):
                         "data": {
                             x: Decimal(0)
                             for x in periods_bwn_twodates(
-                                RevenueCalcGranularity.DAILY, p_start, p_end
+                                REVENUE_CALC_GRANULARITY.DAILY, p_start, p_end
                             )
                         },
                         "total_revenue": Decimal(0),
@@ -117,7 +117,7 @@ class PeriodMetricRevenueView(APIView):
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
-                            revenue_granularity=RevenueCalcGranularity.DAILY,
+                            revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
                         )
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
@@ -222,7 +222,7 @@ class PeriodMetricUsageView(APIView):
                 metric,
                 q_start,
                 q_end,
-                granularity=RevenueCalcGranularity.DAILY,
+                granularity=REVENUE_CALC_GRANULARITY.DAILY,
             )
             return_dict[str(metric)] = {
                 "data": {},
@@ -662,7 +662,7 @@ class GetCustomerAccessView(APIView):
                             metric,
                             sub.start_date,
                             sub.end_date,
-                            granularity=RevenueCalcGranularity.TOTAL,
+                            granularity=REVENUE_CALC_GRANULARITY.TOTAL,
                             customer=customer,
                         )
                         metric_usage = metric_usage.get(customer.name, {})

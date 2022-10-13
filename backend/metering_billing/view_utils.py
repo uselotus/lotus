@@ -7,7 +7,7 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     METRIC_TYPES,
     SUB_STATUS_TYPES,
-    RevenueCalcGranularity,
+    REVENUE_CALC_GRANULARITY,
     convert_to_decimal,
     periods_bwn_twodates,
 )
@@ -40,11 +40,11 @@ def calculate_sub_pc_usage_revenue(
     customer,
     plan_start_date,
     plan_end_date,
-    revenue_granularity=RevenueCalcGranularity.TOTAL,
+    revenue_granularity=REVENUE_CALC_GRANULARITY.TOTAL,
 ):
     assert isinstance(
-        revenue_granularity, RevenueCalcGranularity
-    ), "revenue_granularity must be part of RevenueCalcGranularity enum"
+        revenue_granularity, REVENUE_CALC_GRANULARITY
+    ), "revenue_granularity must be part of REVENUE_CALC_GRANULARITY enum"
     if type(plan_start_date) == str:
         plan_start_date = parser.parse(plan_start_date).date()
     if type(plan_end_date) == str:

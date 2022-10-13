@@ -5,133 +5,80 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 from enum import Enum
 
 from dateutil.relativedelta import relativedelta
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 from model_utils import Choices
 
 
-class INVOICE_STATUS_TYPES(object):
-    # REQUIRES_PAYMENT_METHOD = "requires_payment_method"
-    # REQUIRES_ACTION = "requires_action"
-    # PROCESSING = "processing"
-    # SUCCEEDED = "succeeded"
-    DRAFT = "draft"
-    PAID = "paid"
-    UNPAID = "unpaid"
+class INVOICE_STATUS_TYPES(models.TextChoices):
+    DRAFT = ("draft", _("Draft"))
+    PAID = ("paid", _("Paid"))
+    UNPAID = ("unpaid", _("Unpaid"))
 
 
-INVOICE_STATUS_CHOICES = Choices(
-    (INVOICE_STATUS_TYPES.DRAFT, _("Draft")),
-    (INVOICE_STATUS_TYPES.PAID, _("Paid")),
-    (INVOICE_STATUS_TYPES.UNPAID, _("Unpaid")),
-)
-
-PAYMENT_PLANS = Choices(
-    ("self_hosted_free", _("Self-Hosted Free")),
-    ("cloud", _("Cloud")),
-    ("self_hosted_enterprise", _("Self-Hosted Enterprise")),
-)
+class PAYMENT_PLANS(models.TextChoices):
+    SELF_HOSTED_FREE = ("self_hosted_free", _("Self-Hosted Free"))
+    CLOUD = ("cloud", _("Cloud"))
+    SELF_HOSTED_ENTERPRISE = ("self_hosted_enterprise", _("Self-Hosted Enterprise"))
 
 
-class AGGREGATION_TYPES(object):
-    COUNT = "count"
-    SUM = "sum"
-    MAX = "max"
-    MIN = "min"
-    UNIQUE = "unique"
-    LATEST = "latest"
-    AVERAGE = "average"
+class AGGREGATION_TYPES(models.TextChoices):
+    COUNT = ("count", _("Count"))
+    SUM = ("sum", _("Sum"))
+    MAX = ("max", _("Max"))
+    MIN = ("min", _("Min"))
+    UNIQUE = ("unique", _("Unique"))
+    LATEST = ("latest", _("Latest"))
+    AVERAGE = ("average", _("Average"))
 
 
-AGGREGATION_CHOICES = Choices(
-    (AGGREGATION_TYPES.COUNT, _("Count")),
-    (AGGREGATION_TYPES.SUM, _("Sum")),
-    (AGGREGATION_TYPES.MAX, _("Max")),
-    (AGGREGATION_TYPES.UNIQUE, _("Unique")),
-    (AGGREGATION_TYPES.LATEST, _("Latest")),
-    (AGGREGATION_TYPES.AVERAGE, _("Average")),
-    (AGGREGATION_TYPES.MIN, _("Min")),
-)
+class PAYMENT_PROVIDERS(models.TextChoices):
+    STRIPE = ("stripe", _("Stripe"))
 
 
-class PAYMENT_PROVIDERS(object):
-    STRIPE = "stripe"
+class METRIC_TYPES(models.TextChoices):
+    AGGREGATION = ("aggregation", _("Aggregatable"))
+    STATEFUL = ("stateful", _("State Logging"))
 
 
-SUPPORTED_PAYMENT_PROVIDERS = Choices(
-    (PAYMENT_PROVIDERS.STRIPE, _("Stripe")),
-)
+class INTERVAL_TYPES(models.TextChoices):
+    WEEK = ("week", _("Week"))
+    MONTH = ("month", _("Month"))
+    YEAR = ("year", _("Year"))
 
 
-class METRIC_TYPES(object):
-    AGGREGATION = "aggregation"
-    STATEFUL = "stateful"
+class REVENUE_CALC_GRANULARITY(models.TextChoices):
+    DAILY = ("day", _("Daily"))
+    TOTAL = ("total", _("Total"))
 
 
-METRIC_TYPE_CHOICES = Choices(
-    (METRIC_TYPES.AGGREGATION, _("Aggregatable")),
-    (METRIC_TYPES.STATEFUL, _("State Logging")),
-)
+class NUMERIC_FILTER_OPERATORS(models.TextChoices):
+    GTE = ("gte", _("Greater than or equal to"))
+    GT = ("gt", _("Greater than"))
+    EQ = ("eq", _("Equal to"))
+    LT = ("lt", _("Less than"))
+    LTE = ("lte", _("Less than or equal to"))
 
 
-class INTERVAL_TYPES(object):
-    WEEK = "week"
-    MONTH = "month"
-    YEAR = "year"
+class CATEGORICAL_FILTER_OPERATORS(models.TextChoices):
+    ISIN = ("isin", _("Is in"))
+    ISNOTIN = ("isnotin", _("Is not in"))
 
 
-INTERVAL_CHOICES = Choices(
-    (INTERVAL_TYPES.WEEK, _("Week")),
-    (INTERVAL_TYPES.MONTH, _("Month")),
-    (INTERVAL_TYPES.YEAR, _("Year")),
-)
+class SUB_STATUS_TYPES(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    ENDED = ("ended", _("Ended"))
+    NOT_STARTED = ("not_started", _("Not Started"))
+    CANCELED = ("canceled", _("Canceled"))
 
 
-class RevenueCalcGranularity(Enum):
-    DAILY = "day"
-    TOTAL = None
+class BACKTEST_KPI_TYPES(models.TextChoices):
+    TOTAL_REVENUE = ("total_revenue", _("Total Revenue"))
 
 
-class NUMERIC_FILTER_OPERATORS(object):
-    GTE = "gte"
-    GT = "gt"
-    EQ = "eq"
-    LT = "lt"
-    LTE = "lte"
-
-
-NUMERIC_FILTER_OPERATOR_CHOICES = Choices(
-    (NUMERIC_FILTER_OPERATORS.GTE, _("Greater than or equal to")),
-    (NUMERIC_FILTER_OPERATORS.GT, _("Greater than")),
-    (NUMERIC_FILTER_OPERATORS.EQ, _("Equal to")),
-    (NUMERIC_FILTER_OPERATORS.LT, _("Less than")),
-    (NUMERIC_FILTER_OPERATORS.LTE, _("Less than or equal to")),
-)
-
-
-class CATEGORICAL_FILTER_OPERATORS(object):
-    ISIN = "isin"
-    ISNOTIN = "isnotin"
-
-
-CATEGORICAL_FILTER_OPERATOR_CHOICES = Choices(
-    (CATEGORICAL_FILTER_OPERATORS.ISIN, _("Is in")),
-    (CATEGORICAL_FILTER_OPERATORS.ISNOTIN, _("Is not in")),
-)
-
-
-class SUB_STATUS_TYPES(object):
-    ACTIVE = "active"
-    ENDED = "ended"
-    NOT_STARTED = "not_started"
-    CANCELED = "canceled"
-
-
-SUB_STATUS_CHOICES = Choices(
-    (SUB_STATUS_TYPES.ACTIVE, _("Active")),
-    (SUB_STATUS_TYPES.ENDED, _("Ended")),
-    (SUB_STATUS_TYPES.NOT_STARTED, _("Not Started")),
-    (SUB_STATUS_TYPES.CANCELED, _("Canceled")),
-)
+class BACKTEST_STATUS_TYPES(models.TextChoices):
+    RUNNING = ("running", _("Running"))
+    COMPLETED = ("completed", _("Completed"))
 
 
 def convert_to_decimal(value):
@@ -245,27 +192,27 @@ def periods_bwn_twodates(granularity, start_date, end_date):
         end_date, datetime.time.max, tzinfo=datetime.timezone.utc
     )
     rd = relativedelta(start_time, end_time)
-    if granularity == RevenueCalcGranularity.TOTAL:
+    if granularity == REVENUE_CALC_GRANULARITY.TOTAL:
         periods_btwn = 0
-    # elif granularity == RevenueCalcGranularity.HOUR:
+    # elif granularity == REVENUE_CALC_GRANULARITY.HOUR:
     #     periods_btwn = (
     #         rd.years * 365 * 24 + rd.months * 30 * 24 + rd.days * 24 + rd.hours
     #     )
-    elif granularity == RevenueCalcGranularity.DAILY:
+    elif granularity == REVENUE_CALC_GRANULARITY.DAILY:
         periods_btwn = rd.years * 365 + rd.months * 30 + rd.days
-    # elif granularity == RevenueCalcGranularity.WEEK:
+    # elif granularity == REVENUE_CALC_GRANULARITY.WEEK:
     #     periods_btwn = rd.years * 52 + rd.months * 4 + rd.weeks
-    # elif granularity == RevenueCalcGranularity.MONTH:
+    # elif granularity == REVENUE_CALC_GRANULARITY.MONTH:
     #     periods_btwn = rd.years * 12 + rd.months
     periods_btwn = abs(periods_btwn)
     for n in range(periods_btwn + 1):
-        if granularity == RevenueCalcGranularity.TOTAL:
+        if granularity == REVENUE_CALC_GRANULARITY.TOTAL:
             yield start_time
-        # elif granularity == RevenueCalcGranularity.HOUR:
+        # elif granularity == REVENUE_CALC_GRANULARITY.HOUR:
         #     yield start_time + relativedelta(hours=n)
-        elif granularity == RevenueCalcGranularity.DAILY:
+        elif granularity == REVENUE_CALC_GRANULARITY.DAILY:
             yield start_time + relativedelta(days=n)
-        # elif granularity == RevenueCalcGranularity.WEEK:
+        # elif granularity == REVENUE_CALC_GRANULARITY.WEEK:
         #     yield start_time + relativedelta(weeks=n)
-        # elif granularity == RevenueCalcGranularity.MONTH:
+        # elif granularity == REVENUE_CALC_GRANULARITY.MONTH:
         #     yield start_time + relativedelta(months=n)

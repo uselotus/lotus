@@ -21,7 +21,7 @@ from metering_billing.models import BillableMetric, Customer, Event
 from metering_billing.utils import (
     AGGREGATION_TYPES,
     METRIC_TYPES,
-    RevenueCalcGranularity,
+    REVENUE_CALC_GRANULARITY,
     periods_bwn_twodates,
 )
 from rest_framework import serializers, status
@@ -36,7 +36,7 @@ class BillableMetricHandler(abc.ABC):
     @abc.abstractmethod
     def get_usage(
         self,
-        granularity: RevenueCalcGranularity,
+        granularity: REVENUE_CALC_GRANULARITY,
         start_date: datetime.date,
         end_date: datetime.date,
         customer: Optional[Customer],
@@ -107,7 +107,7 @@ class AggregationHandler(BillableMetricHandler):
             pre_groupby_annotation_kwargs["property_value"] = F(
                 f"properties__{self.property_name}"
             )
-        if granularity != RevenueCalcGranularity.TOTAL:
+        if granularity != REVENUE_CALC_GRANULARITY.TOTAL:
             groupby_kwargs["time_created_truncated"] = Trunc(
                 expression=F("time_created"),
                 kind=granularity.value,
@@ -302,7 +302,7 @@ class StatefulHandler(BillableMetricHandler):
             pre_groupby_annotation_kwargs["property_value"] = F(
                 f"properties__{self.property_name}"
             )
-        if granularity != RevenueCalcGranularity.TOTAL:
+        if granularity != REVENUE_CALC_GRANULARITY.TOTAL:
             groupby_kwargs["time_created_truncated"] = Trunc(
                 expression=F("time_created"),
                 kind=granularity.value,

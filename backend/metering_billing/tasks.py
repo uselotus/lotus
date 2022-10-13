@@ -16,10 +16,13 @@ from lotus.settings import (
     STRIPE_SECRET_KEY,
 )
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import Event, Invoice, Organization, Subscription
+from metering_billing.models import Backtest, Event, Invoice, Organization, Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import INVOICE_STATUS_TYPES, SUB_STATUS_TYPES
-from metering_billing.view_utils import sync_payment_provider_customers
+from metering_billing.view_utils import (
+    get_subscription_usage_and_revenue,
+    sync_payment_provider_customers,
+)
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -172,7 +175,44 @@ def check_event_cache_flushed():
 
 
 @shared_task
-def sync_payment_provider_customers():
+def sync_payment_provider_customers_all_orgs():
     for org in Organization.objects.all():
-        for pp in org.payment_provider_ids.keys():
-            PAYMENT_PROVIDER_MAP[pp].import_customers(org)
+        sync_payment_provider_customers(org)
+
+
+@shared_task
+def run_backtest(backtest_id):
+    backtest = Backtest.objects.get(backtest_id=backtest_id)
+    backtest_substitutions = backtest.substitutions.all()
+    queries = [Q(billing_plan=x.old_plan) for x in backtest_substitutions]
+    query = queries.pop()
+    for item in queries:
+        query |= item
+
+    all_subs_time_period = Subscription.objects.filter(
+        query,
+        start_date__lte=backtest.end_date,
+        end_date__gte=backtest.start_date,
+        organization=backtest.organization,
+    )
+    results = []
+    for sub in all_subs_time_period:
+        old_usage_revenue = get_subscription_usage_and_revenue(sub)
+        subst = backtest_substitutions.get(old_plan=sub.billing_plan)
+        sub.billing_plan = subst.new_plan
+        sub.save()
+        new_usage_revenue = get_subscription_usage_and_revenue(sub)
+        sub.billing_plan = subst.new_plan
+        sub.save()
+        cur_result = {
+            "old_plan": {
+                "name": subst.old_plan.name,
+                "results": old_usage_revenue,
+            },
+            "new_plan": {
+                "name": subst.new_plan.name,
+                "results": new_usage_revenue,
+            },
+        }
+        results.append(cur_result)
+    backtest.backtest_results = results

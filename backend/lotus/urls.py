@@ -23,6 +23,7 @@ from metering_billing.payment_providers import StripeConnector
 from metering_billing.views import auth_views, track
 from metering_billing.views.model_views import (
     AlertViewSet,
+    BacktestViewSet,
     BillableMetricViewSet,
     BillingPlanViewSet,
     CustomerViewSet,
@@ -64,6 +65,7 @@ router.register(r"components", PlanComponentViewSet, basename="component")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
+router.register(r"backtests", BacktestViewSet, basename="backtest")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
