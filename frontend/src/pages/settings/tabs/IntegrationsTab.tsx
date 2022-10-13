@@ -38,7 +38,7 @@ const IntegrationsTab: FC = () => {
 
       <Row gutter={[24, 24]}>
         {data &&
-          [1, 2, 3, 4].map((item, index) => {
+          [1].map((item, index) => {
             return (
               <Col span={6} key={index}>
                 <AppCard
