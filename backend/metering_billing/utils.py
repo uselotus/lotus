@@ -91,62 +91,46 @@ def convert_to_decimal(value):
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
 
 
-def make_all_decimals_floats(json):
-    if type(json) in [dict, collections.OrderedDict]:
-        for key, value in json.items():
-            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
-                make_all_decimals_floats(value)
-            elif isinstance(value, list):
-                for item in value:
-                    make_all_decimals_floats(item)
-            elif isinstance(value, Decimal):
-                json[key] = float(value)
-    if isinstance(json, list):
-        for item in json:
-            make_all_decimals_floats(item)
+def make_all_decimals_floats(data):
+    if isinstance(data, list):
+        return [make_all_decimals_floats(x) for x in data]
+    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+        return {
+            make_all_decimals_floats(key): make_all_decimals_floats(val)
+            for key, val in data.items()
+        }
+    elif isinstance(data, Decimal):
+        return float(data)
+    else:
+        return data
 
 
-def make_all_dates_times_strings(json):
-    if type(json) in [
-        dict,
-        list,
-        datetime.datetime,
-        datetime.date,
-        collections.OrderedDict,
-    ]:
-        for key, value in json.items():
-            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
-                make_all_dates_times_strings(value)
-            elif isinstance(value, list):
-                for item in value:
-                    make_all_dates_times_strings(item)
-            elif isinstance(value, datetime.datetime) or isinstance(
-                value, datetime.date
-            ):
-                json[key] = str(value)
+def make_all_dates_times_strings(data):
+    if isinstance(data, list):
+        return [make_all_dates_times_strings(x) for x in data]
+    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+        return {
+            make_all_dates_times_strings(key): make_all_dates_times_strings(val)
+            for key, val in data.items()
+        }
+    elif isinstance(data, datetime.date) or isinstance(data, datetime.datetime):
+        return str(data)
+    else:
+        return data
 
 
-def make_all_datetimes_dates(json):
-    if type(json) in [
-        dict,
-        list,
-        datetime.datetime,
-        collections.OrderedDict,
-    ]:
-        key_remappings = {}
-        for key, value in json.items():
-            if isinstance(key, datetime.datetime):
-                key_remappings[key] = str(key)
-            if isinstance(value, dict) or isinstance(value, collections.OrderedDict):
-                make_all_datetimes_dates(value)
-            elif isinstance(value, list):
-                for item in value:
-                    make_all_datetimes_dates(item)
-            elif isinstance(value, datetime.datetime):
-                json[key] = value.date()
-        for old_key, new_key in key_remappings.items():
-            vals = json.pop(old_key)
-            json[new_key] = vals
+def make_all_datetimes_dates(data):
+    if isinstance(data, list):
+        return [make_all_datetimes_dates(x) for x in data]
+    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+        return {
+            make_all_datetimes_dates(key): make_all_datetimes_dates(val)
+            for key, val in data.items()
+        }
+    elif isinstance(data, datetime.datetime):
+        return data.date()
+    else:
+        return data
 
 
 def years_bwn_twodates(start_date, end_date):

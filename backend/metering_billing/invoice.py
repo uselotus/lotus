@@ -111,9 +111,9 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             usage_dict["flat_revenue_due"] + usage_dict["usage_revenue_due"]
         )
         amount = usage_dict["total_revenue_due"]
-        make_all_decimals_floats(usage_dict)
-        make_all_datetimes_dates(usage_dict)
-        make_all_dates_times_strings(usage_dict)
+        usage_dict = make_all_decimals_floats(usage_dict)
+        usage_dict = make_all_datetimes_dates(usage_dict)
+        usage_dict = make_all_dates_times_strings(usage_dict)
         line_item = usage_dict
 
     # create kwargs for invoice

@@ -125,16 +125,15 @@ def get_subscription_usage_and_revenue(subscription):
             plan_start_date,
             plan_end_date,
         )
-        sub_dict["components"].append(plan_component_summary)
+        sub_dict["components"].append((plan_component.pk, plan_component_summary))
     sub_dict["usage_revenue_due"] = Decimal(0)
-    for component in sub_dict["components"]:
-        for date, date_dict in component.items():
+    for component_pk, component_dict in sub_dict["components"]:
+        for date, date_dict in component_dict.items():
             sub_dict["usage_revenue_due"] += date_dict["revenue"]
     sub_dict["flat_revenue_due"] = subscription.billing_plan.flat_rate.amount
     sub_dict["total_revenue_due"] = (
         sub_dict["flat_revenue_due"] + sub_dict["usage_revenue_due"]
     )
-    del sub_dict["components"]
     return sub_dict
 
 
@@ -153,6 +152,7 @@ def get_customer_usage_and_revenue(customer):
     subscription_usages = {"subscriptions": []}
     for subscription in customer_subscriptions:
         sub_dict = get_subscription_usage_and_revenue(subscription)
+        del sub_dict["components"]
         sub_dict["billing_plan_name"] = subscription.billing_plan.name
         subscription_usages["subscriptions"].append(sub_dict)
 
