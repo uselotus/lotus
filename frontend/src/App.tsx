@@ -6,6 +6,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import LoadingSpinner from "./components/LoadingSpinner";
 import React from "react";
+import { PlanProvider } from "./context/PlanContext";
 
 function App() {
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
@@ -29,7 +30,9 @@ function App() {
       return (
         <div>
           <ToastContainer autoClose={1000} />
-          <AppRoutes />
+          <PlanProvider>
+            <AppRoutes />
+          </PlanProvider>
         </div>
       );
     } else {
