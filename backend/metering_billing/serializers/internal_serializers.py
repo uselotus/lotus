@@ -209,3 +209,10 @@ class ExperimentalToActiveRequestSerializer(serializers.Serializer):
         slug_field="billing_plan_id",
         read_only=False,
     )
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    class Meta:
+        fields = ("email",)

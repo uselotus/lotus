@@ -26,8 +26,8 @@ function PlanDisplayBasic(props: {
 }) {
   const planMenu = (
     <Menu>
-      <Menu.Item key="0">
-        <Link to="/update-plan" state={{ plan: props.plan }}>
+      <Menu.Item key="0" disabled={props.plan.active_subscriptions !== 0}>
+        <Link to="/update-plan" state={{ data: { plan: props.plan } }}>
           Edit
         </Link>
       </Menu.Item>
@@ -49,9 +49,7 @@ function PlanDisplayBasic(props: {
           <List.Item.Meta
             style={{ width: "300px" }}
             title={
-              <a href="https://ant.design">
-                {component.billable_metric.billable_metric_name}
-              </a>
+              <a href="#">{component.billable_metric.billable_metric_name}</a>
             }
             description={
               component.cost_per_batch

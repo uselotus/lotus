@@ -78,7 +78,7 @@ if not PRODUCT_ANALYTICS_OPT_IN or DEBUG:
     posthog.disabled = True
 POSTHOG_PERSON = hash(SECRET_KEY) if SELF_HOSTED else None
 
-if DEBUG:
+if DEBUG or SELF_HOSTED:
     ALLOWED_HOSTS = ["*"]
 else:
     ALLOWED_HOSTS = [
@@ -105,7 +105,34 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "simple_history",
     "knox",
+    "anymail",
 ]
+
+ANYMAIL = {
+    "MAILGUN_API_KEY": os.environ.get("MAILGUN_API_KEY"),
+    "MAILGUN_DOMAIN": os.environ.get("MAILGUN_DOMAIN"),
+    "MAILGUN_PUBLIC_KEY": os.environ.get("MAILGUN_PUBLIC_KEY"),
+    "MAILGUN_SMTP_LOGIN": os.environ.get("MAILGUN_SMTP_LOGIN"),
+    "MAILGUN_SMTP_PASSWORD": os.environ.get("MAILGUN_SMTP_PASSWORD"),
+    "MAILGUN_SMTP_PORT": os.environ.get("MAILGUN_SMTP_PORT"),
+    "MAILGUN_SMTP_SERVER": os.environ.get("MAILGUN_SMTP_SERVER"),
+}
+
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    APP_URL = "http://localhost:8000"
+elif SELF_HOSTED:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    APP_URL = "http://localhost"
+else:
+    EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+    APP_URL = "https://app.uselotus.io"
+
+
+DEFAULT_FROM_EMAIL = "you@uselotus.io"
+SECURITY_FROM_EMAIL = "security@uselotus.io"
+SERVER_EMAIL = "you@uselotus.io"  # ditto (default from-email for Django errors)
+
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
 
