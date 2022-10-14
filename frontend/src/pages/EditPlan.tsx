@@ -34,25 +34,33 @@ import {
 import React from "react";
 import { Paper } from "../components/base/Paper";
 import { PageLayout } from "../components/base/PageLayout";
+import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 
 interface CustomizedState {
   plan: PlanType;
-  onSubstitutionChange?: (plan_id: string, name: string) => void;
 }
 
 interface Props {
-  type: string;
+  type: "backtest" | "edit";
 }
 
-const EditPlan = (props: Props) => {
+const EditPlan = ({ type }: Props) => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const location = useLocation();
-  const { plan, onSubstitutionChange } = location.state.data as CustomizedState;
+  const { replacementPlan } = usePlanState();
+  const { setReplacementPlan } = usePlanUpdater();
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
+  const plan = React.useMemo(() => {
+    if (type === "backtest") {
+      return replacementPlan ?? {};
+    }
+    const { plan } = location.state.data as CustomizedState;
+    return plan ?? {};
+  }, [type]);
 
   const queryClient = useQueryClient();
 
@@ -96,10 +104,12 @@ const EditPlan = (props: Props) => {
     (post: CreatePlanType) => Plan.createPlan(post),
     {
       onSuccess: (res) => {
-        if (onSubstitutionChange) {
-          onSubstitutionChange(res.billing_plan_id, res.name);
+        if (type == "backtest") {
+          setReplacementPlan(res);
         }
+        queryClient.invalidateQueries(["plan_list"]);
         form.resetFields();
+        navigate("/create-experiment");
       },
       onError: () => {
         toast.error("Failed to create Plan", {
@@ -210,10 +220,10 @@ const EditPlan = (props: Props) => {
           components: usagecomponentslist,
           features: planFeatures,
         };
-        if (props.type === "backtest" && onSubstitutionChange) {
-          newPlan["status"] = "experiment";
+        if (type === "backtest") {
+          newPlan["status"] = "experimental";
           createPlanMutation.mutate(newPlan);
-        } else if (props.type === "edit") {
+        } else if (type === "edit") {
           mutation.mutate({
             old_billing_plan_id: plan.billing_plan_id,
             updated_billing_plan: newPlan,
@@ -227,9 +237,9 @@ const EditPlan = (props: Props) => {
   };
 
   function returnPageTitle(): string {
-    if (props.type === "backtest") {
+    if (type === "backtest") {
       return "Backtest Plan";
-    } else if (props.type === "edit") {
+    } else if (type === "edit") {
       return "Update Plan";
     } else {
       return "Create Plan";
@@ -237,9 +247,9 @@ const EditPlan = (props: Props) => {
   }
 
   function returnSubmitButtonText(): string {
-    if (props.type === "backtest") {
+    if (type === "backtest") {
       return "Finish Plan";
-    } else if (props.type === "edit") {
+    } else if (type === "edit") {
       return "Update Plan";
     } else {
       return "Create Plan";
@@ -337,7 +347,7 @@ const EditPlan = (props: Props) => {
                     <Form.Item name="pay_in_advance" label="Pay In Advance">
                       <Checkbox defaultChecked={true} />
                     </Form.Item>
-                    {props.type === "edit" && (
+                    {type === "edit" && (
                       <Form.Item
                         name="update_behavior"
                         label="When To Update Plan"
