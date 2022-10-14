@@ -72,7 +72,7 @@ export const Customer = {
 
 export const Plan = {
   getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
-  createPlan: (post: CreatePlanType): Promise<CreatePlanType> =>
+  createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("api/plans/", post),
   deletePlan: (billing_plan_id: string): Promise<PlanType> =>
     requests.delete(`api/plans/${billing_plan_id}/`),

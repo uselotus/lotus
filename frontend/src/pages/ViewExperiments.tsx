@@ -13,11 +13,11 @@ const backtest_data: BacktestType[] = [
   {
     backtest_name: "Name",
     backtest_id: "id",
-    status: "status",
+    status: "loading",
     start_time: "2022-23-02",
     end_time: "2022-20-03",
     time_created: "2022-20-02",
-    kpis: ["revenue"],
+    kpis: ["total_revenue"],
   },
 ];
 
@@ -56,7 +56,7 @@ const ViewExperiments: FC = () => {
           <LoadingSpinner />
         ) : (
           <div>
-            <h3>Backtests</h3>
+            <h2 className=" px-7 py-6">Backtests</h2>
             <BacktestTable backtests={backtest_data} />
           </div>
         )}

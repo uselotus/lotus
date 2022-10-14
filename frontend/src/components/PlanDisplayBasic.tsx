@@ -27,7 +27,7 @@ function PlanDisplayBasic(props: {
   const planMenu = (
     <Menu>
       <Menu.Item key="0" disabled={props.plan.active_subscriptions !== 0}>
-        <Link to="/update-plan" state={{ plan: props.plan }}>
+        <Link to="/update-plan" state={{ data: { plan: props.plan } }}>
           Edit
         </Link>
       </Menu.Item>

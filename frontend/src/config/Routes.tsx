@@ -47,6 +47,10 @@ const AppRoutes: FC = () => {
             <Route path="/plans" element={<ViewPlans />} />
             <Route path="create-plan" element={<CreatePlan />} />
             <Route path="update-plan" element={<EditPlan type="edit" />} />
+            <Route
+              path="backtest-plan"
+              element={<EditPlan type="backtest" />}
+            />
             <Route path="/plan">
               <Route path=":planId" element={<EditPlan type="edit" />} />
             </Route>
@@ -56,6 +60,9 @@ const AppRoutes: FC = () => {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/redirectstripe" element={<StripeRedirect />} />
             <Route path="/experiments" element={<ViewExperiments />} />
+            <Route path="/experiment">
+              {/* <Route path=":experimentId" element={<ExperimentResults />} /> */}
+            </Route>
             <Route path="create-experiment" element={<CreateBacktest />} />
             {/* <Route path="/experiment">
               <Route path=":experimentId" element={<ExperimentPage />} />
