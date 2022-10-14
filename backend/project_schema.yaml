@@ -198,7 +198,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerSummary'
+                $ref: '#/components/schemas/AllSubstitutionResults'
           description: ''
   /api/customer_totals/:
     get:
@@ -555,9 +555,9 @@ paths:
       tags:
       - logout
       security:
-      - basicAuth: []
       - OrganizationApiKeyAuth: []
         TokenAuth: []
+      - {}
       responses:
         '200':
           description: No response body
@@ -1323,6 +1323,13 @@ components:
         name:
           type: string
           maxLength: 100
+    AllSubstitutionResults:
+      type: object
+      properties:
+        substitution_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleSubstitution'
     BacktestCreate:
       type: object
       properties:
@@ -1638,22 +1645,6 @@ components:
           maxLength: 100
       required:
       - name
-    CustomerSummary:
-      type: object
-      properties:
-        customer_name:
-          type: string
-        customer_id:
-          type: string
-          maxLength: 40
-        subscriptions:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCustomerSummary'
-          readOnly: true
-      required:
-      - customer_name
-      - subscriptions
     CustomerWithRevenue:
       type: object
       properties:
@@ -1917,6 +1908,24 @@ components:
       required:
       - customer1_id
       - customer2_id
+    MetricRevenue:
+      type: object
+      properties:
+        metric_name:
+          type: string
+        billable_metric_id:
+          type: string
+        original_plan_revenue:
+          type: number
+          format: double
+        new_plan_revenue:
+          type: number
+          format: double
+      required:
+      - billable_metric_id
+      - metric_name
+      - new_plan_revenue
+      - original_plan_revenue
     MetricTypeEnum:
       enum:
       - aggregation
@@ -2079,7 +2088,9 @@ components:
           type: string
           writeOnly: true
         billable_metric:
-          $ref: '#/components/schemas/BillableMetric'
+          allOf:
+          - $ref: '#/components/schemas/BillableMetric'
+          readOnly: true
         free_metric_units:
           type: number
           format: double
@@ -2115,6 +2126,20 @@ components:
       required:
       - billable_metric
       - billable_metric_name
+    PlanRepresentation:
+      type: object
+      properties:
+        plan_name:
+          type: string
+        plan_id:
+          type: string
+        plan_revenue:
+          type: number
+          format: double
+      required:
+      - plan_id
+      - plan_name
+      - plan_revenue
     Registration:
       type: object
       properties:
@@ -2148,6 +2173,73 @@ components:
           type: string
       required:
       - detail
+    RevenueDate:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        original_plan_revenue:
+          type: number
+          format: double
+        new_plan_revenue:
+          type: number
+          format: double
+      required:
+      - date
+      - new_plan_revenue
+      - original_plan_revenue
+    SingleCustomerValue:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        customer_name:
+          type: string
+        value:
+          type: number
+          format: double
+      required:
+      - customer_id
+      - customer_name
+      - value
+    SingleSubstitution:
+      type: object
+      properties:
+        substitution_name:
+          type: string
+        old_plan:
+          $ref: '#/components/schemas/PlanRepresentation'
+        new_plan:
+          $ref: '#/components/schemas/PlanRepresentation'
+        pct_revenue_change:
+          type: number
+          format: double
+        results:
+          $ref: '#/components/schemas/SingleSubstitutionResults'
+      required:
+      - new_plan
+      - old_plan
+      - pct_revenue_change
+      - results
+      - substitution_name
+    SingleSubstitutionResults:
+      type: object
+      properties:
+        revenue_over_time:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenueDate'
+        revenue_by_metric:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricRevenue'
+        top_customers:
+          $ref: '#/components/schemas/TopCustomers'
+      required:
+      - revenue_by_metric
+      - revenue_over_time
+      - top_customers
     Status33bEnum:
       enum:
       - running
@@ -2215,19 +2307,6 @@ components:
       - billing_plan_name
       - end_date
       - start_date
-    SubscriptionCustomerSummary:
-      type: object
-      properties:
-        billing_plan_name:
-          type: string
-        end_date:
-          type: string
-          format: date
-        auto_renew:
-          type: boolean
-      required:
-      - billing_plan_name
-      - end_date
     SubscriptionRead:
       type: object
       properties:
@@ -2268,6 +2347,30 @@ components:
       required:
       - detail
       - status
+    TopCustomers:
+      type: object
+      properties:
+        original_plan_revenue:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleCustomerValue'
+        new_plan_revenue:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleCustomerValue'
+        biggest_pct_increase:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleCustomerValue'
+        biggest_pct_decrease:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleCustomerValue'
+      required:
+      - biggest_pct_decrease
+      - biggest_pct_increase
+      - new_plan_revenue
+      - original_plan_revenue
     TrackEventFailure:
       type: object
       properties:

@@ -321,7 +321,7 @@ class CustomersSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        responses={200: CustomerSummarySerializer},
+        responses={200: AllSubstitutionResultsSerializer},
     )
     def get(self, request, format=None):
         """

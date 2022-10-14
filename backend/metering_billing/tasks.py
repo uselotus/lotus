@@ -2,6 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 import datetime
 from datetime import timezone
+from decimal import Decimal
 
 import posthog
 import stripe
@@ -196,12 +197,47 @@ def run_backtest(backtest_id):
         query,
         start_date__lte=backtest.end_date,
         end_date__gte=backtest.start_date,
+        end_date__lte=backtest.end_date,
         organization=backtest.organization,
     )
-    results = []
+    results = {
+        "revenue_per_day": {},
+        "revenue_per_component": {},
+        "customer_info": {},
+    }
     for sub in all_subs_time_period:
-        old_usage_revenue = get_subscription_usage_and_revenue(sub)
+        # since we can have at most one new plan per old plan, the old plan uniquely
+        # identifies the substitutiont
         subst = backtest_substitutions.get(old_plan=sub.billing_plan)
+
+        # create if not seen
+        customer = sub.customer
+        if customer not in results["customer_info"]:
+            results["customer_info"][customer] = {
+                "original_plan_revenue": Decimal(0),
+                "new_plan_revenue": Decimal(0),
+            }
+        end_date = sub.end_date
+        if end_date not in results["revenue_per_day"]:
+            results["revenue_per_day"][end_date] = {
+                "original_plan_revenue": Decimal(0),
+                "new_plan_revenue": Decimal(0),
+            }
+        # process old sub
+        old_usage_revenue = get_subscription_usage_and_revenue(sub)
+        results["revenue_per_day"][end_date] += old_usage_revenue["total_revenue_due"]
+        results["customer_info"][customer][
+            "original_plan_revenue"
+        ] += old_usage_revenue["total_revenue_due"]
+        for component_pk, component_dict in old_usage_revenue["components"]:
+            if component_pk not in results["revenue_per_component"]:
+                results["revenue_per_component"][component_pk] = {
+                    "original_plan_revenue": Decimal(0),
+                    "new_plan_revenue": Decimal(0),
+                }
+            results["revenue_per_component"][component_pk][
+                "original_plan_revenue"
+            ] += component_dict["revenue_due"]
         sub.billing_plan = subst.new_plan
         sub.save()
         new_usage_revenue = get_subscription_usage_and_revenue(sub)
