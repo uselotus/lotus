@@ -21,15 +21,14 @@ from rest_framework.views import APIView
 
 class LoginViewMixin(KnoxLoginView):
     authentication_classes = [BasicAuthentication]
+    permission_classes = [AllowAny]
 
 
 class LogoutViewMixin(KnoxLogoutView):
-    authentication_classes = [BasicAuthentication]
+    permission_classes = [AllowAny]
 
 
 class LoginView(LoginViewMixin, APIView):
-    permission_classes = [AllowAny]
-
     def post(self, request, format=None):
         try:
             data = json.loads(request.body)
@@ -74,6 +73,7 @@ class LoginView(LoginViewMixin, APIView):
 
 class LogoutView(LogoutViewMixin, APIView):
     def post(self, request, format=None):
+        print(request.user)
         if not request.user.is_authenticated:
             return JsonResponse(
                 {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
@@ -115,8 +115,6 @@ def session_view(request):
     },
 )
 class RegisterView(LoginViewMixin, APIView):
-    permission_classes = [AllowAny]
-
     def post(self, request, format=None):
         serializer = RegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

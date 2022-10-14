@@ -84,7 +84,7 @@ class UserSerializer(serializers.ModelSerializer):
 ## CUSTOMER
 class FilterActiveSubscriptionSerializer(serializers.ListSerializer):
     def to_representation(self, data):
-        data = data.filter(status=SUB_STATUS_TYPES.ACTIVE)
+        data = [x for x in data if x.status == SUB_STATUS_TYPES.ACTIVE]
         return super(FilterActiveSubscriptionSerializer, self).to_representation(data)
 
 
@@ -282,7 +282,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         read_only_fields = ["billable_metric"]
 
     # READ-ONLY
-    billable_metric = BillableMetricSerializer()
+    billable_metric = BillableMetricSerializer(read_only=True)
 
     # WRITE-ONLY
     billable_metric_name = serializers.SlugRelatedField(
@@ -363,14 +363,14 @@ class BillingPlanSerializer(serializers.ModelSerializer):
     features = FeatureSerializer(many=True, allow_null=True, required=False)
 
     # READ-ONLY
-    time_created = serializers.SerializerMethodField()
-    active_subscriptions = serializers.SerializerMethodField()
+    time_created = serializers.SerializerMethodField(read_only=True)
+    active_subscriptions = serializers.SerializerMethodField(read_only=True)
 
     def get_time_created(self, obj) -> datetime.date:
         return str(obj.time_created.date())
 
     def get_active_subscriptions(self, obj) -> int:
-        return obj.active_subscriptions
+        return obj.bp_subscriptions.filter(status=SUB_STATUS_TYPES.ACTIVE).count()
 
     def create(self, validated_data):
         components_data = validated_data.pop("components", [])

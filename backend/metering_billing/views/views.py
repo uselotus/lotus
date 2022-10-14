@@ -330,12 +330,12 @@ class CustomersSummaryView(APIView):
         organization = parse_organization(request)
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
-                "subscription_set",
+                "customer_subscriptions",
                 queryset=Subscription.objects.filter(organization=organization),
                 to_attr="subscriptions",
             ),
             Prefetch(
-                "subscription_set__billing_plan",
+                "customer_subscriptions__billing_plan",
                 queryset=BillingPlan.objects.filter(organization=organization),
                 to_attr="billing_plans",
             ),
