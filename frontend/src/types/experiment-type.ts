@@ -1,4 +1,4 @@
-import { CreatePlanType } from "./plan-type";
+import { CreatePlanType, PlanType } from "./plan-type";
 
 export interface BacktestType {
   backtest_name: string;
@@ -8,6 +8,56 @@ export interface BacktestType {
   end_time: string;
   time_created: string;
   kpis: string[];
+}
+
+export interface BacktestResultType extends BacktestType {
+  backtest_subsitutions: SubstitutionResults[];
+  backtest_results: ResultsOverview;
+}
+
+interface ResultsOverview {
+  new_plans_revenue: number;
+  original_plans_revenue: number;
+  pct_revenue_change: number;
+  substitution_results: SpecificResults[];
+}
+
+interface SpecificResults {
+  substitution_name: string;
+  pct_revenue_change: number;
+  new_plan: { plan_name: string; plan_id: string; plan_revenue: number };
+  old_plan: { plan_name: string; plan_id: string; plan_revenue: number };
+  results: {
+    cumulative_revenue: RevenueChartResults[];
+    revenue_by_metric: RevenuByMetricResults[];
+    top_customers: {
+      original_plan_revenue: TopCustomerResults[];
+      new_plan_revenue: TopCustomerResults[];
+      biggest_pct_increase: TopCustomerResults[];
+      biggest_pct_decrease: TopCustomerResults[];
+    };
+  };
+}
+
+interface RevenuByMetricResults {
+  metric_name: string;
+  original_plan_revenue: number;
+  new_plan_revenue: number;
+}
+
+interface TopCustomerResults {
+  customer_id: string;
+  customer_name: string;
+  value: number;
+}
+export interface RevenueChartResults {
+  date: string;
+  original_plan_revenue: number;
+  new_plan_revenue: number;
+}
+interface SubstitutionResults {
+  new_plan: PlanType;
+  old_plan: PlanType;
 }
 
 export interface CreateBacktestType {

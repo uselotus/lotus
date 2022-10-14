@@ -12,8 +12,8 @@ import CreatePlan from "../pages/CreatePlan";
 import ViewMetrics from "../pages/ViewMetrics";
 import EditPlan from "../pages/EditPlan";
 import ViewExperiments from "../pages/ViewExperiments";
-import CreateExperiment from "../pages/CreateBacktest";
 import CreateBacktest from "../pages/CreateBacktest";
+import ExperimentResults from "../pages/ExperimentResults";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -61,7 +61,7 @@ const AppRoutes: FC = () => {
             <Route path="/redirectstripe" element={<StripeRedirect />} />
             <Route path="/experiments" element={<ViewExperiments />} />
             <Route path="/experiment">
-              {/* <Route path=":experimentId" element={<ExperimentResults />} /> */}
+              <Route path=":experimentId" element={<ExperimentResults />} />
             </Route>
             <Route path="create-experiment" element={<CreateBacktest />} />
             {/* <Route path="/experiment">
