@@ -144,6 +144,16 @@ urlpatterns = [
     # path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
     path("api/register/", auth_views.RegisterView.as_view(), name="register"),
     # path("csrf/", csrf_exempt(auth_views.csrf), name="csrf"),
+    path(
+        "api/user/password/reset/init/",
+        auth_views.InitResetPasswordView.as_view(),
+        name="reset-password",
+    ),
+    path(
+        "api/user/password/reset/",
+        auth_views.ResetPasswordView.as_view(),
+        name="set-new-password",
+    ),
 ]
 
 if PROFILER_ENABLED:

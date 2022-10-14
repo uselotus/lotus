@@ -10,8 +10,9 @@ import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
   CreateSubscriptionType,
+  UpdateSubscriptionType,
 } from "../types/subscription-type";
-import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
+import { MetricUsage, MetricType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
@@ -103,6 +104,14 @@ export const Authentication = {
     requests.post("api/register/", {
       register,
     }),
+  resetPassword: (email: string): Promise<{ email: string }> =>
+    requests.post("api/user/password/reset/init/", { email }),
+  setNewPassword: (
+    token: string,
+    userId: string,
+    password: string
+  ): Promise<{ detail: any; token: string }> =>
+    requests.post("api/user/password/reset/", { token, userId, password }),
 };
 
 export const GetRevenue = {
