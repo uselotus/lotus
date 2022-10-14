@@ -112,11 +112,10 @@ ANYMAIL = {
     "MAILGUN_API_KEY": os.environ.get("MAILGUN_API_KEY"),
     "MAILGUN_SENDER_DOMAIN": os.environ.get(
         "MAILGUN_SENDER_DOMAIN"
-    ),  # your Mailgun domain, if needed
+    ),
 }
 
-# if DEBUG:
-if True:
+if DEBUG:
     EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
