@@ -187,10 +187,10 @@ const CreateBacktest: FC = () => {
                 <Button>
                   <a onClick={openplanCurrentModal}>Choose Plans To Replace</a>
                 </Button>
-                <div>
+                <div className="mt-4">
                   {currentPlan && (
-                    <div>
-                      <h3 className=" font-bold">{currentPlan.name}</h3>
+                    <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                      <span className="font-bold">{currentPlan.name}</span>
                     </div>
                   )}
                 </div>
@@ -204,10 +204,10 @@ const CreateBacktest: FC = () => {
                 <Button onClick={openplanNewModal}>
                   Choose Plans To Replace
                 </Button>
-                <div>
+                <div className="mt-4">
                   {replacementPlan && (
-                    <div>
-                      <h3 className=" font-bold">{replacementPlan.name}</h3>
+                    <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                      <span className="font-bold">{replacementPlan.name}</span>
                     </div>
                   )}
                 </div>
