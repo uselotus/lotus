@@ -1,7 +1,9 @@
 import json
 
 import posthog
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.tokens import default_token_generator
 from django.http import JsonResponse
 from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -12,13 +14,13 @@ from lotus.settings import POSTHOG_PERSON
 from metering_billing.models import Organization, User
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
+from metering_billing.services.user import user_service
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.exceptions import PermissionDenied
-from metering_billing.services.user import user_service
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -75,7 +77,6 @@ class LoginView(LoginViewMixin, APIView):
 
 class LogoutView(LogoutViewMixin, APIView):
     def post(self, request, format=None):
-        print(request.user)
         if not request.user.is_authenticated:
             return JsonResponse(
                 {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST

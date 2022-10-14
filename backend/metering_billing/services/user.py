@@ -1,11 +1,10 @@
-from django.contrib.auth import get_user_model
-from rest_framework.authtoken.models import Token
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.core import exceptions as django_exceptions
-
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import EmailMultiAlternatives
+from django.core import exceptions as django_exceptions
+from django.core.mail import BadHeaderError, EmailMultiAlternatives
+from rest_framework.authtoken.models import Token
 
 
 class UserAlreadyExists(Exception):
@@ -34,14 +33,18 @@ class UserService(object):
         body = f"Use this link to reset your password: {reset_url}"
         from_email = f"Lotus <{settings.SECURITY_FROM_EMAIL}>"
         html = """
-          <p>Please <a href={url}>reset your password</a></p>""".format(
+            <p>Please <a href={url}>reset your password</a></p>""".format(
             url=reset_url
         )
         msg = EmailMultiAlternatives(subject, body, from_email, [to])
         msg.attach_alternative(html, "text/html")
         msg.tags = ["reset_password"]
         msg.track_clicks = True
-        msg.send()
+        try:
+            msg.send()
+        except BadHeaderError:
+            print("Invalid header found.")
+            return False
 
         return True
 
