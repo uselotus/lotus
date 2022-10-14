@@ -1330,6 +1330,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SingleSubstitution'
+        original_plans_revenue:
+          type: number
+          format: double
+        new_plans_revenue:
+          type: number
+          format: double
+        pct_revenue_change:
+          type: number
+          format: double
     BacktestCreate:
       type: object
       properties:
@@ -1383,28 +1392,37 @@ components:
         backtest_substitutions:
           type: array
           items:
-            type: integer
+            $ref: '#/components/schemas/BacktestSubstitution'
         backtest_results:
-          type: object
-          additionalProperties: {}
-          nullable: true
+          $ref: '#/components/schemas/AllSubstitutionResults'
       required:
       - backtest_name
+      - backtest_results
       - backtest_substitutions
       - end_date
       - start_date
+    BacktestSubstitution:
+      type: object
+      properties:
+        new_plan:
+          $ref: '#/components/schemas/BillingPlan'
+        original_plan:
+          $ref: '#/components/schemas/BillingPlan'
+      required:
+      - new_plan
+      - original_plan
     BacktestSubstitutionMulti:
       type: object
       properties:
         new_plan:
           type: string
-        old_plans:
+        original_plans:
           type: array
           items:
             type: string
       required:
       - new_plan
-      - old_plans
+      - original_plans
     BacktestSummary:
       type: object
       properties:
@@ -1913,8 +1931,6 @@ components:
       properties:
         metric_name:
           type: string
-        billable_metric_id:
-          type: string
         original_plan_revenue:
           type: number
           format: double
@@ -1922,7 +1938,6 @@ components:
           type: number
           format: double
       required:
-      - billable_metric_id
       - metric_name
       - new_plan_revenue
       - original_plan_revenue
@@ -2208,7 +2223,7 @@ components:
       properties:
         substitution_name:
           type: string
-        old_plan:
+        original_plan:
           $ref: '#/components/schemas/PlanRepresentation'
         new_plan:
           $ref: '#/components/schemas/PlanRepresentation'
@@ -2219,14 +2234,14 @@ components:
           $ref: '#/components/schemas/SingleSubstitutionResults'
       required:
       - new_plan
-      - old_plan
+      - original_plan
       - pct_revenue_change
       - results
       - substitution_name
     SingleSubstitutionResults:
       type: object
       properties:
-        revenue_over_time:
+        cumulative_revenue:
           type: array
           items:
             $ref: '#/components/schemas/RevenueDate'
@@ -2237,8 +2252,8 @@ components:
         top_customers:
           $ref: '#/components/schemas/TopCustomers'
       required:
+      - cumulative_revenue
       - revenue_by_metric
-      - revenue_over_time
       - top_customers
     Status33bEnum:
       enum:

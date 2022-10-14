@@ -480,7 +480,7 @@ class BacktestSubstitution(models.Model):
     backtest = models.ForeignKey(
         Backtest, on_delete=models.CASCADE, related_name="backtest_substitutions"
     )
-    old_plan = models.ForeignKey(
+    original_plan = models.ForeignKey(
         BillingPlan, on_delete=models.CASCADE, related_name="+"
     )
     new_plan = models.ForeignKey(
