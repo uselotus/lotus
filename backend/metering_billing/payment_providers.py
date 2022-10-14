@@ -191,51 +191,54 @@ class StripeConnector(PaymentProvider):
             stripe_cust_kwargs["stripe_account"] = org_ppis.get(
                 PAYMENT_PROVIDERS.STRIPE
             )
-        stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
-        for stripe_customer in stripe_customers_response.auto_paging_iter():
-            stripe_id = stripe_customer.id
-            stripe_email = stripe_customer.email
-            stripe_metadata = stripe_customer.metadata
-            stripe_name = stripe_customer.name
-            stripe_name = stripe_name if stripe_name else "no_stripe_name"
-            stripe_currency = stripe_customer.currency
-            customer = Customer.objects.filter(
-                Q(payment_providers__stripe__id=stripe_id) | Q(email=stripe_email),
-                organization=organization,
-            ).first()
-            if customer:  # customer exists in system already
-                cur_pp_dict = customer.payment_providers[PAYMENT_PROVIDERS.STRIPE]
-                cur_pp_dict["id"] = stripe_id
-                cur_pp_dict["email"] = stripe_email
-                cur_pp_dict["metadata"] = stripe_metadata
-                cur_pp_dict["name"] = stripe_name
-                cur_pp_dict["currency"] = stripe_currency
-                customer.payment_providers[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
-                cur_sources = customer.sources
-                if len(cur_sources) == 0:
-                    cur_sources = []
-                if PAYMENT_PROVIDERS.STRIPE not in cur_sources:
-                    cur_sources.append(PAYMENT_PROVIDERS.STRIPE)
-                customer.sources = cur_sources
-                customer.save()
-            else:
-                customer_kwargs = {
-                    "organization": organization,
-                    "name": stripe_name,
-                    "email": stripe_email,
-                    "payment_providers": {
-                        PAYMENT_PROVIDERS.STRIPE: {
-                            "id": stripe_id,
-                            "email": stripe_email,
-                            "metadata": stripe_metadata,
-                            "name": stripe_name,
-                            "currency": stripe_currency,
-                        }
-                    },
-                    "sources": [PAYMENT_PROVIDERS.STRIPE],
-                }
-                customer = Customer.objects.create(**customer_kwargs)
-                num_cust_added += 1
+        try:
+            stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
+            for stripe_customer in stripe_customers_response.auto_paging_iter():
+                stripe_id = stripe_customer.id
+                stripe_email = stripe_customer.email
+                stripe_metadata = stripe_customer.metadata
+                stripe_name = stripe_customer.name
+                stripe_name = stripe_name if stripe_name else "no_stripe_name"
+                stripe_currency = stripe_customer.currency
+                customer = Customer.objects.filter(
+                    Q(payment_providers__stripe__id=stripe_id) | Q(email=stripe_email),
+                    organization=organization,
+                ).first()
+                if customer:  # customer exists in system already
+                    cur_pp_dict = customer.payment_providers[PAYMENT_PROVIDERS.STRIPE]
+                    cur_pp_dict["id"] = stripe_id
+                    cur_pp_dict["email"] = stripe_email
+                    cur_pp_dict["metadata"] = stripe_metadata
+                    cur_pp_dict["name"] = stripe_name
+                    cur_pp_dict["currency"] = stripe_currency
+                    customer.payment_providers[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    cur_sources = customer.sources
+                    if len(cur_sources) == 0:
+                        cur_sources = []
+                    if PAYMENT_PROVIDERS.STRIPE not in cur_sources:
+                        cur_sources.append(PAYMENT_PROVIDERS.STRIPE)
+                    customer.sources = cur_sources
+                    customer.save()
+                else:
+                    customer_kwargs = {
+                        "organization": organization,
+                        "name": stripe_name,
+                        "email": stripe_email,
+                        "payment_providers": {
+                            PAYMENT_PROVIDERS.STRIPE: {
+                                "id": stripe_id,
+                                "email": stripe_email,
+                                "metadata": stripe_metadata,
+                                "name": stripe_name,
+                                "currency": stripe_currency,
+                            }
+                        },
+                        "sources": [PAYMENT_PROVIDERS.STRIPE],
+                    }
+                    customer = Customer.objects.create(**customer_kwargs)
+                    num_cust_added += 1
+        except Exception as e:
+            print(e)
 
         return num_cust_added
 

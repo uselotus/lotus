@@ -264,11 +264,8 @@ class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             .prefetch_related(
                 "components",
             )
-            .annotate(
-                active_subscriptions=Count(
-                    "bp_subscription__pk",
-                    filter=Q(bp_subscription__status=SUB_STATUS_TYPES.ACTIVE),
-                )
+            .prefetch_related(
+                "bp_subscriptions",
             )
         )
         return qs

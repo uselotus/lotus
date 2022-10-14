@@ -10,13 +10,15 @@ import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
   CreateSubscriptionType,
+  UpdateSubscriptionType,
 } from "../types/subscription-type";
-import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
+import { MetricUsage, MetricType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
+import { CreateBacktestType, BacktestType } from "../types/experiment-type";
 
 const cookies = new Cookies();
 
@@ -71,7 +73,7 @@ export const Customer = {
 
 export const Plan = {
   getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
-  createPlan: (post: CreatePlanType): Promise<CreatePlanType> =>
+  createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("api/plans/", post),
   deletePlan: (billing_plan_id: string): Promise<PlanType> =>
     requests.delete(`api/plans/${billing_plan_id}/`),
@@ -176,4 +178,10 @@ export const Events = {
 export const APIToken = {
   newAPIToken: (): Promise<{ api_key: string }> =>
     requests.get("api/new_api_key/", {}),
+};
+
+export const Backtests = {
+  getBacktests: (): Promise<BacktestType[]> => requests.get("api/backtests/"),
+  createBacktest: (post: CreateBacktestType): Promise<CreateBacktestType> =>
+    requests.post("api/backtests/", post),
 };

@@ -29,6 +29,7 @@ export interface CreatePlanType {
   pay_in_advance: boolean;
   currency?: string;
   features: FeatureType[];
+  status?: string;
 }
 
 export interface CreateComponent {

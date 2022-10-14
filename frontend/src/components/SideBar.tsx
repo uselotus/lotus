@@ -8,6 +8,7 @@ import {
   BorderlessTableOutlined,
   LineChartOutlined,
   LogoutOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 
 import { useNavigate, useLocation } from "react-router";
@@ -32,6 +33,12 @@ const SideBar: FC = () => {
       icon: <DashboardOutlined />,
       label: "Dashboard",
       onClick: () => navigate("/dashboard"),
+    },
+    {
+      key: "/experiments",
+      icon: <ExperimentOutlined />,
+      label: "Experiments",
+      onClick: () => navigate("/experiments"),
     },
     {
       key: "/customers",
