@@ -17,6 +17,10 @@ from rest_framework.authentication import BasicAuthentication
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.contrib.auth.tokens import default_token_generator
+from django.conf import settings
+from rest_framework.exceptions import PermissionDenied
+from metering_billing.services.user import user_service
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -86,6 +90,47 @@ class LogoutView(LogoutViewMixin, APIView):
         )
         logout(request)
         return JsonResponse({"detail": "Successfully logged out."})
+
+
+class InitResetPasswordView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = EmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        user_service.init_reset_password(email=email)
+
+        return JsonResponse({"email": email})
+
+
+class ResetPasswordView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        """Verifies the token and resets the password."""
+        user_id = request.data.get("userId", None)
+        raw_password = request.data.get("password", None)
+        token = request.data.get("token", None)
+
+        if not (user_id and raw_password and token):
+            raise JsonResponse(status=status.HTTP_400_BAD_REQUEST)
+
+        user = user_service.reset_password(
+            user_id=user_id, raw_password=raw_password, token=token
+        )
+        if user:
+            login(request, user)
+            return Response(
+                {
+                    "detail": "Successfully changed password.",
+                    "token": AuthToken.objects.create(user)[1],
+                }
+            )
+
+        raise PermissionDenied({"message": "This reset link is no longer valid"})
 
 
 @ensure_csrf_cookie

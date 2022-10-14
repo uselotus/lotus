@@ -105,7 +105,26 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "simple_history",
     "knox",
+    "anymail",
 ]
+
+ANYMAIL = {
+    "MAILGUN_API_KEY": os.environ.get("MAILGUN_API_KEY"),
+    "MAILGUN_SENDER_DOMAIN": os.environ.get(
+        "MAILGUN_SENDER_DOMAIN"
+    ),  # your Mailgun domain, if needed
+}
+
+# if DEBUG:
+if True:
+    EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+DEFAULT_FROM_EMAIL = "you@uselotus.io"
+SECURITY_FROM_EMAIL = "security@uselotus.io"
+SERVER_EMAIL = "you@uselotus.io"  # ditto (default from-email for Django errors)
+
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
 
@@ -407,3 +426,9 @@ def immutable_file_test(path, url):
 
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
+
+
+if DEBUG:
+    APP_URL = "http://localhost:8000"
+else:
+    APP_URL = "http://localhost:8000"

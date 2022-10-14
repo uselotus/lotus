@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Authentication } from "../api/api";
 import { Card, Input, Button, Form, Modal } from "antd";
 import "./Login.css";
@@ -7,7 +7,6 @@ import { useQueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
-import axios from "axios";
 import Cookies from "universal-cookie";
 
 const cookies = new Cookies();
@@ -21,8 +20,8 @@ interface FormElements extends HTMLFormElement {
   readonly elements: LoginForm;
 }
 
-const Login: FC = () => {
-  const [username, setUsername] = useState("");
+const SetNewPassword: FC = () => {
+  const [searchParams] = useSearchParams();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const queryClient = useQueryClient();
@@ -30,12 +29,11 @@ const Login: FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
+  const userId = searchParams.get("userId");
+  const token = searchParams.get("token");
+
   const handlePasswordChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setPassword(event.target.value);
-  };
-
-  const handleUserNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setUsername(event.target.value);
   };
 
   const redirectDashboard = () => {
@@ -43,32 +41,26 @@ const Login: FC = () => {
   };
 
   const mutation = useMutation(
-    (data: { username: string; password: string }) =>
-      Authentication.login(username, password),
+    (data: { userId: string; token: string; password: string }) =>
+      Authentication.setNewPassword(token, userId, password),
     {
       onSuccess: (response) => {
-        setIsAuthenticated(true);
-        queryClient.refetchQueries("session");
         const { token, detail } = response;
         cookies.set("Token", token);
         instance.defaults.headers.common["Authorization"] = `Token ${token}`;
-        console.log("token", token);
+        setIsAuthenticated(true);
+        queryClient.refetchQueries("session");
         redirectDashboard();
       },
       onError: (error) => {
-        // setError(error.message);
-        if (error.response.status === 403) {
-          toast.error("Please login again.");
-          window.location.reload();
-        } else {
-          toast.error(error.response.data.detail);
-        }
+        // setError(error.message)
+        toast.error(error.response.data.message);
       },
     }
   );
 
-  const handleLogin = (event: React.FormEvent<FormElements>) => {
-    mutation.mutate({ username, password });
+  const handleUpdatePassword = (event: React.FormEvent<FormElements>) => {
+    mutation.mutate({ token, userId, password });
   };
 
   if (!isAuthenticated) {
@@ -77,20 +69,8 @@ const Login: FC = () => {
         <div className="grid h-screen place-items-center">
           <div className=" space-y-4">
             <Card title="Login" className="flex flex-col">
-              {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
-              <Form onFinish={handleLogin} name="normal_login">
-                <Form.Item>
-                  <label htmlFor="username">Username or Email</label>
-                  <Input
-                    type="text"
-                    name="username"
-                    value={username}
-                    defaultValue="username123"
-                    onChange={handleUserNameChange}
-                  />
-                </Form.Item>
-                <label htmlFor="password">Password</label>
-
+              <Form onFinish={handleUpdatePassword} name="normal_login">
+                <label htmlFor="password">New Password</label>
                 <Form.Item>
                   <Input
                     type="password"
@@ -104,14 +84,13 @@ const Login: FC = () => {
                   </div>
                 </Form.Item>
                 <Form.Item>
-                  <Button htmlType="submit">Login</Button>
+                  <Button htmlType="submit">Change Password</Button>
                 </Form.Item>
-                <Link to="/reset-password">Forgot Password?</Link>
               </Form>
             </Card>
             <div>
-              <Button type="primary" onClick={() => navigate("/register")}>
-                Sign Up
+              <Button type="primary" onClick={() => navigate("/login")}>
+                Login
               </Button>
             </div>
           </div>
@@ -130,4 +109,4 @@ const Login: FC = () => {
   );
 };
 
-export default Login;
+export default SetNewPassword;

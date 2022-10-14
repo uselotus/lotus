@@ -16,18 +16,19 @@ import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
-import Cookies from 'universal-cookie';
- 
+import Cookies from "universal-cookie";
+
 const cookies = new Cookies();
 
 const API_HOST = import.meta.env.VITE_API_URL;
 
-axios.defaults.headers.common["Authorization"] = `Token ${cookies.get('Token')}`;
+axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
+  "Token"
+)}`;
 
 axios.defaults.baseURL = API_HOST;
 // axios.defaults.xsrfCookieName = "csrftoken";
 // axios.defaults.xsrfHeaderName = "X-CSRFToken";
-
 
 export const instance = axios.create({
   timeout: 15000,
@@ -92,7 +93,7 @@ export const Authentication = {
   login: (
     username: string,
     password: string
-  ): Promise<{ detail: any; token: string}> =>
+  ): Promise<{ detail: any; token: string }> =>
     requests.post("api/login/", { username, password }),
   logout: (): Promise<{}> => requests.post("api/logout/", {}),
   registerCreate: (
@@ -101,6 +102,14 @@ export const Authentication = {
     requests.post("api/register/", {
       register,
     }),
+  resetPassword: (email: string): Promise<{ email: string }> =>
+    requests.post("api/user/password/reset/init/", { email }),
+  setNewPassword: (
+    token: string,
+    userId: string,
+    password: string
+  ): Promise<{ detail: any; token: string }> =>
+    requests.post("api/user/password/reset/", { token, userId, password }),
 };
 
 export const GetRevenue = {
