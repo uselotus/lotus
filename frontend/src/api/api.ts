@@ -16,18 +16,20 @@ import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
-import Cookies from 'universal-cookie';
- 
+import Cookies from "universal-cookie";
+import { CreateBacktestType, BacktestType } from "../types/experiment-type";
+
 const cookies = new Cookies();
 
 const API_HOST = import.meta.env.VITE_API_URL;
 
-axios.defaults.headers.common["Authorization"] = `Token ${cookies.get('Token')}`;
+axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
+  "Token"
+)}`;
 
 axios.defaults.baseURL = API_HOST;
 // axios.defaults.xsrfCookieName = "csrftoken";
 // axios.defaults.xsrfHeaderName = "X-CSRFToken";
-
 
 export const instance = axios.create({
   timeout: 15000,
@@ -70,7 +72,7 @@ export const Customer = {
 
 export const Plan = {
   getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
-  createPlan: (post: CreatePlanType): Promise<CreatePlanType> =>
+  createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("api/plans/", post),
   deletePlan: (billing_plan_id: string): Promise<PlanType> =>
     requests.delete(`api/plans/${billing_plan_id}/`),
@@ -92,7 +94,7 @@ export const Authentication = {
   login: (
     username: string,
     password: string
-  ): Promise<{ detail: any; token: string}> =>
+  ): Promise<{ detail: any; token: string }> =>
     requests.post("api/login/", { username, password }),
   logout: (): Promise<{}> => requests.post("api/logout/", {}),
   registerCreate: (
@@ -167,4 +169,10 @@ export const Events = {
 export const APIToken = {
   newAPIToken: (): Promise<{ api_key: string }> =>
     requests.get("api/new_api_key/", {}),
+};
+
+export const Backtests = {
+  getBacktests: (): Promise<BacktestType[]> => requests.get("api/backtests/"),
+  createBacktest: (post: CreateBacktestType): Promise<CreateBacktestType> =>
+    requests.post("api/backtests/", post),
 };

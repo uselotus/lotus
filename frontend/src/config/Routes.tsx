@@ -11,6 +11,9 @@ import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import CreatePlan from "../pages/CreatePlan";
 import ViewMetrics from "../pages/ViewMetrics";
 import EditPlan from "../pages/EditPlan";
+import ViewExperiments from "../pages/ViewExperiments";
+import CreateExperiment from "../pages/CreateBacktest";
+import CreateBacktest from "../pages/CreateBacktest";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -43,17 +46,29 @@ const AppRoutes: FC = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="/plans" element={<ViewPlans />} />
             <Route path="create-plan" element={<CreatePlan />} />
-            <Route path="update-plan" element={<EditPlan />} />
+            <Route path="update-plan" element={<EditPlan type="edit" />} />
+            <Route
+              path="backtest-plan"
+              element={<EditPlan type="backtest" />}
+            />
             <Route path="/plan">
-              <Route path=":planId" element={<EditPlan />} />
+              <Route path=":planId" element={<EditPlan type="edit" />} />
             </Route>
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/redirectstripe" element={<StripeRedirect />} />
+            <Route path="/experiments" element={<ViewExperiments />} />
+            <Route path="/experiment">
+              {/* <Route path=":experimentId" element={<ExperimentResults />} /> */}
+            </Route>
+            <Route path="create-experiment" element={<CreateBacktest />} />
+            {/* <Route path="/experiment">
+              <Route path=":experimentId" element={<ExperimentPage />} />
+            </Route> */}
+            <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
-          <Footer style={{ textAlign: "center" }}>Lotus Tech Co. @2022</Footer>
         </Layout>
       </Layout>
     </div>

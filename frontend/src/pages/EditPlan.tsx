@@ -37,20 +37,24 @@ import { PageLayout } from "../components/base/PageLayout";
 
 interface CustomizedState {
   plan: PlanType;
+  onSubstitutionChange?: (plan_id: string, name: string) => void;
 }
 
-const EditPlan = () => {
+interface Props {
+  type: string;
+}
+
+const EditPlan = (props: Props) => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const location = useLocation();
+  const { plan, onSubstitutionChange } = location.state.data as CustomizedState;
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
 
   const queryClient = useQueryClient();
-
-  const { plan } = location.state as CustomizedState;
 
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
     plan.features
@@ -82,6 +86,23 @@ const EditPlan = () => {
       },
       onError: () => {
         toast.error("Failed to update Plan", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
+
+  const createPlanMutation = useMutation(
+    (post: CreatePlanType) => Plan.createPlan(post),
+    {
+      onSuccess: (res) => {
+        if (onSubstitutionChange) {
+          onSubstitutionChange(res.billing_plan_id, res.name);
+        }
+        form.resetFields();
+      },
+      onError: () => {
+        toast.error("Failed to create Plan", {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -189,20 +210,45 @@ const EditPlan = () => {
           components: usagecomponentslist,
           features: planFeatures,
         };
-        mutation.mutate({
-          old_billing_plan_id: plan.billing_plan_id,
-          updated_billing_plan: newPlan,
-          update_behavior: values.update_behavior,
-        });
+        if (props.type === "backtest" && onSubstitutionChange) {
+          newPlan["status"] = "experiment";
+          createPlanMutation.mutate(newPlan);
+        } else if (props.type === "edit") {
+          mutation.mutate({
+            old_billing_plan_id: plan.billing_plan_id,
+            updated_billing_plan: newPlan,
+            update_behavior: values.update_behavior,
+          });
+        }
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
       });
   };
 
+  function returnPageTitle(): string {
+    if (props.type === "backtest") {
+      return "Backtest Plan";
+    } else if (props.type === "edit") {
+      return "Update Plan";
+    } else {
+      return "Create Plan";
+    }
+  }
+
+  function returnSubmitButtonText(): string {
+    if (props.type === "backtest") {
+      return "Finish Plan";
+    } else if (props.type === "edit") {
+      return "Update Plan";
+    } else {
+      return "Create Plan";
+    }
+  }
+
   return (
     <PageLayout
-      title={`Update Plan: ${plan.name}`}
+      title={returnPageTitle()}
       extra={[
         <Button
           key={"back"}
@@ -219,7 +265,7 @@ const EditPlan = () => {
           className="bg-black text-white justify-self-end"
           size="large"
         >
-          Update Plan <SaveOutlined />
+          {returnSubmitButtonText()}
         </Button>,
       ]}
     >
@@ -291,21 +337,23 @@ const EditPlan = () => {
                     <Form.Item name="pay_in_advance" label="Pay In Advance">
                       <Checkbox defaultChecked={true} />
                     </Form.Item>
-                    <Form.Item
-                      name="update_behavior"
-                      label="When To Update Plan"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select an update behavior",
-                        },
-                      ]}
-                    >
-                      <Radio.Group optionType="button" buttonStyle="solid">
-                        <Radio value="replace_immediately">Immediately</Radio>
-                        <Radio value="replace_on_renewal">On Renewal</Radio>
-                      </Radio.Group>
-                    </Form.Item>
+                    {props.type === "edit" && (
+                      <Form.Item
+                        name="update_behavior"
+                        label="When To Update Plan"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please select an update behavior",
+                          },
+                        ]}
+                      >
+                        <Radio.Group optionType="button" buttonStyle="solid">
+                          <Radio value="replace_immediately">Immediately</Radio>
+                          <Radio value="replace_on_renewal">On Renewal</Radio>
+                        </Radio.Group>
+                      </Form.Item>
+                    )}
                   </Card>
                 </Col>
                 <Col span="24">
