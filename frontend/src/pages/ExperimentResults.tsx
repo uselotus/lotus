@@ -1,7 +1,7 @@
 import React, { FC } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Line, Pie } from "@ant-design/plots";
-import { Card, ColGrid, Metric, Text } from "@tremor/react";
+// import { Card, ColGrid, Metric, Text } from "@tremor/react";
 
 import { useQuery, UseQueryResult } from "react-query";
 import { Backtests } from "../api/api";
@@ -109,10 +109,10 @@ const ExperimentResults: FC = () => {
               </h3>
             </div>
             <div className="col-span-1">
-              <Card key={23}>
+              {/* <Card key={23}>
                 <Text>dsf</Text>
                 <Metric>234</Metric>
-              </Card>
+              </Card> */}
             </div>
           </div>
         </div>

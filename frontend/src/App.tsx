@@ -4,7 +4,6 @@ import { useQuery } from "react-query";
 import ExternalRoutes from "./config/ExternalRoutes";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import "@tremor/react/dist/esm/tremor.css";
 import LoadingSpinner from "./components/LoadingSpinner";
 import React from "react";
 import { PlanProvider } from "./context/PlanContext";

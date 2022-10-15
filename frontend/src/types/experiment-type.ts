@@ -4,8 +4,8 @@ export interface BacktestType {
   backtest_name: string;
   backtest_id: string;
   status: string;
-  start_time: string;
-  end_time: string;
+  start_date: string;
+  end_date: string;
   time_created: string;
   kpis: string[];
 }
@@ -26,7 +26,7 @@ interface SpecificResults {
   substitution_name: string;
   pct_revenue_change: number;
   new_plan: { plan_name: string; plan_id: string; plan_revenue: number };
-  old_plan: { plan_name: string; plan_id: string; plan_revenue: number };
+  original_plan: { plan_name: string; plan_id: string; plan_revenue: number };
   results: {
     cumulative_revenue: RevenueChartResults[];
     revenue_by_metric: RevenuByMetricResults[];
@@ -57,18 +57,18 @@ export interface RevenueChartResults {
 }
 interface SubstitutionResults {
   new_plan: PlanType;
-  old_plan: PlanType;
+  original_plan: PlanType;
 }
 
 export interface CreateBacktestType {
   backtest_name: string;
-  start_time: string;
-  end_time: string;
+  start_date: string;
+  end_date: string;
   kpis: string[];
   substitutions: Substitution[];
 }
 
 export interface Substitution {
   new_plan: string;
-  old_plans: string[];
+  original_plans: string[];
 }
