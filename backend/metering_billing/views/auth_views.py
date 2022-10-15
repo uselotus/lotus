@@ -132,7 +132,6 @@ class ResetPasswordView(APIView):
         raise PermissionDenied({"message": "This reset link is no longer valid"})
 
 
-
 class SessionView(APIView):
     def get(self, request, *args, **kwargs):
         return JsonResponse({"isAuthenticated": True})
