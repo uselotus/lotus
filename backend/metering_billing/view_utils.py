@@ -76,6 +76,7 @@ def calculate_sub_pc_usage_revenue(
         if (
             plan_component.cost_per_batch == 0
             or plan_component.cost_per_batch is None
+            or plan_component.metric_units_per_batch == 0
             or plan_component.metric_units_per_batch is None
         ):
             continue
