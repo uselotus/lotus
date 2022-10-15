@@ -7,13 +7,9 @@ from decimal import Decimal
 import posthog
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
-from lotus.settings import (
-    EVENT_CACHE_FLUSH_COUNT,
-    EVENT_CACHE_FLUSH_SECONDS,
-    POSTHOG_PERSON,
-)
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
@@ -38,6 +34,11 @@ from metering_billing.view_utils import (
     get_subscription_usage_and_revenue,
     sync_payment_provider_customers,
 )
+
+EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
+EVENT_CACHE_FLUSH_SECONDS = settings.EVENT_CACHE_FLUSH_SECONDS
+POSTHOG_PERSON = settings.POSTHOG_PERSON
+
 
 
 @shared_task

@@ -1,11 +1,9 @@
 from datetime import datetime
 
 import posthog
-
-# from django.db import IntegrityError
-from django.db.models import Count, Q
+from django.conf import settings
+from django.db.models import Q
 from django.db.utils import IntegrityError
-from lotus.settings import POSTHOG_PERSON
 from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
 from metering_billing.models import (
     Alert,
@@ -41,6 +39,7 @@ from rest_framework.response import Response
 
 from ..auth_utils import parse_organization
 
+POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 class PermissionPolicyMixin:
     def check_permissions(self, request):

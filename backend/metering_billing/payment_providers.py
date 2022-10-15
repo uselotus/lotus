@@ -3,9 +3,9 @@ from decimal import Decimal
 from typing import Optional, Union
 
 import stripe
+from django.conf import settings
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from lotus.settings import SELF_HOSTED, STRIPE_SECRET_KEY
 from metering_billing.auth_utils import parse_organization
 from metering_billing.models import Customer, Organization
 from metering_billing.utils import (
@@ -18,6 +18,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+SELF_HOSTED = settings.SELF_HOSTED
+STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
 
 class PaymentProvider(abc.ABC, APIView):
     @abc.abstractmethod
