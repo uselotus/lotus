@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@tremor/react": "^1.0.6",
-    "react-cookie": "^4.1.1"
-  }
-}
