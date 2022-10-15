@@ -1,7 +1,7 @@
 # ---------------------------------------
 # Development stage
 # ---------------------------------------
-FROM node:18.9.0-alpine AS development
+FROM node:18.11.0-alpine AS development
 WORKDIR /frontend
 COPY package*.json yarn.lock tsconfig.json \
     vite.config.ts tsconfig.node.json postcss.config.cjs\
