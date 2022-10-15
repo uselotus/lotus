@@ -1,6 +1,6 @@
 import React, { FC, useEffect, useState } from "react";
 import { useQuery, useMutation } from "react-query";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { PlanType } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { Form, Button, Input, Radio, Select, Modal } from "antd";
@@ -8,7 +8,7 @@ import { PageLayout } from "../components/base/PageLayout";
 import { CreateBacktestType, Substitution } from "../types/experiment-type";
 import { Backtests } from "../api/api";
 import { toast } from "react-toastify";
-
+import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 interface PlanRepType {
   plan_id: string;
   plan_name: string;
@@ -21,12 +21,12 @@ const CreateBacktest: FC = () => {
   };
   const [form] = Form.useForm();
   const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
+  const { currentPlan, replacementPlan } = usePlanState();
+  const { setCurrentPlan, setReplacementPlan } = usePlanUpdater();
   const [replacePlanVisible, setReplacePlanVisible] = useState<boolean>(false);
   const [newPlanVisible, setNewPlanVisible] = useState<boolean>(false);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
-  const [currentPlan, setCurrentPlan] = useState<PlanRepType>();
-  const [replacementPlan, setReplacementPlan] = useState<PlanRepType>();
 
   const {
     data: plans,
@@ -79,14 +79,14 @@ const CreateBacktest: FC = () => {
     setNewPlanVisible(false);
   };
 
-  const addCurrentPlanSlot = (plan_id: string, name: string) => {
-    setCurrentPlan({ plan_id: plan_id, plan_name: name });
-    closeplanCurrentModal();
+  const addCurrentPlanSlot = (plan_id: string) => {
+    const current = plans.find((plan) => plan.billing_plan_id === plan_id);
+    setCurrentPlan(current);
   };
 
-  const addReplacementPlanSlot = (plan_id: string, name: string) => {
-    setReplacementPlan({ plan_id: plan_id, plan_name: name });
-    closeplanNewModal();
+  const addReplacementPlanSlot = (plan_id: string) => {
+    const replacement = plans.find((plan) => plan.billing_plan_id === plan_id);
+    setReplacementPlan(replacement);
   };
 
   const generateRandomExperimentName = () => {
@@ -96,16 +96,16 @@ const CreateBacktest: FC = () => {
   };
 
   useEffect(() => {
-    if (currentPlan !== undefined && replacementPlan !== undefined) {
+    if (currentPlan && replacementPlan) {
       setSubstitutions([
         ...substitutions,
         {
-          old_plans: [currentPlan.plan_id],
-          new_plan: replacementPlan.plan_id,
+          old_plans: [currentPlan.billing_plan_id],
+          new_plan: replacementPlan.billing_plan_id,
         },
       ]);
-      setCurrentPlan(undefined);
-      setReplacementPlan(undefined);
+      // setCurrentPlan(undefined);
+      // setReplacementPlan(undefined);
     }
   }, [currentPlan, replacementPlan]);
 
@@ -187,10 +187,10 @@ const CreateBacktest: FC = () => {
                 <Button>
                   <a onClick={openplanCurrentModal}>Choose Plans To Replace</a>
                 </Button>
-                <div>
-                  {currentPlan !== undefined && (
-                    <div>
-                      <h3 className=" font-bold">{currentPlan.plan_name}</h3>
+                <div className="mt-4">
+                  {currentPlan && (
+                    <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                      <span className="font-bold">{currentPlan.name}</span>
                     </div>
                   )}
                 </div>
@@ -204,12 +204,10 @@ const CreateBacktest: FC = () => {
                 <Button onClick={openplanNewModal}>
                   Choose Plans To Replace
                 </Button>
-                <div>
-                  {replacementPlan !== undefined && (
-                    <div>
-                      <h3 className=" font-bold">
-                        {replacementPlan.plan_name}
-                      </h3>
+                <div className="mt-4">
+                  {replacementPlan && (
+                    <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                      <span className="font-bold">{replacementPlan.name}</span>
                     </div>
                   )}
                 </div>
@@ -230,12 +228,9 @@ const CreateBacktest: FC = () => {
         <div className="border-b border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6">
           <h3 className="mb-5">Choose An Existing Plan To Replace</h3>
           <Select
-            onChange={(value) => {
-              addCurrentPlanSlot(
-                value,
-                plans.find((x) => x.billing_plan_id === value).name
-              );
-            }}
+            onChange={addCurrentPlanSlot}
+            className="w-8/12"
+            defaultValue={currentPlan?.billing_plan_id}
           >
             {plans?.map((plan) => (
               <Select.Option value={plan.billing_plan_id}>
@@ -248,7 +243,9 @@ const CreateBacktest: FC = () => {
       <Modal
         visible={newPlanVisible}
         onCancel={closeplanNewModal}
-        onOk={closeplanNewModal}
+        onOk={() => {
+          navigate("/backtest-plan");
+        }}
         closeIcon={null}
       >
         <div className="border-b border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6">
@@ -256,20 +253,14 @@ const CreateBacktest: FC = () => {
           <h4 className="mb-5">
             Start From An Existing Plan, Then Edit The Differences
           </h4>
-          <Select>
+          <Select
+            className="w-8/12"
+            onChange={addReplacementPlanSlot}
+            defaultValue={replacementPlan?.billing_plan_id}
+          >
             {plans?.map((plan) => (
               <Select.Option value={plan.billing_plan_id}>
-                <Link
-                  to="/backtest-plan"
-                  state={{
-                    plan: {
-                      plan: plan,
-                      //   onSubstitutionChange: addReplacementPlanSlot,
-                    },
-                  }}
-                >
-                  {plan.name}
-                </Link>
+                {plan.name}
               </Select.Option>
             ))}
           </Select>

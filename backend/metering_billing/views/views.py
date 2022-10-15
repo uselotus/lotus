@@ -140,8 +140,8 @@ class PeriodMetricRevenueView(APIView):
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
-        make_all_decimals_floats(ret)
-        make_all_dates_times_strings(ret)
+        ret = make_all_decimals_floats(ret)
+        ret = make_all_dates_times_strings(ret)
         return Response(ret, status=status.HTTP_200_OK)
 
 
@@ -186,7 +186,7 @@ class PeriodSubscriptionsView(APIView):
         serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
-        make_all_decimals_floats(ret)
+        ret = make_all_decimals_floats(ret)
         return Response(ret, status=status.HTTP_200_OK)
 
 
@@ -270,7 +270,7 @@ class PeriodMetricUsageView(APIView):
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
-        make_all_decimals_floats(ret)
+        ret = make_all_decimals_floats(ret)
         return Response(ret, status=status.HTTP_200_OK)
 
 
@@ -321,7 +321,7 @@ class CustomersSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        responses={200: CustomerSummarySerializer},
+        responses={200: AllSubstitutionResultsSerializer},
     )
     def get(self, request, format=None):
         """
@@ -416,7 +416,7 @@ class CustomersWithRevenueView(APIView):
                 },
             )
             cust.append(serializer.data)
-        make_all_decimals_floats(cust)
+        cust = make_all_decimals_floats(cust)
         return Response(cust, status=status.HTTP_200_OK)
 
 
