@@ -32,6 +32,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
+    env_file:
+      - ./env/.env.prod
     stdin_open: true
     ports:
       - 80:80
