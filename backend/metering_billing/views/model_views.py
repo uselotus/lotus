@@ -41,6 +41,7 @@ from ..auth_utils import parse_organization
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
+
 class PermissionPolicyMixin:
     def check_permissions(self, request):
         try:

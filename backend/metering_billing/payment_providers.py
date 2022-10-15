@@ -21,6 +21,7 @@ from rest_framework.views import APIView
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
 
+
 class PaymentProvider(abc.ABC, APIView):
     @abc.abstractmethod
     def __init__(self):

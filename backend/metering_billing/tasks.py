@@ -40,7 +40,6 @@ EVENT_CACHE_FLUSH_SECONDS = settings.EVENT_CACHE_FLUSH_SECONDS
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
-
 @shared_task
 def calculate_invoice():
     # get ending subs

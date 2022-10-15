@@ -23,6 +23,7 @@ from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
+
 class LoginViewMixin(KnoxLoginView):
     authentication_classes = [BasicAuthentication]
     permission_classes = [AllowAny]
