@@ -132,14 +132,10 @@ class ResetPasswordView(APIView):
         raise PermissionDenied({"message": "This reset link is no longer valid"})
 
 
-@ensure_csrf_cookie
-def session_view(request):
 
-    if not request.user.is_authenticated:
-
-        return JsonResponse({"isAuthenticated": False})
-
-    return JsonResponse({"isAuthenticated": True})
+class SessionView(APIView):
+    def get(self, request, *args, **kwargs):
+        return JsonResponse({"isAuthenticated": True})
 
 
 # @ensure_csrf_cookie

@@ -7,18 +7,41 @@ import "react-toastify/dist/ReactToastify.css";
 import LoadingSpinner from "./components/LoadingSpinner";
 import React from "react";
 import { PlanProvider } from "./context/PlanContext";
+import { useNavigate, useLocation } from "react-router-dom";
+
+const publicRoutes = [
+  "/login",
+  "/register",
+  "/reset-password",
+  "/set-new-password",
+];
 
 function App() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
-    Authentication.getSession().then((res) => {
-      return res;
-    });
+    Authentication.getSession()
+      .then((res) => {
+        return res;
+      })
+      .catch((error) => {
+        if (
+          error?.response &&
+          error?.response?.status === 401 &&
+          !publicRoutes.includes(pathname)
+        ) {
+          navigate("/login");
+        }
+        return error;
+      });
 
   const { data: sessionData, isLoading } = useQuery<{
     isAuthenticated: boolean;
   }>(["session"], fetchSessionInfo, { refetchInterval: 60000 });
 
   const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
+
   if (isLoading) {
     return (
       <div className="grid h-screen place-items-center">

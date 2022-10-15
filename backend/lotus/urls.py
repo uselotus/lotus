@@ -140,7 +140,7 @@ urlpatterns = [
     ),
     path("api/login/", auth_views.LoginView.as_view(), name="api-login"),
     path("api/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
-    path("api/session/", auth_views.session_view, name="api-session"),
+    path("api/session/", auth_views.SessionView.as_view(), name="api-session"),
     # path("api/whoami/", auth_views.whoami_view, name="api-whoami"),
     path("api/register/", auth_views.RegisterView.as_view(), name="register"),
     # path("csrf/", csrf_exempt(auth_views.csrf), name="csrf"),
