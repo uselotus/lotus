@@ -15,6 +15,17 @@ def run_around_tests():
     posthog.disabled = False
 
 
+@pytest.fixture(autouse=True)
+def use_dummy_cache_backend(settings):
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    }
+    settings.CELERY_BROKER_URL = "memory://"
+    settings.CELERY_RESULT_BACKEND = "db+sqlite:///results.sqlite"
+
+
 @pytest.fixture
 def api_client_with_api_key_auth():
     from rest_framework.test import APIClient

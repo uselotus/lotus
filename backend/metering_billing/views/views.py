@@ -3,10 +3,10 @@ from decimal import Decimal
 
 import posthog
 from dateutil import parser
+from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from lotus.settings import POSTHOG_PERSON
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
@@ -35,6 +35,8 @@ from ..view_utils import (
     get_customer_usage_and_revenue,
     get_metric_usage,
 )
+
+POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class PeriodMetricRevenueView(APIView):

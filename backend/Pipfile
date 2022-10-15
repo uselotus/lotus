@@ -50,6 +50,7 @@ django-silk = "*"
 pytest-cov = "*"
 black = "*"
 pylint = "*"
+sqlalchemy = "*"
 
 [requires]
 python_version = "3.9"
