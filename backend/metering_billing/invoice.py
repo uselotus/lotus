@@ -1,8 +1,7 @@
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import posthog
-import stripe
-from lotus.settings import POSTHOG_PERSON
+from django.conf import settings
 from metering_billing.models import (
     BillingPlan,
     Customer,
@@ -23,7 +22,7 @@ from rest_framework import serializers
 
 from .webhooks import invoice_created_webhook
 
-
+POSTHOG_PERSON = settings.POSTHOG_PERSON
 # Invoice Serializers
 class InvoiceOrganizationSerializer(serializers.ModelSerializer):
     class Meta:

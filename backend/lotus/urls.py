@@ -13,9 +13,9 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
-from django.shortcuts import render
 from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
@@ -52,7 +52,9 @@ from metering_billing.views.views import (
 )
 from rest_framework import routers
 
-from .settings import DEBUG, ON_HEROKU, PROFILER_ENABLED
+DEBUG = settings.DEBUG
+ON_HEROKU = settings.ON_HEROKU
+PROFILER_ENABLED = settings.PROFILER_ENABLED
 
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")

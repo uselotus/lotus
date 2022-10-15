@@ -10,7 +10,6 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
-from lotus.settings import POSTHOG_PERSON
 from metering_billing.models import Organization, User
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
@@ -21,6 +20,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class LoginViewMixin(KnoxLoginView):

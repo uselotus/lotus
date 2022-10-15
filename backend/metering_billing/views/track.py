@@ -5,16 +5,18 @@ import logging
 from datetime import timezone
 from typing import Dict, Union
 
+from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import extend_schema, inline_serializer
-from lotus.settings import EVENT_CACHE_FLUSH_COUNT
 from metering_billing.models import APIToken, Customer, Event
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
 from rest_framework.decorators import api_view
+
+EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 
 logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
 
