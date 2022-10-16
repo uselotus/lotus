@@ -13,9 +13,9 @@ const backtest_data: BacktestType[] = [
   {
     backtest_name: "Name",
     backtest_id: "id",
-    status: "loading",
-    start_time: "2022-23-02",
-    end_time: "2022-20-03",
+    status: "completed",
+    start_date: "2022-23-02",
+    end_date: "2022-20-03",
     time_created: "2022-20-02",
     kpis: ["total_revenue"],
   },

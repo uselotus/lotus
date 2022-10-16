@@ -68,10 +68,11 @@ class LoginView(LoginViewMixin, APIView):
             POSTHOG_PERSON if POSTHOG_PERSON else user.organization.company_name,
             event="succesful login",
         )
+        token = AuthToken.objects.create(user)
         return Response(
             {
                 "detail": "Successfully logged in.",
-                "token": AuthToken.objects.create(user)[1],
+                "token": token[1],
             }
         )
 

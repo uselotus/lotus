@@ -52,7 +52,6 @@ const Login: FC = () => {
         cookies.set("Token", token);
         instance.defaults.headers.common["Authorization"] = `Token ${token}`;
         queryClient.refetchQueries("session");
-        console.log("token", token);
         redirectDashboard();
       },
       onError: (error) => {

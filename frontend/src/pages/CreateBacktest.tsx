@@ -9,6 +9,7 @@ import { CreateBacktestType, Substitution } from "../types/experiment-type";
 import { Backtests } from "../api/api";
 import { toast } from "react-toastify";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
+import dayjs from "dayjs";
 interface PlanRepType {
   plan_id: string;
   plan_name: string;
@@ -25,8 +26,7 @@ const CreateBacktest: FC = () => {
   const { setCurrentPlan, setReplacementPlan } = usePlanUpdater();
   const [replacePlanVisible, setReplacePlanVisible] = useState<boolean>(false);
   const [newPlanVisible, setNewPlanVisible] = useState<boolean>(false);
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>();
 
   const {
     data: plans,
@@ -54,10 +54,14 @@ const CreateBacktest: FC = () => {
 
   const runBacktest = () => {
     form.validateFields().then((values) => {
+      const start_date = dayjs()
+        .subtract(values.date_range, "month")
+        .format("YYYY-MM-DD");
+      console.log(start_date);
       const post: CreateBacktestType = {
         backtest_name: values.backtest_name,
-        start_time: values.start_time,
-        end_time: values.end_time,
+        start_date: start_date,
+        end_date: dayjs().format("YYYY-MM-DD"),
         kpis: ["total_revenue"],
         substitutions: substitutions,
       };
@@ -80,13 +84,17 @@ const CreateBacktest: FC = () => {
   };
 
   const addCurrentPlanSlot = (plan_id: string) => {
-    const current = plans.find((plan) => plan.billing_plan_id === plan_id);
+    const current = plans?.find((plan) => plan.billing_plan_id === plan_id);
     setCurrentPlan(current);
   };
 
   const addReplacementPlanSlot = (plan_id: string) => {
-    const replacement = plans.find((plan) => plan.billing_plan_id === plan_id);
-    setReplacementPlan(replacement);
+    if (plans) {
+      const replacement = plans.find(
+        (plan) => plan.billing_plan_id === plan_id
+      );
+      setReplacementPlan(replacement);
+    }
   };
 
   const generateRandomExperimentName = () => {
@@ -100,7 +108,7 @@ const CreateBacktest: FC = () => {
       setSubstitutions([
         ...substitutions,
         {
-          old_plans: [currentPlan.billing_plan_id],
+          original_plans: [currentPlan.billing_plan_id],
           new_plan: replacementPlan.billing_plan_id,
         },
       ]);
@@ -126,7 +134,13 @@ const CreateBacktest: FC = () => {
       ]}
     >
       <div className="space-y-8 divide-y divide-gray-200 w-md">
-        <Form form={form} onFinish={runBacktest}>
+        <Form
+          form={form}
+          onFinish={runBacktest}
+          initialValues={{
+            ["backtest_name"]: generateRandomExperimentName(),
+          }}
+        >
           <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
             <h3 className=" font-bold">Test Type</h3>
             <Radio.Group
@@ -146,7 +160,15 @@ const CreateBacktest: FC = () => {
 
           <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
             <h3 className=" font-bold">Date Range</h3>
-            <Form.Item name="date_range">
+            <Form.Item
+              name="date_range"
+              rules={[
+                {
+                  required: true,
+                  message: "Select a date range",
+                },
+              ]}
+            >
               <Radio.Group buttonStyle="solid">
                 <Radio.Button value={1}>1 Month</Radio.Button>
                 <Radio.Button value={3}>3 Months</Radio.Button>
@@ -168,7 +190,7 @@ const CreateBacktest: FC = () => {
                     },
                   ]}
                 >
-                  <Input defaultValue={generateRandomExperimentName()} />
+                  <Input />
                 </Form.Item>
               </div>
               <div>
@@ -202,7 +224,7 @@ const CreateBacktest: FC = () => {
 
               <div className="col-span-1">
                 <Button onClick={openplanNewModal}>
-                  Choose Plans To Replace
+                  Create Experiment Plan
                 </Button>
                 <div className="mt-4">
                   {replacementPlan && (
@@ -223,7 +245,7 @@ const CreateBacktest: FC = () => {
         visible={replacePlanVisible}
         onCancel={closeplanCurrentModal}
         onOk={closeplanCurrentModal}
-        closeIcon={null}
+        closeIcon={<div></div>}
       >
         <div className="border-b border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6">
           <h3 className="mb-5">Choose An Existing Plan To Replace</h3>
@@ -246,7 +268,8 @@ const CreateBacktest: FC = () => {
         onOk={() => {
           navigate("/backtest-plan");
         }}
-        closeIcon={null}
+        okText="Edit"
+        closeIcon={<div></div>}
       >
         <div className="border-b border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6">
           <h3 className="mb-5">Choose New Plan To Backtest</h3>
