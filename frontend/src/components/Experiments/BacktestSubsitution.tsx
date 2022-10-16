@@ -11,8 +11,8 @@ import {
   Bold,
   List,
   ListItem,
-  Tab,
-  TabList,
+  Flex,
+  BadgeDelta,
 } from "@tremor/react";
 import { Pie } from "@ant-design/plots";
 import { Title as NewTitle } from "../base/Typograpy/index.";
@@ -33,15 +33,12 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   ];
 
   const pieConfigNew = {
-    legend: {
-      position: "bottom" as any,
-    },
     appendPadding: 20,
     data: substitution.results.revenue_by_metric,
     angleField: "original_plan_revenue",
     colorField: "metric_name",
     radius: 1,
-    innerRadius: 0.8,
+    innerRadius: 0.5,
     label: {
       type: "inner",
       offset: "-50%",
@@ -59,30 +56,15 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         type: "element-active",
       },
     ],
-    statistic: {
-      title: false,
-
-      content: {
-        content: "",
-        style: {
-          whiteSpace: "pre-wrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        },
-      },
-    },
   };
 
   const pieConfigOld = {
-    legend: {
-      position: "bottom" as any,
-    },
     appendPadding: 20,
     data: substitution.results.revenue_by_metric,
     angleField: "new_plan_revenue",
     colorField: "metric_name",
     radius: 1,
-    innerRadius: 0.8,
+    innerRadius: 0.5,
     label: {
       type: "inner",
       offset: "-50%",
@@ -101,18 +83,6 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         type: "element-active",
       },
     ],
-    statistic: {
-      title: false,
-
-      content: {
-        content: "",
-        style: {
-          whiteSpace: "pre-wrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        },
-      },
-    },
   };
 
   useEffect(() => {
@@ -133,11 +103,12 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-3 gap-3">
         <div className="justify-self-center w-2/5 mt-6">
           <Card key={234}>
             <div className="justify-center">
               <Text>{substitution.original_plan.plan_name}</Text>
+
               <Metric>
                 {dataFormatter(substitution.original_plan.plan_revenue)}
               </Metric>
@@ -148,8 +119,14 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
           <img src={arrowURL} alt="arrow" className="mb-4" />
         </div>
         <div className=" justify-self-center w-2/5 mt-6">
-          <Card key={23}>
-            <Text>{substitution.new_plan.plan_name}</Text>
+          <Card key={23} maxWidth="max-w-sm">
+            <Flex justifyContent="justify-between" alignItems="items-center">
+              <Text>{substitution.new_plan.plan_name}</Text>
+              <BadgeDelta
+                deltaType="moderateIncrease"
+                text={substitution.pct_revenue_change.toFixed(2)}
+              />
+            </Flex>{" "}
             <Metric>{dataFormatter(substitution.new_plan.plan_revenue)}</Metric>
           </Card>
         </div>
