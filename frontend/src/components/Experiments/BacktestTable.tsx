@@ -5,6 +5,7 @@ import { ProTable } from "@ant-design/pro-components";
 import { Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import dayjs from "dayjs";
 
 const columns: ProColumns<BacktestType>[] = [
   {
@@ -24,6 +25,9 @@ const columns: ProColumns<BacktestType>[] = [
     dataIndex: "time_created",
     align: "left",
     sorter: (a, b) => a.time_created.localeCompare(b.time_created),
+    render: (text) => {
+      return dayjs(text?.toString()).format("YYYY-MM-DD");
+    },
   },
   {
     title: "KPIs",

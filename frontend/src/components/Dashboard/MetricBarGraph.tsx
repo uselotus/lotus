@@ -121,7 +121,7 @@ function MetricBarGraph(props: { range: any }) {
           </Option>
         ))}
       </Select>
-      <div>
+      <div className="mt-5">
         <Column {...config} />
       </div>
     </Paper>

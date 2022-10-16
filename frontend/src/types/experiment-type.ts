@@ -22,7 +22,7 @@ interface ResultsOverview {
   substitution_results: SpecificResults[];
 }
 
-interface SpecificResults {
+export interface SpecificResults {
   substitution_name: string;
   pct_revenue_change: number;
   new_plan: { plan_name: string; plan_id: string; plan_revenue: number };
