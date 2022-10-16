@@ -17,6 +17,7 @@ from .models import (
     Invoice,
     NumericFilter,
     Organization,
+    OrganizationInviteToken,
     PlanComponent,
     Subscription,
     User,
@@ -42,6 +43,7 @@ admin.site.register(Feature)
 admin.site.register(BillingPlan, SimpleHistoryAdmin)
 admin.site.register(Subscription, SimpleHistoryAdmin)
 admin.site.register(Invoice, SimpleHistoryAdmin)
+admin.site.register(OrganizationInviteToken)
 admin.site.unregister(APIKey)
 
 

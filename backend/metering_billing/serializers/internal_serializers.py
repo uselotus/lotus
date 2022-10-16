@@ -74,18 +74,20 @@ class UpdateBillingPlanRequestSerializer(serializers.Serializer):
 
 
 class RegistrationDetailSerializer(serializers.Serializer):
-    company_name = serializers.CharField()
-    industry = serializers.CharField()
+    company_name = serializers.CharField(allow_blank=True)
+    industry = serializers.CharField(allow_blank=True)
     email = serializers.CharField()
     password = serializers.CharField()
     username = serializers.CharField()
 
-
-class RegistrationWithInviteSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField()
-    username = serializers.CharField()
-    invite_token = serializers.CharField()
+    def validate(self, attrs):
+        token = self.context.get("token", None)
+        if not token:
+            if attrs["company_name"] is None:
+                raise serializers.ValidationError(
+                    "Company name is required for registration"
+                )
+        return super().validate(attrs)
 
 
 class RegistrationSerializer(serializers.Serializer):
