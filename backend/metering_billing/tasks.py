@@ -10,6 +10,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
+from metering_billing.utils import BACKTEST_STATUS_TYPES
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
@@ -416,4 +417,5 @@ def run_backtest(backtest_id):
     serializer.is_valid(raise_exception=True)
     results = make_all_dates_times_strings(serializer.validated_data)
     backtest.backtest_results = results
+    backtest.status = BACKTEST_STATUS_TYPES.COMPLETED
     backtest.save()

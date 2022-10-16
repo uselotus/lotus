@@ -27,10 +27,16 @@ const ViewExperiments: FC = () => {
 
   const { data, isLoading }: UseQueryResult<BacktestType[]> = useQuery<
     BacktestType[]
-  >(["experiments_list"], () =>
-    Backtests.getBacktests().then((res) => {
-      return res;
-    })
+  >(
+    ["experiments_list"],
+    () =>
+      Backtests.getBacktests().then((res) => {
+        return res;
+      }),
+    {
+      // Refetch the data every second
+      refetchInterval: 10000,
+    }
   );
 
   const navigateCreatePlan = () => {
@@ -57,7 +63,7 @@ const ViewExperiments: FC = () => {
         ) : (
           <div>
             <h2 className=" px-7 py-6">Backtests</h2>
-            <BacktestTable backtests={backtest_data} />
+            <BacktestTable backtests={data} />
           </div>
         )}
       </div>

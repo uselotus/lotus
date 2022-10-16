@@ -1,5 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { useQuery, useMutation } from "react-query";
+import { useQuery, useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { PlanType } from "../types/plan-type";
 import { Plan } from "../api/api";
@@ -20,6 +20,8 @@ const CreateBacktest: FC = () => {
   const navigateUpdatePlan = () => {
     navigate("/plans/update");
   };
+  const queryClient = useQueryClient();
+
   const [form] = Form.useForm();
   const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
   const { currentPlan, replacementPlan } = usePlanState();
@@ -43,6 +45,7 @@ const CreateBacktest: FC = () => {
     {
       onSuccess: () => {
         toast.success("Started Backtest");
+        queryClient.invalidateQueries(["experiments_list"]);
         navigate("/experiments");
       },
 

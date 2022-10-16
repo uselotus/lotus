@@ -19,8 +19,9 @@ import { Title as NewTitle } from "../components/base/Typograpy/index.";
 
 import { useQuery, UseQueryResult } from "react-query";
 import { Backtests } from "../api/api";
-import { BacktestResultType } from "../types/experiment-type";
+import { BacktestResultType, SpecificResults } from "../types/experiment-type";
 import { PageLayout } from "../components/base/PageLayout";
+import BacktestSubstitution from "../components/Experiments/BacktestSubsitution";
 
 const arrowURL = new URL("../components/arrow.svg", import.meta.url).href;
 
@@ -34,48 +35,13 @@ const fakeData = [
   { date: "2019-07", original_plan_revenue: 470, new_plan_revenue: 600 },
 ];
 
-const fakeData2 = [
-  {
-    type: "Plan-1",
-    value: 27,
-  },
-  {
-    type: "Plan-2",
-    value: 25,
-  },
-  {
-    type: "Plan-3",
-    value: 18,
-  },
-];
-
-const fakecustomers = [
-  {
-    name: "Jim",
-    amount: "1,365",
-    share: "39%",
-  },
-  {
-    name: "John",
-    amount: "984",
-    share: "20.1%",
-  },
-  {
-    name: "Steve",
-    amount: "1,365",
-    share: "39%",
-  },
-  {
-    name: "Johneson",
-    amount: "789",
-    share: "10.1%",
-  },
-];
-
 const ExperimentResults: FC = () => {
   const navigate = useNavigate();
   const params = useParams();
   const { experimentId } = params as any;
+  const [selectedSubstitution, setSelectedSubstitution] = React.useState<
+    SpecificResults | undefined
+  >();
 
   const {
     data: experiment,
@@ -90,6 +56,15 @@ const ExperimentResults: FC = () => {
         }
       )
   );
+
+  const changeSubstitution = (value: string) => {
+    const selectedSubstitution =
+      experiment?.backtest_results.substitution_results.find(
+        (substitution) => substitution.substitution_name === value
+      );
+    setSelectedSubstitution(selectedSubstitution);
+  };
+
   const cumulative_config = {
     fakeData,
     xField: "date",
@@ -105,249 +80,58 @@ const ExperimentResults: FC = () => {
       },
     },
   };
-  const metric_config = {
-    appendPadding: 10,
-    fakeData,
-    angleField: "value",
-    colorField: "type",
-    radius: 1,
-    innerRadius: 0.6,
-    label: {
-      type: "inner",
-      offset: "-50%",
-      content: "{value}",
-      style: {
-        textAlign: "center",
-        fontSize: 14,
-      },
-    },
-    interactions: [
-      {
-        type: "element-selected",
-      },
-      {
-        type: "element-active",
-      },
-    ],
-    statistic: {
-      title: false,
-      content: {
-        style: {
-          whiteSpace: "pre-wrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        },
-      },
-    },
-  };
 
   const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
-
-  const config = {
-    legend: {
-      position: "bottom" as any,
-    },
-    appendPadding: 20,
-    data: fakeData2,
-    angleField: "value",
-    colorField: "type",
-    radius: 1,
-    innerRadius: 0.8,
-    label: {
-      type: "inner",
-      offset: "-50%",
-      content: "{value}%",
-      style: {
-        textAlign: "center",
-        fontSize: 12,
-      },
-    },
-    interactions: [
-      {
-        type: "element-selected",
-      },
-      {
-        type: "element-active",
-      },
-    ],
-    statistic: {
-      title: false,
-
-      content: {
-        content: "",
-        style: {
-          whiteSpace: "pre-wrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        },
-      },
-    },
-  };
   return (
     <PageLayout title="Results">
-      <div>
-        {!isError ? (
-          <div>Something went wrong</div>
-        ) : (
+      {isError || experiment === undefined ? (
+        <div>Something went wrong</div>
+      ) : (
+        <div>
           <div className=" border-2 border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7">
             <div className="grid grid-cols-2 gap-5">
               <div className=" mb-3">
-                <NewTitle>Experiment dsfads</NewTitle>
+                <NewTitle>{experiment?.backtest_name}</NewTitle>
               </div>
-              <h3 className="font-bold">Date Run: 2002-23-23</h3>
+              <h3 className="font-bold">Date Run: {experiment.time_created}</h3>
 
               <div className=" col-span-1 self-center">
                 <h3 className=" font-bold">Date Range:</h3>
                 <h3>
-                  2002-23-23 to 2002-23-12
-                  {/* {experiment.start_time} to {experiment.end_time} */}
+                  {experiment.start_date} to {experiment.end_date}
                 </h3>
               </div>
               <div className="col-span-1">
-                <h3 className=" font-bold">
-                  Status: Completed{/* {experiment.status} */}
-                </h3>
+                <h3 className=" font-bold">Status: {experiment.status}</h3>
               </div>
               <div className="grid grid-cols-auto">
                 <h3 className=" font-bold">Total Revenue</h3>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-5">
-              <div className="justify-self-center w-2/5 mt-6">
-                <Card key={234}>
-                  <div className="justify-center">
-                    <Text>sdfds</Text>
-                    <Metric>234</Metric>
-                  </div>
-                </Card>
-              </div>
-              <div className="justify-self-center self-center	">
-                <img src={arrowURL} alt="arrow" className="mb-4" />
-              </div>
-              <div className=" justify-self-center w-2/5 mt-6">
-                <Card key={23}>
-                  <Text>dsf</Text>
-                  <Metric>234</Metric>
-                </Card>
-              </div>
-            </div>
           </div>
-        )}
-
-        {experiment !== undefined && (
           <div>
-            <div>
-              <h3> Substitutions</h3>
-              <Select defaultValue="lucy" style={{ width: 120 }}>
-                {experiment.backtest_results.substitution_results.map(
-                  (substitution) => (
-                    <Option
-                      key={substitution.substitution_name}
-                      value={substitution.substitution_name}
-                    >
-                      {substitution.substitution_name}
-                    </Option>
-                  )
-                )}
-              </Select>
-            </div>
+            <h3> Substitutions</h3>
+            <Select
+              defaultValue="Select a Substitution"
+              onChange={changeSubstitution}
+            >
+              {experiment.backtest_results.substitution_results.map(
+                (substitution) => (
+                  <Option
+                    key={substitution.substitution_name}
+                    value={substitution.substitution_name}
+                  >
+                    {substitution.substitution_name}
+                  </Option>
+                )
+              )}
+            </Select>
           </div>
-        )}
-        <div className="border-2 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7 ">
-          <h2>Revenue Over Time</h2>
-          <LineChart
-            data={fakeData}
-            categories={["original_plan_revenue", "new_plan_revenue"]}
-            dataKey=""
-            colors={["gray"]}
-            valueFormatter={dataFormatter}
-            startEndOnly={false}
-            showXAxis={true}
-            showYAxis={true}
-            yAxisWidth="w-14"
-            showTooltip={true}
-            showLegend={true}
-            showGridLines={true}
-            showAnimation={true}
-            height="h-80"
-            marginTop="mt-0"
-          />
+          {selectedSubstitution && (
+            <BacktestSubstitution substitution={selectedSubstitution} />
+          )}
         </div>
-        <div className="border-2 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7 ">
-          <h2>Revenue By Metric</h2>
-          <ColGrid numColsMd={2}>
-            <div>
-              <Title marginTop="mt-8">Old Plan</Title>
-              <Pie {...config} />
-            </div>
-            <div>
-              <Title marginTop="mt-8">New Plan</Title>
-              <Pie {...config} />
-            </div>
-          </ColGrid>
-        </div>
-
-        <div className="border-2 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7 ">
-          <h2>Top Customers</h2>
-
-          <ColGrid numColsMd={4} gapX="gap-x-8" gapY="gap-y-2">
-            <div>
-              <Title marginTop="mt-8">Revenue on Plan</Title>
-              <List marginTop="mt-2">
-                {fakecustomers.map((item) => (
-                  <ListItem key={item.name}>
-                    <Text>{item.name}</Text>
-                    <Text>
-                      <Bold>{item.amount}</Bold>{" "}
-                    </Text>
-                  </ListItem>
-                ))}
-              </List>
-            </div>
-            <div>
-              <Title marginTop="mt-8">Revenue on</Title>
-              <List marginTop="mt-2">
-                {fakecustomers.map((item) => (
-                  <ListItem key={item.name}>
-                    <Text>{item.name}</Text>
-                    <Text>
-                      <Bold>{item.amount}</Bold>{" "}
-                    </Text>
-                  </ListItem>
-                ))}
-              </List>
-            </div>
-            <div>
-              <Title marginTop="mt-8">Top Revenue Increases</Title>
-              <List marginTop="mt-2">
-                {fakecustomers.map((item) => (
-                  <ListItem key={item.name}>
-                    <Text>{item.name}</Text>
-                    <Text>
-                      <Bold>{item.amount}</Bold>{" "}
-                    </Text>
-                  </ListItem>
-                ))}
-              </List>
-            </div>
-            <div>
-              <Title marginTop="mt-8">Top Revenue Decreases</Title>
-              <List marginTop="mt-2">
-                {fakecustomers.map((item) => (
-                  <ListItem key={item.name}>
-                    <Text>{item.name}</Text>
-                    <Text>
-                      <Bold>{item.amount}</Bold>{" "}
-                    </Text>
-                  </ListItem>
-                ))}
-              </List>
-            </div>
-          </ColGrid>
-        </div>
-
-        {/* <Pie {...metric_config} /> */}
-      </div>
+      )}
     </PageLayout>
   );
 };
