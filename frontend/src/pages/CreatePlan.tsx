@@ -4,23 +4,16 @@ import {
   Form,
   Card,
   Input,
-  Select,
   InputNumber,
-  PageHeader,
-  List,
   Row,
   Col,
-  Divider,
   Radio,
-  Affix,
-  Space,
   Descriptions,
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
-import { useMutation, useQuery, UseQueryResult } from "react-query";
-import { MetricNameType } from "../types/metric-type";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 
 import { CreatePlanType, CreateComponent } from "../types/plan-type";
@@ -54,6 +47,7 @@ const CreatePlan = () => {
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] = useState<any>();
+  const queryClient = useQueryClient();
 
   const mutation = useMutation(
     (post: CreatePlanType) => Plan.createPlan(post),
@@ -63,6 +57,7 @@ const CreatePlan = () => {
           position: toast.POSITION.TOP_CENTER,
         });
         form.resetFields();
+        queryClient.invalidateQueries(["plan_list"]);
         navigate("/plans");
       },
       onError: () => {
