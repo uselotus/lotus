@@ -22,6 +22,7 @@ import { Backtests } from "../api/api";
 import { BacktestResultType, SpecificResults } from "../types/experiment-type";
 import { PageLayout } from "../components/base/PageLayout";
 import BacktestSubstitution from "../components/Experiments/BacktestSubsitution";
+import dayjs from "dayjs";
 
 const arrowURL = new URL("../components/arrow.svg", import.meta.url).href;
 
@@ -88,16 +89,18 @@ const ExperimentResults: FC = () => {
         <div>Something went wrong</div>
       ) : (
         <div>
-          <div className=" border-2 border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7">
+          <div className=" border-2 border-gray-200 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7">
             <div className="grid grid-cols-2 gap-5">
               <div className=" mb-3">
                 <NewTitle>{experiment?.backtest_name}</NewTitle>
               </div>
-              <h3 className="font-bold">Date Run: {experiment.time_created}</h3>
+              <h3 className="font-bold">
+                Date Run: {dayjs(experiment.time_created).format("YYYY-MM-DD")}
+              </h3>
 
               <div className=" col-span-1 self-center">
                 <h3 className=" font-bold">Date Range:</h3>
-                <h3>
+                <h3 className="font-bold">
                   {experiment.start_date} to {experiment.end_date}
                 </h3>
               </div>
@@ -110,7 +113,7 @@ const ExperimentResults: FC = () => {
             </div>
           </div>
           <div>
-            <h3> Substitutions</h3>
+            <h2> Substitutions</h2>
             <Select
               defaultValue="Select a Substitution"
               onChange={changeSubstitution}

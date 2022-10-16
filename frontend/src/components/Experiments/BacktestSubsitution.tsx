@@ -104,7 +104,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   return (
     <div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="justify-self-center w-2/5 mt-6">
+        <div className="justify-self-end w-2/5 mt-6">
           <Card key={234}>
             <div className="justify-center">
               <Text>{substitution.original_plan.plan_name}</Text>
@@ -118,20 +118,24 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         <div className="justify-self-center self-center	">
           <img src={arrowURL} alt="arrow" className="mb-4" />
         </div>
-        <div className=" justify-self-center w-2/5 mt-6">
-          <Card key={23} maxWidth="max-w-sm">
-            <Flex justifyContent="justify-between" alignItems="items-center">
+        <div className="justify-self-start mt-6">
+          <Card key={232342}>
+            <Flex
+              justifyContent="justify-between"
+              alignItems="items-start"
+              spaceX="space-x-6"
+            >
               <Text>{substitution.new_plan.plan_name}</Text>
               <BadgeDelta
-                deltaType="moderateIncrease"
-                text={substitution.pct_revenue_change.toFixed(2)}
+                text={substitution.pct_revenue_change.toFixed(2) + "%"}
+                deltaType="moderateDecrease"
               />
-            </Flex>{" "}
+            </Flex>
             <Metric>{dataFormatter(substitution.new_plan.plan_revenue)}</Metric>
           </Card>
         </div>
       </div>
-      <div className="border-2 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7 ">
         <h2>Revenue Over Time</h2>
         <LineChart
           data={revenueLineGraph}
@@ -151,7 +155,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
           marginTop="mt-0"
         />
       </div>
-      <div className="border-2 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7 ">
         <h2>Revenue By Metric</h2>
         <ColGrid numColsMd={2}>
           <div>
@@ -165,7 +169,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         </ColGrid>
       </div>
 
-      <div className="border-2 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7 ">
         <h2>Top Customers</h2>
 
         <ColGrid numColsMd={4} gapX="gap-x-8" gapY="gap-y-2">
@@ -207,7 +211,8 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
                   <ListItem key={item.customer_id}>
                     <Text>{item.customer_name}</Text>
                     <Text>
-                      <Bold>{item.value.toFixed(2)}</Bold>{" "}
+                      <Bold>{item.value.toFixed(2)}</Bold>
+                      {"% "}
                     </Text>
                   </ListItem>
                 )
@@ -222,7 +227,8 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
                   <ListItem key={item.customer_id}>
                     <Text>{item.customer_name}</Text>
                     <Text>
-                      <Bold>{item.value.toFixed(2)}</Bold>{" "}
+                      <Bold>{item.value.toFixed(2)}</Bold>
+                      {"% "}
                     </Text>
                   </ListItem>
                 )
