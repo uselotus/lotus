@@ -71,7 +71,7 @@ Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?type
 
 Best if you want to keep your data local or want full control and extensibility.
 
-#### :computer: Set up locally
+#### :computer: Local Hobby Instance
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 2. Clone the repo and navigate to the project
    ```sh
@@ -98,39 +98,14 @@ _For more examples, please refer to the [Documentation](https://uselotus.stoplig
 
 <!-- CONTRIBUTING -->
 ## Contributing
-
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply [request a feature]().
+If you have a suggestion that would make this better, please [fork the repo](https://github.com/uselotus/lotus) and [create a pull request](https://makeapullrequest.com/). You can also simply [request a feature](https://github.com/uselotus/lotus/issues/new?assignees=&labels=&template=feature_request.md&title=).
+
 Don't forget to give the project a star! Thanks again!
 
 ### :construction_worker: Local Development
-In order to develop locally, we recommend using Docker to set up the environment, which allows for hot reloading of both frontend and backend code.
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-2. Clone the repo (our version, or your fork of it) and navigate to the project.
-   ```sh
-   git clone https://github.com/uselotus/lotus.git && cd lotus
-   ```
-3. Change the environemnt variables located in `env/.env.dev.example` to suit your needs. If you need help you can check out [this guide in our docs](https://uselotus.stoplight.io/docs/lotus-docs/branches/main/ylqsg3i42dd5z-docker-self-host-env).
-4. Rename `env/.env.dev.example` to `env/.env.dev`. Make sure you don't commit your secret environment variables anywhere!
-5. Build and run the Docker Image!
-   ```sh
-   docker-compose -f docker-compose.dev.yaml up --build
-   ```
-
-You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined. The homepage takes a minute or two to load, so be patient!
-
-If you make any changes to the backend settings, you might need to restart the Docker container.
-
-#### :mag: Before Committing
-1. Run tests
-   ```sh
-   chmod +x ./scripts/run-tests-docker.sh  && ./scripts/run-tests-docker.sh
-   ```
-2. Check the python code style
-   ```sh
-   chmod +x ./scripts/run-codestyle-docker.sh  && ./scripts/run-codestyle-docker.sh
-   ```
+To set up Lotus for development locally, please refer to our guide [here](https://docs.uselotus.io/docs/contributing). Whether you want to contribute something for the whole community to use, or you want to personalize Lotus for your own needs, our developer-friendly codebase makes it easy to get started.
 
 <!-- ABOUT THE PROJECT -->
 ## About The Project

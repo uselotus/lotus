@@ -68,10 +68,11 @@ class LoginView(LoginViewMixin, APIView):
             POSTHOG_PERSON if POSTHOG_PERSON else user.organization.company_name,
             event="succesful login",
         )
+        token = AuthToken.objects.create(user)
         return Response(
             {
                 "detail": "Successfully logged in.",
-                "token": AuthToken.objects.create(user)[1],
+                "token": token[1],
             }
         )
 
@@ -134,16 +135,10 @@ class ResetPasswordView(APIView):
 
 
 class SessionView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request, *args, **kwargs):
         return JsonResponse({"isAuthenticated": True})
-
-
-# @ensure_csrf_cookie
-# def whoami_view(request):
-#     if not request.user.is_authenticated:
-#         return JsonResponse({"isAuthenticated": False})
-
-#     return JsonResponse({"username": request.user.username})
 
 
 @extend_schema(

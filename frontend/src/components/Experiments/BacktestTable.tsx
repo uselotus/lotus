@@ -4,6 +4,7 @@ import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
 import { Tag } from "antd";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const columns: ProColumns<BacktestType>[] = [
   {
@@ -59,12 +60,16 @@ const BacktestTable: FC<Props> = ({ backtests }) => {
         columns={columns}
         dataSource={backtests}
         options={false}
-        toolBarRender={null}
+        toolBarRender={false}
         search={false}
         onRow={(record, rowIndex) => {
           return {
             onClick: (event) => {
-              navigateToExperiment(record);
+              if (record.status === "completed") {
+                navigateToExperiment(record);
+              } else {
+                toast("Experiment is still running");
+              }
             }, // click row
           };
         }}
