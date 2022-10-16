@@ -158,7 +158,14 @@ class SessionView(APIView):
 )
 class RegisterView(LoginViewMixin, APIView):
     def post(self, request, format=None):
-        serializer = RegistrationSerializer(data=request.data)
+        register_data = request.data.get("register")
+        invite_token = register_data.get("invite_token", None)
+        if invite_token is not None and invite_token != "null":
+            serializer = RegistrationWithInviteSerializer(data=request.data)
+
+        else:
+            serializer = RegistrationSerializer(data=request.data)
+
         serializer.is_valid(raise_exception=True)
         reg_dict = serializer.validated_data["register"]
         existing_org_num = Organization.objects.filter(
