@@ -84,13 +84,17 @@ const CreateBacktest: FC = () => {
   };
 
   const addCurrentPlanSlot = (plan_id: string) => {
-    const current = plans.find((plan) => plan.billing_plan_id === plan_id);
+    const current = plans?.find((plan) => plan.billing_plan_id === plan_id);
     setCurrentPlan(current);
   };
 
   const addReplacementPlanSlot = (plan_id: string) => {
-    const replacement = plans.find((plan) => plan.billing_plan_id === plan_id);
-    setReplacementPlan(replacement);
+    if (plans) {
+      const replacement = plans.find(
+        (plan) => plan.billing_plan_id === plan_id
+      );
+      setReplacementPlan(replacement);
+    }
   };
 
   const generateRandomExperimentName = () => {
@@ -220,7 +224,7 @@ const CreateBacktest: FC = () => {
 
               <div className="col-span-1">
                 <Button onClick={openplanNewModal}>
-                  Choose Plans To Replace
+                  Create Experiment Plan
                 </Button>
                 <div className="mt-4">
                   {replacementPlan && (

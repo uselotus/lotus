@@ -792,6 +792,14 @@
   resolved "https://registry.yarnpkg.com/@cush/relative/-/relative-1.0.0.tgz#8cd1769bf9bde3bb27dac356b1bc94af40f6cc16"
   integrity sha512-RpfLEtTlyIxeNPGKcokS+p3BZII/Q3bYxryFRglh5H3A3T8q9fsLYm72VYAMEOOIBLEa8o93kFLiBDUWKrwXZA==
 
+"@elsdoerfer/react-arrow@^1.0.4":
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@elsdoerfer/react-arrow/-/react-arrow-1.0.4.tgz#5355505617605ae443ab1cc2a58b708bb0fab544"
+  integrity sha512-AU3UITrHqh//nVKvIEHWtgAEVjtGKmnU/2kXMYCz2e/MPiyJUICiUIXTe8lE67pcD02HPxIN73GC/4ryvLBAKg==
+  dependencies:
+    babel-runtime "^6.25.0"
+    prop-types "^15.7.2"
+
 "@emotion/cache@^10.0.27":
   version "10.0.29"
   resolved "https://registry.yarnpkg.com/@emotion/cache/-/cache-10.0.29.tgz#87e7e64f412c060102d589fe7c6dc042e6f9d1e0"
@@ -1200,10 +1208,10 @@
   dependencies:
     tippy.js "^6.3.1"
 
-"@tremor/react@^1.0.6":
-  version "1.0.6"
-  resolved "https://registry.yarnpkg.com/@tremor/react/-/react-1.0.6.tgz#efbb13ed1c9d66c0c077eec81d889ee18c756866"
-  integrity sha512-mt42n40nPF+1xPwGDBgPjmPBr/VCWXdtwfx5kOlW83lZSk47jqe1ycHgOUSBE6lG/of5RcA0amY7ndeaKiReyQ==
+"@tremor/react@^1.0.7":
+  version "1.0.7"
+  resolved "https://registry.yarnpkg.com/@tremor/react/-/react-1.0.7.tgz#6e98cca07dd15cdba8a5de08e43deea814bbe9b3"
+  integrity sha512-rf3PozRjyxoTWDV72gKGcs1TrIMIsBb7lE7TIwo7VSK6W38mzRbjlVgrk2Of/r+qbSDpDRKooIqk3zMpoGx3Yw==
   dependencies:
     "@tippyjs/react" "^4.2.6"
     date-fns "^2.28.0"
@@ -1590,6 +1598,14 @@ babel-plugin-syntax-jsx@^6.18.0:
   resolved "https://registry.yarnpkg.com/babel-plugin-syntax-jsx/-/babel-plugin-syntax-jsx-6.18.0.tgz#0af32a9a6e13ca7a3fd5069e62d7b0f58d0d8946"
   integrity sha512-qrPaCSo9c8RHNRHIotaufGbuOBN8rtdC4QrrFFc43vyWCCz7Kl7GL1PGaXtMGQZUXrkCjNEgxDfmAuAabr/rlw==
 
+babel-runtime@^6.25.0:
+  version "6.26.0"
+  resolved "https://registry.yarnpkg.com/babel-runtime/-/babel-runtime-6.26.0.tgz#965c7058668e82b55d7bfe04ff2337bc8b5647fe"
+  integrity sha512-ITKNuq2wKlW1fJg9sSW52eepoYgZBggvOAHC0u/CYu/qxQ9EVzThCgR69BnSXLHjy2f7SY5zaQ4yt7H9ZVxY2g==
+  dependencies:
+    core-js "^2.4.0"
+    regenerator-runtime "^0.11.0"
+
 balanced-match@^1.0.0:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/balanced-match/-/balanced-match-1.0.2.tgz#e83e3a7e3f300b34cb9d87f615fa0cbf357690ee"
@@ -1813,6 +1829,11 @@ copy-to-clipboard@^3.2.0, copy-to-clipboard@^3.3.1:
   integrity sha512-Vme1Z6RUDzrb6xAI7EZlVZ5uvOk2F//GaxKUxajDqm9LhOVM1inxNAD2vy+UZDYsd0uyA9s7b3/FVZPSxqrCfg==
   dependencies:
     toggle-selection "^1.0.6"
+
+core-js@^2.4.0:
+  version "2.6.12"
+  resolved "https://registry.yarnpkg.com/core-js/-/core-js-2.6.12.tgz#d9333dfa7b065e347cc5682219d6f690859cc2ec"
+  integrity sha512-Kb2wC0fvsWfQrgk8HU5lW6U/Lcs8+9aaYcy4ZFc6DDlo4nZ7n70dEgE5rtR0oG6ufKDUnrwfWL1mXR5ljDatrQ==
 
 cosmiconfig@^6.0.0:
   version "6.0.0"
@@ -3185,7 +3206,7 @@ postcss@8.4.16, postcss@^8.4.14, postcss@^8.4.16:
     picocolors "^1.0.0"
     source-map-js "^1.0.2"
 
-prop-types@^15.5.10, prop-types@^15.5.7, prop-types@^15.6.2, prop-types@^15.8.1:
+prop-types@^15.5.10, prop-types@^15.5.7, prop-types@^15.6.2, prop-types@^15.7.2, prop-types@^15.8.1:
   version "15.8.1"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.8.1.tgz#67d87bf1a694f48435cf332c24af10214a3140b5"
   integrity sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==
@@ -3830,6 +3851,11 @@ reduce-css-calc@^2.1.8:
   dependencies:
     css-unit-converter "^1.1.1"
     postcss-value-parser "^3.3.0"
+
+regenerator-runtime@^0.11.0:
+  version "0.11.1"
+  resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.11.1.tgz#be05ad7f9bf7d22e056f9726cee5017fbf19e2e9"
+  integrity sha512-MguG95oij0fC3QV3URf4V2SDYGJhJnJGqvIIgdECeODCT98wSWDAJ94SSuVpYQUoTcGUIL6L4yNB7j1DFFHSBg==
 
 regenerator-runtime@^0.13.4:
   version "0.13.9"

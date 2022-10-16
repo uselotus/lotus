@@ -11,7 +11,6 @@ import { RevenueType } from "../../types/revenue-type";
 import { GetRevenue } from "../../api/api";
 import RevenueBarGraph from "./RevenueBarGraph";
 
-import { Content } from "antd/lib/layout/layout";
 import { PageLayout } from "../base/PageLayout";
 import { CustomerByPlanPie } from "./CustomerByPlanPie";
 
