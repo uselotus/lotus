@@ -23,6 +23,7 @@ from metering_billing.utils import (
     SUB_STATUS_TYPES,
     dates_bwn_twodates,
 )
+
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 
@@ -40,6 +41,10 @@ class Organization(models.Model):
 
     def __str__(self):
         return self.company_name
+
+    @property
+    def users(self):
+        return self.org_users
 
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
@@ -442,6 +447,27 @@ class APIToken(AbstractAPIKey):
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
+
+
+def one_day_hence():
+    return datetime.utcnow() + datetime.timedelta(days=1)
+
+def uuid_token():
+    return str(uuid.uuid4())
+class OrganizationInviteToken(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="user_invite_token"
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="org_invite_token",
+    )
+
+    token = models.CharField(max_length=250, null=False, blank=False, default=uuid_token)
+    expire_at = models.DateTimeField(default=one_day_hence, null=False, blank=False)
+    is_valid = models.BooleanField(default=True)
 
 
 class Backtest(models.Model):

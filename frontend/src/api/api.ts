@@ -117,6 +117,12 @@ export const Authentication = {
     requests.post("api/user/password/reset/", { token, userId, password }),
 };
 
+export const Organization = {
+  invite: (email): Promise<{ email: string }> =>
+    requests.post("api/organization/invite", { email }),
+  get: (): Promise<any> => requests.get("api/organization"),
+};
+
 export const GetRevenue = {
   getMonthlyRevenue: (
     period_1_start_date: string,

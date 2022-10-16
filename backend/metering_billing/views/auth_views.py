@@ -134,6 +134,8 @@ class ResetPasswordView(APIView):
 
 
 class SessionView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request, *args, **kwargs):
         return JsonResponse({"isAuthenticated": True})
 
