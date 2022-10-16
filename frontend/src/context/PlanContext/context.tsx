@@ -22,7 +22,6 @@ interface ProviderProps {
 
 export default function PlanProvider({ children }: ProviderProps) {
   const [state, dispatch] = React.useReducer(planReducer, InitialState);
-  console.log("STTATE ", state);
   React.useEffect(() => {
     dispatch(init());
   }, []);
