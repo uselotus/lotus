@@ -66,25 +66,6 @@ class OrganizationService(object):
 
         return True
 
-    # def reset_password(self, user_id, raw_password, token):
-    #     """Given a valid token, update  user's password."""
-    #     user = self.get(user_id=user_id)
-    #     if not user:
-    #         return False
-
-    #     if not default_token_generator.check_token(user, token):
-    #         print(
-    #             {
-    #                 "message": "User submitted invalid reset password token",
-    #                 "userId": user.id,
-    #             }
-    #         )
-    #         return False
-
-    #     user.set_password(raw_password)
-    #     user.save()
-    #     return user
-
 
 User = get_user_model()
 organization_service = OrganizationService(User=User)
