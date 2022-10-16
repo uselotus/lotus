@@ -206,3 +206,7 @@ def periods_bwn_twodates(granularity, start_date, end_date):
         #     yield start_time + relativedelta(weeks=n)
         # elif granularity == REVENUE_CALC_GRANULARITY.MONTH:
         #     yield start_time + relativedelta(months=n)
+
+
+def now_plus_day():
+    return datetime.datetime.now(datetime.timezone.utc) + relativedelta(days=+1)

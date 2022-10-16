@@ -1,6 +1,6 @@
 import { Button, message, Steps } from "antd";
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import CreateOrganization from "../components/Registration/CreateOrganization";
 import { Organizaton } from "../components/Registration/CreateOrganization";
 import { Authentication } from "../api/api";
@@ -30,6 +30,8 @@ const Register: React.FC = () => {
   const [current, setCurrent] = useState(0);
   const [organization, setOrganization] = useState<Organizaton>(defaultOrg);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("token");
 
   const queryClient = useQueryClient();
   const next = () => {
@@ -66,6 +68,7 @@ const Register: React.FC = () => {
       email: user.email,
       password: user.password,
       username: user.username,
+      invite_token: inviteToken,
     };
 
     mutation.mutate(register_object);
@@ -74,19 +77,26 @@ const Register: React.FC = () => {
   return (
     <div className="grid h-screen place-items-center gap-3">
       <div className=" space-y-4 place-items-center">
-        <Steps current={current}>
-          {steps.map((item) => (
-            <Step key={item.title} title={item.title} />
-          ))}
-        </Steps>
-        <div className="steps-content">
-          {" "}
-          {current === 0 ? (
-            <CreateOrganization onSave={handleCreateOrganization} />
-          ) : (
-            <SignUp onSubmit={handleSignUp} />
-          )}
-        </div>
+        {inviteToken ? (
+          <SignUp onSubmit={handleSignUp} hasInvite />
+        ) : (
+          <>
+            <Steps current={current}>
+              {steps.map((item) => (
+                <Step key={item.title} title={item.title} />
+              ))}
+            </Steps>
+            <div className="steps-content">
+              {" "}
+              {current === 0 ? (
+                <CreateOrganization onSave={handleCreateOrganization} />
+              ) : (
+                <SignUp onSubmit={handleSignUp} />
+              )}
+            </div>
+          </>
+        )}
+
         <div className="steps-action">
           <Button
             type="primary"

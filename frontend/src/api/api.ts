@@ -27,7 +27,6 @@ import {
 const cookies = new Cookies();
 
 const API_HOST = import.meta.env.VITE_API_URL;
-console.log("API_HOST", API_HOST);
 
 axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
@@ -119,6 +118,12 @@ export const Authentication = {
     password: string
   ): Promise<{ detail: any; token: string }> =>
     requests.post("api/user/password/reset/", { token, userId, password }),
+};
+
+export const Organization = {
+  invite: (email): Promise<{ email: string }> =>
+    requests.post("api/organization/invite", { email }),
+  get: (): Promise<any> => requests.get("api/organization"),
 };
 
 export const GetRevenue = {

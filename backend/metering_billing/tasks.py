@@ -10,7 +10,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
-from metering_billing.utils import BACKTEST_STATUS_TYPES
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
@@ -25,6 +24,7 @@ from metering_billing.serializers.model_serializers import (
     AllSubstitutionResultsSerializer,
 )
 from metering_billing.utils import (
+    BACKTEST_STATUS_TYPES,
     INVOICE_STATUS_TYPES,
     SUB_STATUS_TYPES,
     make_all_dates_times_strings,
@@ -365,11 +365,16 @@ def run_backtest(backtest_id):
         ]
         all_pct_change = []
         for customer, rev_dict in top_cust.items():
-            pct_change = (
-                rev_dict["new_plan_revenue"] / rev_dict["original_plan_revenue"] - 1
-            )
+            try:
+                pct_change = (
+                    rev_dict["new_plan_revenue"] / rev_dict["original_plan_revenue"] - 1
+                )
+            except ZeroDivisionError:
+                pct_change = None
             all_pct_change.append((customer, pct_change))
-        all_pct_change = sorted(all_pct_change, key=lambda x: x[1])
+        all_pct_change = sorted(
+            [tup for tup in all_pct_change if tup[1] is not None], key=lambda x: x[1]
+        )
         top_cust_dict["biggest_pct_increase"] = [
             {
                 "customer_id": customer.customer_id,
@@ -389,17 +394,26 @@ def run_backtest(backtest_id):
         inner_results["top_customers"] = top_cust_dict
         # now add the inner results to the outer results
         outer_results["results"] = inner_results
-        outer_results["original_plan"]["plan_revenue"] = inner_results[
-            "cumulative_revenue"
-        ][-1]["original_plan_revenue"]
-        outer_results["new_plan"]["plan_revenue"] = inner_results["cumulative_revenue"][
-            -1
-        ]["new_plan_revenue"]
-        outer_results["pct_revenue_change"] = (
-            outer_results["new_plan"]["plan_revenue"]
-            / outer_results["original_plan"]["plan_revenue"]
-            - 1
-        )
+        try:
+            outer_results["original_plan"]["plan_revenue"] = inner_results[
+                "cumulative_revenue"
+            ][-1]["original_plan_revenue"]
+        except IndexError:
+            outer_results["original_plan"]["plan_revenue"] = Decimal(0)
+        try:
+            outer_results["new_plan"]["plan_revenue"] = inner_results[
+                "cumulative_revenue"
+            ][-1]["new_plan_revenue"]
+        except IndexError:
+            outer_results["new_plan"]["plan_revenue"] = Decimal(0)
+        try:
+            outer_results["pct_revenue_change"] = (
+                outer_results["new_plan"]["plan_revenue"]
+                / outer_results["original_plan"]["plan_revenue"]
+                - 1
+            )
+        except ZeroDivisionError:
+            outer_results["pct_revenue_change"] = None
         all_results["substitution_results"].append(outer_results)
     all_results["original_plans_revenue"] = sum(
         x["original_plan"]["plan_revenue"] for x in all_results["substitution_results"]
@@ -407,9 +421,12 @@ def run_backtest(backtest_id):
     all_results["new_plans_revenue"] = sum(
         x["new_plan"]["plan_revenue"] for x in all_results["substitution_results"]
     )
-    all_results["pct_revenue_change"] = (
-        all_results["new_plans_revenue"] / all_results["original_plans_revenue"] - 1
-    )
+    try:
+        all_results["pct_revenue_change"] = (
+            all_results["new_plans_revenue"] / all_results["original_plans_revenue"] - 1
+        )
+    except ZeroDivisionError:
+        all_results["pct_revenue_change"] = None
     all_results = make_all_decimals_floats(all_results)
     all_results = make_all_datetimes_dates(all_results)
     all_results = make_all_dates_times_strings(all_results)
