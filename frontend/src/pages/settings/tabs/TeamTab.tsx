@@ -52,8 +52,6 @@ const TeamTab: FC = () => {
     }
   );
 
-  const members = [];
-
   console.log("organization", organization);
 
   const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
@@ -65,7 +63,7 @@ const TeamTab: FC = () => {
       <Typography.Title level={2}>Team Members</Typography.Title>
 
       <Row gutter={[0, 24]}>
-        {members?.map((member, key) => (
+        { organization?.team_members?.map((member, key) => (
           <Col span={24} key={key}>
             {member}
           </Col>

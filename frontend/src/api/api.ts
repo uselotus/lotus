@@ -23,7 +23,6 @@ import { CreateBacktestType, BacktestType } from "../types/experiment-type";
 const cookies = new Cookies();
 
 const API_HOST = import.meta.env.VITE_API_URL;
-console.log("API_HOST", API_HOST);
 
 axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"

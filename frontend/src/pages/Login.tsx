@@ -48,10 +48,10 @@ const Login: FC = () => {
     {
       onSuccess: (response) => {
         setIsAuthenticated(true);
-        queryClient.refetchQueries("session");
         const { token, detail } = response;
         cookies.set("Token", token);
         instance.defaults.headers.common["Authorization"] = `Token ${token}`;
+        queryClient.refetchQueries("session");
         console.log("token", token);
         redirectDashboard();
       },
