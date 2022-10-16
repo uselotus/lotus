@@ -292,11 +292,10 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         queryset=BillableMetric.objects.all(),
     )
 
-    #both
+    # both
     free_metric_units = serializers.FloatField(allow_null=True, default=0)
     cost_per_batch = serializers.FloatField(allow_null=True, default=0)
     metric_units_per_batch = serializers.FloatField(allow_null=True, default=1)
-
 
     def get_fields(self, *args, **kwargs):
         fields = super().get_fields(*args, **kwargs)

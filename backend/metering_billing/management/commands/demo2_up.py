@@ -6,6 +6,7 @@ import time
 import uuid
 from datetime import timezone
 
+import numpy as np
 from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
@@ -27,10 +28,12 @@ class Command(BaseCommand):
     "Django command to pause execution until the database is available"
 
     def handle(self, *args, **options):
+        try:
+            Organization.objects.get(company_name="c.ai").delete()
+        except:
+            print("organization doesn't exist")
         fake = Faker()
-        user, created = User.objects.get_or_create(
-            username="cai", email="cai@cai.com"
-        )
+        user, created = User.objects.get_or_create(username="cai", email="cai@cai.com")
         if created:
             user.set_password("password")
             user.save()
@@ -43,9 +46,9 @@ class Command(BaseCommand):
             Customer,
             _quantity=9,
             organization=organization,
-            name=[
+            name=itertools.cycle([
                 "Big Company 1",
-                "Bug Company 2",
+                "Big Company 2",
                 "Big Company 3",
                 "Medium Company 1",
                 "Medium Company 2",
@@ -53,7 +56,7 @@ class Command(BaseCommand):
                 "Small Company 1",
                 "Small Company 2",
                 "Small Company 3",
-            ],
+            ]),
             customer_id=(fake.unique.ean() for _ in range(9)),
         )
         calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
@@ -61,11 +64,13 @@ class Command(BaseCommand):
             organization=organization,
             event_name="generate_text",
             property_name=itertools.cycle(
-                ["", "words", "compute_time", "language", "subsections"]
+                ["", "words", "compute_time", "language", "subsection"]
             ),
-            aggregation_type=itertools.cycle(["count", "sum", "sum", "unique", "unique"]),
+            aggregation_type=itertools.cycle(
+                ["count", "sum", "sum", "unique", "unique"]
+            ),
             metric_type="aggregation",
-            _quantity=4,
+            _quantity=5,
         )
         (num_seats,) = baker.make(
             BillableMetric,
@@ -80,14 +85,21 @@ class Command(BaseCommand):
             metric_type="stateful",
             _quantity=1,
         )
-        for bm in [calls, sum_words, sum_compute, unique_lang, unique_subsections, num_seats]:
+        for bm in [
+            calls,
+            sum_words,
+            sum_compute,
+            unique_lang,
+            unique_subsections,
+            num_seats,
+        ]:
             serializer = BillableMetricSerializer(bm)
             dict_repr = serializer.data
             dict_repr.pop("billable_metric_name")
             new_name = serializer.custom_name(dict_repr)
             bm.billable_metric_name = new_name
             bm.save()
-        #SET THE BILLING PLANS
+        # SET THE BILLING PLANS
         free_bp = BillingPlan.objects.create(
             organization=organization,
             interval="month",
@@ -98,10 +110,13 @@ class Command(BaseCommand):
             billing_plan_id="free",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words,
-            max_metric_units=2_000
+            billable_metric=sum_words, max_metric_units=2_000
         )
-        free_bp.components.add(pc1)
+        pc2 = PlanComponent.objects.create(
+            billable_metric=num_seats,
+            max_metric_units=1,
+        )
+        free_bp.components.add(pc1, pc2)
         free_bp.save()
         bp_40_og = BillingPlan.objects.create(
             organization=organization,
@@ -113,10 +128,13 @@ class Command(BaseCommand):
             billing_plan_id="40_og",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words,
-            max_metric_units=40_000
+            billable_metric=sum_words, max_metric_units=40_000
         )
-        bp_40_og.components.add(pc1)
+        pc2 = PlanComponent.objects.create(
+            billable_metric=num_seats,
+            max_metric_units=5,
+        )
+        bp_40_og.components.add(pc1, pc2)
         bp_40_og.save()
         bp_100_og = BillingPlan.objects.create(
             organization=organization,
@@ -128,10 +146,13 @@ class Command(BaseCommand):
             billing_plan_id="100_og",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words,
-            max_metric_units=100_000
+            billable_metric=sum_words, max_metric_units=100_000
         )
-        bp_100_og.components.add(pc1)
+        pc2 = PlanComponent.objects.create(
+            billable_metric=num_seats,
+            max_metric_units=5,
+        )
+        bp_100_og.components.add(pc1, pc2)
         bp_100_og.save()
         bp_300_og = BillingPlan.objects.create(
             organization=organization,
@@ -143,10 +164,13 @@ class Command(BaseCommand):
             billing_plan_id="300_og",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words,
-            max_metric_units=300_000
+            billable_metric=sum_words, max_metric_units=300_000
         )
-        bp_300_og.components.add(pc1)
+        pc2 = PlanComponent.objects.create(
+            billable_metric=num_seats,
+            max_metric_units=5,
+        )
+        bp_300_og.components.add(pc1, pc2)
         bp_300_og.save()
         bp_40_language_seats = BillingPlan.objects.create(
             organization=organization,
@@ -158,17 +182,12 @@ class Command(BaseCommand):
             billing_plan_id="40_language_seats",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words,
-            max_metric_units=40_000
+            billable_metric=sum_words, max_metric_units=40_000
         )
         pc2 = PlanComponent.objects.create(
-            billable_metric=unique_lang,
-            cost_per_batch=5
+            billable_metric=unique_lang, cost_per_batch=5
         )
-        pc3 = PlanComponent.objects.create(
-            billable_metric=num_seats,
-            cost_per_batch=10
-        )
+        pc3 = PlanComponent.objects.create(billable_metric=num_seats, cost_per_batch=10)
         bp_40_language_seats.components.add(pc1, pc2, pc3)
         bp_40_language_seats.save()
         bp_100_language_seats = BillingPlan.objects.create(
@@ -181,17 +200,13 @@ class Command(BaseCommand):
             billing_plan_id="100_language_seats",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words,
-            max_metric_units=100_000
+            billable_metric=sum_words, max_metric_units=100_000
         )
         pc2 = PlanComponent.objects.create(
-            billable_metric=unique_lang,
-            cost_per_batch=5
+            billable_metric=unique_lang, cost_per_batch=5
         )
-        pc3 = PlanComponent.objects.create(
-            billable_metric=num_seats,
-            cost_per_batch=10
-        )
+        pc3 = PlanComponent.objects.create(billable_metric=num_seats, cost_per_batch=12)
+        bp_100_language_seats.components.add(pc1, pc2, pc3)
         bp_300_language_seats = BillingPlan.objects.create(
             organization=organization,
             interval="month",
@@ -201,6 +216,17 @@ class Command(BaseCommand):
             pay_in_advance=True,
             billing_plan_id="300_language_seats",
         )
+        pc1 = PlanComponent.objects.create(
+            billable_metric=sum_words, max_metric_units=300_000
+        )
+        pc2 = PlanComponent.objects.create(
+            billable_metric=unique_lang, cost_per_batch=7
+        )
+        pc3 = PlanComponent.objects.create(
+            billable_metric=num_seats,
+            cost_per_batch=17,
+        )
+        bp_300_language_seats.components.add(pc1, pc2, pc3)
         bp_40_calls_subsections = BillingPlan.objects.create(
             organization=organization,
             interval="month",
@@ -210,6 +236,17 @@ class Command(BaseCommand):
             pay_in_advance=True,
             billing_plan_id="40_calls_subsections",
         )
+        pc1 = PlanComponent.objects.create(
+            billable_metric=sum_words, max_metric_units=40_000
+        )
+        pc2 = PlanComponent.objects.create(billable_metric=calls, cost_per_batch=0.30)
+        pc3 = PlanComponent.objects.create(
+            billable_metric=unique_subsections,
+            free_metric_units=5,
+            cost_per_batch=2,
+        )
+        bp_40_calls_subsections.components.add(pc1, pc2, pc3)
+        bp_40_calls_subsections.save()
         bp_100_calls_subsections = BillingPlan.objects.create(
             organization=organization,
             interval="month",
@@ -219,6 +256,17 @@ class Command(BaseCommand):
             pay_in_advance=True,
             billing_plan_id="100_calls_subsections",
         )
+        pc1 = PlanComponent.objects.create(
+            billable_metric=sum_words, max_metric_units=100_000
+        )
+        pc2 = PlanComponent.objects.create(billable_metric=calls, cost_per_batch=0.25)
+        pc3 = PlanComponent.objects.create(
+            billable_metric=unique_subsections,
+            free_metric_units=6,
+            cost_per_batch=3,
+        )
+        bp_100_calls_subsections.components.add(pc1, pc2, pc3)
+        bp_100_calls_subsections.save()
         bp_300_calls_subsections = BillingPlan.objects.create(
             organization=organization,
             interval="month",
@@ -228,76 +276,97 @@ class Command(BaseCommand):
             pay_in_advance=True,
             billing_plan_id="300_calls_subsections",
         )
-
-
-
-
-
-
-        bp.components.add(pc1, pc2, pc3, pc4, pc5)
-        bp.save()
-        old_sub_start_date = (
-            datetime.date.today() - relativedelta(months=1) - relativedelta(days=15)
+        pc1 = PlanComponent.objects.create(
+            billable_metric=sum_words, max_metric_units=300_000
         )
-        old_sub_end_date = old_sub_start_date + relativedelta(months=1)
-        new_sub_start_date = old_sub_end_date + relativedelta(days=1)
-        new_sub_end_date = new_sub_start_date + relativedelta(months=1)
-        old_sub_start_time = datetime.datetime.combine(
-            old_sub_start_date, datetime.time.min, tzinfo=timezone.utc
+        pc2 = PlanComponent.objects.create(billable_metric=calls, cost_per_batch=0.20)
+        pc3 = PlanComponent.objects.create(
+            billable_metric=unique_subsections,
+            free_metric_units=7,
+            cost_per_batch=4,
         )
-        old_sub_end_time = datetime.datetime.combine(
-            old_sub_end_date, datetime.time.max, tzinfo=timezone.utc
+        bp_300_calls_subsections.components.add(pc1, pc2, pc3)
+        six_months_ago = (
+            datetime.date.today() - relativedelta(months=6) - relativedelta(days=2)
         )
-        new_sub_start_time = datetime.datetime.combine(
-            new_sub_start_date, datetime.time.min, tzinfo=timezone.utc
-        )
-        new_sub_end_time = datetime.datetime.combine(
-            new_sub_end_date, datetime.time.max, tzinfo=timezone.utc
-        )
-        for customer in customer_set:
-            Subscription.objects.create(
-                organization=organization,
-                customer=customer,
-                billing_plan=bp,
-                start_date=old_sub_start_date,
-                end_date=old_sub_end_date,
-                status="ended",
-                is_new=True,
-            )
-            Subscription.objects.create(
-                organization=organization,
-                customer=customer,
-                billing_plan=bp,
-                start_date=new_sub_start_date,
-                end_date=new_sub_end_date,
-                status="active",
-                is_new=False,
-            )
-
-        for customer in customer_set:
-            for start, end in [
-                (old_sub_start_time, old_sub_end_time),
-                (new_sub_start_time, new_sub_end_time),
+        five_months_ago = six_months_ago + relativedelta(months=1)
+        four_months_ago = five_months_ago + relativedelta(months=1)
+        three_months_ago = four_months_ago + relativedelta(months=1)
+        two_months_ago = three_months_ago + relativedelta(months=1)
+        one_month_ago = two_months_ago + relativedelta(months=1)
+        for i, customer in enumerate(customer_set):
+            for time in [
+                six_months_ago,
+                five_months_ago,
+                four_months_ago,
+                three_months_ago,
+                two_months_ago,
+                one_month_ago,
             ]:
-                n = int(random.gauss(5_000, 500) // 1)
-                baker.make(
-                    Event,
+                if i < 3:
+                    plan = (
+                        bp_40_og
+                        if time == six_months_ago
+                        else (bp_100_og if time == five_months_ago else bp_300_og)
+                    )
+                    languages = ["en", "es", "fr", "de", "it", "pt", "ru", ]
+                    users_mean, users_sd = 4.5, 0.5
+                elif i < 6:
+                    plan = bp_40_og if time == six_months_ago else bp_100_og
+                    languages = ["en", "es", "fr", "de", "it",  ]
+                    users_mean, users_sd = 3, 1
+                else:
+                    plan = (
+                        free_bp
+                        if time in [six_months_ago, five_months_ago]
+                        else bp_40_og
+                    )
+                    languages = ["en",]
+                    users_mean, users_sd = 2, .75
+                scale = 1.4 if plan == bp_40_og else (1.12 if plan == bp_100_og else 0.95)
+                sub = Subscription.objects.create(
                     organization=organization,
                     customer=customer,
-                    event_name="raise_issue",
-                    properties=gaussian_raise_issue(n),
-                    time_created=random_date(start, end, n),
-                    idempotency_id=uuid.uuid4,
-                    _quantity=n,
+                    billing_plan=plan,
+                    start_date=time,
+                    status="active",
+                    is_new=time == six_months_ago,
                 )
+                word_limit = plan.components.get(billable_metric=sum_words).max_metric_units
+                word_count = 0
+                while word_count < word_limit:
+                    event_words = random.gauss(350, 30)
+                    if word_count + event_words > word_limit:
+                        break
+                    compute_time = event_words*random.gauss(0.1, 0.02)
+                    language = random.choice(languages)
+                    subsection = 1 if plan == free_bp else np.random.exponential(scale=scale)
+                    subsection = str(subsection//1)
+                    for tc in random_date(sub.start_date, sub.end_date, 1):
+                        tc = tc
+                    Event.objects.create(
+                        organization=organization,
+                        customer=customer,
+                        event_name="generate_text",
+                        time_created=tc,
+                        idempotency_id=uuid.uuid4(),
+                        properties={
+                            "language": language,
+                            "subsection": subsection,
+                            "compute_time": compute_time,
+                            "words": event_words,
+                        },
+                    )
+                    word_count += event_words
+                max_users = float(plan.components.get(billable_metric=num_seats).max_metric_units)
                 n = int(random.gauss(6, 1.5) // 1)
                 baker.make(
                     Event,
                     organization=organization,
                     customer=customer,
-                    event_name="log_num_users",
-                    properties=gaussian_users(n),
-                    time_created=random_date(start, end, n),
+                    event_name="log_num_seats",
+                    properties=gaussian_users(n, users_mean, users_sd, max_users),
+                    time_created=random_date(sub.start_date, sub.end_date, n),
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
                 )
@@ -325,9 +394,12 @@ def gaussian_raise_issue(n):
         }
 
 
-def gaussian_users(n):
+def gaussian_users(n, mean=3, sd=1, mx=None):
     "Generate `n` latencies with a gaussian distribution"
     for _ in range(n):
+        qty = round(random.gauss(mean, sd), 0)
+        if max is not None:
+            qty = min(qty, mx)
         yield {
-            "qty": round(random.gauss(3, 1), 0),
+            "qty": max(qty, 1),
         }

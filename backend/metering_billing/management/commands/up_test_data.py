@@ -27,6 +27,10 @@ class Command(BaseCommand):
     "Django command to pause execution until the database is available"
 
     def handle(self, *args, **options):
+        try:
+            Organization.objects.get(company_name="test").delete()
+        except:
+            print("failed to delete test organization")
         fake = Faker()
         user, created = User.objects.get_or_create(username="test", email="test")
         if created:
