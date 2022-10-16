@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import React, { FC, useEffect } from "react";
 import { BacktestType, SpecificResults } from "../../types/experiment-type";
 import { Select, Typography } from "antd";
 import {
@@ -26,6 +26,11 @@ interface Props {
 
 const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
+  const [revenueLineGraph, setRevenueLineGraph] = React.useState<any>([]);
+  const categories = [
+    substitution.original_plan.plan_name,
+    "[new]" + substitution.new_plan.plan_name,
+  ];
 
   const pieConfigNew = {
     legend: {
@@ -110,6 +115,22 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
     },
   };
 
+  useEffect(() => {
+    if (substitution.results.cumulative_revenue !== undefined) {
+      const newRevLineGraph = substitution.results.cumulative_revenue;
+      for (let i = 0; i < newRevLineGraph.length; i++) {
+        newRevLineGraph[i][categories[0]] =
+          newRevLineGraph[i]["original_plan_revenue"];
+        console.log(newRevLineGraph);
+        newRevLineGraph[i][categories[1]] =
+          newRevLineGraph[i]["new_plan_revenue"];
+      }
+
+      console.log(newRevLineGraph);
+      setRevenueLineGraph(newRevLineGraph);
+    }
+  }, [substitution.results.cumulative_revenue]);
+
   return (
     <div>
       <div className="grid grid-cols-3 gap-5">
@@ -136,15 +157,15 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
       <div className="border-2 bg-[#F7F8FD] px-4 py-5 sm:px-6 my-7 ">
         <h2>Revenue Over Time</h2>
         <LineChart
-          data={substitution.results.cumulative_revenue}
-          categories={["original_plan_revenue", "new_plan_revenue"]}
-          dataKey=""
-          colors={["gray"]}
+          data={revenueLineGraph}
+          categories={categories}
+          dataKey="date"
+          colors={["gray", "amber"]}
           valueFormatter={dataFormatter}
           startEndOnly={false}
           showXAxis={true}
           showYAxis={true}
-          yAxisWidth="w-14"
+          yAxisWidth="w-20"
           showTooltip={true}
           showLegend={true}
           showGridLines={true}
