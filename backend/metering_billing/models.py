@@ -22,13 +22,14 @@ from metering_billing.utils import (
     PLAN_STATUS,
     SUB_STATUS_TYPES,
     dates_bwn_twodates,
+    now_plus_day,
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 
 
 class Organization(models.Model):
-    company_name = models.CharField(max_length=100, default=" ")
+    company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(auto_now=True)
     payment_plan = models.CharField(
@@ -40,6 +41,10 @@ class Organization(models.Model):
 
     def __str__(self):
         return self.company_name
+
+    @property
+    def users(self):
+        return self.org_users
 
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
@@ -442,6 +447,20 @@ class APIToken(AbstractAPIKey):
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
+
+
+class OrganizationInviteToken(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="user_invite_token"
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="org_invite_token",
+    )
+    email = models.EmailField()
+    token = models.CharField(max_length=250, default=uuid.uuid4)
+    expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
 
 
 class Backtest(models.Model):
