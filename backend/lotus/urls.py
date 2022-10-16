@@ -159,13 +159,13 @@ urlpatterns = [
     path(
         "api/organization/invite",
         organization_views.InviteView.as_view(),
-        name="invite-to-organization"
+        name="invite-to-organization",
     ),
     path(
         "api/organization",
         organization_views.OrganizationView.as_view(),
-        name="organization"
-    )
+        name="organization",
+    ),
 ]
 
 if PROFILER_ENABLED:

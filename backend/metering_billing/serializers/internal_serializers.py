@@ -80,11 +80,13 @@ class RegistrationDetailSerializer(serializers.Serializer):
     password = serializers.CharField()
     username = serializers.CharField()
 
+
 class RegistrationWithInviteSerializer(serializers.Serializer):
-    email = serializers.CharField()
+    email = serializers.EmailField()
     password = serializers.CharField()
     username = serializers.CharField()
     invite_token = serializers.CharField()
+
 
 class RegistrationSerializer(serializers.Serializer):
     register = RegistrationDetailSerializer()

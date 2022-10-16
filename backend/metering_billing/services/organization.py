@@ -1,30 +1,28 @@
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
-from django.core import exceptions as django_exceptions
-from django.core.mail import BadHeaderError, EmailMultiAlternatives
-from metering_billing.models import Organization, OrganizationInviteToken
 from django.core import exceptions
-
-class UserAlreadyExists(Exception):
-    pass
+from django.core.mail import BadHeaderError, EmailMultiAlternatives
+from metering_billing.models import Organization, OrganizationInviteToken, User
 
 
 class OrganizationService(object):
-    def __init__(self, User):
-        self.User = User
+    def __init__(self):
+        pass
 
     def get(self, user_id=None, organization_id=None):
         try:
-          if organization_id:
-              return Organization.objects.filter(id=organization_id)
-          if user_id:
-              return Organization.objects.filter(org_users=user_id)
+            if organization_id:
+                return Organization.objects.filter(id=organization_id)
+            if user_id:
+                user = User.objects.get(id=user_id)
+                return Organization.objects.filter(org_users__contains=user)
         except exceptions.ObjectDoesNotExist as e:
             return None
 
     def get_or_create_token(self, organization_id, user_id):
-        token, _ = OrganizationInviteToken.objects.get_or_create(organization_id=organization_id, user_id=user_id)
+        token, _ = OrganizationInviteToken.objects.get_or_create(
+            organization_id=organization_id, user_id=user_id
+        )
         return token
 
     def send_invite_email(self, reset_url, organization_name, to):
@@ -52,20 +50,24 @@ class OrganizationService(object):
 
         # For security reasons, we don't error if the user doesn't exist
         # since bad-actors cannot deduce which users exist
-        organization = None
         organization = self.get(user_id=user_id).first()
 
         if not organization:
             return False
 
-        token_object = self.get_or_create_token(organization_id=organization.id, user_id=user_id),
+        token_object = (
+            self.get_or_create_token(organization_id=organization.id, user_id=user_id),
+        )
         path = "register?token=%s" % (token_object.token)
         password_reset_url = "%s/%s" % (settings.APP_URL, path)
 
-        self.send_invite_email(reset_url=password_reset_url, organization_name=organization.company_name, to=email)
+        self.send_invite_email(
+            reset_url=password_reset_url,
+            organization_name=organization.company_name,
+            to=email,
+        )
 
         return True
 
 
-User = get_user_model()
-organization_service = OrganizationService(User=User)
+organization_service = OrganizationService()

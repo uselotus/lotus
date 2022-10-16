@@ -14,6 +14,7 @@ from django.core import serializers
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
+
 class OrganizationView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -22,16 +23,17 @@ class OrganizationView(APIView):
         Get the current settings for the organization.
         """
         organization_id = request.query_params.get("id", None)
-        organization = organization_service.get(user_id=request.user.id, organization_id=organization_id)
-        return JsonResponse(
-            {"organization": list(organization.values())}
+        organization = organization_service.get(
+            user_id=request.user.id, organization_id=organization_id
         )
+        return JsonResponse({"organization": list(organization.values())})
+
 
 class InviteView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-      email = request.data.get("email", None)
-      invite = organization_service.invite(user_id=request.user.id, email=email)
+        email = request.data.get("email", None)
+        invite = organization_service.invite(user_id=request.user.id, email=email)
 
-      return JsonResponse({"email": email})
+        return JsonResponse({"email": email})
