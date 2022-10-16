@@ -12,18 +12,21 @@ import {
   CreateSubscriptionType,
   UpdateSubscriptionType,
 } from "../types/subscription-type";
-import { MetricUsage, MetricType } from "../types/metric-type";
+import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
 import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
-import { CreateBacktestType, BacktestType } from "../types/experiment-type";
+import {
+  CreateBacktestType,
+  BacktestType,
+  BacktestResultType,
+} from "../types/experiment-type";
 
 const cookies = new Cookies();
 
 const API_HOST = import.meta.env.VITE_API_URL;
-console.log("API_HOST", API_HOST);
 
 axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
@@ -117,6 +120,12 @@ export const Authentication = {
     requests.post("api/user/password/reset/", { token, userId, password }),
 };
 
+export const Organization = {
+  invite: (email): Promise<{ email: string }> =>
+    requests.post("api/organization/invite", { email }),
+  get: (): Promise<any> => requests.get("api/organization"),
+};
+
 export const GetRevenue = {
   getMonthlyRevenue: (
     period_1_start_date: string,
@@ -187,4 +196,6 @@ export const Backtests = {
   getBacktests: (): Promise<BacktestType[]> => requests.get("api/backtests/"),
   createBacktest: (post: CreateBacktestType): Promise<CreateBacktestType> =>
     requests.post("api/backtests/", post),
+  getBacktestResults: (id: string): Promise<BacktestResultType> =>
+    requests.get(`api/backtests/${id}/`),
 };

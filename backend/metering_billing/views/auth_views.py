@@ -10,7 +10,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
-from metering_billing.models import Organization, User
+from metering_billing.models import Organization, OrganizationInviteToken, User
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.services.user import user_service
@@ -68,15 +68,16 @@ class LoginView(LoginViewMixin, APIView):
             POSTHOG_PERSON if POSTHOG_PERSON else user.organization.company_name,
             event="succesful login",
         )
+        token = AuthToken.objects.create(user)
         return Response(
             {
                 "detail": "Successfully logged in.",
-                "token": AuthToken.objects.create(user)[1],
+                "token": token[1],
             }
         )
 
 
-class LogoutView(LogoutViewMixin, APIView):
+class LogoutView(LogoutViewMixin):
     def post(self, request, format=None):
         if not request.user.is_authenticated:
             return JsonResponse(
@@ -88,8 +89,7 @@ class LogoutView(LogoutViewMixin, APIView):
             else request.user.organization.company_name,
             event="logout",
         )
-        logout(request)
-        return JsonResponse({"detail": "Successfully logged out."})
+        return super(LogoutView, self).post(request, format)
 
 
 class InitResetPasswordView(APIView):
@@ -134,18 +134,10 @@ class ResetPasswordView(APIView):
 
 
 class SessionView(APIView):
-    permissions = [AllowAny]
-    
+    permission_classes = [AllowAny]
+
     def get(self, request, *args, **kwargs):
         return JsonResponse({"isAuthenticated": True})
-
-
-# @ensure_csrf_cookie
-# def whoami_view(request):
-#     if not request.user.is_authenticated:
-#         return JsonResponse({"isAuthenticated": False})
-
-#     return JsonResponse({"username": request.user.username})
 
 
 @extend_schema(
@@ -158,39 +150,72 @@ class SessionView(APIView):
 )
 class RegisterView(LoginViewMixin, APIView):
     def post(self, request, format=None):
-        serializer = RegistrationSerializer(data=request.data)
+        register_data = request.data.get("register")
+        invite_token = register_data.get("invite_token", None)
+        serializer = RegistrationSerializer(
+            data=request.data, context={"invite_token": invite_token}
+        )
         serializer.is_valid(raise_exception=True)
         reg_dict = serializer.validated_data["register"]
-        existing_org_num = Organization.objects.filter(
-            company_name=reg_dict["company_name"]
-        ).count()
-        if existing_org_num > 0:
-            return JsonResponse(
-                {"detail": "Organization already exists."},
-                status=status.HTTP_400_BAD_REQUEST,
+        username = reg_dict["username"]
+        email = reg_dict["email"]
+        password = reg_dict["password"]
+        company_name = reg_dict["company_name"]
+
+        if invite_token is not None and invite_token != "null":
+            now = datetime.datetime.now(datetime.timezone.utc)
+            try:
+                token = OrganizationInviteToken.objects.get(
+                    token=invite_token, expire_at__gt=now
+                )
+            except OrganizationInviteToken.DoesNotExist:
+                return Response(
+                    {"detail": "Invalid invite token."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if token.email != email:
+                return Response(
+                    {"detail": "Email entered does not match invitation email."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            org = token.organization
+        else:
+            # Organization doesn't exist yet
+            existing_org_num = Organization.objects.filter(
+                company_name=company_name
+            ).count()
+            if existing_org_num > 0:
+                return JsonResponse(
+                    {"detail": "Organization already exists."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            org = Organization.objects.create(
+                company_name=reg_dict["company_name"],
             )
-        existing_user_num = User.objects.filter(username=reg_dict["username"]).count()
+            token = None
+
+        existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
             msg = f"User with username already exists"
-            return JsonResponse({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
-        existing_user_num = User.objects.filter(email=reg_dict["email"]).count()
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        existing_user_num = User.objects.filter(email=email).count()
         if existing_user_num > 0:
             msg = f"User with email already exists"
-            return JsonResponse({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
-        org = Organization.objects.create(
-            company_name=reg_dict["company_name"],
-        )
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
         user = User.objects.create_user(
-            email=reg_dict["email"],
-            username=reg_dict["username"],
-            password=reg_dict["password"],
+            email=email,
+            username=username,
+            password=password,
             organization=org,
         )
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else org.company_name,
             event="register",
-            properties={"company_name": reg_dict["company_name"]},
+            properties={"company_name": org.company_name},
         )
+        if token:
+            token.delete()
         return Response(
             {
                 "detail": "Successfully registered.",
@@ -198,7 +223,3 @@ class RegisterView(LoginViewMixin, APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
-
-# def csrf(request):
-#     return JsonResponse({"csrfToken": get_token(request)})

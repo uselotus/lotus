@@ -16,7 +16,12 @@ interface FormElements extends HTMLFormElement {
   readonly elements: LoginForm;
 }
 
-const SignUp = (props: { onSubmit: (user: UserSignup) => void }) => {
+type SignupProps = {
+  onSubmit: (user: UserSignup) => void;
+  hasInvite?: boolean;
+};
+
+const SignUp = (props: SignupProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -35,9 +40,11 @@ const SignUp = (props: { onSubmit: (user: UserSignup) => void }) => {
     props.onSubmit({ username, email, password });
   };
 
+  const cardTitle = props.hasInvite ? "Sign up to join the Team" : "Sign Up";
+
   return (
     <div>
-      <Card title="Sign Up" className="flex flex-col">
+      <Card title={cardTitle} className="flex flex-col">
         {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
         <Form onFinish={handleNewUser} name="create_organization">
           <Form.Item>

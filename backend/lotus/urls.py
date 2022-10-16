@@ -20,7 +20,7 @@ from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.payment_providers import StripeConnector
-from metering_billing.views import auth_views, track
+from metering_billing.views import auth_views, track, organization_views
 from metering_billing.views.model_views import (
     BacktestViewSet,
     BillableMetricViewSet,
@@ -155,6 +155,16 @@ urlpatterns = [
         "api/user/password/reset/",
         auth_views.ResetPasswordView.as_view(),
         name="set-new-password",
+    ),
+    path(
+        "api/organization/invite",
+        organization_views.InviteView.as_view(),
+        name="invite-to-organization",
+    ),
+    path(
+        "api/organization",
+        organization_views.OrganizationView.as_view(),
+        name="organization",
     ),
 ]
 

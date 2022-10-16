@@ -126,7 +126,7 @@ class TestRegister:
         organizations_before = Organization.objects.all().count()
 
         payload = register_payload(
-            company_name="test",
+            company_name=setup_dict["org"].company_name,
             industry="test",
             email="test",
             password="test",
@@ -153,7 +153,7 @@ class TestRegister:
         organizations_before = Organization.objects.all().count()
 
         payload = register_payload(
-            company_name="test",
+            company_name=setup_dict["org"].company_name,
             industry="test",
             email=setup_dict["user"].email,
             password="test",
