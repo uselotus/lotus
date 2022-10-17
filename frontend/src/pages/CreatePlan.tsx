@@ -284,29 +284,32 @@ const CreatePlan = () => {
                         {planFeatures.map((feature, index) => (
                           <Col key={index} span={24}>
                             <Paper color="gold">
-                              <Descriptions
-                                title={feature.feature_name}
-                                size="small"
-                                extra={[
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<EditOutlined />}
-                                    onClick={() =>
-                                      editFeatures(feature.feature_name)
-                                    }
-                                  />,
-                                  <Button
-                                    size="small"
-                                    type="text"
-                                    icon={<DeleteOutlined />}
-                                    danger
-                                    onClick={() =>
-                                      removeFeature(feature.feature_name)
-                                    }
-                                  />,
-                                ]}
-                              />
+                              <div className="self-center">
+                                {" "}
+                                <Descriptions
+                                  title={feature.feature_name}
+                                  size="small"
+                                  extra={[
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      icon={<EditOutlined />}
+                                      onClick={() =>
+                                        editFeatures(feature.feature_name)
+                                      }
+                                    />,
+                                    <Button
+                                      size="small"
+                                      type="text"
+                                      icon={<DeleteOutlined />}
+                                      danger
+                                      onClick={() =>
+                                        removeFeature(feature.feature_name)
+                                      }
+                                    />,
+                                  ]}
+                                />
+                              </div>
                             </Paper>
                           </Col>
                         ))}
