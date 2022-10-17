@@ -69,7 +69,7 @@ function RevenueBarGraph(props: {
   }
   return (
     <Paper>
-      <h2>Revenue Accrued</h2>
+      <h2 className="mb-5">Revenue Accrued</h2>
       <Column {...config} />
     </Paper>
   );
