@@ -147,8 +147,8 @@ const CreateBacktest: FC = () => {
           original_plan_names: [currentPlan.name],
         },
       ]);
-      setCurrentPlan();
-      setReplacementPlan();
+      // setCurrentPlan();
+      // setReplacementPlan();
     }
   };
 
