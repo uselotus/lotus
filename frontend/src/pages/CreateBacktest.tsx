@@ -54,7 +54,20 @@ const CreateBacktest: FC = () => {
   );
 
   const runBacktest = () => {
-    submitSubstitution();
+    var singlesubscription;
+    if (currentPlan && replacementPlan) {
+      singlesubscription = [
+        {
+          original_plans: [currentPlan.billing_plan_id],
+          new_plan: replacementPlan.billing_plan_id,
+          new_plan_name: replacementPlan.name,
+          original_plan_names: [currentPlan.name],
+        },
+      ];
+    } else {
+      toast.error("Please select a few plans");
+      return null;
+    }
     form.validateFields().then((values) => {
       const start_date = dayjs()
         .subtract(values.date_range, "month")
@@ -64,7 +77,7 @@ const CreateBacktest: FC = () => {
         start_date: start_date,
         end_date: dayjs().format("YYYY-MM-DD"),
         kpis: ["total_revenue"],
-        substitutions: substitutions,
+        substitutions: singlesubscription,
       };
       mutation.mutate(post);
     });
@@ -97,7 +110,9 @@ const CreateBacktest: FC = () => {
 
   const addCurrentPlanSlot = (plan_id: string) => {
     const current = plans?.find((plan) => plan.billing_plan_id === plan_id);
-    setCurrentPlan(current);
+    if (current) {
+      setCurrentPlan(current);
+    }
   };
 
   const addReplacementPlanSlot = (plan_id: string) => {
@@ -105,7 +120,9 @@ const CreateBacktest: FC = () => {
       const replacement = plans.find(
         (plan) => plan.billing_plan_id === plan_id
       );
-      setReplacementPlan(replacement);
+      if (replacement) {
+        setReplacementPlan(replacement);
+      }
     }
   };
 
@@ -127,8 +144,8 @@ const CreateBacktest: FC = () => {
           original_plan_names: [currentPlan.name],
         },
       ]);
-      // setCurrentPlan();
-      // setReplacementPlan();
+      setCurrentPlan();
+      setReplacementPlan();
     }
   };
 
@@ -155,7 +172,9 @@ const CreateBacktest: FC = () => {
       <div className="space-y-8 divide-y divide-gray-200 w-md">
         <Form
           form={form}
-          onFinish={runBacktest}
+          onFinish={() => {
+            runBacktest();
+          }}
           initialValues={{
             ["backtest_name"]: experimentStarterName,
           }}
