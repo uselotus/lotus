@@ -25,7 +25,7 @@
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.jpg#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing and Billing On Any Metric
+# Lotus: Pricing & Packaging Optimization
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <p align="center">
@@ -44,11 +44,11 @@
 
 <br/>
 
-Lotus is the open-core pricing and billing engine. We enable SaaS companies to manage and experiment in real-time with custom subscription and usage-based billing.
+Lotus is an open-core pricing engine. We enable SaaS companies to deploy, monitor, and experiment with custom subscription and complex models like usage-based pricing.
 
 <br/>
 
-We provide a flexible and modular approach to every step of the billing experience, from metering to invoicing to helping you understand the optimal pricing scheme for your product.
+We provide a flexible and modular control panel ontop of your existing quote to cash stack that joins data from multiple systems to help you figure out the optimal pricing scheme for your products.
 
 <br/>
 
@@ -63,7 +63,7 @@ There are a few ways to use Lotus. After you set it up, head over to the [Docs](
 
 ### :cloud: Cloud Version
 
-Best for convenience and fast deployment. 
+Best for convenience and fast deployment. This version also gets access to features faster than the self-hosted version.
 
 Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details. 
 
@@ -89,13 +89,6 @@ We are currently working on easy deployment options for AWS, GCP, and Azure. If 
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
-<!-- USAGE EXAMPLES -->
-## Examples
-
-_For more examples, please refer to the [Documentation](https://uselotus.stoplight.io/)_
-
-<p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
-
 <!-- CONTRIBUTING -->
 ## Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
@@ -110,7 +103,7 @@ To set up Lotus for development locally, please refer to our guide [here](https:
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-Lotus is the quickest way to start billing flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our metering and billing solutions are open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time.
+Lotus is the quickest way to bill flexibly and experiment with pricing. Our founders studied at MIT together and went on to DE Shaw and Citadel before joining forces to allow SaaS companies to price products accurately. Our project is open source and free for self-hosting. We charge for our cloud version, enterprise support (SSO, advanced permissions), and extra custom features we will add to the code over time.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
