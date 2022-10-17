@@ -64,6 +64,8 @@ const CreateBacktest: FC = () => {
           original_plan_names: [currentPlan.name],
         },
       ];
+      setCurrentPlan();
+      setReplacementPlan();
     } else {
       toast.error("Please select a few plans");
       return null;
@@ -79,6 +81,7 @@ const CreateBacktest: FC = () => {
         kpis: ["total_revenue"],
         substitutions: singlesubscription,
       };
+
       mutation.mutate(post);
     });
   };
