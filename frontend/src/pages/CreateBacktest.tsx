@@ -60,7 +60,6 @@ const CreateBacktest: FC = () => {
       const start_date = dayjs()
         .subtract(values.date_range, "month")
         .format("YYYY-MM-DD");
-      console.log(start_date);
       const post: CreateBacktestType = {
         backtest_name: values.backtest_name,
         start_date: start_date,
@@ -102,9 +101,10 @@ const CreateBacktest: FC = () => {
 
   const generateRandomExperimentName = () => {
     const randomName = "experiment-" + Math.random().toString(36).substring(7);
-    console.log(randomName);
     return randomName;
   };
+
+  const experimentStarterName = generateRandomExperimentName();
 
   useEffect(() => {
     if (currentPlan && replacementPlan) {
@@ -141,7 +141,7 @@ const CreateBacktest: FC = () => {
           form={form}
           onFinish={runBacktest}
           initialValues={{
-            ["backtest_name"]: generateRandomExperimentName(),
+            ["backtest_name"]: experimentStarterName,
           }}
         >
           <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
