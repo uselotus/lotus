@@ -12,7 +12,7 @@ from metering_billing.models import (
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.model_serializers import InvoiceSerializer
 from metering_billing.utils import (
-    INVOICE_STATUS_TYPES,
+    INVOICE_STATUS,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
@@ -125,7 +125,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         "organization": org_serializer.data,
         "customer": customer_serializer.data,
         "subscription": subscription_serializer.data,
-        "payment_status": INVOICE_STATUS_TYPES.UNPAID,
+        "payment_status": INVOICE_STATUS.UNPAID,
         "external_payment_obj_id": None,
         "external_payment_obj_type": None,
         "line_items": line_item,
@@ -133,7 +133,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
 
     # adjust kwargs depending on draft + external obj creation
     if draft:
-        invoice_kwargs["payment_status"] = INVOICE_STATUS_TYPES.DRAFT
+        invoice_kwargs["payment_status"] = INVOICE_STATUS.DRAFT
     else:
         for pp in customer.payment_providers.keys():
             if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():

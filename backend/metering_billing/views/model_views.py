@@ -13,6 +13,7 @@ from metering_billing.models import (
     Customer,
     Feature,
     Invoice,
+    Product,
     Subscription,
     User,
 )
@@ -27,12 +28,13 @@ from metering_billing.serializers.model_serializers import (
     CustomerSerializer,
     FeatureSerializer,
     InvoiceSerializer,
+    ProductSerializer,
     SubscriptionReadSerializer,
     SubscriptionSerializer,
     UserSerializer,
 )
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import INVOICE_STATUS_TYPES, PLAN_STATUS, SUB_STATUS_TYPES
+from metering_billing.utils import INVOICE_STATUS, PLAN_STATUS, SUBSCRIPTION_STATUS
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -290,7 +292,7 @@ class BillingPlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
         num_sub_plan = Subscription.objects.filter(
-            billing_plan=obj, status=SUB_STATUS_TYPES.ACTIVE
+            billing_plan=obj, status=SUBSCRIPTION_STATUS.ACTIVE
         ).count()
         if num_sub_plan > 0:
             return Response(
@@ -337,7 +339,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if serializer.validated_data["start_date"] <= datetime.now().date():
-            serializer.validated_data["status"] = SUB_STATUS_TYPES.ACTIVE
+            serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
         serializer.save(organization=parse_organization(self.request))
 
     def get_serializer_class(self):
@@ -376,7 +378,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         organization = parse_organization(self.request)
         return Invoice.objects.filter(
-            ~Q(payment_status=INVOICE_STATUS_TYPES.DRAFT),
+            ~Q(payment_status=INVOICE_STATUS.DRAFT),
             organization=organization,
         )
 
@@ -480,6 +482,40 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(BacktestViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+
+class ProductViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing Products.
+    """
+
+    serializer_class = ProductSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "delete"]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return Product.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_product",
+                properties={},
+            )
+        return response
+
+    def get_serializer_context(self):
+        context = super(ProductViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context

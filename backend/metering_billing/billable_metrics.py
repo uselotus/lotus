@@ -19,8 +19,8 @@ from django.db.models import (
 from django.db.models.functions import Cast, Trunc
 from metering_billing.models import BillableMetric, Customer, Event
 from metering_billing.utils import (
-    AGGREGATION_TYPES,
-    METRIC_TYPES,
+    METRIC_AGGREGATION,
+    METRIC_TYPE,
     REVENUE_CALC_GRANULARITY,
     periods_bwn_twodates,
 )
@@ -54,7 +54,7 @@ class BillableMetricHandler(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def allowed_aggregation_types() -> list[AGGREGATION_TYPES]:
+    def allowed_aggregation_types() -> list[METRIC_AGGREGATION]:
         """This method will be called to determine what aggregation types are allowed for this billable metric."""
         pass
 
@@ -71,7 +71,7 @@ class AggregationHandler(BillableMetricHandler):
         self.aggregation_type = billable_metric.aggregation_type
         self.property_name = (
             None
-            if self.aggregation_type == AGGREGATION_TYPES.COUNT
+            if self.aggregation_type == METRIC_AGGREGATION.COUNT
             or billable_metric.property_name == ""
             else billable_metric.property_name
         )
@@ -80,7 +80,7 @@ class AggregationHandler(BillableMetricHandler):
         self.organization = billable_metric.organization
 
         assert (
-            billable_metric.metric_type == METRIC_TYPES.AGGREGATION
+            billable_metric.metric_type == METRIC_TYPE.AGGREGATION
         ), f"Billable metric of type {billable_metric.metric_type} can't be handled by an AggregationHandler."
         assert (
             self.aggregation_type in self.allowed_aggregation_types()
@@ -120,17 +120,17 @@ class AggregationHandler(BillableMetricHandler):
                 )
             )
 
-        if self.aggregation_type == AGGREGATION_TYPES.COUNT:
+        if self.aggregation_type == METRIC_AGGREGATION.COUNT:
             post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
-        elif self.aggregation_type == AGGREGATION_TYPES.SUM:
+        elif self.aggregation_type == METRIC_AGGREGATION.SUM:
             post_groupby_annotation_kwargs["usage_qty"] = Sum(
                 Cast(F("property_value"), FloatField())
             )
-        elif self.aggregation_type == AGGREGATION_TYPES.AVERAGE:
+        elif self.aggregation_type == METRIC_AGGREGATION.AVERAGE:
             post_groupby_annotation_kwargs["usage_qty"] = Avg(
                 Cast(F("property_value"), FloatField())
             )
-        elif self.aggregation_type == AGGREGATION_TYPES.MIN:
+        elif self.aggregation_type == METRIC_AGGREGATION.MIN:
             if billable_only:
                 # if its billable only, then we need to find the min event over the whole
                 # time period, and then use that as the billable usage... if we aggregate using
@@ -145,7 +145,7 @@ class AggregationHandler(BillableMetricHandler):
                 post_groupby_annotation_kwargs["usage_qty"] = Min(
                     Cast(F("property_value"), FloatField())
                 )
-        elif self.aggregation_type == AGGREGATION_TYPES.MAX:
+        elif self.aggregation_type == METRIC_AGGREGATION.MAX:
             if billable_only:
                 # if its billable only, then we need to find the max event over the whole
                 # time period, and then use that as the billable usage... if we aggregate using
@@ -160,7 +160,7 @@ class AggregationHandler(BillableMetricHandler):
                 post_groupby_annotation_kwargs["usage_qty"] = Max(
                     Cast(F("property_value"), FloatField())
                 )
-        elif self.aggregation_type == AGGREGATION_TYPES.UNIQUE:
+        elif self.aggregation_type == METRIC_AGGREGATION.UNIQUE:
             if billable_only:
                 # for unique, we need to find the first time we saw each unique property value. If
                 # we just aggregate using count unique, then we'll get the unique per period of
@@ -170,7 +170,7 @@ class AggregationHandler(BillableMetricHandler):
             post_groupby_annotation_kwargs["usage_qty"] = Count(
                 F("property_value"), distinct=True
             )
-        elif self.aggregation_type == AGGREGATION_TYPES.LATEST:
+        elif self.aggregation_type == METRIC_AGGREGATION.LATEST:
             post_groupby_annotation_kwargs = groupby_kwargs
             groupby_kwargs = {}
             post_groupby_annotation_kwargs["usage_qty"] = Cast(
@@ -182,7 +182,7 @@ class AggregationHandler(BillableMetricHandler):
         q_gb = q_pre_gb_ann.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
-        if self.aggregation_type == AGGREGATION_TYPES.LATEST:
+        if self.aggregation_type == METRIC_AGGREGATION.LATEST:
             latest_filt = {
                 "customer_name": OuterRef("customer_name"),
             }
@@ -195,21 +195,21 @@ class AggregationHandler(BillableMetricHandler):
             q_post_gb_ann = q_post_gb_ann.annotate(
                 latest_pk=Subquery(latest.values("pk")[:1])
             ).filter(pk=F("latest_pk"))
-        elif self.aggregation_type == AGGREGATION_TYPES.MAX and billable_only:
+        elif self.aggregation_type == METRIC_AGGREGATION.MAX and billable_only:
             max = q_post_gb_ann.filter(
                 customer_name=OuterRef("customer_name")
             ).order_by("-usage_qty")
             q_post_gb_ann = q_post_gb_ann.annotate(
                 max_pk=Subquery(max.values("pk")[:1])
             ).filter(pk=F("max_pk"))
-        elif self.aggregation_type == AGGREGATION_TYPES.MIN and billable_only:
+        elif self.aggregation_type == METRIC_AGGREGATION.MIN and billable_only:
             min = q_post_gb_ann.filter(
                 customer_name=OuterRef("customer_name")
             ).order_by("usage_qty")
             q_post_gb_ann = q_post_gb_ann.annotate(
                 min_pk=Subquery(min.values("pk")[:1])
             ).filter(pk=F("min_pk"))
-        elif self.aggregation_type == AGGREGATION_TYPES.UNIQUE and billable_only:
+        elif self.aggregation_type == METRIC_AGGREGATION.UNIQUE and billable_only:
             q_post_gb_ann = q_post_gb_ann.filter(
                 ~Exists(
                     q_post_gb_ann.filter(
@@ -237,13 +237,13 @@ class AggregationHandler(BillableMetricHandler):
     @staticmethod
     def allowed_aggregation_types():
         return [
-            AGGREGATION_TYPES.UNIQUE,
-            AGGREGATION_TYPES.SUM,
-            AGGREGATION_TYPES.COUNT,
-            AGGREGATION_TYPES.AVERAGE,
-            AGGREGATION_TYPES.MIN,
-            AGGREGATION_TYPES.MAX,
-            AGGREGATION_TYPES.LATEST,
+            METRIC_AGGREGATION.UNIQUE,
+            METRIC_AGGREGATION.SUM,
+            METRIC_AGGREGATION.COUNT,
+            METRIC_AGGREGATION.AVERAGE,
+            METRIC_AGGREGATION.MIN,
+            METRIC_AGGREGATION.MAX,
+            METRIC_AGGREGATION.LATEST,
         ]
 
     @staticmethod
@@ -269,7 +269,7 @@ class StatefulHandler(BillableMetricHandler):
         self.initial_value = billable_metric.properties.get("initial_value", 0)
 
         assert (
-            billable_metric.metric_type == METRIC_TYPES.STATEFUL
+            billable_metric.metric_type == METRIC_TYPE.STATEFUL
         ), f"Billable metric of type {billable_metric.metric_type} can't be handled by an AggregationHandler."
         assert (
             self.aggregation_type in self.allowed_aggregation_types()
@@ -315,15 +315,15 @@ class StatefulHandler(BillableMetricHandler):
                 )
             )
 
-        if self.aggregation_type == AGGREGATION_TYPES.MIN:
+        if self.aggregation_type == METRIC_AGGREGATION.MIN:
             post_groupby_annotation_kwargs["usage_qty"] = Min(
                 Cast(F("property_value"), FloatField())
             )
-        elif self.aggregation_type == AGGREGATION_TYPES.MAX:
+        elif self.aggregation_type == METRIC_AGGREGATION.MAX:
             post_groupby_annotation_kwargs["usage_qty"] = Max(
                 Cast(F("property_value"), FloatField())
             )
-        elif self.aggregation_type == AGGREGATION_TYPES.LATEST:
+        elif self.aggregation_type == METRIC_AGGREGATION.LATEST:
             post_groupby_annotation_kwargs = groupby_kwargs
             groupby_kwargs = {}
             post_groupby_annotation_kwargs["usage_qty"] = Cast(
@@ -412,9 +412,9 @@ class StatefulHandler(BillableMetricHandler):
     @staticmethod
     def allowed_aggregation_types():
         return [
-            AGGREGATION_TYPES.MIN,
-            AGGREGATION_TYPES.MAX,
-            AGGREGATION_TYPES.LATEST,
+            METRIC_AGGREGATION.MIN,
+            METRIC_AGGREGATION.MAX,
+            METRIC_AGGREGATION.LATEST,
         ]
 
     @staticmethod
@@ -429,6 +429,6 @@ class StatefulHandler(BillableMetricHandler):
 
 
 METRIC_HANDLER_MAP = {
-    METRIC_TYPES.AGGREGATION: AggregationHandler,
-    METRIC_TYPES.STATEFUL: StatefulHandler,
+    METRIC_TYPE.AGGREGATION: AggregationHandler,
+    METRIC_TYPE.STATEFUL: StatefulHandler,
 }

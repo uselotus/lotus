@@ -10,7 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from model_utils import Choices
 
 
-class INVOICE_STATUS_TYPES(models.TextChoices):
+class INVOICE_STATUS(models.TextChoices):
     DRAFT = ("draft", _("Draft"))
     PAID = ("paid", _("Paid"))
     UNPAID = ("unpaid", _("Unpaid"))
@@ -22,7 +22,7 @@ class PAYMENT_PLANS(models.TextChoices):
     SELF_HOSTED_ENTERPRISE = ("self_hosted_enterprise", _("Self-Hosted Enterprise"))
 
 
-class AGGREGATION_TYPES(models.TextChoices):
+class METRIC_AGGREGATION(models.TextChoices):
     COUNT = ("count", _("Count"))
     SUM = ("sum", _("Sum"))
     MAX = ("max", _("Max"))
@@ -36,12 +36,12 @@ class PAYMENT_PROVIDERS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
 
 
-class METRIC_TYPES(models.TextChoices):
+class METRIC_TYPE(models.TextChoices):
     AGGREGATION = ("aggregation", _("Aggregatable"))
     STATEFUL = ("stateful", _("State Logging"))
 
 
-class INTERVAL_TYPES(models.TextChoices):
+class PLAN_INTERVAL(models.TextChoices):
     WEEK = ("week", _("Week"))
     MONTH = ("month", _("Month"))
     YEAR = ("year", _("Year"))
@@ -65,7 +65,7 @@ class CATEGORICAL_FILTER_OPERATORS(models.TextChoices):
     ISNOTIN = ("isnotin", _("Is not in"))
 
 
-class SUB_STATUS_TYPES(models.TextChoices):
+class SUBSCRIPTION_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     ENDED = ("ended", _("Ended"))
     NOT_STARTED = ("not_started", _("Not Started"))
@@ -78,14 +78,17 @@ class PLAN_STATUS(models.TextChoices):
     EXPERIMENTAL = ("experimental", _("Experimental"))
 
 
-class BACKTEST_KPI_TYPES(models.TextChoices):
+class BACKTEST_KPI(models.TextChoices):
     TOTAL_REVENUE = ("total_revenue", _("Total Revenue"))
 
 
-class BACKTEST_STATUS_TYPES(models.TextChoices):
+class BACKTEST_STATUS(models.TextChoices):
     RUNNING = ("running", _("Running"))
     COMPLETED = ("completed", _("Completed"))
 
+class PRODUCT_STATUS(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    DEPRECATED = ("deprecated", _("Deprecated"))
 
 def convert_to_decimal(value):
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)

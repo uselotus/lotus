@@ -17,7 +17,7 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.tasks import calculate_invoice, update_invoice_status
-from metering_billing.utils import INVOICE_STATUS_TYPES
+from metering_billing.utils import INVOICE_STATUS
 from model_bakery import baker
 from rest_framework.test import APIClient
 
@@ -150,17 +150,17 @@ class TestUpdateInvoiceStatusStripe:
         invoice = baker.make(
             Invoice,
             issue_date=setup_dict["subscription"].end_date,
-            payment_status=INVOICE_STATUS_TYPES.UNPAID,
+            payment_status=INVOICE_STATUS.UNPAID,
             external_payment_obj_id=payment_intent.id,
             organization={"company_name": "bogus"},
         )
 
-        assert invoice.payment_status != INVOICE_STATUS_TYPES.PAID
+        assert invoice.payment_status != INVOICE_STATUS.PAID
 
         update_invoice_status()
 
         invoice = Invoice.objects.filter(id=invoice.id).first()
-        assert invoice.payment_status == INVOICE_STATUS_TYPES.PAID
+        assert invoice.payment_status == INVOICE_STATUS.PAID
 
 
 @pytest.mark.django_db(transaction=True)

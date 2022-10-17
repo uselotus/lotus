@@ -18,10 +18,11 @@ from metering_billing.models import (
     NumericFilter,
     Organization,
     PlanComponent,
+    Product,
     Subscription,
     User,
 )
-from metering_billing.utils import BACKTEST_KPI_TYPES, PLAN_STATUS, SUB_STATUS_TYPES
+from metering_billing.utils import BACKTEST_KPI, PLAN_STATUS, SUBSCRIPTION_STATUS
 from rest_framework import serializers
 
 
@@ -84,7 +85,7 @@ class UserSerializer(serializers.ModelSerializer):
 ## CUSTOMER
 class FilterActiveSubscriptionSerializer(serializers.ListSerializer):
     def to_representation(self, data):
-        data = [x for x in data if x.status == SUB_STATUS_TYPES.ACTIVE]
+        data = [x for x in data if x.status == SUBSCRIPTION_STATUS.ACTIVE]
         return super(FilterActiveSubscriptionSerializer, self).to_representation(data)
 
 
@@ -378,7 +379,7 @@ class BillingPlanSerializer(serializers.ModelSerializer):
         return str(obj.time_created.date())
 
     def get_active_subscriptions(self, obj) -> int:
-        return obj.bp_subscriptions.filter(status=SUB_STATUS_TYPES.ACTIVE).count()
+        return obj.bp_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).count()
 
     def create(self, validated_data):
         components_data = validated_data.pop("components", [])
@@ -557,7 +558,7 @@ class BacktestCreateSerializer(serializers.ModelSerializer):
         fields = ("start_date", "end_date", "substitutions", "kpis", "backtest_name")
 
     kpis = serializers.ListSerializer(
-        child=serializers.ChoiceField(choices=[x.value for x in BACKTEST_KPI_TYPES]),
+        child=serializers.ChoiceField(choices=[x.value for x in BACKTEST_KPI]),
         required=True,
     )
     substitutions = serializers.ListSerializer(
@@ -674,3 +675,8 @@ class BacktestDetailSerializer(BacktestSummarySerializer):
     backtest_results = AllSubstitutionResultsSerializer()
 
     backtest_substitutions = BacktestSubstitutionSerializer(many=True)
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ("name", "description", "product_id", "status")

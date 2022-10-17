@@ -9,18 +9,19 @@ from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
 from metering_billing.utils import (
-    AGGREGATION_TYPES,
-    BACKTEST_KPI_TYPES,
-    BACKTEST_STATUS_TYPES,
+    METRIC_AGGREGATION,
+    BACKTEST_KPI,
+    BACKTEST_STATUS,
     CATEGORICAL_FILTER_OPERATORS,
-    INTERVAL_TYPES,
-    INVOICE_STATUS_TYPES,
-    METRIC_TYPES,
+    PLAN_INTERVAL,
+    INVOICE_STATUS,
+    METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PAYMENT_PLANS,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
-    SUB_STATUS_TYPES,
+    PRODUCT_STATUS,
+    SUBSCRIPTION_STATUS,
     dates_bwn_twodates,
     now_plus_day,
 )
@@ -111,7 +112,7 @@ class Customer(models.Model):
 
     def get_billing_plan_name(self) -> str:
         subscription_set = Subscription.objects.filter(
-            customer=self, status=SUB_STATUS_TYPES.ACTIVE
+            customer=self, status=SUBSCRIPTION_STATUS.ACTIVE
         )
         if subscription_set is None:
             return "None"
@@ -193,15 +194,15 @@ class BillableMetric(models.Model):
     property_name = models.CharField(max_length=200, blank=True, null=True)
     aggregation_type = models.CharField(
         max_length=10,
-        choices=AGGREGATION_TYPES.choices,
-        default=AGGREGATION_TYPES.COUNT,
+        choices=METRIC_AGGREGATION.choices,
+        default=METRIC_AGGREGATION.COUNT,
         blank=False,
         null=False,
     )
     metric_type = models.CharField(
         max_length=20,
-        choices=METRIC_TYPES.choices,
-        default=METRIC_TYPES.AGGREGATION,
+        choices=METRIC_TYPE.choices,
+        default=METRIC_TYPE.AGGREGATION,
         blank=False,
         null=False,
     )
@@ -298,7 +299,7 @@ class BillingPlan(models.Model):
     time_created = models.DateTimeField(auto_now=True)
     interval = models.CharField(
         max_length=10,
-        choices=INTERVAL_TYPES.choices,
+        choices=PLAN_INTERVAL.choices,
     )
     billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
@@ -325,11 +326,11 @@ class BillingPlan(models.Model):
         unique_together = ("organization", "billing_plan_id")
 
     def calculate_end_date(self, start_date):
-        if self.interval == INTERVAL_TYPES.WEEK:
+        if self.interval == PLAN_INTERVAL.WEEK:
             return start_date + relativedelta(weeks=+1) - relativedelta(days=+1)
-        elif self.interval == INTERVAL_TYPES.MONTH:
+        elif self.interval == PLAN_INTERVAL.MONTH:
             return start_date + relativedelta(months=+1) - relativedelta(days=+1)
-        elif self.interval == INTERVAL_TYPES.YEAR:
+        elif self.interval == PLAN_INTERVAL.YEAR:
             return start_date + relativedelta(years=+1) - relativedelta(days=+1)
         else:
             raise ValueError("End date not calculated correctly")
@@ -373,8 +374,8 @@ class Subscription(models.Model):
     end_date = models.DateField()
     status = models.CharField(
         max_length=20,
-        choices=SUB_STATUS_TYPES.choices,
-        default=SUB_STATUS_TYPES.NOT_STARTED,
+        choices=SUBSCRIPTION_STATUS.choices,
+        default=SUBSCRIPTION_STATUS.NOT_STARTED,
     )
     auto_renew = models.BooleanField(default=True)
     auto_renew_billing_plan = models.ForeignKey(
@@ -422,7 +423,7 @@ class Invoice(models.Model):
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(
-        max_length=40, choices=INVOICE_STATUS_TYPES.choices
+        max_length=40, choices=INVOICE_STATUS.choices
     )
     external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
     external_payment_obj_type = models.CharField(
@@ -481,8 +482,8 @@ class Backtest(models.Model):
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, null=True, blank=True)
     status = models.CharField(
-        choices=BACKTEST_STATUS_TYPES.choices,
-        default=BACKTEST_STATUS_TYPES.RUNNING,
+        choices=BACKTEST_STATUS.choices,
+        default=BACKTEST_STATUS.RUNNING,
         max_length=40,
     )
     history = HistoricalRecords()
@@ -509,3 +510,24 @@ class BacktestSubstitution(models.Model):
 
     def __str__(self):
         return f"{self.backtest}"
+
+
+class Product(models.Model):
+    """
+    This model is used to store the products that are available to be purchased.
+    """
+
+    name = models.CharField(max_length=100, null=False, blank=False)
+    description = models.TextField(null=False, blank=False)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="org_products"
+    )
+    product_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
+    status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
+    history = HistoricalRecords()
+
+    class Meta:
+        unique_together = ("organization", "product_id")
+
+    def __str__(self):
+        return f"{self.name}"

@@ -5,9 +5,9 @@ from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
-    METRIC_TYPES,
+    METRIC_TYPE,
     REVENUE_CALC_GRANULARITY,
-    SUB_STATUS_TYPES,
+    SUBSCRIPTION_STATUS,
     convert_to_decimal,
     periods_bwn_twodates,
 )
@@ -90,7 +90,7 @@ def calculate_sub_pc_usage_revenue(
                 - billable_batches * plan_component.metric_units_per_batch
             )
             free_units_usage_left = max(0, free_units_usage_left - qty)
-            if billable_metric.metric_type == METRIC_TYPES.STATEFUL:
+            if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
                 usage_revenue = (
                     billable_batches
                     * plan_component.cost_per_batch
@@ -99,7 +99,7 @@ def calculate_sub_pc_usage_revenue(
             else:
                 usage_revenue = billable_batches * plan_component.cost_per_batch
             period_revenue_dict[period]["revenue"] = convert_to_decimal(usage_revenue)
-            if billable_metric.metric_type == METRIC_TYPES.STATEFUL:
+            if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
                 free_units_usage_left = plan_component.free_metric_units
                 remainder_billable_units = 0
     return period_revenue_dict
@@ -142,7 +142,7 @@ def get_customer_usage_and_revenue(customer):
     customer_subscriptions = (
         Subscription.objects.filter(
             customer=customer,
-            status=SUB_STATUS_TYPES.ACTIVE,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
             organization=customer.organization,
         )
         .select_related("customer")

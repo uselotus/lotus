@@ -22,7 +22,7 @@ from metering_billing.models import (
     User,
 )
 from metering_billing.serializers.model_serializers import BillableMetricSerializer
-from metering_billing.utils import SUB_STATUS_TYPES
+from metering_billing.utils import SUBSCRIPTION_STATUS
 from model_bakery import baker
 
 
@@ -559,8 +559,8 @@ class Command(BaseCommand):
         now = pytz.utc.localize(datetime.datetime.now())
         today = now.date()
         Subscription.objects.filter(
-            organization=organization, status=SUB_STATUS_TYPES.ENDED, end_date__gt=today
-        ).update(status=SUB_STATUS_TYPES.ACTIVE)
+            organization=organization, status=SUBSCRIPTION_STATUS.ENDED, end_date__gt=today
+        ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
 
 
 def random_date(start, end, n):

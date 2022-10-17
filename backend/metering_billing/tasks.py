@@ -25,9 +25,9 @@ from metering_billing.serializers.model_serializers import (
     AllSubstitutionResultsSerializer,
 )
 from metering_billing.utils import (
-    BACKTEST_STATUS_TYPES,
-    INVOICE_STATUS_TYPES,
-    SUB_STATUS_TYPES,
+    BACKTEST_STATUS,
+    INVOICE_STATUS,
+    SUBSCRIPTION_STATUS,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
@@ -47,15 +47,15 @@ def calculate_invoice():
     # get ending subs
     now = datetime.date.today()
     ending_subscriptions = list(
-        Subscription.objects.filter(status=SUB_STATUS_TYPES.ACTIVE, end_date__lt=now)
+        Subscription.objects.filter(status=SUBSCRIPTION_STATUS.ACTIVE, end_date__lt=now)
     )
     invoice_sub_ids_seen = Invoice.objects.filter(
-        ~Q(payment_status=INVOICE_STATUS_TYPES.DRAFT)
+        ~Q(payment_status=INVOICE_STATUS.DRAFT)
     ).values_list("subscription__subscription_id", flat=True)
 
     if len(invoice_sub_ids_seen) > 0:
         ended_subs_no_invoice = Subscription.objects.filter(
-            status=SUB_STATUS_TYPES.ENDED, end_date__lt=now
+            status=SUBSCRIPTION_STATUS.ENDED, end_date__lt=now
         ).exclude(subscription_id__in=list(invoice_sub_ids_seen))
         ending_subscriptions.extend(ended_subs_no_invoice)
 
@@ -78,12 +78,12 @@ def calculate_invoice():
             )
             continue
         # End the old subscription and delete draft invoices
-        already_ended = old_subscription.status == SUB_STATUS_TYPES.ENDED
-        old_subscription.status = SUB_STATUS_TYPES.ENDED
+        already_ended = old_subscription.status == SUBSCRIPTION_STATUS.ENDED
+        old_subscription.status = SUBSCRIPTION_STATUS.ENDED
         old_subscription.save()
         now = datetime.datetime.now(timezone.utc).date()
         Invoice.objects.filter(
-            issue_date__lt=now, payment_status=INVOICE_STATUS_TYPES.DRAFT
+            issue_date__lt=now, payment_status=INVOICE_STATUS.DRAFT
         ).delete()
         # Renew the subscription
         if old_subscription.auto_renew and not already_ended:
@@ -96,7 +96,7 @@ def calculate_invoice():
             if new_bp.scheduled_for_deletion:
                 replacement_bp = new_bp.replacement_billing_plan
                 num_with_bp = Subscription.objects.filter(
-                    status=SUB_STATUS_TYPES.ACTIVE, billing_plan=new_bp
+                    status=SUBSCRIPTION_STATUS.ACTIVE, billing_plan=new_bp
                 ).count()
                 if num_with_bp == 0:
                     new_bp.delete()
@@ -113,9 +113,9 @@ def calculate_invoice():
             if new_bp.pay_in_advance:
                 sub.flat_fee_already_billed = new_bp.flat_rate
             if sub.start_date <= now <= sub.end_date:
-                sub.status = SUB_STATUS_TYPES.ACTIVE
+                sub.status = SUBSCRIPTION_STATUS.ACTIVE
             else:
-                sub.status = SUB_STATUS_TYPES.ENDED
+                sub.status = SUBSCRIPTION_STATUS.ENDED
             sub.save()
 
 
@@ -123,17 +123,17 @@ def calculate_invoice():
 def start_subscriptions():
     now = datetime.date.today()
     starting_subscriptions = Subscription.objects.filter(
-        status=SUB_STATUS_TYPES.NOT_STARTED, start_date__lte=now
+        status=SUBSCRIPTION_STATUS.NOT_STARTED, start_date__lte=now
     )
     for new_subscription in starting_subscriptions:
-        new_subscription.status = SUB_STATUS_TYPES.ACTIVE
+        new_subscription.status = SUBSCRIPTION_STATUS.ACTIVE
         new_subscription.save()
 
 
 @shared_task
 def update_invoice_status():
     incomplete_invoices = Invoice.objects.filter(
-        Q(payment_status=INVOICE_STATUS_TYPES.UNPAID)
+        Q(payment_status=INVOICE_STATUS.UNPAID)
     )
     for incomplete_invoice in incomplete_invoices:
         pass
@@ -146,7 +146,7 @@ def update_invoice_status():
         #         print("Error retrieving payment intent {}".format(pi_id))
         #         continue
         #     if pi.status == "succeeded":
-        #         incomplete_invoice.payment_status = INVOICE_STATUS_TYPES.PAID
+        #         incomplete_invoice.payment_status = INVOICE_STATUS.PAID
         #         incomplete_invoice.save()
         #         posthog.capture(
         #             POSTHOG_PERSON

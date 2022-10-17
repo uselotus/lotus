@@ -13,7 +13,7 @@ from metering_billing.serializers.model_serializers import (
     AllSubstitutionResultsSerializer,
 )
 from metering_billing.utils import (
-    BACKTEST_STATUS_TYPES,
+    BACKTEST_STATUS,
     dates_bwn_twodates,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
@@ -279,5 +279,5 @@ def calculate_backtest(backtest_id):
         raise Exception
     results = make_all_dates_times_strings(serializer.validated_data)
     backtest.backtest_results = results
-    backtest.status = BACKTEST_STATUS_TYPES.COMPLETED
+    backtest.status = BACKTEST_STATUS.COMPLETED
     backtest.save()

@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth_utils import parse_organization
 from metering_billing.models import Customer, Organization
 from metering_billing.utils import (
-    INVOICE_STATUS_TYPES,
+    INVOICE_STATUS,
     PAYMENT_PROVIDERS,
     turn_decimal_into_cents,
 )
@@ -53,7 +53,7 @@ class PaymentProvider(abc.ABC, APIView):
     @abc.abstractmethod
     def update_payment_object_status(
         self, payment_object_id: str
-    ) -> Union[INVOICE_STATUS_TYPES.PAID, INVOICE_STATUS_TYPES.UNPAID]:
+    ) -> Union[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID]:
         """This method will be called periodically when the status of a payment object needs to be updated. It should return the status of the payment object, which should be either paid or unpaid."""
         pass
 
@@ -132,9 +132,9 @@ class StripeConnector(PaymentProvider):
         stripe.api_key = self.secret_key
         payment_intent = stripe.PaymentIntent.retrieve(payment_object_id)
         if payment_intent.status == "succeeded":
-            return INVOICE_STATUS_TYPES.PAID
+            return INVOICE_STATUS.PAID
         else:
-            return INVOICE_STATUS_TYPES.UNPAID
+            return INVOICE_STATUS.UNPAID
 
     def get(self, request, format=None):
         organization = request.user.organization
