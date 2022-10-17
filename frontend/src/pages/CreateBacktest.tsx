@@ -17,18 +17,16 @@ interface PlanRepType {
 
 const CreateBacktest: FC = () => {
   const navigate = useNavigate();
-  const navigateUpdatePlan = () => {
-    navigate("/plans/update");
-  };
   const queryClient = useQueryClient();
 
   const [form] = Form.useForm();
   const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
   const { currentPlan, replacementPlan } = usePlanState();
+  const [currentPlanModal, setCurrentPlanModal] = useState<PlanType>();
+  const [replacementPlanModal, setReplacementPlanModal] = useState<PlanType>();
   const { setCurrentPlan, setReplacementPlan } = usePlanUpdater();
   const [replacePlanVisible, setReplacePlanVisible] = useState<boolean>(false);
   const [newPlanVisible, setNewPlanVisible] = useState<boolean>(false);
-  const [startDate, setStartDate] = useState<string>();
 
   const {
     data: plans,
@@ -85,6 +83,17 @@ const CreateBacktest: FC = () => {
     setNewPlanVisible(false);
   };
 
+  const changeCurrentPlanModal = (plan_id: string) => {
+    const current = plans?.find((plan) => plan.billing_plan_id === plan_id);
+
+    setCurrentPlanModal(current);
+  };
+
+  const changeReplacementPlanModal = (plan_id: string) => {
+    const replacement = plans?.find((plan) => plan.billing_plan_id === plan_id);
+    setReplacementPlanModal(replacement);
+  };
+
   const addCurrentPlanSlot = (plan_id: string) => {
     const current = plans?.find((plan) => plan.billing_plan_id === plan_id);
     setCurrentPlan(current);
@@ -106,18 +115,24 @@ const CreateBacktest: FC = () => {
 
   const experimentStarterName = generateRandomExperimentName();
 
-  useEffect(() => {
+  const submitSubstitution = () => {
     if (currentPlan && replacementPlan) {
       setSubstitutions([
         ...substitutions,
         {
           original_plans: [currentPlan.billing_plan_id],
           new_plan: replacementPlan.billing_plan_id,
+          new_plan_name: replacementPlan.name,
+          original_plan_names: [currentPlan.name],
         },
       ]);
-      // setCurrentPlan(undefined);
-      // setReplacementPlan(undefined);
+      setCurrentPlan();
+      setReplacementPlan();
     }
+  };
+
+  useEffect(() => {
+    submitSubstitution();
   }, [currentPlan, replacementPlan]);
 
   return (
@@ -212,6 +227,21 @@ const CreateBacktest: FC = () => {
                 <Button>
                   <a onClick={openplanCurrentModal}>Choose Plans To Replace</a>
                 </Button>
+                <div>
+                  {substitutions.map((substitution, index) => {
+                    return (
+                      <div key={index}>
+                        <p>
+                          <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                            <span className="font-bold">
+                              {substitution.original_plan_names[0]}
+                            </span>
+                          </div>
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
                 <div className="mt-4">
                   {currentPlan && (
                     <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
@@ -229,6 +259,21 @@ const CreateBacktest: FC = () => {
                 <Button onClick={openplanNewModal}>
                   Create Experiment Plan
                 </Button>
+                <div>
+                  {substitutions.map((substitution, index) => {
+                    return (
+                      <div key={index}>
+                        <p>
+                          <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                            <span className="font-bold">
+                              {substitution.new_plan_name}
+                            </span>
+                          </div>
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
                 <div className="mt-4">
                   {replacementPlan && (
                     <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
@@ -239,7 +284,9 @@ const CreateBacktest: FC = () => {
               </div>
             </div>
             <div className="grid justify-items-center">
-              <Button className=" max-w-md">+</Button>
+              <Button className=" max-w-md" onClick={submitSubstitution}>
+                +
+              </Button>
             </div>
           </div>
         </Form>
@@ -271,7 +318,23 @@ const CreateBacktest: FC = () => {
         onOk={() => {
           navigate("/backtest-plan");
         }}
-        okText="Edit"
+        footer={[
+          <Button key="back" onClick={closeplanNewModal}>
+            Cancel
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={() => {
+              navigate("/backtest-plan");
+            }}
+          >
+            Edit
+          </Button>,
+          <Button key="link" type="primary" onClick={closeplanNewModal}>
+            Use
+          </Button>,
+        ]}
         closeIcon={<div></div>}
       >
         <div className="border-b border-gray-200 bg-[#F7F8FD] px-4 py-5 sm:px-6">

@@ -9,18 +9,6 @@ import { BacktestType } from "../types/experiment-type";
 import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
 
-const backtest_data: BacktestType[] = [
-  {
-    backtest_name: "Name",
-    backtest_id: "id",
-    status: "completed",
-    start_date: "2022-23-02",
-    end_date: "2022-20-03",
-    time_created: "2022-20-02",
-    kpis: ["total_revenue"],
-  },
-];
-
 const ViewExperiments: FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -35,7 +23,7 @@ const ViewExperiments: FC = () => {
       }),
     {
       // Refetch the data every second
-      refetchInterval: 10000,
+      refetchInterval: 5000,
     }
   );
 
