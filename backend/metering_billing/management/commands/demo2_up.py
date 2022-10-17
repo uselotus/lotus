@@ -45,21 +45,21 @@ class Command(BaseCommand):
         organization = user.organization
         big_customers = baker.make(
             Customer,
-            _quantity=400,
+            _quantity=4,
             organization=organization,
             name=("BigCompany " + str(uuid.uuid4())[:6] for _ in range(400)),
             customer_id=(fake.unique.ean() for _ in range(400)),
         )
         medium_customers = baker.make(
             Customer,
-            _quantity=1000,
+            _quantity=10,
             organization=organization,
             name=("MediumCompany " + str(uuid.uuid4())[:6] for _ in range(1000)),
             customer_id=(fake.unique.ean() for _ in range(1000)),
         )
         small_customers = baker.make(
             Customer,
-            _quantity=3000,
+            _quantity=30,
             organization=organization,
             name=("SmallCompany " + str(uuid.uuid4())[:6] for _ in range(3000)),
             customer_id=(fake.unique.ean() for _ in range(3000)),
@@ -302,11 +302,11 @@ class Command(BaseCommand):
         )
         bp_300_calls_subsections.components.add(pc1, pc2, pc3)
         six_months_ago = (
-            datetime.date.today() - relativedelta(months=6) - relativedelta(days=20)
+            datetime.date.today() - relativedelta(months=6) - relativedelta(days=29)
         )
         for i, customer in enumerate(big_customers):
             beginning = six_months_ago
-            offset = random.gauss(0, 4)//1
+            offset = np.random.randint(0, 30)
             beginning = beginning + relativedelta(days=offset)
             for months in range(6):
                 sub_start = beginning + relativedelta(months=months)
@@ -383,7 +383,7 @@ class Command(BaseCommand):
                 )
         for i, customer in enumerate(medium_customers):
             beginning = six_months_ago
-            offset = random.gauss(0, 4)//1
+            offset = np.random.randint(0, 30)
             beginning = beginning + relativedelta(days=offset)
             for months in range(6):
                 sub_start = beginning + relativedelta(months=months)
@@ -458,7 +458,7 @@ class Command(BaseCommand):
                 )
         for i, customer in enumerate(small_customers):
             beginning = six_months_ago
-            offset = random.gauss(0, 4)//1
+            offset = np.random.randint(0, 30)#random.gauss(0, 15)//1
             beginning = beginning + relativedelta(days=offset)
             for months in range(6):
                 sub_start = beginning + relativedelta(months=months)
@@ -533,11 +533,11 @@ def random_date(start, end, n):
     """Generate a random datetime between `start` and `end`"""
     if type(start) is datetime.date:
         start = datetime.datetime.combine(
-                    start, datetime.time.min, tzinfo=datetime.timezone.utc
+                    start, datetime.time.min,
                 )
     if type(end) is datetime.date:
         end = datetime.datetime.combine(
-                    end, datetime.time.max, tzinfo=datetime.timezone.utc
+                    end, datetime.time.max,
                 )
     for _ in range(n):
         dt = start + relativedelta(
@@ -564,5 +564,5 @@ def gaussian_users(n, mean=3, sd=1, mx=None):
         if max is not None:
             qty = min(qty, mx)
         yield {
-            "qty": max(qty, 1),
+            "qty": int(max(qty, 1)),
         }
