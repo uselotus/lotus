@@ -3,36 +3,33 @@ import ReactDOM from "react-dom";
 import { Pie } from "@ant-design/plots";
 import { Paper } from "../base/Paper";
 import { Title } from "../base/Typograpy/index.";
+import { useQuery, UseQueryResult } from "react-query";
+import { PlansByCustomer } from "../../api/api";
+import LoadingSpinner from "../LoadingSpinner";
 
 export const CustomerByPlanPie = (props: any) => {
-  const data = [
-    {
-      type: "Plan-1",
-      value: 27,
-    },
-    {
-      type: "Plan-2",
-      value: 25,
-    },
-    {
-      type: "Plan-3",
-      value: 18,
-    },
-  ];
+  const { data, isLoading }: UseQueryResult<any> = useQuery<any>(
+    ["customer_by_plan_pie"],
+    () =>
+      PlansByCustomer.getPlansByCustomer().then((res) => {
+        return res;
+      })
+  );
+
   const config = {
     legend: {
       position: "bottom" as any,
     },
     appendPadding: 20,
-    data,
-    angleField: "value",
-    colorField: "type",
+    data: data?.results,
+    angleField: "num_customers",
+    colorField: "plan_name",
     radius: 1,
-    innerRadius: 0.8,
+    innerRadius: 0.6,
     label: {
       type: "inner",
       offset: "-50%",
-      content: "{value}%",
+      content: "{value}",
       style: {
         textAlign: "center",
         fontSize: 12,
@@ -61,10 +58,16 @@ export const CustomerByPlanPie = (props: any) => {
   };
   return (
     <Paper>
-      <Title level={2}>*Preview* Customer by Plan</Title>
-      <div className="h-[390px]">
-        <Pie {...config} />
-      </div>
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <div>
+          <h2>Plans Distribution</h2>
+          <div className="h-[390px]">
+            <Pie {...config} />
+          </div>
+        </div>
+      )}
     </Paper>
   );
 };

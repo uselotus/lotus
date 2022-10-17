@@ -5,7 +5,7 @@ import posthog
 from dateutil import parser
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Prefetch, Q, F
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -1132,12 +1132,15 @@ class PlansByNumCustomersView(APIView):
             Subscription.objects.filter(
                 organization=organization, status=SUB_STATUS_TYPES.ACTIVE
             )
-            .values(plan_name="billing_plan__name")
+            .values(plan_name=F("billing_plan__name"))
             .annotate(num_customers=Count("customer"))
             .order_by("-num_customers")
         )
         tot_plans = sum([plan["num_customers"] for plan in plans])
-        plans = [{**plan, "percent_total":plan["num_customers"]/tot_plans}for plan in plans]
+        plans = [
+            {**plan, "percent_total": plan["num_customers"] / tot_plans}
+            for plan in plans
+        ]
         return Response(
             {
                 "status": "success",

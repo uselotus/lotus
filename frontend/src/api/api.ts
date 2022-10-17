@@ -5,7 +5,12 @@ import {
   CustomerTotal,
   CustomerDetailType,
 } from "../types/customer-type";
-import { PlanType, CreatePlanType, UpdatePlanType } from "../types/plan-type";
+import {
+  PlanType,
+  CreatePlanType,
+  UpdatePlanType,
+  PlansByCustomer,
+} from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -158,6 +163,11 @@ export const GetSubscriptions = {
         period_2_end_date,
       },
     }),
+};
+
+export const PlansByCustomer = {
+  getPlansByCustomer: (): Promise<PlansByCustomer> =>
+    requests.get("api/plans_by_customer/"),
 };
 
 export const Features = {

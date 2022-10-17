@@ -15,6 +15,11 @@ export interface PlanType {
   features: FeatureType[];
 }
 
+export interface PlansByCustomerArray {
+  results: { plan_name: string; num_customers: number; percent_total: number };
+  status?: string;
+}
+
 export interface UpdatePlanType {
   old_billing_plan_id: string;
   updated_billing_plan: CreatePlanType;
