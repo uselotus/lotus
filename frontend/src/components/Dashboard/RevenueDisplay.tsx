@@ -56,7 +56,7 @@ function RevenueDisplay(props: {
             </span>
           ) : (
             <span className="text-[#cf1322] text-3xl">
-              -{percentageChange.toFixed(0)}%{" "}
+              {percentageChange.toFixed(0)}%{" "}
             </span>
           )}
           <span>Previous-period</span>
