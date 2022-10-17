@@ -54,6 +54,7 @@ const CreateBacktest: FC = () => {
   );
 
   const runBacktest = () => {
+    submitSubstitution();
     form.validateFields().then((values) => {
       const start_date = dayjs()
         .subtract(values.date_range, "month")
@@ -126,14 +127,14 @@ const CreateBacktest: FC = () => {
           original_plan_names: [currentPlan.name],
         },
       ]);
-      setCurrentPlan();
-      setReplacementPlan();
+      // setCurrentPlan();
+      // setReplacementPlan();
     }
   };
 
-  useEffect(() => {
-    submitSubstitution();
-  }, [currentPlan, replacementPlan]);
+  // useEffect(() => {
+  //   submitSubstitution();
+  // }, [currentPlan, replacementPlan]);
 
   return (
     <PageLayout
@@ -284,9 +285,7 @@ const CreateBacktest: FC = () => {
               </div>
             </div>
             <div className="grid justify-items-center">
-              <Button className=" max-w-md" onClick={submitSubstitution}>
-                +
-              </Button>
+              <Button className=" max-w-md">+</Button>
             </div>
           </div>
         </Form>
