@@ -302,7 +302,7 @@ class Command(BaseCommand):
         )
         bp_300_calls_subsections.components.add(pc1, pc2, pc3)
         six_months_ago = (
-            datetime.date.today() - relativedelta(months=6) - relativedelta(days=29)
+            datetime.date.today() - relativedelta(months=6) - relativedelta(days=5)
         )
         for i, customer in enumerate(big_customers):
             beginning = six_months_ago
@@ -336,9 +336,9 @@ class Command(BaseCommand):
                     status="ended",
                     is_new=months == 0,
                 )
-                tot_word_limit = float(plan.components.get(
-                    billable_metric=sum_words
-                ).max_metric_units)
+                tot_word_limit = float(
+                    plan.components.get(billable_metric=sum_words).max_metric_units
+                )
                 word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
                 word_count = 0
                 while word_count < word_limit:
@@ -387,11 +387,7 @@ class Command(BaseCommand):
             beginning = beginning + relativedelta(days=offset)
             for months in range(6):
                 sub_start = beginning + relativedelta(months=months)
-                plan = (
-                    bp_40_og
-                    if months in [0, 1]
-                    else bp_100_og
-                )
+                plan = bp_40_og if months in [0, 1] else bp_100_og
                 languages = [
                     "en",
                     "es",
@@ -400,9 +396,7 @@ class Command(BaseCommand):
                     "it",
                 ]
                 users_mean, users_sd = 3, 1
-                scale = (
-                    1.2 if plan == bp_40_og else (1 if plan == bp_100_og else 0.85)
-                )
+                scale = 1.2 if plan == bp_40_og else (1 if plan == bp_100_og else 0.85)
                 sub = Subscription.objects.create(
                     organization=organization,
                     customer=customer,
@@ -411,9 +405,9 @@ class Command(BaseCommand):
                     status="ended",
                     is_new=months == 0,
                 )
-                tot_word_limit = float(plan.components.get(
-                    billable_metric=sum_words
-                ).max_metric_units)
+                tot_word_limit = float(
+                    plan.components.get(billable_metric=sum_words).max_metric_units
+                )
                 word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
                 word_count = 0
                 while word_count < word_limit:
@@ -458,15 +452,11 @@ class Command(BaseCommand):
                 )
         for i, customer in enumerate(small_customers):
             beginning = six_months_ago
-            offset = np.random.randint(0, 30)#random.gauss(0, 15)//1
+            offset = np.random.randint(0, 30)  # random.gauss(0, 15)//1
             beginning = beginning + relativedelta(days=offset)
             for months in range(6):
                 sub_start = beginning + relativedelta(months=months)
-                plan = (
-                    free_bp
-                    if months in [0, 1]
-                    else bp_40_og
-                )
+                plan = free_bp if months in [0, 1] else bp_40_og
                 languages = [
                     "en",
                 ]
@@ -482,9 +472,9 @@ class Command(BaseCommand):
                     status="ended",
                     is_new=months == 0,
                 )
-                tot_word_limit = float(plan.components.get(
-                    billable_metric=sum_words
-                ).max_metric_units)
+                tot_word_limit = float(
+                    plan.components.get(billable_metric=sum_words).max_metric_units
+                )
                 word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
                 word_count = 0
                 while word_count < word_limit:
@@ -533,12 +523,14 @@ def random_date(start, end, n):
     """Generate a random datetime between `start` and `end`"""
     if type(start) is datetime.date:
         start = datetime.datetime.combine(
-                    start, datetime.time.min,
-                )
+            start,
+            datetime.time.min,
+        )
     if type(end) is datetime.date:
         end = datetime.datetime.combine(
-                    end, datetime.time.max,
-                )
+            end,
+            datetime.time.max,
+        )
     for _ in range(n):
         dt = start + relativedelta(
             # Get a random amount of seconds between `start` and `end`

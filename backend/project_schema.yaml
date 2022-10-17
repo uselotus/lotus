@@ -696,6 +696,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/APIKeyCreateSuccess'
           description: ''
+  /api/organization:
+    get:
+      operationId: organization_retrieve
+      description: Get the current settings for the organization.
+      tags:
+      - organization
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/organization/invite:
+    post:
+      operationId: organization_invite_create
+      tags:
+      - organization
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/period_metric_revenue/:
     get:
       operationId: period_metric_revenue_retrieve
@@ -894,6 +917,21 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/plans_by_customer/:
+    get:
+      operationId: plans_by_customer_retrieve
+      tags:
+      - plans_by_customer
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlansByNumCustomers'
+          description: ''
   /api/register/:
     post:
       operationId: register_create
@@ -923,6 +961,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/RegistrationResponse'
           description: ''
+  /api/session/:
+    get:
+      operationId: session_retrieve
+      tags:
+      - session
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/stripe/:
     get:
       operationId: stripe_retrieve
@@ -1138,6 +1188,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/UpdateSubscriptionBillingPlanFailure'
           description: ''
+  /api/user/password/reset/:
+    post:
+      operationId: user_password_reset_create
+      description: Verifies the token and resets the password.
+      tags:
+      - user
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/user/password/reset/init/:
+    post:
+      operationId: user_password_reset_init_create
+      tags:
+      - user
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/users/:
     get:
       operationId: users_list
@@ -2109,27 +2184,18 @@ components:
         free_metric_units:
           type: number
           format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
           nullable: true
+          default: 0.0
         cost_per_batch:
           type: number
           format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
           nullable: true
+          default: 0.0
         metric_units_per_batch:
           type: number
           format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
           nullable: true
+          default: 1.0
         max_metric_units:
           type: number
           format: double
@@ -2155,6 +2221,18 @@ components:
       - plan_id
       - plan_name
       - plan_revenue
+    PlansByNumCustomers:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglePlanNumCustomers'
+        status:
+          $ref: '#/components/schemas/StatusE96Enum'
+      required:
+      - results
+      - status
     Registration:
       type: object
       properties:
@@ -2218,6 +2296,20 @@ components:
       - customer_id
       - customer_name
       - value
+    SinglePlanNumCustomers:
+      type: object
+      properties:
+        plan_name:
+          type: string
+        num_customers:
+          type: integer
+        percent_total:
+          type: number
+          format: double
+      required:
+      - num_customers
+      - percent_total
+      - plan_name
     SingleSubstitution:
       type: object
       properties:

@@ -155,10 +155,12 @@ def calculate_backtest(backtest_id):
         date, rev_dict = cum_rev_lst.pop(-1)
         last_dict = {**rev_dict, "date": date}
         for date in every_date:
-            if date < cum_rev_lst[-1][0]: #have not reached the next data point yet, dont add
+            if (
+                date < cum_rev_lst[-1][0]
+            ):  # have not reached the next data point yet, dont add
                 new_dict = last_dict.copy()
                 new_dict["date"] = date
-            elif date == cum_rev_lst[-1][0]: #have reached the next data point, add it
+            elif date == cum_rev_lst[-1][0]:  # have reached the next data point, add it
                 date, rev_dict = cum_rev_lst.pop()
                 new_dict = {**rev_dict, "date": date}
                 new_dict["original_plan_revenue"] += last_dict["original_plan_revenue"]
