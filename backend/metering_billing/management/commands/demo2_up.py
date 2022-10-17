@@ -74,6 +74,15 @@ class Command(BaseCommand):
             aggregation_type=itertools.cycle(
                 ["count", "sum", "sum", "unique", "unique"]
             ),
+            name=itertools.cycle(
+                [
+                    "API Calls",
+                    "Words",
+                    "Compute Time",
+                    "Unique Languages",
+                    "Content Types",
+                ]
+            ),
             metric_type="aggregation",
             _quantity=5,
         )
@@ -88,6 +97,7 @@ class Command(BaseCommand):
             ),
             aggregation_type=itertools.cycle(["max"]),
             metric_type="stateful",
+            name="User Seats",
             _quantity=1,
         )
         for bm in [

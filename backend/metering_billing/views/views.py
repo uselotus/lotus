@@ -1137,7 +1137,10 @@ class PlansByNumCustomersView(APIView):
             .order_by("-num_customers")
         )
         tot_plans = sum([plan["num_customers"] for plan in plans])
-        plans = [{**plan, "percent_total":plan["num_customers"]/tot_plans}for plan in plans]
+        plans = [
+            {**plan, "percent_total": plan["num_customers"] / tot_plans}
+            for plan in plans
+        ]
         return Response(
             {
                 "status": "success",
