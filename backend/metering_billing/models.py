@@ -3,7 +3,6 @@ import uuid
 
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
-from django.contrib.postgres.fields import DateTimeRangeField
 from django.db import models
 from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
@@ -27,6 +26,7 @@ from metering_billing.utils import (
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
+from stripe import Plan
 
 
 class Organization(models.Model):
@@ -76,6 +76,41 @@ class User(AbstractUser):
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
+
+
+class Product(models.Model):
+    """
+    This model is used to store the products that are available to be purchased.
+    """
+
+    name = models.CharField(max_length=100, null=False, blank=False)
+    description = models.TextField(null=True, blank=True)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="org_products"
+    )
+    product_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
+    status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
+    history = HistoricalRecords()
+
+    class Meta:
+        unique_together = ("organization", "product_id")
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class PlanArchetype(models.Model):
+    name = models.CharField(max_length=100, null=False, blank=False)
+    description = models.TextField(null=True, blank=True)
+    parent_product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="plan_archetypes"
+    )
+    plan_archetype_id = models.CharField(
+        default=uuid.uuid4, max_length=100, unique=True
+    )
+
+    def __str__(self):
+        return f"{self.name}"
 
 
 class Customer(models.Model):
@@ -281,6 +316,56 @@ class Feature(models.Model):
         return str(self.feature_name)
 
 
+
+class Invoice(models.Model):
+    cost_due = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
+    )
+    issue_date = models.DateTimeField(max_length=100, auto_now=True)
+    invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
+    org_connected_to_cust_payment_provider = models.BooleanField(default=False)
+    cust_connected_to_payment_provider = models.BooleanField(default=False)
+    payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
+    external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
+    external_payment_obj_type = models.CharField(
+        choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
+    )
+    line_items = models.JSONField()
+    organization = models.JSONField()
+    customer = models.JSONField()
+    subscription = models.JSONField()
+    history = HistoricalRecords()
+
+
+class APIToken(AbstractAPIKey):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="org_api_keys"
+    )
+    name = models.CharField(max_length=200, default="latest_token")
+
+    def __str__(self):
+        return str(self.name) + " " + str(self.organization.company_name)
+
+    class Meta(AbstractAPIKey.Meta):
+        verbose_name = "API Token"
+        verbose_name_plural = "API Tokens"
+
+
+class OrganizationInviteToken(models.Model):
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="user_invite_token"
+    )
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="org_invite_token",
+    )
+    email = models.EmailField()
+    token = models.CharField(max_length=250, default=uuid.uuid4)
+    expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
+
+
+
 class BillingPlan(models.Model):
     """
     Billing_ID: Id for this specific plan
@@ -317,6 +402,13 @@ class BillingPlan(models.Model):
         choices=PLAN_STATUS.choices,
         default=PLAN_STATUS.ACTIVE,
     )
+    archetype = models.ForeignKey(
+        PlanArchetype,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="billing_plans",
+    )
     history = HistoricalRecords()
 
     def __str__(self) -> str:
@@ -334,11 +426,6 @@ class BillingPlan(models.Model):
             return start_date + relativedelta(years=+1) - relativedelta(days=+1)
         else:
             raise ValueError("End date not calculated correctly")
-
-
-class TsTzRange(Func):
-    function = "TSTZRANGE"
-    output_field = DateTimeRangeField()
 
 
 class Subscription(models.Model):
@@ -414,54 +501,6 @@ class Subscription(models.Model):
         unique_together = ("organization", "subscription_id")
 
 
-class Invoice(models.Model):
-    cost_due = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
-    )
-    issue_date = models.DateTimeField(max_length=100, auto_now=True)
-    invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
-    org_connected_to_cust_payment_provider = models.BooleanField(default=False)
-    cust_connected_to_payment_provider = models.BooleanField(default=False)
-    payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
-    external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
-    external_payment_obj_type = models.CharField(
-        choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
-    )
-    line_items = models.JSONField()
-    organization = models.JSONField()
-    customer = models.JSONField()
-    subscription = models.JSONField()
-    history = HistoricalRecords()
-
-
-class APIToken(AbstractAPIKey):
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_api_keys"
-    )
-    name = models.CharField(max_length=200, default="latest_token")
-
-    def __str__(self):
-        return str(self.name) + " " + str(self.organization.company_name)
-
-    class Meta(AbstractAPIKey.Meta):
-        verbose_name = "API Token"
-        verbose_name_plural = "API Tokens"
-
-
-class OrganizationInviteToken(models.Model):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="user_invite_token"
-    )
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name="org_invite_token",
-    )
-    email = models.EmailField()
-    token = models.CharField(max_length=250, default=uuid.uuid4)
-    expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
-
-
 class Backtest(models.Model):
     """
     This model is used to store the results of a backtest.
@@ -509,37 +548,3 @@ class BacktestSubstitution(models.Model):
     def __str__(self):
         return f"{self.backtest}"
 
-
-class Product(models.Model):
-    """
-    This model is used to store the products that are available to be purchased.
-    """
-
-    name = models.CharField(max_length=100, null=False, blank=False)
-    description = models.TextField(null=True, blank=True)
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_products"
-    )
-    product_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
-    status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
-    history = HistoricalRecords()
-
-    class Meta:
-        unique_together = ("organization", "product_id")
-
-    def __str__(self):
-        return f"{self.name}"
-
-
-class PlanArchetype(models.Model):
-    name = models.CharField(max_length=100, null=False, blank=False)
-    description = models.TextField(null=True, blank=True)
-    parent_product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="plan_archetypes"
-    )
-    plan_archetype_id = models.CharField(
-        default=uuid.uuid4, max_length=100, unique=True
-    )
-
-    def __str__(self):
-        return f"{self.name}"
