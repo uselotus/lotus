@@ -13,15 +13,15 @@ const columns: ProColumns<BacktestType>[] = [
     dataIndex: "backtest_name",
     align: "left",
   },
-  {
-    title: "Creator",
-    dataIndex: "creator",
-    align: "left",
-    width: 150,
-  },
+  // {
+  //   title: "Creator",
+  //   dataIndex: "creator",
+  //   align: "left",
+  //   width: 150,
+  // },
   {
     title: "Date Created",
-    width: 120,
+    width: 150,
     dataIndex: "time_created",
     align: "left",
     sorter: (a, b) => a.time_created.localeCompare(b.time_created),

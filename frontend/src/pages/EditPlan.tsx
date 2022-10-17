@@ -120,6 +120,8 @@ const EditPlan = ({ type }: Props) => {
   );
 
   const addFeatures = (newFeatures: FeatureType[]) => {
+    newFeatures.filter((item) => planFeatures.indexOf(item) !== -1);
+
     setPlanFeatures([...planFeatures, ...newFeatures]);
     setFeatureVisible(false);
   };
@@ -170,15 +172,17 @@ const EditPlan = ({ type }: Props) => {
     setcomponentVisible(false);
   };
 
-  const handleComponentEdit = (id: any) => {
-    const currentComponent = componentsData.filter((item) => item.id === id)[0];
+  const handleComponentEdit = (name: string) => {
+    const currentComponent = componentsData.filter(
+      (item) => item.metric === name
+    )[0];
 
     setEditComponentsItem(currentComponent);
     setcomponentVisible(true);
   };
 
-  const deleteComponent = (id: number) => {
-    setComponentsData(componentsData.filter((item) => item.id !== id));
+  const deleteComponent = (name: string) => {
+    setComponentsData(componentsData.filter((item) => item.metric !== name));
   };
   const hideFeatureModal = () => {
     setFeatureVisible(false);
@@ -454,7 +458,7 @@ const EditPlan = ({ type }: Props) => {
                                       size="small"
                                       icon={<EditOutlined />}
                                       onClick={() =>
-                                        handleComponentEdit(component.id)
+                                        handleComponentEdit(component.metric)
                                       }
                                     />,
                                     <Button
@@ -464,7 +468,7 @@ const EditPlan = ({ type }: Props) => {
                                       icon={<DeleteOutlined />}
                                       danger
                                       onClick={() =>
-                                        deleteComponent(component.id)
+                                        deleteComponent(component.metric)
                                       }
                                     />,
                                   ]}

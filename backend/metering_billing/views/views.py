@@ -5,7 +5,7 @@ import posthog
 from dateutil import parser
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q, F
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -1094,6 +1094,57 @@ class ExperimentalToActiveView(APIView):
             {
                 "status": "success",
                 "detail": f"Plan {billing_plan} succesfully converted from experimental to active.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class PlansByNumCustomersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="PlansByNumCustomersRequest",
+            fields={},
+        ),
+        responses={
+            200: inline_serializer(
+                name="PlansByNumCustomers",
+                fields={
+                    "results": serializers.ListField(
+                        child=inline_serializer(
+                            name="SinglePlanNumCustomers",
+                            fields={
+                                "plan_name": serializers.CharField(),
+                                "num_customers": serializers.IntegerField(),
+                                "percent_total": serializers.FloatField(),
+                            },
+                        )
+                    ),
+                    "status": serializers.ChoiceField(choices=["success"]),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        organization = parse_organization(request)
+        plans = (
+            Subscription.objects.filter(
+                organization=organization, status=SUB_STATUS_TYPES.ACTIVE
+            )
+            .values(plan_name=F("billing_plan__name"))
+            .annotate(num_customers=Count("customer"))
+            .order_by("-num_customers")
+        )
+        tot_plans = sum([plan["num_customers"] for plan in plans])
+        plans = [
+            {**plan, "percent_total": plan["num_customers"] / tot_plans}
+            for plan in plans
+        ]
+        return Response(
+            {
+                "status": "success",
+                "results": plans,
             },
             status=status.HTTP_200_OK,
         )

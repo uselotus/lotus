@@ -12,12 +12,9 @@ import {
   List,
   ListItem,
   Flex,
-  BadgeDelta,
+  Badge,
 } from "@tremor/react";
 import { Pie } from "@ant-design/plots";
-import { Title as NewTitle } from "../base/Typograpy/index.";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 const arrowURL = new URL("../arrow.svg", import.meta.url).href;
 
 interface Props {
@@ -35,7 +32,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   const pieConfigNew = {
     appendPadding: 20,
     data: substitution.results.revenue_by_metric,
-    angleField: "original_plan_revenue",
+    angleField: "new_plan_revenue",
     colorField: "metric_name",
     radius: 1,
     innerRadius: 0.5,
@@ -56,12 +53,24 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         type: "element-active",
       },
     ],
+    statistic: {
+      title: false,
+
+      content: {
+        content: "",
+        style: {
+          whiteSpace: "pre-wrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        },
+      },
+    },
   };
 
   const pieConfigOld = {
     appendPadding: 20,
     data: substitution.results.revenue_by_metric,
-    angleField: "new_plan_revenue",
+    angleField: "original_plan_revenue",
     colorField: "metric_name",
     radius: 1,
     innerRadius: 0.5,
@@ -83,6 +92,18 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         type: "element-active",
       },
     ],
+    statistic: {
+      title: false,
+
+      content: {
+        content: "",
+        style: {
+          whiteSpace: "pre-wrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        },
+      },
+    },
   };
 
   useEffect(() => {
@@ -95,8 +116,6 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         newRevLineGraph[i][categories[1]] =
           newRevLineGraph[i]["new_plan_revenue"];
       }
-
-      console.log(newRevLineGraph);
       setRevenueLineGraph(newRevLineGraph);
     }
   }, [substitution.results.cumulative_revenue]);
@@ -126,10 +145,11 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
               spaceX="space-x-6"
             >
               <Text>{substitution.new_plan.plan_name}</Text>
-              <BadgeDelta
-                text={substitution.pct_revenue_change.toFixed(2) + "%"}
-                deltaType="moderateDecrease"
-              />
+              <Text
+                color={substitution.pct_revenue_change >= 0 ? "green" : "red"}
+              >
+                {(substitution.pct_revenue_change * 100).toFixed(2) + "%"}
+              </Text>
             </Flex>
             <Metric>{dataFormatter(substitution.new_plan.plan_revenue)}</Metric>
           </Card>
@@ -211,7 +231,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
                   <ListItem key={item.customer_id}>
                     <Text>{item.customer_name}</Text>
                     <Text>
-                      <Bold>{item.value.toFixed(2)}</Bold>
+                      <Bold>{(item.value * 100).toFixed(2)}</Bold>
                       {"% "}
                     </Text>
                   </ListItem>
@@ -227,7 +247,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
                   <ListItem key={item.customer_id}>
                     <Text>{item.customer_name}</Text>
                     <Text>
-                      <Bold>{item.value.toFixed(2)}</Bold>
+                      <Bold>{(item.value * 100).toFixed(2)}</Bold>
                       {"% "}
                     </Text>
                   </ListItem>

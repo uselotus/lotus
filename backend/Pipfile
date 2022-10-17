@@ -40,6 +40,8 @@ model-bakery = "*"
 django-simple-history = "<3.1.1"
 django-rest-knox = "*"
 django-anymail = {extras = ["mailgun"], version = "*"}
+numpy = "*"
+pytz = "*"
 
 [dev-packages]
 platformdirs = "*"

@@ -292,6 +292,11 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         queryset=BillableMetric.objects.all(),
     )
 
+    # both
+    free_metric_units = serializers.FloatField(allow_null=True, default=0)
+    cost_per_batch = serializers.FloatField(allow_null=True, default=0)
+    metric_units_per_batch = serializers.FloatField(allow_null=True, default=1)
+
     def get_fields(self, *args, **kwargs):
         fields = super().get_fields(*args, **kwargs)
         bmqs = fields["billable_metric_name"].queryset
@@ -302,10 +307,13 @@ class PlanComponentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         # fmu, cpb, and mupb must all be none or all be not none
+        fmu = data.get("free_metric_units", None)
+        cpb = data.get("cost_per_batch", None)
+        mupb = data.get("metric_units_per_batch", None)
         together = [
-            data.get("free_metric_units"),
-            data.get("cost_per_batch"),
-            data.get("metric_units_per_batch"),
+            fmu is not None,
+            cpb is not None,
+            mupb is not None,
         ]
         if not (all(together) or not any(together)):
             raise serializers.ValidationError(
