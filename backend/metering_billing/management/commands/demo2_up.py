@@ -559,7 +559,9 @@ class Command(BaseCommand):
         now = pytz.utc.localize(datetime.datetime.now())
         today = now.date()
         Subscription.objects.filter(
-            organization=organization, status=SUBSCRIPTION_STATUS.ENDED, end_date__gt=today
+            organization=organization,
+            status=SUBSCRIPTION_STATUS.ENDED,
+            end_date__gt=today,
         ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
 
 

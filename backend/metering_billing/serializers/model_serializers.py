@@ -676,7 +676,16 @@ class BacktestDetailSerializer(BacktestSummarySerializer):
 
     backtest_substitutions = BacktestSubstitutionSerializer(many=True)
 
+
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ("name", "description", "product_id", "status")
+
+
+class PlanArchetypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ("name", "description", "parent_product", "plan_archetype_id")
+
+    parent_product = ProductSerializer()

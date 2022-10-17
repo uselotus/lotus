@@ -9,16 +9,16 @@ from django.db.models import Func, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
 from metering_billing.utils import (
-    METRIC_AGGREGATION,
     BACKTEST_KPI,
     BACKTEST_STATUS,
     CATEGORICAL_FILTER_OPERATORS,
-    PLAN_INTERVAL,
     INVOICE_STATUS,
+    METRIC_AGGREGATION,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PAYMENT_PLANS,
     PAYMENT_PROVIDERS,
+    PLAN_INTERVAL,
     PLAN_STATUS,
     PRODUCT_STATUS,
     SUBSCRIPTION_STATUS,
@@ -422,9 +422,7 @@ class Invoice(models.Model):
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
-    payment_status = models.CharField(
-        max_length=40, choices=INVOICE_STATUS.choices
-    )
+    payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
     external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
@@ -518,7 +516,7 @@ class Product(models.Model):
     """
 
     name = models.CharField(max_length=100, null=False, blank=False)
-    description = models.TextField(null=False, blank=False)
+    description = models.TextField(null=True, blank=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_products"
     )
@@ -528,6 +526,20 @@ class Product(models.Model):
 
     class Meta:
         unique_together = ("organization", "product_id")
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class PlanArchetype(models.Model):
+    name = models.CharField(max_length=100, null=False, blank=False)
+    description = models.TextField(null=True, blank=True)
+    parent_product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="plan_archetypes"
+    )
+    plan_archetype_id = models.CharField(
+        default=uuid.uuid4, max_length=100, unique=True
+    )
 
     def __str__(self):
         return f"{self.name}"

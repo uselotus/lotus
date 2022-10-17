@@ -505,7 +505,9 @@ class DraftInvoiceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         subs = Subscription.objects.filter(
-            customer=customer, organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+            customer=customer,
+            organization=organization,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)

@@ -86,9 +86,11 @@ class BACKTEST_STATUS(models.TextChoices):
     RUNNING = ("running", _("Running"))
     COMPLETED = ("completed", _("Completed"))
 
+
 class PRODUCT_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     DEPRECATED = ("deprecated", _("Deprecated"))
+
 
 def convert_to_decimal(value):
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)

@@ -2,6 +2,7 @@ from datetime import datetime
 
 import posthog
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.utils import IntegrityError
 from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
@@ -13,6 +14,7 @@ from metering_billing.models import (
     Customer,
     Feature,
     Invoice,
+    PlanArchetype,
     Product,
     Subscription,
     User,
@@ -28,6 +30,7 @@ from metering_billing.serializers.model_serializers import (
     CustomerSerializer,
     FeatureSerializer,
     InvoiceSerializer,
+    PlanArchetypeSerializer,
     ProductSerializer,
     SubscriptionReadSerializer,
     SubscriptionSerializer,
@@ -519,3 +522,34 @@ class ProductViewSet(viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context
+
+
+class PlanArchetypeViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing Products.
+    """
+
+    serializer_class = PlanArchetypeSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["post", "head", "delete"]
+    queryset = PlanArchetype.objects.all()
+
+    def perform_create(self, serializer):
+        req_organization = parse_organization(self.request)
+        parent_organization = serializer["parent_product"].organization
+        if req_organization != parent_organization:
+            raise ValidationError(
+                "Reuqest organization does not match product organization"
+            )
+        serializer.save()
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_plan_archetype",
+                properties={},
+            )
+        return response

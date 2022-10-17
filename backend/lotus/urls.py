@@ -28,6 +28,7 @@ from metering_billing.views.model_views import (
     CustomerViewSet,
     FeatureViewSet,
     InvoiceViewSet,
+    PlanArchetypeViewSet,
     ProductViewSet,
     SubscriptionViewSet,
     UserViewSet,
@@ -69,6 +70,7 @@ router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
 router.register(r"backtests", BacktestViewSet, basename="backtest")
 router.register(r"products", ProductViewSet, basename="product")
+router.register(r"plan_archetypes", PlanArchetypeViewSet, basename="plan_archetype")
 
 
 urlpatterns = [
