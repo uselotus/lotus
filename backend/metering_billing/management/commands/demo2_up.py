@@ -126,7 +126,8 @@ class Command(BaseCommand):
             billing_plan_id="free",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=2_000
+            billable_metric=sum_words, 
+            max_metric_units=2_000
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=num_seats,
@@ -144,7 +145,8 @@ class Command(BaseCommand):
             billing_plan_id="40_og",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=40_000
+            billable_metric=sum_words, 
+            max_metric_units=40_000,
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=num_seats,
@@ -162,7 +164,8 @@ class Command(BaseCommand):
             billing_plan_id="100_og",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=100_000
+            billable_metric=sum_words, 
+            max_metric_units=100_000
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=num_seats,
@@ -180,7 +183,8 @@ class Command(BaseCommand):
             billing_plan_id="300_og",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=300_000
+            billable_metric=sum_words,
+            max_metric_units=300_000
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=num_seats,
@@ -198,13 +202,20 @@ class Command(BaseCommand):
             billing_plan_id="40_language_seats",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=40_000
+            billable_metric=sum_words, 
+            max_metric_units=40_000
         )
         pc2 = PlanComponent.objects.create(
-            billable_metric=unique_lang, cost_per_batch=7, metric_units_per_batch=1
+            billable_metric=unique_lang, 
+            cost_per_batch=7, 
+            metric_units_per_batch=1,
+            free_metric_quantity=0
         )
         pc3 = PlanComponent.objects.create(
-            billable_metric=num_seats, cost_per_batch=10, metric_units_per_batch=1
+            billable_metric=num_seats, 
+            cost_per_batch=10, 
+            metric_units_per_batch=1,
+            free_metric_quantity=0
         )
         bp_40_language_seats.components.add(pc1, pc2, pc3)
         bp_40_language_seats.save()
@@ -218,13 +229,20 @@ class Command(BaseCommand):
             billing_plan_id="100_language_seats",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=100_000
+            billable_metric=sum_words, 
+            max_metric_units=100_000
         )
         pc2 = PlanComponent.objects.create(
-            billable_metric=unique_lang, cost_per_batch=10, metric_units_per_batch=1
+            billable_metric=unique_lang, 
+            cost_per_batch=10, 
+            metric_units_per_batch=1,
+            free_metric_quantity=0
         )
         pc3 = PlanComponent.objects.create(
-            billable_metric=num_seats, cost_per_batch=12, metric_units_per_batch=1
+            billable_metric=num_seats, 
+            cost_per_batch=12, 
+            metric_units_per_batch=1,
+            free_metric_quantity=0
         )
         bp_100_language_seats.components.add(pc1, pc2, pc3)
         bp_300_language_seats = BillingPlan.objects.create(
@@ -237,13 +255,19 @@ class Command(BaseCommand):
             billing_plan_id="300_language_seats",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=300_000
+            billable_metric=sum_words, 
+            max_metric_units=300_000
         )
         pc2 = PlanComponent.objects.create(
-            billable_metric=unique_lang, cost_per_batch=10, metric_units_per_batch=1
+            billable_metric=unique_lang, 
+            cost_per_batch=10, 
+            metric_units_per_batch=1,
+            free_metric_quantity=0
         )
         pc3 = PlanComponent.objects.create(
-            billable_metric=num_seats, cost_per_batch=10, metric_units_per_batch=1
+            billable_metric=num_seats, 
+            cost_per_batch=10, 
+            free_metric_quantity=0
         )
         bp_300_language_seats.components.add(pc1, pc2, pc3)
         bp_40_calls_subsections = BillingPlan.objects.create(
@@ -256,10 +280,14 @@ class Command(BaseCommand):
             billing_plan_id="40_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=40_000
+            billable_metric=sum_words, 
+            max_metric_units=40_000
         )
         pc2 = PlanComponent.objects.create(
-            billable_metric=calls, cost_per_batch=0.30, metric_units_per_batch=1
+            billable_metric=calls, 
+            cost_per_batch=0.30, 
+            metric_units_per_batch=1,
+            free_metric_quantity=0
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=unique_subsections,
@@ -279,9 +307,15 @@ class Command(BaseCommand):
             billing_plan_id="100_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=100_000
+            billable_metric=sum_words, 
+            max_metric_units=100_000
         )
-        pc2 = PlanComponent.objects.create(billable_metric=calls, cost_per_batch=0.25)
+        pc2 = PlanComponent.objects.create(
+            billable_metric=calls, 
+            cost_per_batch=0.25,
+            metric_units_per_batch=1,
+            free_metric_quantity=0
+        )
         pc3 = PlanComponent.objects.create(
             billable_metric=unique_subsections,
             free_metric_units=6,
@@ -300,10 +334,14 @@ class Command(BaseCommand):
             billing_plan_id="300_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=300_000
+            billable_metric=sum_words, 
+            max_metric_units=300_000
         )
         pc2 = PlanComponent.objects.create(
-            billable_metric=calls, cost_per_batch=0.20, metric_units_per_batch=1
+            billable_metric=calls, 
+            cost_per_batch=0.20, 
+            metric_units_per_batch=1,
+            free_metric_quantity=0
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=unique_subsections,
@@ -312,6 +350,7 @@ class Command(BaseCommand):
             metric_units_per_batch=1,
         )
         bp_300_calls_subsections.components.add(pc1, pc2, pc3)
+        bp_300_calls_subsections.save()
         six_months_ago = (
             datetime.date.today() - relativedelta(months=6) - relativedelta(days=5)
         )
