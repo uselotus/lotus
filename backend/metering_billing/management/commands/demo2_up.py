@@ -272,7 +272,8 @@ class Command(BaseCommand):
             billing_plan_id="40_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
-            billable_metric=sum_words, max_metric_units=40_000
+            billable_metric=sum_words, 
+            max_metric_units=40_000
         )
         pc2 = PlanComponent.objects.create(
             billable_metric=calls,
