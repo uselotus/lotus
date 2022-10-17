@@ -22,6 +22,7 @@ from metering_billing.models import (
     User,
 )
 from metering_billing.serializers.model_serializers import BillableMetricSerializer
+from metering_billing.utils import SUB_STATUS_TYPES
 from model_bakery import baker
 
 
@@ -100,20 +101,20 @@ class Command(BaseCommand):
             billable_metric_name="User Seats",
             _quantity=1,
         )
-        for bm in [
-            calls,
-            sum_words,
-            sum_compute,
-            unique_lang,
-            unique_subsections,
-            num_seats,
-        ]:
-            serializer = BillableMetricSerializer(bm)
-            dict_repr = serializer.data
-            dict_repr.pop("billable_metric_name")
-            new_name = serializer.custom_name(dict_repr)
-            bm.billable_metric_name = new_name
-            bm.save()
+        # for bm in [
+        #     calls,
+        #     sum_words,
+        #     sum_compute,
+        #     unique_lang,
+        #     unique_subsections,
+        #     num_seats,
+        # ]:
+        #     serializer = BillableMetricSerializer(bm)
+        #     dict_repr = serializer.data
+        #     dict_repr.pop("billable_metric_name")
+        #     new_name = serializer.custom_name(dict_repr)
+        #     bm.billable_metric_name = new_name
+        #     bm.save()
         # SET THE BILLING PLANS
         free_bp = BillingPlan.objects.create(
             organization=organization,
@@ -248,8 +249,8 @@ class Command(BaseCommand):
         bp_40_calls_subsections = BillingPlan.objects.create(
             organization=organization,
             interval="month",
-            name="40K Words Plan - UB Calls + Subsections",
-            description="40K words per month + usage based pricing on Calls and Subsections",
+            name="40K Words Plan - UB Calls + Content Types",
+            description="40K words per month + usage based pricing on Calls and Content Types",
             flat_rate=0,
             pay_in_advance=True,
             billing_plan_id="40_calls_subsections",
@@ -271,8 +272,8 @@ class Command(BaseCommand):
         bp_100_calls_subsections = BillingPlan.objects.create(
             organization=organization,
             interval="month",
-            name="100K Words Plan - UB Calls + Subsections",
-            description="100K words per month + usage based pricing on Calls and Subsections",
+            name="100K Words Plan - UB Calls + Content Types",
+            description="100K words per month + usage based pricing on Calls and Content Types",
             flat_rate=0,
             pay_in_advance=True,
             billing_plan_id="100_calls_subsections",
@@ -292,8 +293,8 @@ class Command(BaseCommand):
         bp_300_calls_subsections = BillingPlan.objects.create(
             organization=organization,
             interval="month",
-            name="300K Words Plan - UB Calls + Subsections",
-            description="300K words per month + usage based pricing on Calls and Subsections",
+            name="300K Words Plan - UB Calls + Content Types",
+            description="300K words per month + usage based pricing on Calls and Content Types",
             flat_rate=0,
             pay_in_advance=True,
             billing_plan_id="300_calls_subsections",
@@ -527,6 +528,11 @@ class Command(BaseCommand):
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
                 )
+        now = pytz.utc.localize(datetime.datetime.now())
+        today = now.date()
+        Subscription.objects.filter(
+            organization=organization, status=SUB_STATUS_TYPES.ENDED, end_date__gt=today
+        ).update(status=SUB_STATUS_TYPES.ACTIVE)
 
 
 def random_date(start, end, n):

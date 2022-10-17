@@ -5,7 +5,7 @@ import posthog
 from dateutil import parser
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import Count, Prefetch, Q, F
+from django.db.models import Count, F, Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
@@ -173,17 +173,37 @@ class PeriodSubscriptionsView(APIView):
             Q(start_date__range=[p1_start, p1_end])
             | Q(end_date__range=[p1_start, p1_end]),
             organization=organization,
-        ).values_list("is_new", flat=True)
-        return_dict["period_1_total_subscriptions"] = len(p1_subs)
-        return_dict["period_1_new_subscriptions"] = sum(p1_subs)
+        ).values(customer_name=F("customer__name"), new=F("is_new"))
+        seen_dict = {}
+        for sub in p1_subs:
+            if (
+                sub["customer_name"] in seen_dict
+            ):  # seen before then they're def not new
+                seen_dict[sub["customer_name"]] = False
+            else:
+                seen_dict[sub["customer_name"]] = sub["new"]
+        return_dict["period_1_total_subscriptions"] = len(seen_dict)
+        return_dict["period_1_new_subscriptions"] = sum(
+            [1 for k, v in seen_dict.items() if v]
+        )
 
         p2_subs = Subscription.objects.filter(
             Q(start_date__range=[p2_start, p2_end])
             | Q(end_date__range=[p2_start, p2_end]),
             organization=organization,
-        ).values_list("is_new", flat=True)
-        return_dict["period_2_total_subscriptions"] = len(p2_subs)
-        return_dict["period_2_new_subscriptions"] = sum(p2_subs)
+        ).values(customer_name=F("customer__name"), new=F("is_new"))
+        seen_dict = {}
+        for sub in p2_subs:
+            if (
+                sub["customer_name"] in seen_dict
+            ):  # seen before then they're def not new
+                seen_dict[sub["customer_name"]] = False
+            else:
+                seen_dict[sub["customer_name"]] = sub["new"]
+        return_dict["period_2_total_subscriptions"] = len(seen_dict)
+        return_dict["period_2_new_subscriptions"] = sum(
+            [1 for k, v in seen_dict.items() if v]
+        )
 
         serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
@@ -225,12 +245,12 @@ class PeriodMetricUsageView(APIView):
                 q_end,
                 granularity=REVENUE_CALC_GRANULARITY.DAILY,
             )
-            return_dict[str(metric)] = {
+            return_dict[metric.billable_metric_name] = {
                 "data": {},
                 "total_usage": 0,
                 "top_n_customers": {},
             }
-            metric_dict = return_dict[str(metric)]
+            metric_dict = return_dict[metric.billable_metric_name]
             for customer_name, period_dict in usage_summary.items():
                 for datetime, qty in period_dict.items():
                     qty = convert_to_decimal(qty)

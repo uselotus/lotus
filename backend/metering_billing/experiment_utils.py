@@ -221,7 +221,7 @@ def calculate_backtest(backtest_id):
                 "value": pct_change,
             }
             for customer, pct_change in all_pct_change[-5:]
-        ].reverse()
+        ][::-1]
         top_cust_dict["biggest_pct_decrease"] = [
             {
                 "customer_id": customer.customer_id,
@@ -277,7 +277,6 @@ def calculate_backtest(backtest_id):
         print("all results", all_results)
         raise Exception
     results = make_all_dates_times_strings(serializer.validated_data)
-    print("results", results)
     backtest.backtest_results = results
     backtest.status = BACKTEST_STATUS_TYPES.COMPLETED
     backtest.save()
