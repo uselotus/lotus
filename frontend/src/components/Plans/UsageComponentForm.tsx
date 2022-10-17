@@ -34,7 +34,7 @@ function UsageComponentForm({
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [isCharge, setIsCharge] = useState(
-    editComponentItem?.free_amount !== undefined ? true : false
+    editComponentItem?.free_metric_units !== undefined ? true : false
   );
   const [isLimit, setIsLimit] = useState(
     editComponentItem?.max_metric_units ? true : false

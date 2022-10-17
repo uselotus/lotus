@@ -202,6 +202,7 @@ const EditPlan = ({ type }: Props) => {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components: any = Object.values(componentsData);
+        console.log(components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -482,7 +483,7 @@ const EditPlan = ({ type }: Props) => {
                                     label="Free Units"
                                     span={1}
                                   >
-                                    {component.free_amount ?? "Unlimited"}
+                                    {component.free_metric_units ?? "Unlimited"}
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Max Units" span={1}>
                                     {component.max_metric_units ?? "Unlimited"}
