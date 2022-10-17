@@ -46,17 +46,19 @@ class Command(BaseCommand):
             Customer,
             _quantity=9,
             organization=organization,
-            name=itertools.cycle([
-                "Big Company 1",
-                "Big Company 2",
-                "Big Company 3",
-                "Medium Company 1",
-                "Medium Company 2",
-                "Medium Company 3",
-                "Small Company 1",
-                "Small Company 2",
-                "Small Company 3",
-            ]),
+            name=itertools.cycle(
+                [
+                    "Big Company 1",
+                    "Big Company 2",
+                    "Big Company 3",
+                    "Medium Company 1",
+                    "Medium Company 2",
+                    "Medium Company 3",
+                    "Small Company 1",
+                    "Small Company 2",
+                    "Small Company 3",
+                ]
+            ),
             customer_id=(fake.unique.ean() for _ in range(9)),
         )
         calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
@@ -309,11 +311,25 @@ class Command(BaseCommand):
                         if time == six_months_ago
                         else (bp_100_og if time == five_months_ago else bp_300_og)
                     )
-                    languages = ["en", "es", "fr", "de", "it", "pt", "ru", ]
+                    languages = [
+                        "en",
+                        "es",
+                        "fr",
+                        "de",
+                        "it",
+                        "pt",
+                        "ru",
+                    ]
                     users_mean, users_sd = 4.5, 0.5
                 elif i < 6:
                     plan = bp_40_og if time == six_months_ago else bp_100_og
-                    languages = ["en", "es", "fr", "de", "it",  ]
+                    languages = [
+                        "en",
+                        "es",
+                        "fr",
+                        "de",
+                        "it",
+                    ]
                     users_mean, users_sd = 3, 1
                 else:
                     plan = (
@@ -321,27 +337,35 @@ class Command(BaseCommand):
                         if time in [six_months_ago, five_months_ago]
                         else bp_40_og
                     )
-                    languages = ["en",]
-                    users_mean, users_sd = 2, .75
-                scale = 1.4 if plan == bp_40_og else (1.12 if plan == bp_100_og else 0.95)
+                    languages = [
+                        "en",
+                    ]
+                    users_mean, users_sd = 2, 0.75
+                scale = (
+                    1.4 if plan == bp_40_og else (1.12 if plan == bp_100_og else 0.95)
+                )
                 sub = Subscription.objects.create(
                     organization=organization,
                     customer=customer,
                     billing_plan=plan,
                     start_date=time,
-                    status="active",
+                    status="ended",
                     is_new=time == six_months_ago,
                 )
-                word_limit = plan.components.get(billable_metric=sum_words).max_metric_units
+                word_limit = plan.components.get(
+                    billable_metric=sum_words
+                ).max_metric_units
                 word_count = 0
                 while word_count < word_limit:
                     event_words = random.gauss(350, 30)
                     if word_count + event_words > word_limit:
                         break
-                    compute_time = event_words*random.gauss(0.1, 0.02)
+                    compute_time = event_words * random.gauss(0.1, 0.02)
                     language = random.choice(languages)
-                    subsection = 1 if plan == free_bp else np.random.exponential(scale=scale)
-                    subsection = str(subsection//1)
+                    subsection = (
+                        1 if plan == free_bp else np.random.exponential(scale=scale)
+                    )
+                    subsection = str(subsection // 1)
                     for tc in random_date(sub.start_date, sub.end_date, 1):
                         tc = tc
                     Event.objects.create(
@@ -358,8 +382,11 @@ class Command(BaseCommand):
                         },
                     )
                     word_count += event_words
-                max_users = float(plan.components.get(billable_metric=num_seats).max_metric_units)
+                max_users = float(
+                    plan.components.get(billable_metric=num_seats).max_metric_units
+                )
                 n = int(random.gauss(6, 1.5) // 1)
+                print(n)
                 baker.make(
                     Event,
                     organization=organization,
@@ -375,13 +402,11 @@ class Command(BaseCommand):
 def random_date(start, end, n):
     """Generate a random datetime between `start` and `end`"""
     for _ in range(n):
-        yield (
-            start
-            + relativedelta(
-                # Get a random amount of seconds between `start` and `end`
-                seconds=random.randint(0, int((end - start).total_seconds())),
-            )
-        ).replace(tzinfo=timezone.utc)
+        dt = start + relativedelta(
+            # Get a random amount of seconds between `start` and `end`
+            seconds=random.randint(0, int((end - start).total_seconds())),
+        )
+        yield dt.replace(tzinfo=timezone.utc)
 
 
 def gaussian_raise_issue(n):
