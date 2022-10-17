@@ -149,6 +149,7 @@ def calculate_backtest(backtest_id):
         cum_rev_dict_list = []
         cum_rev = inner_results.pop("cumulative_revenue")
         cum_rev_lst = sorted(cum_rev.items(), key=lambda x: x[0], reverse=True)
+        print(cum_rev_lst)
         print("early_date", cum_rev_lst[-1][0], "late_date", cum_rev_lst[0][0])
         every_date = list(dates_bwn_twodates(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
         print("len_all_dates", len(every_date))
