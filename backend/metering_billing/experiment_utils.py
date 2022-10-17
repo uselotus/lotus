@@ -14,6 +14,7 @@ from metering_billing.serializers.model_serializers import (
 )
 from metering_billing.utils import (
     BACKTEST_STATUS_TYPES,
+    dates_bwn_twodates,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
@@ -145,15 +146,26 @@ def calculate_backtest(backtest_id):
                 "new_plan_revenue"
             ] += new_usage_revenue["flat_revenue_due"]
         # change cumulative revenue to be cumulative and in fronted format
-        cum_rev = inner_results.pop("cumulative_revenue")
-        cum_rev_lst = sorted(cum_rev.items(), key=lambda x: x[0])
         cum_rev_dict_list = []
-        for i, (date, rev_dict) in enumerate(cum_rev_lst):
-            new_dict = {**rev_dict, "date": date}
-            if i != 0:
-                prev_dict = cum_rev_dict_list[i - 1]
-                new_dict["original_plan_revenue"] += prev_dict["original_plan_revenue"]
-                new_dict["new_plan_revenue"] += prev_dict["new_plan_revenue"]
+        cum_rev = inner_results.pop("cumulative_revenue")
+        cum_rev_lst = sorted(cum_rev.items(), key=lambda x: x[0], reverse=True)
+        print("early_date", cum_rev_lst[-1][0], "late_date", cum_rev_lst[0][0])
+        every_date = list(dates_bwn_twodates(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
+        print("len_all_dates", len(every_date))
+        date, rev_dict = cum_rev_lst.pop(-1)
+        last_dict = {**rev_dict, "date": date}
+        for date in every_date:
+            if date < cum_rev_lst[-1][0]: #have not reached the next data point yet, dont add
+                new_dict = last_dict.copy()
+                new_dict["date"] = date
+            elif date == cum_rev_lst[-1][0]: #have reached the next data point, add it
+                date, rev_dict = cum_rev_lst.pop()
+                new_dict = {**rev_dict, "date": date}
+                new_dict["original_plan_revenue"] += last_dict["original_plan_revenue"]
+                new_dict["new_plan_revenue"] += last_dict["new_plan_revenue"]
+                last_dict = new_dict
+            else:
+                raise Exception("should not be greater than the most recent date")
             cum_rev_dict_list.append(new_dict)
         inner_results["cumulative_revenue"] = cum_rev_dict_list
         # change metric revenue to be in frontend format
@@ -207,7 +219,7 @@ def calculate_backtest(backtest_id):
                 "value": pct_change,
             }
             for customer, pct_change in all_pct_change[-5:]
-        ]
+        ].reverse()
         top_cust_dict["biggest_pct_decrease"] = [
             {
                 "customer_id": customer.customer_id,
