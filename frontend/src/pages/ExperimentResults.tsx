@@ -1,22 +1,9 @@
-import React, { FC } from "react";
+import React, { FC, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Select, Typography } from "antd";
-import {
-  Card,
-  ColGrid,
-  Metric,
-  Text,
-  LineChart,
-  Title,
-  Bold,
-  List,
-  ListItem,
-  Tab,
-  TabList,
-} from "@tremor/react";
-import { Pie } from "@ant-design/plots";
+import { Select, Button } from "antd";
+import { Card, Flex, Metric, Text, Badge } from "@tremor/react";
 import { Title as NewTitle } from "../components/base/Typograpy/index.";
-
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery, UseQueryResult } from "react-query";
 import { Backtests } from "../api/api";
 import { BacktestResultType, SpecificResults } from "../types/experiment-type";
@@ -37,8 +24,8 @@ const fakeData = [
 ];
 
 const ExperimentResults: FC = () => {
-  const navigate = useNavigate();
   const params = useParams();
+  const navigate = useNavigate();
   const { experimentId } = params as any;
   const [selectedSubstitution, setSelectedSubstitution] = React.useState<
     SpecificResults | undefined
@@ -66,30 +53,42 @@ const ExperimentResults: FC = () => {
     setSelectedSubstitution(selectedSubstitution);
   };
 
-  const cumulative_config = {
-    fakeData,
-    xField: "date",
-    yField: "value",
-    seriesField: "category",
-    xAxis: {
-      type: "time",
-    },
-    yAxis: {
-      label: {
-        formatter: (v) =>
-          `${v}`.replace(/\d{1,3}(?=(\d{3})+$)/g, (s) => `${s},`),
-      },
-    },
+  useEffect(() => {
+    if (
+      experiment &&
+      experiment.backtest_results.substitution_results.length > 0
+    ) {
+      setSelectedSubstitution(
+        experiment?.backtest_results.substitution_results[0]
+      );
+    }
+  }, [experiment]);
+
+  const goBackPage = () => {
+    navigate(-1);
   };
 
   const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
   return (
-    <PageLayout title="Results">
+    <PageLayout
+      title="Results"
+      extra={[
+        <Button
+          key={"back"}
+          onClick={goBackPage}
+          icon={<ArrowLeftOutlined />}
+          type="default"
+          size="large"
+        >
+          Back
+        </Button>,
+      ]}
+    >
       {isError || experiment === undefined ? (
         <div>Something went wrong</div>
       ) : (
         <div>
-          <div className=" border-2 border-gray-200 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7">
+          <div className=" border-2 border-gray-200 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-4">
             <div className="grid grid-cols-2 gap-5">
               <div className=" mb-3">
                 <NewTitle>{experiment?.backtest_name}</NewTitle>
@@ -99,24 +98,60 @@ const ExperimentResults: FC = () => {
               </h3>
 
               <div className=" col-span-1 self-center">
-                <h3 className=" font-bold">Date Range:</h3>
-                <h3 className="font-bold">
-                  {experiment.start_date} to {experiment.end_date}
+                <h3 className=" font-bold">
+                  Date Range: {experiment.start_date} to {experiment.end_date}
                 </h3>
               </div>
               <div className="col-span-1">
                 <h3 className=" font-bold">Status: {experiment.status}</h3>
               </div>
-              <div className="grid grid-cols-auto">
-                <h3 className=" font-bold">Total Revenue</h3>
-              </div>
             </div>
           </div>
+          {/* <div className="justify-self-center mt-6">
+            <Card key="total_revenue" maxWidth="max-w-xs">
+              <Flex
+                justifyContent="justify-start"
+                alignItems="items-baseline"
+                spaceX="space-x-3"
+                truncate={true}
+              >
+                <Text>{"Total Revenue"}</Text>
+                <Text
+                  color={
+                    experiment.backtest_results.pct_revenue_change >= 0
+                      ? "green"
+                      : "red"
+                  }
+                >
+                  {(
+                    experiment.backtest_results.pct_revenue_change * 100
+                  ).toFixed(2) + "%"}
+                </Text>
+              </Flex>
+              <Flex
+                justifyContent="justify-start"
+                alignItems="items-baseline"
+                spaceX="space-x-3"
+                truncate={true}
+              >
+                <Metric>
+                  {dataFormatter(experiment.backtest_results.new_plans_revenue)}
+                </Metric>
+                <Text truncate={true}>
+                  from{" "}
+                  {dataFormatter(
+                    experiment.backtest_results.original_plans_revenue
+                  )}
+                </Text>
+              </Flex>
+            </Card>
+          </div> */}
           <div>
             <h2> Substitutions</h2>
             <Select
-              defaultValue="Select a Substitution"
+              defaultValue="Select a substitution"
               onChange={changeSubstitution}
+              value={selectedSubstitution?.substitution_name}
             >
               {experiment.backtest_results.substitution_results.map(
                 (substitution) => (
