@@ -1,10 +1,8 @@
 import datetime
 import itertools
-import json
 
 import pytest
 from dateutil.relativedelta import relativedelta
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import (
     BillableMetric,

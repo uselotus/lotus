@@ -2,10 +2,8 @@ import json
 
 import posthog
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
 from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView

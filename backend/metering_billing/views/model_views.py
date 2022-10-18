@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.utils import IntegrityError
+from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
 from metering_billing.models import (
     Alert,
@@ -37,12 +38,14 @@ from metering_billing.serializers.model_serializers import (
     UserSerializer,
 )
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import INVOICE_STATUS, PLAN_STATUS, SUBSCRIPTION_STATUS
+from metering_billing.utils.enums import (
+    INVOICE_STATUS,
+    PLAN_STATUS,
+    SUBSCRIPTION_STATUS,
+)
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
-from ..auth_utils import parse_organization
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 

@@ -1,10 +1,7 @@
 import datetime
 import itertools
-import os
 import random
-import time
 import uuid
-from datetime import timezone
 
 import numpy as np
 import pytz
@@ -21,8 +18,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.serializers.model_serializers import BillableMetricSerializer
-from metering_billing.utils import SUBSCRIPTION_STATUS
+from metering_billing.utils.enums import SUBSCRIPTION_STATUS
 from model_bakery import baker
 
 

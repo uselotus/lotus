@@ -6,13 +6,10 @@ import stripe
 from django.conf import settings
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from metering_billing.auth_utils import parse_organization
+from metering_billing.auth import parse_organization
 from metering_billing.models import Customer, Organization
-from metering_billing.utils import (
-    INVOICE_STATUS,
-    PAYMENT_PROVIDERS,
-    turn_decimal_into_cents,
-)
+from metering_billing.utils import turn_decimal_into_cents
+from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response

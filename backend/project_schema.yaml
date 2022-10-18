@@ -833,6 +833,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/PeriodSubscriptionsResponse'
           description: ''
+  /api/plan_archetypes/:
+    post:
+      operationId: plan_archetypes_create
+      description: A simple ViewSet for viewing and editing Products.
+      tags:
+      - plan_archetypes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanArchetype'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PlanArchetype'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PlanArchetype'
+        required: true
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanArchetype'
+          description: ''
+  /api/plan_archetypes/{id}/:
+    delete:
+      operationId: plan_archetypes_destroy
+      description: A simple ViewSet for viewing and editing Products.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this plan archetype.
+        required: true
+      tags:
+      - plan_archetypes
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/plans/:
     get:
       operationId: plans_list
@@ -932,6 +979,92 @@ paths:
               schema:
                 $ref: '#/components/schemas/PlansByNumCustomers'
           description: ''
+  /api/products/:
+    get:
+      operationId: products_list
+      description: A simple ViewSet for viewing and editing Products.
+      tags:
+      - products
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+          description: ''
+    post:
+      operationId: products_create
+      description: A simple ViewSet for viewing and editing Products.
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/{id}/:
+    get:
+      operationId: products_retrieve
+      description: A simple ViewSet for viewing and editing Products.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+    delete:
+      operationId: products_destroy
+      description: A simple ViewSet for viewing and editing Products.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/register/:
     post:
       operationId: register_create
@@ -2171,6 +2304,23 @@ components:
       - period_1_total_subscriptions
       - period_2_new_subscriptions
       - period_2_total_subscriptions
+    PlanArchetype:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        parent_product:
+          $ref: '#/components/schemas/Product'
+        plan_archetype_id:
+          type: string
+          maxLength: 100
+      required:
+      - name
+      - parent_product
     PlanComponent:
       type: object
       properties:
@@ -2233,6 +2383,28 @@ components:
       required:
       - results
       - status
+    Product:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        product_id:
+          type: string
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/ProductStatusEnum'
+      required:
+      - name
+      - status
+    ProductStatusEnum:
+      enum:
+      - active
+      - deprecated
+      type: string
     Registration:
       type: object
       properties:

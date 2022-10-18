@@ -1,14 +1,11 @@
 import json
-import time
 import uuid
 from datetime import datetime
 
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from metering_billing.models import Event
 from metering_billing.tasks import write_batch_events_to_db
-from model_bakery import baker
 from rest_framework import status
 
 

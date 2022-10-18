@@ -3,9 +3,7 @@ import json
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from lotus.urls import router
 from metering_billing.models import Customer
-from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 

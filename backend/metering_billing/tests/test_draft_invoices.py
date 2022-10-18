@@ -11,7 +11,7 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
 )
-from metering_billing.utils import INVOICE_STATUS
+from metering_billing.utils.enums import INVOICE_STATUS
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient

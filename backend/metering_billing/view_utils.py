@@ -4,13 +4,13 @@ from dateutil import parser
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import (
+from metering_billing.utils.enums import (
     METRIC_TYPE,
     REVENUE_CALC_GRANULARITY,
     SUBSCRIPTION_STATUS,
-    convert_to_decimal,
-    periods_bwn_twodates,
 )
+
+from .utils import convert_to_decimal, periods_bwn_twodates
 
 
 def get_metric_usage(

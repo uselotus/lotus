@@ -1,6 +1,6 @@
-from metering_billing.auth_utils import parse_organization
+from metering_billing.auth import parse_organization
 from metering_billing.models import BillingPlan, Customer
-from metering_billing.utils import PLAN_STATUS
+from metering_billing.utils.enums import PLAN_STATUS
 from rest_framework import serializers
 
 from .model_serializers import (

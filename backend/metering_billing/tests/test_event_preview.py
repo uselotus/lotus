@@ -9,7 +9,6 @@ def event_preview_test_common_setup(
     generate_org_and_api_key,
     add_users_to_org,
     api_client_with_api_key_auth,
-    add_subscriptions_to_org,
     add_customers_to_org,
 ):
     def do_event_preview_test_common_setup(

@@ -7,34 +7,29 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
+from metering_billing.auth import parse_organization
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
-from metering_billing.view_utils import (
-    REVENUE_CALC_GRANULARITY,
+from metering_billing.utils import (
+    convert_to_decimal,
+    make_all_dates_times_strings,
+    make_all_decimals_floats,
     periods_bwn_twodates,
+)
+from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY, SUBSCRIPTION_STATUS
+from metering_billing.view_utils import (
+    calculate_sub_pc_usage_revenue,
+    get_customer_usage_and_revenue,
+    get_metric_usage,
     sync_payment_provider_customers,
 )
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from ..auth_utils import parse_organization
-from ..invoice import generate_invoice
-from ..utils import (
-    SUBSCRIPTION_STATUS,
-    convert_to_decimal,
-    make_all_dates_times_strings,
-    make_all_decimals_floats,
-)
-from ..view_utils import (
-    calculate_sub_pc_usage_revenue,
-    get_customer_usage_and_revenue,
-    get_metric_usage,
-)
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 

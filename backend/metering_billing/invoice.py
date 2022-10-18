@@ -1,4 +1,4 @@
-from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from decimal import Decimal
 
 import posthog
 from django.conf import settings
@@ -12,11 +12,11 @@ from metering_billing.models import (
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.model_serializers import InvoiceSerializer
 from metering_billing.utils import (
-    INVOICE_STATUS,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
 )
+from metering_billing.utils.enums import INVOICE_STATUS
 from metering_billing.view_utils import calculate_sub_pc_usage_revenue
 from rest_framework import serializers
 

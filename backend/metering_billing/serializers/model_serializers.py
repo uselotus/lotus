@@ -1,9 +1,7 @@
 import datetime
 
 from django.db.models import Q
-from metering_billing.auth_utils import parse_organization
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import OverlappingSubscription
 from metering_billing.models import (
     Alert,
     Backtest,
@@ -17,12 +15,13 @@ from metering_billing.models import (
     Invoice,
     NumericFilter,
     Organization,
+    PlanArchetype,
     PlanComponent,
     Product,
     Subscription,
     User,
 )
-from metering_billing.utils import BACKTEST_KPI, PLAN_STATUS, SUBSCRIPTION_STATUS
+from metering_billing.utils.enums import BACKTEST_KPI, PLAN_STATUS, SUBSCRIPTION_STATUS
 from rest_framework import serializers
 
 
@@ -685,7 +684,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
 class PlanArchetypeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Product
+        model = PlanArchetype
         fields = ("name", "description", "parent_product", "plan_archetype_id")
 
     parent_product = ProductSerializer()

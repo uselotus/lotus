@@ -5,7 +5,6 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from lotus.urls import router
 from metering_billing.models import (
     BillableMetric,
     BillingPlan,
@@ -13,11 +12,8 @@ from metering_billing.models import (
     Event,
     PlanComponent,
 )
-from metering_billing.view_utils import (
-    REVENUE_CALC_GRANULARITY,
-    calculate_sub_pc_usage_revenue,
-    get_metric_usage,
-)
+from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY
+from metering_billing.view_utils import calculate_sub_pc_usage_revenue, get_metric_usage
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient

@@ -4,11 +4,11 @@ import uuid
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import Func, Q
+from django.db.models import Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
-from metering_billing.utils import (
-    BACKTEST_KPI,
+from metering_billing.utils import dates_bwn_twodates, now_plus_day
+from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CATEGORICAL_FILTER_OPERATORS,
     INVOICE_STATUS,
@@ -21,12 +21,9 @@ from metering_billing.utils import (
     PLAN_STATUS,
     PRODUCT_STATUS,
     SUBSCRIPTION_STATUS,
-    dates_bwn_twodates,
-    now_plus_day,
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
-from stripe import Plan
 
 
 class Organization(models.Model):
@@ -316,7 +313,6 @@ class Feature(models.Model):
         return str(self.feature_name)
 
 
-
 class Invoice(models.Model):
     cost_due = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
@@ -350,7 +346,6 @@ class APIToken(AbstractAPIKey):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
 
-
 class OrganizationInviteToken(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="user_invite_token"
@@ -363,7 +358,6 @@ class OrganizationInviteToken(models.Model):
     email = models.EmailField()
     token = models.CharField(max_length=250, default=uuid.uuid4)
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
-
 
 
 class BillingPlan(models.Model):
@@ -426,7 +420,6 @@ class BillingPlan(models.Model):
             return start_date + relativedelta(years=+1) - relativedelta(days=+1)
         else:
             raise ValueError("End date not calculated correctly")
-
 
 class Subscription(models.Model):
     """
@@ -547,4 +540,3 @@ class BacktestSubstitution(models.Model):
 
     def __str__(self):
         return f"{self.backtest}"
-

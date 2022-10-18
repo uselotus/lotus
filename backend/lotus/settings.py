@@ -95,7 +95,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "metering_billing",
     "corsheaders",
     "social_django",
     "djmoney",
@@ -106,6 +105,7 @@ INSTALLED_APPS = [
     "simple_history",
     "knox",
     "anymail",
+    "metering_billing",
 ]
 
 ANYMAIL = {
@@ -180,7 +180,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 AUTH_USER_MODEL = "metering_billing.User"
-AUTHENTICATION_BACKENDS = ["metering_billing.auth_utils.EmailOrUsernameModelBackend"]
+AUTHENTICATION_BACKENDS = ["metering_billing.model_backend.EmailOrUsernameModelBackend"]
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # SESSION_COOKIE_AGE = 2 * 60 * 60  # set just 10 seconds to test

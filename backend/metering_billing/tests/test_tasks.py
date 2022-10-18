@@ -17,7 +17,7 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.tasks import calculate_invoice, update_invoice_status
-from metering_billing.utils import INVOICE_STATUS
+from metering_billing.utils.enums import INVOICE_STATUS
 from model_bakery import baker
 from rest_framework.test import APIClient
 

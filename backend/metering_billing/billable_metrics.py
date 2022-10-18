@@ -18,13 +18,12 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast, Trunc
 from metering_billing.models import BillableMetric, Customer, Event
-from metering_billing.utils import (
+from metering_billing.utils import periods_bwn_twodates
+from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_TYPE,
     REVENUE_CALC_GRANULARITY,
-    periods_bwn_twodates,
 )
-from rest_framework import serializers, status
 
 
 class BillableMetricHandler(abc.ABC):
