@@ -9,7 +9,7 @@ import {
   PlanType,
   CreatePlanType,
   UpdatePlanType,
-  PlansByCustomer,
+  PlansByCustomerArray,
 } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import {
@@ -166,7 +166,7 @@ export const GetSubscriptions = {
 };
 
 export const PlansByCustomer = {
-  getPlansByCustomer: (): Promise<PlansByCustomer> =>
+  getPlansByCustomer: (): Promise<PlansByCustomerArray> =>
     requests.get("api/plans_by_customer/"),
 };
 

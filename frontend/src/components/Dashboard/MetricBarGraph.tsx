@@ -108,19 +108,22 @@ function MetricBarGraph(props: { range: any }) {
 
   return (
     <Paper>
-      <h2>Metric Usage By Customer</h2>
-      <Select
-        defaultValue="Select Metric"
-        onChange={changeMetric}
-        value={selectedMetric}
-        className="my-5"
-      >
-        {metricList.map((metric_name) => (
-          <Option value={metric_name} loading={isLoading}>
-            {metric_name}
-          </Option>
-        ))}
-      </Select>
+      <div className="flex flex-row items-center mb-5 space-x-4">
+        <h2>Metric Usage By Customer</h2>
+        <Select
+          defaultValue="Select Metric"
+          onChange={changeMetric}
+          value={selectedMetric}
+          className="w-4/12 self-center"
+        >
+          {metricList.map((metric_name) => (
+            <Option value={metric_name} loading={isLoading}>
+              {metric_name}
+            </Option>
+          ))}
+        </Select>
+      </div>
+
       <div className="mt-5">
         <Column {...config} />
       </div>
