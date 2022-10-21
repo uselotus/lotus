@@ -66,10 +66,7 @@ const Dashboard: FC = () => {
         <Col span="24">
           <div className="grid grid-cols-12 justify-center space-x-4">
             <div className="col-span-8">
-              <RevenueBarGraph
-                data={data?.daily_usage_revenue_period_1}
-                isLoading={isLoading}
-              />
+              <MetricBarGraph range={dateRange} />
             </div>
             <div className="col-span-4">
               <CustomerByPlanPie
@@ -78,9 +75,6 @@ const Dashboard: FC = () => {
               />
             </div>
           </div>
-        </Col>
-        <Col span="24">
-          <MetricBarGraph range={dateRange} />
         </Col>
       </Row>
     </PageLayout>
