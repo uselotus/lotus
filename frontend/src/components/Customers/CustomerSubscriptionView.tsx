@@ -77,13 +77,13 @@ const SubscriptionView: FC<Props> = ({
   useEffect(() => {
     if (plans !== undefined) {
       const planMap = plans.reduce((acc, plan) => {
-        acc[plan.billing_plan_id] = plan;
+        acc[plan.version_id] = plan;
         return acc;
       }, {} as { [key: number]: PlanType });
       setIDtoPlan(planMap);
       const newplanList: { label: string; value: string }[] = plans.map(
         (plan) => {
-          return { label: plan.name, value: plan.billing_plan_id };
+          return { label: plan.name, value: plan.version_id };
         }
       );
       setPlanList(newplanList);

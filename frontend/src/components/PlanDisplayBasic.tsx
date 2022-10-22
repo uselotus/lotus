@@ -22,7 +22,7 @@ import { Title } from "./base/Typograpy/index.";
 
 function PlanDisplayBasic(props: {
   plan: PlanType;
-  deletePlan: (billing_plan_id: string) => void;
+  deletePlan: (version_id: string) => void;
 }) {
   const planMenu = (
     <Menu>
@@ -34,7 +34,7 @@ function PlanDisplayBasic(props: {
       <Menu.Item key="1" disabled={props.plan.active_subscriptions !== 0}>
         <a
           href="#"
-          onClick={() => props.deletePlan(props.plan.billing_plan_id)}
+          onClick={() => props.deletePlan(props.plan.version_id)}
         >
           Delete
         </a>
@@ -92,7 +92,7 @@ function PlanDisplayBasic(props: {
           <p className="p-0 m-0">{props.plan.description}</p>
           <Descriptions size="small" column={2}>
             <Descriptions.Item label="Plan ID" span={2}>
-              {props.plan.billing_plan_id}
+              {props.plan.version_id}
             </Descriptions.Item>
             <Descriptions.Item label="Interval">
               {props.plan.interval}

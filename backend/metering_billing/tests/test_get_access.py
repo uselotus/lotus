@@ -6,12 +6,13 @@ from dateutil.relativedelta import relativedelta
 from django.urls import reverse
 from metering_billing.models import (
     BillableMetric,
-    BillingPlan,
     Event,
     Feature,
     PlanComponent,
+    PlanVersion,
     Subscription,
 )
+from metering_billing.utils import now_utc
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -23,6 +24,8 @@ def get_access_test_common_setup(
     add_users_to_org,
     api_client_with_api_key_auth,
     add_customers_to_org,
+    add_product_to_org,
+    add_plan_to_product,
 ):
     def do_get_access_test_common_setup(*, auth_method):
         setup_dict = {}
@@ -56,7 +59,7 @@ def get_access_test_common_setup(
             organization=org,
             customer=customer,
             event_name="email_sent",
-            time_created=datetime.datetime.now() - relativedelta(days=1),
+            time_created=now_utc() - relativedelta(days=1),
             _quantity=5,
         )
         deny_limit_metric_set = baker.make(
@@ -73,7 +76,7 @@ def get_access_test_common_setup(
             organization=org,
             customer=customer,
             event_name="api_call",
-            time_created=datetime.datetime.now() - relativedelta(days=1),
+            time_created=now_utc() - relativedelta(days=1),
             _quantity=5,
         )
         allow_limit_metric_set = baker.make(
@@ -94,14 +97,14 @@ def get_access_test_common_setup(
             _quantity=1,
         )
         setup_dict["allow_free_metrics"] = allow_free_metric_set
+        product = add_product_to_org(org)
+        plan = add_plan_to_product(product)
         billing_plan = baker.make(
-            BillingPlan,
+            PlanVersion,
             organization=org,
-            interval="month",
-            name="test_plan",
             description="test_plan for testing",
+            plan=plan,
             flat_rate=30.0,
-            pay_in_advance=False,
         )
         plan_component_set = baker.make(
             PlanComponent,  # sum char (over), max bw (ok), count (ok)
@@ -132,7 +135,7 @@ def get_access_test_common_setup(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
-            start_date=datetime.datetime.now().date() - relativedelta(days=3),
+            start_date=now_utc().date() - relativedelta(days=3),
             status="active",
         )
         setup_dict["subscription"] = subscription

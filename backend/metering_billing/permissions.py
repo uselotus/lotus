@@ -15,4 +15,3 @@ class HasUserAPIKey(BaseHasAPIKey):
                 return meta_dict["http_x_api_key"]
             else:
                 raise KeyError("No API key found in request")
-

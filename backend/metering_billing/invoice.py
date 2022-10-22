@@ -3,10 +3,10 @@ from decimal import Decimal
 import posthog
 from django.conf import settings
 from metering_billing.models import (
-    BillingPlan,
     Customer,
     Invoice,
     Organization,
+    PlanVersion,
     Subscription,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -41,9 +41,9 @@ class InvoiceCustomerSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source="name")
 
 
-class InvoiceBillingPlanSerializer(serializers.ModelSerializer):
+class InvoicePlanVersionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = BillingPlan
+        model = PlanVersion
         fields = (
             "name",
             "description",
@@ -59,7 +59,7 @@ class InvoiceBillingPlanSerializer(serializers.ModelSerializer):
 
 
 class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
-    billing_plan = InvoiceBillingPlanSerializer()
+    billing_plan = InvoicePlanVersionSerializer()
 
     class Meta:
         model = Subscription

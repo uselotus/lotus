@@ -8,10 +8,11 @@ from django.urls import reverse
 from djmoney.money import Money
 from metering_billing.models import (
     BillableMetric,
-    BillingPlan,
     PlanComponent,
+    PlanVersion,
     Subscription,
 )
+from metering_billing.utils import now_utc
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -24,6 +25,8 @@ def subscription_test_common_setup(
     api_client_with_api_key_auth,
     add_subscriptions_to_org,
     add_customers_to_org,
+    add_product_to_org,
+    add_plan_to_product,
 ):
     def do_subscription_test_common_setup(
         *, num_subscriptions, auth_method, user_org_and_api_key_org_different
@@ -64,14 +67,14 @@ def subscription_test_common_setup(
             _quantity=3,
         )
         setup_dict["metrics"] = metric_set
+        product = add_product_to_org(org)
+        plan = add_plan_to_product(product)
         billing_plan = baker.make(
-            BillingPlan,
+            PlanVersion,
             organization=org,
-            interval="month",
-            name="test_plan",
             description="test_plan for testing",
             flat_rate=30.0,
-            pay_in_advance=False,
+            plan=plan,
         )
         plan_component_set = baker.make(
             PlanComponent,
@@ -94,10 +97,10 @@ def subscription_test_common_setup(
         payload = {
             "name": "test_subscription",
             "balance": 30,
-            "start_date": datetime.now().date() - timedelta(days=35),
+            "start_date": now_utc().date() - timedelta(days=35),
             "status": "active",
             "customer_id": customer.customer_id,
-            "billing_plan_id": billing_plan.billing_plan_id,
+            "version_id": billing_plan.version_id,
         }
         setup_dict["payload"] = payload
         setup_dict["customer"] = customer
@@ -195,7 +198,7 @@ class TestInsertSubscription:
             customer=setup_dict["customer"],
             billing_plan=setup_dict["billing_plan"],
             status="active",
-            start_date=datetime.now().date() - timedelta(days=20),
+            start_date=now_utc().date() - timedelta(days=20),
         )
 
         response = setup_dict["client"].post(

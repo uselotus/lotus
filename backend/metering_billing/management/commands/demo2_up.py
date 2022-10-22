@@ -10,14 +10,15 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.models import (
     BillableMetric,
-    BillingPlan,
     Customer,
     Event,
     Organization,
     PlanComponent,
+    PlanVersion,
     Subscription,
     User,
 )
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import SUBSCRIPTION_STATUS
 from model_bakery import baker
 
@@ -112,14 +113,14 @@ class Command(BaseCommand):
         #     bm.billable_metric_name = new_name
         #     bm.save()
         # SET THE BILLING PLANS
-        free_bp = BillingPlan.objects.create(
+        free_bp = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="Free Plan",
             description="The free tier",
             flat_rate=0,
             pay_in_advance=True,
-            billing_plan_id="free",
+            version_id="free",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=2_000
@@ -130,14 +131,14 @@ class Command(BaseCommand):
         )
         free_bp.components.add(pc1, pc2)
         free_bp.save()
-        bp_40_og = BillingPlan.objects.create(
+        bp_40_og = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="40K Words Plan",
             description="40K words per month",
             flat_rate=49,
             pay_in_advance=True,
-            billing_plan_id="40_og",
+            version_id="40_og",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words,
@@ -149,14 +150,14 @@ class Command(BaseCommand):
         )
         bp_40_og.components.add(pc1, pc2)
         bp_40_og.save()
-        bp_100_og = BillingPlan.objects.create(
+        bp_100_og = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="100K Words Plan",
             description="100K words per month",
             flat_rate=99,
             pay_in_advance=True,
-            billing_plan_id="100_og",
+            version_id="100_og",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=100_000
@@ -167,14 +168,14 @@ class Command(BaseCommand):
         )
         bp_100_og.components.add(pc1, pc2)
         bp_100_og.save()
-        bp_300_og = BillingPlan.objects.create(
+        bp_300_og = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="300K Words Plan",
             description="300K words per month",
             flat_rate=279,
             pay_in_advance=True,
-            billing_plan_id="300_og",
+            version_id="300_og",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=300_000
@@ -185,14 +186,14 @@ class Command(BaseCommand):
         )
         bp_300_og.components.add(pc1, pc2)
         bp_300_og.save()
-        bp_40_language_seats = BillingPlan.objects.create(
+        bp_40_language_seats = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="40K Words Plan - UB Language + Seats",
             description="40K words per month + usage based pricing on Languages and Seats",
             flat_rate=19,
             pay_in_advance=True,
-            billing_plan_id="40_language_seats",
+            version_id="40_language_seats",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=40_000
@@ -211,14 +212,14 @@ class Command(BaseCommand):
         )
         bp_40_language_seats.components.add(pc1, pc2, pc3)
         bp_40_language_seats.save()
-        bp_100_language_seats = BillingPlan.objects.create(
+        bp_100_language_seats = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="100K Words Plan - UB Language + Seats",
             description="100K words per month + usage based pricing on Languages and Seats",
             flat_rate=59,
             pay_in_advance=True,
-            billing_plan_id="100_language_seats",
+            version_id="100_language_seats",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=100_000
@@ -236,14 +237,14 @@ class Command(BaseCommand):
             free_metric_quantity=0,
         )
         bp_100_language_seats.components.add(pc1, pc2, pc3)
-        bp_300_language_seats = BillingPlan.objects.create(
+        bp_300_language_seats = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="300K Words Plan - UB Language + Seats",
             description="300K words per month + usage based pricing on Languages and Seats",
             flat_rate=179,
             pay_in_advance=True,
-            billing_plan_id="300_language_seats",
+            version_id="300_language_seats",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=300_000
@@ -258,14 +259,14 @@ class Command(BaseCommand):
             billable_metric=num_seats, cost_per_batch=10, free_metric_quantity=0
         )
         bp_300_language_seats.components.add(pc1, pc2, pc3)
-        bp_40_calls_subsections = BillingPlan.objects.create(
+        bp_40_calls_subsections = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="40K Words Plan - UB Calls + Content Types",
             description="40K words per month + usage based pricing on Calls and Content Types",
             flat_rate=0,
             pay_in_advance=True,
-            billing_plan_id="40_calls_subsections",
+            version_id="40_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=40_000
@@ -284,14 +285,14 @@ class Command(BaseCommand):
         )
         bp_40_calls_subsections.components.add(pc1, pc2, pc3)
         bp_40_calls_subsections.save()
-        bp_100_calls_subsections = BillingPlan.objects.create(
+        bp_100_calls_subsections = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="100K Words Plan - UB Calls + Content Types",
             description="100K words per month + usage based pricing on Calls and Content Types",
             flat_rate=0,
             pay_in_advance=True,
-            billing_plan_id="100_calls_subsections",
+            version_id="100_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=100_000
@@ -310,14 +311,14 @@ class Command(BaseCommand):
         )
         bp_100_calls_subsections.components.add(pc1, pc2, pc3)
         bp_100_calls_subsections.save()
-        bp_300_calls_subsections = BillingPlan.objects.create(
+        bp_300_calls_subsections = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="300K Words Plan - UB Calls + Content Types",
             description="300K words per month + usage based pricing on Calls and Content Types",
             flat_rate=0,
             pay_in_advance=True,
-            billing_plan_id="300_calls_subsections",
+            version_id="300_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
             billable_metric=sum_words, max_metric_units=300_000
@@ -552,7 +553,7 @@ class Command(BaseCommand):
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
                 )
-        now = pytz.utc.localize(datetime.datetime.now())
+        now = now_utc()
         today = now.date()
         Subscription.objects.filter(
             organization=organization,

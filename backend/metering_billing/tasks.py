@@ -19,7 +19,7 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
 )
-from metering_billing.serializers.model_serializers import (
+from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
 from metering_billing.utils import (
@@ -224,12 +224,12 @@ def run_backtest(backtest_id):
             "substitution_name": f"{subst.original_plan.name} --> {subst.new_plan.name}",
             "original_plan": {
                 "plan_name": subst.original_plan.name,
-                "plan_id": subst.original_plan.billing_plan_id,
+                "plan_id": subst.original_plan.version_id,
                 "plan_revenue": Decimal(0),
             },
             "new_plan": {
                 "plan_name": subst.new_plan.name,
-                "plan_id": subst.new_plan.billing_plan_id,
+                "plan_id": subst.new_plan.version_id,
                 "plan_revenue": Decimal(0),
             },
         }

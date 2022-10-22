@@ -9,7 +9,7 @@ from .models import (
     APIToken,
     Backtest,
     BillableMetric,
-    BillingPlan,
+    PlanVersion,
     CategoricalFilter,
     Customer,
     Event,
@@ -40,7 +40,7 @@ admin.site.register(CategoricalFilter)
 admin.site.register(BillableMetric, SimpleHistoryAdmin)
 admin.site.register(PlanComponent)
 admin.site.register(Feature)
-admin.site.register(BillingPlan, SimpleHistoryAdmin)
+admin.site.register(PlanVersion, SimpleHistoryAdmin)
 admin.site.register(Subscription, SimpleHistoryAdmin)
 admin.site.register(Invoice, SimpleHistoryAdmin)
 admin.site.register(OrganizationInviteToken)

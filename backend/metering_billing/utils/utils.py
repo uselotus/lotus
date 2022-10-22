@@ -3,9 +3,10 @@ import datetime
 from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
+import pytz
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
-from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY
+from metering_billing.utils.enums import PLAN_DURATION, REVENUE_CALC_GRANULARITY
 
 
 def convert_to_decimal(value):
@@ -132,7 +133,19 @@ def periods_bwn_twodates(granularity, start_date, end_date):
 def now_plus_day():
     return datetime.datetime.now(datetime.timezone.utc) + relativedelta(days=+1)
 
+
 def dates_bwn_twodates(start_date, end_date):
     days_btwn = (end_date - start_date).days
     for n in range(days_btwn + 1):
         yield start_date + relativedelta(days=n)
+
+
+def now_utc():
+    return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
+
+
+def calculate_end_date(interval, start_date):
+    if interval == PLAN_DURATION.MONTH:
+        return start_date + relativedelta(months=+1) - relativedelta(days=+1)
+    elif interval == PLAN_DURATION.YEAR:
+        return start_date + relativedelta(years=+1) - relativedelta(days=+1)

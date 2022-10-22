@@ -1,26 +1,38 @@
 import datetime
 import uuid
 
+import pytz
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
-from metering_billing.utils import dates_bwn_twodates, now_plus_day
+from metering_billing.utils import (
+    calculate_end_date,
+    dates_bwn_twodates,
+    now_plus_day,
+    now_utc,
+)
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CATEGORICAL_FILTER_OPERATORS,
+    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
+    MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_AGGREGATION,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PAYMENT_PLANS,
     PAYMENT_PROVIDERS,
-    PLAN_INTERVAL,
+    PLAN_DURATION,
     PLAN_STATUS,
+    PLAN_VERSION_STATUS,
     PRODUCT_STATUS,
+    PRORATION_GRANULARITY,
+    REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
+    USAGE_BILLING_TYPE,
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
@@ -91,20 +103,6 @@ class Product(models.Model):
 
     class Meta:
         unique_together = ("organization", "product_id")
-
-    def __str__(self):
-        return f"{self.name}"
-
-
-class PlanArchetype(models.Model):
-    name = models.CharField(max_length=100, null=False, blank=False)
-    description = models.TextField(null=True, blank=True)
-    parent_product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="plan_archetypes"
-    )
-    plan_archetype_id = models.CharField(
-        default=uuid.uuid4, max_length=100, unique=True
-    )
 
     def __str__(self):
         return f"{self.name}"
@@ -346,6 +344,7 @@ class APIToken(AbstractAPIKey):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
 
+
 class OrganizationInviteToken(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="user_invite_token"
@@ -360,66 +359,174 @@ class OrganizationInviteToken(models.Model):
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
 
 
-class BillingPlan(models.Model):
-    """
-    Billing_ID: Id for this specific plan
-    time_created: self-explanatory
-    interval: determines whether plan charges weekly, monthly, or yearly
-    flat_rate: amount to charge every week, month, or year (depending on choice of interval)
-    billable_metrics: a json containing a list of billable_metrics objects
-    """
-
+class PlanVersion(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         null=False,
-        related_name="org_billing_plans",
+        related_name="org_plan_versions",
     )
-    time_created = models.DateTimeField(auto_now=True)
-    interval = models.CharField(
-        max_length=10,
-        choices=PLAN_INTERVAL.choices,
+    description = models.CharField(max_length=200, null=True, blank=True)
+    version = models.PositiveSmallIntegerField()
+    flat_fee_billing_type = models.CharField(
+        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
     )
-    billing_plan_id = models.CharField(max_length=255, default=uuid.uuid4, unique=True)
+    usage_billing_type = models.CharField(
+        max_length=40, choices=USAGE_BILLING_TYPE.choices
+    )
+    proration_granularity = models.CharField(
+        max_length=40, choices=PRORATION_GRANULARITY.choices, null=True, blank=True
+    )
+    plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
+    status = models.CharField(max_length=40, choices=PLAN_VERSION_STATUS.choices)
+    replace_with = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True
+    )
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
-    pay_in_advance = models.BooleanField()
-    name = models.CharField(max_length=200)
-    description = models.CharField(max_length=256, default=" ", blank=True)
-    components = models.ManyToManyField(PlanComponent, null=True, blank=True)
-    features = models.ManyToManyField(Feature, null=True, blank=True)
-    scheduled_for_deletion = models.BooleanField(default=False)
-    replacement_billing_plan = models.ForeignKey(
-        "self", null=True, blank=True, on_delete=models.SET_NULL
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=PLAN_STATUS.choices,
-        default=PLAN_STATUS.ACTIVE,
-    )
-    archetype = models.ForeignKey(
-        PlanArchetype,
+    components = models.ManyToManyField(PlanComponent, blank=True)
+    features = models.ManyToManyField(Feature, blank=True)
+    created_on = models.DateTimeField(default=now_utc)
+    created_by = models.ForeignKey(
+        User,
         on_delete=models.CASCADE,
+        related_name="created_plan_versions",
         null=True,
         blank=True,
-        related_name="billing_plans",
     )
+    version_id = models.CharField(max_length=250, default=uuid.uuid4)
     history = HistoricalRecords()
 
     def __str__(self) -> str:
-        return str(self.name)
+        return str(self.plan) + " v" + str(self.version)
+
+    def num_active_subs(self):
+        cnt = self.bp_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).count()
+        return cnt
 
     class Meta:
-        unique_together = ("organization", "billing_plan_id")
+        unique_together = ("organization", "version_id")
 
-    def calculate_end_date(self, start_date):
-        if self.interval == PLAN_INTERVAL.WEEK:
-            return start_date + relativedelta(weeks=+1) - relativedelta(days=+1)
-        elif self.interval == PLAN_INTERVAL.MONTH:
-            return start_date + relativedelta(months=+1) - relativedelta(days=+1)
-        elif self.interval == PLAN_INTERVAL.YEAR:
-            return start_date + relativedelta(years=+1) - relativedelta(days=+1)
+
+class Plan(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="org_plans"
+    )
+    plan_name = models.CharField(max_length=100, null=False, blank=False)
+    plan_duration = models.CharField(choices=PLAN_DURATION.choices, max_length=40)
+    display_version = models.ForeignKey(
+        "PlanVersion", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
+    parent_product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="product_plans"
+    )
+    status = models.CharField(
+        choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
+    )
+    plan_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
+    created_on = models.DateTimeField(default=now_utc)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="created_plans",
+        null=True,
+        blank=True,
+    )
+    history = HistoricalRecords()
+
+    def __str__(self):
+        return f"{self.plan_name}"
+
+    def active_subs_by_version(self):
+        versions = self.versions.all().prefetch_related("bp_subscriptions")
+        versions_count = versions.annotate(
+            active_subscriptions=Count(
+                "bp_subscription",
+                filter=Q(status=SUBSCRIPTION_STATUS.ACTIVE),
+                output_field=models.IntegerField(),
+            )
+        )
+        return versions_count
+
+    def version_numbers(self):
+        return self.versions.all().values_list("version", flat=True)
+
+    def make_version_active(
+        self, plan_version, make_active_type=None, replace_immediately_type=None
+    ):
+        self._handle_existing_versions(
+            plan_version, make_active_type, replace_immediately_type
+        )
+        self.display_version = plan_version
+        self.save()
+        if plan_version.status != PLAN_VERSION_STATUS.ACTIVE:
+            plan_version.status = PLAN_VERSION_STATUS.ACTIVE
+            plan_version.save()
+
+    def add_new_version(
+        self, plan_version, make_active_type=None, replace_immediately_type=None
+    ):
+        # If plan version is active, then make sure to run the make evrsio nactvie subroutine
+        if plan_version.status == PLAN_VERSION_STATUS.ACTIVE:
+            self.make_version_active(
+                plan_version, make_active_type, replace_immediately_type
+            )
+        plan_version.save()
+
+    def _handle_existing_versions(
+        self, new_version, make_active_type, replace_immediately_type
+    ):
+        # To dos:
+        # 1. make retiring plans update to new version
+        # 2a. if on renewal, update active plan to be retiring w/ new version replacing
+        # 2b. if grandfather, grandfather currently active plan
+        # 2c. if immediataely, then go through immediate replacement flow
+        if make_active_type in [
+            MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL,
+            MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE,
+        ]:
+
+            # 1
+            replace_with_lst = [PLAN_VERSION_STATUS.RETIRING]
+            # 2a
+            if (
+                make_active_type
+                == MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
+            ):
+                replace_with_lst.append(PLAN_VERSION_STATUS.ACTIVE)
+            self.versions.all().filter(
+                ~Q(pk=new_version.pk), status__in=replace_with_lst
+            ).update(replace_with=new_version, status=PLAN_VERSION_STATUS.RETIRING)
+            # 2b
+            if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE:
+                self.versions.all().filter(status=PLAN_VERSION_STATUS.ACTIVE).update(
+                    status=PLAN_VERSION_STATUS.GRANDFATHERED
+                )
         else:
-            raise ValueError("End date not calculated correctly")
+            # 2c
+            versions = (
+                self.versions.all()
+                .filter(
+                    ~Q(pk=new_version.pk),
+                    status__in=[
+                        PLAN_VERSION_STATUS.ACTIVE,
+                        PLAN_VERSION_STATUS.RETIRING,
+                    ],
+                )
+                .prefetch_related("bp_subscriptions")
+            )
+            versions.update(status=PLAN_VERSION_STATUS.INACTIVE, replace_with=None)
+            for version in versions:
+                for sub in version.bp_subscriptions.filter(
+                    status=SUBSCRIPTION_STATUS.ACTIVE
+                ):
+                    if (
+                        replace_immediately_type
+                        == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION
+                    ):
+                        sub.end_subscription_and_start_new(billing_plan=new_version)
+                    else:  # change_subscription_plan
+                        sub.switch_subscription_bp(billing_plan=new_version)
+
 
 class Subscription(models.Model):
     """
@@ -444,7 +551,7 @@ class Subscription(models.Model):
         related_name="customer_subscriptions",
     )
     billing_plan = models.ForeignKey(
-        BillingPlan,
+        PlanVersion,
         on_delete=models.CASCADE,
         null=False,
         related_name="bp_subscriptions",
@@ -459,7 +566,7 @@ class Subscription(models.Model):
     )
     auto_renew = models.BooleanField(default=True)
     auto_renew_billing_plan = models.ForeignKey(
-        BillingPlan,
+        PlanVersion,
         related_name="+",
         on_delete=models.CASCADE,
         null=True,
@@ -476,7 +583,9 @@ class Subscription(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.end_date:
-            self.end_date = self.billing_plan.calculate_end_date(self.start_date)
+            self.end_date = calculate_end_date(
+                self.billing_plan.plan.plan_duration, self.start_date
+            )
         flat_cost_dict = self.prorated_flat_costs_dict
         today = datetime.date.today()
         dates_bwn = list(dates_bwn_twodates(self.start_date, self.end_date))
@@ -488,7 +597,7 @@ class Subscription(models.Model):
         super(Subscription, self).save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.customer.name}  {self.billing_plan.name} : {self.start_date} to {self.end_date}"
+        return f"{self.customer.name}  {self.billing_plan.plan.plan_name} : {self.start_date} to {self.end_date}"
 
     class Meta:
         unique_together = ("organization", "subscription_id")
@@ -531,10 +640,10 @@ class BacktestSubstitution(models.Model):
         Backtest, on_delete=models.CASCADE, related_name="backtest_substitutions"
     )
     original_plan = models.ForeignKey(
-        BillingPlan, on_delete=models.CASCADE, related_name="+"
+        PlanVersion, on_delete=models.CASCADE, related_name="+"
     )
     new_plan = models.ForeignKey(
-        BillingPlan, on_delete=models.CASCADE, related_name="+"
+        PlanVersion, on_delete=models.CASCADE, related_name="+"
     )
     history = HistoricalRecords()
 

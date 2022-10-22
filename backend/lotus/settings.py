@@ -346,6 +346,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
     ],
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
@@ -364,11 +365,6 @@ SPECTACULAR_SETTINGS = {
                 "type": "apiKey",
                 "in": "header",
                 "name": "X-API-KEY",
-            },
-            "TokenAuth": {
-                "type": "apiKey",
-                "in": "header",
-                "name": "Authorization",
             },
         }
     },

@@ -7,16 +7,21 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from metering_billing.auth import parse_organization
+from metering_billing.auth import KnoxTokenScheme, parse_organization
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.permissions import HasUserAPIKey
+from metering_billing.serializers.auth_serializers import *
+from metering_billing.serializers.backtest_serializers import *
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
+from metering_billing.serializers.request_serializers import *
+from metering_billing.serializers.response_serializers import *
 from metering_billing.utils import (
     convert_to_decimal,
     make_all_dates_times_strings,
     make_all_decimals_floats,
+    now_utc,
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY, SUBSCRIPTION_STATUS
@@ -353,7 +358,7 @@ class CustomersSummaryView(APIView):
             ),
             Prefetch(
                 "customer_subscriptions__billing_plan",
-                queryset=BillingPlan.objects.filter(organization=organization),
+                queryset=PlanVersion.objects.filter(organization=organization),
                 to_attr="billing_plans",
             ),
         )
@@ -383,7 +388,7 @@ class CustomerDetailView(APIView):
                 ),
                 Prefetch(
                     "subscriptions__billing_plan",
-                    queryset=BillingPlan.objects.filter(organization=organization),
+                    queryset=PlanVersion.objects.filter(organization=organization),
                     to_attr="billing_plans",
                 ),
             )
@@ -458,7 +463,7 @@ class EventPreviewView(APIView):
             .order_by("-time_created")
             .select_related("customer")
         )
-        paginator = Paginator(events, per_page=20)
+        paginator = Paginator(events, per_page=20, ordering="-time_created")
         page_obj = paginator.get_page(page_number)
         ret = {}
         ret["total_pages"] = paginator.num_pages
@@ -578,7 +583,7 @@ class CancelSubscriptionView(APIView):
             properties={},
         )
         if bill_now and revoke_access:
-            generate_invoice(sub, issue_date=datetime.datetime.now().date())
+            generate_invoice(sub, issue_date=now_utc().date())
             return Response(
                 {
                     "status": "success",
@@ -732,21 +737,21 @@ class GetCustomerAccessView(APIView):
         )
 
 
-class UpdateBillingPlanView(APIView):
+class UpdatePlanVersionView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
-        request=UpdateBillingPlanRequestSerializer,
+        request=UpdatePlanVersionRequestSerializer,
         responses={
             200: inline_serializer(
-                name="UpdateBillingPlanSuccess",
+                name="UpdatePlanVersionSuccess",
                 fields={
                     "status": serializers.ChoiceField(choices=["success"]),
                     "detail": serializers.CharField(),
                 },
             ),
             400: inline_serializer(
-                name="UpdateBillingPlanFailure",
+                name="UpdatePlanVersionFailure",
                 fields={
                     "status": serializers.ChoiceField(choices=["error"]),
                     "detail": serializers.CharField(),
@@ -756,14 +761,14 @@ class UpdateBillingPlanView(APIView):
     )
     def post(self, request, format=None):
         organization = parse_organization(request)
-        serializer = UpdateBillingPlanRequestSerializer(
+        serializer = UpdatePlanVersionRequestSerializer(
             data=request.data, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
 
-        old_billing_plan_id = serializer.validated_data["old_billing_plan_id"]
-        old_bp = BillingPlan.objects.get(
-            organization=organization, billing_plan_id=old_billing_plan_id
+        old_version_id = serializer.validated_data["old_version_id"]
+        old_bp = PlanVersion.objects.get(
+            organization=organization, version_id=old_version_id
         )
         updated_bp = serializer.save()
         update_behavior = serializer.validated_data["update_behavior"]
@@ -781,7 +786,7 @@ class UpdateBillingPlanView(APIView):
             )
             for sub in sub_qs:
                 start = sub.start_date
-                updated_end = updated_bp.calculate_end_date(start)
+                updated_end = calculate_end_date(updated_bp.plan.plan_duration, start)
                 if updated_end < today:
                     return Response(
                         {
@@ -822,7 +827,7 @@ class UpdateBillingPlanView(APIView):
         elif update_behavior == "replace_on_renewal":
             old_bp.scheduled_for_deletion = True
             old_bp.replacement_billing_plan = updated_bp
-            BillingPlan.objects.filter(replacement_billing_plan=old_bp).update(
+            PlanVersion.objects.filter(replacement_billing_plan=old_bp).update(
                 replacement_billing_plan=updated_bp
             )
             old_bp.save()
@@ -835,21 +840,21 @@ class UpdateBillingPlanView(APIView):
             )
 
 
-class UpdateSubscriptionBillingPlanView(APIView):
+class UpdateSubscriptionPlanVersionView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
-        request=UpdateSubscriptionBillingPlanRequestSerializer,
+        request=UpdateSubscriptionPlanVersionRequestSerializer,
         responses={
             200: inline_serializer(
-                name="UpdateSubscriptionBillingPlanSuccess",
+                name="UpdateSubscriptionPlanVersionSuccess",
                 fields={
                     "status": serializers.ChoiceField(choices=["success"]),
                     "detail": serializers.CharField(),
                 },
             ),
             400: inline_serializer(
-                name="UpdateSubscriptionBillingPlanFailure",
+                name="UpdateSubscriptionPlanVersionFailure",
                 fields={
                     "status": serializers.ChoiceField(choices=["error"]),
                     "detail": serializers.CharField(),
@@ -858,7 +863,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
         },
     )
     def post(self, request, format=None):
-        serializer = UpdateSubscriptionBillingPlanRequestSerializer(data=request.data)
+        serializer = UpdateSubscriptionPlanVersionRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
 
@@ -878,16 +883,16 @@ class UpdateSubscriptionBillingPlanView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        new_billing_plan_id = serializer.validated_data["new_billing_plan_id"]
+        new_version_id = serializer.validated_data["new_version_id"]
         try:
-            updated_bp = BillingPlan.objects.get(
-                organization=organization, billing_plan_id=new_billing_plan_id
+            updated_bp = PlanVersion.objects.get(
+                organization=organization, version_id=new_version_id
             )
-        except BillingPlan.DoesNotExist:
+        except PlanVersion.DoesNotExist:
             return Response(
                 {
                     "status": "error",
-                    "detail": f"Billing plan with id {new_billing_plan_id} not found.",
+                    "detail": f"Billing plan with id {new_version_id} not found.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -913,7 +918,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
             return Response(
                 {
                     "status": "success",
-                    "detail": f"Subscription {subscription_id} updated to use billing plan {new_billing_plan_id}.",
+                    "detail": f"Subscription {subscription_id} updated to use billing plan {new_version_id}.",
                 },
                 status=status.HTTP_200_OK,
             )
@@ -923,7 +928,7 @@ class UpdateSubscriptionBillingPlanView(APIView):
             return Response(
                 {
                     "status": "success",
-                    "detail": f"Subscription {subscription_id} scheduled to be updated to use billing plan {new_billing_plan_id} on next renewal.",
+                    "detail": f"Subscription {subscription_id} scheduled to be updated to use billing plan {new_version_id} on next renewal.",
                 },
                 status=status.HTTP_200_OK,
             )
@@ -1096,7 +1101,7 @@ class ExperimentalToActiveView(APIView):
         organization = parse_organization(request)
         serializer = ExperimentalToActiveRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        billing_plan = serializer.validated_data["billing_plan_id"]
+        billing_plan = serializer.validated_data["version_id"]
         try:
             billing_plan.status = PLAN_STATUS.ACTIVE
         except Exception as e:

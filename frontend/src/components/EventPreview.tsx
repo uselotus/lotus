@@ -8,13 +8,13 @@ import dayjs from "dayjs";
 
 const { Panel } = Collapse;
 
-const EventPreivew: FC = () => {
-  const [page, setPage] = useState<number>(1);
+const EventPreview: FC = () => {
+  const [c, setPage] = useState<string>("");
 
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
     ["preview events"],
     () =>
-      Events.getEventPreviews(page).then((res) => {
+      Events.getEventPreviews(c).then((res) => {
         return res;
       }),
     {
@@ -29,7 +29,7 @@ const EventPreivew: FC = () => {
       </div>
     );
   }
-  if (data.events.length === 0) {
+  if (data.results.length === 0) {
     return (
       <div className="align-center">
         <h3 className="text-xl font-main align-center">No Events</h3>
@@ -39,12 +39,12 @@ const EventPreivew: FC = () => {
   return (
     <div className="w-full">
       <Collapse expandIconPosition="end" bordered={false}>
-        {data.events.map((event) => (
+        {data.results.map((event) => (
           <Panel
             header={
               <div className="grid grid-cols-2">
                 <p className="text-left	">event_name: {event.event_name}</p>
-                <p className="text-left	">customer_id: {event.customer_id}</p>
+                <p className="text-left	">customer_id: {event.customer}</p>
               </div>
             }
             key={event.id}
@@ -77,4 +77,4 @@ const EventPreivew: FC = () => {
   );
 };
 
-export default EventPreivew;
+export default EventPreview;

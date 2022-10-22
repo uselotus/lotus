@@ -5,12 +5,13 @@ import pytest
 from django.urls import reverse
 from metering_billing.models import (
     BillableMetric,
-    BillingPlan,
     Event,
     Invoice,
     PlanComponent,
+    PlanVersion,
     Subscription,
 )
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import INVOICE_STATUS
 from model_bakery import baker
 from rest_framework import status
@@ -61,7 +62,7 @@ def draft_invoice_test_common_setup(
             organization=org,
             customer=customer,
             event_name="email_sent",
-            time_created=datetime.now().date() - timedelta(days=1),
+            time_created=now_utc().date() - timedelta(days=1),
             properties=itertools.cycle(event_properties),
             _quantity=3,
         )
@@ -75,13 +76,10 @@ def draft_invoice_test_common_setup(
         )
         setup_dict["metrics"] = metric_set
         billing_plan = baker.make(
-            BillingPlan,
+            PlanVersion,
             organization=org,
-            interval="month",
-            name="test_plan",
             description="test_plan for testing",
             flat_rate=30.0,
-            pay_in_advance=False,
         )
         plan_component_set = baker.make(
             PlanComponent,
@@ -100,7 +98,7 @@ def draft_invoice_test_common_setup(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
-            start_date=datetime.now().date() - timedelta(days=3),
+            start_date=now_utc().date() - timedelta(days=3),
             status="active",
         )
         setup_dict["subscription"] = subscription

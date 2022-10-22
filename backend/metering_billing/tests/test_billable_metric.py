@@ -7,10 +7,10 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import (
     BillableMetric,
-    BillingPlan,
     Customer,
     Event,
     PlanComponent,
+    PlanVersion,
 )
 from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY
 from metering_billing.view_utils import calculate_sub_pc_usage_revenue, get_metric_usage
@@ -284,12 +284,9 @@ class TestCalculateBillableMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        billing_plan = BillingPlan.objects.create(
+        billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            interval="month",
             flat_rate=0,
-            pay_in_advance=True,
-            name="test_plan",
         )
         billing_plan.components.add(plan_component)
         billing_plan.save()

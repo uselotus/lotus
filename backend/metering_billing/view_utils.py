@@ -10,7 +10,7 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
 )
 
-from .utils import convert_to_decimal, periods_bwn_twodates
+from .utils.utils import convert_to_decimal, periods_bwn_twodates
 
 
 def get_metric_usage(

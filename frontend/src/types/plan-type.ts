@@ -10,7 +10,7 @@ export interface PlanType {
   id: number;
   pay_in_advance: boolean;
   time_created: string;
-  billing_plan_id: string;
+  version_id: string;
   active_subscriptions: number;
   features: FeatureType[];
 }
@@ -21,7 +21,7 @@ export interface PlansByCustomerArray {
 }
 
 export interface UpdatePlanType {
-  old_billing_plan_id: string;
+  old_version_id: string;
   updated_billing_plan: CreatePlanType;
   update_behavior: string;
 }

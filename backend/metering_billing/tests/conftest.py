@@ -2,6 +2,7 @@ import uuid
 
 import posthog
 import pytest
+from metering_billing.utils.enums import *
 from model_bakery import baker
 
 
@@ -171,3 +172,59 @@ def get_subscriptions_in_org():
         return Subscription.objects.filter(organization=organization)
 
     return do_get_subscriptions_in_org
+
+
+@pytest.fixture
+def add_product_to_org():
+    from metering_billing.models import Product
+
+    def do_add_product_to_org(organization):
+        product = baker.make(
+            Product,
+            organization=organization,
+            name="test-product",
+            description="test-product-description",
+            status=PRODUCT_STATUS.ACTIVE,
+        )
+        return product
+
+    return do_add_product_to_org
+
+
+@pytest.fixture
+def add_plan_to_product():
+    from metering_billing.models import Plan
+
+    def do_add_plan_to_product(product):
+        (plan,) = baker.make(
+            Plan,
+            organization=product.organization,
+            plan_name="test-plan",
+            parent_product=product,
+            status=PLAN_STATUS.ACTIVE,
+            _quantity=1,
+        )
+        return plan
+
+    return do_add_plan_to_product
+
+
+@pytest.fixture
+def add_plan_version_to_plan():
+    from metering_billing.models import PlanVersion
+
+    def do_add_planversion_to_plan(plan):
+        (plan_version,) = baker.make(
+            PlanVersion,
+            organization=plan.organization,
+            description="test-plan-version-description",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            usage_billing_type=USAGE_BILLING_TYPE.IN_ARREARS,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
+            _quantity=1,
+        )
+        return plan_version
+
+    return do_add_planversion_to_plan

@@ -24,11 +24,12 @@ from metering_billing.views import auth_views, organization_views, track
 from metering_billing.views.model_views import (
     BacktestViewSet,
     BillableMetricViewSet,
-    BillingPlanViewSet,
     CustomerViewSet,
+    EventViewSet,
     FeatureViewSet,
     InvoiceViewSet,
-    PlanArchetypeViewSet,
+    PlanVersionViewSet,
+    PlanViewSet,
     ProductViewSet,
     SubscriptionViewSet,
     UserViewSet,
@@ -50,8 +51,8 @@ from metering_billing.views.views import (
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
     SyncCustomersView,
-    UpdateBillingPlanView,
-    UpdateSubscriptionBillingPlanView,
+    UpdatePlanVersionView,
+    UpdateSubscriptionPlanVersionView,
 )
 from rest_framework import routers
 
@@ -63,14 +64,15 @@ router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
 router.register(r"customers", CustomerViewSet, basename="customer")
 router.register(r"metrics", BillableMetricViewSet, basename="metric")
-router.register(r"plans", BillingPlanViewSet, basename="plan")
 router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
 router.register(r"webhooks", WebhookViewSet, basename="webhook")
 router.register(r"backtests", BacktestViewSet, basename="backtest")
 router.register(r"products", ProductViewSet, basename="product")
-router.register(r"plan_archetypes", PlanArchetypeViewSet, basename="plan_archetype")
+router.register(r"plans", PlanViewSet, basename="plan")
+router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
+router.register(r"events", EventViewSet, basename="event")
 
 
 urlpatterns = [
@@ -113,7 +115,7 @@ urlpatterns = [
         name="period_subscriptions",
     ),
     path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
-    path("api/event_preview/", EventPreviewView.as_view(), name="event_preview"),
+    # path("api/event_preview/", EventPreviewView.as_view(), name="event_preview"),
     path("api/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
     path(
         "api/cancel_subscription/",
@@ -122,12 +124,12 @@ urlpatterns = [
     ),
     path(
         "api/update_billing_plan/",
-        UpdateBillingPlanView.as_view(),
+        UpdatePlanVersionView.as_view(),
         name="update_billing_plan",
     ),
     path(
         "api/update_subscription/",
-        UpdateSubscriptionBillingPlanView.as_view(),
+        UpdateSubscriptionPlanVersionView.as_view(),
         name="update_subscription",
     ),
     path(

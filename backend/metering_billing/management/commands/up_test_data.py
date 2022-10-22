@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.models import (
     BillableMetric,
-    BillingPlan,
+    PlanVersion,
     Customer,
     Event,
     Organization,
@@ -105,14 +105,14 @@ class Command(BaseCommand):
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        bp = BillingPlan.objects.create(
+        bp = PlanVersion.objects.create(
             organization=organization,
             interval="month",
             name="Sentry Basic Plan",
             description="Sentry Basic Plan for event ingestion and alerting",
             flat_rate=200,
             pay_in_advance=True,
-            billing_plan_id="sentry-basic-plan",
+            version_id="sentry-basic-plan",
         )
         bp.components.add(pc1, pc2, pc3, pc4, pc5)
         bp.save()

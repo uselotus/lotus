@@ -9,14 +9,15 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import (
     BillableMetric,
-    BillingPlan,
     Customer,
     Event,
     Invoice,
     PlanComponent,
+    PlanVersion,
     Subscription,
 )
 from metering_billing.tasks import calculate_invoice, update_invoice_status
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import INVOICE_STATUS
 from model_bakery import baker
 from rest_framework.test import APIClient
@@ -51,7 +52,7 @@ def task_test_common_setup(
             organization=org,
             customer=customer,
             event_name="email_sent",
-            time_created=datetime.now().date() - timedelta(days=14),
+            time_created=now_utc().date() - timedelta(days=14),
             properties=itertools.cycle(event_properties),
             _quantity=3,
         )
@@ -65,13 +66,10 @@ def task_test_common_setup(
         )
         setup_dict["metrics"] = metric_set
         billing_plan = baker.make(
-            BillingPlan,
+            PlanVersion,
             organization=org,
-            interval="month",
-            name="test_plan",
             description="test_plan for testing",
             flat_rate=30.0,
-            pay_in_advance=False,
         )
         plan_component_set = baker.make(
             PlanComponent,
@@ -90,8 +88,8 @@ def task_test_common_setup(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
-            start_date=datetime.now().date() - timedelta(days=35),
-            end_date=datetime.now().date() - timedelta(days=5),
+            start_date=now_utc().date() - timedelta(days=35),
+            end_date=now_utc().date() - timedelta(days=5),
             status="active",
         )
         setup_dict["subscription"] = subscription
@@ -113,7 +111,7 @@ class TestGenerateInvoiceSynchrous:
         setup_dict = task_test_common_setup()
 
         ending_subscriptions = Subscription.objects.filter(
-            status="active", end_date__lt=datetime.now().date()
+            status="active", end_date__lt=now_utc().date()
         )
         assert len(ending_subscriptions) == 1
 
@@ -122,7 +120,7 @@ class TestGenerateInvoiceSynchrous:
         calculate_invoice()
 
         ending_subscriptions = Subscription.objects.filter(
-            status="active", end_date__lt=datetime.now().date()
+            status="active", end_date__lt=now_utc().date()
         )
         assert len(ending_subscriptions) == 0
         invoice_set = Invoice.objects.all()

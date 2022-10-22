@@ -86,8 +86,8 @@ export const Plan = {
     requests.get(`api/plans/${planId}`),
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("api/plans/", post),
-  deletePlan: (billing_plan_id: string): Promise<PlanType> =>
-    requests.delete(`api/plans/${billing_plan_id}/`),
+  deletePlan: (version_id: string): Promise<PlanType> =>
+    requests.delete(`api/plans/${version_id}/`),
   updatePlan: (post: UpdatePlanType): Promise<PlanType> =>
     requests.post(`api/update_billing_plan/`, post),
 };
@@ -193,8 +193,8 @@ export const Metrics = {
 };
 
 export const Events = {
-  getEventPreviews: (page: number): Promise<EventPages> =>
-    requests.get("api/event_preview/", { params: { page } }),
+  getEventPreviews: (c: string): Promise<EventPages> =>
+    requests.get("api/events/", { params: { c } }),
 };
 
 export const APIToken = {

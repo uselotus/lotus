@@ -53,8 +53,8 @@ const ViewPlans: FC = () => {
     },
   });
 
-  const deletePlan = (billing_plan_id: string) => {
-    mutation.mutate(billing_plan_id);
+  const deletePlan = (version_id: string) => {
+    mutation.mutate(version_id);
   };
 
   return (

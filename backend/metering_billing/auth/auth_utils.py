@@ -1,4 +1,6 @@
 from django.db.models import Q
+from django.utils.translation import gettext_lazy as _
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from metering_billing.exceptions import (
     NoMatchingAPIKey,
     OrganizationMismatch,
@@ -38,3 +40,17 @@ def parse_organization(request):
         return get_organization_from_key(api_key)
     elif is_authenticated:
         return get_user_org_or_raise_no_org(request)
+
+
+class KnoxTokenScheme(OpenApiAuthenticationExtension):
+    target_class = "knox.auth.TokenAuthentication"
+    name = "knoxTokenAuth"
+
+    def get_security_definition(self, auto_schema):
+        return {
+            "type": "apiKey",
+            "in": "header",
+            "name": "Authorization",
+            "description": _('Token-based authentication with required prefix "%s"')
+            % "Token",
+        }

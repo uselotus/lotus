@@ -33,8 +33,7 @@ class METRIC_TYPE(models.TextChoices):
     STATEFUL = ("stateful", _("State Logging"))
 
 
-class PLAN_INTERVAL(models.TextChoices):
-    WEEK = ("week", _("Week"))
+class PLAN_DURATION(models.TextChoices):
     MONTH = ("month", _("Month"))
     YEAR = ("year", _("Year"))
 
@@ -42,6 +41,14 @@ class PLAN_INTERVAL(models.TextChoices):
 class REVENUE_CALC_GRANULARITY(models.TextChoices):
     DAILY = ("day", _("Daily"))
     TOTAL = ("total", _("Total"))
+
+
+class PRORATION_GRANULARITY(models.TextChoices):
+    MONTHLY = ("monthly", _("Monthly"))
+    WEEKLY = ("weekly", _("Weekly"))
+    DAILY = ("daily", _("Daily"))
+    HOURLY = ("hourly", _("Hourly"))
+    NONE = ("none", _("None"))
 
 
 class NUMERIC_FILTER_OPERATORS(models.TextChoices):
@@ -57,11 +64,34 @@ class CATEGORICAL_FILTER_OPERATORS(models.TextChoices):
     ISNOTIN = ("isnotin", _("Is not in"))
 
 
+class USAGE_BILLING_TYPE(models.TextChoices):
+    IN_ARREARS = ("in_arrears", _("In Arrears"))
+    PAY_AS_YOU_GO_QUARTERLY = (
+        "pay_as_you_go_quarterly",
+        _("Pay as you go (Quarterly)"),
+    )
+    PAY_AS_YOU_GO_MONTHLY = ("pay_as_you_go_monthly", _("Pay as you go (Monthly)"))
+    PAY_AS_YOU_GO_WEEKLY = ("pay_as_you_go_weekly", _("Pay as you go (Weekly)"))
+
+
+class FLAT_FEE_BILLING_TYPE(models.TextChoices):
+    IN_ARREARS = ("in_arrears", _("In Arrears"))
+    IN_ADVANCE = ("in_advance", _("In Advance"))
+
+
 class SUBSCRIPTION_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     ENDED = ("ended", _("Ended"))
     NOT_STARTED = ("not_started", _("Not Started"))
     CANCELED = ("canceled", _("Canceled"))
+
+
+class PLAN_VERSION_STATUS(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    RETIRING = ("retiring", _("Retiring"))
+    GRANDFATHERED = ("grandfathered", _("Grandfathered"))
+    ARCHIVED = ("archived", _("Archived"))
+    INACTIVE = ("inactive", _("Inactive"))
 
 
 class PLAN_STATUS(models.TextChoices):
@@ -82,3 +112,23 @@ class BACKTEST_STATUS(models.TextChoices):
 class PRODUCT_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     DEPRECATED = ("deprecated", _("Deprecated"))
+
+
+class MAKE_PLAN_VERSION_ACTIVE_TYPE(models.TextChoices):
+    REPLACE_IMMEDIATELY = ("replace_immediately", _("Replace Immediately"))
+    REPLACE_ON_ACTIVE_VERSION_RENEWAL = (
+        "replace_on_active_version_renewal",
+        _("Replace on Active Version Renewal"),
+    )
+    GRANDFATHER_ACTIVE = ("grandfather_active", _("Grandfather Active"))
+
+
+class REPLACE_IMMEDIATELY_TYPE(models.TextChoices):
+    END_CURRENT_SUBSCRIPTION = (
+        "end_current_subscription",
+        _("End Current Subscription"),
+    )
+    CHANGE_SUBSCRIPTION_PLAN = (
+        "change_subscription_plan",
+        _("Change Subscription Plan"),
+    )

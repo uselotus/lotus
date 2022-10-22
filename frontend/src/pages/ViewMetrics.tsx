@@ -15,7 +15,7 @@ import CreateMetricForm, {
   CreateMetricState,
 } from "../components/CreateMetricForm";
 import { toast } from "react-toastify";
-import EventPreivew from "../components/EventPreview";
+import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
 
@@ -107,7 +107,7 @@ const ViewMetrics: FC = () => {
             <h1 className="text-2xl font-main mb-5">Event Stream</h1>
             <Divider />
             <div>
-              <EventPreivew />
+              <EventPreview />
             </div>
           </Card>
         </div>

@@ -230,7 +230,7 @@ const EditPlan = ({ type }: Props) => {
           createPlanMutation.mutate(newPlan);
         } else if (type === "edit") {
           mutation.mutate({
-            old_billing_plan_id: plan.billing_plan_id,
+            old_version_id: plan.version_id,
             updated_billing_plan: newPlan,
             update_behavior: values.update_behavior,
           });

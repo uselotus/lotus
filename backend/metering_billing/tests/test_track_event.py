@@ -1,11 +1,11 @@
 import json
 import uuid
-from datetime import datetime
 
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.tasks import write_batch_events_to_db
+from metering_billing.utils import now_utc
 from rest_framework import status
 
 
@@ -95,7 +95,7 @@ class TestTrackEvent:
         setup_dict = track_event_test_common_setup(
             idempotency_already_created=False, customer_id_exists=True
         )
-        time_created = datetime.now()
+        time_created = now_utc()
 
         payload = track_event_payload(
             setup_dict["idempotency_id"], time_created, setup_dict["customer_id"]
@@ -140,7 +140,7 @@ class TestTrackEvent:
         setup_dict = track_event_test_common_setup(
             idempotency_already_created=False, customer_id_exists=False
         )
-        time_created = datetime.now()
+        time_created = now_utc()
 
         payload = track_event_payload(
             setup_dict["idempotency_id"], time_created, setup_dict["customer_id"]
@@ -170,7 +170,7 @@ class TestTrackEvent:
         setup_dict = track_event_test_common_setup(
             idempotency_already_created=True, customer_id_exists=True
         )
-        time_created = datetime.now()
+        time_created = now_utc()
 
         payload = track_event_payload(
             setup_dict["idempotency_id"], time_created, setup_dict["customer_id"]
@@ -199,7 +199,7 @@ class TestTrackEvent:
         setup_dict = track_event_test_common_setup(
             idempotency_already_created=False, customer_id_exists=True
         )
-        time_created = datetime.now()
+        time_created = now_utc()
 
         # test asynchrounous response first
         idem1 = str(uuid.uuid4())
