@@ -69,7 +69,16 @@ const CreatePlan = () => {
   );
 
   const addFeatures = (newFeatures: FeatureType[]) => {
-    setPlanFeatures([...planFeatures, ...newFeatures]);
+    for (let i = 0; i < newFeatures.length; i++) {
+      if (
+        planFeatures.some(
+          (feat) => feat.feature_name === newFeatures[i].feature_name
+        )
+      ) {
+      } else {
+        setPlanFeatures((prev) => [...prev, newFeatures[i]]);
+      }
+    }
     setFeatureVisible(false);
   };
 

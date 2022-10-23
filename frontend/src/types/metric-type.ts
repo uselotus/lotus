@@ -5,6 +5,8 @@ export interface MetricType {
   id?: number;
   billable_metric_name?: string;
   metric_type: string;
+  numeric_filters?: string[];
+  categorical_filters?: string[];
 }
 
 export interface MetricNameType {
