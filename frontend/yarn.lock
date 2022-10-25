@@ -792,7 +792,7 @@
   resolved "https://registry.yarnpkg.com/@cush/relative/-/relative-1.0.0.tgz#8cd1769bf9bde3bb27dac356b1bc94af40f6cc16"
   integrity sha512-RpfLEtTlyIxeNPGKcokS+p3BZII/Q3bYxryFRglh5H3A3T8q9fsLYm72VYAMEOOIBLEa8o93kFLiBDUWKrwXZA==
 
-"@elsdoerfer/react-arrow@^1.0.4":
+"@elsdoerfer/react-arrow@1.0.4":
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/@elsdoerfer/react-arrow/-/react-arrow-1.0.4.tgz#5355505617605ae443ab1cc2a58b708bb0fab544"
   integrity sha512-AU3UITrHqh//nVKvIEHWtgAEVjtGKmnU/2kXMYCz2e/MPiyJUICiUIXTe8lE67pcD02HPxIN73GC/4ryvLBAKg==
@@ -1208,7 +1208,7 @@
   dependencies:
     tippy.js "^6.3.1"
 
-"@tremor/react@^1.0.7":
+"@tremor/react@1.0.7":
   version "1.0.7"
   resolved "https://registry.yarnpkg.com/@tremor/react/-/react-1.0.7.tgz#6e98cca07dd15cdba8a5de08e43deea814bbe9b3"
   integrity sha512-rf3PozRjyxoTWDV72gKGcs1TrIMIsBb7lE7TIwo7VSK6W38mzRbjlVgrk2Of/r+qbSDpDRKooIqk3zMpoGx3Yw==
