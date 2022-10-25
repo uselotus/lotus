@@ -2,74 +2,33 @@ from decimal import Decimal
 
 import posthog
 from django.conf import settings
-from metering_billing.models import (
-    Customer,
-    Invoice,
-    Organization,
-    PlanVersion,
-    Subscription,
-)
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.serializers.model_serializers import InvoiceSerializer
 from metering_billing.utils import (
+    convert_to_decimal,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
 )
-from metering_billing.utils.enums import INVOICE_STATUS
-from metering_billing.view_utils import calculate_sub_pc_usage_revenue
+from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
 from rest_framework import serializers
 
 from .webhooks import invoice_created_webhook
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
-# Invoice Serializers
-class InvoiceOrganizationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Organization
-        fields = ("company_name",)
-
-
-class InvoiceCustomerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = (
-            "customer_name",
-            "customer_id",
-        )
-
-    customer_name = serializers.CharField(source="name")
-
-
-class InvoicePlanVersionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PlanVersion
-        fields = (
-            "name",
-            "description",
-            "interval",
-            "flat_rate",
-            "pay_in_advance",
-        )
-
-    flat_rate = serializers.SerializerMethodField()
-
-    def get_flat_rate(self, obj):
-        return float(obj.flat_rate.amount)
-
-
-class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
-    billing_plan = InvoicePlanVersionSerializer()
-
-    class Meta:
-        model = Subscription
-        fields = ("start_date", "end_date", "billing_plan", "subscription_id")
 
 
 def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     """
     Generate an invoice for a subscription.
     """
+    from metering_billing.models import Invoice
+    from metering_billing.serializers.internal_serializers import (
+        InvoiceCustomerSerializer,
+        InvoiceOrganizationSerializer,
+        InvoiceSubscriptionSerializer,
+    )
+    from metering_billing.serializers.model_serializers import InvoiceSerializer
+
     customer = subscription.customer
     organization = subscription.organization
     billing_plan = subscription.billing_plan
@@ -79,9 +38,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     else:
         usage_dict = {"components": {}}
         for plan_component in billing_plan.components.all():
-            pc_usg_and_rev = calculate_sub_pc_usage_revenue(
-                plan_component,
-                plan_component.billable_metric,
+            pc_usg_and_rev = plan_component.calculate_revenue(
                 customer,
                 subscription.start_date,
                 subscription.end_date,
@@ -92,15 +49,24 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         for pc_name, pc_dict in components.items():
             for period, period_dict in pc_dict.items():
                 usage_dict["usage_revenue_due"] += period_dict["revenue"]
-        if billing_plan.pay_in_advance:
+        if billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             if subscription.auto_renew:
                 usage_dict["flat_revenue_due"] = billing_plan.flat_rate.amount
             else:
                 usage_dict["flat_revenue_due"] = 0
         else:
             new_sub_daily_cost_dict = subscription.prorated_flat_costs_dict
-            total_cost = sum(new_sub_daily_cost_dict.values())
-            due = total_cost - float(subscription.flat_fee_already_billed)
+            total_cost = convert_to_decimal(
+                sum(v["amount"] for v in new_sub_daily_cost_dict.values())
+            )
+            print("total cost", total_cost)
+            print("new_sub_daily_cost_dict", new_sub_daily_cost_dict)
+            print("len", len(new_sub_daily_cost_dict))
+            due = (
+                total_cost
+                - subscription.flat_fee_already_billed
+                - customer.balance.amount
+            )
             usage_dict["flat_revenue_due"] = max(due, 0)
             if due < 0:
                 subscription.customer.balance += abs(due)

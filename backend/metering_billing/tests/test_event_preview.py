@@ -63,13 +63,15 @@ class TestEventPreview:
         )
         create_events_with_org_customer(setup_dict["org"], setup_dict["customer"], 400)
 
-        payload = {
-            "page": 1,
-        }
-        response = setup_dict["client"].get(reverse("event_preview"), payload)
+        payload = {}
+        response = setup_dict["client"].get(reverse("event-list"), payload)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        events = data["events"]
-        total_pages = data["total_pages"]
+        events = data["results"]
         assert len(events) == 20
-        assert total_pages == 20
+
+        response = setup_dict["client"].get(data["next"], payload)
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        events = data["results"]
+        assert len(events) == 20

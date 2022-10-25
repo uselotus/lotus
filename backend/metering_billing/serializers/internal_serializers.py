@@ -1,35 +1,13 @@
+from django.conf import settings
 from metering_billing.auth import parse_organization
-from metering_billing.models import Customer, PlanVersion
-from metering_billing.utils.enums import PLAN_STATUS
+from metering_billing.models import Customer, Organization, PlanVersion, Subscription
 from rest_framework import serializers
 
 from .model_serializers import EventSerializer, PlanVersionSerializer
-from .serializer_utils import SlugRelatedFieldWithOrganization
+
+POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 ## CUSTOM SERIALIZERS
-
-
-class UpdatePlanVersionRequestSerializer(serializers.Serializer):
-    old_version_id = serializers.CharField()
-    updated_billing_plan = PlanVersionSerializer()
-    update_behavior = serializers.ChoiceField(
-        choices=["replace_immediately", "replace_on_renewal"]
-    )
-
-    def create(self, validated_data):
-        request = self.context.get("request", None)
-        org = parse_organization(request)
-        validated_data["updated_billing_plan"]["organization"] = org
-        for component in validated_data["updated_billing_plan"]["components"]:
-            bm = component.pop("billable_metric")
-            component["billable_metric_name"] = bm.billable_metric_name
-        serializer = PlanVersionSerializer(
-            data=validated_data["updated_billing_plan"], context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.validated_data["organization"] = org
-        billing_plan = serializer.save()
-        return billing_plan
 
 
 class EventPreviewSerializer(serializers.Serializer):
@@ -53,3 +31,50 @@ class PlanVersionNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
         fields = ("name",)
+
+
+# Invoice Serializers
+class InvoiceOrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("company_name",)
+
+
+class InvoiceCustomerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_name",
+            "customer_id",
+        )
+
+    customer_name = serializers.CharField(source="name")
+
+
+class InvoicePlanVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanVersion
+        fields = (
+            "name",
+            "description",
+            "version",
+            "interval",
+            "flat_rate",
+            "flat_fee_billing_type",
+            "usage_billing_type",
+        )
+
+    flat_rate = serializers.SerializerMethodField()
+    name = serializers.CharField(source="plan.plan_name")
+    interval = serializers.CharField(source="plan.plan_duration")
+
+    def get_flat_rate(self, obj):
+        return float(obj.flat_rate.amount)
+
+
+class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ("start_date", "end_date", "billing_plan", "subscription_id")
+
+    billing_plan = InvoicePlanVersionSerializer()

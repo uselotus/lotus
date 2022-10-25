@@ -676,7 +676,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = (
             "customer_id",
+            "customer",
             "version_id",
+            "billing_plan",
             "start_date",
             "end_date",
             "status",
@@ -684,24 +686,33 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "is_new",
             "subscription_id",
         )
+        read_only_fields = ("customer", "billing_plan")
 
-    customer_id = serializers.SlugRelatedField(
-        slug_field="customer_id",
-        read_only=False,
-        source="customer",
-        queryset=Customer.objects.all(),
-    )
-    version_id = serializers.SlugRelatedField(
-        slug_field="version_id",
-        read_only=False,
-        source="billing_plan",
-        queryset=PlanVersion.objects.all(),
-    )
     end_date = serializers.DateField(required=False)
     status = serializers.CharField(required=False)
     auto_renew = serializers.BooleanField(required=False)
     is_new = serializers.BooleanField(required=False)
     subscription_id = serializers.CharField(required=False)
+
+    # WRITE ONLY
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        read_only=False,
+        source="customer",
+        queryset=Customer.objects.all(),
+        write_only=True,
+    )
+    version_id = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        read_only=False,
+        source="billing_plan",
+        queryset=PlanVersion.objects.all(),
+        write_only=True,
+    )
+
+    # READ ONLY
+    customer = CustomerSerializer(read_only=True)
+    billing_plan = PlanVersionSerializer(read_only=True)
 
     def get_fields(self, *args, **kwargs):
         fields = super().get_fields(*args, **kwargs)
@@ -739,16 +750,70 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return data
 
 
-class SubscriptionReadSerializer(serializers.ModelSerializer):
+class SubscriptionUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
-        fields = (
-            "customer",
-            "billing_plan",
-            "start_date",
-            "end_date",
-            "status",
-        )
+        fields = ("version_id", "status", "auto_renew", "replace_immediately_type")
 
-    customer = CustomerSerializer()
-    billing_plan = PlanVersionSerializer()
+    version_id = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        source="billing_plan",
+        queryset=PlanVersion.objects.all(),
+        write_only=True,
+        required=False,
+    )
+    status = serializers.ChoiceField(
+        choices=[SUBSCRIPTION_STATUS.ENDED], required=False
+    )
+    auto_renew = serializers.BooleanField(required=False)
+    replace_immediately_type = serializers.ChoiceField(
+        choices=REPLACE_IMMEDIATELY_TYPE.choices, write_only=True
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        if data.get("status") and data.get("version_id"):
+            raise serializers.ValidationError(
+                "Can only change one of status and plan version"
+            )
+        if (data.get("status") or data.get("version_id")) and not data.get(
+            "replace_immediately_type"
+        ):
+            raise serializers.ValidationError(
+                "To specify status or version_id change, must specify replace_immediately_type"
+            )
+        if (
+            data.get("status")
+            and data.get("replace_immediately_type")
+            == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
+        ):
+            raise serializers.ValidationError(
+                "Cannot use CHANGE_SUBSCRIPTION_PLAN replace type with ending a subscription"
+            )
+        return data
+
+    def update(self, instance, validated_data):
+        instance.auto_renew = validated_data.get("auto_renew", instance.auto_renew)
+        new_bp = validated_data.get("billing_plan")
+        if (
+            validated_data.get("replace_immediately_type")
+            == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
+        ):
+            instance.switch_subscription_bp(new_bp)
+        else:
+            instance.end_subscription_now(
+                bill=validated_data.get("replace_immediately_type")
+                == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
+            )
+            if new_bp is not None:
+                Subscription.objects.create(
+                    billing_plan=new_bp,
+                    organization=instance.organization,
+                    customer=instance.customer,
+                    start_date=instance.end_date,
+                    status=SUBSCRIPTION_STATUS.ACTIVE,
+                    auto_renew=True,
+                    is_new=False,
+                )
+        instance.save()
+        return instance

@@ -13,7 +13,6 @@ from metering_billing.models import (
     PlanVersion,
 )
 from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY
-from metering_billing.view_utils import calculate_sub_pc_usage_revenue, get_metric_usage
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -25,6 +24,8 @@ def billable_metric_test_common_setup(
     add_billable_metrics_to_org,
     add_users_to_org,
     api_client_with_api_key_auth,
+    add_product_to_org,
+    add_plan_to_product,
 ):
     def do_billable_metric_test_common_setup(
         *, num_billable_metrics, auth_method, user_org_and_api_key_org_different
@@ -64,7 +65,9 @@ def billable_metric_test_common_setup(
             setup_dict["org2_billable_metrics"] = add_billable_metrics_to_org(
                 org2, n=num_billable_metrics
             )
-
+        product = add_product_to_org(org)
+        plan = add_plan_to_product(product)
+        setup_dict["plan"] = plan
         return setup_dict
 
     return do_billable_metric_test_common_setup
@@ -229,10 +232,9 @@ class TestCalculateBillableMetric:
             customer=customer,
             _quantity=5,
         )
-        metric_usage = get_metric_usage(
-            billable_metric,
-            query_start_date=parser.parse("2021-01-01"),
-            query_end_date=parser.parse("2021-01-30"),
+        metric_usage = billable_metric.get_usage(
+            parser.parse("2021-01-01"),
+            parser.parse("2021-01-30"),
             granularity=REVENUE_CALC_GRANULARITY.TOTAL,
             customer=customer,
         )
@@ -287,13 +289,13 @@ class TestCalculateBillableMetric:
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
             flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
         )
         billing_plan.components.add(plan_component)
         billing_plan.save()
 
-        usage_revenue_dict = calculate_sub_pc_usage_revenue(
-            plan_component,
-            billable_metric,
+        usage_revenue_dict = plan_component.calculate_revenue(
             customer=customer,
             plan_start_date="2021-01-01",
             plan_end_date="2021-01-30",

@@ -83,7 +83,6 @@ class SUBSCRIPTION_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
     ENDED = ("ended", _("Ended"))
     NOT_STARTED = ("not_started", _("Not Started"))
-    CANCELED = ("canceled", _("Canceled"))
 
 
 class PLAN_VERSION_STATUS(models.TextChoices):
@@ -124,9 +123,13 @@ class MAKE_PLAN_VERSION_ACTIVE_TYPE(models.TextChoices):
 
 
 class REPLACE_IMMEDIATELY_TYPE(models.TextChoices):
-    END_CURRENT_SUBSCRIPTION = (
-        "end_current_subscription",
-        _("End Current Subscription"),
+    END_CURRENT_SUBSCRIPTION_AND_BILL = (
+        "end_current_subscription_and_bill",
+        _("End Current Subscription and Bill"),
+    )
+    END_CURRENT_SUBSCRIPTION_DONT_BILL = (
+        "end_current_subscription_dont_bill",
+        _("End Current Subscription and Don't Bill"),
     )
     CHANGE_SUBSCRIPTION_PLAN = (
         "change_subscription_plan",

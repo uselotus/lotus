@@ -2,6 +2,7 @@ import abc
 import datetime
 from typing import Optional
 
+from django.apps import apps
 from django.db.models import (
     Avg,
     Count,
@@ -17,13 +18,18 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Cast, Trunc
-from metering_billing.models import BillableMetric, Customer, Event
-from metering_billing.utils import periods_bwn_twodates
+from metering_billing.utils import now_utc, periods_bwn_twodates
 from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_TYPE,
     REVENUE_CALC_GRANULARITY,
 )
+
+BillableMetric = apps.get_app_config("metering_billing").get_model(
+    model_name="BillableMetric"
+)
+Customer = apps.get_app_config("metering_billing").get_model(model_name="Customer")
+Event = apps.get_app_config("metering_billing").get_model(model_name="Event")
 
 
 class BillableMetricHandler(abc.ABC):
@@ -88,7 +94,7 @@ class AggregationHandler(BillableMetricHandler):
     def get_usage(
         self, granularity, start_date, end_date, customer=None, billable_only=False
     ):
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = now_utc()
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
@@ -283,7 +289,7 @@ class StatefulHandler(BillableMetricHandler):
         # quick note on billable only. Since the stateful keeps track of some udnerlying state,
         # then billable only doesn't make sense since all the usage is billable (there's always) an
         # underlying state. So we'll just ignore it.
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = now_utc()
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,

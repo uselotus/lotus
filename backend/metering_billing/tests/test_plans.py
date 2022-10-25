@@ -1,14 +1,11 @@
-import datetime
 import json
 
 import pytest
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import Plan, PlanVersion, Subscription
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import *
-from metering_billing.view_utils import calculate_sub_pc_usage_revenue, get_metric_usage
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -211,7 +208,7 @@ class TestCreatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=datetime.datetime.now().date(),
+            start_date=now_utc().date(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -253,7 +250,7 @@ class TestCreatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=datetime.datetime.now().date(),
+            start_date=now_utc().date(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -353,7 +350,7 @@ class TestUpdatePlan:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=datetime.datetime.now().date(),
+            start_date=now_utc().date(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         plan_before = Plan.objects.all().count()
@@ -459,7 +456,7 @@ class TestUpdatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=datetime.datetime.now().date(),
+            start_date=now_utc().date(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         plan_before = Plan.objects.all().count()
@@ -505,7 +502,7 @@ class TestUpdatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=first_plan_version,
-            start_date=datetime.datetime.now().date(),
+            start_date=now_utc().date(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 

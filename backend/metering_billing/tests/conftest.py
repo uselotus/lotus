@@ -2,6 +2,7 @@ import uuid
 
 import posthog
 import pytest
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import *
 from model_bakery import baker
 
@@ -148,20 +149,20 @@ def get_billable_metrics_in_org():
 
 
 @pytest.fixture
-def add_subscriptions_to_org():
+def add_subscription_to_org():
     from metering_billing.models import Subscription
 
-    def do_add_subscriptions_to_org(organization, billing_plan, customer, n):
-        bm_set = baker.make(
-            Subscription,
-            _quantity=n,
+    def do_add_subscription_to_org(organization, billing_plan, customer):
+        sub = Subscription.objects.create(
             organization=organization,
             billing_plan=billing_plan,
             customer=customer,
+            start_date=now_utc().date(),
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
-        return bm_set
+        return sub
 
-    return do_add_subscriptions_to_org
+    return do_add_subscription_to_org
 
 
 @pytest.fixture
@@ -202,6 +203,7 @@ def add_plan_to_product():
             plan_name="test-plan",
             parent_product=product,
             status=PLAN_STATUS.ACTIVE,
+            plan_duration=PLAN_DURATION.MONTH,
             _quantity=1,
         )
         return plan

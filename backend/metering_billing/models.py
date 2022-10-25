@@ -1,18 +1,29 @@
 import datetime
 import uuid
+from decimal import Decimal
+from typing import TypedDict
 
-import pytz
-from dateutil.relativedelta import relativedelta
+from dateutil import parser
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import Count, Q
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
+from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
+    btst_uuid,
     calculate_end_date,
+    convert_to_decimal,
+    cust_uuid,
     dates_bwn_twodates,
+    metric_uuid,
     now_plus_day,
     now_utc,
+    periods_bwn_twodates,
+    plan_uuid,
+    prod_uuid,
+    subs_uuid,
+    vers_uuid,
 )
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
@@ -31,6 +42,7 @@ from metering_billing.utils.enums import (
     PRODUCT_STATUS,
     PRORATION_GRANULARITY,
     REPLACE_IMMEDIATELY_TYPE,
+    REVENUE_CALC_GRANULARITY,
     SUBSCRIPTION_STATUS,
     USAGE_BILLING_TYPE,
 )
@@ -97,7 +109,7 @@ class Product(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_products"
     )
-    product_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
+    product_id = models.CharField(default=prod_uuid, max_length=100, unique=True)
     status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
     history = HistoricalRecords()
 
@@ -127,7 +139,7 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(
-        max_length=40, blank=True, null=False, default=uuid.uuid4
+        max_length=50, blank=True, null=False, default=cust_uuid
     )
     payment_providers = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -170,6 +182,26 @@ class Customer(models.Model):
                 k in self.sources
             ), f"Payment provider {k} in payment providers dict but not in sources"
         super(Customer, self).save(*args, **kwargs)
+
+    def get_usage_and_revenue(self):
+        customer_subscriptions = (
+            Subscription.objects.filter(
+                customer=self,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+                organization=self.organization,
+            )
+            .prefetch_related("billing_plan__components")
+            .prefetch_related("billing_plan__components__billable_metric")
+            .select_related("billing_plan")
+        )
+        subscription_usages = {"subscriptions": []}
+        for subscription in customer_subscriptions:
+            sub_dict = subscription.get_usage_and_revenue()
+            del sub_dict["components"]
+            sub_dict["billing_plan_name"] = subscription.billing_plan.name
+            subscription_usages["subscriptions"].append(sub_dict)
+
+        return subscription_usages
 
 
 class Event(models.Model):
@@ -237,7 +269,7 @@ class BillableMetric(models.Model):
         null=False,
     )
     billable_metric_name = models.CharField(
-        max_length=200, null=False, blank=True, default=uuid.uuid4
+        max_length=200, null=False, blank=True, default=metric_uuid
     )
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
     categorical_filters = models.ManyToManyField(CategoricalFilter, blank=True)
@@ -269,11 +301,38 @@ class BillableMetric(models.Model):
             ),
         ]
 
+    def __str__(self):
+        return self.billable_metric_name
+
     def get_aggregation_type(self):
         return self.aggregation_type
 
-    def __str__(self):
-        return self.billable_metric_name
+    def get_usage(
+        self,
+        query_start_date,
+        query_end_date,
+        granularity,
+        customer=None,
+        billable_only=False,
+    ) -> dict[Customer.name, dict[datetime.datetime, float]]:
+        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type](self)
+
+        usage = handler.get_usage(
+            granularity=granularity,
+            start_date=query_start_date,
+            end_date=query_end_date,
+            customer=customer,
+            billable_only=billable_only,
+        )
+
+        return usage
+
+
+class UsageRevenueSummary(TypedDict):
+    revenue: Decimal
+    usage_qty: Decimal
 
 
 class PlanComponent(models.Model):
@@ -295,6 +354,76 @@ class PlanComponent(models.Model):
 
     def __str__(self):
         return str(self.billable_metric)
+
+    def calculate_revenue(
+        self,
+        customer,
+        plan_start_date,
+        plan_end_date,
+        revenue_granularity=REVENUE_CALC_GRANULARITY.TOTAL,
+    ) -> dict[datetime.datetime, UsageRevenueSummary]:
+        assert isinstance(
+            revenue_granularity, REVENUE_CALC_GRANULARITY
+        ), "revenue_granularity must be part of REVENUE_CALC_GRANULARITY enum"
+        if type(plan_start_date) == str:
+            plan_start_date = parser.parse(plan_start_date).date()
+        if type(plan_end_date) == str:
+            plan_end_date = parser.parse(plan_end_date).date()
+
+        billable_metric = self.billable_metric
+        usage = billable_metric.get_usage(
+            plan_start_date,
+            plan_end_date,
+            revenue_granularity,
+            customer=customer,
+            billable_only=True,
+        )
+
+        usage = usage.get(customer.name, {})
+
+        period_revenue_dict = {
+            period: {}
+            for period in periods_bwn_twodates(
+                revenue_granularity, plan_start_date, plan_end_date
+            )
+        }
+        free_units_usage_left = self.free_metric_units
+        remainder_billable_units = 0
+        for period in period_revenue_dict:
+            period_usage = usage.get(period, 0)
+            qty = convert_to_decimal(period_usage)
+            period_revenue_dict[period] = {"usage_qty": qty, "revenue": 0}
+            if (
+                self.cost_per_batch == 0
+                or self.cost_per_batch is None
+                or self.metric_units_per_batch == 0
+                or self.metric_units_per_batch is None
+            ):
+                continue
+            else:
+                billable_units = max(
+                    qty - free_units_usage_left + remainder_billable_units, 0
+                )
+                billable_batches = billable_units // self.metric_units_per_batch
+                remainder_billable_units = (
+                    billable_units - billable_batches * self.metric_units_per_batch
+                )
+                free_units_usage_left = max(0, free_units_usage_left - qty)
+                if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+                    usage_revenue = (
+                        billable_batches
+                        * self.cost_per_batch
+                        / len(period_revenue_dict)
+                    )
+                else:
+                    usage_revenue = billable_batches * self.cost_per_batch
+                period_revenue_dict[period]["revenue"] = convert_to_decimal(
+                    usage_revenue
+                )
+                if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+                    free_units_usage_left = self.free_metric_units
+                    remainder_billable_units = 0
+        return period_revenue_dict
 
 
 class Feature(models.Model):
@@ -393,8 +522,11 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.CharField(max_length=250, default=uuid.uuid4)
+    version_id = models.CharField(max_length=250, default=vers_uuid)
     history = HistoricalRecords()
+
+    class Meta:
+        unique_together = ("organization", "version_id")
 
     def __str__(self) -> str:
         return str(self.plan) + " v" + str(self.version)
@@ -402,9 +534,6 @@ class PlanVersion(models.Model):
     def num_active_subs(self):
         cnt = self.bp_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).count()
         return cnt
-
-    class Meta:
-        unique_together = ("organization", "version_id")
 
 
 class Plan(models.Model):
@@ -422,7 +551,7 @@ class Plan(models.Model):
     status = models.CharField(
         choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
     )
-    plan_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
+    plan_id = models.CharField(default=plan_uuid, max_length=100, unique=True)
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
@@ -521,11 +650,23 @@ class Plan(models.Model):
                 ):
                     if (
                         replace_immediately_type
-                        == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION
+                        == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
                     ):
-                        sub.end_subscription_and_start_new(billing_plan=new_version)
-                    else:  # change_subscription_plan
                         sub.switch_subscription_bp(billing_plan=new_version)
+                    else:
+                        sub.end_subscription_now(
+                            bill=replace_immediately_type
+                            == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
+                        )
+                        Subscription.objects.create(
+                            billing_plan=new_version,
+                            organization=self.organization,
+                            customer=sub.customer,
+                            start_date=sub.end_date,
+                            status=SUBSCRIPTION_STATUS.ACTIVE,
+                            auto_renew=True,
+                            is_new=False,
+                        )
 
 
 class Subscription(models.Model):
@@ -565,15 +706,9 @@ class Subscription(models.Model):
         default=SUBSCRIPTION_STATUS.NOT_STARTED,
     )
     auto_renew = models.BooleanField(default=True)
-    auto_renew_billing_plan = models.ForeignKey(
-        PlanVersion,
-        related_name="+",
-        on_delete=models.CASCADE,
-        null=True,
-    )
     is_new = models.BooleanField(default=True)
     subscription_id = models.CharField(
-        max_length=100, null=False, blank=True, default=uuid.uuid4
+        max_length=100, null=False, blank=True, default=subs_uuid
     )
     prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
     flat_fee_already_billed = models.DecimalField(
@@ -581,26 +716,96 @@ class Subscription(models.Model):
     )
     history = HistoricalRecords()
 
+    class Meta:
+        unique_together = ("organization", "subscription_id")
+
+    def __str__(self):
+        return f"{self.customer.name}  {self.billing_plan.plan.plan_name} : {self.start_date} to {self.end_date}"
+
     def save(self, *args, **kwargs):
         if not self.end_date:
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration, self.start_date
             )
-        flat_cost_dict = self.prorated_flat_costs_dict
-        today = datetime.date.today()
-        dates_bwn = list(dates_bwn_twodates(self.start_date, self.end_date))
-        for day in dates_bwn:
-            if day >= today:
-                flat_cost_dict[str(day)] = float(
-                    self.billing_plan.flat_rate.amount
-                ) / len(dates_bwn)
+        if self.status == SUBSCRIPTION_STATUS.ACTIVE:
+            flat_fee_dictionary = self.prorated_flat_costs_dict
+            today = now_utc().date()
+            dates_bwn = list(dates_bwn_twodates(self.start_date, self.end_date))
+            for day in dates_bwn:
+                if isinstance(day, datetime.datetime):
+                    day = day.date()
+                if day >= today:
+                    flat_fee_dictionary[str(day)] = {
+                        "plan_version_id": self.billing_plan.version_id,
+                        "amount": float(self.billing_plan.flat_rate.amount)
+                        / len(dates_bwn),
+                    }
         super(Subscription, self).save(*args, **kwargs)
 
-    def __str__(self):
-        return f"{self.customer.name}  {self.billing_plan.plan.plan_name} : {self.start_date} to {self.end_date}"
+    def get_usage_and_revenue(self):
+        sub_dict = {}
+        sub_dict["components"] = []
+        # set up the billing plan for this subscription
+        plan = self.billing_plan
+        # set up other details of the subscription
+        plan_start_date = self.start_date
+        plan_end_date = self.end_date
+        # extract other objects that we need when calculating usage
+        customer = self.customer
+        plan_components_qs = plan.components.all()
+        # For each component of the plan, calculate usage/revenue
+        for plan_component in plan_components_qs:
+            plan_component_summary = plan_component.calculate_revenue(
+                customer,
+                plan_start_date,
+                plan_end_date,
+            )
+            sub_dict["components"].append((plan_component.pk, plan_component_summary))
+        sub_dict["usage_revenue_due"] = Decimal(0)
+        for component_pk, component_dict in sub_dict["components"]:
+            for date, date_dict in component_dict.items():
+                sub_dict["usage_revenue_due"] += date_dict["revenue"]
+        sub_dict["flat_revenue_due"] = plan.flat_rate.amount
+        sub_dict["total_revenue_due"] = (
+            sub_dict["flat_revenue_due"] + sub_dict["usage_revenue_due"]
+        )
+        return sub_dict
 
-    class Meta:
-        unique_together = ("organization", "subscription_id")
+    def end_subscription_now(self, bill=True):
+        today = now_utc().date()
+        if self.status != SUBSCRIPTION_STATUS.ACTIVE:
+            raise Exception(
+                "Subscription needs to be active to end it. Subscription status is {}".format(
+                    self.status
+                )
+            )
+        if bill:
+            generate_invoice(self)
+        self.turn_off_auto_renew()
+        self.end_date = today
+        self.status = SUBSCRIPTION_STATUS.ENDED
+        self.save()
+
+    def turn_off_auto_renew(self):
+        self.auto_renew = False
+        self.save()
+
+    def switch_subscription_bp(self, new_version):
+        self.billing_plan = new_version
+        self.save()
+        if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
+            new_sub_daily_cost_dict = self.prorated_flat_costs_dict
+            prorated_cost = sum(d["amount"] for d in new_sub_daily_cost_dict.values())
+            due = prorated_cost - self.customer.balance - self.flat_fee_already_billed
+            if due < 0:
+                self.customer.balance = abs(due)
+            elif due > 0:
+                today = datetime.date.today()
+                generate_invoice(self, draft=False, issue_date=today, amount=due)
+                self.flat_fee_already_billed += due
+                self.save()
+                self.customer.balance = 0
+            self.customer.save()
 
 
 class Backtest(models.Model):
@@ -616,7 +821,7 @@ class Backtest(models.Model):
     )
     time_created = models.DateTimeField(default=datetime.datetime.now)
     backtest_id = models.CharField(
-        max_length=100, null=False, blank=True, default=uuid.uuid4, unique=True
+        max_length=100, null=False, blank=True, default=btst_uuid, unique=True
     )
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, null=True, blank=True)

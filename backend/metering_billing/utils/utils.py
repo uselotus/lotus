@@ -1,5 +1,6 @@
 import collections
 import datetime
+import uuid
 from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
@@ -149,3 +150,31 @@ def calculate_end_date(interval, start_date):
         return start_date + relativedelta(months=+1) - relativedelta(days=+1)
     elif interval == PLAN_DURATION.YEAR:
         return start_date + relativedelta(years=+1) - relativedelta(days=+1)
+
+
+def prod_uuid():
+    return "prod_" + str(uuid.uuid4())
+
+
+def cust_uuid():
+    return "cust_" + str(uuid.uuid4())
+
+
+def metric_uuid():
+    return "metric_" + str(uuid.uuid4())
+
+
+def vers_uuid():
+    return "plnvrs_" + str(uuid.uuid4())
+
+
+def plan_uuid():
+    return "plan_" + str(uuid.uuid4())
+
+
+def subs_uuid():
+    return "subs_" + str(uuid.uuid4())
+
+
+def btst_uuid():
+    return "btst_" + str(uuid.uuid4())

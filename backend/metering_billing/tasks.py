@@ -27,16 +27,14 @@ from metering_billing.utils import (
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
+    now_utc,
 )
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     INVOICE_STATUS,
     SUBSCRIPTION_STATUS,
 )
-from metering_billing.view_utils import (
-    get_subscription_usage_and_revenue,
-    sync_payment_provider_customers,
-)
+from metering_billing.view_utils import sync_payment_provider_customers
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 EVENT_CACHE_FLUSH_SECONDS = settings.EVENT_CACHE_FLUSH_SECONDS
@@ -82,7 +80,7 @@ def calculate_invoice():
         already_ended = old_subscription.status == SUBSCRIPTION_STATUS.ENDED
         old_subscription.status = SUBSCRIPTION_STATUS.ENDED
         old_subscription.save()
-        now = datetime.datetime.now(timezone.utc).date()
+        now = now_utc().date()
         Invoice.objects.filter(
             issue_date__lt=now, payment_status=INVOICE_STATUS.DRAFT
         ).delete()
@@ -176,7 +174,7 @@ def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events)
 @shared_task
 def check_event_cache_flushed():
     cache_tup = cache.get("events_to_insert")
-    now = datetime.datetime.now(timezone.utc).astimezone()
+    now = now_utc()
     cached_events, cached_idems, last_flush_dt = (
         cache_tup if cache_tup else ([], set(), now)
     )
@@ -258,7 +256,7 @@ def run_backtest(backtest_id):
                     "new_plan_revenue": Decimal(0),
                 }
             ## PROCESS OLD SUB
-            old_usage_revenue = get_subscription_usage_and_revenue(sub)
+            old_usage_revenue = sub.get_usage_and_revenue()
             # cumulative revenue
             inner_results["cumulative_revenue"][end_date][
                 "original_plan_revenue"
@@ -292,7 +290,7 @@ def run_backtest(backtest_id):
             ## PROCESS NEW SUB
             sub.billing_plan = subst.new_plan
             sub.save()
-            new_usage_revenue = get_subscription_usage_and_revenue(sub)
+            new_usage_revenue = sub.get_usage_and_revenue()
             # revert it so we don't accidentally change the past lol
             sub.billing_plan = subst.original_plan
             sub.save()
@@ -325,10 +323,7 @@ def run_backtest(backtest_id):
         cum_rev_dict_list = []
         cum_rev = inner_results.pop("cumulative_revenue")
         cum_rev_lst = sorted(cum_rev.items(), key=lambda x: x[0], reverse=True)
-        print(cum_rev_lst)
-        print("early_date", cum_rev_lst[-1][0], "late_date", cum_rev_lst[0][0])
         every_date = list(dates_bwn_twodates(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
-        print("len_all_dates", len(every_date))
         date, rev_dict = cum_rev_lst.pop(-1)
         last_dict = {**rev_dict, "date": date}
         for date in every_date:

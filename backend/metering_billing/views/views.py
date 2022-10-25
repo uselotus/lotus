@@ -25,12 +25,7 @@ from metering_billing.utils import (
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY, SUBSCRIPTION_STATUS
-from metering_billing.view_utils import (
-    calculate_sub_pc_usage_revenue,
-    get_customer_usage_and_revenue,
-    get_metric_usage,
-    sync_payment_provider_customers,
-)
+from metering_billing.view_utils import sync_payment_provider_customers
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -39,112 +34,112 @@ from rest_framework.views import APIView
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
-class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated]
+# class PeriodMetricRevenueView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        parameters=[PeriodComparisonRequestSerializer],
-        responses={200: PeriodMetricRevenueResponseSerializer},
-    )
-    def get(self, request, format=None):
-        """
-        Returns the revenue for an organization in a given time period.
-        """
-        organization = parse_organization(request)
-        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        p1_start, p1_end, p2_start, p2_end = [
-            serializer.validated_data.get(key, None)
-            for key in [
-                "period_1_start_date",
-                "period_1_end_date",
-                "period_2_start_date",
-                "period_2_end_date",
-            ]
-        ]
-        all_org_billable_metrics = BillableMetric.objects.filter(
-            organization=organization
-        )
+#     @extend_schema(
+#         parameters=[PeriodComparisonRequestSerializer],
+#         responses={200: PeriodMetricRevenueResponseSerializer},
+#     )
+#     def get(self, request, format=None):
+#         """
+#         Returns the revenue for an organization in a given time period.
+#         """
+#         organization = parse_organization(request)
+#         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+#         serializer.is_valid(raise_exception=True)
+#         p1_start, p1_end, p2_start, p2_end = [
+#             serializer.validated_data.get(key, None)
+#             for key in [
+#                 "period_1_start_date",
+#                 "period_1_end_date",
+#                 "period_2_start_date",
+#                 "period_2_end_date",
+#             ]
+#         ]
+#         all_org_billable_metrics = BillableMetric.objects.filter(
+#             organization=organization
+#         )
 
-        return_dict = {
-            "daily_usage_revenue_period_1": {},
-            "total_revenue_period_1": Decimal(0),
-            "daily_usage_revenue_period_2": {},
-            "total_revenue_period_2": Decimal(0),
-        }
-        if all_org_billable_metrics.count() > 0:
-            for billable_metric in all_org_billable_metrics:
-                for p_start, p_end, p_num in [
-                    (p1_start, p1_end, 1),
-                    (p2_start, p2_end, 2),
-                ]:
-                    return_dict[f"daily_usage_revenue_period_{p_num}"][
-                        billable_metric.id
-                    ] = {
-                        "metric": str(billable_metric),
-                        "data": {
-                            x: Decimal(0)
-                            for x in periods_bwn_twodates(
-                                REVENUE_CALC_GRANULARITY.DAILY, p_start, p_end
-                            )
-                        },
-                        "total_revenue": Decimal(0),
-                    }
-            for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-                total_period_rev = Decimal(0)
-                subs = (
-                    Subscription.objects.filter(
-                        Q(start_date__range=[p_start, p_end])
-                        | Q(end_date__range=[p_start, p_end]),
-                        organization=organization,
-                    )
-                    .select_related("billing_plan")
-                    .select_related("customer")
-                    .prefetch_related("billing_plan__components")
-                    .prefetch_related("billing_plan__components__billable_metric")
-                )
-                for sub in subs:
-                    bp = sub.billing_plan
-                    flat_bill_date = (
-                        sub.start_date if bp.pay_in_advance else sub.end_date
-                    )
-                    if p_start <= flat_bill_date <= p_end:
-                        total_period_rev += bp.flat_rate.amount
-                    for plan_component in bp.components.all():
-                        billable_metric = plan_component.billable_metric
-                        revenue_per_day = calculate_sub_pc_usage_revenue(
-                            plan_component,
-                            billable_metric,
-                            sub.customer,
-                            sub.start_date,
-                            sub.end_date,
-                            revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
-                        )
-                        metric_dict = return_dict[
-                            f"daily_usage_revenue_period_{p_num}"
-                        ][billable_metric.id]
-                        for date, d in revenue_per_day.items():
-                            if date in metric_dict["data"]:
-                                usage_cost = Decimal(d["revenue"])
-                                metric_dict["data"][date] += usage_cost
-                                metric_dict["total_revenue"] += usage_cost
-                                total_period_rev += usage_cost
-                return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
-        for p_num in [1, 2]:
-            dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
-            dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
-            return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
-            for dic in dailies:
-                dic["data"] = [
-                    {"date": str(k.date()), "metric_revenue": v}
-                    for k, v in dic["data"].items()
-                ]
-        serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
-        serializer.is_valid(raise_exception=True)
-        ret = serializer.validated_data
-        ret = make_all_decimals_floats(ret)
-        ret = make_all_dates_times_strings(ret)
-        return Response(ret, status=status.HTTP_200_OK)
+#         return_dict = {
+#             "daily_usage_revenue_period_1": {},
+#             "total_revenue_period_1": Decimal(0),
+#             "daily_usage_revenue_period_2": {},
+#             "total_revenue_period_2": Decimal(0),
+#         }
+#         if all_org_billable_metrics.count() > 0:
+#             for billable_metric in all_org_billable_metrics:
+#                 for p_start, p_end, p_num in [
+#                     (p1_start, p1_end, 1),
+#                     (p2_start, p2_end, 2),
+#                 ]:
+#                     return_dict[f"daily_usage_revenue_period_{p_num}"][
+#                         billable_metric.id
+#                     ] = {
+#                         "metric": str(billable_metric),
+#                         "data": {
+#                             x: Decimal(0)
+#                             for x in periods_bwn_twodates(
+#                                 REVENUE_CALC_GRANULARITY.DAILY, p_start, p_end
+#                             )
+#                         },
+#                         "total_revenue": Decimal(0),
+#                     }
+#             for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+#                 total_period_rev = Decimal(0)
+#                 subs = (
+#                     Subscription.objects.filter(
+#                         Q(start_date__range=[p_start, p_end])
+#                         | Q(end_date__range=[p_start, p_end]),
+#                         organization=organization,
+#                     )
+#                     .select_related("billing_plan")
+#                     .select_related("customer")
+#                     .prefetch_related("billing_plan__components")
+#                     .prefetch_related("billing_plan__components__billable_metric")
+#                 )
+#                 for sub in subs:
+#                     bp = sub.billing_plan
+#                     flat_bill_date = (
+#                         sub.start_date if bp.pay_in_advance else sub.end_date
+#                     )
+#                     if p_start <= flat_bill_date <= p_end:
+#                         total_period_rev += bp.flat_rate.amount
+#                     for plan_component in bp.components.all():
+#                         billable_metric = plan_component.billable_metric
+#                         revenue_per_day = plan_componentcalculate_sub_pc_usage_revenue(
+#                             plan_component,
+#                             billable_metric,
+#                             sub.customer,
+#                             sub.start_date,
+#                             sub.end_date,
+#                             revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
+#                         )
+#                         metric_dict = return_dict[
+#                             f"daily_usage_revenue_period_{p_num}"
+#                         ][billable_metric.id]
+#                         for date, d in revenue_per_day.items():
+#                             if date in metric_dict["data"]:
+#                                 usage_cost = Decimal(d["revenue"])
+#                                 metric_dict["data"][date] += usage_cost
+#                                 metric_dict["total_revenue"] += usage_cost
+#                                 total_period_rev += usage_cost
+#                 return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
+#         for p_num in [1, 2]:
+#             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
+#             dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
+#             return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
+#             for dic in dailies:
+#                 dic["data"] = [
+#                     {"date": str(k.date()), "metric_revenue": v}
+#                     for k, v in dic["data"].items()
+#                 ]
+#         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
+#         serializer.is_valid(raise_exception=True)
+#         ret = serializer.validated_data
+#         ret = make_all_decimals_floats(ret)
+#         ret = make_all_dates_times_strings(ret)
+#         return Response(ret, status=status.HTTP_200_OK)
 
 
 class PeriodSubscriptionsView(APIView):
@@ -169,41 +164,24 @@ class PeriodSubscriptionsView(APIView):
         ]
 
         return_dict = {}
-        p1_subs = Subscription.objects.filter(
-            Q(start_date__range=[p1_start, p1_end])
-            | Q(end_date__range=[p1_start, p1_end]),
-            organization=organization,
-        ).values(customer_name=F("customer__name"), new=F("is_new"))
-        seen_dict = {}
-        for sub in p1_subs:
-            if (
-                sub["customer_name"] in seen_dict
-            ):  # seen before then they're def not new
-                seen_dict[sub["customer_name"]] = False
-            else:
-                seen_dict[sub["customer_name"]] = sub["new"]
-        return_dict["period_1_total_subscriptions"] = len(seen_dict)
-        return_dict["period_1_new_subscriptions"] = sum(
-            [1 for k, v in seen_dict.items() if v]
-        )
-
-        p2_subs = Subscription.objects.filter(
-            Q(start_date__range=[p2_start, p2_end])
-            | Q(end_date__range=[p2_start, p2_end]),
-            organization=organization,
-        ).values(customer_name=F("customer__name"), new=F("is_new"))
-        seen_dict = {}
-        for sub in p2_subs:
-            if (
-                sub["customer_name"] in seen_dict
-            ):  # seen before then they're def not new
-                seen_dict[sub["customer_name"]] = False
-            else:
-                seen_dict[sub["customer_name"]] = sub["new"]
-        return_dict["period_2_total_subscriptions"] = len(seen_dict)
-        return_dict["period_2_new_subscriptions"] = sum(
-            [1 for k, v in seen_dict.items() if v]
-        )
+        for i, (p_start, p_end) in enumerate([[p1_start, p1_end], [p2_start, p2_end]]):
+            p_subs = Subscription.objects.filter(
+                Q(start_date__range=[p_start, p_end])
+                | Q(end_date__range=[p_start, p_end]),
+                organization=organization,
+            ).values(customer_name=F("customer__name"), new=F("is_new"))
+            seen_dict = {}
+            for sub in p_subs:
+                if (
+                    sub["customer_name"] in seen_dict
+                ):  # seen before then they're def not new
+                    seen_dict[sub["customer_name"]] = False
+                else:
+                    seen_dict[sub["customer_name"]] = sub["new"]
+            return_dict[f"period_{i+1}_total_subscriptions"] = len(seen_dict)
+            return_dict[f"period_{i+1}_new_subscriptions"] = sum(
+                [1 for k, v in seen_dict.items() if v]
+            )
 
         serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
@@ -239,8 +217,7 @@ class PeriodMetricUsageView(APIView):
         metrics = BillableMetric.objects.filter(organization=organization)
         return_dict = {}
         for metric in metrics:
-            usage_summary = get_metric_usage(
-                metric,
+            usage_summary = metric.get_usage(
                 q_start,
                 q_end,
                 granularity=REVENUE_CALC_GRANULARITY.DAILY,
@@ -296,19 +273,19 @@ class PeriodMetricUsageView(APIView):
         return Response(ret, status=status.HTTP_200_OK)
 
 
-@extend_schema(
-    responses={
-        200: inline_serializer(
-            name="APIKeyCreateSuccess",
-            fields={
-                "api_key": serializers.CharField(),
-            },
-        ),
-    },
-)
 class APIKeyCreate(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="APIKeyCreateSuccess",
+                fields={
+                    "api_key": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def get(self, request, format=None):
         """
         Revokes the current API key and returns a new one.
@@ -343,7 +320,7 @@ class CustomersSummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        responses={200: AllSubstitutionResultsSerializer},
+        responses={200: CustomerSummarySerializer},
     )
     def get(self, request, format=None):
         """
@@ -394,7 +371,7 @@ class CustomerDetailView(APIView):
             )
             .get()
         )
-        sub_usg_summaries = get_customer_usage_and_revenue(customer)
+        sub_usg_summaries = customer.get_usage_and_revenue()
         total_revenue_due = sum(
             x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
         )
@@ -427,7 +404,7 @@ class CustomersWithRevenueView(APIView):
         customers = Customer.objects.filter(organization=organization)
         cust = []
         for customer in customers:
-            sub_usg_summaries = get_customer_usage_and_revenue(customer)
+            sub_usg_summaries = customer.get_usage_and_revenue()
             customer_total_revenue_due = sum(
                 x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
             )
@@ -457,7 +434,7 @@ class EventPreviewView(APIView):
         serializer.is_valid(raise_exception=True)
         page_number = serializer.validated_data.get("page")
         organization = parse_organization(request)
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = now_utc()
         events = (
             Event.objects.filter(organization=organization, time_created__lt=now)
             .order_by("-time_created")
@@ -519,86 +496,86 @@ class DraftInvoiceView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CancelSubscriptionView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+# class CancelSubscriptionView(APIView):
+#     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
-    @extend_schema(
-        request=CancelSubscriptionRequestSerializer,
-        responses={
-            200: inline_serializer(
-                name="CancelSubscriptionSuccess",
-                fields={
-                    "status": serializers.ChoiceField(choices=["success"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-            400: inline_serializer(
-                name="CancelSubscriptionFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        serializer = CancelSubscriptionRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        organization = parse_organization(request)
-        sub_id = serializer.validated_data["subscription_id"]
-        bill_now = serializer.validated_data["bill_now"]
-        revoke_access = serializer.validated_data["revoke_access"]
-        try:
-            sub = Subscription.objects.get(
-                organization=organization, subscription_id=sub_id
-            )
-        except:
-            return Response(
-                {"status": "error", "detail": "Subscription not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if sub.status == SUBSCRIPTION_STATUS.ENDED:
-            return Response(
-                {"status": "error", "detail": "Subscription already ended"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        elif sub.status == SUBSCRIPTION_STATUS.NOT_STARTED:
-            Subscription.objects.get(
-                organization=organization, subscription_id=sub_id
-            ).delete()
-            return Response(
-                {
-                    "status": "success",
-                    "detail": "Subscription hadn't started, has been deleted",
-                },
-                status=status.HTTP_200_OK,
-            )
-        sub.auto_renew = False
-        if revoke_access:
-            sub.status = SUBSCRIPTION_STATUS.CANCELED
-        sub.save()
-        posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
-            event="cancel_subscription",
-            properties={},
-        )
-        if bill_now and revoke_access:
-            generate_invoice(sub, issue_date=now_utc().date())
-            return Response(
-                {
-                    "status": "success",
-                    "detail": "Created invoice and payment intent for subscription",
-                },
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(
-                {
-                    "status": "success",
-                    "detail": "Subscription ended without generating invoice",
-                },
-                status=status.HTTP_200_OK,
-            )
+#     @extend_schema(
+#         request=CancelSubscriptionRequestSerializer,
+#         responses={
+#             200: inline_serializer(
+#                 name="CancelSubscriptionSuccess",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["success"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#             400: inline_serializer(
+#                 name="CancelSubscriptionFailure",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["error"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#         },
+#     )
+#     def post(self, request, format=None):
+#         serializer = CancelSubscriptionRequestSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         organization = parse_organization(request)
+#         sub_id = serializer.validated_data["subscription_id"]
+#         bill_now = serializer.validated_data["bill_now"]
+#         revoke_access = serializer.validated_data["revoke_access"]
+#         try:
+#             sub = Subscription.objects.get(
+#                 organization=organization, subscription_id=sub_id
+#             )
+#         except:
+#             return Response(
+#                 {"status": "error", "detail": "Subscription not found"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         if sub.status == SUBSCRIPTION_STATUS.ENDED:
+#             return Response(
+#                 {"status": "error", "detail": "Subscription already ended"},
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         elif sub.status == SUBSCRIPTION_STATUS.NOT_STARTED:
+#             Subscription.objects.get(
+#                 organization=organization, subscription_id=sub_id
+#             ).delete()
+#             return Response(
+#                 {
+#                     "status": "success",
+#                     "detail": "Subscription hadn't started, has been deleted",
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
+#         sub.auto_renew = False
+#         if revoke_access:
+#             sub.status = SUBSCRIPTION_STATUS.ENDED
+#         sub.save()
+#         posthog.capture(
+#             POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
+#             event="cancel_subscription",
+#             properties={},
+#         )
+#         if bill_now and revoke_access:
+#             generate_invoice(sub, issue_date=now_utc().date())
+#             return Response(
+#                 {
+#                     "status": "success",
+#                     "detail": "Created invoice and payment intent for subscription",
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
+#         else:
+#             return Response(
+#                 {
+#                     "status": "success",
+#                     "detail": "Subscription ended without generating invoice",
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
 
 
 class GetCustomerAccessView(APIView):
@@ -681,8 +658,7 @@ class GetCustomerAccessView(APIView):
                                 "access": True,
                             }
                             continue
-                        metric_usage = get_metric_usage(
-                            metric,
+                        metric_usage = metric.get_usage(
                             sub.start_date,
                             sub.end_date,
                             granularity=REVENUE_CALC_GRANULARITY.TOTAL,
@@ -737,201 +713,98 @@ class GetCustomerAccessView(APIView):
         )
 
 
-class UpdatePlanVersionView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+# class UpdateSubscriptionPlanVersionView(APIView):
+#     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
-    @extend_schema(
-        request=UpdatePlanVersionRequestSerializer,
-        responses={
-            200: inline_serializer(
-                name="UpdatePlanVersionSuccess",
-                fields={
-                    "status": serializers.ChoiceField(choices=["success"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-            400: inline_serializer(
-                name="UpdatePlanVersionFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        organization = parse_organization(request)
-        serializer = UpdatePlanVersionRequestSerializer(
-            data=request.data, context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
+#     @extend_schema(
+#         request=UpdateSubscriptionPlanVersionRequestSerializer,
+#         responses={
+#             200: inline_serializer(
+#                 name="UpdateSubscriptionPlanVersionSuccess",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["success"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#             400: inline_serializer(
+#                 name="UpdateSubscriptionPlanVersionFailure",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["error"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#         },
+#     )
+#     def post(self, request, format=None):
+#         serializer = UpdateSubscriptionPlanVersionRequestSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         organization = parse_organization(request)
 
-        old_version_id = serializer.validated_data["old_version_id"]
-        old_bp = PlanVersion.objects.get(
-            organization=organization, version_id=old_version_id
-        )
-        updated_bp = serializer.save()
-        update_behavior = serializer.validated_data["update_behavior"]
+#         subscription_id = serializer.validated_data["subscription_id"]
+#         try:
+#             sub = Subscription.objects.get(
+#                 organization=organization,
+#                 subscription_id=subscription_id,
+#                 status=SUBSCRIPTION_STATUS.ACTIVE,
+#             ).select_related("billing_plan")
+#         except Subscription.DoesNotExist:
+#             return Response(
+#                 {
+#                     "status": "error",
+#                     "detail": f"Subscription with id {subscription_id} not found.",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
 
-        posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
-            event="update_billing_plan",
-            properties={},
-        )
-        if update_behavior == "replace_immediately":
-            today = datetime.date.today()
-            sub_qs = Subscription.objects.filter(
-                organization=organization,
-                billing_plan=old_bp,
-            )
-            for sub in sub_qs:
-                start = sub.start_date
-                updated_end = calculate_end_date(updated_bp.plan.plan_duration, start)
-                if updated_end < today:
-                    return Response(
-                        {
-                            "status": "error",
-                            "detail": "At least one subscription would have an updated end date in the past. Please choose a different update behavior.",
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-            # need to bill the customer immediately for the flat fee (prorated)
-            for sub in sub_qs:
-                sub.billing_plan = updated_bp
-                sub.save()
-                if updated_bp.pay_in_advance and not old_bp.pay_in_advance:
-                    new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
-                    prorated_cost = sum(new_sub_daily_cost_dict.values())
-                    due = (
-                        prorated_cost
-                        - sub.customer.balance
-                        - sub.flat_fee_already_billed
-                    )
-                    sub.flat_fee_already_billed = prorated_cost
-                    sub.save()
-                    if due > 0:
-                        sub.customer.balance = 0
-                        today = datetime.date.today()
-                        generate_invoice(sub, draft=False, issue_date=today, amount=due)
-                    else:
-                        sub.customer.balance = abs(due)
-                    sub.customer.save()
-            old_bp.delete()
-            return Response(
-                {
-                    "status": "success",
-                    "detail": "All subscriptions updated with new plan and old plan deleted.",
-                },
-                status=status.HTTP_200_OK,
-            )
-        elif update_behavior == "replace_on_renewal":
-            old_bp.scheduled_for_deletion = True
-            old_bp.replacement_billing_plan = updated_bp
-            PlanVersion.objects.filter(replacement_billing_plan=old_bp).update(
-                replacement_billing_plan=updated_bp
-            )
-            old_bp.save()
-            return Response(
-                {
-                    "status": "success",
-                    "detail": "Billing plan scheduled for deletion. Auto-renews of subscriptions with this plan will use the updated version instead. Subscriptions set to be renewed with this plan will now be renewed with the updated plan. Once there are no more subscriptions using this plan, it will be deleted.",
-                },
-                status=status.HTTP_200_OK,
-            )
+#         new_version_id = serializer.validated_data["new_version_id"]
+#         try:
+#             updated_bp = PlanVersion.objects.get(
+#                 organization=organization, version_id=new_version_id
+#             )
+#         except PlanVersion.DoesNotExist:
+#             return Response(
+#                 {
+#                     "status": "error",
+#                     "detail": f"Billing plan with id {new_version_id} not found.",
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
 
-
-class UpdateSubscriptionPlanVersionView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=UpdateSubscriptionPlanVersionRequestSerializer,
-        responses={
-            200: inline_serializer(
-                name="UpdateSubscriptionPlanVersionSuccess",
-                fields={
-                    "status": serializers.ChoiceField(choices=["success"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-            400: inline_serializer(
-                name="UpdateSubscriptionPlanVersionFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        serializer = UpdateSubscriptionPlanVersionRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        organization = parse_organization(request)
-
-        subscription_id = serializer.validated_data["subscription_id"]
-        try:
-            sub = Subscription.objects.get(
-                organization=organization,
-                subscription_id=subscription_id,
-                status=SUBSCRIPTION_STATUS.ACTIVE,
-            ).select_related("billing_plan")
-        except Subscription.DoesNotExist:
-            return Response(
-                {
-                    "status": "error",
-                    "detail": f"Subscription with id {subscription_id} not found.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        new_version_id = serializer.validated_data["new_version_id"]
-        try:
-            updated_bp = PlanVersion.objects.get(
-                organization=organization, version_id=new_version_id
-            )
-        except PlanVersion.DoesNotExist:
-            return Response(
-                {
-                    "status": "error",
-                    "detail": f"Billing plan with id {new_version_id} not found.",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        update_behavior = serializer.validated_data["update_behavior"]
-        if update_behavior == "replace_immediately":
-            sub.billing_plan = updated_bp
-            sub.save()
-            if updated_bp.pay_in_advance:
-                new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
-                prorated_cost = sum(new_sub_daily_cost_dict.values())
-                due = prorated_cost - sub.customer.balance - sub.flat_fee_already_billed
-                if due < 0:
-                    customer = sub.customer
-                    customer.balance = abs(due)
-                elif due > 0:
-                    today = datetime.date.today()
-                    generate_invoice(sub, draft=False, issue_date=today, amount=due)
-                    sub.flat_fee_already_billed += due
-                    sub.save()
-                    sub.customer.balance = 0
-                    sub.customer.save()
-            return Response(
-                {
-                    "status": "success",
-                    "detail": f"Subscription {subscription_id} updated to use billing plan {new_version_id}.",
-                },
-                status=status.HTTP_200_OK,
-            )
-        elif update_behavior == "replace_on_renewal":
-            sub.auto_renew_billing_plan = updated_bp
-            sub.save()
-            return Response(
-                {
-                    "status": "success",
-                    "detail": f"Subscription {subscription_id} scheduled to be updated to use billing plan {new_version_id} on next renewal.",
-                },
-                status=status.HTTP_200_OK,
-            )
+#         update_behavior = serializer.validated_data["update_behavior"]
+#         if update_behavior == "replace_immediately":
+#             sub.billing_plan = updated_bp
+#             sub.save()
+#             if updated_bp.pay_in_advance:
+#                 new_sub_daily_cost_dict = sub.prorated_flat_costs_dict
+#                 prorated_cost = sum(new_sub_daily_cost_dict.values())
+#                 due = prorated_cost - sub.customer.balance - sub.flat_fee_already_billed
+#                 if due < 0:
+#                     customer = sub.customer
+#                     customer.balance = abs(due)
+#                 elif due > 0:
+#                     today = datetime.date.today()
+#                     generate_invoice(sub, draft=False, issue_date=today, amount=due)
+#                     sub.flat_fee_already_billed += due
+#                     sub.save()
+#                     sub.customer.balance = 0
+#                     sub.customer.save()
+#             return Response(
+#                 {
+#                     "status": "success",
+#                     "detail": f"Subscription {subscription_id} updated to use billing plan {new_version_id}.",
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
+#         elif update_behavior == "replace_on_renewal":
+#             sub.auto_renew_billing_plan = updated_bp
+#             sub.save()
+#             return Response(
+#                 {
+#                     "status": "success",
+#                     "detail": f"Subscription {subscription_id} scheduled to be updated to use billing plan {new_version_id} on next renewal.",
+#                 },
+#                 status=status.HTTP_200_OK,
+#             )
 
 
 class MergeCustomersView(APIView):

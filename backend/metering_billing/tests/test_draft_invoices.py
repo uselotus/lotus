@@ -1,5 +1,5 @@
 import itertools
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from django.urls import reverse

@@ -93,40 +93,6 @@ paths:
       responses:
         '204':
           description: No response body
-  /api/cancel_subscription/:
-    post:
-      operationId: cancel_subscription_create
-      tags:
-      - cancel_subscription
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CancelSubscriptionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/CancelSubscriptionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/CancelSubscriptionRequest'
-        required: true
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CancelSubscriptionSuccess'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CancelSubscriptionFailure'
-          description: ''
   /api/customer_access/:
     get:
       operationId: customer_access_retrieve
@@ -206,7 +172,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AllSubstitutionResults'
+                $ref: '#/components/schemas/CustomerSummary'
           description: ''
   /api/customer_totals/:
     get:
@@ -757,48 +723,6 @@ paths:
       responses:
         '200':
           description: No response body
-  /api/period_metric_revenue/:
-    get:
-      operationId: period_metric_revenue_retrieve
-      description: Returns the revenue for an organization in a given time period.
-      parameters:
-      - in: query
-        name: period_1_end_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_1_start_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_2_end_date
-        schema:
-          type: string
-          format: date
-        required: true
-      - in: query
-        name: period_2_start_date
-        schema:
-          type: string
-          format: date
-        required: true
-      tags:
-      - period_metric_revenue
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PeriodMetricRevenueResponse'
-          description: ''
   /api/period_metric_usage/:
     get:
       operationId: period_metric_usage_retrieve
@@ -1186,35 +1110,6 @@ paths:
       responses:
         '200':
           description: No response body
-  /api/stripe/:
-    get:
-      operationId: stripe_retrieve
-      description: A payment processor's GET method will be used to determine whether
-        the organization that sent the request is connected to the given payment processor.
-      tags:
-      - stripe
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          description: No response body
-    post:
-      operationId: stripe_create
-      description: A payment processor's POST method will be used to connect the organization
-        that sent the request to the given payment processor. You must access the
-        payment_provider_ids field of the organization and the payment processor's
-        name as a key and the organization's payment processor id as its value.
-      tags:
-      - stripe
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          description: No response body
   /api/subscriptions/:
     get:
       operationId: subscriptions_list
@@ -1232,7 +1127,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/SubscriptionRead'
+                  $ref: '#/components/schemas/Subscription'
           description: ''
     post:
       operationId: subscriptions_create
@@ -1262,16 +1157,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/Subscription'
           description: ''
-  /api/subscriptions/{id}/:
+  /api/subscriptions/{subscription_id}/:
     get:
       operationId: subscriptions_retrieve
       description: A simple ViewSet for viewing and editing Subscriptions.
       parameters:
       - in: path
-        name: id
+        name: subscription_id
         schema:
-          type: integer
-        description: A unique integer value identifying this subscription.
+          type: string
         required: true
       tags:
       - subscriptions
@@ -1284,7 +1178,40 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubscriptionRead'
+                $ref: '#/components/schemas/Subscription'
+          description: ''
+    patch:
+      operationId: subscriptions_partial_update
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      parameters:
+      - in: path
+        name: subscription_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - subscriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubscriptionUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubscriptionUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubscriptionUpdate'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionUpdate'
           description: ''
   /api/sync_customers/:
     post:
@@ -1341,74 +1268,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrackEventFailure'
-          description: ''
-  /api/update_billing_plan/:
-    post:
-      operationId: update_billing_plan_create
-      tags:
-      - update_billing_plan
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdatePlanVersionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UpdatePlanVersionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UpdatePlanVersionRequest'
-        required: true
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UpdatePlanVersionSuccess'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UpdatePlanVersionFailure'
-          description: ''
-  /api/update_subscription/:
-    post:
-      operationId: update_subscription_create
-      tags:
-      - update_subscription
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateSubscriptionPlanVersionRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/UpdateSubscriptionPlanVersionRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/UpdateSubscriptionPlanVersionRequest'
-        required: true
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UpdateSubscriptionPlanVersionSuccess'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UpdateSubscriptionPlanVersionFailure'
           description: ''
   /api/user/password/reset/:
     post:
@@ -1796,39 +1655,6 @@ components:
           nullable: true
       required:
       - event_name
-    CancelSubscriptionFailure:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/Status956Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
-    CancelSubscriptionRequest:
-      type: object
-      properties:
-        subscription_id:
-          type: string
-        bill_now:
-          type: boolean
-          default: false
-        revoke_access:
-          type: boolean
-          default: false
-      required:
-      - subscription_id
-    CancelSubscriptionSuccess:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/StatusE96Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
     CategoricalFilter:
       type: object
       properties:
@@ -1856,7 +1682,7 @@ components:
           type: string
         customer_id:
           type: string
-          maxLength: 40
+          maxLength: 50
         balance:
           type: number
           format: double
@@ -1871,7 +1697,7 @@ components:
       properties:
         customer_id:
           type: string
-          maxLength: 40
+          maxLength: 50
         email:
           type: string
           format: email
@@ -1912,34 +1738,34 @@ components:
           maxLength: 100
       required:
       - name
+    CustomerSummary:
+      type: object
+      properties:
+        customer_name:
+          type: string
+        customer_id:
+          type: string
+          maxLength: 50
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCustomerSummary'
+          readOnly: true
+      required:
+      - customer_name
+      - subscriptions
     CustomerWithRevenue:
       type: object
       properties:
         customer_id:
           type: string
-          maxLength: 40
+          maxLength: 50
         total_revenue_due:
           type: number
           format: double
           readOnly: true
       required:
       - total_revenue_due
-    DayMetricRevenue:
-      type: object
-      properties:
-        date:
-          type: string
-          format: date
-        metric_revenue:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-      required:
-      - date
-      - metric_revenue
     DayMetricUsage:
       type: object
       properties:
@@ -2268,42 +2094,26 @@ components:
           $ref: '#/components/schemas/MakeActiveTypeEnum'
         replace_immediately_type:
           $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
+    PatchedSubscriptionUpdate:
+      type: object
+      properties:
+        version_id:
+          type: string
+          writeOnly: true
+        status:
+          $ref: '#/components/schemas/SubscriptionUpdateStatusEnum'
+        auto_renew:
+          type: boolean
+        replace_immediately_type:
+          allOf:
+          - $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
+          writeOnly: true
     PaymentStatusEnum:
       enum:
       - draft
       - paid
       - unpaid
       type: string
-    PeriodMetricRevenueResponse:
-      type: object
-      properties:
-        daily_usage_revenue_period_1:
-          type: array
-          items:
-            $ref: '#/components/schemas/PeriodSingleMetricRevenue'
-        total_revenue_period_1:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        daily_usage_revenue_period_2:
-          type: array
-          items:
-            $ref: '#/components/schemas/PeriodSingleMetricRevenue'
-        total_revenue_period_2:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-      required:
-      - daily_usage_revenue_period_1
-      - daily_usage_revenue_period_2
-      - total_revenue_period_1
-      - total_revenue_period_2
     PeriodMetricUsageResponse:
       type: object
       properties:
@@ -2313,26 +2123,6 @@ components:
             $ref: '#/components/schemas/PeriodSingleMetricUsage'
       required:
       - metrics
-    PeriodSingleMetricRevenue:
-      type: object
-      properties:
-        metric:
-          type: string
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/DayMetricRevenue'
-        total_revenue:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-      required:
-      - data
-      - metric
-      - total_revenue
     PeriodSingleMetricUsage:
       type: object
       properties:
@@ -2666,7 +2456,8 @@ components:
       - detail
     ReplaceImmediatelyTypeEnum:
       enum:
-      - end_current_subscription
+      - end_current_subscription_and_bill
+      - end_current_subscription_dont_bill
       - change_subscription_plan
       type: string
     RevenueDate:
@@ -2761,13 +2552,6 @@ components:
       - running
       - completed
       type: string
-    Status515Enum:
-      enum:
-      - active
-      - ended
-      - not_started
-      - canceled
-      type: string
     Status956Enum:
       enum:
       - error
@@ -2786,8 +2570,18 @@ components:
       properties:
         customer_id:
           type: string
+          writeOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
         version_id:
           type: string
+          writeOnly: true
+        billing_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
         start_date:
           type: string
           format: date
@@ -2803,6 +2597,8 @@ components:
         subscription_id:
           type: string
       required:
+      - billing_plan
+      - customer
       - customer_id
       - start_date
       - version_id
@@ -2823,31 +2619,50 @@ components:
         auto_renew:
           type: boolean
         status:
-          $ref: '#/components/schemas/Status515Enum'
+          $ref: '#/components/schemas/SubscriptionCustomerDetailStatusEnum'
       required:
       - billing_plan_name
       - end_date
       - start_date
-    SubscriptionRead:
+    SubscriptionCustomerDetailStatusEnum:
+      enum:
+      - active
+      - ended
+      - not_started
+      type: string
+    SubscriptionCustomerSummary:
       type: object
       properties:
-        customer:
-          $ref: '#/components/schemas/Customer'
-        billing_plan:
-          $ref: '#/components/schemas/PlanVersion'
-        start_date:
+        billing_plan_name:
           type: string
-          format: date
         end_date:
           type: string
           format: date
-        status:
-          $ref: '#/components/schemas/Status515Enum'
+        auto_renew:
+          type: boolean
       required:
-      - billing_plan
-      - customer
+      - billing_plan_name
       - end_date
-      - start_date
+    SubscriptionUpdate:
+      type: object
+      properties:
+        version_id:
+          type: string
+          writeOnly: true
+        status:
+          $ref: '#/components/schemas/SubscriptionUpdateStatusEnum'
+        auto_renew:
+          type: boolean
+        replace_immediately_type:
+          allOf:
+          - $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
+          writeOnly: true
+      required:
+      - replace_immediately_type
+    SubscriptionUpdateStatusEnum:
+      enum:
+      - ended
+      type: string
     SyncCustomerFailure:
       type: object
       properties:
@@ -2922,77 +2737,6 @@ components:
       - all
       - some
       type: string
-    UpdateBehaviorEnum:
-      enum:
-      - replace_immediately
-      - replace_on_renewal
-      type: string
-    UpdatePlanVersionFailure:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/Status956Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
-    UpdatePlanVersionRequest:
-      type: object
-      properties:
-        old_version_id:
-          type: string
-        updated_billing_plan:
-          $ref: '#/components/schemas/PlanVersion'
-        update_behavior:
-          $ref: '#/components/schemas/UpdateBehaviorEnum'
-      required:
-      - old_version_id
-      - update_behavior
-      - updated_billing_plan
-    UpdatePlanVersionSuccess:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/StatusE96Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
-    UpdateSubscriptionPlanVersionFailure:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/Status956Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
-    UpdateSubscriptionPlanVersionRequest:
-      type: object
-      properties:
-        subscription_id:
-          type: string
-        new_version_id:
-          type: string
-        update_behavior:
-          $ref: '#/components/schemas/UpdateBehaviorEnum'
-      required:
-      - new_version_id
-      - subscription_id
-      - update_behavior
-    UpdateSubscriptionPlanVersionSuccess:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/StatusE96Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
     UsageBillingTypeEnum:
       enum:
       - in_arrears

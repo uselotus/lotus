@@ -14,6 +14,7 @@ from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.serializer_utils import EmailSerializer
 from metering_billing.services.user import user_service
+from metering_billing.utils import now_utc
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.exceptions import PermissionDenied
@@ -163,7 +164,7 @@ class RegisterView(LoginViewMixin, APIView):
         company_name = reg_dict["company_name"]
 
         if invite_token is not None and invite_token != "null":
-            now = datetime.datetime.now(datetime.timezone.utc)
+            now = now_utc()
             try:
                 token = OrganizationInviteToken.objects.get(
                     token=invite_token, expire_at__gt=now

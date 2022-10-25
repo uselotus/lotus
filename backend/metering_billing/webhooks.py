@@ -2,10 +2,9 @@ import json
 
 import requests
 
-from .models import Alert
-
 
 def invoice_created_webhook(data, organization):
+    from .models import Alert
 
     alert_list = Alert.objects.filter(organization=organization, type="webhook").values(
         "webhook_url"

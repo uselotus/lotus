@@ -40,8 +40,8 @@ from metering_billing.serializers.model_serializers import (
     PlanVersionSerializer,
     PlanVersionUpdateSerializer,
     ProductSerializer,
-    SubscriptionReadSerializer,
     SubscriptionSerializer,
+    SubscriptionUpdateSerializer,
     UserSerializer,
 )
 from metering_billing.tasks import run_backtest
@@ -359,6 +359,7 @@ class PlanViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     lookup_field = "plan_id"
     http_method_names = ["get", "post", "patch", "head"]
+    queryset = Plan.objects.all()
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
@@ -435,17 +436,13 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
-    http_method_names = [
-        "get",
-        "post",
-        "head",
-    ]
-    # update happens in UpdateSubscriptionPlanVersionView
-    # delete happens in CancelSubscriptionView
+    http_method_names = ["get", "post", "head", "patch"]
+    lookup_field = "subscription_id"
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
         "create": [IsAuthenticated | HasUserAPIKey],
+        "partial_update": [IsAuthenticated],
     }
 
     def get_serializer_context(self):
@@ -464,8 +461,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.save(organization=parse_organization(self.request))
 
     def get_serializer_class(self):
-        if self.action in ["list", "retrieve"]:
-            return SubscriptionReadSerializer
+        if self.action == "partial_update":
+            return SubscriptionUpdateSerializer
         else:
             return SubscriptionSerializer
 
