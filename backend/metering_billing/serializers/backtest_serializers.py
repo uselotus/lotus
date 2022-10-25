@@ -1,5 +1,4 @@
 from django.db.models import Q
-from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
 from metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
 from rest_framework import serializers

@@ -419,44 +419,6 @@ class CustomersWithRevenueView(APIView):
         return Response(cust, status=status.HTTP_200_OK)
 
 
-class EventPreviewView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        parameters=[EventPreviewRequestSerializer],
-        responses={200: EventPreviewSerializer},
-    )
-    def get(self, request, format=None):
-        """
-        Pagination-enabled endpoint for retrieving an organization's event stream.
-        """
-        serializer = EventPreviewRequestSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        page_number = serializer.validated_data.get("page")
-        organization = parse_organization(request)
-        now = now_utc()
-        events = (
-            Event.objects.filter(organization=organization, time_created__lt=now)
-            .order_by("-time_created")
-            .select_related("customer")
-        )
-        paginator = Paginator(events, per_page=20, ordering="-time_created")
-        page_obj = paginator.get_page(page_number)
-        ret = {}
-        ret["total_pages"] = paginator.num_pages
-        ret["events"] = list(page_obj.object_list)
-        serializer = EventPreviewSerializer(ret)
-        if page_number == 1:
-            posthog.capture(
-                POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
-                event="event_preview",
-                properties={
-                    "num_events": len(ret["events"]),
-                },
-            )
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 class DraftInvoiceView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 

@@ -723,6 +723,49 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/payment_providers/:
+    get:
+      operationId: payment_providers_retrieve
+      tags:
+      - payment_providers
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentProviderGetResponse'
+          description: ''
+    post:
+      operationId: payment_providers_create
+      tags:
+      - payment_providers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentProviderPostRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PaymentProviderPostRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PaymentProviderPostRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentProviderPostResponse'
+          description: ''
   /api/period_metric_usage/:
     get:
       operationId: period_metric_usage_retrieve
@@ -2108,6 +2151,41 @@ components:
           allOf:
           - $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
           writeOnly: true
+    PaymentProcessorEnum:
+      enum:
+      - stripe
+      type: string
+    PaymentProviderGetResponse:
+      type: object
+      properties:
+        payment_providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/SinglePaymentProvider'
+      required:
+      - payment_providers
+    PaymentProviderPostRequest:
+      type: object
+      properties:
+        payment_processor:
+          $ref: '#/components/schemas/PaymentProcessorEnum'
+        data:
+          type: object
+          additionalProperties: {}
+      required:
+      - data
+      - payment_processor
+    PaymentProviderPostResponse:
+      type: object
+      properties:
+        payment_processor:
+          $ref: '#/components/schemas/PaymentProcessorEnum'
+        data:
+          type: object
+          additionalProperties: {}
+      required:
+      - data
+      - payment_processor
     PaymentStatusEnum:
       enum:
       - draft
@@ -2490,6 +2568,20 @@ components:
       - customer_id
       - customer_name
       - value
+    SinglePaymentProvider:
+      type: object
+      properties:
+        payment_provider_name:
+          type: string
+        connected:
+          type: boolean
+        redirect_link:
+          type: string
+          format: uri
+      required:
+      - connected
+      - payment_provider_name
+      - redirect_link
     SinglePlanNumCustomers:
       type: object
       properties:

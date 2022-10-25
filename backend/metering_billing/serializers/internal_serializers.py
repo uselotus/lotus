@@ -1,9 +1,8 @@
 from django.conf import settings
-from metering_billing.auth import parse_organization
 from metering_billing.models import Customer, Organization, PlanVersion, Subscription
 from rest_framework import serializers
 
-from .model_serializers import EventSerializer, PlanVersionSerializer
+from .model_serializers import EventSerializer
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 

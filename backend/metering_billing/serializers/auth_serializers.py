@@ -1,10 +1,4 @@
-from metering_billing.auth import parse_organization
-from metering_billing.models import Customer, PlanVersion
-from metering_billing.utils.enums import PLAN_STATUS
 from rest_framework import serializers
-
-from .model_serializers import EventSerializer, PlanVersionSerializer
-from .serializer_utils import SlugRelatedFieldWithOrganization
 
 
 class RegistrationDetailSerializer(serializers.Serializer):

@@ -1,11 +1,6 @@
-from metering_billing.auth import parse_organization
-from metering_billing.models import Customer, PlanVersion
-from metering_billing.utils.enums import PLAN_STATUS
 from rest_framework import serializers
 
 from .internal_serializers import CustomerNameSerializer
-from .model_serializers import EventSerializer, PlanVersionSerializer
-from .serializer_utils import SlugRelatedFieldWithOrganization
 
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
@@ -46,7 +41,6 @@ class CustomerRevenueSummaryResponseSerializer(serializers.Serializer):
     customers = CustomerRevenueSerializer(many=True)
 
 
-#
 class DayMetricRevenueSerializer(serializers.Serializer):
     date = serializers.DateField()
     metric_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
@@ -65,7 +59,6 @@ class PeriodMetricRevenueResponseSerializer(serializers.Serializer):
     total_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
-# CUSTOMER USAGE AND REVENUE SERIALIZERS GO HERE
 class SubscriptionUsageResponseSerializer(serializers.Serializer):
     usage_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     flat_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)

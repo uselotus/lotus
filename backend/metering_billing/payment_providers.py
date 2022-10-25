@@ -3,26 +3,18 @@ from decimal import Decimal
 from typing import Optional, Union
 
 import stripe
-from django.apps import apps
 from django.conf import settings
 from django.db.models import Q
-
-# from metering_billing.auth import parse_organization
+from metering_billing.serializers.payment_provider_serializers import (
+    PaymentProviderPostResponseSerializer,
+)
 from metering_billing.utils import turn_decimal_into_cents
 from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
-from rest_framework import serializers
-
-# from rest_framework.permissions import IsAuthenticated
-# from rest_framework.response import Response
-# from rest_framework.views import APIView
+from requests import Response
+from rest_framework import serializers, status
 
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
-
-# Organization = apps.get_app_config("metering_billing").get_model(
-#     model_name="Organization"
-# )
-# Customer = apps.get_app_config("metering_billing").get_model(model_name="Customer")
 
 
 class PaymentProvider(abc.ABC):
@@ -60,37 +52,23 @@ class PaymentProvider(abc.ABC):
         """This method will be called periodically when the status of a payment object needs to be updated. It should return the status of the payment object, which should be either paid or unpaid."""
         pass
 
-    # @abc.abstractmethod
-    # @extend_schema(
-    #     responses={
-    #         200: inline_serializer(
-    #             "PaymentProviderConnectedResponse",
-    #             fields={"connected": serializers.BooleanField()},
-    #         )
-    #     },
-    # )
-    # def get(self, request, format=None) -> Response:
-    #     """
-    #     A payment processor's GET method will be used to determine whether the organization that sent the request is connected to the given payment processor.
-    #     """
-    #     pass
-
-    # @abc.abstractmethod
-    # def post(self, request, format=None) -> Response:
-    #     """
-    #     A payment processor's POST method will be used to connect the organization that sent the request to the given payment processor. You must access the payment_provider_ids field of the organization and the payment processor's name as a key and the organization's payment processor id as its value.
-    #     """
-    #     pass
-
     @abc.abstractmethod
     def import_customers(self, organization) -> int:
         """This method will be called periodically to match customers from the payment processor with customers in Lotus. Keep in mind that Customers have a payment_provider field that can be used to determine which payment processor the customer should be connected to, and that the payment_provider_id field can be used to store the id of the customer in the associated payment processor. Return the number of customers that were imported."""
         pass
 
+    @abc.abstractmethod
+    def get_post_data_serializer(self) -> serializers.Serializer:
+        """This method will be called when a POST request is made to the payment provider endpoint. It should return a serializer that can be used to validate the data that is sent in the POST request. The data sent in the request will naturally be dependent on the payment processor, so we use this method to dynamically use the serializer."""
+        pass
+
+    @abc.abstractmethod
+    def handle_post(self, data, organization) -> PaymentProviderPostResponseSerializer:
+        """This method will be called when a POST request is made to the payment provider endpoint. It should return a response that will be sent back to the user."""
+        pass
+
 
 class StripeConnector(PaymentProvider):
-    # permission_classes = [IsAuthenticated]
-
     def __init__(self):
         self.secret_key = STRIPE_SECRET_KEY
         self.self_hosted = SELF_HOSTED
@@ -139,57 +117,11 @@ class StripeConnector(PaymentProvider):
         else:
             return INVOICE_STATUS.UNPAID
 
-    # def get(self, request, format=None):
-    #     organization = request.user.organization
-    #     if self.organization_connected(organization):
-    #         return Response({"connected": True})
-    #     else:
-    #         return Response({"connected": False})
-
-    # def post(self, request, format=None):
-    #     data = request.data
-
-    #     if data is None:
-    #         return Response(
-    #             {"success": False, "details": "No data provided"},
-    #             status=status.HTTP_400_BAD_REQUEST,
-    #         )
-
-    #     organization = parse_organization(request)
-    #     stripe_code = data["authorization_code"]
-
-    #     try:
-    #         response = stripe.OAuth.token(
-    #             grant_type="authorization_code",
-    #             code=stripe_code,
-    #         )
-    #     except:
-    #         return Response(
-    #             {"success": False, "details": "Invalid authorization code"},
-    #             status=status.HTTP_400_BAD_REQUEST,
-    #         )
-
-    #     if "error" in response:
-    #         return Response(
-    #             {"success": False, "details": response["error"]},
-    #             status=status.HTTP_400_BAD_REQUEST,
-    #         )
-
-    #     connected_account_id = response["stripe_user_id"]
-
-    #     org_pp_ids = organization.payment_provider_ids
-    #     org_pp_ids[PAYMENT_PROVIDERS.STRIPE] = connected_account_id
-    #     organization.payment_provider_ids = org_pp_ids
-    #     organization.save()
-    #     self.import_customers(organization)
-
-    #     return Response({"success": True}, status=status.HTTP_201_CREATED)
-
     def import_customers(self, organization):
         """
         Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address), then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
         """
-        from metering_billing.models import Customer, Organization
+        from metering_billing.models import Customer
 
         num_cust_added = 0
         org_ppis = organization.payment_provider_ids
@@ -249,6 +181,42 @@ class StripeConnector(PaymentProvider):
             print(e)
 
         return num_cust_added
+
+    def get_post_data_serializer(self) -> serializers.Serializer:
+        class StripePostRequestDataSerializer(serializers.Serializer):
+            authorization_code = serializers.CharField()
+            stripe_user_id = serializers.CharField()
+
+        return StripePostRequestDataSerializer
+
+    def handle_post(self, data, organization) -> PaymentProviderPostResponseSerializer:
+        try:
+            response = stripe.OAuth.token(
+                grant_type="authorization_code",
+                code=data["authorization_code"],
+            )
+        except:
+            return Response(
+                {"success": False, "details": "Invalid authorization code"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        org_pp_ids = organization.payment_provider_ids
+        org_pp_ids[PAYMENT_PROVIDERS.STRIPE] = response["stripe_user_id"]
+        organization.payment_provider_ids = org_pp_ids
+        organization.save()
+        self.import_customers(organization)
+
+        response = {
+            "payment_processor": PAYMENT_PROVIDERS.STRIPE,
+            "data": {
+                "success": True,
+            },
+        }
+        serializer = PaymentProviderPostResponseSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+        return Response(validated_data, status=status.HTTP_200_OK)
 
 
 PAYMENT_PROVIDER_MAP = {

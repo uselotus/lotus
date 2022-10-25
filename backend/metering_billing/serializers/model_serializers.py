@@ -1,11 +1,7 @@
-import datetime
-
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Alert,
-    Backtest,
-    BacktestSubstitution,
     BillableMetric,
     CategoricalFilter,
     Customer,
@@ -23,14 +19,12 @@ from metering_billing.models import (
 )
 from metering_billing.utils import calculate_end_date
 from metering_billing.utils.enums import (
-    BACKTEST_KPI,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
 )
-from numpy import require
 from rest_framework import serializers
 
 from .serializer_utils import SlugRelatedFieldWithOrganization
@@ -817,3 +811,11 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
                 )
         instance.save()
         return instance
+
+
+class ExperimentalToActiveRequestSerializer(serializers.Serializer):
+    version_id = SlugRelatedFieldWithOrganization(
+        queryset=PlanVersion.objects.filter(plan__status=PLAN_STATUS.EXPERIMENTAL),
+        slug_field="version_id",
+        read_only=False,
+    )

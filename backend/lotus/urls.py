@@ -19,7 +19,6 @@ from django.contrib import admin
 from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
-from metering_billing.payment_providers import StripeConnector
 from metering_billing.views import auth_views, organization_views, track
 from metering_billing.views.model_views import (
     BacktestViewSet,
@@ -35,13 +34,13 @@ from metering_billing.views.model_views import (
     UserViewSet,
     WebhookViewSet,
 )
+from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (
     APIKeyCreate,
     CustomerDetailView,
     CustomersSummaryView,
     CustomersWithRevenueView,
     DraftInvoiceView,
-    EventPreviewView,
     ExperimentalToActiveView,
     GetCustomerAccessView,
     MergeCustomersView,
@@ -111,23 +110,7 @@ urlpatterns = [
         name="pexwriod_subscriptions",
     ),
     path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
-    # path("api/event_preview/", EventPreviewView.as_view(), name="event_preview"),
     path("api/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
-    # path(
-    #     "api/cancel_subscription/",
-    #     CancelSubscriptionView.as_view(),
-    #     name="cancel_subscription",
-    # ),
-    # path(
-    #     "api/update_billing_plan/",
-    #     UpdatePlanVersionView.as_view(),
-    #     name="update_billing_plan",
-    # ),
-    # path(
-    #     "api/update_subscription/",
-    #     UpdateSubscriptionPlanVersionView.as_view(),
-    #     name="update_subscription",
-    # ),
     path(
         "api/customer_access/",
         GetCustomerAccessView.as_view(),
@@ -143,7 +126,11 @@ urlpatterns = [
         SyncCustomersView.as_view(),
         name="sync_customers",
     ),
-    # path("api/stripe/", StripeConnector.as_view(), name="stripe_initialize"),
+    path(
+        "api/payment_providers/",
+        PaymentProviderView.as_view(),
+        name="payment_providers",
+    ),
     path(
         "api/experimental_to_active/",
         ExperimentalToActiveView.as_view(),

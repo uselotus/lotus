@@ -1,10 +1,4 @@
-from metering_billing.auth import parse_organization
-from metering_billing.models import Customer, PlanVersion
-from metering_billing.utils.enums import PLAN_STATUS
 from rest_framework import serializers
-
-from .model_serializers import EventSerializer, PlanVersionSerializer
-from .serializer_utils import SlugRelatedFieldWithOrganization
 
 
 class GetCustomerAccessRequestSerializer(serializers.Serializer):
@@ -65,14 +59,6 @@ class PeriodRequestSerializer(serializers.Serializer):
 # PERIOD METRIC USAGE SERIALIZERS GO HERE
 class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
     top_n_customers = serializers.IntegerField(required=False)
-
-
-class ExperimentalToActiveRequestSerializer(serializers.Serializer):
-    version_id = SlugRelatedFieldWithOrganization(
-        queryset=PlanVersion.objects.filter(plan__status=PLAN_STATUS.EXPERIMENTAL),
-        slug_field="version_id",
-        read_only=False,
-    )
 
 
 class EventPreviewRequestSerializer(serializers.Serializer):
