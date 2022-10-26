@@ -553,10 +553,18 @@ class Plan(models.Model):
         blank=True,
     )
     parent_plan = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="child_plans"
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="child_plans",
     )
     target_customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=True, blank=True, related_name="custom_plans"
+        Customer,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="custom_plans",
     )
     history = HistoricalRecords()
 
