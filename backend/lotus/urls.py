@@ -35,7 +35,7 @@ from metering_billing.views.model_views import (
     WebhookViewSet,
 )
 from metering_billing.views.payment_provider_views import PaymentProviderView
-from metering_billing.views.views import (
+from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
     CustomerDetailView,
     CustomersSummaryView,
@@ -43,7 +43,6 @@ from metering_billing.views.views import (
     DraftInvoiceView,
     ExperimentalToActiveView,
     GetCustomerAccessView,
-    MergeCustomersView,
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
@@ -116,11 +115,11 @@ urlpatterns = [
         GetCustomerAccessView.as_view(),
         name="customer_access",
     ),
-    path(
-        "api/merge_customers/",
-        MergeCustomersView.as_view(),
-        name="merge_customers",
-    ),
+    # path(
+    #     "api/merge_customers/",
+    #     MergeCustomersView.as_view(),
+    #     name="merge_customers",
+    # ),
     path(
         "api/sync_customers/",
         SyncCustomersView.as_view(),

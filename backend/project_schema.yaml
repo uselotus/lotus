@@ -557,40 +557,6 @@ paths:
       responses:
         '200':
           description: No response body
-  /api/merge_customers/:
-    post:
-      operationId: merge_customers_create
-      tags:
-      - merge_customers
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MergeCustomersRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/MergeCustomersRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/MergeCustomersRequest'
-        required: true
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MergeCustomerSuccess'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MergeCustomerFailure'
-          description: ''
   /api/metrics/:
     get:
       operationId: metrics_list
@@ -1970,7 +1936,6 @@ components:
         issue_date:
           type: string
           format: date-time
-          readOnly: true
         payment_status:
           $ref: '#/components/schemas/PaymentStatusEnum'
         cust_connected_to_payment_provider:
@@ -1980,7 +1945,7 @@ components:
         external_payment_obj_id:
           type: string
           nullable: true
-          maxLength: 240
+          maxLength: 200
         line_items:
           type: object
           additionalProperties: {}
@@ -1997,7 +1962,6 @@ components:
       - cost_due
       - cost_due_currency
       - customer
-      - issue_date
       - line_items
       - organization
       - payment_status
@@ -2012,36 +1976,6 @@ components:
       - replace_on_active_version_renewal
       - grandfather_active
       type: string
-    MergeCustomerFailure:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/Status956Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
-    MergeCustomerSuccess:
-      type: object
-      properties:
-        status:
-          $ref: '#/components/schemas/StatusE96Enum'
-        detail:
-          type: string
-      required:
-      - detail
-      - status
-    MergeCustomersRequest:
-      type: object
-      properties:
-        customer1_id:
-          type: string
-        customer2_id:
-          type: string
-      required:
-      - customer1_id
-      - customer2_id
     MetricRevenue:
       type: object
       properties:

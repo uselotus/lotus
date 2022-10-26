@@ -53,7 +53,7 @@ from simple_history.models import HistoricalRecords
 class Organization(models.Model):
     company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
-    created = models.DateField(auto_now=True)
+    created = models.DateField(default=now_utc)
     payment_plan = models.CharField(
         max_length=40,
         choices=PAYMENT_PLANS.choices,
@@ -141,13 +141,12 @@ class Customer(models.Model):
     customer_id = models.CharField(
         max_length=50, blank=True, null=False, default=cust_uuid
     )
-    payment_providers = models.JSONField(default=dict, blank=True, null=True)
+    integrations = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
     balance = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
     history = HistoricalRecords()
-    sources = models.JSONField(default=list, blank=True, null=True)
 
     def __str__(self) -> str:
         return str(self.name) + " " + str(self.customer_id)
@@ -164,13 +163,12 @@ class Customer(models.Model):
         unique_together = ("organization", "customer_id")
 
     def save(self, *args, **kwargs):
-        if len(self.sources) > 0:
-            assert isinstance(self.sources, list)
-            for source in self.sources:
-                assert (
-                    source in PAYMENT_PROVIDERS or source == "lotus"
-                ), f"Payment provider {source} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
-        for k, v in self.payment_providers.items():
+        # if len(self.integrations) > 0:
+        #     for source, info_dict in self.sources.items():
+        #         assert (
+        #             source in PAYMENT_PROVIDERS
+        #         ), f"Payment provider {source} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
+        for k, v in self.integrations.items():
             if k not in PAYMENT_PROVIDERS:
                 raise ValueError(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
@@ -178,9 +176,6 @@ class Customer(models.Model):
             id = v.get("id")
             if id is None:
                 raise ValueError(f"Payment provider {k} id was not provided")
-            assert (
-                k in self.sources
-            ), f"Payment provider {k} in payment providers dict but not in sources"
         super(Customer, self).save(*args, **kwargs)
 
     def get_usage_and_revenue(self):
@@ -444,12 +439,13 @@ class Invoice(models.Model):
     cost_due = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
-    issue_date = models.DateTimeField(max_length=100, auto_now=True)
+    issue_date = models.DateTimeField(max_length=100, default=now_utc)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
-    external_payment_obj_id = models.CharField(max_length=240, null=True, blank=True)
+    external_payment_obj = models.JSONField(default=dict, blank=True, null=True)
+    external_payment_obj_id = models.CharField(max_length=200, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
@@ -819,7 +815,7 @@ class Backtest(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="org_backtests"
     )
-    time_created = models.DateTimeField(default=datetime.datetime.now)
+    time_created = models.DateTimeField(default=now_utc)
     backtest_id = models.CharField(
         max_length=100, null=False, blank=True, default=btst_uuid, unique=True
     )

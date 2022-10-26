@@ -225,6 +225,7 @@ def add_plan_version_to_plan():
             usage_billing_type=USAGE_BILLING_TYPE.IN_ARREARS,
             plan=plan,
             status=PLAN_VERSION_STATUS.ACTIVE,
+            flat_rate=30,
             _quantity=1,
         )
         return plan_version

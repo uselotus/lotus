@@ -1,3 +1,5 @@
+import datetime
+from datetime import timezone
 from decimal import Decimal
 
 import posthog
@@ -33,6 +35,10 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     organization = subscription.organization
     billing_plan = subscription.billing_plan
     issue_date = issue_date if issue_date else subscription.end_date
+    if isinstance(issue_date, datetime.date):
+        issue_date = datetime.datetime.combine(
+            issue_date, datetime.time.min, tzinfo=timezone.utc
+        )
     if amount:
         line_item = {"Flat Subscription Fee Adjustment": amount}
     else:
@@ -59,9 +65,6 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             total_cost = convert_to_decimal(
                 sum(v["amount"] for v in new_sub_daily_cost_dict.values())
             )
-            print("total cost", total_cost)
-            print("new_sub_daily_cost_dict", new_sub_daily_cost_dict)
-            print("len", len(new_sub_daily_cost_dict))
             due = (
                 total_cost
                 - subscription.flat_fee_already_billed
@@ -100,23 +103,21 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     # adjust kwargs depending on draft + external obj creation
     if draft:
         invoice_kwargs["payment_status"] = INVOICE_STATUS.DRAFT
-    else:
-        for pp in customer.payment_providers.keys():
-            if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-                pp_connector = PAYMENT_PROVIDER_MAP[pp]
-                customer_conn = pp_connector.customer_connected(customer)
-                org_conn = pp_connector.organization_connected(organization)
-                if customer_conn and org_conn:
-                    invoice_kwargs[
-                        "external_payment_obj_id"
-                    ] = pp_connector.generate_payment_object(
-                        customer, amount, organization
-                    )
-                    invoice_kwargs["external_payment_obj_type"] = pp
-                    break
 
     # Create the invoice
     invoice = Invoice.objects.create(**invoice_kwargs)
+    for pp in customer.integrations.keys():
+        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+            pp_connector = PAYMENT_PROVIDER_MAP[pp]
+            customer_conn = pp_connector.customer_connected(customer)
+            org_conn = pp_connector.organization_connected(organization)
+            if customer_conn and org_conn:
+                invoice.external_payment_obj_id = pp_connector.generate_payment_object(
+                    invoice
+                )
+                invoice.external_payment_obj_type = pp
+                invoice.save()
+                break
 
     if not draft:
         invoice_data = InvoiceSerializer(invoice).data

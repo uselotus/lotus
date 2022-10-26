@@ -90,7 +90,7 @@ def hours_bwn_twodates(start_date, end_date):
         yield start_date + relativedelta(hours=n)
 
 
-def turn_decimal_into_cents(amount):
+def decimal_to_cents(amount):
     """
     Turn a decimal into cents.
     """

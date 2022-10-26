@@ -20,10 +20,16 @@ import django_heroku
 import posthog
 import sentry_sdk
 from decouple import config
+from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+try:
+    path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
+    load_dotenv(dotenv_path=path)
+except:
+    pass
 
 EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
 EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
