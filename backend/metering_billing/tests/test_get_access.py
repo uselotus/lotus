@@ -12,6 +12,7 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.utils import now_utc
+from metering_billing.utils.enums import METRIC_AGGREGATION, METRIC_TYPE
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -218,3 +219,77 @@ class TestGetAccess:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["access"] == False
+
+    def test_get_access_stateful_with_max_reached_previously(
+        self, get_access_test_common_setup, add_product_to_org, add_plan_to_product
+    ):
+        setup_dict = get_access_test_common_setup(auth_method="api_key")
+        product = add_product_to_org(setup_dict["org"])
+        plan = add_plan_to_product(product)
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            description="test_plan for testing",
+            plan=plan,
+            flat_rate=30.0,
+        )
+        metric = BillableMetric.objects.create(
+            organization=setup_dict["org"],
+            event_name="log_num_users",
+            property_name="num_users",
+            aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.STATEFUL,
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=metric,
+            free_metric_units=0,
+            max_metric_units=10,
+            cost_per_batch=5,
+            metric_units_per_batch=1,
+        )
+        billing_plan.components.add(plan_component)
+        billing_plan.save()
+        subscription = Subscription.objects.create(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+            billing_plan=billing_plan,
+            start_date=now_utc().date() - relativedelta(days=3),
+            status="active",
+        )
+        # initial value, just 1 user
+        event1 = Event.objects.create(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+            event_name="log_num_users",
+            properties={"num_users": 1},
+            time_created=now_utc() - relativedelta(days=2),
+            idempotency_id="1",
+        )
+        # now we suddenly have 10!
+        event2 = Event.objects.create(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+            event_name="log_num_users",
+            properties={"num_users": 10},
+            time_created=now_utc() - relativedelta(days=1),
+            idempotency_id="2",
+        )
+        # now we go back to 1, so should still have access
+        event3 = Event.objects.create(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+            event_name="log_num_users",
+            properties={"num_users": 1},
+            time_created=now_utc() - relativedelta(hours=6),
+            idempotency_id="3",
+        )
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "event_name": metric.event_name,
+            "event_limit_type": "total",
+        }
+        response = setup_dict["client"].get(reverse("customer_access"), payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["access"] == True
