@@ -80,6 +80,8 @@ def subscription_test_common_setup(
             flat_rate=30.0,
             plan=plan,
         )
+        plan.display_version = billing_plan
+        plan.save()
         plan_component_set = baker.make(
             PlanComponent,
             billable_metric=itertools.cycle(metric_set),
@@ -104,7 +106,7 @@ def subscription_test_common_setup(
             "start_date": now_utc().date() - timedelta(days=35),
             "status": "active",
             "customer_id": customer.customer_id,
-            "version_id": billing_plan.version_id,
+            "plan_id": billing_plan.plan.plan_id,
         }
         setup_dict["payload"] = payload
         setup_dict["customer"] = customer

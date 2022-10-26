@@ -48,6 +48,7 @@ from metering_billing.utils.enums import (
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
+from sqlalchemy import ForeignKey
 
 
 class Organization(models.Model):
@@ -64,10 +65,6 @@ class Organization(models.Model):
     def __str__(self):
         return self.company_name
 
-    @property
-    def users(self):
-        return self.org_users
-
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
             if k not in PAYMENT_PROVIDERS:
@@ -75,6 +72,10 @@ class Organization(models.Model):
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         super(Organization, self).save(*args, **kwargs)
+
+    @property
+    def users(self):
+        return self.org_users
 
 
 class Alert(models.Model):
@@ -148,26 +149,13 @@ class Customer(models.Model):
     )
     history = HistoricalRecords()
 
-    def __str__(self) -> str:
-        return str(self.name) + " " + str(self.customer_id)
-
-    def get_billing_plan_name(self) -> str:
-        subscription_set = Subscription.objects.filter(
-            customer=self, status=SUBSCRIPTION_STATUS.ACTIVE
-        )
-        if subscription_set is None:
-            return "None"
-        return [str(sub.billing_plan) for sub in subscription_set]
-
     class Meta:
         unique_together = ("organization", "customer_id")
 
+    def __str__(self) -> str:
+        return str(self.name) + " " + str(self.customer_id)
+
     def save(self, *args, **kwargs):
-        # if len(self.integrations) > 0:
-        #     for source, info_dict in self.sources.items():
-        #         assert (
-        #             source in PAYMENT_PROVIDERS
-        #         ), f"Payment provider {source} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
         for k, v in self.integrations.items():
             if k not in PAYMENT_PROVIDERS:
                 raise ValueError(
@@ -177,6 +165,14 @@ class Customer(models.Model):
             if id is None:
                 raise ValueError(f"Payment provider {k} id was not provided")
         super(Customer, self).save(*args, **kwargs)
+
+    def get_billing_plan_names(self) -> str:
+        subscription_set = Subscription.objects.filter(
+            customer=self, status=SUBSCRIPTION_STATUS.ACTIVE
+        )
+        if subscription_set is None:
+            return "None"
+        return [str(sub.billing_plan) for sub in subscription_set]
 
     def get_usage_and_revenue(self):
         customer_subscriptions = (
@@ -462,12 +458,12 @@ class APIToken(AbstractAPIKey):
     )
     name = models.CharField(max_length=200, default="latest_token")
 
-    def __str__(self):
-        return str(self.name) + " " + str(self.organization.company_name)
-
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
         verbose_name_plural = "API Tokens"
+
+    def __str__(self):
+        return str(self.name) + " " + str(self.organization.company_name)
 
 
 class OrganizationInviteToken(models.Model):
@@ -556,7 +552,22 @@ class Plan(models.Model):
         null=True,
         blank=True,
     )
+    parent_plan = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="child_plans"
+    )
+    target_customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, null=True, blank=True, related_name="custom_plans"
+    )
     history = HistoricalRecords()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(Q(parent_plan__isnull=True) & Q(target_customer__isnull=True))
+                | Q(parent_plan__isnull=False) & Q(target_customer__isnull=False),
+                name="both_null_or_both_not_null",
+            )
+        ]
 
     def __str__(self):
         return f"{self.plan_name}"
