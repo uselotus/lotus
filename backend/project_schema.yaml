@@ -2197,6 +2197,10 @@ components:
           writeOnly: true
         product_id:
           type: string
+        parent_plan_id:
+          type: string
+        target_customer_id:
+          type: string
         status:
           allOf:
           - $ref: '#/components/schemas/Status2ecEnum'
@@ -2601,7 +2605,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/Customer'
           readOnly: true
-        version_id:
+        plan_id:
           type: string
           writeOnly: true
         billing_plan:
@@ -2626,8 +2630,8 @@ components:
       - billing_plan
       - customer
       - customer_id
+      - plan_id
       - start_date
-      - version_id
     SubscriptionCustomerDetail:
       type: object
       properties:

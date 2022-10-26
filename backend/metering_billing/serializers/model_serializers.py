@@ -298,13 +298,13 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     cost_per_batch = serializers.FloatField(allow_null=True, default=0)
     metric_units_per_batch = serializers.FloatField(allow_null=True, default=1)
 
-    def get_fields(self, *args, **kwargs):
-        fields = super().get_fields(*args, **kwargs)
-        bmqs = fields["billable_metric_name"].queryset
-        fields["billable_metric_name"].queryset = bmqs.filter(
-            organization=self.context["organization"]
-        )
-        return fields
+    # def get_fields(self, *args, **kwargs):
+    #     fields = super().get_fields(*args, **kwargs)
+    #     bmqs = fields["billable_metric_name"].queryset
+    #     fields["billable_metric_name"].queryset = bmqs.filter(
+    #         organization=self.context["organization"]
+    #     )
+    #     return fields
 
     def validate(self, data):
         # fmu, cpb, and mupb must all be none or all be not none
@@ -560,6 +560,8 @@ class PlanSerializer(serializers.ModelSerializer):
             "display_version",
             "initial_version",
             "product_id",
+            "parent_plan_id",
+            "target_customer_id",
             "status",
             "plan_id",
             "created_on",
@@ -577,6 +579,20 @@ class PlanSerializer(serializers.ModelSerializer):
         read_only=False,
         source="parent_product",
     )
+    parent_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.objects.all(),
+        read_only=False,
+        source="parent_plan",
+        required=False,
+    )
+    target_customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        read_only=False,
+        source="target_customer",
+        required=False,
+    )
 
     # WRITE ONLY
     initial_version = PlanVersionSerializer(write_only=True)
@@ -592,6 +608,14 @@ class PlanSerializer(serializers.ModelSerializer):
         # we'll feed the version data into the serializer later, checking now breaks it
         plan_version = data.pop("initial_version")
         super().validate(data)
+        target_cust_null = data.get("target_customer") is None
+        parent_plan_null = data.get("parent_plan") is None
+        if any([target_cust_null, parent_plan_null]) and not all(
+            [target_cust_null, parent_plan_null]
+        ):
+            raise serializers.ValidationError(
+                "either both or none of target_customer and parent_plan must be set"
+            )
         data["initial_version"] = plan_version
         return data
 
@@ -671,7 +695,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         fields = (
             "customer_id",
             "customer",
-            "version_id",
+            "plan_id",
             "billing_plan",
             "start_date",
             "end_date",
@@ -696,11 +720,11 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         queryset=Customer.objects.all(),
         write_only=True,
     )
-    version_id = SlugRelatedFieldWithOrganization(
-        slug_field="version_id",
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
         read_only=False,
-        source="billing_plan",
-        queryset=PlanVersion.objects.all(),
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
         write_only=True,
     )
 
@@ -708,19 +732,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     billing_plan = PlanVersionSerializer(read_only=True)
 
-    def get_fields(self, *args, **kwargs):
-        fields = super().get_fields(*args, **kwargs)
-        cqs = fields["customer_id"].queryset
-        fields["customer_id"].queryset = cqs.filter(
-            organization=self.context["organization"]
-        )
-        bpqs = fields["version_id"].queryset
-        fields["version_id"].queryset = bpqs.filter(
-            organization=self.context["organization"]
-        )
-        return fields
-
     def validate(self, data):
+        # extract the plan version from the plan
+        data["billing_plan"] = data["billing_plan"]["plan"].display_version
         # check no existing subs
         sd = data["start_date"]
         ed = calculate_end_date(data["billing_plan"].plan.plan_duration, sd)
