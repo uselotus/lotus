@@ -120,9 +120,16 @@ const EditPlan = ({ type }: Props) => {
   );
 
   const addFeatures = (newFeatures: FeatureType[]) => {
-    newFeatures.filter((item) => planFeatures.indexOf(item) !== -1);
-
-    setPlanFeatures([...planFeatures, ...newFeatures]);
+    for (let i = 0; i < newFeatures.length; i++) {
+      if (
+        planFeatures.some(
+          (feat) => feat.feature_name === newFeatures[i].feature_name
+        )
+      ) {
+      } else {
+        setPlanFeatures((prev) => [...prev, newFeatures[i]]);
+      }
+    }
     setFeatureVisible(false);
   };
 

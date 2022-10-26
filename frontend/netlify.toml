@@ -2,5 +2,5 @@
 ## Not needed for static site generators.
 [[redirects]]
   from = "/*"
-  to = "src/index.html"
+  to = "/index.html"
   status = 200

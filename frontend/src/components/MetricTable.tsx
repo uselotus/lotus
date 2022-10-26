@@ -11,10 +11,7 @@ import {
   ProFormInstance,
   ProColumns,
 } from "@ant-design/pro-components";
-import { Table } from "antd";
-import { CustomerTableItem } from "../types/customer-type";
 import { Button, Tag, Tooltip } from "antd";
-import { PlanDisplay } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
 import { MetricType } from "../types/metric-type";
 import { Metrics } from "../api/api";

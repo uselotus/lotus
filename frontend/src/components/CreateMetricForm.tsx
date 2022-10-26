@@ -5,6 +5,8 @@ const { Option } = Select;
 
 export interface CreateMetricState extends MetricType {
   title: string;
+  aggregation_type_2: string;
+  property_name_2: string;
 }
 
 const CreateMetricForm = (props: {
@@ -14,8 +16,7 @@ const CreateMetricForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
-  const [eventType, setEventType] = useState("aggregation");
-  const [statefulAggType, setStatefulAggType] = useState("max");
+  const [eventType, setEventType] = useState("");
 
   form.setFieldsValue({
     event_name: props.state.event_name,
@@ -34,8 +35,8 @@ const CreateMetricForm = (props: {
         form
           .validateFields()
           .then((values) => {
-            form.resetFields();
             props.onSave(values);
+            form.resetFields();
           })
           .catch((info) => {
             console.log("Validate Failed:", info);
@@ -84,8 +85,8 @@ const CreateMetricForm = (props: {
             prevValues.metric_type !== currentValues.metric_type
           }
         >
-          {({ getFieldValue }) =>
-            getFieldValue("metric_type") === "aggregation" ? (
+          {eventType === "aggregation" && (
+            <Fragment>
               <Form.Item
                 name="aggregation_type"
                 label="Aggregation Type"
@@ -103,70 +104,74 @@ const CreateMetricForm = (props: {
                   <Option value="max">max</Option>
                 </Select>
               </Form.Item>
-            ) : (
-              <Fragment>
-                <Form.Item
-                  name="aggregation_type"
-                  label="Aggregation Type"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Aggregation type is required",
-                    },
-                  ]}
-                >
-                  <Select
-                    value={statefulAggType}
-                    onChange={(e) => {
-                      setStatefulAggType(e);
-                    }}
-                    defaultValue={statefulAggType}
-                  >
-                    <Option value="max">max</Option>
-                    <Option value="latest">last</Option>
-                  </Select>
-                </Form.Item>
-                <Form.Item
-                  name="stateful_aggregation_period"
-                  label="Period"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Period is required",
-                    },
-                  ]}
-                >
-                  <Select defaultValue={"day"}>
-                    <Option value="day">day</Option>
-                    <Option value="hour">hour</Option>
-                  </Select>
-                </Form.Item>
-              </Fragment>
-            )
-          }
-        </Form.Item>
-        <Form.Item
-          noStyle
-          shouldUpdate={(prevValues, currentValues) =>
-            prevValues.aggregation_type !== currentValues.aggregation_type ||
-            prevValues.metric_type !== currentValues.metric_type
-          }
-        >
-          {({ getFieldValue }) =>
-            getFieldValue("aggregation_type") === "sum" ||
-            getFieldValue("aggregation_type") === "max" ||
-            getFieldValue("aggregation_type") === "latest" ||
-            getFieldValue("aggregation_type") == "unique" ? (
               <Form.Item
-                name="property_name"
+                noStyle
+                shouldUpdate={(prevValues, currentValues) =>
+                  prevValues.aggregation_type !==
+                    currentValues.aggregation_type ||
+                  prevValues.metric_type !== currentValues.metric_type
+                }
+              >
+                {({ getFieldValue }) =>
+                  getFieldValue("aggregation_type") === "sum" ||
+                  getFieldValue("aggregation_type") === "max" ||
+                  getFieldValue("aggregation_type") === "last" ||
+                  getFieldValue("aggregation_type") == "unique" ? (
+                    <Form.Item
+                      name="property_name"
+                      label="Property Name"
+                      rules={[{ required: true }]}
+                    >
+                      <Input />
+                    </Form.Item>
+                  ) : null
+                }
+              </Form.Item>
+            </Fragment>
+          )}
+          {eventType === "stateful" && (
+            <Fragment>
+              <Form.Item
+                name="aggregation_type_2"
+                label="Aggregation Type"
+                rules={[
+                  {
+                    required: true,
+                    message: "Aggregation type is required",
+                  },
+                ]}
+              >
+                <Select defaultValue={"max"}>
+                  <Option value="max">max</Option>
+                  <Option value="last">last</Option>
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="property_name_2"
                 label="Property Name"
                 rules={[{ required: true }]}
               >
                 <Input />
               </Form.Item>
-            ) : null
-          }
+              {/* <Form.Item
+                name="stateful_aggregation_period"
+                label="Period"
+                rules={[
+                  {
+                    required: true,
+                    message: "Period is required",
+                  },
+                ]}
+              >
+                <Select defaultValue={"day"}>
+                  <Option value="day">day</Option>
+                  <Option value="hour">hour</Option>
+                </Select>
+              </Form.Item> */}
+            </Fragment>
+          )}
         </Form.Item>
+
         <Tooltip placement="left" title="Define a display name for this metric">
           <Form.Item
             name="billable_metric_name"
