@@ -95,7 +95,7 @@ class PLAN_VERSION_STATUS(models.TextChoices):
 
 class PLAN_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
-    INACTIVE = ("inactive", _("Inactive"))
+    ARCHIVED = ("archived", _("Archived"))
     EXPERIMENTAL = ("experimental", _("Experimental"))
 
 

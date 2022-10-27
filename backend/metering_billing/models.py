@@ -15,7 +15,7 @@ from metering_billing.utils import (
     calculate_end_date,
     convert_to_decimal,
     cust_uuid,
-    dates_bwn_twodates,
+    dates_bwn_two_dts,
     metric_uuid,
     now_plus_day,
     now_utc,
@@ -357,9 +357,9 @@ class PlanComponent(models.Model):
             revenue_granularity, REVENUE_CALC_GRANULARITY
         ), "revenue_granularity must be part of REVENUE_CALC_GRANULARITY enum"
         if type(plan_start_date) == str:
-            plan_start_date = parser.parse(plan_start_date).date()
+            plan_start_date = parser.parse(plan_start_date)
         if type(plan_end_date) == str:
-            plan_end_date = parser.parse(plan_end_date).date()
+            plan_end_date = parser.parse(plan_end_date)
 
         billable_metric = self.billable_metric
         usage = billable_metric.get_usage(
@@ -538,7 +538,11 @@ class Plan(models.Model):
         "PlanVersion", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     parent_product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="product_plans"
+        Product,
+        on_delete=models.CASCADE,
+        related_name="product_plans",
+        null=True,
+        blank=True,
     )
     status = models.CharField(
         choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
@@ -606,16 +610,6 @@ class Plan(models.Model):
             plan_version.status = PLAN_VERSION_STATUS.ACTIVE
             plan_version.save()
 
-    def add_new_version(
-        self, plan_version, make_active_type=None, replace_immediately_type=None
-    ):
-        # If plan version is active, then make sure to run the make evrsio nactvie subroutine
-        if plan_version.status == PLAN_VERSION_STATUS.ACTIVE:
-            self.make_version_active(
-                plan_version, make_active_type, replace_immediately_type
-            )
-        plan_version.save()
-
     def _handle_existing_versions(
         self, new_version, make_active_type, replace_immediately_type
     ):
@@ -628,7 +622,7 @@ class Plan(models.Model):
             MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL,
             MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE,
         ]:
-
+            print("grandfathering", make_active_type)
             # 1
             replace_with_lst = [PLAN_VERSION_STATUS.RETIRING]
             # 2a
@@ -642,9 +636,9 @@ class Plan(models.Model):
             ).update(replace_with=new_version, status=PLAN_VERSION_STATUS.RETIRING)
             # 2b
             if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE:
-                self.versions.all().filter(status=PLAN_VERSION_STATUS.ACTIVE).update(
-                    status=PLAN_VERSION_STATUS.GRANDFATHERED
-                )
+                self.versions.all().filter(
+                    ~Q(pk=new_version.pk), status=PLAN_VERSION_STATUS.ACTIVE
+                ).update(status=PLAN_VERSION_STATUS.GRANDFATHERED)
         else:
             # 2c
             versions = (
@@ -713,8 +707,8 @@ class Subscription(models.Model):
         related_name="bp_subscriptions",
         related_query_name="bp_subscription",
     )
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
     status = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_STATUS.choices,
@@ -735,7 +729,7 @@ class Subscription(models.Model):
         unique_together = ("organization", "subscription_id")
 
     def __str__(self):
-        return f"{self.customer.name}  {self.billing_plan.plan.plan_name} : {self.start_date} to {self.end_date}"
+        return f"{self.customer.name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
         if not self.end_date:
@@ -745,7 +739,7 @@ class Subscription(models.Model):
         if self.status == SUBSCRIPTION_STATUS.ACTIVE:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
-            dates_bwn = list(dates_bwn_twodates(self.start_date, self.end_date))
+            dates_bwn = list(dates_bwn_two_dts(self.start_date, self.end_date))
             for day in dates_bwn:
                 if isinstance(day, datetime.datetime):
                     day = day.date()
@@ -787,7 +781,6 @@ class Subscription(models.Model):
         return sub_dict
 
     def end_subscription_now(self, bill=True):
-        today = now_utc().date()
         if self.status != SUBSCRIPTION_STATUS.ACTIVE:
             raise Exception(
                 "Subscription needs to be active to end it. Subscription status is {}".format(
@@ -797,7 +790,7 @@ class Subscription(models.Model):
         if bill:
             generate_invoice(self)
         self.turn_off_auto_renew()
-        self.end_date = today
+        self.end_date = now_utc()
         self.status = SUBSCRIPTION_STATUS.ENDED
         self.save()
 
@@ -815,8 +808,7 @@ class Subscription(models.Model):
             if due < 0:
                 self.customer.balance = abs(due)
             elif due > 0:
-                today = datetime.date.today()
-                generate_invoice(self, draft=False, issue_date=today, amount=due)
+                generate_invoice(self, draft=False, issue_date=now_utc(), amount=due)
                 self.flat_fee_already_billed += due
                 self.save()
                 self.customer.balance = 0

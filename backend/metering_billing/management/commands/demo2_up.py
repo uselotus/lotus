@@ -18,7 +18,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import now_utc
+from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
 from metering_billing.utils.enums import SUBSCRIPTION_STATUS
 from model_bakery import baker
 
@@ -565,15 +565,9 @@ class Command(BaseCommand):
 def random_date(start, end, n):
     """Generate a random datetime between `start` and `end`"""
     if type(start) is datetime.date:
-        start = datetime.datetime.combine(
-            start,
-            datetime.time.min,
-        )
+        start = date_as_min_dt(start)
     if type(end) is datetime.date:
-        end = datetime.datetime.combine(
-            end,
-            datetime.time.max,
-        )
+        end = date_as_max_dt(end)
     for _ in range(n):
         dt = start + relativedelta(
             # Get a random amount of seconds between `start` and `end`

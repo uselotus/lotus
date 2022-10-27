@@ -17,7 +17,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import calculate_end_date
+from metering_billing.utils import calculate_end_date, date_as_max_dt, date_as_min_dt
 from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
@@ -460,45 +460,43 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         model = PlanVersion
         fields = (
             "description",
-            "version",
             "plan_id",
             "flat_fee_billing_type",
             "usage_billing_type",
-            "status",
             "replace_plan_version_id",
             "flat_rate",
             "components",
             "features",
-            "created_on",
-            "created_by",
-            "active_subscriptions",
-            "version_id",
+            # write only
+            "make_active",
             "make_active_type",
             "replace_immediately_type",
+            # read-only
+            "version",
+            "version_id",
+            "active_subscriptions",
+            "created_by",
+            "created_on",
+            "status",
         )
         read_only_fields = (
-            "active_subscriptions",
+            "version",
             "version_id",
+            "active_subscriptions",
+            "created_by",
+            "created_on",
+            "status",
         )
+        extra_kwargs = {
+            "make_active_type": {"write_only": True},
+            "replace_immediately_type": {"write_only": True},
+        }
 
     components = PlanComponentSerializer(many=True, allow_null=True, required=False)
     features = FeatureSerializer(many=True, allow_null=True, required=False)
-    status = serializers.ChoiceField(
-        choices=[PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.INACTIVE]
-    )
-    make_active_type = serializers.ChoiceField(
-        choices=MAKE_PLAN_VERSION_ACTIVE_TYPE.choices,
-        required=False,
-    )
-    replace_immediately_type = serializers.ChoiceField(
-        choices=REPLACE_IMMEDIATELY_TYPE.choices, required=False
-    )
-
-    # WRITE ONLY
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.objects.all(),
-        write_only=True,
         source="plan",
         required=False,
     )
@@ -509,7 +507,15 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         source="replace_with",
         required=False,
     )
-    version = serializers.IntegerField(read_only=True)
+
+    # WRITE ONLY
+    make_active = serializers.BooleanField(write_only=True)
+    make_active_type = serializers.ChoiceField(
+        choices=MAKE_PLAN_VERSION_ACTIVE_TYPE.choices, required=False, write_only=True
+    )
+    replace_immediately_type = serializers.ChoiceField(
+        choices=REPLACE_IMMEDIATELY_TYPE.choices, required=False, write_only=True
+    )
 
     # READ-ONLY
     active_subscriptions = serializers.IntegerField(read_only=True)
@@ -521,12 +527,37 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         else:
             return None
 
+    def validate(self, data):
+        data = super().validate(data)
+        if data.get("make_active") and not data.get("make_active_type"):
+            raise serializers.ValidationError(
+                "make_active_type must be specified when make_active is True"
+            )
+        if data.get(
+            "make_active_type"
+        ) == MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_IMMEDIATELY and not data.get(
+            "replace_immediately_type"
+        ):
+            raise serializers.ValidationError(
+                f"replace_immediately_type must be specified when make_active_type is {MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_IMMEDIATELY}"
+            )
+        return data
+
     def create(self, validated_data):
+        # exctract downstream components
         components_data = validated_data.pop("components", [])
         features_data = validated_data.pop("features", [])
+        make_active = validated_data.pop("make_active", False)
         make_active_type = validated_data.pop("make_active_type", None)
         replace_immediately_type = validated_data.pop("replace_immediately_type", None)
+        # create planVersion initially
         validated_data["version"] = len(validated_data["plan"].versions.all()) + 1
+        if "status" not in validated_data:
+            validated_data["status"] = (
+                PLAN_VERSION_STATUS.ACTIVE
+                if make_active
+                else PLAN_VERSION_STATUS.INACTIVE
+            )
         billing_plan = PlanVersion.objects.create(**validated_data)
         org = billing_plan.organization
         for component_data in components_data:
@@ -543,12 +574,46 @@ class PlanVersionSerializer(serializers.ModelSerializer):
                 f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)
         billing_plan.save()
-        billing_plan.plan.add_new_version(
-            billing_plan,
-            make_active_type,
-            replace_immediately_type,
-        )
+        if make_active:
+            billing_plan.plan.make_version_active(
+                billing_plan, make_active_type, replace_immediately_type
+            )
         return billing_plan
+
+
+class InitialPlanVersionSerializer(PlanVersionSerializer):
+    class Meta(PlanVersionSerializer.Meta):
+        model = PlanVersion
+        fields = tuple(
+            set(PlanVersionSerializer.Meta.fields)
+            - set(
+                [
+                    "plan_id",
+                    "replace_plan_version_id",
+                    "make_active",
+                    "make_active_type",
+                    "replace_immediately_type",
+                ]
+            )
+        )
+
+
+class PlanNameAndIDSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = (
+            "plan_name",
+            "plan_id",
+        )
+
+
+class CustomerNameAndIDSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "name",
+            "customer_id",
+        )
 
 
 class PlanSerializer(serializers.ModelSerializer):
@@ -557,20 +622,34 @@ class PlanSerializer(serializers.ModelSerializer):
         fields = (
             "plan_name",
             "plan_duration",
-            "display_version",
-            "initial_version",
             "product_id",
+            "plan_id",
+            # write only
+            "initial_version",
             "parent_plan_id",
             "target_customer_id",
-            "status",
-            "plan_id",
+            # read-only
+            "parent_plan",
+            "target_customer",
             "created_on",
             "created_by",
+            "display_version",
+            "status",
+            "num_versions",
+            "active_subscriptions",
         )
-        read_only_fields = ("created_on", "created_by", "display_version")
+        read_only_fields = (
+            "parent_plan",
+            "target_customer",
+            "created_on",
+            "created_by",
+            "display_version",
+            "status",
+        )
         extra_kwargs = {
-            "parent_product": {"write_only": True},
-            "status": {"write_only": True},
+            "initial_version": {"write_only": True},
+            "parent_plan_id": {"write_only": True},
+            "target_customer_id": {"write_only": True},
         }
 
     product_id = SlugRelatedFieldWithOrganization(
@@ -578,31 +657,43 @@ class PlanSerializer(serializers.ModelSerializer):
         queryset=Product.objects.all(),
         read_only=False,
         source="parent_product",
+        required=False,
+        allow_null=True,
     )
+
+    # WRITE ONLY
+    initial_version = InitialPlanVersionSerializer(write_only=True)
     parent_plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.objects.all(),
-        read_only=False,
+        write_only=True,
         source="parent_plan",
         required=False,
     )
     target_customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
         queryset=Customer.objects.all(),
-        read_only=False,
+        write_only=True,
         source="target_customer",
         required=False,
     )
 
-    # WRITE ONLY
-    initial_version = PlanVersionSerializer(write_only=True)
-
     # READ ONLY
+    parent_plan = PlanNameAndIDSerializer(read_only=True)
+    target_customer = CustomerNameAndIDSerializer(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
     display_version = PlanVersionSerializer(read_only=True)
+    num_versions = serializers.SerializerMethodField(read_only=True)
+    active_subscriptions = serializers.SerializerMethodField(read_only=True)
 
     def get_created_by(self, obj) -> str:
         return obj.created_by.username
+
+    def get_num_versions(self, obj) -> int:
+        return len(obj.version_numbers())
+
+    def get_active_subscriptions(self, obj) -> int:
+        return sum(x.active_subscriptions for x in obj.active_subs_by_version())
 
     def validate(self, data):
         # we'll feed the version data into the serializer later, checking now breaks it
@@ -622,12 +713,14 @@ class PlanSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         display_version_data = validated_data.pop("initial_version")
         plan = Plan.objects.create(**validated_data)
-        display_version_data["plan_id"] = plan.plan_id
-        serializer = PlanVersionSerializer(data=display_version_data)
+        display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
+        serializer = InitialPlanVersionSerializer(data=display_version_data)
         serializer.is_valid(raise_exception=True)
         plan_version = serializer.save(
             organization=validated_data["organization"],
             created_by=validated_data["created_by"],
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
         )
         plan.display_version = plan_version
         plan.save()
@@ -642,16 +735,16 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
             "status",
         )
 
-    status = serializers.ChoiceField(choices=[PLAN_STATUS.ACTIVE, PLAN_STATUS.INACTIVE])
+    status = serializers.ChoiceField(choices=[PLAN_STATUS.ACTIVE, PLAN_STATUS.ARCHIVED])
 
     def validate(self, data):
         data = super().validate(data)
-        if data.get("status") == PLAN_STATUS.INACTIVE:
+        if data.get("status") == PLAN_STATUS.ARCHIVED:
             versions_count = self.instance.active_subs_by_version()
             cnt = sum([version.active_subscriptions for version in versions_count])
             if cnt > 0:
                 raise serializers.ValidationError(
-                    "Cannot make a plan with active subscriptions inactive"
+                    "Cannot archive a plan with active subscriptions"
                 )
         return data
 
@@ -706,6 +799,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("customer", "billing_plan")
 
+    start_date = serializers.DateField()
     end_date = serializers.DateField(required=False)
     status = serializers.CharField(required=False)
     auto_renew = serializers.BooleanField(required=False)
@@ -731,6 +825,31 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     # READ ONLY
     customer = CustomerSerializer(read_only=True)
     billing_plan = PlanVersionSerializer(read_only=True)
+
+    def to_internal_value(self, data):
+        repr = super().to_internal_value(data)
+        repr["start_date"] = date_as_min_dt(repr["start_date"])
+        if repr.get("end_date"):
+            repr["end_date"] = date_as_max_dt(repr["end_date"])
+        return repr
+
+    def to_representation(self, instance):
+        instance.start_date = instance.start_date.date()
+        instance.end_date = instance.end_date.date()
+        rep = super().to_representation(instance)
+        return rep
+
+    # def get_fields(self, *args, **kwargs):
+    #     fields = super().get_fields(*args, **kwargs)
+    #     cqs = fields["customer_id"].queryset
+    #     fields["customer_id"].queryset = cqs.filter(
+    #         organization=self.context["organization"]
+    #     )
+    #     bpqs = fields["version_id"].queryset
+    #     fields["version_id"].queryset = bpqs.filter(
+    #         organization=self.context["organization"]
+    #     )
+    #     return fields
 
     def validate(self, data):
         # extract the plan version from the plan
@@ -761,12 +880,13 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 class SubscriptionUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
-        fields = ("version_id", "status", "auto_renew", "replace_immediately_type")
+        fields = ("plan_id", "status", "auto_renew", "replace_immediately_type")
 
-    version_id = SlugRelatedFieldWithOrganization(
-        slug_field="version_id",
-        source="billing_plan",
-        queryset=PlanVersion.objects.all(),
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        read_only=False,
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
         write_only=True,
         required=False,
     )
@@ -780,11 +900,15 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
-        if data.get("status") and data.get("version_id"):
+        print("trying to validate", data)
+        # extract the plan version from the plan
+        if data.get("billing_plan"):
+            data["billing_plan"] = data["billing_plan"]["plan"].display_version
+        if data.get("status") and data.get("billing_plan"):
             raise serializers.ValidationError(
                 "Can only change one of status and plan version"
             )
-        if (data.get("status") or data.get("version_id")) and not data.get(
+        if (data.get("status") or data.get("billing_plan")) and not data.get(
             "replace_immediately_type"
         ):
             raise serializers.ValidationError(
@@ -803,6 +927,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.auto_renew = validated_data.get("auto_renew", instance.auto_renew)
         new_bp = validated_data.get("billing_plan")
+        print("we here", validated_data)
         if (
             validated_data.get("replace_immediately_type")
             == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN

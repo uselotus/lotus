@@ -157,7 +157,7 @@ def add_subscription_to_org():
             organization=organization,
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now_utc().date(),
+            start_date=now_utc(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         return sub

@@ -18,7 +18,7 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Cast, Trunc
-from metering_billing.utils import now_utc, periods_bwn_twodates
+from metering_billing.utils import date_as_min_dt, now_utc, periods_bwn_twodates
 from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_TYPE,
@@ -100,8 +100,8 @@ class AggregationHandler(BillableMetricHandler):
             "organization": self.organization,
             "event_name": self.event_name,
             "time_created__lt": now,
-            "time_created__date__gte": start_date,
-            "time_created__date__lte": end_date,
+            "time_created__gte": start_date,
+            "time_created__lte": end_date,
         }
         pre_groupby_annotation_kwargs = {}
         groupby_kwargs = {"customer_name": F("customer__name")}
@@ -120,11 +120,7 @@ class AggregationHandler(BillableMetricHandler):
                 output_field=DateTimeField(),
             )
         else:
-            groupby_kwargs["time_created_truncated"] = Value(
-                datetime.datetime.combine(
-                    start_date, datetime.time.min, tzinfo=datetime.timezone.utc
-                )
-            )
+            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start_date))
 
         if self.aggregation_type == METRIC_AGGREGATION.COUNT:
             post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
@@ -301,8 +297,8 @@ class StatefulHandler(BillableMetricHandler):
             "organization": self.organization,
             "event_name": self.event_name,
             "time_created__lt": now,
-            "time_created__date__gte": start_date,
-            "time_created__date__lte": end_date,
+            "time_created__gte": start_date,
+            "time_created__lte": end_date,
         }
         pre_groupby_annotation_kwargs = {}
         groupby_kwargs = {"customer_name": F("customer__name")}
@@ -321,11 +317,7 @@ class StatefulHandler(BillableMetricHandler):
                 output_field=DateTimeField(),
             )
         else:
-            groupby_kwargs["time_created_truncated"] = Value(
-                datetime.datetime.combine(
-                    start_date, datetime.time.min, tzinfo=datetime.timezone.utc
-                )
-            )
+            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start_date))
 
         if self.aggregation_type == METRIC_AGGREGATION.MIN:
             post_groupby_annotation_kwargs["usage_qty"] = Min(
@@ -357,7 +349,6 @@ class StatefulHandler(BillableMetricHandler):
             if cust not in period_usages:
                 period_usages[cust] = {}
             period_usages[cust][tc_trunc] = usage_qty
-        print("period_usages", period_usages)
         # grab latest value from previous period per customer
         latest_filt = {
             "customer_name": OuterRef("customer_name"),
@@ -380,7 +371,7 @@ class StatefulHandler(BillableMetricHandler):
             Event.objects.filter(
                 organization=self.organization,
                 event_name=self.event_name,
-                time_created__date__lt=start_date,
+                time_created__lt=start_date,
                 customer=customer,
                 properties__has_key=self.property_name,
             )
