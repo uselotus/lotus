@@ -60,11 +60,11 @@ const requests = {
 export const Customer = {
   getCustomers: (): Promise<CustomerPlus[]> =>
     requests.get("api/customer_summary/"),
-  getACustomer: (id: number): Promise<CustomerType> =>
-    requests.get(`api/customers/${id}`),
+  getACustomer: (customer_id: string): Promise<CustomerType> =>
+    requests.get(`api/customers/${customer_id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
     requests.post("api/customers/", post),
-  subscribe: (post: CreateSubscriptionType): Promise<CreateSubscriptionType> =>
+  subscribe: (post: CreateSubscriptionType): Promise<any> =>
     requests.post("api/subscriptions/", post),
   updateSubscription: (
     post: UpdateSubscriptionType

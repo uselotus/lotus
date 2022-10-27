@@ -1,7 +1,7 @@
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
 export interface PlanType {
-  name: string;
+  plan_name: string;
   components: Component[];
   interval: string;
   description: string;

@@ -9,7 +9,9 @@ export interface SubscriptionTotals {
 export interface CreateSubscriptionType {
   customer_id: string;
   version_id: string;
-  start_date?: string;
+  start_date: string;
+  end_date?: string;
+  auto_renew?: boolean;
 }
 
 export interface SubscriptionType {
