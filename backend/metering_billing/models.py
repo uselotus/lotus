@@ -538,7 +538,11 @@ class Plan(models.Model):
         "PlanVersion", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     parent_product = models.ForeignKey(
-        Product, on_delete=models.CASCADE, related_name="product_plans"
+        Product,
+        on_delete=models.CASCADE,
+        related_name="product_plans",
+        null=True,
+        blank=True,
     )
     status = models.CharField(
         choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
@@ -606,16 +610,6 @@ class Plan(models.Model):
             plan_version.status = PLAN_VERSION_STATUS.ACTIVE
             plan_version.save()
 
-    def add_new_version(
-        self, plan_version, make_active_type=None, replace_immediately_type=None
-    ):
-        # If plan version is active, then make sure to run the make evrsio nactvie subroutine
-        if plan_version.status == PLAN_VERSION_STATUS.ACTIVE:
-            self.make_version_active(
-                plan_version, make_active_type, replace_immediately_type
-            )
-        plan_version.save()
-
     def _handle_existing_versions(
         self, new_version, make_active_type, replace_immediately_type
     ):
@@ -628,7 +622,7 @@ class Plan(models.Model):
             MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL,
             MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE,
         ]:
-
+            print("grandfathering", make_active_type)
             # 1
             replace_with_lst = [PLAN_VERSION_STATUS.RETIRING]
             # 2a
@@ -642,9 +636,9 @@ class Plan(models.Model):
             ).update(replace_with=new_version, status=PLAN_VERSION_STATUS.RETIRING)
             # 2b
             if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE:
-                self.versions.all().filter(status=PLAN_VERSION_STATUS.ACTIVE).update(
-                    status=PLAN_VERSION_STATUS.GRANDFATHERED
-                )
+                self.versions.all().filter(
+                    ~Q(pk=new_version.pk), status=PLAN_VERSION_STATUS.ACTIVE
+                ).update(status=PLAN_VERSION_STATUS.GRANDFATHERED)
         else:
             # 2c
             versions = (

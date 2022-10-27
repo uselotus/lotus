@@ -92,7 +92,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         "issue_date": issue_date,
         "organization": org_serializer.data,
         "customer": customer_serializer.data,
-        "subscription": subscription_serializer.data,
+        "subscription": make_all_dates_times_strings(subscription_serializer.data),
         "payment_status": INVOICE_STATUS.UNPAID,
         "external_payment_obj_id": None,
         "external_payment_obj_type": None,

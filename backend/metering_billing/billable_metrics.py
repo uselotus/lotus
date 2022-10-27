@@ -349,7 +349,6 @@ class StatefulHandler(BillableMetricHandler):
             if cust not in period_usages:
                 period_usages[cust] = {}
             period_usages[cust][tc_trunc] = usage_qty
-        print("period_usages", period_usages)
         # grab latest value from previous period per customer
         latest_filt = {
             "customer_name": OuterRef("customer_name"),

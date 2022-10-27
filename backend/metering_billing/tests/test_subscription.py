@@ -71,6 +71,7 @@ def subscription_test_common_setup(
         )
         setup_dict["metrics"] = metric_set
         product = add_product_to_org(org)
+        setup_dict["product"] = product
         plan = add_plan_to_product(product)
         setup_dict["plan"] = plan
         billing_plan = baker.make(
@@ -134,7 +135,6 @@ class TestCreateSubscription:
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
@@ -318,7 +318,9 @@ class TestUpdateSub:
         assert len(after_canceled_subscriptions) == 1
         assert new_invoices_len == prev_invoices_len
 
-    def test_replace_bp_and_create_new_sub(self, subscription_test_common_setup):
+    def test_replace_bp_and_create_new_sub(
+        self, subscription_test_common_setup, add_plan_to_product
+    ):
         setup_dict = subscription_test_common_setup(
             num_subscriptions=1, auth_method="session_auth"
         )
@@ -330,16 +332,18 @@ class TestUpdateSub:
         )
         prev_invoices_len = Invoice.objects.all().count()
         assert len(active_subscriptions) == 1
+        plan = add_plan_to_product(setup_dict["product"])
         pv = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            plan=setup_dict["plan"],
-            version=2,
-            description="second version",
+            plan=plan,
+            version=1,
+            description="new plan",
             flat_rate=60,
         )
+        plan.make_version_active(pv)
 
         payload = {
-            "version_id": pv.version_id,
+            "plan_id": plan.plan_id,
             "replace_immediately_type": REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL,
         }
         response = setup_dict["client"].patch(
@@ -369,8 +373,8 @@ class TestUpdateSub:
         assert new_invoices_len == prev_invoices_len + 1
         assert Invoice.objects.all()[0].cost_due.amount - Decimal(30) < 0.0000001
 
-    def test_replace_bp_halway_through_and_prorate(
-        self, subscription_test_common_setup
+    def test_replace_bp_halfway_through_and_prorate(
+        self, subscription_test_common_setup, add_plan_to_product
     ):
         setup_dict = subscription_test_common_setup(
             num_subscriptions=1, auth_method="session_auth"
@@ -383,16 +387,18 @@ class TestUpdateSub:
         )
         prev_invoices_len = Invoice.objects.all().count()
         assert len(active_subscriptions) == 1
+        plan = add_plan_to_product(setup_dict["product"])
         pv = PlanVersion.objects.create(
             organization=setup_dict["org"],
-            plan=setup_dict["plan"],
-            version=2,
-            description="second version",
+            plan=plan,
+            version=1,
+            description="new plan",
             flat_rate=60,
         )
+        plan.make_version_active(pv)
 
         payload = {
-            "version_id": pv.version_id,
+            "plan_id": plan.plan_id,
             "replace_immediately_type": REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN,
         }
         response = setup_dict["client"].patch(

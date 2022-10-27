@@ -48,7 +48,7 @@ def plan_test_common_setup(
             "description": "test_plan_version_description",
             "flat_fee_billing_type": FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
             "usage_billing_type": USAGE_BILLING_TYPE.IN_ARREARS,
-            "status": PLAN_VERSION_STATUS.ACTIVE,
+            "make_active": True,
             "flat_rate": 100,
         }
         setup_dict["plan_version_update_payload"] = {
@@ -143,12 +143,18 @@ class TestCreatePlanVersion:
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
+        setup_dict["plan_version_payload"][
+            "make_active_type"
+        ] = MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_IMMEDIATELY
+        setup_dict["plan_version_payload"][
+            "replace_immediately_type"
+        ] = REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_DONT_BILL
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
         assert set(PlanVersion.objects.values_list("version", flat=True)) == set([1, 2])
@@ -170,11 +176,14 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        assert set(PlanVersion.objects.values_list("version", "status")) == set(
+            [(1, PLAN_VERSION_STATUS.ACTIVE)]
+        )
         plan = Plan.objects.get(plan_id=response.data["plan_id"])
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
-        setup_dict["plan_version_payload"]["status"] = PLAN_VERSION_STATUS.INACTIVE
+        setup_dict["plan_version_payload"]["make_active"] = False
         response = setup_dict["client"].post(
             reverse("plan_version-list"),
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
@@ -195,7 +204,6 @@ class TestCreatePlanVersion:
         plan_test_common_setup,
     ):
         setup_dict = plan_test_common_setup()
-
         # add in the plan, along with initial version
         response = setup_dict["client"].post(
             reverse("plan-list"),
@@ -211,7 +219,6 @@ class TestCreatePlanVersion:
             start_date=now_utc(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
-
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
         setup_dict["plan_version_payload"][
@@ -316,10 +323,10 @@ class TestUpdatePlan:
             content_type="application/json",
         )
         plan_before = Plan.objects.all().count()
-        plans_inactive_before = Plan.objects.filter(status=PLAN_STATUS.INACTIVE).count()
+        plans_inactive_before = Plan.objects.filter(status=PLAN_STATUS.ARCHIVED).count()
         plan_id = Plan.objects.all()[0].plan_id
 
-        setup_dict["plan_update_payload"]["status"] = PLAN_STATUS.INACTIVE
+        setup_dict["plan_update_payload"]["status"] = PLAN_STATUS.ARCHIVED
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan_id}),
             data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
@@ -327,7 +334,7 @@ class TestUpdatePlan:
         )
 
         plan_after = Plan.objects.all().count()
-        plans_inactive_after = Plan.objects.filter(status=PLAN_STATUS.INACTIVE).count()
+        plans_inactive_after = Plan.objects.filter(status=PLAN_STATUS.ARCHIVED).count()
         assert response.status_code == status.HTTP_200_OK
         assert plan_before == plan_after
         assert plans_inactive_before + 1 == plans_inactive_after
@@ -354,10 +361,10 @@ class TestUpdatePlan:
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         plan_before = Plan.objects.all().count()
-        plans_inactive_before = Plan.objects.filter(status=PLAN_STATUS.INACTIVE).count()
+        plans_inactive_before = Plan.objects.filter(status=PLAN_STATUS.ARCHIVED).count()
         plan_id = Plan.objects.all()[0].plan_id
 
-        setup_dict["plan_update_payload"]["status"] = PLAN_STATUS.INACTIVE
+        setup_dict["plan_update_payload"]["status"] = PLAN_STATUS.ARCHIVED
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan_id}),
             data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
@@ -365,7 +372,7 @@ class TestUpdatePlan:
         )
 
         plan_after = Plan.objects.all().count()
-        plans_inactive_after = Plan.objects.filter(status=PLAN_STATUS.INACTIVE).count()
+        plans_inactive_after = Plan.objects.filter(status=PLAN_STATUS.ARCHIVED).count()
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert plan_before == plan_after
         assert plans_inactive_before == plans_inactive_after

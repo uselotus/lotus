@@ -82,6 +82,6 @@ class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
 
     def get_start_date(self, obj):
         return obj.start_date
-    
+
     def get_end_date(self, obj):
         return obj.end_date
