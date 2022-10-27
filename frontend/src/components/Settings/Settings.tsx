@@ -3,7 +3,7 @@ import "./Settings.css";
 import { StripeStatusType } from "../../types/stripe-type";
 import { useQuery } from "react-query";
 import { Alerts } from "../../api/api";
-import { StripeIntegration } from "../../integrations/api";
+import { PaymentProcessorIntegration } from "../../integrations/api";
 import { useNavigate } from "react-router-dom";
 import { Divider, Button, Modal, List, Card } from "antd";
 import { APIToken } from "../../api/api";
@@ -19,14 +19,14 @@ const Settings: FC = () => {
     setApiKey("");
   };
 
-  const fetchStripeConnect = async (): Promise<StripeStatusType> =>
-    StripeIntegration.getStripeConnectionStatus().then((data) => {
+  const fetchPaymentProcessorConnect = async (): Promise<StripeStatusType> =>
+    PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then((data) => {
       return data;
     });
 
   const { status, error, data } = useQuery<StripeStatusType>(
-    ["stripeIntegration"],
-    fetchStripeConnect
+    ["PaymentProcessorIntegration"],
+    fetchPaymentProcessorConnect
   );
 
   const {

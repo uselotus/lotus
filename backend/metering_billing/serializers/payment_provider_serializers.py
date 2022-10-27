@@ -14,7 +14,8 @@ class PaymentProviderGetResponseSerializer(serializers.Serializer):
 
 class PaymentProviderPostResponseSerializer(serializers.Serializer):
     payment_processor = serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
-    data = serializers.JSONField()
+    success = serializers.BooleanField()
+    details = serializers.CharField()
 
 
 class PaymentProviderPostRequestSerializer(serializers.Serializer):

@@ -907,7 +907,7 @@ class PlansByNumCustomersView(APIView):
             Subscription.objects.filter(
                 organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
             )
-            .values(plan_name=F("billing_plan__name"))
+            .values(plan_name=F("billing_plan__plan__plan_name"))
             .annotate(num_customers=Count("customer"))
             .order_by("-num_customers")
         )

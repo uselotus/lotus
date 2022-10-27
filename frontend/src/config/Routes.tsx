@@ -4,7 +4,7 @@ import Dashboard from "../components/Dashboard/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
 import SettingsPage from "../pages/settings/SettingsPage";
-import StripeRedirect from "../integrations/StripeIntegrations";
+import StripeRedirect from "../integrations/PaymentProcessorIntegrations";
 import SideBar from "../components/SideBar";
 import { Avatar, Col, Divider, Layout, PageHeader, Row } from "antd";
 import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";

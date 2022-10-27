@@ -1,4 +1,4 @@
-import { StripeOauthType, StripeStatusType } from "../types/stripe-type";
+import { PaymentProcessorConnectionResponseType, PaymentProcessorStatusType, PaymentProcessorConnectionRequestType } from "../types/stripe-type";
 import axios, { AxiosResponse } from "axios";
 
 axios.defaults.xsrfCookieName = "csrftoken";
@@ -22,9 +22,9 @@ const requests = {
 
 // Define Integration APIs Here
 
-export const StripeIntegration = {
-  getStripeConnectionStatus: (): Promise<StripeStatusType> =>
-    requests.get("api/stripe/"),
-  connectStripe: (authorization_code: string): Promise<StripeOauthType> =>
-    requests.post("api/stripe/", { authorization_code }),
+export const PaymentProcessorIntegration = {
+  getPaymentProcessorConnectionStatus: (): Promise<PaymentProcessorStatusType[]> =>
+    requests.get("api/payment_providers/"),
+  connectPaymentProcessor: (pp_info: PaymentProcessorConnectionRequestType): Promise<PaymentProcessorConnectionResponseType> =>
+    requests.post("api/payment_providers/", { pp_info }),
 };
