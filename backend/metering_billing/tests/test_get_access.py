@@ -135,7 +135,7 @@ def get_access_test_common_setup(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
-            start_date=now_utc().date() - relativedelta(days=3),
+            start_date=now_utc() - relativedelta(days=3),
             status="active",
         )
         setup_dict["subscription"] = subscription
@@ -253,7 +253,7 @@ class TestGetAccess:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
-            start_date=now_utc().date() - relativedelta(days=3),
+            start_date=now_utc() - relativedelta(days=3),
             status="active",
         )
         # initial value, just 1 user

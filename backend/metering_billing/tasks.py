@@ -23,7 +23,7 @@ from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
 from metering_billing.utils import (
-    dates_bwn_twodates,
+    dates_bwn_two_dts,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
@@ -80,7 +80,7 @@ def calculate_invoice():
         already_ended = old_subscription.status == SUBSCRIPTION_STATUS.ENDED
         old_subscription.status = SUBSCRIPTION_STATUS.ENDED
         old_subscription.save()
-        now = now_utc().date()
+        now = now_utc()
         Invoice.objects.filter(
             issue_date__lt=now, payment_status=INVOICE_STATUS.DRAFT
         ).delete()
@@ -323,7 +323,7 @@ def run_backtest(backtest_id):
         cum_rev_dict_list = []
         cum_rev = inner_results.pop("cumulative_revenue")
         cum_rev_lst = sorted(cum_rev.items(), key=lambda x: x[0], reverse=True)
-        every_date = list(dates_bwn_twodates(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
+        every_date = list(dates_bwn_two_dts(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
         date, rev_dict = cum_rev_lst.pop(-1)
         last_dict = {**rev_dict, "date": date}
         for date in every_date:

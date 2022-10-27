@@ -8,6 +8,7 @@ import pytz
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
 from metering_billing.utils.enums import PLAN_DURATION, REVENUE_CALC_GRANULARITY
+from numpy import isin
 
 
 def convert_to_decimal(value):
@@ -72,19 +73,19 @@ def months_bwn_twodates(start_date, end_date):
         yield (next_date.year, next_date.month)
 
 
-def dates_bwn_twodates(start_date, end_date):
+def dates_bwn_two_dts(start_date, end_date):
+    if isinstance(start_date, datetime.datetime):
+        start_date = start_date.date()
+    if isinstance(end_date, datetime.datetime):
+        end_date = end_date.date()
     days_btwn = (end_date - start_date).days
     for n in range(days_btwn + 1):
         yield start_date + relativedelta(days=n)
 
 
 def hours_bwn_twodates(start_date, end_date):
-    start_time = datetime.datetime.combine(
-        start_date, datetime.time.min, tzinfo=timezone.utc
-    )
-    end_time = datetime.datetime.combine(
-        end_date, datetime.time.max, tzinfo=timezone.utc
-    )
+    start_time = date_as_min_dt(start_date)
+    end_time = date_as_max_dt(end_date)
     hours_btwn = abs(relativedelta(start_time, end_time).hours)
     for n in range(hours_btwn + 1):
         yield start_date + relativedelta(hours=n)
@@ -98,12 +99,8 @@ def decimal_to_cents(amount):
 
 
 def periods_bwn_twodates(granularity, start_date, end_date):
-    start_time = datetime.datetime.combine(
-        start_date, datetime.time.min, tzinfo=datetime.timezone.utc
-    )
-    end_time = datetime.datetime.combine(
-        end_date, datetime.time.max, tzinfo=datetime.timezone.utc
-    )
+    start_time = date_as_min_dt(start_date)
+    end_time = date_as_max_dt(end_date)
     rd = relativedelta(start_time, end_time)
     if granularity == REVENUE_CALC_GRANULARITY.TOTAL:
         periods_btwn = 0
@@ -133,12 +130,6 @@ def periods_bwn_twodates(granularity, start_date, end_date):
 
 def now_plus_day():
     return datetime.datetime.now(datetime.timezone.utc) + relativedelta(days=+1)
-
-
-def dates_bwn_twodates(start_date, end_date):
-    days_btwn = (end_date - start_date).days
-    for n in range(days_btwn + 1):
-        yield start_date + relativedelta(days=n)
 
 
 def now_utc():
@@ -178,3 +169,15 @@ def subs_uuid():
 
 def btst_uuid():
     return "btst_" + str(uuid.uuid4())
+
+
+def date_as_min_dt(date):
+    return datetime.datetime.combine(
+        date, datetime.time.min, tzinfo=datetime.timezone.utc
+    )
+
+
+def date_as_max_dt(date):
+    return datetime.datetime.combine(
+        date, datetime.time.max, tzinfo=datetime.timezone.utc
+    )

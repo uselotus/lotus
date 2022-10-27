@@ -1747,6 +1747,17 @@ components:
           maxLength: 100
       required:
       - name
+    CustomerNameAndID:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        customer_id:
+          type: string
+          maxLength: 50
+      required:
+      - name
     CustomerSummary:
       type: object
       properties:
@@ -1921,6 +1932,64 @@ components:
             $ref: '#/components/schemas/MetricUsage'
       required:
       - access
+    InitialPlanVersion:
+      type: object
+      properties:
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        version_id:
+          type: string
+          readOnly: true
+        usage_billing_type:
+          $ref: '#/components/schemas/UsageBillingTypeEnum'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        created_by:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
+      required:
+      - active_subscriptions
+      - created_by
+      - created_on
+      - flat_fee_billing_type
+      - flat_rate
+      - status
+      - usage_billing_type
+      - version
+      - version_id
     Invoice:
       type: object
       properties:
@@ -2057,7 +2126,7 @@ components:
           type: string
           maxLength: 100
         status:
-          $ref: '#/components/schemas/StatusEebEnum'
+          $ref: '#/components/schemas/StatusC64Enum'
     PatchedPlanVersionUpdate:
       type: object
       properties:
@@ -2066,7 +2135,7 @@ components:
           nullable: true
           maxLength: 200
         status:
-          $ref: '#/components/schemas/PlanVersionUpdateStatusEnum'
+          $ref: '#/components/schemas/StatusC64Enum'
         make_active_type:
           $ref: '#/components/schemas/MakeActiveTypeEnum'
         replace_immediately_type:
@@ -2074,7 +2143,7 @@ components:
     PatchedSubscriptionUpdate:
       type: object
       properties:
-        version_id:
+        plan_id:
           type: string
           writeOnly: true
         status:
@@ -2187,27 +2256,30 @@ components:
           maxLength: 100
         plan_duration:
           $ref: '#/components/schemas/PlanDurationEnum'
-        display_version:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersion'
-          readOnly: true
-        initial_version:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersion'
-          writeOnly: true
         product_id:
           type: string
-        parent_plan_id:
-          type: string
-        target_customer_id:
-          type: string
-        status:
-          allOf:
-          - $ref: '#/components/schemas/Status2ecEnum'
-          writeOnly: true
+          nullable: true
         plan_id:
           type: string
           maxLength: 100
+        initial_version:
+          allOf:
+          - $ref: '#/components/schemas/InitialPlanVersion'
+          writeOnly: true
+        parent_plan_id:
+          type: string
+          writeOnly: true
+        target_customer_id:
+          type: string
+          writeOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
+          readOnly: true
         created_on:
           type: string
           format: date-time
@@ -2215,14 +2287,32 @@ components:
         created_by:
           type: string
           readOnly: true
+        display_version:
+          allOf:
+          - $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status13eEnum'
+          readOnly: true
+        num_versions:
+          type: integer
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
       required:
+      - active_subscriptions
       - created_by
       - created_on
       - display_version
       - initial_version
+      - num_versions
+      - parent_plan
       - plan_duration
       - plan_name
-      - product_id
+      - status
+      - target_customer
     PlanComponent:
       type: object
       properties:
@@ -2275,7 +2365,7 @@ components:
           type: string
           readOnly: true
         status:
-          $ref: '#/components/schemas/Status2ecEnum'
+          $ref: '#/components/schemas/Status13eEnum'
         plan_id:
           type: string
           maxLength: 100
@@ -2296,6 +2386,17 @@ components:
       - month
       - year
       type: string
+    PlanNameAndID:
+      type: object
+      properties:
+        plan_name:
+          type: string
+          maxLength: 100
+        plan_id:
+          type: string
+          maxLength: 100
+      required:
+      - plan_name
     PlanRepresentation:
       type: object
       properties:
@@ -2317,7 +2418,7 @@ components:
           type: string
           maxLength: 100
         status:
-          $ref: '#/components/schemas/StatusEebEnum'
+          $ref: '#/components/schemas/StatusC64Enum'
       required:
       - plan_name
       - status
@@ -2328,18 +2429,12 @@ components:
           type: string
           nullable: true
           maxLength: 200
-        version:
-          type: integer
-          readOnly: true
         plan_id:
           type: string
-          writeOnly: true
         flat_fee_billing_type:
           $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         usage_billing_type:
           $ref: '#/components/schemas/UsageBillingTypeEnum'
-        status:
-          $ref: '#/components/schemas/StatusEebEnum'
         replace_plan_version_id:
           type: string
           writeOnly: true
@@ -2360,27 +2455,44 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        created_on:
-          type: string
-          format: date-time
-        created_by:
-          type: string
-          readOnly: true
-        active_subscriptions:
+        make_active:
+          type: boolean
+          writeOnly: true
+        make_active_type:
+          allOf:
+          - $ref: '#/components/schemas/MakeActiveTypeEnum'
+          writeOnly: true
+        replace_immediately_type:
+          allOf:
+          - $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
+          writeOnly: true
+        version:
           type: integer
           readOnly: true
         version_id:
           type: string
           readOnly: true
-        make_active_type:
-          $ref: '#/components/schemas/MakeActiveTypeEnum'
-        replace_immediately_type:
-          $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
+      - created_on
       - flat_fee_billing_type
       - flat_rate
+      - make_active
       - status
       - usage_billing_type
       - version
@@ -2393,16 +2505,11 @@ components:
           nullable: true
           maxLength: 200
         status:
-          $ref: '#/components/schemas/PlanVersionUpdateStatusEnum'
+          $ref: '#/components/schemas/StatusC64Enum'
         make_active_type:
           $ref: '#/components/schemas/MakeActiveTypeEnum'
         replace_immediately_type:
           $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
-    PlanVersionUpdateStatusEnum:
-      enum:
-      - active
-      - archived
-      type: string
     PlansByNumCustomers:
       type: object
       properties:
@@ -2571,10 +2678,10 @@ components:
       - cumulative_revenue
       - revenue_by_metric
       - top_customers
-    Status2ecEnum:
+    Status13eEnum:
       enum:
       - active
-      - inactive
+      - archived
       - experimental
       type: string
     Status33bEnum:
@@ -2586,13 +2693,21 @@ components:
       enum:
       - error
       type: string
+    StatusC64Enum:
+      enum:
+      - active
+      - archived
+      type: string
     StatusE96Enum:
       enum:
       - success
       type: string
-    StatusEebEnum:
+    StatusEe1Enum:
       enum:
       - active
+      - retiring
+      - grandfathered
+      - archived
       - inactive
       type: string
     Subscription:
@@ -2642,10 +2757,10 @@ components:
           maxLength: 100
         start_date:
           type: string
-          format: date
+          format: date-time
         end_date:
           type: string
-          format: date
+          format: date-time
         auto_renew:
           type: boolean
         status:
@@ -2667,7 +2782,7 @@ components:
           type: string
         end_date:
           type: string
-          format: date
+          format: date-time
         auto_renew:
           type: boolean
       required:
@@ -2676,7 +2791,7 @@ components:
     SubscriptionUpdate:
       type: object
       properties:
-        version_id:
+        plan_id:
           type: string
           writeOnly: true
         status:

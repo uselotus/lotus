@@ -9,15 +9,16 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.models import (
     BillableMetric,
-    PlanVersion,
     Customer,
     Event,
     Organization,
     PlanComponent,
+    PlanVersion,
     Subscription,
     User,
 )
 from metering_billing.serializers.model_serializers import BillableMetricSerializer
+from metering_billing.utils import date_as_max_dt, date_as_min_dt
 from model_bakery import baker
 
 
@@ -122,18 +123,10 @@ class Command(BaseCommand):
         old_sub_end_date = old_sub_start_date + relativedelta(months=1)
         new_sub_start_date = old_sub_end_date + relativedelta(days=1)
         new_sub_end_date = new_sub_start_date + relativedelta(months=1)
-        old_sub_start_time = datetime.datetime.combine(
-            old_sub_start_date, datetime.time.min, tzinfo=timezone.utc
-        )
-        old_sub_end_time = datetime.datetime.combine(
-            old_sub_end_date, datetime.time.max, tzinfo=timezone.utc
-        )
-        new_sub_start_time = datetime.datetime.combine(
-            new_sub_start_date, datetime.time.min, tzinfo=timezone.utc
-        )
-        new_sub_end_time = datetime.datetime.combine(
-            new_sub_end_date, datetime.time.max, tzinfo=timezone.utc
-        )
+        old_sub_start_time = date_as_min_dt(old_sub_start_date)
+        old_sub_end_time = date_as_max_dt(old_sub_end_date)
+        new_sub_start_time = date_as_min_dt(new_sub_start_date)
+        new_sub_end_time = date_as_max_dt(new_sub_end_date)
         for customer in customer_set:
             Subscription.objects.create(
                 organization=organization,

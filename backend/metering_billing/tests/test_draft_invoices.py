@@ -62,7 +62,7 @@ def draft_invoice_test_common_setup(
             organization=org,
             customer=customer,
             event_name="email_sent",
-            time_created=now_utc().date() - timedelta(days=1),
+            time_created=now_utc() - timedelta(days=1),
             properties=itertools.cycle(event_properties),
             _quantity=3,
         )
@@ -98,7 +98,7 @@ def draft_invoice_test_common_setup(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
-            start_date=now_utc().date() - timedelta(days=3),
+            start_date=now_utc() - timedelta(days=3),
             status="active",
         )
         setup_dict["subscription"] = subscription

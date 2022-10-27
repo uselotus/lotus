@@ -77,3 +77,11 @@ class InvoiceSubscriptionSerializer(serializers.ModelSerializer):
         fields = ("start_date", "end_date", "billing_plan", "subscription_id")
 
     billing_plan = InvoicePlanVersionSerializer()
+    start_date = serializers.SerializerMethodField()
+    end_date = serializers.SerializerMethodField()
+
+    def get_start_date(self, obj):
+        return obj.start_date
+
+    def get_end_date(self, obj):
+        return obj.end_date
