@@ -28,13 +28,14 @@ import FeatureForm from "../components/Plans/FeatureForm";
 import {
   DeleteOutlined,
   ArrowLeftOutlined,
-  SaveOutlined,
   EditOutlined,
 } from "@ant-design/icons";
 import React from "react";
 import { Paper } from "../components/base/Paper";
 import { PageLayout } from "../components/base/PageLayout";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
+import ComponentDisplay from "../components/Plans/ComponentDisplay";
+import FeatureDisplay from "../components/Plans/FeatureDisplay";
 
 interface CustomizedState {
   plan: PlanType;
@@ -224,7 +225,7 @@ const EditPlan = ({ type }: Props) => {
         }
 
         const newPlan: CreatePlanType = {
-          name: values.name,
+          plan_name: values.name,
           description: values.description,
           flat_rate: values.flat_rate,
           pay_in_advance: values.pay_in_advance,
@@ -393,37 +394,11 @@ const EditPlan = ({ type }: Props) => {
                         prevValues.components !== curValues.components
                       }
                     >
-                      <Row gutter={[12, 12]}>
-                        {planFeatures.map((feature, index) => (
-                          <Col key={index} span={24}>
-                            <Paper color="gold">
-                              <Descriptions
-                                title={feature.feature_name}
-                                size="small"
-                                extra={[
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<EditOutlined />}
-                                    onClick={() =>
-                                      editFeatures(feature.feature_name)
-                                    }
-                                  />,
-                                  <Button
-                                    type="text"
-                                    size="small"
-                                    icon={<DeleteOutlined />}
-                                    danger
-                                    onClick={() =>
-                                      removeFeature(feature.feature_name)
-                                    }
-                                  />,
-                                ]}
-                              />
-                            </Paper>
-                          </Col>
-                        ))}
-                      </Row>
+                      <FeatureDisplay
+                        planFeatures={planFeatures}
+                        removeFeature={removeFeature}
+                        editFeatures={editFeatures}
+                      />
                     </Form.Item>
                   </Card>
                 </Col>
@@ -450,57 +425,11 @@ const EditPlan = ({ type }: Props) => {
                         prevValues.components !== curValues.components
                       }
                     >
-                      <Row gutter={[12, 12]}>
-                        {componentsData?.map(
-                          (component: any, index: number) => (
-                            <Col span="24" key={index}>
-                              <Paper>
-                                <Descriptions
-                                  title={component?.metric}
-                                  size="small"
-                                  column={2}
-                                  extra={[
-                                    <Button
-                                      key="edit"
-                                      type="text"
-                                      size="small"
-                                      icon={<EditOutlined />}
-                                      onClick={() =>
-                                        handleComponentEdit(component.metric)
-                                      }
-                                    />,
-                                    <Button
-                                      key="delete"
-                                      type="text"
-                                      size="small"
-                                      icon={<DeleteOutlined />}
-                                      danger
-                                      onClick={() =>
-                                        deleteComponent(component.metric)
-                                      }
-                                    />,
-                                  ]}
-                                >
-                                  <Descriptions.Item label="Cost" span={4}>
-                                    {component.cost_per_batch
-                                      ? `$${component.cost_per_batch} / ${component.metric_units_per_batch} Unit(s)`
-                                      : "Free"}
-                                  </Descriptions.Item>
-                                  <Descriptions.Item
-                                    label="Free Units"
-                                    span={1}
-                                  >
-                                    {component.free_metric_units ?? "Unlimited"}
-                                  </Descriptions.Item>
-                                  <Descriptions.Item label="Max Units" span={1}>
-                                    {component.max_metric_units ?? "Unlimited"}
-                                  </Descriptions.Item>
-                                </Descriptions>
-                              </Paper>
-                            </Col>
-                          )
-                        )}
-                      </Row>
+                      <ComponentDisplay
+                        componentsData={componentsData}
+                        handleComponentEdit={handleComponentEdit}
+                        deleteComponent={deleteComponent}
+                      />
                     </Form.Item>
                   </Card>
                 </Col>

@@ -16,7 +16,11 @@ import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 
-import { CreatePlanType, CreateComponent } from "../types/plan-type";
+import {
+  CreatePlanType,
+  CreateComponent,
+  CreateInitialVersionType,
+} from "../types/plan-type";
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
@@ -29,6 +33,8 @@ import {
 import React from "react";
 import { Paper } from "../components/base/Paper";
 import { PageLayout } from "../components/base/PageLayout";
+import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
+import FeatureDisplay from "../components/Plans/FeatureDisplay";
 
 interface ComponentDisplay {
   metric: string;
@@ -170,14 +176,19 @@ const CreatePlan = () => {
           }
         }
 
-        const plan: CreatePlanType = {
-          name: values.name,
+        const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
+          flat_fee_billing_type: values.pay_in_advance,
           flat_rate: values.flat_rate,
-          pay_in_advance: values.pay_in_advance,
-          interval: values.billing_interval,
           components: usagecomponentslist,
           features: planFeatures,
+          usage_billing_type: values.usage_billing_type,
+        };
+
+        const plan: CreatePlanType = {
+          plan_name: values.name,
+          plan_duration: values.billing_interval,
+          initial_version: values.pay_in_advance,
         };
         mutation.mutate(plan);
       })
@@ -289,40 +300,11 @@ const CreatePlan = () => {
                         prevValues.components !== curValues.components
                       }
                     >
-                      <Row gutter={[12, 12]}>
-                        {planFeatures.map((feature, index) => (
-                          <Col key={index} span={24}>
-                            <Paper color="gold">
-                              <div className="self-center">
-                                {" "}
-                                <Descriptions
-                                  title={feature.feature_name}
-                                  size="small"
-                                  extra={[
-                                    <Button
-                                      type="text"
-                                      size="small"
-                                      icon={<EditOutlined />}
-                                      onClick={() =>
-                                        editFeatures(feature.feature_name)
-                                      }
-                                    />,
-                                    <Button
-                                      size="small"
-                                      type="text"
-                                      icon={<DeleteOutlined />}
-                                      danger
-                                      onClick={() =>
-                                        removeFeature(feature.feature_name)
-                                      }
-                                    />,
-                                  ]}
-                                />
-                              </div>
-                            </Paper>
-                          </Col>
-                        ))}
-                      </Row>
+                      <FeatureDisplay
+                        planFeatures={planFeatures}
+                        removeFeature={removeFeature}
+                        editFeatures={editFeatures}
+                      />
                     </Form.Item>
                   </Card>
                 </Col>
@@ -349,57 +331,11 @@ const CreatePlan = () => {
                         prevValues.components !== curValues.components
                       }
                     >
-                      <Row gutter={[12, 12]}>
-                        {componentsData?.map(
-                          (component: any, index: number) => (
-                            <Col span="24" key={index}>
-                              <Paper>
-                                <Descriptions
-                                  title={component?.metric}
-                                  size="small"
-                                  column={2}
-                                  extra={[
-                                    <Button
-                                      key="edit"
-                                      type="text"
-                                      size="small"
-                                      icon={<EditOutlined />}
-                                      onClick={() =>
-                                        handleComponentEdit(component.id)
-                                      }
-                                    />,
-                                    <Button
-                                      key="delete"
-                                      type="text"
-                                      size="small"
-                                      icon={<DeleteOutlined />}
-                                      danger
-                                      onClick={() =>
-                                        deleteComponent(component.id)
-                                      }
-                                    />,
-                                  ]}
-                                >
-                                  <Descriptions.Item label="Cost" span={4}>
-                                    {component.cost_per_batch
-                                      ? `$${component.cost_per_batch} / ${component.metric_units_per_batch} Unit(s)`
-                                      : "Free"}
-                                  </Descriptions.Item>
-                                  <Descriptions.Item
-                                    label="Free Units"
-                                    span={1}
-                                  >
-                                    {component.free_amount ?? "Unlimited"}
-                                  </Descriptions.Item>
-                                  <Descriptions.Item label="Max Units" span={1}>
-                                    {component.max_metric_units ?? "Unlimited"}
-                                  </Descriptions.Item>
-                                </Descriptions>
-                              </Paper>
-                            </Col>
-                          )
-                        )}
-                      </Row>
+                      <ComponentDisplay
+                        componentsData={componentsData}
+                        handleComponentEdit={handleComponentEdit}
+                        deleteComponent={deleteComponent}
+                      />
                     </Form.Item>
                   </Card>
                 </Col>
