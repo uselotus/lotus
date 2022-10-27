@@ -7,6 +7,7 @@ from django.conf import settings
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     convert_to_decimal,
+    date_as_min_dt,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
     make_all_decimals_floats,
@@ -36,9 +37,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     billing_plan = subscription.billing_plan
     issue_date = issue_date if issue_date else subscription.end_date
     if isinstance(issue_date, datetime.date):
-        issue_date = datetime.datetime.combine(
-            issue_date, datetime.time.min, tzinfo=timezone.utc
-        )
+        issue_date = date_as_min_dt(issue_date)
     if amount:
         line_item = {"Flat Subscription Fee Adjustment": amount}
     else:

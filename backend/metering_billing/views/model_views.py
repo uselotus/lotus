@@ -456,7 +456,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return Subscription.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
-        if serializer.validated_data["start_date"] <= now_utc().date():
+        if serializer.validated_data["start_date"] <= now_utc():
             serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
         serializer.save(organization=parse_organization(self.request))
 

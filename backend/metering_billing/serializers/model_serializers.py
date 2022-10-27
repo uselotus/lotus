@@ -17,7 +17,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import calculate_end_date
+from metering_billing.utils import calculate_end_date, date_as_max_dt, date_as_min_dt
 from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
@@ -706,6 +706,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("customer", "billing_plan")
 
+    start_date = serializers.DateField()
     end_date = serializers.DateField(required=False)
     status = serializers.CharField(required=False)
     auto_renew = serializers.BooleanField(required=False)
@@ -731,6 +732,31 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     # READ ONLY
     customer = CustomerSerializer(read_only=True)
     billing_plan = PlanVersionSerializer(read_only=True)
+
+    def to_internal_value(self, data):
+        repr = super().to_internal_value(data)
+        repr["start_date"] = date_as_min_dt(repr["start_date"])
+        if repr.get("end_date"):
+            repr["end_date"] = date_as_max_dt(repr["end_date"])
+        return repr
+    
+    def to_representation(self, instance):
+        instance.start_date = instance.start_date.date()
+        instance.end_date = instance.end_date.date()
+        rep = super().to_representation(instance)
+        return rep
+
+    def get_fields(self, *args, **kwargs):
+        fields = super().get_fields(*args, **kwargs)
+        cqs = fields["customer_id"].queryset
+        fields["customer_id"].queryset = cqs.filter(
+            organization=self.context["organization"]
+        )
+        bpqs = fields["version_id"].queryset
+        fields["version_id"].queryset = bpqs.filter(
+            organization=self.context["organization"]
+        )
+        return fields
 
     def validate(self, data):
         # extract the plan version from the plan

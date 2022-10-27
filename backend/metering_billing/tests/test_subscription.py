@@ -195,7 +195,7 @@ class TestCreateSubscription:
             customer=setup_dict["customer"],
             billing_plan=setup_dict["billing_plan"],
             status="active",
-            start_date=now_utc().date() - timedelta(days=20),
+            start_date=now_utc() - timedelta(days=20),
         )
 
         response = setup_dict["client"].post(

@@ -208,7 +208,7 @@ class TestCreatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=now_utc().date(),
+            start_date=now_utc(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -250,7 +250,7 @@ class TestCreatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=now_utc().date(),
+            start_date=now_utc(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -350,7 +350,7 @@ class TestUpdatePlan:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=now_utc().date(),
+            start_date=now_utc(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         plan_before = Plan.objects.all().count()
@@ -456,7 +456,7 @@ class TestUpdatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=plan_version,
-            start_date=now_utc().date(),
+            start_date=now_utc(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         plan_before = Plan.objects.all().count()
@@ -502,7 +502,7 @@ class TestUpdatePlanVersion:
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=first_plan_version,
-            start_date=now_utc().date(),
+            start_date=now_utc(),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
