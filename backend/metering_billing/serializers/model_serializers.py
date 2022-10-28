@@ -872,6 +872,13 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"Customer currency {customer_currency} does not match billing plan currency {billing_plan_currency}"
             )
+
+        # check that if the plan is designed for a specific customer, that the customer is that customer
+        tc = data["billing_plan"].plan.target_customer
+        if tc is not None and tc != data["customer"]:
+            raise serializers.ValidationError(
+                f"This plan is for a customer with customer_id {tc.customer_id}, not {data['customer'].customer_id}"
+            )
         return data
 
 

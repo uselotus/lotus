@@ -43,7 +43,7 @@ SECRET_KEY = config("SECRET_KEY", default="")
 if SECRET_KEY == "":
     SECRET_KEY = os.urandom(32)
     print("SECRET_KEY not set. Defaulting to a random one.")
-POSTGRES_DB_NAME = config("POSTGRES_DB_NAME", default="lotus")
+POSTGRES_DB = config("POSTGRES_DB", default="lotus")
 POSTGRES_USER = config("POSTGRES_USER", default="lotus")
 POSTGRES_PASSWORD = config("POSTGRES_PASSWORD", default="lotus")
 SENTRY_DSN = config("SENTRY_DSN", default="")
@@ -209,7 +209,7 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": POSTGRES_DB_NAME,
+            "NAME": POSTGRES_DB,
             "USER": POSTGRES_USER,
             "PASSWORD": POSTGRES_PASSWORD,
             "HOST": "db" if DOCKERIZED else "localhost",
