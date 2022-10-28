@@ -10,6 +10,7 @@ import {
   CreatePlanType,
   UpdatePlanType,
   PlansByCustomerArray,
+  CreateVersionType,
 } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import {
@@ -68,13 +69,15 @@ export const Customer = {
   subscribe: (post: CreateSubscriptionType): Promise<any> =>
     requests.post("api/subscriptions/", post),
   updateSubscription: (
+    subscription_id: string,
     post: UpdateSubscriptionType
   ): Promise<UpdateSubscriptionType> =>
-    requests.put("api/update_subscription/", post),
+    requests.patch(`api/subscriptions/${subscription_id}`, post),
   cancelSubscription: (
+    subscription_id: string,
     post: cancelSubscriptionType
   ): Promise<cancelSubscriptionType> =>
-    requests.post("api/cancel_subscription/", post),
+    requests.patch(`api/subscriptions/${subscription_id}`, post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
   getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
@@ -87,10 +90,8 @@ export const Plan = {
     requests.get(`api/plans/${plan_id}`),
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("api/plans/", post),
-  createVersion: (post: CreatePlanType): Promise<PlanType> =>
+  createVersion: (post: CreateVersionType): Promise<PlanType> =>
     requests.post("api/plan_versions/", post),
-  deletePlan: (version_id: string): Promise<PlanType> =>
-    requests.delete(`api/plans/${version_id}/`),
   updatePlan: (post: UpdatePlanType): Promise<PlanType> =>
     requests.post(`api/update_billing_plan/`, post),
 };

@@ -115,7 +115,7 @@ const CreateMetricForm = (props: {
                 {({ getFieldValue }) =>
                   getFieldValue("aggregation_type") === "sum" ||
                   getFieldValue("aggregation_type") === "max" ||
-                  getFieldValue("aggregation_type") === "last" ||
+                  getFieldValue("aggregation_type") === "latest" ||
                   getFieldValue("aggregation_type") == "unique" ? (
                     <Form.Item
                       name="property_name"
@@ -143,7 +143,7 @@ const CreateMetricForm = (props: {
               >
                 <Select defaultValue={"max"}>
                   <Option value="max">max</Option>
-                  <Option value="last">last</Option>
+                  <Option value="latest">latest</Option>
                 </Select>
               </Form.Item>
               <Form.Item

@@ -232,7 +232,6 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
         properties = validated_data.pop("properties", {})
-
         properties = METRIC_HANDLER_MAP[
             validated_data["metric_type"]
         ].validate_properties(properties)

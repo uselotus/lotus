@@ -9,12 +9,17 @@ import dayjs from "dayjs";
 const { Panel } = Collapse;
 
 const EventPreview: FC = () => {
-  const [c, setPage] = useState<string>("");
+  const [c, setCursor] = useState<string>("");
+  const [next, setNext] = useState<string>("");
+  const [previous, setPrev] = useState<string>("");
 
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
     ["preview events"],
     () =>
       Events.getEventPreviews(c).then((res) => {
+        setCursor(c);
+        setNext(res.next);
+        setPrev(res.previous);
         return res;
       }),
     {
@@ -51,8 +56,8 @@ const EventPreview: FC = () => {
           >
             <div className="grid grid-row-2">
               <div className="grid grid-cols-2">
-                <p>Id: {event.idempotency_id}</p>
-                <p>properties: </p>
+                <p>ID: {event.idempotency_id}</p>
+                <p>Properties: </p>
               </div>
               <div className="grid grid-cols-2">
                 <p className="text-left	">time_created: {event.time_created}</p>
