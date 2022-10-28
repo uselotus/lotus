@@ -213,7 +213,7 @@ const EditPlan = ({ type }: Props) => {
               billable_metric_name: components[i].metric,
               cost_per_batch: components[i].cost_per_batch,
               metric_units_per_batch: components[i].metric_units_per_batch,
-              free_metric_units: components[i].free_amount,
+              free_metric_units: components[i].free_metric_units,
               max_metric_units: components[i].max_metric_units,
             };
             usagecomponentslist.push(usagecomponent);
@@ -335,22 +335,42 @@ const EditPlan = ({ type }: Props) => {
                       />
                     </Form.Item>
                     <Form.Item
-                      label="Billing Interval"
-                      name="billing_interval"
+                      label="Plan Duration"
+                      name="plan_duration"
                       rules={[
                         {
                           required: true,
-                          message: "Please select an interval",
+                          message: "Please select a duration",
                         },
                       ]}
                     >
-                      <Radio.Group>
-                        <Radio value="month">Monthly</Radio>
-                        <Radio value="year">Yearly</Radio>
+                      <Radio.Group
+                        onChange={(e) => {
+                          if (e.target.value === "monthly") {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                            ]);
+                          } else if (e.target.value === "quarterly") {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                            ]);
+                          } else {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                              { label: "Yearly", name: "yearly" },
+                            ]);
+                          }
+                        }}
+                      >
+                        <Radio value="monthly">Monthly</Radio>
+                        <Radio value="quarterly">Quarterly</Radio>
+                        <Radio value="yearly">Yearly</Radio>
                       </Radio.Group>
                     </Form.Item>
 
-                    <Form.Item name="flat_rate" label="Recurring Cost">
+                    <Form.Item name="flat_rate" label="Base Cost">
                       <InputNumber
                         addonBefore="$"
                         defaultValue={0}
@@ -370,23 +390,6 @@ const EditPlan = ({ type }: Props) => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
-                    {type === "version" && (
-                      <Form.Item
-                        name="update_behavior"
-                        label="When To Update Plan"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please select an update behavior",
-                          },
-                        ]}
-                      >
-                        <Radio.Group optionType="button" buttonStyle="solid">
-                          <Radio value="replace_immediately">Immediately</Radio>
-                          <Radio value="replace_on_renewal">On Renewal</Radio>
-                        </Radio.Group>
-                      </Form.Item>
-                    )}
                   </Card>
                 </Col>
                 <Col span="24">

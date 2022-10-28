@@ -53,6 +53,13 @@ const CreatePlan = () => {
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
   const [editComponentItem, setEditComponentsItem] = useState<any>();
+  const [availableBillingTypes, setAvailableBillingTypes] = useState<
+    { name: string; label: string }[]
+  >([
+    { label: "Monthly", name: "monthly" },
+    { label: "Quarterly", name: "quarterly" },
+    { label: "Yearly", name: "yearly" },
+  ]);
   const queryClient = useQueryClient();
 
   const mutation = useMutation(
@@ -169,7 +176,7 @@ const CreatePlan = () => {
               billable_metric_name: components[i].metric,
               cost_per_batch: components[i].cost_per_batch,
               metric_units_per_batch: components[i].metric_units_per_batch,
-              free_metric_units: components[i].free_amount,
+              free_metric_units: components[i].free_metric_units,
               max_metric_units: components[i].max_metric_units,
             };
             usagecomponentslist.push(usagecomponent);
@@ -178,7 +185,7 @@ const CreatePlan = () => {
 
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
-          flat_fee_billing_type: values.pay_in_advance,
+          flat_fee_billing_type: values.flat_fee_billing_type,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
@@ -187,8 +194,8 @@ const CreatePlan = () => {
 
         const plan: CreatePlanType = {
           plan_name: values.name,
-          plan_duration: values.billing_interval,
-          initial_version: values.pay_in_advance,
+          plan_duration: values.plan_duration,
+          initial_version: initialPlanVersion,
         };
         mutation.mutate(plan);
       })
@@ -225,7 +232,7 @@ const CreatePlan = () => {
         <Form
           form={form}
           name="create_plan"
-          initialValues={{ flat_rate: 0, pay_in_advance: true }}
+          initialValues={{ flat_rate: 0, flat_fee_billing_type: "in_advance" }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
           autoComplete="off"
@@ -257,22 +264,42 @@ const CreatePlan = () => {
                       />
                     </Form.Item>
                     <Form.Item
-                      label="Billing Interval"
-                      name="billing_interval"
+                      label="Plan Duration"
+                      name="plan_duration"
                       rules={[
                         {
                           required: true,
-                          message: "Please select an interval",
+                          message: "Please select a duration",
                         },
                       ]}
                     >
-                      <Radio.Group>
-                        <Radio value="month">Monthly</Radio>
-                        <Radio value="year">Yearly</Radio>
+                      <Radio.Group
+                        onChange={(e) => {
+                          if (e.target.value === "monthly") {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                            ]);
+                          } else if (e.target.value === "quarterly") {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                            ]);
+                          } else {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                              { label: "Yearly", name: "yearly" },
+                            ]);
+                          }
+                        }}
+                      >
+                        <Radio value="monthly">Monthly</Radio>
+                        <Radio value="quarterly">Quarterly</Radio>
+                        <Radio value="yearly">Yearly</Radio>
                       </Radio.Group>
                     </Form.Item>
 
-                    <Form.Item name="flat_rate" label="Recurring Cost">
+                    <Form.Item name="flat_rate" label="Base Cost">
                       <InputNumber
                         addonBefore="$"
                         defaultValue={0}
@@ -294,61 +321,84 @@ const CreatePlan = () => {
                     </Form.Item>
                   </Card>
                 </Col>
-                <Col span="24">
-                  <Card
-                    title="Added Features"
-                    extra={[
-                      <Button htmlType="button" onClick={showFeatureModal}>
-                        Add Feature
-                      </Button>,
-                    ]}
-                  >
-                    <Form.Item
-                      wrapperCol={{ span: 24 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.components !== curValues.components
-                      }
-                    >
-                      <FeatureDisplay
-                        planFeatures={planFeatures}
-                        removeFeature={removeFeature}
-                        editFeatures={editFeatures}
-                      />
-                    </Form.Item>
-                  </Card>
-                </Col>
               </Row>
             </Col>
 
             <Col span={12}>
-              <Row gutter={[24, 24]}>
-                <Col span={24}>
-                  <Card
-                    title="Added Components"
-                    extra={[
-                      <Button
-                        htmlType="button"
-                        onClick={() => showComponentModal()}
-                      >
-                        Add Component
-                      </Button>,
-                    ]}
+              <Card
+                title="Added Components"
+                className="h-full"
+                extra={[
+                  <Button
+                    htmlType="button"
+                    onClick={() => showComponentModal()}
                   >
+                    Add Component
+                  </Button>,
+                ]}
+              >
+                <Form.Item
+                  wrapperCol={{ span: 24 }}
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <ComponentDisplay
+                    componentsData={componentsData}
+                    handleComponentEdit={handleComponentEdit}
+                    deleteComponent={deleteComponent}
+                  />
+                </Form.Item>
+                <div className="absolute inset-x-0 bottom-0">
+                  <div className="w-full border-t border-gray-300 py-2" />
+                  <div className="mx-4">
                     <Form.Item
-                      wrapperCol={{ span: 24 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.components !== curValues.components
+                      label="Components Billing Frequency"
+                      name="usage_billing_frequency"
+                      shouldUpdate={(prevValues, currentValues) =>
+                        prevValues.plan_duration !== currentValues.plan_duration
                       }
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please select an interval",
+                        },
+                      ]}
                     >
-                      <ComponentDisplay
-                        componentsData={componentsData}
-                        handleComponentEdit={handleComponentEdit}
-                        deleteComponent={deleteComponent}
-                      />
+                      <Radio.Group>
+                        {availableBillingTypes.map((type) => (
+                          <Radio value={type.name}>{type.label}</Radio>
+                        ))}
+                      </Radio.Group>
                     </Form.Item>
-                  </Card>
-                </Col>
-              </Row>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            <Col span="24">
+              <Card
+                className="w-full my-5"
+                title="Added Features"
+                extra={[
+                  <Button htmlType="button" onClick={showFeatureModal}>
+                    Add Feature
+                  </Button>,
+                ]}
+              >
+                <Form.Item
+                  wrapperCol={{ span: 24 }}
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <FeatureDisplay
+                    planFeatures={planFeatures}
+                    removeFeature={removeFeature}
+                    editFeatures={editFeatures}
+                  />
+                </Form.Item>
+              </Card>
             </Col>
           </Row>
         </Form>
