@@ -182,7 +182,7 @@ const CreatePlan = () => {
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
-          usage_billing_type: values.usage_billing_type,
+          usage_billing_frequency: values.usage_billing_frequency,
         };
 
         const plan: CreatePlanType = {

@@ -35,6 +35,7 @@ class METRIC_TYPE(models.TextChoices):
 
 class PLAN_DURATION(models.TextChoices):
     MONTH = ("month", _("Month"))
+    QUARTER = ("quarter", _("Quarter"))
     YEAR = ("year", _("Year"))
 
 
@@ -64,14 +65,10 @@ class CATEGORICAL_FILTER_OPERATORS(models.TextChoices):
     ISNOTIN = ("isnotin", _("Is not in"))
 
 
-class USAGE_BILLING_TYPE(models.TextChoices):
-    IN_ARREARS = ("in_arrears", _("In Arrears"))
-    PAY_AS_YOU_GO_QUARTERLY = (
-        "pay_as_you_go_quarterly",
-        _("Pay as you go (Quarterly)"),
-    )
-    PAY_AS_YOU_GO_MONTHLY = ("pay_as_you_go_monthly", _("Pay as you go (Monthly)"))
-    PAY_AS_YOU_GO_WEEKLY = ("pay_as_you_go_weekly", _("Pay as you go (Weekly)"))
+class USAGE_BILLING_FREQUENCY(models.TextChoices):
+    MONTHLY = ("monthly", _("Monthly"))
+    QUARTERLY = ("quarterly", _("Quarterly"))
+    YEARLY = ("yearly", _("Yearly"))
 
 
 class FLAT_FEE_BILLING_TYPE(models.TextChoices):

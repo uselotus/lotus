@@ -222,7 +222,7 @@ def add_plan_version_to_plan():
             description="test-plan-version-description",
             version=1,
             flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
-            usage_billing_type=USAGE_BILLING_TYPE.IN_ARREARS,
+            usage_billing_frequency=USAGE_BILLING_FREQUENCY.IN_ARREARS,
             plan=plan,
             status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=30,

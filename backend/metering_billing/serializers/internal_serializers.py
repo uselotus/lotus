@@ -60,7 +60,7 @@ class InvoicePlanVersionSerializer(serializers.ModelSerializer):
             "interval",
             "flat_rate",
             "flat_fee_billing_type",
-            "usage_billing_type",
+            "usage_billing_frequency",
         )
 
     flat_rate = serializers.SerializerMethodField()

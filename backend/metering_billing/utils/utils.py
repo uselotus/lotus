@@ -139,6 +139,8 @@ def now_utc():
 def calculate_end_date(interval, start_date):
     if interval == PLAN_DURATION.MONTH:
         return start_date + relativedelta(months=+1) - relativedelta(days=+1)
+    elif interval == PLAN_DURATION.QUARTER:
+        return start_date + relativedelta(months=+3) - relativedelta(days=+1)
     elif interval == PLAN_DURATION.YEAR:
         return start_date + relativedelta(years=+1) - relativedelta(days=+1)
 

@@ -27,7 +27,7 @@ interface PlanVersionType {
   features: FeatureType[];
   components: Component[];
   flat_rate: number;
-  usage_billing_type: string;
+  usage_billing_frequency: string;
   flat_fee_billing_type: string;
 }
 
@@ -44,7 +44,7 @@ export interface PlanVersionDisplayType extends PlanVersionType {
   created_on: string;
   active_subscriptions: number;
   features: FeatureType[];
-  usage_billing_type: string;
+  usage_billing_frequency: string;
 }
 
 export interface PlansByCustomerArray {
@@ -77,7 +77,7 @@ export interface CreateVersionType {
   flat_rate: number;
   components: Component[];
   features: FeatureType[];
-  usage_billing_type: string;
+  usage_billing_frequency: string;
   replace_plan_version_id?: string;
   make_active: boolean;
   make_active_type?: string;
