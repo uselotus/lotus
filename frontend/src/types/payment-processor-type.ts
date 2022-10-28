@@ -1,7 +1,7 @@
 export interface PaymentProcessorStatusType {
   payment_provider_name: string;
   connected: boolean;
-  redirect_link: string;
+  redirect_url: string;
 }
 
 export interface PaymentProcessorConnectionResponseType {
@@ -12,9 +12,17 @@ export interface PaymentProcessorConnectionResponseType {
 
 export interface PaymentProcessorConnectionRequestType {
   payment_processor: string;
-  data: StripeConnectionRequestType;
+  data: StripeConnectionRequestType | object;
 }
 
 export interface StripeConnectionRequestType {
   authorization_code: string;
 }
+
+export const integrationsMap = {
+  stripe: {
+    name: "Stripe",
+    icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png",
+    description: "Automatically charge your customers for their subscriptions",
+  },
+};

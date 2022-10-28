@@ -74,7 +74,7 @@ class PaymentProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_redirect_link(self) -> str:
+    def get_redirect_url(self) -> str:
         """The link returned by this method will be called when a user clicks on the connect button for a payment processor. It should return a link that the user will be redirected to in order to connect their account to the payment processor."""
         pass
 
@@ -96,9 +96,9 @@ class StripeConnector(PaymentProvider):
         }
         qstr = urlencode(redirect_dict)
         if not self.self_hosted:
-            self.redirect_link = "https://connect.stripe.com/oauth/authorize?" + qstr
+            self.redirect_url = "https://connect.stripe.com/oauth/authorize?" + qstr
         else:
-            self.redirect_link = f"https://connect.stripe.com/oauth/authorize?{qstr}"
+            self.redirect_url = ""
 
     def working(self) -> bool:
         return self.secret_key != "" and self.secret_key != None
@@ -111,7 +111,7 @@ class StripeConnector(PaymentProvider):
 
     def organization_connected(self, organization) -> bool:
         if self.self_hosted:
-            return self.secret_key != ""
+            return self.secret_key != "" and self.secret_key != None
         else:
             return (
                 organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "")
@@ -334,8 +334,8 @@ class StripeConnector(PaymentProvider):
         validated_data = serializer.validated_data
         return Response(validated_data, status=status.HTTP_200_OK)
 
-    def get_redirect_link(self) -> str:
-        return self.redirect_link
+    def get_redirect_url(self) -> str:
+        return self.redirect_url
 
 
 PAYMENT_PROVIDER_MAP = {

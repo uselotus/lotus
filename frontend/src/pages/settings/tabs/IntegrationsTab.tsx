@@ -1,5 +1,8 @@
 import React, { FC, useState } from "react";
-import { PaymentProcessorStatusType } from "../../../types/stripe-type";
+import {
+  PaymentProcessorStatusType,
+  integrationsMap,
+} from "../../../types/payment-processor-type";
 import { useQuery } from "react-query";
 import { PaymentProcessorIntegration } from "../../../integrations/api";
 import { useNavigate } from "react-router-dom";
@@ -7,29 +10,28 @@ import { Divider, Typography, Row, Col } from "antd";
 
 import { AppCard } from "../components/AppCard";
 
-
-const integrationsMap = {
-  "stripe": {name: "Stripe", icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png", 
-  description: "Automatically charge your customers for their subscriptions"},
-}
-
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
   const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
 
-  const fetchPaymentProcessorConnect = async (): Promise<PaymentProcessorStatusType[]> =>
-    PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then((data) => {
-      return data;
-    });
+  const fetchPaymentProcessorConnect = async (): Promise<
+    PaymentProcessorStatusType[]
+  > =>
+    PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then(
+      (data) => {
+        return data;
+      }
+    );
 
-  const { status, error, data, isLoading } = useQuery<PaymentProcessorStatusType[]>(
-    ["PaymentProcessorIntegration"],
-    fetchPaymentProcessorConnect
-  );
+  const { status, error, data, isLoading } = useQuery<
+    PaymentProcessorStatusType[]
+  >(["PaymentProcessorIntegration"], fetchPaymentProcessorConnect);
 
-  const handleConnectWithStripeClick = (path: string) => {
-    console.log(path)
-    window.location.href = path;
+  const handleConnectWithPaymentProcessorClick = (path: string) => {
+    console.log("path", path);
+    if (path !== "") {
+      window.location.href = path;
+    }
   };
 
   return (
@@ -43,10 +45,15 @@ const IntegrationsTab: FC = () => {
               <Col span={6} key={index}>
                 <AppCard
                   connected={item.connected}
-                  title= {integrationsMap[item.payment_provider_name].name}
-                  description={integrationsMap[item.payment_provider_name].description}
+                  title={integrationsMap[item.payment_provider_name].name}
+                  description={
+                    integrationsMap[item.payment_provider_name].description
+                  }
                   icon={integrationsMap[item.payment_provider_name].icon}
-                  handleClick={() => handleConnectWithStripeClick(item.redirect_link)}
+                  handleClick={() =>
+                    handleConnectWithPaymentProcessorClick(item.redirect_url)
+                  }
+                  selfHosted={item.redirect_url === ""}
                 />
               </Col>
             );

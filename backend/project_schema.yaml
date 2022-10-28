@@ -691,7 +691,7 @@ paths:
           description: No response body
   /api/payment_providers/:
     get:
-      operationId: payment_providers_retrieve
+      operationId: payment_providers_list
       tags:
       - payment_providers
       security:
@@ -703,7 +703,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaymentProviderGetResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/SinglePaymentProvider'
           description: ''
     post:
       operationId: payment_providers_create
@@ -1935,15 +1937,17 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        created_on:
+        description:
           type: string
-          format: date-time
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
+          nullable: true
+          maxLength: 200
         flat_fee_billing_type:
           $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        version_id:
+          type: string
+          readOnly: true
+        usage_billing_type:
+          $ref: '#/components/schemas/UsageBillingTypeEnum'
         flat_rate:
           type: number
           format: double
@@ -1951,14 +1955,23 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
         active_subscriptions:
           type: integer
           readOnly: true
-        version_id:
+        created_by:
           type: string
           readOnly: true
-        usage_billing_type:
-          $ref: '#/components/schemas/UsageBillingTypeEnum'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
         components:
           type: array
           items:
@@ -1969,17 +1982,6 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        created_by:
-          type: string
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -2158,15 +2160,6 @@ components:
       enum:
       - stripe
       type: string
-    PaymentProviderGetResponse:
-      type: object
-      properties:
-        payment_providers:
-          type: array
-          items:
-            $ref: '#/components/schemas/SinglePaymentProvider'
-      required:
-      - payment_providers
     PaymentProviderPostRequest:
       type: object
       properties:
@@ -2183,12 +2176,14 @@ components:
       properties:
         payment_processor:
           $ref: '#/components/schemas/PaymentProcessorEnum'
-        data:
-          type: object
-          additionalProperties: {}
+        success:
+          type: boolean
+        details:
+          type: string
       required:
-      - data
+      - details
       - payment_processor
+      - success
     PaymentStatusEnum:
       enum:
       - draft
@@ -2620,13 +2615,13 @@ components:
           type: string
         connected:
           type: boolean
-        redirect_link:
+        redirect_url:
           type: string
           format: uri
       required:
       - connected
       - payment_provider_name
-      - redirect_link
+      - redirect_url
     SinglePlanNumCustomers:
       type: object
       properties:

@@ -1,4 +1,4 @@
-import { PaymentProcessorConnectionResponseType, PaymentProcessorStatusType, PaymentProcessorConnectionRequestType } from "../types/stripe-type";
+import { PaymentProcessorConnectionResponseType, PaymentProcessorStatusType, PaymentProcessorConnectionRequestType } from "../types/payment-processor-type";
 import axios, { AxiosResponse } from "axios";
 
 axios.defaults.xsrfCookieName = "csrftoken";
