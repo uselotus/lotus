@@ -1,6 +1,7 @@
 import { PlanDisplay } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
 import { InvoiceType } from "./invoice-type";
+
 export interface CustomerType {
   customer_name: string;
   billing_id?: string;

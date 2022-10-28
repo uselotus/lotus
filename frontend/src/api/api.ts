@@ -53,7 +53,8 @@ const requests = {
     instance.get(url, params).then(responseBody),
   post: (url: string, body: {}, headers?: {}) =>
     instance.post(url, body, headers).then(responseBody),
-  put: (url: string, body: {}) => instance.put(url, body).then(responseBody),
+  patch: (url: string, body: {}) =>
+    instance.patch(url, body).then(responseBody),
   delete: (url: string, params?: {}) => instance.delete(url).then(responseBody),
 };
 

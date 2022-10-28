@@ -1,5 +1,7 @@
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
+import { components } from "./schema";
+
 export interface PlanType {
   plan_name: string;
   plan_duration: string;
@@ -21,16 +23,18 @@ export interface PlanType {
 }
 
 interface PlanVersionType {
+  description?: string;
+  plan_id?: string;
   features: FeatureType[];
   components: Component[];
   flat_rate: number;
   usage_billing_type: string;
   flat_fee_billing_type: string;
-  description?: string;
 }
+
 export interface PlanVersionDisplayType extends PlanVersionType {
   description: string;
-  plan_id: number;
+  plan_id: string;
   flat_fee_billing_type: string;
   flat_rate: number;
   status: string;
