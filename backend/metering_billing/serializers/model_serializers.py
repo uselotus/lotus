@@ -17,7 +17,12 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import calculate_end_date, date_as_max_dt, date_as_min_dt
+from metering_billing.utils import (
+    calculate_end_date,
+    date_as_max_dt,
+    date_as_min_dt,
+    now_utc,
+)
 from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
@@ -753,30 +758,22 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class PlanDetailSerializer(serializers.ModelSerializer):
-    class Meta:
+class PlanDetailSerializer(PlanSerializer):
+    class Meta(PlanSerializer.Meta):
         model = Plan
-        fields = (
-            "plan_name",
-            "plan_duration",
-            "versions",
-            "product_id",
-            "status",
-            "plan_id",
-            "created_on",
-            "created_by",
+        fields = tuple(
+            set(PlanSerializer.Meta.fields).union(set(["versions"]))
+            - set(
+                [
+                    "display_version",
+                    "initial_version",
+                    "parent_plan_id",
+                    "target_customer_id",
+                ]
+            )
         )
 
     versions = PlanVersionSerializer(many=True)
-    created_by = serializers.SerializerMethodField(read_only=True)
-    product_id = SlugRelatedFieldWithOrganization(
-        slug_field="product_id",
-        read_only=True,
-        source="parent_product",
-    )
-
-    def get_created_by(self, obj) -> str:
-        return obj.created_by.username
 
 
 ## SUBSCRIPTION
@@ -799,7 +796,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     start_date = serializers.DateField()
     end_date = serializers.DateField(required=False)
-    status = serializers.CharField(required=False)
     auto_renew = serializers.BooleanField(required=False)
     is_new = serializers.BooleanField(required=False)
     subscription_id = serializers.CharField(required=False)
@@ -826,6 +822,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         repr = super().to_internal_value(data)
+        today_date = now_utc().date()
+        if repr.get("start_date") == today_date:
+            repr["start_date"] = now_utc()
         repr["start_date"] = date_as_min_dt(repr["start_date"])
         if repr.get("end_date"):
             repr["end_date"] = date_as_max_dt(repr["end_date"])
@@ -905,7 +904,6 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
-        print("trying to validate", data)
         # extract the plan version from the plan
         if data.get("billing_plan"):
             data["billing_plan"] = data["billing_plan"]["plan"].display_version
@@ -917,7 +915,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             "replace_immediately_type"
         ):
             raise serializers.ValidationError(
-                "To specify status or version_id change, must specify replace_immediately_type"
+                "To specify status or plan_id change, must specify replace_immediately_type"
             )
         if (
             data.get("status")

@@ -10,13 +10,23 @@ import {
   CreatePlanType,
   UpdatePlanType,
   PlansByCustomerArray,
-  CreateVersionType,
+  CreatePlanVersionType,
+  PlanDetailType,
+  PlanVersionType,
+  ReplaceLaterType,
+  ReplaceImmediatelyType,
+  ArchivePlanVersionType,
+  PlanVersionUpdateDescriptionType,
 } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
   CreateSubscriptionType,
   UpdateSubscriptionType,
+  SubscriptionType,
+  CancelSubscriptionType,
+  ChangeSubscriptionPlanType,
+  TurnSubscriptionAutoRenewOff,
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
@@ -29,6 +39,7 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
+import { version } from "react";
 
 const cookies = new Cookies();
 
@@ -66,34 +77,74 @@ export const Customer = {
     requests.get(`api/customers/${customer_id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
     requests.post("api/customers/", post),
-  subscribe: (post: CreateSubscriptionType): Promise<any> =>
-    requests.post("api/subscriptions/", post),
+  getCustomerTotals: (): Promise<CustomerTotal[]> =>
+    requests.get("api/customer_totals/"),
+  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
+    requests.get(`api/customer_detail/`, { params: { customer_id } }),
+  //Subscription handling
+  createSubscription: (
+    post: CreateSubscriptionType
+  ): Promise<SubscriptionType> => requests.post("api/subscriptions/", post),
   updateSubscription: (
+    //this is the general version, try to use the specific ones below
     subscription_id: string,
     post: UpdateSubscriptionType
   ): Promise<UpdateSubscriptionType> =>
     requests.patch(`api/subscriptions/${subscription_id}`, post),
   cancelSubscription: (
     subscription_id: string,
-    post: cancelSubscriptionType
-  ): Promise<cancelSubscriptionType> =>
+    post: CancelSubscriptionType
+  ): Promise<CancelSubscriptionType> =>
     requests.patch(`api/subscriptions/${subscription_id}`, post),
-  getCustomerTotals: (): Promise<CustomerTotal[]> =>
-    requests.get("api/customer_totals/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
-    requests.get(`api/customer_detail/`, { params: { customer_id } }),
+  changeSubscriptionPlan: (
+    subscription_id: string,
+    post: ChangeSubscriptionPlanType
+  ): Promise<ChangeSubscriptionPlanType> =>
+    requests.patch(`api/subscriptions/${subscription_id}`, post),
+  turnSubscriptionAutoRenewOff: (
+    subscription_id: string,
+    post: TurnSubscriptionAutoRenewOff
+  ): Promise<TurnSubscriptionAutoRenewOff> =>
+    requests.patch(`api/subscriptions/${subscription_id}`, post),
 };
 
 export const Plan = {
+  //get methods
   getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
-  getPlan: (plan_id: string): Promise<PlanType> =>
+  getPlan: (plan_id: string): Promise<PlanDetailType> =>
     requests.get(`api/plans/${plan_id}`),
+  //create plan
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("api/plans/", post),
-  createVersion: (post: CreateVersionType): Promise<PlanType> =>
+  //create plan version
+  createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
     requests.post("api/plan_versions/", post),
-  updatePlan: (post: UpdatePlanType): Promise<PlanType> =>
-    requests.post(`api/update_billing_plan/`, post),
+  //update plans methods
+  updatePlan: (
+    plan_id: string,
+    post: UpdatePlanType
+  ): Promise<UpdatePlanType> => requests.patch(`api/plans/${plan_id}`, post),
+  //update plan versions methods
+  updatePlanVersionDescription: (
+    version_id: string,
+    post: PlanVersionUpdateDescriptionType
+  ): Promise<PlanVersionUpdateDescriptionType> =>
+    requests.patch(`api/plan_versions/${version_id}/`, post),
+  replacePlanVersionLater: (
+    version_id: string,
+    post: ReplaceLaterType
+  ): Promise<ReplaceLaterType> =>
+    requests.patch(`api/plan_versions/${version_id}/`, post),
+  replacePlanVersionImmediately: (
+    version_id: string,
+    post: ReplaceImmediatelyType
+  ): Promise<ReplaceImmediatelyType> =>
+    requests.patch(`api/plan_versions/${version_id}/`, post),
+  archivePlanVersion: (
+    version_id: string,
+    post: ArchivePlanVersionType
+  ): Promise<ArchivePlanVersionType> =>
+    requests.patch(`api/plan_versions/${version_id}/`, post),
 };
 
 export const Alerts = {
