@@ -32,11 +32,11 @@ def plan_test_common_setup(
         setup_dict["product"] = add_product_to_org(org)
         setup_dict["plan_payload"] = {
             "plan_name": "test_plan",
-            "plan_duration": PLAN_DURATION.MONTH,
+            "plan_duration": PLAN_DURATION.MONTHLY,
             "product_id": setup_dict["product"].product_id,
             "initial_version": {
                 "flat_fee_billing_type": FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
-                "usage_billing_frequency": USAGE_BILLING_FREQUENCY.IN_ARREARS,
+                "usage_billing_frequency": USAGE_BILLING_FREQUENCY.MONTHLY,
                 "status": PLAN_VERSION_STATUS.ACTIVE,
                 "flat_rate": 1000,
             },
@@ -47,7 +47,7 @@ def plan_test_common_setup(
         setup_dict["plan_version_payload"] = {
             "description": "test_plan_version_description",
             "flat_fee_billing_type": FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
-            "usage_billing_frequency": USAGE_BILLING_FREQUENCY.IN_ARREARS,
+            "usage_billing_frequency": USAGE_BILLING_FREQUENCY.MONTHLY,
             "make_active": True,
             "flat_rate": 100,
         }

@@ -6,38 +6,60 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0054_alter_historicalplan_status_and_more'),
+        ("metering_billing", "0054_alter_historicalplan_status_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='historicalplanversion',
-            name='usage_billing_type',
+            model_name="historicalplanversion",
+            name="usage_billing_type",
         ),
         migrations.RemoveField(
-            model_name='planversion',
-            name='usage_billing_type',
+            model_name="planversion",
+            name="usage_billing_type",
         ),
         migrations.AddField(
-            model_name='historicalplanversion',
-            name='usage_billing_frequency',
-            field=models.CharField(choices=[('monthly', 'Monthly'), ('quarterly', 'Quarterly'), ('yearly', 'Yearly')], default='monthly', max_length=40),
+            model_name="historicalplanversion",
+            name="usage_billing_frequency",
+            field=models.CharField(
+                choices=[
+                    ("monthly", "Monthly"),
+                    ("quarterly", "Quarterly"),
+                    ("yearly", "Yearly"),
+                ],
+                default="monthly",
+                max_length=40,
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='planversion',
-            name='usage_billing_frequency',
-            field=models.CharField(choices=[('monthly', 'Monthly'), ('quarterly', 'Quarterly'), ('yearly', 'Yearly')], default='monthly', max_length=40),
+            model_name="planversion",
+            name="usage_billing_frequency",
+            field=models.CharField(
+                choices=[
+                    ("monthly", "Monthly"),
+                    ("quarterly", "Quarterly"),
+                    ("yearly", "Yearly"),
+                ],
+                default="monthly",
+                max_length=40,
+            ),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='historicalplan',
-            name='plan_duration',
-            field=models.CharField(choices=[('month', 'Month'), ('quarter', 'Quarter'), ('year', 'Year')], max_length=40),
+            model_name="historicalplan",
+            name="plan_duration",
+            field=models.CharField(
+                choices=[("month", "Month"), ("quarter", "Quarter"), ("year", "Year")],
+                max_length=40,
+            ),
         ),
         migrations.AlterField(
-            model_name='plan',
-            name='plan_duration',
-            field=models.CharField(choices=[('month', 'Month'), ('quarter', 'Quarter'), ('year', 'Year')], max_length=40),
+            model_name="plan",
+            name="plan_duration",
+            field=models.CharField(
+                choices=[("month", "Month"), ("quarter", "Quarter"), ("year", "Year")],
+                max_length=40,
+            ),
         ),
     ]

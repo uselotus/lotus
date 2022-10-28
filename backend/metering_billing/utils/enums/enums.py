@@ -34,9 +34,20 @@ class METRIC_TYPE(models.TextChoices):
 
 
 class PLAN_DURATION(models.TextChoices):
-    MONTH = ("month", _("Month"))
-    QUARTER = ("quarter", _("Quarter"))
-    YEAR = ("year", _("Year"))
+    MONTHLY = ("monthly", _("Monthly"))
+    QUARTERLY = ("quarterly", _("Quarterly"))
+    YEARLY = ("yearly", _("Yearly"))
+
+
+class USAGE_BILLING_FREQUENCY(models.TextChoices):
+    MONTHLY = ("monthly", _("Monthly"))
+    QUARTERLY = ("quarterly", _("Quarterly"))
+    YEARLY = ("yearly", _("Yearly"))
+
+
+class FLAT_FEE_BILLING_TYPE(models.TextChoices):
+    IN_ARREARS = ("in_arrears", _("In Arrears"))
+    IN_ADVANCE = ("in_advance", _("In Advance"))
 
 
 class REVENUE_CALC_GRANULARITY(models.TextChoices):
@@ -63,17 +74,6 @@ class NUMERIC_FILTER_OPERATORS(models.TextChoices):
 class CATEGORICAL_FILTER_OPERATORS(models.TextChoices):
     ISIN = ("isin", _("Is in"))
     ISNOTIN = ("isnotin", _("Is not in"))
-
-
-class USAGE_BILLING_FREQUENCY(models.TextChoices):
-    MONTHLY = ("monthly", _("Monthly"))
-    QUARTERLY = ("quarterly", _("Quarterly"))
-    YEARLY = ("yearly", _("Yearly"))
-
-
-class FLAT_FEE_BILLING_TYPE(models.TextChoices):
-    IN_ARREARS = ("in_arrears", _("In Arrears"))
-    IN_ADVANCE = ("in_advance", _("In Advance"))
 
 
 class SUBSCRIPTION_STATUS(models.TextChoices):
