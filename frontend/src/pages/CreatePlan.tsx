@@ -185,7 +185,7 @@ const CreatePlan = () => {
 
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
-          flat_fee_billing_type: values.pay_in_advance,
+          flat_fee_billing_type: values.flat_fee_billing_type,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
@@ -321,59 +321,37 @@ const CreatePlan = () => {
                     </Form.Item>
                   </Card>
                 </Col>
-                <Col span="24">
-                  <Card
-                    title="Added Features"
-                    extra={[
-                      <Button htmlType="button" onClick={showFeatureModal}>
-                        Add Feature
-                      </Button>,
-                    ]}
-                  >
-                    <Form.Item
-                      wrapperCol={{ span: 24 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.components !== curValues.components
-                      }
-                    >
-                      <FeatureDisplay
-                        planFeatures={planFeatures}
-                        removeFeature={removeFeature}
-                        editFeatures={editFeatures}
-                      />
-                    </Form.Item>
-                  </Card>
-                </Col>
               </Row>
             </Col>
 
             <Col span={12}>
-              <Row gutter={[24, 24]}>
-                <Col span={24}>
-                  <Card
-                    title="Added Components"
-                    extra={[
-                      <Button
-                        htmlType="button"
-                        onClick={() => showComponentModal()}
-                      >
-                        Add Component
-                      </Button>,
-                    ]}
+              <Card
+                title="Added Components"
+                className="h-full"
+                extra={[
+                  <Button
+                    htmlType="button"
+                    onClick={() => showComponentModal()}
                   >
-                    <Form.Item
-                      wrapperCol={{ span: 24 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.components !== curValues.components
-                      }
-                    >
-                      <ComponentDisplay
-                        componentsData={componentsData}
-                        handleComponentEdit={handleComponentEdit}
-                        deleteComponent={deleteComponent}
-                      />
-                    </Form.Item>
-                    <div className="w-full border-t border-gray-300" />
+                    Add Component
+                  </Button>,
+                ]}
+              >
+                <Form.Item
+                  wrapperCol={{ span: 24 }}
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <ComponentDisplay
+                    componentsData={componentsData}
+                    handleComponentEdit={handleComponentEdit}
+                    deleteComponent={deleteComponent}
+                  />
+                </Form.Item>
+                <div className="absolute inset-x-0 bottom-0">
+                  <div className="w-full border-t border-gray-300 py-2" />
+                  <div className="mx-4">
                     <Form.Item
                       label="Components Billing Frequency"
                       name="usage_billing_frequency"
@@ -393,9 +371,34 @@ const CreatePlan = () => {
                         ))}
                       </Radio.Group>
                     </Form.Item>
-                  </Card>
-                </Col>
-              </Row>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+
+            <Col span="24">
+              <Card
+                className="w-full my-5"
+                title="Added Features"
+                extra={[
+                  <Button htmlType="button" onClick={showFeatureModal}>
+                    Add Feature
+                  </Button>,
+                ]}
+              >
+                <Form.Item
+                  wrapperCol={{ span: 24 }}
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <FeatureDisplay
+                    planFeatures={planFeatures}
+                    removeFeature={removeFeature}
+                    editFeatures={editFeatures}
+                  />
+                </Form.Item>
+              </Card>
             </Col>
           </Row>
         </Form>

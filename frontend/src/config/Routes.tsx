@@ -52,7 +52,7 @@ const AppRoutes: FC = () => {
               element={<EditPlan type="backtest" />}
             />
             <Route path="/plan">
-              <Route path=":planId" element={<EditPlan type="edit" />} />
+              {/* <Route path=":planId" element={<PlanDisplay>} /> */}
             </Route>
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/metrics" element={<ViewMetrics />} />
