@@ -232,7 +232,6 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
         properties = validated_data.pop("properties", {})
-
         properties = METRIC_HANDLER_MAP[
             validated_data["metric_type"]
         ].validate_properties(properties)
@@ -624,6 +623,7 @@ class PlanSerializer(serializers.ModelSerializer):
             "plan_duration",
             "product_id",
             "plan_id",
+            "status",
             # write only
             "initial_version",
             "parent_plan_id",
@@ -634,7 +634,6 @@ class PlanSerializer(serializers.ModelSerializer):
             "created_on",
             "created_by",
             "display_version",
-            "status",
             "num_versions",
             "active_subscriptions",
         )
@@ -644,7 +643,6 @@ class PlanSerializer(serializers.ModelSerializer):
             "created_on",
             "created_by",
             "display_version",
-            "status",
         )
         extra_kwargs = {
             "initial_version": {"write_only": True},

@@ -5,7 +5,7 @@ from rest_framework import serializers
 class SinglePaymentProviderSerializer(serializers.Serializer):
     payment_provider_name = serializers.CharField()
     connected = serializers.BooleanField()
-    redirect_link = serializers.URLField()
+    redirect_url = serializers.URLField(allow_blank=True)
 
 
 class PaymentProviderGetResponseSerializer(serializers.Serializer):

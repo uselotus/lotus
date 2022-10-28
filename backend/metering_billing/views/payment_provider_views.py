@@ -25,7 +25,7 @@ class PaymentProviderView(APIView):
             pp_response = {
                 "payment_provider_name": payment_processor_name,
                 "connected": pp_obj.organization_connected(organization),
-                "redirect_link": pp_obj.get_redirect_link(),
+                "redirect_url": pp_obj.get_redirect_url(),
             }
             response.append(pp_response)
         serializer = SinglePaymentProviderSerializer(data=response, many=True)

@@ -32,7 +32,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 #     pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
-VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT")
+VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT", default="")
 EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
 EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)

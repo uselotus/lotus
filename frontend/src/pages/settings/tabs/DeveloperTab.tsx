@@ -68,7 +68,7 @@ export const DeveloperTab = () => {
       <div className="mt-10 ">
         <Typography.Title level={2}>API Keys</Typography.Title>
         <Typography.Paragraph>
-          Getting a new api key will revoke your existing key!
+          Getting a new API key will revoke your existing key!
         </Typography.Paragraph>
         <Popconfirm
           title="Are you sure to revoke your existing key?"

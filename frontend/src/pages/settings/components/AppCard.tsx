@@ -8,6 +8,7 @@ type Props = {
   icon: React.ReactNode;
   handleClick: () => void;
   isNew?: boolean;
+  selfHosted?: boolean;
 };
 export const AppCard = ({
   title,
@@ -16,6 +17,7 @@ export const AppCard = ({
   connected,
   icon,
   isNew,
+  selfHosted,
 }: Props) => {
   return (
     <div>
@@ -28,13 +30,21 @@ export const AppCard = ({
         extra={
           connected ? (
             <Tag color="success">Connected</Tag>
-          ) : (
+          ) : !selfHosted ? (
             <Tag
               color="default"
               onClick={handleClick}
               style={{ cursor: "pointer" }}
             >
               Connect
+            </Tag>
+          ) : (
+            <Tag
+              color="default"
+              onClick={handleClick}
+              style={{ cursor: "pointer" }}
+            >
+              No API Key
             </Tag>
           )
         }
