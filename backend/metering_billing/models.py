@@ -44,7 +44,7 @@ from metering_billing.utils.enums import (
     REPLACE_IMMEDIATELY_TYPE,
     REVENUE_CALC_GRANULARITY,
     SUBSCRIPTION_STATUS,
-    USAGE_BILLING_TYPE,
+    USAGE_BILLING_FREQUENCY,
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
@@ -492,8 +492,8 @@ class PlanVersion(models.Model):
     flat_fee_billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
     )
-    usage_billing_type = models.CharField(
-        max_length=40, choices=USAGE_BILLING_TYPE.choices
+    usage_billing_frequency = models.CharField(
+        max_length=40, choices=USAGE_BILLING_FREQUENCY.choices
     )
     proration_granularity = models.CharField(
         max_length=40, choices=PRORATION_GRANULARITY.choices, null=True, blank=True

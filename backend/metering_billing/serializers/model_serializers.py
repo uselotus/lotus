@@ -461,7 +461,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "description",
             "plan_id",
             "flat_fee_billing_type",
-            "usage_billing_type",
+            "usage_billing_frequency",
             "replace_plan_version_id",
             "flat_rate",
             "components",

@@ -386,7 +386,7 @@ export interface components {
       flat_fee_billing_type: components["schemas"]["FlatFeeBillingTypeEnum"];
       /** Format: double */
       flat_rate: number;
-      usage_billing_type: components["schemas"]["UsageBillingTypeEnum"];
+      usage_billing_frequency: components["schemas"]["UsageBillingTypeEnum"];
       active_subscriptions: number;
       version: number;
       description?: string | null;
@@ -568,7 +568,7 @@ export interface components {
       description?: string | null;
       plan_id?: string;
       flat_fee_billing_type: components["schemas"]["FlatFeeBillingTypeEnum"];
-      usage_billing_type: components["schemas"]["UsageBillingTypeEnum"];
+      usage_billing_frequency: components["schemas"]["UsageBillingTypeEnum"];
       replace_plan_version_id?: string;
       /** Format: double */
       flat_rate: number;
