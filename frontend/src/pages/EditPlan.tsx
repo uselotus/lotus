@@ -213,7 +213,7 @@ const EditPlan = ({ type }: Props) => {
               billable_metric_name: components[i].metric,
               cost_per_batch: components[i].cost_per_batch,
               metric_units_per_batch: components[i].metric_units_per_batch,
-              free_metric_units: components[i].free_amount,
+              free_metric_units: components[i].free_metric_units,
               max_metric_units: components[i].max_metric_units,
             };
             usagecomponentslist.push(usagecomponent);
