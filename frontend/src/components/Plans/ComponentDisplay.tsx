@@ -24,7 +24,7 @@ export const ComponentDisplay: FC<{
                   type="text"
                   size="small"
                   icon={<EditOutlined />}
-                  onClick={() => handleComponentEdit(component.metric)}
+                  onClick={() => handleComponentEdit(component.id)}
                 />,
                 <Button
                   key="delete"
@@ -32,7 +32,7 @@ export const ComponentDisplay: FC<{
                   size="small"
                   icon={<DeleteOutlined />}
                   danger
-                  onClick={() => deleteComponent(component.metric)}
+                  onClick={() => deleteComponent(component.id)}
                 />,
               ]}
             >

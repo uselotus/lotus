@@ -8,7 +8,7 @@ import {
   Row,
   Col,
   Radio,
-  Descriptions,
+  Select,
 } from "antd";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -267,7 +267,6 @@ const CreatePlan = () => {
                       ]}
                     >
                       <Radio.Group>
-                        <Radio value="week">Weekly</Radio>
                         <Radio value="month">Monthly</Radio>
                         <Radio value="year">Yearly</Radio>
                       </Radio.Group>
@@ -280,8 +279,18 @@ const CreatePlan = () => {
                         precision={2}
                       />
                     </Form.Item>
-                    <Form.Item name="pay_in_advance" label="Pay In Advance">
-                      <Checkbox defaultChecked={true} />
+                    <Form.Item
+                      name="flat_fee_billing_type"
+                      label="Recurring Billing Type"
+                    >
+                      <Select>
+                        <Select.Option value="in_advance">
+                          Pay in advance
+                        </Select.Option>
+                        <Select.Option value="in_arrears">
+                          Pay in arrears
+                        </Select.Option>
+                      </Select>
                     </Form.Item>
                   </Card>
                 </Col>
@@ -343,6 +352,7 @@ const CreatePlan = () => {
             </Col>
           </Row>
         </Form>
+
         {componentVisible && (
           <UsageComponentForm
             visible={componentVisible}

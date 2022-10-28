@@ -39,11 +39,7 @@ function UsageComponentForm({
   const [isLimit, setIsLimit] = useState(
     editComponentItem?.max_metric_units ? true : false
   );
-  const initalData = editComponentItem ?? {
-    cost_per_batch: 0.0,
-    metric_units_per_batch: 1,
-    free_amount: 0,
-  };
+  const initalData = editComponentItem ?? null;
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {

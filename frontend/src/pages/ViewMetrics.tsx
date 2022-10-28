@@ -1,6 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { Card, List, Skeleton, Button, Divider } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Card, Button, Divider } from "antd";
 import MetricTable from "../components/MetricTable";
 import { Metrics } from "../api/api";
 import { MetricType } from "../types/metric-type";
@@ -30,7 +29,6 @@ const defaultMetricState: CreateMetricState = {
 };
 
 const ViewMetrics: FC = () => {
-  const navigate = useNavigate();
   const [visible, setVisible] = useState<boolean>(false);
   const [metricState, setMetricState] =
     useState<CreateMetricState>(defaultMetricState);

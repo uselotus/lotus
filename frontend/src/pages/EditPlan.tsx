@@ -1,6 +1,6 @@
 import {
   Button,
-  Checkbox,
+  Select,
   Form,
   Card,
   Input,
@@ -8,7 +8,6 @@ import {
   Row,
   Col,
   Radio,
-  Descriptions,
 } from "antd";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -25,13 +24,8 @@ import {
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
-import {
-  DeleteOutlined,
-  ArrowLeftOutlined,
-  EditOutlined,
-} from "@ant-design/icons";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import React from "react";
-import { Paper } from "../components/base/Paper";
 import { PageLayout } from "../components/base/PageLayout";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
@@ -42,7 +36,7 @@ interface CustomizedState {
 }
 
 interface Props {
-  type: "backtest" | "edit";
+  type: "backtest" | "version" | "custom";
 }
 
 const EditPlan = ({ type }: Props) => {
@@ -58,16 +52,18 @@ const EditPlan = ({ type }: Props) => {
   const plan = React.useMemo(() => {
     if (type === "backtest") {
       return replacementPlan ?? {};
+    } else if (type === "version") {
+      const { plan } = location.state.data as CustomizedState;
+      return plan ?? {};
+    } else if (type === "custom") {
+      const { plan } = location.state.data as CustomizedState;
+      return plan ?? {};
     }
-    const { plan } = location.state.data as CustomizedState;
-    return plan ?? {};
   }, [type]);
 
   const queryClient = useQueryClient();
 
-  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
-    plan.features
-  );
+  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(plan.in);
 
   useEffect(() => {
     const initialComponents: any[] = plan.components.map((component) => {
@@ -182,7 +178,7 @@ const EditPlan = ({ type }: Props) => {
 
   const handleComponentEdit = (name: string) => {
     const currentComponent = componentsData.filter(
-      (item) => item.metric === name
+      (item) => item.id === name
     )[0];
 
     setEditComponentsItem(currentComponent);
@@ -190,7 +186,7 @@ const EditPlan = ({ type }: Props) => {
   };
 
   const deleteComponent = (name: string) => {
-    setComponentsData(componentsData.filter((item) => item.metric !== name));
+    setComponentsData(componentsData.filter((item) => item.id !== name));
   };
   const hideFeatureModal = () => {
     setFeatureVisible(false);
@@ -236,12 +232,17 @@ const EditPlan = ({ type }: Props) => {
         if (type === "backtest") {
           newPlan["status"] = "experimental";
           createPlanMutation.mutate(newPlan);
-        } else if (type === "edit") {
+        } else if (type === "version") {
           mutation.mutate({
             old_version_id: plan.version_id,
             updated_billing_plan: newPlan,
             update_behavior: values.update_behavior,
           });
+        } else if (type === "custom") {
+          newPlan["status"] = "experimental";
+          newPlan["parent_plan_id"] = plan.plan_id;
+          newPlan["target_customer_id"] = "234";
+          createPlanMutation.mutate(newPlan);
         }
       })
       .catch((info) => {
@@ -252,20 +253,20 @@ const EditPlan = ({ type }: Props) => {
   function returnPageTitle(): string {
     if (type === "backtest") {
       return "Backtest Plan";
-    } else if (type === "edit") {
-      return "Update Plan";
+    } else if (type === "version") {
+      return "Create New Version:" + " " + plan.plan_name;
     } else {
-      return "Create Plan";
+      return "Create Custom Plan" + " " + plan.plan_name;
     }
   }
 
   function returnSubmitButtonText(): string {
     if (type === "backtest") {
-      return "Finish Plan";
-    } else if (type === "edit") {
-      return "Update Plan";
+      return "Create new Plan";
+    } else if (type === "version") {
+      return "Publish version";
     } else {
-      return "Create Plan";
+      return "Create custom plan";
     }
   }
 
@@ -297,7 +298,7 @@ const EditPlan = ({ type }: Props) => {
           form={form}
           name="create_plan"
           initialValues={{
-            name: plan.name,
+            name: plan.plan_name,
             description: plan.description,
             flat_rate: plan.flat_rate,
             pay_in_advance: plan.pay_in_advance,
@@ -344,7 +345,6 @@ const EditPlan = ({ type }: Props) => {
                       ]}
                     >
                       <Radio.Group>
-                        <Radio value="week">Weekly</Radio>
                         <Radio value="month">Monthly</Radio>
                         <Radio value="year">Yearly</Radio>
                       </Radio.Group>
@@ -357,10 +357,20 @@ const EditPlan = ({ type }: Props) => {
                         precision={2}
                       />
                     </Form.Item>
-                    <Form.Item name="pay_in_advance" label="Pay In Advance">
-                      <Checkbox defaultChecked={true} />
+                    <Form.Item
+                      name="flat_fee_billing_type"
+                      label="Recurring Billing Type"
+                    >
+                      <Select>
+                        <Select.Option value="in_advance">
+                          Pay in advance
+                        </Select.Option>
+                        <Select.Option value="in_arrears">
+                          Pay in arrears
+                        </Select.Option>
+                      </Select>
                     </Form.Item>
-                    {type === "edit" && (
+                    {type === "version" && (
                       <Form.Item
                         name="update_behavior"
                         label="When To Update Plan"
