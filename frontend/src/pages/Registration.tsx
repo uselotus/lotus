@@ -7,6 +7,7 @@ import { Authentication } from "../api/api";
 import { useMutation, useQueryClient } from "react-query";
 import { CreateOrgAccountType } from "../types/account-type";
 import SignUp from "../components/Registration/SignUp";
+import sjcl from "sjcl";
 
 const { Step } = Steps;
 
@@ -62,11 +63,13 @@ const Register: React.FC = () => {
     email: string;
     password: string;
   }) => {
+    const pwBitArray = sjcl.hash.sha256.hash(user.password);
+    const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
     const register_object: CreateOrgAccountType = {
       company_name: organization.company_name,
       industry: organization.industry,
       email: user.email,
-      password: user.password,
+      password: hashedPassword,
       username: user.username,
       invite_token: inviteToken,
     };
