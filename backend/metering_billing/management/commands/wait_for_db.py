@@ -15,6 +15,6 @@ class Command(BaseCommand):
         while not db_connection:
             try:
                 db_connection = connections["default"]
-            except OperationalError:
+            except:
                 time.sleep(1)
         print("Database is available")
