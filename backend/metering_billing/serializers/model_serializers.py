@@ -132,33 +132,6 @@ class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
     billing_plan_name = serializers.CharField(source="billing_plan.name")
 
 
-class CustomerDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = (
-            "customer_id",
-            "email",
-            "balance",
-            "customer_name",
-            "invoices",
-            "total_revenue_due",
-            "subscriptions",
-        )
-
-    customer_name = serializers.CharField(source="name")
-    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
-    invoices = serializers.SerializerMethodField()
-    total_revenue_due = serializers.SerializerMethodField()
-
-    def get_invoices(self, obj) -> list:
-        timeline = self.context.get("invoices")
-        timeline = InvoiceSerializer(timeline, many=True).data
-        return timeline
-
-    def get_total_revenue_due(self, obj) -> float:
-        total_revenue_due = float(self.context.get("total_revenue_due"))
-        return total_revenue_due
-
 
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     class Meta:
@@ -302,14 +275,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     cost_per_batch = serializers.FloatField(allow_null=True, default=0)
     metric_units_per_batch = serializers.FloatField(allow_null=True, default=1)
 
-    # def get_fields(self, *args, **kwargs):
-    #     fields = super().get_fields(*args, **kwargs)
-    #     bmqs = fields["billable_metric_name"].queryset
-    #     fields["billable_metric_name"].queryset = bmqs.filter(
-    #         organization=self.context["organization"]
-    #     )
-    #     return fields
-
     def validate(self, data):
         # fmu, cpb, and mupb must all be none or all be not none
         fmu = data.get("free_metric_units", None)
@@ -376,6 +341,32 @@ class InvoiceSerializer(serializers.ModelSerializer):
     )
     cost_due_currency = serializers.CharField(source="cost_due.currency")
 
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_id",
+            "email",
+            "balance",
+            "customer_name",
+            "invoices",
+            "total_revenue_due",
+            "subscriptions",
+        )
+
+    customer_name = serializers.CharField(source="name")
+    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
+    invoices = serializers.SerializerMethodField()
+    total_revenue_due = serializers.SerializerMethodField()
+
+    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
+        timeline = self.context.get("invoices")
+        timeline = InvoiceSerializer(timeline, many=True).data
+        return timeline
+
+    def get_total_revenue_due(self, obj) -> float:
+        total_revenue_due = float(self.context.get("total_revenue_due"))
+        return total_revenue_due
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
