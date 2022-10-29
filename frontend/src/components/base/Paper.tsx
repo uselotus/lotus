@@ -1,7 +1,4 @@
-import { Card } from "antd";
 import React from "react";
-
-// <Paper color='gold'></Paper>
 
 type Props = {
   color: "gold" | "default";

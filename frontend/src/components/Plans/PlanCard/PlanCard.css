@@ -1,0 +1,61 @@
+.planCard {
+    height: 300px;
+    width: 370px;
+    border-radius: 6px;
+    position: relative;
+    background: white;
+    padding: 20px;
+    box-shadow: 0px 159px 63px rgba(174, 173, 173, 0.01), 0px 89px 54px rgba(174, 173, 173, 0.02), 0px 40px 40px rgba(174, 173, 173, 0.03), 0px 10px 22px rgba(174, 173, 173, 0.03), 0px 0px 0px rgba(174, 173, 173, 0.03)
+}
+
+.activeSubscriptions {
+    font-family: 'Satoshi', serif;
+    font-size: 20px;
+    color: #C3986B;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+}
+
+.activeSubscriptionsCount {
+    font-size: 24px;
+}
+
+.planDetailsLabel {
+    font-weight: 500;
+    line-height: 24px;
+    letter-spacing: -0.01em;
+    color: #9B9BA1;
+}
+
+.planDetailsValue {
+    font-weight: 600;
+    color: #1D1D1F;
+}
+
+.planDetails {
+    font-size: 14px;
+    padding: 8px 0;
+    display: flex;
+    align-items: center;
+}
+
+.planIdOverflow {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 80%;
+}
+
+.planMenuArchiveIcon {
+    color: #C20022;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    padding: 5px;
+}
+
+.archiveLabel {
+    margin-left: 5px;
+    margin-top: 7px;
+}

@@ -35,12 +35,12 @@ const AppRoutes: FC = () => {
           trigger={null}
           collapsible={false}
           collapsed={collapse}
-          style={{ minHeight: "100vh", background: "#FFFFFF" }}
+          style={{ minHeight: "100vh", background: "#FAFAFA" }}
         >
           <SideBar />
         </Sider>
 
-        <Layout style={{ background: "#FFFFFF" }}>
+        <Layout style={{ background: "#FAFAFA" }}>
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/" element={<Dashboard />} />
