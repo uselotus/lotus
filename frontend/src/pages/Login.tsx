@@ -9,7 +9,6 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import axios from "axios";
 import Cookies from "universal-cookie";
-import sjcl from "sjcl";
 
 const cookies = new Cookies();
 
@@ -68,9 +67,9 @@ const Login: FC = () => {
   );
 
   const handleLogin = (event: React.FormEvent<FormElements>) => {
-    const pwBitArray = sjcl.hash.sha256.hash(password);
-    const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
-    mutation.mutate({ username, password: hashedPassword });
+    // const pwBitArray = sjcl.hash.sha256.hash(password);
+    // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
+    mutation.mutate({ username, password: password });
   };
 
   if (!isAuthenticated) {
