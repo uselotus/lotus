@@ -539,7 +539,7 @@ class PriceAdjustment(models.Model):
     price_adjustment_description = models.CharField(max_length=200, blank=True, null=True)
     price_adjustment_type = models.CharField(max_length=40, choices=PRICE_ADJUSTMENT_TYPE.choices)
     price_adjustment_amount = models.DecimalField(
-        max_digits=20, decimal_places=10, null=True, blank=True
+        max_digits=20, decimal_places=10,
     )
 
     def __str__(self):

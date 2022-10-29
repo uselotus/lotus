@@ -13,6 +13,7 @@ from metering_billing.models import (
     Plan,
     PlanComponent,
     PlanVersion,
+    PriceAdjustment,
     Product,
     Subscription,
     User,
@@ -449,6 +450,18 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+class PriceAdjustmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PriceAdjustment
+        fields = (
+            "price_adjustment_name",
+            "price_adjustment_description",
+            "price_adjustment_type",
+            "price_adjustment_amount",
+        )
+    
+    price_adjustment_name = serializers.CharField(default = "")
+
 
 class PlanVersionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -462,6 +475,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "flat_rate",
             "components",
             "features",
+            "price_adjustment",
             # write only
             "make_active",
             "make_active_type",
@@ -489,6 +503,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
 
     components = PlanComponentSerializer(many=True, allow_null=True, required=False)
     features = FeatureSerializer(many=True, allow_null=True, required=False)
+    price_adjustment = PriceAdjustmentSerializer(required=False)
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.objects.all(),
@@ -542,6 +557,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         # exctract downstream components
         components_data = validated_data.pop("components", [])
         features_data = validated_data.pop("features", [])
+        price_adjustment_data = validated_data.pop("price_adjustment", None)
         make_active = validated_data.pop("make_active", False)
         make_active_type = validated_data.pop("make_active_type", None)
         replace_immediately_type = validated_data.pop("replace_immediately_type", None)
@@ -568,6 +584,13 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             except Feature.MultipleObjectsReturned:
                 f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)
+        if price_adjustment_data:
+            price_adjustment_data["organization"] = org
+            try:
+                pa, _ = PriceAdjustment.objects.get_or_create(**price_adjustment_data)
+            except PriceAdjustment.MultipleObjectsReturned:
+                pa = PriceAdjustment.objects.filter(**price_adjustment_data).first()
+            billing_plan.price_adjustment = pa
         billing_plan.save()
         if make_active:
             billing_plan.plan.make_version_active(
