@@ -207,16 +207,8 @@ const CreatePlan = () => {
   return (
     <PageLayout
       title="Create Plan"
+      onBack={goBackPage}
       extra={[
-        <Button
-          key={"back"}
-          onClick={goBackPage}
-          icon={<ArrowLeftOutlined />}
-          type="default"
-          size="large"
-        >
-          Back
-        </Button>,
         <Button
           key="create"
           onClick={() => form.submit()}
@@ -224,7 +216,7 @@ const CreatePlan = () => {
           size="large"
           type="primary"
         >
-          Create Plan <SaveOutlined />
+          Create new plan
         </Button>,
       ]}
     >
@@ -397,6 +389,20 @@ const CreatePlan = () => {
                     removeFeature={removeFeature}
                     editFeatures={editFeatures}
                   />
+                </Form.Item>
+              </Card>
+            </Col>
+            <Col span="24">
+              <Card className="w-6/12 mb-20" title="Discount">
+                <Form.Item wrapperCol={{ span: 7 }} label="Type">
+                  <Select>
+                    <Select.Option value="none">Overwrite</Select.Option>
+                    <Select.Option value="percentage">Percentage</Select.Option>
+                    <Select.Option value="flat">Flat</Select.Option>
+                  </Select>
+                </Form.Item>
+                <Form.Item name="discount">
+                  <Input />
                 </Form.Item>
               </Card>
             </Col>

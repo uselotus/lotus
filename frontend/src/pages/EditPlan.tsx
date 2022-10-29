@@ -42,6 +42,8 @@ interface Props {
 const EditPlan = ({ type }: Props) => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
+  const [targetCustomerFormVisible, setTargetCustomerFormVisible] =
+    useState<boolean>(false);
   const location = useLocation();
   const { replacementPlan } = usePlanState();
   const { setReplacementPlan } = usePlanUpdater();
@@ -153,6 +155,10 @@ const EditPlan = ({ type }: Props) => {
     setcomponentVisible(true);
   };
 
+  const hideTargetCustomerForm = () => {
+    setTargetCustomerFormVisible(false);
+  };
+
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
 
@@ -200,6 +206,11 @@ const EditPlan = ({ type }: Props) => {
     navigate(-1);
   };
 
+  const setTargetCustomer = async (target_customer_id: string) => {
+    hideTargetCustomerForm();
+    return target_customer_id;
+  };
+
   const submitPricingPlan = () => {
     form
       .validateFields()
@@ -239,9 +250,10 @@ const EditPlan = ({ type }: Props) => {
             update_behavior: values.update_behavior,
           });
         } else if (type === "custom") {
-          newPlan["status"] = "experimental";
+          // target_id = await targetCustomerFormVisible(true);
+
           newPlan["parent_plan_id"] = plan.plan_id;
-          newPlan["target_customer_id"] = "234";
+          newPlan["target_customer_id"] = "3242342";
           createPlanMutation.mutate(newPlan);
         }
       })
@@ -468,6 +480,13 @@ const EditPlan = ({ type }: Props) => {
           />
         )}
       </Form.Provider>
+      {/* {targetCustomerFormVisible && (
+        <TargetCustomerForm
+          visible={targetCustomerFormVisible}
+          onCancel={hideTargetCustomerForm}
+          onAddTargetCustomer={completeCustomPlan}
+        />
+      )} */}
     </PageLayout>
   );
 };

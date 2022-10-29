@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC } from "react";
+import React, { FC, useState } from "react";
 import { Button, Row, Col, Tabs } from "antd";
 import { Plan } from "../api/api";
 import { ArrowRightOutlined } from "@ant-design/icons";
@@ -19,20 +19,34 @@ import PlanCard from "../components/Plans/PlanCard/PlanCard";
 const ViewPlans: FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [yearlyPlans, setYearlyPlans] = useState<PlanType[]>([]);
+  const [monthlyPlans, setMonthlyPlans] = useState<PlanType[]>([]);
 
   const navigateCreatePlan = () => {
     navigate("/create-plan");
   };
 
-  // const {
-  //   data: plans,
-  //   isLoading,
-  //   isError,
-  // }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(["plan_list"], () =>
-  //   Plan.getPlans().then((res) => {
-  //     return res;
-  //   })
-  // );
+  const { isLoading, isError }: UseQueryResult<PlanType[]> = useQuery<
+    PlanType[]
+  >(
+    ["plan_list"],
+    () =>
+      Plan.getPlans().then((res) => {
+        return res;
+      }),
+    {
+      onSuccess: (data) => {
+        const yearlyPlans = data.filter(
+          (plan) => plan.plan_duration === "yearly"
+        );
+        const monthlyPlans = data.filter(
+          (plan) => plan.plan_duration === "monthly"
+        );
+        setYearlyPlans(yearlyPlans);
+        setMonthlyPlans(monthlyPlans);
+      },
+    }
+  );
 
   const features: FeatureType[] = [
     {
@@ -128,7 +142,7 @@ const ViewPlans: FC = () => {
         <Tabs defaultActiveKey="1">
           <Tabs.TabPane tab="Monthly" key="1">
             <Row gutter={[24, 32]}>
-              {plans?.map((item, key) => (
+              {monthlyPlans?.map((item, key) => (
                 <Col span={8} key={key}>
                   <PlanCard plan={item} />
                 </Col>
@@ -137,7 +151,7 @@ const ViewPlans: FC = () => {
           </Tabs.TabPane>
           <Tabs.TabPane tab="Yearly" key="2">
             <Row gutter={[24, 32]}>
-              {plans?.map((item, key) => (
+              {yearlyPlans?.map((item, key) => (
                 <Col span={8} key={key}>
                   <PlanCard plan={item} />
                 </Col>
