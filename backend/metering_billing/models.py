@@ -542,6 +542,21 @@ class PriceAdjustment(models.Model):
         max_digits=20, decimal_places=10, null=True, blank=True
     )
 
+    def __str__(self):
+        if self.price_adjustment_name != "":
+            return str(self.price_adjustment_name)
+        else:
+            return str(self.price_adjustment_amount) + " " + str(self.price_adjustment_type) 
+
+    def apply(self, amount):
+        if self.price_adjustment_type == PRICE_ADJUSTMENT_TYPE.PERCENTAGE:
+            return amount * (1 + self.price_adjustment_amount / 100)
+        elif self.price_adjustment_type == PRICE_ADJUSTMENT_TYPE.FIXED:
+            return amount + self.price_adjustment_amount
+        elif self.price_adjustment_type == PRICE_ADJUSTMENT_TYPE.PRICE_OVERRIDE:
+            return self.price_adjustment_amount
+
+
 class Plan(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_plans"

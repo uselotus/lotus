@@ -74,9 +74,18 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
                 subscription.customer.balance += abs(due)
 
         usage_dict["flat_revenue_due"] = Decimal(usage_dict["flat_revenue_due"])
-        usage_dict["total_revenue_due"] = (
+        usage_dict["subtotal_revenue_due"] = (
             usage_dict["flat_revenue_due"] + usage_dict["usage_revenue_due"]
         )
+        if billing_plan.price_adjustment:
+            usage_dict["price_adjustment"] = str(billing_plan.price_adjustment)
+            new_amount_due = billing_plan.price_adjustment.apply(
+                usage_dict["subtotal_revenue_due"]
+            )
+            usage_dict["total_revenue_due"] = new_amount_due
+        else:
+            usage_dict["total_revenue_due"] = usage_dict["subtotal_revenue_due"]
+
         amount = usage_dict["total_revenue_due"]
         usage_dict = make_all_decimals_floats(usage_dict)
         usage_dict = make_all_datetimes_dates(usage_dict)
