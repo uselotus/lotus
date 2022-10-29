@@ -5,7 +5,7 @@ module.exports = {
     extend: {
       fontFamily: {
         // add new font family
-        main: ["Inter", "sans-serif"],
+        main: ["Satoshi", "sans-serif"],
       },
     },
     colors: {

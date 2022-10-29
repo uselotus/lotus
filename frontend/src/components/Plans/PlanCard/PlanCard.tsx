@@ -1,74 +1,91 @@
 // @ts-ignore
-import React, {FC} from "react";
-import {
-    Menu,
-    Dropdown,
-    Button,
-    Typography,
-} from "antd";
-import {DeleteOutlined, MoreOutlined} from "@ant-design/icons";
-import {Link} from "react-router-dom";
-import {PlanType} from "../../../types/plan-type";
-import "./PlanCard.css"
+import React, { FC } from "react";
+import { Menu, Dropdown, Button, Typography } from "antd";
+import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
+import { PlanType, UpdatePlanType } from "../../../types/plan-type";
+import "./PlanCard.css";
+import { useMutation, useQueryClient } from "react-query";
+import { Plan } from "../../../api/api";
 
 interface PlanCardProps {
-    plan: PlanType;
-    deletePlan: (billing_plan_id: string) => void;
+  plan: PlanType;
 }
 
-const PlanCard: FC<PlanCardProps> = ({plan, deletePlan}) => {
+const PlanCard: FC<PlanCardProps> = ({ plan }) => {
+  const queryClient = useQueryClient();
 
-    const planMenu = <Menu onClick={value => console.log(value)}>
-            <Menu.Item key="1">
-                <div className="planMenuArchiveIcon">
-                    <div><DeleteOutlined/></div>
-                    <div className="archiveLabel">Archive</div>
-                </div>
-            </Menu.Item>
-        </Menu>;
+  const mutation = useMutation(
+    (plan_id: string) =>
+      Plan.updatePlan(plan_id, {
+        plan_name: plan.plan_name,
+        status: "archived",
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+      },
+    }
+  );
 
-    return (
-        <div className="planCard">
-            <div className="absolute right-3">
-                <Dropdown overlay={planMenu} trigger={["click"]}>
-                    <Button
-                        type="text"
-                        size="small"
-                        onClick={(e) => e.preventDefault()}
-                    >
-                        <MoreOutlined/>
-                    </Button>
-                </Dropdown>
-            </div>
-            <Typography.Title className="pt-4" level={2}>{plan.name}</Typography.Title>
+  const planMenu = (
+    <Menu>
+      <Menu.Item key="1" onClick={() => mutation.mutate(plan.plan_id)}>
+        <div className="planMenuArchiveIcon">
+          <div>
+            <DeleteOutlined />
+          </div>
+          <div className="archiveLabel">Archive</div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
 
-            <div>
-                <div className="flex activeSubscriptions">
-                    <div className="pr-1"> Total Active Subscriptions:</div>
-                    <div className="activeSubscriptionsCount"> {plan.active_subscriptions}</div>
-                </div>
+  return (
+    <div className="planCard">
+      <div className="absolute right-3">
+        <Dropdown overlay={planMenu} trigger={["click"]}>
+          <Button type="text" size="small" onClick={(e) => e.preventDefault()}>
+            <MoreOutlined />
+          </Button>
+        </Dropdown>
+      </div>
+      <Typography.Title className="pt-4" level={2}>
+        {plan.plan_name}
+      </Typography.Title>
 
-                <div className="planDetails">
-                    <div className="pr-1 planDetailsLabel">Plan Id:</div>
-                    <div className="planDetailsValue planIdOverflow"> {plan.billing_plan_id}</div>
-                </div>
+      <div>
+        <div className="flex activeSubscriptions">
+          <div className="pr-1"> Total Active Subscriptions:</div>
+          <div className="activeSubscriptionsCount">
+            {" "}
+            {plan.active_subscriptions}
+          </div>
+        </div>
 
-                <div className="planDetails">
-                    <div className="pr-1 planDetailsLabel">Active Versions:</div>
-                    <div className="planDetailsValue"> {plan.flat_rate}</div>
-                </div>
+        <div className="planDetails">
+          <div className="pr-1 planDetailsLabel">Plan Id:</div>
+          <div className="planDetailsValue planIdOverflow"> {plan.plan_id}</div>
+        </div>
 
-                <div className="planDetails">
-                    <div className="pr-1 planDetailsLabel"># of versions:</div>
-                    <div className="planDetailsValue">{plan.currency}</div>
-                </div>
+        <div className="planDetails">
+          <div className="pr-1 planDetailsLabel">Active Version:</div>
+          <div className="planDetailsValue">
+            {" "}
+            {plan.display_version?.version}
+          </div>
+        </div>
 
-                <div className="planDetails">
-                    <div className="pr-1 planDetailsLabel">Plan duration:</div>
-                    <div className="planDetailsValue"> {plan.currency}</div>
-                </div>
-            </div>
-        </div>);
+        <div className="planDetails">
+          <div className="pr-1 planDetailsLabel"># of versions:</div>
+          <div className="planDetailsValue">{plan.num_versions}</div>
+        </div>
 
-}
+        <div className="planDetails">
+          <div className="pr-1 planDetailsLabel">Plan duration:</div>
+          <div className="planDetailsValue"> {plan.plan_duration}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
 export default PlanCard;

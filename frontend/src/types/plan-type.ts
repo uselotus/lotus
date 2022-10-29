@@ -19,7 +19,7 @@ export interface PlanType {
   created_by: string;
   display_version?: PlanVersionType;
   num_versions: number;
-  active_subscription: number;
+  active_subscriptions: number;
 }
 
 export interface PlanDetailType extends Omit<PlanType, "display_version"> {
