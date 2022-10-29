@@ -28,7 +28,6 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CATEGORICAL_FILTER_OPERATORS,
-    DISCOUNT_TYPE,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
@@ -40,6 +39,7 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
+    PRICE_ADJUSTMENT_TYPE,
     PRODUCT_STATUS,
     PRORATION_GRANULARITY,
     REPLACE_IMMEDIATELY_TYPE,
@@ -537,7 +537,7 @@ class PriceAdjustment(models.Model):
     )
     price_adjustment_name = models.CharField(max_length=200, null=False)
     price_adjustment_description = models.CharField(max_length=200, blank=True, null=True)
-    price_adjustment_type = models.CharField(max_length=40, choices=DISCOUNT_TYPE.choices)
+    price_adjustment_type = models.CharField(max_length=40, choices=PRICE_ADJUSTMENT_TYPE.choices)
     price_adjustment_amount = models.DecimalField(
         max_digits=20, decimal_places=10, null=True, blank=True
     )

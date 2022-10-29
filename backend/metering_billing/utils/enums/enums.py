@@ -23,6 +23,10 @@ class METRIC_AGGREGATION(models.TextChoices):
     LATEST = ("latest", _("Latest"))
     AVERAGE = ("average", _("Average"))
 
+class PRICE_ADJUSTMENT_TYPE(models.TextChoices):
+    PERCENTAGE = ("percentage", _("Percentage"))
+    FIXED = ("fixed", _("Fixed"))
+    PRICE_OVERRIDE = ("price_override", _("Price Override"))
 
 class PAYMENT_PROVIDERS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
