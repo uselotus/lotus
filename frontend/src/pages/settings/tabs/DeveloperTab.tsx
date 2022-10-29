@@ -65,7 +65,7 @@ export const DeveloperTab = () => {
   if (isLoading) return <div>Loading...</div>;
   return (
     <div>
-      <div className="mt-10 ">
+      <div>
         <Typography.Title level={2}>API Keys</Typography.Title>
         <Typography.Paragraph>
           Getting a new API key will revoke your existing key!

@@ -8,19 +8,17 @@
 @supports (font-variation-settings: normal) {
   html {
     font-size: 16px;
-    font-family: "Inter var", sans-serif;
+    font-family: "Satoshi", serif;
   }
 }
 
 h1 {
-  font-family: "Inter";
+  font-family: "Satoshi";
   font-style: normal;
   font-weight: 700;
   font-size: 32px;
   line-height: 100%;
   /* identical to box height, or 32px */
-
-  letter-spacing: -0.06em;
 
   /* Black */
 
@@ -28,7 +26,7 @@ h1 {
 }
 
 h2 {
-  font-family: "Inter";
+  font-family: "Satoshi";
   font-style: normal;
   font-weight: 700;
   font-size: 26px;
@@ -37,7 +35,7 @@ h2 {
 }
 
 h3 {
-  font-family: "Inter";
+  font-family: "Satoshi";
   font-style: normal;
   font-weight: 500;
   font-size: 16px;
@@ -56,7 +54,7 @@ a {
 }
 
 .ant-modal-title {
-  font-family: "Inter";
+  font-family: "Satoshi";
   font-style: normal;
   font-weight: 700;
   font-size: 26px;

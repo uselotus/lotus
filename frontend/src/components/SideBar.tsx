@@ -94,11 +94,13 @@ const SideBar: FC = () => {
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
+          style={{ background: "#fafafa" }}
         />
       </div>
 
       <div className="mb-5">
         <Menu
+          style={{ background: "#fafafa" }}
           items={[
             {
               type: "divider",
