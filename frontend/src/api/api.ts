@@ -26,7 +26,7 @@ import {
   SubscriptionType,
   CancelSubscriptionType,
   ChangeSubscriptionPlanType,
-  TurnSubscriptionAutoRenewOff,
+  TurnSubscriptionAutoRenewOffType,
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
@@ -90,29 +90,29 @@ export const Customer = {
     subscription_id: string,
     post: UpdateSubscriptionType
   ): Promise<UpdateSubscriptionType> =>
-    requests.patch(`api/subscriptions/${subscription_id}`, post),
+    requests.patch(`api/subscriptions/${subscription_id}/`, post),
   cancelSubscription: (
     subscription_id: string,
     post: CancelSubscriptionType
   ): Promise<CancelSubscriptionType> =>
-    requests.patch(`api/subscriptions/${subscription_id}`, post),
+    requests.patch(`api/subscriptions/${subscription_id}/`, post),
   changeSubscriptionPlan: (
     subscription_id: string,
     post: ChangeSubscriptionPlanType
   ): Promise<ChangeSubscriptionPlanType> =>
-    requests.patch(`api/subscriptions/${subscription_id}`, post),
+    requests.patch(`api/subscriptions/${subscription_id}/`, post),
   turnSubscriptionAutoRenewOff: (
     subscription_id: string,
-    post: TurnSubscriptionAutoRenewOff
-  ): Promise<TurnSubscriptionAutoRenewOff> =>
-    requests.patch(`api/subscriptions/${subscription_id}`, post),
+    post: TurnSubscriptionAutoRenewOffType
+  ): Promise<TurnSubscriptionAutoRenewOffType> =>
+    requests.patch(`api/subscriptions/${subscription_id}/`, post),
 };
 
 export const Plan = {
   //get methods
   getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
   getPlan: (plan_id: string): Promise<PlanDetailType> =>
-    requests.get(`api/plans/${plan_id}`),
+    requests.get(`api/plans/${plan_id}/`),
   //create plan
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
     requests.post("api/plans/", post),
@@ -123,7 +123,7 @@ export const Plan = {
   updatePlan: (
     plan_id: string,
     post: UpdatePlanType
-  ): Promise<UpdatePlanType> => requests.patch(`api/plans/${plan_id}`, post),
+  ): Promise<UpdatePlanType> => requests.patch(`api/plans/${plan_id}/`, post),
   //update plan versions methods
   updatePlanVersionDescription: (
     version_id: string,

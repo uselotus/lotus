@@ -51,6 +51,7 @@ export interface ChangeSubscriptionPlanType
     | "end_current_subscription_dont_bill";
 }
 
-export interface TurnSubscriptionAutoRenewOff extends UpdateSubscriptionType {
+export interface TurnSubscriptionAutoRenewOffType
+  extends UpdateSubscriptionType {
   auto_renew: false;
 }

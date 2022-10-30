@@ -33,6 +33,7 @@ interface CustomerSubscription {
   billing_plan_name: string;
   auto_renew: boolean;
   end_date: string;
+  plan_version: number;
 }
 
 export interface CustomerDetailSubscription extends CustomerSubscription {

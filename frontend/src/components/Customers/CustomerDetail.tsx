@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { Form, Tabs, Modal, Select } from "antd";
 import { PlanType } from "../../types/plan-type";
-import { CreateSubscriptionType } from "../../types/subscription-type";
+import {
+  CreateSubscriptionType,
+  TurnSubscriptionAutoRenewOffType,
+  ChangeSubscriptionPlanType,
+  CancelSubscriptionType,
+} from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "../../api/api";
-import SubscriptionView, {
-  cancelSubscriptionType,
-} from "./CustomerSubscriptionView";
+import SubscriptionView from "./CustomerSubscriptionView";
 import {
   useMutation,
   useQueryClient,
@@ -33,7 +36,6 @@ function CustomerDetail(props: {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
 
-  const [currentTab, setCurrentTab] = useState("subscriptions");
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
     CustomerDetailSubscription[]
   >([]);
@@ -51,8 +53,8 @@ function CustomerDetail(props: {
       }
     );
 
-  const mutation = useMutation(
-    (post: CreateSubscriptionType) => Customer.subscribe(post),
+  const createSubscriptionMutation = useMutation(
+    (post: CreateSubscriptionType) => Customer.createSubscription(post),
     {
       onSettled: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -61,8 +63,9 @@ function CustomerDetail(props: {
     }
   );
 
-  const cancelMutation = useMutation(
-    (post: cancelSubscriptionType) => Customer.cancelSubscription(post),
+  const cancelSubscriptionMutation = useMutation(
+    (obj: { subscription_id: string; post: CancelSubscriptionType }) =>
+      Customer.cancelSubscription(obj.subscription_id, obj.post),
     {
       onSettled: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -71,30 +74,62 @@ function CustomerDetail(props: {
     }
   );
 
-  const cancelSubscription = (props: {
-    subscription_id: string;
-    bill_now: boolean;
-    revoke_access: boolean;
-  }) => {
-    cancelMutation.mutate(props);
+  const changeSubscriptionPlanMutation = useMutation(
+    (obj: { subscription_id: string; post: ChangeSubscriptionPlanType }) =>
+      Customer.changeSubscriptionPlan(obj.subscription_id, obj.post),
+    {
+      onSettled: () => {
+        queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+      },
+    }
+  );
+
+  const turnSubscriptionAutoRenewOffMutation = useMutation(
+    (obj: {
+      subscription_id: string;
+      post: TurnSubscriptionAutoRenewOffType;
+    }) => Customer.turnSubscriptionAutoRenewOff(obj.subscription_id, obj.post),
+    {
+      onSettled: () => {
+        queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+      },
+    }
+  );
+
+  const cancelSubscription = (
+    subscription_id: string,
+    props: CancelSubscriptionType
+  ) => {
+    cancelSubscriptionMutation.mutate({
+      subscription_id: subscription_id,
+      post: props,
+    });
   };
 
-  const addSubscriptions = (subscription: any) => {
-    setCustomerSubscriptions([...customerSubscriptions, subscription.name]);
-    console.log(subscription, "subscription");
-    const today = dayjs().format("YYYY-MM-DD");
-
-    const newSubscription: CreateSubscriptionType = {
-      customer_id: props.customer_id,
-      version_id: subscription.version_id,
-      start_date: today,
-    };
-
-    mutation.mutate(newSubscription);
+  const changeSubscriptionPlan = (
+    subscription_id: string,
+    props: ChangeSubscriptionPlanType
+  ) => {
+    changeSubscriptionPlanMutation.mutate({
+      subscription_id: subscription_id,
+      post: props,
+    });
   };
 
-  const onClick = (e) => {
-    setCurrentTab(e.key);
+  const turnSubscriptionAutoRenewOff = (
+    subscription_id: string,
+    props: TurnSubscriptionAutoRenewOffType
+  ) => {
+    turnSubscriptionAutoRenewOffMutation.mutate({
+      subscription_id: subscription_id,
+      post: props,
+    });
+  };
+
+  const createSubscription = (props: CreateSubscriptionType) => {
+    createSubscriptionMutation.mutate(props);
   };
 
   return (
@@ -115,18 +150,14 @@ function CustomerDetail(props: {
         <div className="flex justify-between flex-col max-w">
           <div className="text-left	">
             <h2 className="text-2xl font-main mb-3">{data?.customer_name}</h2>
-            <p>Id: {props.customer_id}</p>
+            <p>ID: {props.customer_id}</p>
           </div>
-          <div className="flex items-center flex-col">
-            <Tabs
-              onChange={onClick}
-              defaultActiveKey="subscriptions"
-              centered
-              activeKey={currentTab}
-              className="w-full"
-            >
-              {" "}
-              <Tabs.TabPane disabled={false} tab="Detail" key="detail">
+          <div
+            className="flex items-center flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Tabs defaultActiveKey="subscriptions" centered className="w-full">
+              <Tabs.TabPane tab="Detail" key="detail">
                 {data !== undefined ? (
                   <div className="grid grid-cols-2">
                     <div className=" space-y-3">
@@ -144,11 +175,13 @@ function CustomerDetail(props: {
                 {data !== undefined ? (
                   <div key={props.customer_id}>
                     <SubscriptionView
-                      key={props.customer_id}
+                      customer_id={props.customer_id}
                       subscriptions={data?.subscriptions}
                       plans={props.plans}
-                      onChange={addSubscriptions}
+                      onCreate={createSubscription}
                       onCancel={cancelSubscription}
+                      onPlanChange={changeSubscriptionPlan}
+                      onAutoRenewOff={turnSubscriptionAutoRenewOff}
                     />
                   </div>
                 ) : null}

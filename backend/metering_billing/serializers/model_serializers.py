@@ -98,10 +98,11 @@ class FilterActiveSubscriptionSerializer(serializers.ListSerializer):
 class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
-        fields = ("billing_plan_name", "end_date", "auto_renew")
+        fields = ("billing_plan_name", "plan_version", "end_date", "auto_renew")
         list_serializer_class = FilterActiveSubscriptionSerializer
 
-    billing_plan_name = serializers.CharField(source="billing_plan.name")
+    billing_plan_name = serializers.CharField(source="billing_plan.plan.plan_name")
+    plan_version = serializers.CharField(source="billing_plan.version")
 
 
 class CustomerSummarySerializer(serializers.ModelSerializer):
@@ -117,21 +118,16 @@ class CustomerSummarySerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source="name")
 
 
-class SubscriptionCustomerDetailSerializer(serializers.ModelSerializer):
-    class Meta:
+class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer):
+    class Meta(SubscriptionCustomerSummarySerializer.Meta):
         model = Subscription
-        fields = (
-            "billing_plan_name",
+        fields = SubscriptionCustomerSummarySerializer.Meta.fields + (
             "subscription_id",
             "start_date",
             "end_date",
             "auto_renew",
             "status",
         )
-        list_serializer_class = FilterActiveSubscriptionSerializer
-
-    billing_plan_name = serializers.CharField(source="billing_plan.name")
-
 
 
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
@@ -808,8 +804,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("customer", "billing_plan")
 
-    start_date = serializers.DateField()
-    end_date = serializers.DateField(required=False)
+    start_date = serializers.DateTimeField()
+    end_date = serializers.DateTimeField(required=False)
     auto_renew = serializers.BooleanField(required=False)
     is_new = serializers.BooleanField(required=False)
     subscription_id = serializers.CharField(required=False)
@@ -834,22 +830,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     billing_plan = PlanVersionSerializer(read_only=True)
 
-    def to_internal_value(self, data):
-        repr = super().to_internal_value(data)
-        today_date = now_utc().date()
-        if repr.get("start_date") == today_date:
-            repr["start_date"] = now_utc()
-        repr["start_date"] = date_as_min_dt(repr["start_date"])
-        if repr.get("end_date"):
-            repr["end_date"] = date_as_max_dt(repr["end_date"])
-        return repr
-
-    def to_representation(self, instance):
-        instance.start_date = instance.start_date.date()
-        instance.end_date = instance.end_date.date()
-        rep = super().to_representation(instance)
-        return rep
-
     # def get_fields(self, *args, **kwargs):
     #     fields = super().get_fields(*args, **kwargs)
     #     cqs = fields["customer_id"].queryset
@@ -872,6 +852,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             Q(start_date__range=(sd, ed)) | Q(end_date__range=(sd, ed)),
             customer__customer_id=data["customer"].customer_id,
             billing_plan__version_id=data["billing_plan"].version_id,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         ).count()
         if num_existing_subs > 0:
             raise serializers.ValidationError(
@@ -944,7 +925,6 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.auto_renew = validated_data.get("auto_renew", instance.auto_renew)
         new_bp = validated_data.get("billing_plan")
-        print("we here", validated_data)
         if (
             validated_data.get("replace_immediately_type")
             == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN

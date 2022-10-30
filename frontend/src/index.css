@@ -7,12 +7,11 @@
 @supports (font-variation-settings: normal) {
   html {
     font-size: 16px;
-    font-family: "Satoshi", serif;
+    font-family: "Satoshi", sans-serif;
   }
 }
 
 h1 {
-  font-family: "Satoshi";
   font-style: normal;
   font-weight: 700;
   font-size: 32px;
@@ -25,7 +24,6 @@ h1 {
 }
 
 h2 {
-  font-family: "Satoshi";
   font-style: normal;
   font-weight: 700;
   font-size: 26px;
@@ -34,7 +32,6 @@ h2 {
 }
 
 h3 {
-  font-family: "Satoshi";
   font-style: normal;
   font-weight: 500;
   font-size: 16px;
@@ -46,7 +43,7 @@ body {
   padding: 0;
   margin: 0;
   font-weight: 500;
-  font-family: "Satoshi", serif;
+  font-family: "Satoshi", sans-serif;
 }
 
 a {
@@ -55,7 +52,6 @@ a {
 }
 
 .ant-modal-title {
-  font-family: "Satoshi";
   font-style: normal;
   font-weight: 700;
   font-size: 26px;

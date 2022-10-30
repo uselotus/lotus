@@ -57,7 +57,7 @@ const CreateCustomerForm = (props: {
         </Form.Item>
         <Form.Item
           name="customer_id"
-          label="Customer Id"
+          label="Customer ID"
           rules={[
             {
               required: true,

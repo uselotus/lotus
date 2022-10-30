@@ -190,7 +190,7 @@ class Customer(models.Model):
         for subscription in customer_subscriptions:
             sub_dict = subscription.get_usage_and_revenue()
             del sub_dict["components"]
-            sub_dict["billing_plan_name"] = subscription.billing_plan.name
+            sub_dict["billing_plan_name"] = subscription.billing_plan.plan.plan_name
             subscription_usages["subscriptions"].append(sub_dict)
 
         return subscription_usages
@@ -618,7 +618,7 @@ class Plan(models.Model):
         versions_count = versions.annotate(
             active_subscriptions=Count(
                 "bp_subscription",
-                filter=Q(status=SUBSCRIPTION_STATUS.ACTIVE),
+                filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
                 output_field=models.IntegerField(),
             )
         )

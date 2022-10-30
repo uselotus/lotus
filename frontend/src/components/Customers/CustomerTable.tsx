@@ -26,7 +26,7 @@ import CustomerDetail from "./CustomerDetail";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
-    title: "Customer Id",
+    title: "Customer ID",
     width: 120,
     dataIndex: "customer_id",
     align: "left",
@@ -44,7 +44,10 @@ const columns: ProColumns<CustomerTableItem>[] = [
     render: (_, record) => (
       <div>
         {record.subscriptions.map((sub) => (
-          <Tag color={"default"}>{sub.billing_plan_name}</Tag>
+          <div>
+            <Tag color={"default"}>{sub.billing_plan_name}</Tag>
+            <Tag color={"default"}>v{sub.plan_version}</Tag>{" "}
+          </div>
         ))}
       </div>
     ),

@@ -67,7 +67,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
         </div>
 
         <div className="planDetails">
-          <div className="pr-1 planDetailsLabel">Plan Id:</div>
+          <div className="pr-1 planDetailsLabel">Plan ID:</div>
           <div className="planDetailsValue planIdOverflow"> {plan.plan_id}</div>
         </div>
 

@@ -10,31 +10,47 @@ import {
   Menu,
   Statistic,
 } from "antd";
+import {
+  CreateSubscriptionType,
+  TurnSubscriptionAutoRenewOffType,
+  ChangeSubscriptionPlanType,
+  CancelSubscriptionType,
+} from "../../types/subscription-type";
+//import the Customer type from the api.ts file
+import { Customer, Plan } from "../../api/api";
+import dayjs from "dayjs";
 
 import { CustomerDetailSubscription } from "../../types/customer-type";
 
 interface Props {
+  customer_id: string;
   subscriptions: CustomerDetailSubscription[];
   plans: PlanType[] | undefined;
-  onChange: (subscription: any) => void;
-  onCancel: (subscription: cancelSubscriptionType) => void;
+  onAutoRenewOff: (
+    subscription_id: string,
+    props: TurnSubscriptionAutoRenewOffType
+  ) => void;
+  onCancel: (subscription_id: string, props: CancelSubscriptionType) => void;
+  onPlanChange: (
+    subscription_id: string,
+    props: ChangeSubscriptionPlanType
+  ) => void;
+  onCreate: (props: CreateSubscriptionType) => void;
 }
 interface SubscriptionType {
   billing_plan_name: string;
   subscription_id: string;
   auto_renew: boolean;
 }
-export interface cancelSubscriptionType {
-  subscription_id: string;
-  bill_now: boolean;
-  revoke_access: boolean;
-}
 
 const SubscriptionView: FC<Props> = ({
+  customer_id,
   subscriptions,
   plans,
-  onChange,
   onCancel,
+  onAutoRenewOff,
+  onPlanChange,
+  onCreate,
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<string>();
   const [form] = Form.useForm();
@@ -47,44 +63,44 @@ const SubscriptionView: FC<Props> = ({
     setSelectedPlan(plan_id);
   };
 
-  const cancelSubscription = (props: cancelSubscriptionType) => {
-    onCancel(props);
-  };
-
-  const cancelAcessBillNowSubscription = () => {
-    cancelSubscription({
-      subscription_id: subscriptions[0].subscription_id,
-      bill_now: true,
-      revoke_access: true,
+  const cancelAndBill = () => {
+    onCancel(subscriptions[0].subscription_id, {
+      status: "ended",
+      replace_immediately_type: "end_current_subscription_and_bill",
     });
   };
 
-  const cancelDontBillSubscription = () => {
-    cancelSubscription({
-      subscription_id: subscriptions[0].subscription_id,
-      bill_now: false,
-      revoke_access: true,
+  const cancelAndDontBill = () => {
+    onCancel(subscriptions[0].subscription_id, {
+      status: "ended",
+      replace_immediately_type: "end_current_subscription_dont_bill",
     });
   };
-  const cancelDontRenewSubscriptions = () => {
-    cancelSubscription({
-      subscription_id: subscriptions[0].subscription_id,
-      bill_now: false,
-      revoke_access: false,
+
+  const turnAutoRenewOff = () => {
+    onAutoRenewOff(subscriptions[0].subscription_id, {
+      auto_renew: false,
     });
   };
 
   useEffect(() => {
     if (plans !== undefined) {
       const planMap = plans.reduce((acc, plan) => {
-        acc[plan.version_id] = plan;
+        acc[plan.plan_id] = plan;
         return acc;
       }, {} as { [key: number]: PlanType });
       setIDtoPlan(planMap);
-      const newplanList: { label: string; value: string }[] = plans.map(
-        (plan) => {
-          return { label: plan.name, value: plan.version_id };
-        }
+      const newplanList: { label: string; value: string }[] = plans.reduce(
+        (acc, plan) => {
+          if (
+            plan.target_customer === null ||
+            plan.target_customer?.customer_id === customer_id
+          ) {
+            acc.push({ label: plan.plan_name, value: plan.plan_id });
+          }
+          return acc;
+        },
+        [] as { label: string; value: string }[]
       );
       setPlanList(newplanList);
     }
@@ -95,27 +111,21 @@ const SubscriptionView: FC<Props> = ({
       items={[
         {
           label: (
-            <span onClick={() => cancelAcessBillNowSubscription()}>
-              Cancel and Bill Now
-            </span>
+            <span onClick={() => cancelAndBill()}>Cancel and Bill Now</span>
           ),
           key: "0",
         },
         {
           label: (
-            <span onClick={() => cancelDontBillSubscription()}>
+            <span onClick={() => cancelAndDontBill()}>
               Cancel Without Billing
             </span>
           ),
           key: "1",
         },
         {
-          label: (
-            <span onClick={() => cancelDontRenewSubscriptions()}>
-              Cancel Renewal
-            </span>
-          ),
-          key: "1",
+          label: <span onClick={() => turnAutoRenewOff()}>Cancel Renewal</span>,
+          key: "2",
         },
       ]}
     />
@@ -123,7 +133,14 @@ const SubscriptionView: FC<Props> = ({
 
   const handleSubmit = () => {
     if (selectedPlan) {
-      onChange(idtoPlan[selectedPlan]);
+      let plan = idtoPlan[selectedPlan];
+      let props: CreateSubscriptionType = {
+        customer_id: customer_id,
+        plan_id: plan.plan_id,
+        start_date: new Date().toISOString(),
+        status: "active",
+      };
+      onCreate(props);
     }
     form.resetFields();
   };
@@ -149,7 +166,7 @@ const SubscriptionView: FC<Props> = ({
             <Form.Item>
               <Button htmlType="submit">
                 {" "}
-                Attatch Plan and Start Subscription
+                Attach Plan and Start Subscription
               </Button>
             </Form.Item>
           </Form>
@@ -171,16 +188,22 @@ const SubscriptionView: FC<Props> = ({
                   </h2>
                   <div className="flex flex-col justify-center space-y-3">
                     <p>
-                      <b>Subscription Id:</b> {subscription.subscription_id}
+                      <b>Subscription ID:</b> {subscription.subscription_id}
                     </p>
                     <p>
-                      <b>Start Date:</b> {subscription.start_date}
+                      <b>Start Date:</b>{" "}
+                      {dayjs(subscription.start_date).format(
+                        "YYYY/MM/DD HH:mm"
+                      )}{" "}
+                      UTC
                     </p>
                     <p>
-                      <b>End Date:</b> {subscription.end_date}
+                      <b>End Date:</b>{" "}
+                      {dayjs(subscription.end_date).format("YYYY/MM/DD HH:mm")}{" "}
+                      UTC
                     </p>
                     <p>
-                      <b>Renews:</b> {subscription.auto_renew ? "yes" : "no"}
+                      <b>Renews:</b> {subscription.auto_renew ? "Yes" : "No"}
                     </p>
                   </div>
                 </div>
