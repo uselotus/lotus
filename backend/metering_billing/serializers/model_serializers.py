@@ -338,6 +338,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     )
     cost_due_currency = serializers.CharField(source="cost_due.currency")
 
+
 class CustomerDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
@@ -364,6 +365,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_total_revenue_due(self, obj) -> float:
         total_revenue_due = float(self.context.get("total_revenue_due"))
         return total_revenue_due
+
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -446,6 +448,7 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
 class PriceAdjustmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PriceAdjustment
@@ -455,8 +458,8 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
             "price_adjustment_type",
             "price_adjustment_amount",
         )
-    
-    price_adjustment_name = serializers.CharField(default = "")
+
+    price_adjustment_name = serializers.CharField(default="")
 
 
 class PlanVersionSerializer(serializers.ModelSerializer):

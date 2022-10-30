@@ -140,8 +140,10 @@ class TestGenerateInvoice:
         ).count()
 
         assert new_invoices_len == prev_invoices_len + 1
-    
-    def test_generate_invoice_with_price_adjustments(self, draft_invoice_test_common_setup):
+
+    def test_generate_invoice_with_price_adjustments(
+        self, draft_invoice_test_common_setup
+    ):
         setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
 
         active_subscriptions = Subscription.objects.filter(
@@ -171,7 +173,7 @@ class TestGenerateInvoice:
 
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data[0]["cost_due"]
-        assert before_cost*Decimal("0.9") == after_cost
+        assert before_cost * Decimal("0.9") == after_cost
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
@@ -187,7 +189,7 @@ class TestGenerateInvoice:
 
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data[0]["cost_due"]
-        assert before_cost-Decimal("10") == after_cost
+        assert before_cost - Decimal("10") == after_cost
 
         override_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
@@ -204,5 +206,3 @@ class TestGenerateInvoice:
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data[0]["cost_due"]
         assert Decimal("20") == after_cost
-
-

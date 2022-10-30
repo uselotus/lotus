@@ -531,22 +531,32 @@ class PlanVersion(models.Model):
         cnt = self.bp_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).count()
         return cnt
 
+
 class PriceAdjustment(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_price_adjustments"
     )
     price_adjustment_name = models.CharField(max_length=200, null=False)
-    price_adjustment_description = models.CharField(max_length=200, blank=True, null=True)
-    price_adjustment_type = models.CharField(max_length=40, choices=PRICE_ADJUSTMENT_TYPE.choices)
+    price_adjustment_description = models.CharField(
+        max_length=200, blank=True, null=True
+    )
+    price_adjustment_type = models.CharField(
+        max_length=40, choices=PRICE_ADJUSTMENT_TYPE.choices
+    )
     price_adjustment_amount = models.DecimalField(
-        max_digits=20, decimal_places=10,
+        max_digits=20,
+        decimal_places=10,
     )
 
     def __str__(self):
         if self.price_adjustment_name != "":
             return str(self.price_adjustment_name)
         else:
-            return str(self.price_adjustment_amount) + " " + str(self.price_adjustment_type) 
+            return (
+                str(self.price_adjustment_amount)
+                + " "
+                + str(self.price_adjustment_type)
+            )
 
     def apply(self, amount):
         if self.price_adjustment_type == PRICE_ADJUSTMENT_TYPE.PERCENTAGE:
