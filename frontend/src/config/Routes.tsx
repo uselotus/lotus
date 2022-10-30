@@ -44,16 +44,20 @@ const AppRoutes: FC = () => {
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/" element={<Dashboard />} />
-            <Route path="/plans" element={<ViewPlans />} />
+            <Route path="/plans" element={<ViewPlans />}>
+              {/* <Route path=":planId" element={<PlanDisplay>} /> */}
+            </Route>
             <Route path="create-plan" element={<CreatePlan />} />
-            <Route path="update-plan" element={<EditPlan type="edit" />} />
+            <Route
+              path="create-version"
+              element={<EditPlan type="version" />}
+            />
+            <Route path="create-custom" element={<EditPlan type="custom" />} />{" "}
             <Route
               path="backtest-plan"
               element={<EditPlan type="backtest" />}
             />
-            <Route path="/plan">
-              {/* <Route path=":planId" element={<PlanDisplay>} /> */}
-            </Route>
+            <Route path="/plan"></Route>
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />

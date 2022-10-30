@@ -6,13 +6,14 @@ import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
 import { Plan } from "../../../api/api";
-
+import { useNavigate } from "react-router-dom";
 interface PlanCardProps {
   plan: PlanType;
 }
 
 const PlanCard: FC<PlanCardProps> = ({ plan }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const mutation = useMutation(
     (plan_id: string) =>
@@ -40,9 +41,13 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
     </Menu>
   );
 
+  const gotoPlanDetail = () => {
+    navigate("/plans/" + plan.plan_id);
+  };
+
   return (
-    <div className="planCard">
-      <div className="absolute right-3">
+    <div className="planCard" onClick={gotoPlanDetail}>
+      <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
         <Dropdown overlay={planMenu} trigger={["click"]}>
           <Button type="text" size="small" onClick={(e) => e.preventDefault()}>
             <MoreOutlined />
@@ -55,10 +60,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
 
       <div>
         <div className="flex activeSubscriptions">
-          <div className="pr-1"> Total Active Subscriptions:</div>
-          <div className="activeSubscriptionsCount">
+          <div className="pr-1">
             {" "}
-            {plan.active_subscriptions}
+            Total Active Subscriptions: {plan.active_subscriptions}
           </div>
         </div>
 

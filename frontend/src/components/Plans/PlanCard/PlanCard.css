@@ -1,61 +1,66 @@
 .planCard {
-    height: 300px;
-    width: 370px;
-    border-radius: 6px;
-    position: relative;
-    background: white;
-    padding: 20px;
-    box-shadow: 0px 159px 63px rgba(174, 173, 173, 0.01), 0px 89px 54px rgba(174, 173, 173, 0.02), 0px 40px 40px rgba(174, 173, 173, 0.03), 0px 10px 22px rgba(174, 173, 173, 0.03), 0px 0px 0px rgba(174, 173, 173, 0.03)
+  height: 300px;
+  width: 370px;
+  border-radius: 6px;
+  position: relative;
+  background: white;
+  padding: 20px;
+
+  box-shadow: 0px 159px 63px rgba(174, 173, 173, 0.01),
+    0px 89px 54px rgba(174, 173, 173, 0.02),
+    0px 40px 40px rgba(174, 173, 173, 0.03),
+    0px 10px 22px rgba(174, 173, 173, 0.03),
+    0px 0px 0px rgba(174, 173, 173, 0.03);
+}
+
+.planCard:hover {
+  box-shadow: 0 0 10px rgba(33, 33, 33, 0.2);
 }
 
 .activeSubscriptions {
-    font-family: 'Satoshi', serif;
-    font-size: 20px;
-    color: #C3986B;
-    letter-spacing: -0.01em;
-    display: flex;
-    align-items: center;
-}
-
-.activeSubscriptionsCount {
-    font-size: 24px;
+  font-family: "Satoshi", serif;
+  font-size: 20px;
+  color: #c3986b;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
 }
 
 .planDetailsLabel {
-    font-weight: 500;
-    line-height: 24px;
-    letter-spacing: -0.01em;
-    color: #9B9BA1;
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  color: #9b9ba1;
 }
 
 .planDetailsValue {
-    font-weight: 600;
-    color: #1D1D1F;
+  font-weight: 600;
+  color: #1d1d1f;
 }
 
 .planDetails {
-    font-size: 14px;
-    padding: 8px 0;
-    display: flex;
-    align-items: center;
+  font-size: 14px;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
 }
 
 .planIdOverflow {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 80%;
 }
 
 .planMenuArchiveIcon {
-    color: #C20022;
-    align-items: center;
-    justify-content: center;
-    display: flex;
-    padding: 5px;
+  color: #c20022;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  padding: 5px;
 }
 
 .archiveLabel {
-    margin-left: 5px;
-    margin-top: 7px;
+  margin-left: 5px;
+  margin-top: 7px;
 }

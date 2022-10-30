@@ -1,11 +1,5 @@
 import React, { FC, useState, useEffect, useRef } from "react";
-import {
-  DownOutlined,
-  EllipsisOutlined,
-  QuestionCircleOutlined,
-  DeleteOutlined,
-  DeleteFilled,
-} from "@ant-design/icons";
+
 import {
   ProTable,
   ProFormInstance,
@@ -91,25 +85,21 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     Metrics.deleteMetric(id).then((res) => {});
   };
 
-  const navigateCreateCustomer = () => {
-    navigate("/customers/create");
-  };
   return (
-    <React.Fragment>
-      <ProTable<MetricType>
-        columns={columns}
-        dataSource={metricArray}
-        rowKey="customer_id"
-        formRef={formRef}
-        search={false}
-        pagination={{
-          showTotal: (total, range) => (
-            <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-          ),
-        }}
-        options={false}
-      />
-    </React.Fragment>
+    <ProTable<MetricType>
+      columns={columns}
+      dataSource={metricArray}
+      rowKey="customer_id"
+      formRef={formRef}
+      search={false}
+      className="w-full"
+      pagination={{
+        showTotal: (total, range) => (
+          <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
+        ),
+      }}
+      options={false}
+    />
   );
 };
 
