@@ -1,5 +1,6 @@
 import itertools
 from datetime import timedelta
+from decimal import Decimal
 
 import pytest
 from django.urls import reverse
@@ -9,10 +10,11 @@ from metering_billing.models import (
     Invoice,
     PlanComponent,
     PlanVersion,
+    PriceAdjustment,
     Subscription,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import INVOICE_STATUS
+from metering_billing.utils.enums import INVOICE_STATUS, PRICE_ADJUSTMENT_TYPE
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -138,3 +140,69 @@ class TestGenerateInvoice:
         ).count()
 
         assert new_invoices_len == prev_invoices_len + 1
+    
+    def test_generate_invoice_with_price_adjustments(self, draft_invoice_test_common_setup):
+        setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
+
+        active_subscriptions = Subscription.objects.filter(
+            status="active",
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+        )
+        assert len(active_subscriptions) == 1
+
+        payload = {"customer_id": setup_dict["customer"].customer_id}
+        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        before_cost = response.data[0]["cost_due"]
+
+        pct_price_adjustment = PriceAdjustment.objects.create(
+            organization=setup_dict["org"],
+            price_adjustment_name=r"10% discount",
+            price_adjustment_description=r"10% discount for being a valued customer",
+            price_adjustment_type=PRICE_ADJUSTMENT_TYPE.PERCENTAGE,
+            price_adjustment_amount=-10,
+        )
+        setup_dict["billing_plan"].price_adjustment = pct_price_adjustment
+        setup_dict["billing_plan"].save()
+
+        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        after_cost = response.data[0]["cost_due"]
+        assert before_cost*Decimal("0.9") == after_cost
+
+        fixed_price_adjustment = PriceAdjustment.objects.create(
+            organization=setup_dict["org"],
+            price_adjustment_name=r"$10 discount",
+            price_adjustment_description=r"$10 discount for being a valued customer",
+            price_adjustment_type=PRICE_ADJUSTMENT_TYPE.FIXED,
+            price_adjustment_amount=-10,
+        )
+        setup_dict["billing_plan"].price_adjustment = fixed_price_adjustment
+        setup_dict["billing_plan"].save()
+
+        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        after_cost = response.data[0]["cost_due"]
+        assert before_cost-Decimal("10") == after_cost
+
+        override_price_adjustment = PriceAdjustment.objects.create(
+            organization=setup_dict["org"],
+            price_adjustment_name=r"$20 negoatiated price",
+            price_adjustment_description=r"$20 price negotiated with sales team",
+            price_adjustment_type=PRICE_ADJUSTMENT_TYPE.PRICE_OVERRIDE,
+            price_adjustment_amount=20,
+        )
+        setup_dict["billing_plan"].price_adjustment = override_price_adjustment
+        setup_dict["billing_plan"].save()
+
+        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        after_cost = response.data[0]["cost_due"]
+        assert Decimal("20") == after_cost
+
+

@@ -1940,30 +1940,43 @@ components:
     InitialPlanVersion:
       type: object
       properties:
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         version_id:
           type: string
           readOnly: true
         version:
           type: integer
           readOnly: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        created_by:
-          type: string
-          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
+        usage_billing_frequency:
+          $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
         flat_rate:
           type: number
           format: double
@@ -1971,20 +1984,9 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
+        created_by:
+          type: string
           readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        usage_billing_frequency:
-          $ref: '#/components/schemas/UsageBillingFrequencyEnum'
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
       required:
       - active_subscriptions
       - created_by
@@ -2347,13 +2349,37 @@ components:
     PlanDetail:
       type: object
       properties:
-        parent_plan:
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        product_id:
+          type: string
+          nullable: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        target_customer:
           allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
+          - $ref: '#/components/schemas/CustomerNameAndID'
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+        num_versions:
+          type: integer
           readOnly: true
         created_on:
           type: string
           format: date-time
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
         plan_name:
           type: string
@@ -2361,30 +2387,6 @@ components:
         created_by:
           type: string
           readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        product_id:
-          type: string
-          nullable: true
-        num_versions:
-          type: integer
-          readOnly: true
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
-          readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
       required:
       - active_subscriptions
       - created_by
@@ -2470,6 +2472,8 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         make_active:
           type: boolean
           writeOnly: true
@@ -2537,6 +2541,34 @@ components:
       required:
       - results
       - status
+    PriceAdjustment:
+      type: object
+      properties:
+        price_adjustment_name:
+          type: string
+          default: ''
+        price_adjustment_description:
+          type: string
+          nullable: true
+          maxLength: 200
+        price_adjustment_type:
+          $ref: '#/components/schemas/PriceAdjustmentTypeEnum'
+        price_adjustment_amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - price_adjustment_amount
+      - price_adjustment_type
+    PriceAdjustmentTypeEnum:
+      enum:
+      - percentage
+      - fixed
+      - price_override
+      type: string
     Product:
       type: object
       properties:
