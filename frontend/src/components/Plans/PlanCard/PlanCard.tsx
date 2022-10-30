@@ -42,6 +42,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
   );
 
   const gotoPlanDetail = () => {
+    console.log(plan.plan_id);
     navigate("/plans/" + plan.plan_id);
   };
 

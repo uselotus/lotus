@@ -45,7 +45,7 @@ const AppRoutes: FC = () => {
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/" element={<Dashboard />} />
-            <Route path="/plans" element={<ViewPlans />}/>
+            <Route path="/plans" element={<ViewPlans />} />
             <Route path="/plans/:planId" element={<PlanDetails />} />
             <Route path="create-plan" element={<CreatePlan />} />
             <Route

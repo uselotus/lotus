@@ -162,7 +162,7 @@ const ViewPlans: FC = () => {
           <Tabs.TabPane tab="Monthly" key="1">
             <div className=" flex flex-col space-y-6 ">
               <Row gutter={[24, 32]}>
-                {plans?.map((item, key) => (
+                {monthlyPlans?.map((item, key) => (
                   <Col span={8} key={key}>
                     <PlanCard plan={item} />
                   </Col>
