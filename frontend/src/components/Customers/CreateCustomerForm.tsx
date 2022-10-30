@@ -10,22 +10,16 @@ export interface CreateCustomerState {
 }
 
 const CreateCustomerForm = (props: {
-  state: CreateCustomerState;
   visible: boolean;
   onSave: (state: CreateCustomerState) => void;
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
 
-  form.setFieldsValue({
-    name: props.state.name,
-    customer_id: props.state.customer_id,
-  });
-
   return (
     <Modal
       visible={props.visible}
-      title={props.state.title}
+      title="Create a Customer"
       okText="Create"
       okType="default"
       cancelText="Cancel"

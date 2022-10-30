@@ -1,62 +1,61 @@
 .separator {
-    border-bottom: 1px solid rgba(29, 29, 31, 0.1);
-    height: 1px;
-    width: 100%;
+  border-bottom: 1px solid rgba(29, 29, 31, 0.1);
+  height: 1px;
+  width: 100%;
 }
 
 .planComponent {
-    height: 135px;
-    width: 330px;
+  height: 135px;
+  width: 330px;
 }
 
 .planComponentLabel {
-    font-size: 16px;
-    font-weight: 500;
-    line-height: 24px;
-    color: #9B9BA1;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  color: #9b9ba1;
 }
 
 .planComponentCost {
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 28px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
 }
 
 .planComponentMetricName {
-    font-weight: 700;
-    font-size: 16px;
-    line-height: 24px;
-    color: #000000;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 24px;
+  color: #000000;
 }
 
 .planFeatureDesc {
-    font-weight: 500;
-    font-size: 13px;
-    line-height: 18px;
-    color: #68686F;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 18px;
+  color: #68686f;
 }
 
 .infoLabel {
-    font-size: 16px;
-    line-height: 24px;
-    color: #9B9BA1;
+  font-size: 16px;
+  line-height: 24px;
+  color: #9b9ba1;
 }
 
 .infoValue {
-    font-weight: 700;
-    font-size: 14px;
-    line-height: 22px;
-    color: #1D1D1F;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 22px;
+  color: #1d1d1f;
 }
 
 .planCost {
-    font-weight: 900;
-    font-size: 40px;
-    line-height: 48px;
-    color: #1D1D1F;
+  font-weight: 900;
+  font-size: 36px;
+  line-height: 48px;
+  color: #1d1d1f;
 }
 
 .w-30 {
-    width: 30%;
+  width: 30%;
 }
-

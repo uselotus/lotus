@@ -44,11 +44,7 @@ function App() {
   const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
 
   if (isLoading) {
-    return (
-      <div className="grid h-screen place-items-center">
-        <LoadingSpinner />
-      </div>
-    );
+    return <LoadingSpinner />;
   } else {
     if (isAuthenticated) {
       return (

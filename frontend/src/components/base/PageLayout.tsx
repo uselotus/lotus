@@ -6,8 +6,8 @@ export const PageLayout = ({ children, ...props }: PageHeaderProps) => {
   return (
     <div>
       <PageHeader title={<h1 className=" text-xl">Welcome back, Test</h1>} />
-      <div className="mx-10 mt-5">
-        <div className="flex items-center justify-between">
+      <div className="mx-10 mt-10">
+        <div className="flex items-center justify-between mb-6">
           {props.title ? (
             <h1 className="text-3xl font-main">{props.title}</h1>
           ) : (

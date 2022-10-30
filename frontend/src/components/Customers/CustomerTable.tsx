@@ -3,12 +3,10 @@ import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
 import {
   CustomerPlus,
-  CustomerSummary,
   CustomerTableItem,
   CustomerTotal,
   CustomerDetailSubscription,
 } from "../../types/customer-type";
-import { CustomerType } from "../../types/customer-type";
 import { Button, Tag } from "antd";
 import LoadingSpinner from "../LoadingSpinner";
 import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
@@ -82,7 +80,6 @@ const defaultCustomerState: CreateCustomerState = {
 };
 
 const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
-  const [visible, setVisible] = useState(false);
   const [customerVisible, setCustomerVisible] = useState(false);
   const [customerState, setCustomerState] =
     useState<CreateCustomerState>(defaultCustomerState);
@@ -122,20 +119,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       })
   );
 
-  const mutation = useMutation(
-    (post: CustomerType) => Customer.createCustomer(post),
-    {
-      onSuccess: () => {
-        setVisible(false);
-        queryClient.invalidateQueries(["customer_list"]);
-        queryClient.invalidateQueries(["customer_totals"]);
-        toast.success("Customer created successfully", {
-          position: toast.POSITION.TOP_CENTER,
-        });
-      },
-    }
-  );
-
   const subscribe = useMutation((post: CreateSubscriptionType) =>
     Customer.subscribe(post)
   );
@@ -158,23 +141,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       total_revenue_due: record.total_revenue_due,
     });
   };
-  const openCustomerModal = () => {
-    setVisible(true);
-    setCustomerState(defaultCustomerState);
-  };
 
-  const onCancel = () => {
-    setVisible(false);
-  };
-
-  const onSave = (state: CreateCustomerState) => {
-    const customerInstance: CustomerType = {
-      customer_id: state.customer_id,
-      customer_name: state.name,
-    };
-    mutation.mutate(customerInstance);
-    onCancel();
-  };
   return (
     <div>
       <ProTable<CustomerTableItem>
@@ -196,22 +163,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
           pageSize: 10,
         }}
         options={false}
-        toolBarRender={() => [
-          <Button
-            type="primary"
-            className="ml-auto bg-info"
-            onClick={openCustomerModal}
-          >
-            Create Customer
-          </Button>,
-        ]}
       />
-      <CreateCustomerForm
-        state={customerState}
-        visible={visible}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
+
       <CustomerDetail
         key={customerState.customer_id}
         visible={customerVisible}

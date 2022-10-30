@@ -212,7 +212,6 @@ const CreatePlan = () => {
         <Button
           key="create"
           onClick={() => form.submit()}
-          // className="bg-black text-white justify-self-end"
           size="large"
           type="primary"
         >
@@ -341,11 +340,11 @@ const CreatePlan = () => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                <div className="absolute inset-x-0 bottom-0">
+                <div className="absolute inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
-                      label="Components Billing Frequency"
+                      label="Usage Billing Frequency"
                       name="usage_billing_frequency"
                       shouldUpdate={(prevValues, currentValues) =>
                         prevValues.plan_duration !== currentValues.plan_duration
