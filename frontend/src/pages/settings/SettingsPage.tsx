@@ -8,7 +8,7 @@ import TeamTab from "./tabs/TeamTab";
 const SettingsPage: FC = () => {
   return (
     <PageLayout title="Settings">
-      <Tabs>
+      <Tabs size="large">
         {/* <Tabs.TabPane tab="Profile" key="profile">
           Profile
         </Tabs.TabPane> */}
