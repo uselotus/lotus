@@ -384,7 +384,7 @@ class PlanViewSet(viewsets.ModelViewSet):
                         ],
                     ).annotate(
                         active_subscriptions=Count(
-                            "bp_subscriptions",
+                            "bp_subscription",
                             filter=Q(
                                 bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE
                             ),
