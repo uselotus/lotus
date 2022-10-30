@@ -833,18 +833,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     billing_plan = PlanVersionSerializer(read_only=True)
 
-    # def get_fields(self, *args, **kwargs):
-    #     fields = super().get_fields(*args, **kwargs)
-    #     cqs = fields["customer_id"].queryset
-    #     fields["customer_id"].queryset = cqs.filter(
-    #         organization=self.context["organization"]
-    #     )
-    #     bpqs = fields["version_id"].queryset
-    #     fields["version_id"].queryset = bpqs.filter(
-    #         organization=self.context["organization"]
-    #     )
-    #     return fields
-
     def validate(self, data):
         # extract the plan version from the plan
         data["billing_plan"] = data["billing_plan"]["plan"].display_version
@@ -933,7 +921,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
         ):
             instance.switch_subscription_bp(new_bp)
-        else:
+        elif validated_data.get("status"):
             instance.end_subscription_now(
                 bill=validated_data.get("replace_immediately_type")
                 == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL

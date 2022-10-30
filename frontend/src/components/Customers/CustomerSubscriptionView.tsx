@@ -9,7 +9,9 @@ import {
   Dropdown,
   Menu,
   Statistic,
+  Cascader,
 } from "antd";
+import type { DefaultOptionType } from "antd/es/cascader";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -37,10 +39,27 @@ interface Props {
   ) => void;
   onCreate: (props: CreateSubscriptionType) => void;
 }
-interface SubscriptionType {
-  billing_plan_name: string;
-  subscription_id: string;
-  auto_renew: boolean;
+
+const filter = (inputValue: string, path: DefaultOptionType[]) =>
+  (path[0].label as string).toLowerCase().indexOf(inputValue.toLowerCase()) >
+  -1;
+
+const displayRender = (labels: string[]) => labels[labels.length - 1];
+
+interface PlanOption {
+  value: string;
+  label: string;
+  children?: ChangeOption[];
+  disabled?: boolean;
+}
+
+interface ChangeOption {
+  value:
+    | "change_subscription_plan"
+    | "end_current_subscription_and_bill"
+    | "end_current_subscription_dont_bill";
+  label: string;
+  disabled?: boolean;
 }
 
 const SubscriptionView: FC<Props> = ({
@@ -131,7 +150,55 @@ const SubscriptionView: FC<Props> = ({
     />
   );
 
-  const handleSubmit = () => {
+  const plansWithSwitchOptions = planList?.reduce((acc, plan) => {
+    if (plan.label !== subscriptions[0]?.billing_plan_name) {
+      acc.push({
+        label: plan.label,
+        value: plan.value,
+        children: [
+          {
+            label:
+              "End current subscription and bill + start new subscription with selected plan",
+            value: "end_current_subscription_and_bill",
+          },
+          {
+            label:
+              "End current subscription and don't bill + start new subscription with selected plan",
+            value: "end_current_subscription_dont_bill",
+          },
+          {
+            label: "Switch plan mid-subscription",
+            value: "change_subscription_plan",
+          },
+        ],
+      } as PlanOption);
+    }
+    return acc;
+  }, [] as PlanOption[]);
+
+  const onChange = (value: string[], selectedOptions: PlanOption[]) => {
+    onPlanChange(subscriptions[0].subscription_id, {
+      plan_id: selectedOptions[0].value,
+      replace_immediately_type: value[1] as
+        | "change_subscription_plan"
+        | "end_current_subscription_and_bill"
+        | "end_current_subscription_dont_bill",
+    });
+  };
+
+  const switchMenu = (
+    <Cascader
+      options={plansWithSwitchOptions}
+      onChange={onChange}
+      expandTrigger="hover"
+      placeholder="Please select"
+      showSearch={{ filter }}
+      displayRender={displayRender}
+      changeOnSelect
+    />
+  );
+
+  const handleAttachPlanSubmit = () => {
     if (selectedPlan) {
       let plan = idtoPlan[selectedPlan];
       let props: CreateSubscriptionType = {
@@ -151,7 +218,11 @@ const SubscriptionView: FC<Props> = ({
         <h3 className="text-xl font-main m-3">No Subscription</h3>
         <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
-          <Form onFinish={handleSubmit} form={form} name="create_subscription">
+          <Form
+            onFinish={handleAttachPlanSubmit}
+            form={form}
+            name="create_subscription"
+          >
             <Form.Item name="plan">
               <Select
                 showSearch
@@ -212,7 +283,7 @@ const SubscriptionView: FC<Props> = ({
           ))}
         </List>
         <div className="grid grid-cols-2 w-7/12">
-          <Dropdown overlay={cancelMenu} disabled={true} trigger={["click"]}>
+          <Dropdown overlay={switchMenu} trigger={["click"]}>
             <Button>Switch Plan</Button>
           </Dropdown>
           <Dropdown overlay={cancelMenu} trigger={["click"]}>

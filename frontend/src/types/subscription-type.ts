@@ -52,6 +52,6 @@ export interface ChangeSubscriptionPlanType
 }
 
 export interface TurnSubscriptionAutoRenewOffType
-  extends UpdateSubscriptionType {
+  extends Omit<UpdateSubscriptionType, "plan_id" | "status"> {
   auto_renew: false;
 }
