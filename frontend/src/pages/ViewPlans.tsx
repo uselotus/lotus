@@ -20,6 +20,8 @@ const ViewPlans: FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [yearlyPlans, setYearlyPlans] = useState<PlanType[]>([]);
+  const [yearlyCustom, setYearlyCustom] = useState<PlanType[]>([]);
+  const [monthlyCustom, setMonthlyCustom] = useState<PlanType[]>([]);
   const [monthlyPlans, setMonthlyPlans] = useState<PlanType[]>([]);
 
   const navigateCreatePlan = () => {
@@ -36,14 +38,23 @@ const ViewPlans: FC = () => {
       }),
     {
       onSuccess: (data) => {
-        const yearlyPlans = data.filter(
-          (plan) => plan.plan_duration === "yearly"
+        const yearlystandard = data.filter(
+          (plan) => plan.plan_duration === "yearly" && !plan.parent_plan
         );
-        const monthlyPlans = data.filter(
-          (plan) => plan.plan_duration === "monthly"
+        const yearlycustom = data.filter(
+          (plan) => plan.plan_duration === "yearly" && plan.parent_plan
         );
-        setYearlyPlans(yearlyPlans);
-        setMonthlyPlans(monthlyPlans);
+        const monthlystandard = data.filter(
+          (plan) => plan.plan_duration === "monthly" && !plan.parent_plan
+        );
+        const monthlycustom = data.filter(
+          (plan) => plan.plan_duration === "monthly" && plan.parent_plan
+        );
+
+        setYearlyPlans(yearlystandard);
+        setMonthlyPlans(monthlystandard);
+        setYearlyCustom(yearlycustom);
+        setMonthlyCustom(monthlycustom);
       },
     }
   );
@@ -121,7 +132,7 @@ const ViewPlans: FC = () => {
   // };
 
   return (
-    <div className="mt-40px ml-40px">
+    <div>
       <PageLayout
         title="Plans"
         extra={[
@@ -143,6 +154,14 @@ const ViewPlans: FC = () => {
           <Tabs.TabPane tab="Monthly" key="1">
             <Row gutter={[24, 32]}>
               {monthlyPlans?.map((item, key) => (
+                <Col span={8} key={key}>
+                  <PlanCard plan={item} />
+                </Col>
+              ))}
+            </Row>
+            <h3>Custom Plans</h3>
+            <Row gutter={[24, 32]}>
+              {monthlyCustom?.map((item, key) => (
                 <Col span={8} key={key}>
                   <PlanCard plan={item} />
                 </Col>

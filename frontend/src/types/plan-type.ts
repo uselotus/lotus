@@ -34,6 +34,12 @@ export interface CreatePlanVersionType {
   flat_rate: number;
   usage_billing_frequency: string;
   flat_fee_billing_type: string;
+  price_adjustment?: PriceAdjustment;
+}
+
+export interface PriceAdjustment {
+  price_adjustment_type: "percentage" | "fixed" | "fixed_override";
+  price_adjustment_amount: number;
 }
 
 export interface PlanVersionType extends CreatePlanVersionType {

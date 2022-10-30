@@ -107,7 +107,12 @@ const Login: FC = () => {
                 <Form.Item>
                   <Button htmlType="submit">Login</Button>
                 </Form.Item>
-                <Link to="/reset-password">Forgot Password?</Link>
+                <Link
+                  to="/reset-password"
+                  className=" text-darkgold hover:text-black"
+                >
+                  Forgot Password?
+                </Link>
               </Form>
             </Card>
             <div>
