@@ -5,7 +5,6 @@ import { Plan } from "../api/api";
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { Component, PlanType } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import {
   useQuery,
   UseQueryResult,
@@ -99,7 +98,7 @@ const ViewPlans: FC = () => {
       description: "plan 1 description",
       flat_rate: 20,
       currency: "string",
-      id: 1,
+      plan_id: 1,
       pay_in_advance: true,
       time_created: "string",
       billing_plan_id: "51c957f5-d53a-4a71-ab04325744f17ec",
@@ -113,7 +112,7 @@ const ViewPlans: FC = () => {
       description: "plan 1 description",
       flat_rate: 20,
       currency: "string",
-      id: 1,
+      plan_id: 2,
       pay_in_advance: true,
       time_created: "string",
       billing_plan_id: "51c957f5-d53a-4a71-ab04325744f17ec",
@@ -127,7 +126,7 @@ const ViewPlans: FC = () => {
       description: "plan 1 description",
       flat_rate: 20,
       currency: "string",
-      id: 1,
+      plan_id: 3,
       pay_in_advance: true,
       time_created: "string",
       billing_plan_id: "51c957f5-d53a-4a71-ab04325744f17ec",
@@ -163,7 +162,7 @@ const ViewPlans: FC = () => {
           <Tabs.TabPane tab="Monthly" key="1">
             <div className=" flex flex-col space-y-6 ">
               <Row gutter={[24, 32]}>
-                {monthlyPlans?.map((item, key) => (
+                {plans?.map((item, key) => (
                   <Col span={8} key={key}>
                     <PlanCard plan={item} />
                   </Col>

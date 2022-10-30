@@ -46,7 +46,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
   };
 
   return (
-    <div className="planCard" onClick={gotoPlanDetail}>
+    <div className="planCard pointer" onClick={gotoPlanDetail}>
       <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
         <Dropdown overlay={planMenu} trigger={["click"]}>
           <Button type="text" size="small" onClick={(e) => e.preventDefault()}>
@@ -61,7 +61,6 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
       <div>
         <div className="flex activeSubscriptions">
           <div className="pr-1">
-            {" "}
             Total Active Subscriptions: {plan.active_subscriptions}
           </div>
         </div>
