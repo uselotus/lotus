@@ -816,13 +816,13 @@ class Subscription(models.Model):
                 plan_end_date,
             )
             sub_dict["components"].append((plan_component.pk, plan_component_summary))
-        sub_dict["usage_revenue_due"] = Decimal(0)
+        sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
             for date, date_dict in component_dict.items():
-                sub_dict["usage_revenue_due"] += date_dict["revenue"]
-        sub_dict["flat_revenue_due"] = plan.flat_rate.amount
-        sub_dict["total_revenue_due"] = (
-            sub_dict["flat_revenue_due"] + sub_dict["usage_revenue_due"]
+                sub_dict["usage_amount_due"] += date_dict["revenue"]
+        sub_dict["flat_amount_due"] = plan.flat_rate.amount
+        sub_dict["total_amount_due"] = (
+            sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]
         )
         return sub_dict
 
@@ -850,9 +850,13 @@ class Subscription(models.Model):
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             new_sub_daily_cost_dict = self.prorated_flat_costs_dict
             prorated_cost = sum(d["amount"] for d in new_sub_daily_cost_dict.values())
-            due = prorated_cost - self.customer.balance.amount - self.flat_fee_already_billed
+            due = (
+                prorated_cost
+                + self.customer.balance.amount
+                - self.flat_fee_already_billed
+            )
             if due < 0:
-                self.customer.balance = abs(due)
+                self.customer.balance = due
             elif due > 0:
                 generate_invoice(self, draft=False, issue_date=now_utc(), amount=due)
                 self.flat_fee_already_billed += due

@@ -55,14 +55,14 @@ const columns: ProColumns<CustomerTableItem>[] = [
     width: 120,
     render: (_, record) => (
       <div>
-        {record.total_revenue_due !== undefined ? (
-          <p>${record.total_revenue_due.toFixed(2)}</p>
+        {record.total_amount_due !== undefined ? (
+          <p>${record.total_amount_due.toFixed(2)}</p>
         ) : (
           <p>${0.0}</p>
         )}
       </div>
     ),
-    dataIndex: "total_revenue_due",
+    dataIndex: "total_amount_due",
   },
 ];
 
@@ -76,7 +76,7 @@ const defaultCustomerState: CreateCustomerState = {
   name: "",
   customer_id: "",
   subscriptions: [],
-  total_revenue_due: 0,
+  total_amount_due: 0,
 };
 
 const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
@@ -101,7 +101,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
         for (let i = 0; i < customerArray.length; i++) {
           const entry: CustomerTableItem = {
             ...customerArray[i],
-            total_revenue_due: 0.0,
+            total_amount_due: 0.0,
           };
           dataInstance.push(entry);
         }
@@ -134,7 +134,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       name: record.customer_name,
       customer_id: record.customer_id,
       subscriptions: record.subscriptions,
-      total_revenue_due: record.total_revenue_due,
+      total_amount_due: record.total_amount_due,
     });
   };
 

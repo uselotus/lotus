@@ -133,13 +133,13 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("customer_id", "total_revenue_due")
+        fields = ("customer_id", "total_amount_due")
 
-    total_revenue_due = serializers.SerializerMethodField()
+    total_amount_due = serializers.SerializerMethodField()
 
-    def get_total_revenue_due(self, obj) -> float:
-        total_revenue_due = float(self.context.get("total_revenue_due"))
-        return total_revenue_due
+    def get_total_amount_due(self, obj) -> float:
+        total_amount_due = float(self.context.get("total_amount_due"))
+        return total_amount_due
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -349,23 +349,23 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "balance",
             "customer_name",
             "invoices",
-            "total_revenue_due",
+            "total_amount_due",
             "subscriptions",
         )
 
     customer_name = serializers.CharField(source="name")
     subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
     invoices = serializers.SerializerMethodField()
-    total_revenue_due = serializers.SerializerMethodField()
+    total_amount_due = serializers.SerializerMethodField()
 
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
         return timeline
 
-    def get_total_revenue_due(self, obj) -> float:
-        total_revenue_due = float(self.context.get("total_revenue_due"))
-        return total_revenue_due
+    def get_total_amount_due(self, obj) -> float:
+        total_amount_due = float(self.context.get("total_amount_due"))
+        return total_amount_due
 
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):

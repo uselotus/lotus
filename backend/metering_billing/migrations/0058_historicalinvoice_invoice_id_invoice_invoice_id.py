@@ -7,18 +7,28 @@ import metering_billing.utils.utils
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0057_alter_priceadjustment_price_adjustment_amount'),
+        ("metering_billing", "0057_alter_priceadjustment_price_adjustment_amount"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='historicalinvoice',
-            name='invoice_id',
-            field=models.CharField(blank=True, db_index=True, default=metering_billing.utils.utils.invoice_uuid, max_length=100),
+            model_name="historicalinvoice",
+            name="invoice_id",
+            field=models.CharField(
+                blank=True,
+                db_index=True,
+                default=metering_billing.utils.utils.invoice_uuid,
+                max_length=100,
+            ),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='invoice_id',
-            field=models.CharField(blank=True, default=metering_billing.utils.utils.invoice_uuid, max_length=100, unique=True),
+            model_name="invoice",
+            name="invoice_id",
+            field=models.CharField(
+                blank=True,
+                default=metering_billing.utils.utils.invoice_uuid,
+                max_length=100,
+                unique=True,
+            ),
         ),
     ]
