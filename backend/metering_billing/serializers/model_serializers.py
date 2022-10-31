@@ -783,7 +783,12 @@ class PlanDetailSerializer(PlanSerializer):
             )
         )
 
-    versions = PlanVersionSerializer(many=True)
+    versions = serializers.SerializerMethodField()
+
+    def get_versions(self, obj) -> PlanVersionSerializer(many=True):
+        return PlanVersionSerializer(obj.versions.all(), many=True).data
+
+
 
 
 ## SUBSCRIPTION
@@ -918,7 +923,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
         ):
             instance.switch_subscription_bp(new_bp)
-        elif validated_data.get("status"):
+        elif validated_data.get("status") or new_bp:
             instance.end_subscription_now(
                 bill=validated_data.get("replace_immediately_type")
                 == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
