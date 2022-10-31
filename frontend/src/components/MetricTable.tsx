@@ -59,26 +59,6 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       dataIndex: "property_name",
       align: "left",
     },
-    // {
-    //   title: "Actions",
-    //   align: "right",
-    //   valueType: "option",
-    //   render: (_, record) => [
-    //     <a
-    //       key="delete"
-    //       onClick={() => {
-    //         const tableDataSource = formRef.current?.getFieldValue(
-    //           "table"
-    //         ) as MetricType[];
-    //         formRef.current?.setFieldsValue({
-    //           table: tableDataSource.filter((item) => item.id !== record?.id),
-    //         });
-    //       }}
-    //     >
-    //       <DeleteOutlined />
-    //     </a>,
-    //   ],
-    // },
   ];
 
   const handleDelete = (id: number) => {
@@ -89,6 +69,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     <ProTable<MetricType>
       columns={columns}
       dataSource={metricArray}
+      toolBarRender={false}
       rowKey="customer_id"
       formRef={formRef}
       search={false}

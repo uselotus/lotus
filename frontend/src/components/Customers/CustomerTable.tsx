@@ -140,7 +140,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
 
   return (
     <div>
-      <ProTable<CustomerTableItem>
+      <ProTable
         columns={columns}
         dataSource={tableData}
         rowKey="customer_id"
@@ -151,6 +151,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
             }, // click row
           };
         }}
+        toolBarRender={false}
         search={false}
         pagination={{
           showTotal: (total, range) => (
