@@ -69,7 +69,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             className={[
               "flex items-center justify-center versionChip mx-1",
               isSelectedVersion(version.version_id) &&
-                "border-2 border-black border-opacity-100",
+                "border border-black border-opacity-100",
               version.status === "active"
                 ? "bg-[#c3986b] text-white opacity-100"
                 : "bg-[#EAEAEB] text-black",
@@ -78,7 +78,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             v{version.version}
           </div>
         ))}
-        <Link type="text" to="/create-version" className="mx-4">
+        <Link
+          type="text"
+          to={"/create-version/" + selectedVersion.plan_id}
+          className="mx-4"
+        >
           <div className="flex items-center justify-center hover:bg-background">
             <div className="addVersionButton">
               <PlusOutlined />

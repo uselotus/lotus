@@ -10,10 +10,14 @@ import { Plan } from "../../../api/api";
 import { PlanDetailType } from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
 
+type PlanDetailParams = {
+  planId: string;
+};
+
 const PlanDetails: FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { planId } = useParams();
+  const { planId } = useParams<PlanDetailParams>();
   //@todo Have to add the code to load details using the Plan Id
 
   const {
@@ -27,7 +31,7 @@ const PlanDetails: FC = () => {
   );
 
   const navigateCreateCustomPlan = () => {
-    navigate("/create-custom", { state: { plan: plan } });
+    navigate("/create-custom/" + planId);
   };
 
   const versions = [
