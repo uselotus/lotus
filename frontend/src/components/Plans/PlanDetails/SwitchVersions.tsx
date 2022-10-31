@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useState } from "react";
+import React, { FC, useState, version } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate, Link } from "react-router-dom";
@@ -10,22 +10,56 @@ import StateTabs from "./StateTabs";
 import { Dropdown, Menu, Button } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-const menu = (
-  <Menu>
-    <Menu.Item key="1">Action 1</Menu.Item>
-  </Menu>
-);
+import { DeleteOutlined } from "@ant-design/icons";
+import { Plan } from "../../../api/api";
+import { useMutation, useQueryClient } from "react-query";
 
 interface SwitchVersionProps {
   versions: PlanVersionType[];
   className: string;
 }
 
+function capitalize(word: string) {
+  return word[0].toUpperCase() + word.slice(1).toLowerCase();
+}
+
 const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
   const [selectedVersion, setSelectedVersion] = useState(versions[0]);
+  const queryClient = useQueryClient();
 
   const isSelectedVersion = (other_id: string) =>
     selectedVersion.version_id === other_id;
+
+  const archivemutation = useMutation(
+    (version_id: string) =>
+      Plan.archivePlanVersion(version_id, { status: "archived" }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+      },
+    }
+  );
+
+  const menu = (
+    <Menu>
+      <Menu.Item
+        key="1"
+        onClick={() => archivemutation.mutate(selectedVersion.version_id)}
+        disabled={
+          selectedVersion.status === "active" ||
+          selectedVersion.status === "grandfathered"
+        }
+      >
+        <div className="planMenuArchiveIcon">
+          <div>
+            <DeleteOutlined />
+          </div>
+          <div className="archiveLabel">Archive</div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
     <div>
       <div className={className}>
@@ -34,12 +68,14 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             onClick={() => setSelectedVersion(version)}
             className={[
               "flex items-center justify-center versionChip mx-1",
-              isSelectedVersion(version.version_id)
-                ? "bg-[#c3986b] text-white"
+              isSelectedVersion(version.version_id) &&
+                "border-2 border-black border-opacity-100",
+              version.status === "active"
+                ? "bg-[#c3986b] text-white opacity-100"
                 : "bg-[#EAEAEB] text-black",
             ].join(" ")}
           >
-            Version {version.version}
+            v{version.version}
           </div>
         ))}
         <Link type="text" to="/create-version" className="mx-4">
@@ -56,8 +92,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           <div className="text-2xl font-main px-4 flex items-center">
             <span className="pr-6">Plan Information</span>
             <StateTabs
-              activeTab={"Inactive"}
-              tabs={["Inactive", "Grandfathered", "Active"]}
+              activeTab={capitalize(selectedVersion.status)}
+              tabs={["Active", "Grandfathered", "Inactive"]}
             />
           </div>
 
@@ -138,8 +174,20 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
 
         <div className="separator pt-4" />
 
-        <div className="px-4 py-4 flex items-center justify-between">
-          <div className="planDetails planComponentMetricName">
+        <div className="px-4 py-4 flex items-center justify-start ">
+          <div className="pb-5 pt-3 font-main font-bold text-[20px]">
+            Price Adjustments:
+          </div>
+          <div className="mx-3">
+            {selectedVersion.price_adjustment?.price_adjustment_type} :{" "}
+          </div>
+          <div>
+            {selectedVersion.price_adjustment?.price_adjustment_amount} :{" "}
+          </div>
+        </div>
+
+        {/* <div className="px-4 py-4 flex items-center justify-between">
+          <div className="pb-5 pt-3 font-main font-bold text-[20px]">
             Localisation:
           </div>
           <div>
@@ -147,7 +195,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
               Use Lotus Recommended
             </Button>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

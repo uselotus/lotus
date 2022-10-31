@@ -119,10 +119,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       })
   );
 
-  const subscribe = useMutation((post: CreateSubscriptionType) =>
-    Customer.subscribe(post)
-  );
-
   const onDetailCancel = () => {
     setCustomerVisible(false);
   };

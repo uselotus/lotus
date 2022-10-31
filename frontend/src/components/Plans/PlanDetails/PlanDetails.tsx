@@ -3,7 +3,6 @@ import React, { FC, Fragment } from "react";
 import "./PlanDetails.css";
 import { PageLayout } from "../../base/PageLayout";
 import { Button, Col, Dropdown, Menu, Row, Switch, Tabs } from "antd";
-import { MoreOutlined } from "@ant-design/icons";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import SwitchVersions from "./SwitchVersions";
 import { useQuery } from "react-query";

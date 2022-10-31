@@ -71,7 +71,7 @@ export const DeveloperTab = () => {
           Getting a new API key will revoke your existing key!
         </Typography.Paragraph>
         <Popconfirm
-          title="Are you sure to revoke your existing key?"
+          title="Are you sure to want to revoke your existing key?"
           onConfirm={getKey}
           okText="Yes"
         >
@@ -79,7 +79,7 @@ export const DeveloperTab = () => {
         </Popconfirm>
       </div>
       <Divider />
-      <div className="mt-10 flex flex-row">
+      {/* <div className="mt-10 flex flex-row">
         <Typography.Title level={2}>Webhook URLs</Typography.Title>
       </div>
       <div>
@@ -121,7 +121,7 @@ export const DeveloperTab = () => {
             </td>
           </tr>
         </table>
-      </div>
+      </div> */}
       <Modal
         visible={visible}
         title="New API Key"

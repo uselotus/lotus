@@ -22,6 +22,8 @@ const ViewPlans: FC = () => {
   const [yearlyCustom, setYearlyCustom] = useState<PlanType[]>([]);
   const [monthlyCustom, setMonthlyCustom] = useState<PlanType[]>([]);
   const [monthlyPlans, setMonthlyPlans] = useState<PlanType[]>([]);
+  const [quarterlyPlans, setQuarterlyPlans] = useState<PlanType[]>([]);
+  const [quarterlyCustom, setQuarterlyCustom] = useState<PlanType[]>([]);
 
   const navigateCreatePlan = () => {
     navigate("/create-plan");
@@ -40,11 +42,19 @@ const ViewPlans: FC = () => {
     const monthlycustom = data.filter(
       (plan) => plan.plan_duration === "monthly" && plan.parent_plan
     );
+    const quarterlystandard = data.filter(
+      (plan) => plan.plan_duration === "quarterly" && !plan.parent_plan
+    );
+    const quarterlycustom = data.filter(
+      (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
+    );
 
     setYearlyPlans(yearlystandard);
     setMonthlyPlans(monthlystandard);
     setYearlyCustom(yearlycustom);
     setMonthlyCustom(monthlycustom);
+    setQuarterlyPlans(quarterlystandard);
+    setQuarterlyCustom(quarterlycustom);
   };
 
   const { data, isLoading, isError }: UseQueryResult<PlanType[]> = useQuery<
@@ -59,6 +69,7 @@ const ViewPlans: FC = () => {
       onSuccess: (data) => {
         setPlans(data);
       },
+      refetchOnMount: "always",
     }
   );
 
@@ -67,78 +78,6 @@ const ViewPlans: FC = () => {
       setPlans(data);
     }
   }, []);
-
-  const features: FeatureType[] = [
-    {
-      feature_name: "string",
-      feature_description: "string",
-    },
-  ];
-
-  const components: Component[] = [
-    {
-      free_metric_units: "string",
-      cost_per_batch: "12",
-      metric_units_per_batch: "12",
-      max_metric_units: "12",
-      id: 12,
-      billable_metric: {
-        event_name: "12",
-        property_name: "12",
-        aggregation_type: "12",
-        metric_type: "12",
-      },
-    },
-  ];
-
-  const plans: PlanType[] = [
-    {
-      plan_name: "40K Words",
-      plan_duration: "monthly",
-      description: "plan 1 description",
-      flat_rate: 20,
-      currency: "string",
-      plan_id: 1,
-      pay_in_advance: true,
-      time_created: "string",
-      billing_plan_id: "51c957f5-d53a-4a71-ab04325744f17ec",
-      active_subscriptions: 20,
-      features: features,
-      components: components,
-    },
-    {
-      plan_name: "100K Words",
-      plan_duration: "plan 1 interval",
-      description: "plan 1 description",
-      flat_rate: 20,
-      currency: "string",
-      plan_id: 2,
-      pay_in_advance: true,
-      time_created: "string",
-      billing_plan_id: "51c957f5-d53a-4a71-ab04325744f17ec",
-      active_subscriptions: 20,
-      features: features,
-      components: components,
-    },
-    {
-      plan_name: "Enterprise",
-      interval: "plan 1 interval",
-      description: "plan 1 description",
-      flat_rate: 20,
-      currency: "string",
-      plan_id: 3,
-      pay_in_advance: true,
-      time_created: "string",
-      billing_plan_id: "51c957f5-d53a-4a71-ab04325744f17ec",
-      active_subscriptions: 20,
-      features: features,
-      components: components,
-    },
-  ];
-
-  // const deletePlan = (version_id: string) => {
-  //   mutation.mutate(version_id);
-  // };
 
   return (
     <div>
@@ -179,7 +118,26 @@ const ViewPlans: FC = () => {
               </Row>
             </div>
           </Tabs.TabPane>
-          <Tabs.TabPane tab="Yearly" key="2">
+          <Tabs.TabPane tab="Quarterly" key="2">
+            <div className=" flex flex-col space-y-6 ">
+              <Row gutter={[24, 32]}>
+                {quarterlyPlans?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+              {quarterlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+              <Row gutter={[24, 32]}>
+                {quarterlyCustom?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="Yearly" key="3">
             <div className=" flex flex-col space-y-6 ">
               <Row gutter={[24, 32]}>
                 {yearlyPlans?.map((item, key) => (
