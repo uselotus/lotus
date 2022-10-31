@@ -11,7 +11,7 @@ export interface CustomerType {
 export interface CustomerDetailType extends CustomerType {
   email: string;
   timeline: object;
-  total_revenue_due: number;
+  total_amount_due: number;
   subscriptions: CustomerDetailSubscription[];
   billing_address: string;
   invoices: InvoiceType[];
@@ -21,12 +21,12 @@ export interface CustomerPlus extends CustomerType {
   subscriptions: CustomerSubscription[];
 }
 export interface CustomerTableItem extends CustomerPlus {
-  total_revenue_due: number;
+  total_amount_due: number;
 }
 
 export interface CustomerTotal {
   customer_id: string;
-  total_revenue_due: number;
+  total_amount_due: number;
 }
 
 interface CustomerSubscription {

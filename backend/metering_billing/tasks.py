@@ -44,7 +44,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 @shared_task
 def calculate_invoice():
     # get ending subs
-    now = datetime.date.today()
+    now = now_utc()
     ending_subscriptions = list(
         Subscription.objects.filter(status=SUBSCRIPTION_STATUS.ACTIVE, end_date__lt=now)
     )
@@ -260,11 +260,11 @@ def run_backtest(backtest_id):
             # cumulative revenue
             inner_results["cumulative_revenue"][end_date][
                 "original_plan_revenue"
-            ] += old_usage_revenue["total_revenue_due"]
+            ] += old_usage_revenue["total_amount_due"]
             # customer revenue
             inner_results["top_customers"][customer][
                 "original_plan_revenue"
-            ] += old_usage_revenue["total_revenue_due"]
+            ] += old_usage_revenue["total_amount_due"]
             # per metric
             for component_pk, component_dict in old_usage_revenue["components"]:
                 metric = PlanComponent.objects.get(pk=component_pk).billable_metric
@@ -286,7 +286,7 @@ def run_backtest(backtest_id):
                 }
             inner_results["revenue_by_metric"]["flat_fees"][
                 "original_plan_revenue"
-            ] += old_usage_revenue["flat_revenue_due"]
+            ] += old_usage_revenue["flat_amount_due"]
             ## PROCESS NEW SUB
             sub.billing_plan = subst.new_plan
             sub.save()
@@ -297,11 +297,11 @@ def run_backtest(backtest_id):
             # cumulative revenue
             inner_results["cumulative_revenue"][end_date][
                 "new_plan_revenue"
-            ] += new_usage_revenue["total_revenue_due"]
+            ] += new_usage_revenue["total_amount_due"]
             # customer revenue
             inner_results["top_customers"][customer][
                 "new_plan_revenue"
-            ] += new_usage_revenue["total_revenue_due"]
+            ] += new_usage_revenue["total_amount_due"]
             # per metric
             for component_pk, component_dict in new_usage_revenue["components"]:
                 metric = PlanComponent.objects.get(pk=component_pk).billable_metric
@@ -318,7 +318,7 @@ def run_backtest(backtest_id):
                 )
             inner_results["revenue_by_metric"]["flat_fees"][
                 "new_plan_revenue"
-            ] += new_usage_revenue["flat_revenue_due"]
+            ] += new_usage_revenue["flat_amount_due"]
         # change cumulative revenue to be cumulative and in fronted format
         cum_rev_dict_list = []
         cum_rev = inner_results.pop("cumulative_revenue")

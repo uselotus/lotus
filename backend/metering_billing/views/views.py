@@ -372,8 +372,8 @@ class CustomerDetailView(APIView):
             .get()
         )
         sub_usg_summaries = customer.get_usage_and_revenue()
-        total_revenue_due = sum(
-            x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
+        total_amount_due = sum(
+            x["total_amount_due"] for x in sub_usg_summaries["subscriptions"]
         )
         invoices = Invoice.objects.filter(
             organization__company_name=organization.company_name,
@@ -382,7 +382,7 @@ class CustomerDetailView(APIView):
         serializer = CustomerDetailSerializer(
             customer,
             context={
-                "total_revenue_due": total_revenue_due,
+                "total_amount_due": total_amount_due,
                 "invoices": invoices,
             },
         )
@@ -405,13 +405,13 @@ class CustomersWithRevenueView(APIView):
         cust = []
         for customer in customers:
             sub_usg_summaries = customer.get_usage_and_revenue()
-            customer_total_revenue_due = sum(
-                x["total_revenue_due"] for x in sub_usg_summaries["subscriptions"]
+            customer_total_amount_due = sum(
+                x["total_amount_due"] for x in sub_usg_summaries["subscriptions"]
             )
             serializer = CustomerWithRevenueSerializer(
                 customer,
                 context={
-                    "total_revenue_due": customer_total_revenue_due,
+                    "total_amount_due": customer_total_amount_due,
                 },
             )
             cust.append(serializer.data)

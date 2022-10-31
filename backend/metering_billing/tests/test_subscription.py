@@ -103,7 +103,7 @@ def subscription_test_common_setup(
             )
         payload = {
             "name": "test_subscription",
-            "balance": 30,
+            "balance": -30,
             "start_date": now_utc().date() - timedelta(days=35),
             "status": "active",
             "customer_id": customer.customer_id,

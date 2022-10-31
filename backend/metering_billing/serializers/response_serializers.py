@@ -32,7 +32,7 @@ class PeriodMetricUsageResponseSerializer(serializers.Serializer):
 
 class CustomerRevenueSerializer(serializers.Serializer):
     subscriptions = serializers.ListField(child=serializers.CharField())
-    total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+    total_amount_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     customer_name = serializers.CharField()
     customer_id = serializers.CharField()
 
@@ -60,6 +60,6 @@ class PeriodMetricRevenueResponseSerializer(serializers.Serializer):
 
 
 class SubscriptionUsageResponseSerializer(serializers.Serializer):
-    usage_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
-    flat_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
-    total_revenue_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+    usage_amount_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+    flat_amount_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+    total_amount_due = serializers.DecimalField(decimal_places=10, max_digits=20)

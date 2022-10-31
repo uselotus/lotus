@@ -50,15 +50,15 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             )
             usage_dict["components"][str(plan_component)] = pc_usg_and_rev
         components = usage_dict["components"]
-        usage_dict["usage_revenue_due"] = 0
+        usage_dict["usage_amount_due"] = 0
         for pc_name, pc_dict in components.items():
             for period, period_dict in pc_dict.items():
-                usage_dict["usage_revenue_due"] += period_dict["revenue"]
+                usage_dict["usage_amount_due"] += period_dict["revenue"]
         if billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             if subscription.auto_renew:
-                usage_dict["flat_revenue_due"] = billing_plan.flat_rate.amount
+                usage_dict["flat_amount_due"] = billing_plan.flat_rate.amount
             else:
-                usage_dict["flat_revenue_due"] = 0
+                usage_dict["flat_amount_due"] = 0
         else:
             new_sub_daily_cost_dict = subscription.prorated_flat_costs_dict
             total_cost = convert_to_decimal(
@@ -67,26 +67,34 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             due = (
                 total_cost
                 - subscription.flat_fee_already_billed
-                - customer.balance.amount
             )
-            usage_dict["flat_revenue_due"] = max(due, 0)
+            usage_dict["flat_amount_due"] = max(due, 0)
             if due < 0:
-                subscription.customer.balance += abs(due)
+                subscription.customer.balance += due
 
-        usage_dict["flat_revenue_due"] = Decimal(usage_dict["flat_revenue_due"])
-        usage_dict["subtotal_revenue_due"] = (
-            usage_dict["flat_revenue_due"] + usage_dict["usage_revenue_due"]
+        usage_dict["flat_amount_due"] = Decimal(usage_dict["flat_amount_due"])
+        usage_dict["subtotal_amount_due"] = (
+            usage_dict["flat_amount_due"] + usage_dict["usage_amount_due"]
         )
         if billing_plan.price_adjustment:
             usage_dict["price_adjustment"] = str(billing_plan.price_adjustment)
             new_amount_due = billing_plan.price_adjustment.apply(
-                usage_dict["subtotal_revenue_due"]
+                usage_dict["subtotal_amount_due"]
             )
-            usage_dict["total_revenue_due"] = new_amount_due
+            usage_dict["subtotal_after_adjustments"] = new_amount_due
         else:
-            usage_dict["total_revenue_due"] = usage_dict["subtotal_revenue_due"]
+            usage_dict["subtotal_after_adjustments"] = usage_dict["subtotal_amount_due"]
+        if customer.balance.amount != 0:
+            usage_dict["balance_adjustment"] = max(customer.balance, -1*usage_dict["subtotal_after_adjustments"])
+            usage_dict["total_amount_due"] = (
+                usage_dict["subtotal_after_adjustments"] + usage_dict["balance_adjustment"]
+            )
+            customer.balance -= usage_dict["balance_adjustment"]
+            customer.save()
+        else:
+            usage_dict["total_amount_due"] = usage_dict["subtotal_after_adjustments"]
 
-        amount = usage_dict["total_revenue_due"]
+        amount = usage_dict["total_amount_due"]
         usage_dict = make_all_decimals_floats(usage_dict)
         usage_dict = make_all_datetimes_dates(usage_dict)
         usage_dict = make_all_dates_times_strings(usage_dict)

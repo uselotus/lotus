@@ -312,7 +312,7 @@ export interface components {
       customer_name: string;
       invoices: unknown[];
       /** Format: double */
-      total_revenue_due: number;
+      total_amount_due: number;
       subscriptions: components["schemas"]["SubscriptionCustomerDetail"][];
     };
     CustomerName: {
@@ -330,7 +330,7 @@ export interface components {
     CustomerWithRevenue: {
       customer_id?: string;
       /** Format: double */
-      total_revenue_due: number;
+      total_amount_due: number;
     };
     DayMetricUsage: {
       /** Format: date */
