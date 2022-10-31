@@ -252,8 +252,8 @@ const SubscriptionView: FC<Props> = ({
         <List>
           {subscriptions.map((subscription) => (
             <List.Item>
-              <Card className=" bg-grey3 w-7/12">
-                <div className="grid grid-cols-2 items-stretch">
+              <Card className=" bg-grey3 w-full">
+                <div className="grid grid-cols-3 items-stretch">
                   <h2 className="font-main font-bold">
                     {subscription.billing_plan_name}
                   </h2>
@@ -282,7 +282,7 @@ const SubscriptionView: FC<Props> = ({
             </List.Item>
           ))}
         </List>
-        <div className="grid grid-cols-2 w-7/12">
+        <div className="grid grid-cols-2 w-full space-x-5 my-6">
           <Dropdown overlay={switchMenu} trigger={["click"]}>
             <Button>Switch Plan</Button>
           </Dropdown>

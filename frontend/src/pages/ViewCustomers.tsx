@@ -75,11 +75,7 @@ const ViewCustomers: FC = () => {
     <PageLayout
       title="Customers"
       extra={[
-        <Button
-          type="primary"
-          className="ml-auto bg-info"
-          onClick={openCustomerModal}
-        >
+        <Button type="primary" size="large" onClick={openCustomerModal}>
           Create Customer
         </Button>,
       ]}

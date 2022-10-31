@@ -24,11 +24,10 @@ h1 {
 }
 
 h2 {
-  font-style: normal;
-  font-weight: 700;
-  font-size: 26px;
+  font-size: 20px;
   line-height: 100%;
   color: #1d1d1f;
+  font-weight: 700;
 }
 
 h3 {

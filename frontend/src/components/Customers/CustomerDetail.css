@@ -2,3 +2,22 @@
   width: 60%;
   height: 60%;
 }
+
+.planDetailsLabel {
+  font-weight: 500;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  color: #9b9ba1;
+}
+
+.planDetailsValue {
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.planDetails {
+  font-size: 16px;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+}

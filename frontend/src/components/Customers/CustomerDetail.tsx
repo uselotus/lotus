@@ -147,10 +147,13 @@ function CustomerDetail(props: {
           <LoadingSpinner />
         </div>
       ) : (
-        <div className="flex justify-between flex-col max-w">
+        <div className="flex justify-between flex-col max-w mx-3">
           <div className="text-left	">
-            <h2 className="text-2xl font-main mb-3">{data?.customer_name}</h2>
-            <p>ID: {props.customer_id}</p>
+            <h1 className="mb-3">{data?.customer_name}</h1>
+            <div className="flex flex-row">
+              <div className="plansDetailLabel">ID: </div>
+              <div className="plansDetailValue">{props.customer_id}</div>
+            </div>
           </div>
           <div
             className="flex items-center flex-col"
@@ -161,7 +164,7 @@ function CustomerDetail(props: {
                 {data !== undefined ? (
                   <div className="grid grid-cols-2">
                     <div className=" space-y-3">
-                      <h2>Info</h2>
+                      <h2 className="mb-2">Info</h2>
                       <p>Email: {data.email}</p>
                       <p>Billing Address: {data.billing_address}</p>
                     </div>

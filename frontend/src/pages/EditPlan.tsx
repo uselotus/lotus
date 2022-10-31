@@ -10,9 +10,9 @@ import {
   Radio,
 } from "antd";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient, useQuery } from "react-query";
 import { toast } from "react-toastify";
 
 import {
@@ -20,6 +20,9 @@ import {
   CreateComponent,
   PlanType,
   UpdatePlanType,
+  PlanDetailType,
+  CreateInitialVersionType,
+  CreatePlanVersionType,
 } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
@@ -30,6 +33,7 @@ import { PageLayout } from "../components/base/PageLayout";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
+import { planDetailPlaceholder } from "../placeholderData/planPlaceholder";
 
 interface CustomizedState {
   plan: PlanType;
@@ -37,9 +41,10 @@ interface CustomizedState {
 
 interface Props {
   type: "backtest" | "version" | "custom";
+  plan: PlanDetailType;
 }
 
-const EditPlan = ({ type }: Props) => {
+const EditPlan = ({ type, plan }: Props) => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [targetCustomerFormVisible, setTargetCustomerFormVisible] =
@@ -51,48 +56,50 @@ const EditPlan = ({ type }: Props) => {
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
-  const plan = React.useMemo(() => {
-    if (type === "backtest") {
-      return replacementPlan ?? {};
-    } else if (type === "version") {
-      const { plan } = location.state.data as CustomizedState;
-      return plan ?? {};
-    } else if (type === "custom") {
-      const { plan } = location.state.data as CustomizedState;
-      return plan ?? {};
-    }
-  }, [type]);
+  const [availableBillingTypes, setAvailableBillingTypes] = useState<
+    { name: string; label: string }[]
+  >([
+    { label: "Monthly", name: "monthly" },
+    { label: "Quarterly", name: "quarterly" },
+    { label: "Yearly", name: "yearly" },
+  ]);
+
+  const { planId } = useParams();
 
   const queryClient = useQueryClient();
 
-  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(plan.in);
+  const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
+    plan.versions[0].features
+  );
 
   useEffect(() => {
-    const initialComponents: any[] = plan.components.map((component) => {
-      return {
-        metric: component.billable_metric.billable_metric_name,
-        cost_per_batch: component.cost_per_batch,
-        metric_units_per_batch: component.metric_units_per_batch,
-        free_metric_units: component.free_metric_units,
-        max_metric_units: component.max_metric_units,
-      };
-    });
+    const initialComponents: any[] = plan.versions[0].components.map(
+      (component) => {
+        return {
+          metric: component.billable_metric.billable_metric_name,
+          cost_per_batch: component.cost_per_batch,
+          metric_units_per_batch: component.metric_units_per_batch,
+          free_metric_units: component.free_metric_units,
+          max_metric_units: component.max_metric_units,
+        };
+      }
+    );
     console.log(initialComponents);
     setComponentsData(initialComponents);
-  }, [plan.components]);
+  }, [plan.versions[0].components]);
 
   const mutation = useMutation(
-    (data: UpdatePlanType) => Plan.updatePlan(data),
+    (data: CreatePlanVersionType) => Plan.createVersion(data),
     {
       onSuccess: () => {
-        toast.success("Successfully updated Plan", {
+        toast.success("Successfully created new version", {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries(["plan_list"]);
         navigate("/plans");
       },
       onError: () => {
-        toast.error("Failed to update Plan", {
+        toast.error("Failed to create version", {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -231,24 +238,35 @@ const EditPlan = ({ type }: Props) => {
           }
         }
 
-        const newPlan: CreatePlanType = {
-          plan_name: values.name,
+        const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
+          flat_fee_billing_type: values.flat_fee_billing_type,
           flat_rate: values.flat_rate,
-          pay_in_advance: values.pay_in_advance,
-          interval: values.billing_interval,
           components: usagecomponentslist,
           features: planFeatures,
+          usage_billing_frequency: values.usage_billing_frequency,
+        };
+
+        const newPlan: CreatePlanType = {
+          plan_name: values.name,
+          plan_duration: values.plan_duration,
+          initial_version: initialPlanVersion,
         };
         if (type === "backtest") {
           newPlan["status"] = "experimental";
           createPlanMutation.mutate(newPlan);
         } else if (type === "version") {
-          mutation.mutate({
-            old_version_id: plan.version_id,
-            updated_billing_plan: newPlan,
-            update_behavior: values.update_behavior,
-          });
+          const newVersion: CreatePlanVersionType = {
+            plan_id: plan.plan_id,
+            description: values.description,
+            flat_fee_billing_type: values.flat_fee_billing_type,
+            flat_rate: values.flat_rate,
+            components: usagecomponentslist,
+            features: planFeatures,
+            usage_billing_frequency: values.usage_billing_frequency,
+          };
+
+          mutation.mutate(newVersion);
         } else if (type === "custom") {
           // target_id = await targetCustomerFormVisible(true);
 

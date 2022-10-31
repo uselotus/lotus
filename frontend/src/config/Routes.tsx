@@ -15,6 +15,7 @@ import ViewExperiments from "../pages/ViewExperiments";
 import CreateBacktest from "../pages/CreateBacktest";
 import ExperimentResults from "../pages/ExperimentResults";
 import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
+import EditPlanLoader from "../pages/EditPlanLoader";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -49,13 +50,16 @@ const AppRoutes: FC = () => {
             <Route path="/plans/:planId" element={<PlanDetails />} />
             <Route path="create-plan" element={<CreatePlan />} />
             <Route
-              path="create-version"
-              element={<EditPlan type="version" />}
+              path="create-version/:planId"
+              element={<EditPlanLoader type="version" />}
             />
-            <Route path="create-custom" element={<EditPlan type="custom" />} />{" "}
             <Route
-              path="backtest-plan"
-              element={<EditPlan type="backtest" />}
+              path="create-custom/:planId"
+              element={<EditPlanLoader type="custom" />}
+            />{" "}
+            <Route
+              path="backtest-plan/:planId"
+              element={<EditPlanLoader type="backtest" />}
             />
             <Route path="/plan"></Route>
             <Route path="/customers" element={<ViewCustomers />} />

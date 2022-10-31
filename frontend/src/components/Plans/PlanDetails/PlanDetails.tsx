@@ -3,7 +3,6 @@ import React, { FC, Fragment } from "react";
 import "./PlanDetails.css";
 import { PageLayout } from "../../base/PageLayout";
 import { Button, Col, Dropdown, Menu, Row, Switch, Tabs } from "antd";
-import { MoreOutlined } from "@ant-design/icons";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import SwitchVersions from "./SwitchVersions";
 import { useQuery } from "react-query";
@@ -11,10 +10,14 @@ import { Plan } from "../../../api/api";
 import { PlanDetailType } from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
 
+type PlanDetailParams = {
+  planId: string;
+};
+
 const PlanDetails: FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { planId } = useParams();
+  const { planId } = useParams<PlanDetailParams>();
   //@todo Have to add the code to load details using the Plan Id
 
   const {
@@ -28,7 +31,7 @@ const PlanDetails: FC = () => {
   );
 
   const navigateCreateCustomPlan = () => {
-    navigate("/create-custom", { state: { plan: plan } });
+    navigate("/create-custom/" + planId);
   };
 
   const versions = [

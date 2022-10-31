@@ -30,7 +30,11 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
 
   const planMenu = (
     <Menu>
-      <Menu.Item key="1" onClick={() => mutation.mutate(plan.plan_id)}>
+      <Menu.Item
+        key="1"
+        onClick={() => mutation.mutate(plan.plan_id)}
+        disabled={plan.active_subscriptions > 0}
+      >
         <div className="planMenuArchiveIcon">
           <div>
             <DeleteOutlined />

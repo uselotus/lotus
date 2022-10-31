@@ -23,6 +23,7 @@ export const integrationsMap = {
   stripe: {
     name: "Stripe",
     icon: "https://cdn.neverbounce.com/images/integrations/square/stripe-square.png",
-    description: "Automatically charge your customers for their subscriptions",
+    description:
+      "Charge and invoice your customers through your Stripe account",
   },
 };
