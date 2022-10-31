@@ -789,8 +789,6 @@ class PlanDetailSerializer(PlanSerializer):
         return PlanVersionSerializer(obj.versions.all(), many=True).data
 
 
-
-
 ## SUBSCRIPTION
 class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:

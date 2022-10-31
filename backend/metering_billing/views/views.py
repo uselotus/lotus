@@ -24,7 +24,11 @@ from metering_billing.utils import (
     now_utc,
     periods_bwn_twodates,
 )
-from metering_billing.utils.enums import REVENUE_CALC_GRANULARITY, SUBSCRIPTION_STATUS
+from metering_billing.utils.enums import (
+    FLAT_FEE_BILLING_TYPE,
+    REVENUE_CALC_GRANULARITY,
+    SUBSCRIPTION_STATUS,
+)
 from metering_billing.view_utils import sync_payment_provider_customers
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -34,112 +38,112 @@ from rest_framework.views import APIView
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
-# class PeriodMetricRevenueView(APIView):
-#     permission_classes = [IsAuthenticated]
+class PeriodMetricRevenueView(APIView):
+    permission_classes = [IsAuthenticated]
 
-#     @extend_schema(
-#         parameters=[PeriodComparisonRequestSerializer],
-#         responses={200: PeriodMetricRevenueResponseSerializer},
-#     )
-#     def get(self, request, format=None):
-#         """
-#         Returns the revenue for an organization in a given time period.
-#         """
-#         organization = parse_organization(request)
-#         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
-#         serializer.is_valid(raise_exception=True)
-#         p1_start, p1_end, p2_start, p2_end = [
-#             serializer.validated_data.get(key, None)
-#             for key in [
-#                 "period_1_start_date",
-#                 "period_1_end_date",
-#                 "period_2_start_date",
-#                 "period_2_end_date",
-#             ]
-#         ]
-#         all_org_billable_metrics = BillableMetric.objects.filter(
-#             organization=organization
-#         )
+    @extend_schema(
+        parameters=[PeriodComparisonRequestSerializer],
+        responses={200: PeriodMetricRevenueResponseSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Returns the revenue for an organization in a given time period.
+        """
+        organization = parse_organization(request)
+        serializer = PeriodComparisonRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        p1_start, p1_end, p2_start, p2_end = [
+            serializer.validated_data.get(key, None)
+            for key in [
+                "period_1_start_date",
+                "period_1_end_date",
+                "period_2_start_date",
+                "period_2_end_date",
+            ]
+        ]
+        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
+        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
+        all_org_billable_metrics = BillableMetric.objects.filter(
+            organization=organization
+        )
 
-#         return_dict = {
-#             "daily_usage_revenue_period_1": {},
-#             "total_revenue_period_1": Decimal(0),
-#             "daily_usage_revenue_period_2": {},
-#             "total_revenue_period_2": Decimal(0),
-#         }
-#         if all_org_billable_metrics.count() > 0:
-#             for billable_metric in all_org_billable_metrics:
-#                 for p_start, p_end, p_num in [
-#                     (p1_start, p1_end, 1),
-#                     (p2_start, p2_end, 2),
-#                 ]:
-#                     return_dict[f"daily_usage_revenue_period_{p_num}"][
-#                         billable_metric.id
-#                     ] = {
-#                         "metric": str(billable_metric),
-#                         "data": {
-#                             x: Decimal(0)
-#                             for x in periods_bwn_twodates(
-#                                 REVENUE_CALC_GRANULARITY.DAILY, p_start, p_end
-#                             )
-#                         },
-#                         "total_revenue": Decimal(0),
-#                     }
-#             for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-#                 total_period_rev = Decimal(0)
-#                 subs = (
-#                     Subscription.objects.filter(
-#                         Q(start_date__range=[p_start, p_end])
-#                         | Q(end_date__range=[p_start, p_end]),
-#                         organization=organization,
-#                     )
-#                     .select_related("billing_plan")
-#                     .select_related("customer")
-#                     .prefetch_related("billing_plan__components")
-#                     .prefetch_related("billing_plan__components__billable_metric")
-#                 )
-#                 for sub in subs:
-#                     bp = sub.billing_plan
-#                     flat_bill_date = (
-#                         sub.start_date if bp.pay_in_advance else sub.end_date
-#                     )
-#                     if p_start <= flat_bill_date <= p_end:
-#                         total_period_rev += bp.flat_rate.amount
-#                     for plan_component in bp.components.all():
-#                         billable_metric = plan_component.billable_metric
-#                         revenue_per_day = plan_componentcalculate_sub_pc_usage_revenue(
-#                             plan_component,
-#                             billable_metric,
-#                             sub.customer,
-#                             sub.start_date,
-#                             sub.end_date,
-#                             revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
-#                         )
-#                         metric_dict = return_dict[
-#                             f"daily_usage_revenue_period_{p_num}"
-#                         ][billable_metric.id]
-#                         for date, d in revenue_per_day.items():
-#                             if date in metric_dict["data"]:
-#                                 usage_cost = Decimal(d["revenue"])
-#                                 metric_dict["data"][date] += usage_cost
-#                                 metric_dict["total_revenue"] += usage_cost
-#                                 total_period_rev += usage_cost
-#                 return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
-#         for p_num in [1, 2]:
-#             dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
-#             dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
-#             return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
-#             for dic in dailies:
-#                 dic["data"] = [
-#                     {"date": str(k.date()), "metric_revenue": v}
-#                     for k, v in dic["data"].items()
-#                 ]
-#         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
-#         serializer.is_valid(raise_exception=True)
-#         ret = serializer.validated_data
-#         ret = make_all_decimals_floats(ret)
-#         ret = make_all_dates_times_strings(ret)
-#         return Response(ret, status=status.HTTP_200_OK)
+        return_dict = {
+            "daily_usage_revenue_period_1": {},
+            "total_revenue_period_1": Decimal(0),
+            "daily_usage_revenue_period_2": {},
+            "total_revenue_period_2": Decimal(0),
+        }
+        if all_org_billable_metrics.count() > 0:
+            for billable_metric in all_org_billable_metrics:
+                for p_start, p_end, p_num in [
+                    (p1_start, p1_end, 1),
+                    (p2_start, p2_end, 2),
+                ]:
+                    return_dict[f"daily_usage_revenue_period_{p_num}"][
+                        billable_metric.id
+                    ] = {
+                        "metric": str(billable_metric),
+                        "data": {
+                            x: Decimal(0)
+                            for x in periods_bwn_twodates(
+                                REVENUE_CALC_GRANULARITY.DAILY, p_start, p_end
+                            )
+                        },
+                        "total_revenue": Decimal(0),
+                    }
+            for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+                total_period_rev = Decimal(0)
+                subs = (
+                    Subscription.objects.filter(
+                        Q(start_date__range=[p_start, p_end])
+                        | Q(end_date__range=[p_start, p_end]),
+                        organization=organization,
+                    )
+                    .select_related("billing_plan")
+                    .select_related("customer")
+                    .prefetch_related("billing_plan__components")
+                    .prefetch_related("billing_plan__components__billable_metric")
+                )
+                for sub in subs:
+                    bp = sub.billing_plan
+                    flat_bill_date = (
+                        sub.start_date if bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE else sub.end_date
+                    )
+                    if p_start <= flat_bill_date <= p_end:
+                        total_period_rev += bp.flat_rate.amount
+                    for plan_component in bp.components.all():
+                        billable_metric = plan_component.billable_metric
+                        revenue_per_day = plan_component.calculate_usage_revenue(
+                            sub.customer,
+                            sub.start_date,
+                            sub.end_date,
+                            revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
+                        )
+                        metric_dict = return_dict[
+                            f"daily_usage_revenue_period_{p_num}"
+                        ][billable_metric.id]
+                        for date, d in revenue_per_day.items():
+                            if date in metric_dict["data"]:
+                                usage_cost = Decimal(d["revenue"])
+                                metric_dict["data"][date] += usage_cost
+                                metric_dict["total_revenue"] += usage_cost
+                                total_period_rev += usage_cost
+                return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
+        for p_num in [1, 2]:
+            dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
+            dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
+            return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
+            for dic in dailies:
+                dic["data"] = [
+                    {"date": str(k.date()), "metric_revenue": v}
+                    for k, v in dic["data"].items()
+                ]
+        serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
+        ret = make_all_decimals_floats(ret)
+        ret = make_all_dates_times_strings(ret)
+        return Response(ret, status=status.HTTP_200_OK)
 
 
 class PeriodSubscriptionsView(APIView):
@@ -162,6 +166,8 @@ class PeriodSubscriptionsView(APIView):
                 "period_2_end_date",
             ]
         ]
+        p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
+        p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
 
         return_dict = {}
         for i, (p_start, p_end) in enumerate([[p1_start, p1_end], [p2_start, p2_end]]):
@@ -213,6 +219,8 @@ class PeriodMetricUsageView(APIView):
             q_start = parser.parse(q_start).date()
         if type(q_end) == str:
             q_end = parser.parse(q_end).date()
+        q_start = date_as_min_dt(q_start)
+        q_end = date_as_max_dt(q_end)
 
         metrics = BillableMetric.objects.filter(organization=organization)
         return_dict = {}

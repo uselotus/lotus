@@ -668,7 +668,6 @@ class Plan(models.Model):
             MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL,
             MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE,
         ]:
-            print("grandfathering", make_active_type)
             # 1
             replace_with_lst = [PLAN_VERSION_STATUS.RETIRING]
             # 2a
