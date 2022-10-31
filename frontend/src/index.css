@@ -1,4 +1,5 @@
 @import url("https://www.fontshare.com/fonts/satoshi");
+@import url("satoshi.css");
 /* @tailwind base; */
 
 @tailwind components;
