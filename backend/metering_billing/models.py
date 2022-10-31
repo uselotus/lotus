@@ -850,7 +850,11 @@ class Subscription(models.Model):
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             new_sub_daily_cost_dict = self.prorated_flat_costs_dict
             prorated_cost = sum(d["amount"] for d in new_sub_daily_cost_dict.values())
-            due = prorated_cost + self.customer.balance.amount - self.flat_fee_already_billed
+            due = (
+                prorated_cost
+                + self.customer.balance.amount
+                - self.flat_fee_already_billed
+            )
             if due < 0:
                 self.customer.balance = due
             elif due > 0:

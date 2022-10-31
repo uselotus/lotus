@@ -592,6 +592,7 @@ class GetCustomerAccessView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class SyncCustomersView(APIView):
     permission_classes = [IsAuthenticated]
 

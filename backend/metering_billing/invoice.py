@@ -36,7 +36,9 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     organization = subscription.organization
     billing_plan = subscription.billing_plan
     issue_date = issue_date if issue_date else subscription.end_date
-    if isinstance(issue_date, datetime.date) and not isinstance(issue_date, datetime.datetime):
+    if isinstance(issue_date, datetime.date) and not isinstance(
+        issue_date, datetime.datetime
+    ):
         issue_date = date_as_min_dt(issue_date)
     if amount:
         line_item = {"Flat Subscription Fee Adjustment": amount}
@@ -64,10 +66,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
             total_cost = convert_to_decimal(
                 sum(v["amount"] for v in new_sub_daily_cost_dict.values())
             )
-            due = (
-                total_cost
-                - subscription.flat_fee_already_billed
-            )
+            due = total_cost - subscription.flat_fee_already_billed
             usage_dict["flat_amount_due"] = max(due, 0)
             if due < 0:
                 subscription.customer.balance += due
@@ -85,9 +84,12 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
         else:
             usage_dict["subtotal_after_adjustments"] = usage_dict["subtotal_amount_due"]
         if customer.balance.amount != 0:
-            usage_dict["balance_adjustment"] = max(customer.balance, -1*usage_dict["subtotal_after_adjustments"])
+            usage_dict["balance_adjustment"] = max(
+                customer.balance, -1 * usage_dict["subtotal_after_adjustments"]
+            )
             usage_dict["total_amount_due"] = (
-                usage_dict["subtotal_after_adjustments"] + usage_dict["balance_adjustment"]
+                usage_dict["subtotal_after_adjustments"]
+                + usage_dict["balance_adjustment"]
             )
             customer.balance -= usage_dict["balance_adjustment"]
             customer.save()

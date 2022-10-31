@@ -26,7 +26,7 @@
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.jpg#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing Optimization & Billing For Usage
+# Lotus: Pricing & Billing On Any Metric
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <p align="center">
@@ -44,11 +44,11 @@
 
 <br/>
 
-Lotus is an open-core pricing and billing engine. We enable SaaS companies to deploy, monitor, and experiment with custom subscription and complex models like usage-based pricing.
+Lotus is a pricing and billing engine that enables SaaS companies to deploy, monitor, and experiment with custom subscriptions and complex models like usage-based pricing.
 
 <br/>
 
-We provide a flexible and modular control panel on top of your existing quote to cash stack that allows you to integrate data from multiple systems to help you figure out the optimal pricing scheme for your products.
+Lotus provides a flexible and modular control panel on top of your existing quote to cash stack that allows you to integrate data from multiple systems to help you figure out the optimal pricing scheme for your products.
 
 <br/>
 
@@ -87,7 +87,7 @@ Best if you want to keep your data local or want full control and extensibility.
    ```
    You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
 
-We are currently working on easy deployment options for AWS, GCP, and Azure. If you have any questions, feel free to reach out to us.
+Easy deployment options for AWS, GCP, and Azure are on the roadmap. If you have any questions, feel free to reach out to us.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
@@ -109,19 +109,19 @@ To set up Lotus for development locally, please refer to our guide [here](https:
 
 ## About The Project
 
-Piricng your SaaS product is never easy, and often isn't directly related to the value you provide. We built Lotus to help you solve those problems and maintain the flexibility you need as you grow. Pricing is an underappreciated but hugely important lever for growth, and pushing it to the side can be a huge mistake. As companies evolve their pricing models, it can take increasingly more engineering hours to maintain and scale your pricing and billing stack. With Lotus, you can go through the pricing deployment, monitoring, and experimentation cycle blazingly fast, while integrating with you existing payments, customer management, and data solutions.
+Pricing your SaaS product is never easy, and often isn't directly related to the value you provide. Lotus was built to help you solve those problems and maintain the flexibility you need as you grow. Pricing is an underappreciated but hugely important lever for growth, and pushing it to the side can be a huge mistake. As companies evolve their pricing models, maintaining and scaling a pricing and billing stack can take significant engineering hours. With Lotus, you can go through the pricing deployment, monitoring, and experimentation cycle blazingly fast, while integrating with your existing payments, customer management, and data solutions.
 
 ### Features
 
-- **Flexible and Extensible Pricing Schemes** - Create custom pricing schemes for your SaaS, PaaS, IaaS, or any other acronym you come up with. We support variety of models out of the box, but with our fully extensible framework, creating exactly what you need is easy.
+- **Flexible and Extensible Pricing Schemes** - Create custom pricing schemes for your SaaS, PaaS, IaaS, or any other acronym you come up with. A variety of models are supported out of the box, but with our fully extensible framework, creating exactly what you need is easy.
 
-- **Sensible, Inuitive Plan Management** - Forget about keeping track of subscriptions, plans, versioning, deployments, and everything that gets in the way of your product. We handle all of that for you, so you can focus on what matters.
+- **Sensible, Intuitive Plan Management** - Forget about keeping track of subscriptions, plans, versioning, deployments, and everything that gets in the way of your product. Lotus simplifies plan management for you and your engineering team, so you can focus on what matters.
 
-- **Powerful Tools for Experimentation** - We provide a suite of tools to empower you to change and deploy your pricing experiments and evaluate the effects it has on your business. Whether that's a backtest, an A/B test, or a forecast, we've got you covered.
+- **Powerful Tools for Experimentation** - Lotus provides a suite of tools to empower you to change and deploy your pricing experiments and evaluate the effects it has on your business. Whether that's a backtest, an A/B test, or a forecast, we've got you covered.
 
-- **Integrations** - Never feel locked into a single system. We provide a suite of integrations to help you get the most out of your existing stack. We also provide a powerful API to help you integrate with any system you want.
+- **Seamless Integrations with your Monetization Stack** - Never feel locked into a single system thanks to a variety of integrations to help you get the most out of your existing stack. Additionally, a simple yet expressive API helps you integrate with any system you want.
 
-- **Cloud or Self-Hosted** - We believe in open source and the freedom it provides. We provide a self-hosted version of Lotus so you can keep your data local and have full control over your pricing.
+- **Cloud or Self-Hosted** - Apart from a managed cloud offering, Lotus provides a self-hosted version so you can keep your data local and have full control over your pricing.
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
