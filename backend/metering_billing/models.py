@@ -16,6 +16,7 @@ from metering_billing.utils import (
     convert_to_decimal,
     cust_uuid,
     dates_bwn_two_dts,
+    invoice_uuid,
     metric_uuid,
     now_plus_day,
     now_utc,
@@ -441,6 +442,9 @@ class Invoice(models.Model):
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
+    invoice_id = models.CharField(
+        max_length=100, null=False, blank=True, default=invoice_uuid, unique=True
+    )
     external_payment_obj = models.JSONField(default=dict, blank=True, null=True)
     external_payment_obj_id = models.CharField(max_length=200, blank=True, null=True)
     external_payment_obj_type = models.CharField(
@@ -451,6 +455,9 @@ class Invoice(models.Model):
     customer = models.JSONField()
     subscription = models.JSONField()
     history = HistoricalRecords()
+
+    def __str__(self):
+        return str(self.invoice_id)
 
 
 class APIToken(AbstractAPIKey):
@@ -826,10 +833,10 @@ class Subscription(models.Model):
                     self.status
                 )
             )
+        self.auto_renew = False
+        self.end_date = now_utc()
         if bill:
             generate_invoice(self)
-        self.turn_off_auto_renew()
-        self.end_date = now_utc()
         self.status = SUBSCRIPTION_STATUS.ENDED
         self.save()
 

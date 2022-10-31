@@ -2,6 +2,7 @@ import { Table, Tag } from "antd";
 import { FC, useState } from "react";
 import React from "react";
 import { InvoiceType } from "../../types/invoice-type";
+import dayjs from "dayjs";
 
 interface Props {
   invoices: InvoiceType[] | undefined;
@@ -14,8 +15,8 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
   const columns = [
     {
       title: "Invoice ID",
-      dataIndex: "id",
-      key: "id",
+      dataIndex: "invoice_id",
+      key: "invoice_id",
     },
     {
       title: "Amount",
@@ -29,7 +30,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       title: "Issue Date",
       dataIndex: "issue_date",
       key: "issue_date",
-      render: (issue_date: string) => <span>{issue_date}</span>,
+      render: (issue_date: string) => (
+        <span>{dayjs(issue_date).format("YYYY/MM/DD HH:mm")}</span>
+      ),
     },
     {
       title: "Status",
