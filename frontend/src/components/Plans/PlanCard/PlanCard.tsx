@@ -60,7 +60,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
         </Dropdown>
       </div>
       <Typography.Title className="pt-4" level={2}>
-        {plan.plan_name}
+        {plan.target_customer !== null
+          ? plan.plan_name + ": " + plan.target_customer?.name
+          : plan.plan_name}
       </Typography.Title>
 
       <div>

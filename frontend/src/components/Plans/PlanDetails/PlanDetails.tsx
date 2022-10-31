@@ -51,7 +51,11 @@ const PlanDetails: FC = () => {
       {plan && (
         <div>
           <PageLayout
-            title={plan.plan_name}
+            title={
+              plan.target_customer !== null
+                ? plan.plan_name + ": " + plan.target_customer?.name
+                : plan.plan_name
+            }
             backIcon
             extra={[
               <Button
