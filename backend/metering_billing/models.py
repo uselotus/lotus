@@ -501,7 +501,7 @@ class PlanVersion(models.Model):
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
     )
     usage_billing_frequency = models.CharField(
-        max_length=40, choices=USAGE_BILLING_FREQUENCY.choices
+        max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
     )
     proration_granularity = models.CharField(
         max_length=40, choices=PRORATION_GRANULARITY.choices, null=True, blank=True

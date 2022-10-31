@@ -178,12 +178,8 @@ def invoice_uuid():
 
 
 def date_as_min_dt(date):
-    return datetime.datetime.combine(
-        date, datetime.time.min, tzinfo=pytz.UTC
-    )
+    return datetime.datetime.combine(date, datetime.time.min, tzinfo=pytz.UTC)
 
 
 def date_as_max_dt(date):
-    return datetime.datetime.combine(
-        date, datetime.time.max, tzinfo=pytz.UTC
-    )
+    return datetime.datetime.combine(date, datetime.time.max, tzinfo=pytz.UTC)

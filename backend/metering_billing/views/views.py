@@ -107,7 +107,9 @@ class PeriodMetricRevenueView(APIView):
                 for sub in subs:
                     bp = sub.billing_plan
                     flat_bill_date = (
-                        sub.start_date if bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE else sub.end_date
+                        sub.start_date
+                        if bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+                        else sub.end_date
                     )
                     if p_start <= flat_bill_date <= p_end:
                         total_period_rev += bp.flat_rate.amount
