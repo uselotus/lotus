@@ -320,6 +320,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = (
+            "invoice_id",
             "cost_due",
             "cost_due_currency",
             "issue_date",
@@ -730,14 +731,10 @@ class PlanSerializer(serializers.ModelSerializer):
         display_version_data = validated_data.pop("initial_version")
         plan = Plan.objects.create(**validated_data)
         display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
-        serializer = InitialPlanVersionSerializer(data=display_version_data)
-        serializer.is_valid(raise_exception=True)
-        plan_version = serializer.save(
-            organization=validated_data["organization"],
-            created_by=validated_data["created_by"],
-            plan=plan,
-            status=PLAN_VERSION_STATUS.ACTIVE,
-        )
+        display_version_data["plan"] = plan
+        display_version_data["organization"] = validated_data["organization"]
+        display_version_data["created_by"] = validated_data["created_by"]
+        plan_version = InitialPlanVersionSerializer().create(display_version_data)
         plan.display_version = plan_version
         plan.save()
         return plan

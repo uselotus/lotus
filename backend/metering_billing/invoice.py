@@ -36,7 +36,7 @@ def generate_invoice(subscription, draft=False, issue_date=None, amount=None):
     organization = subscription.organization
     billing_plan = subscription.billing_plan
     issue_date = issue_date if issue_date else subscription.end_date
-    if isinstance(issue_date, datetime.date):
+    if isinstance(issue_date, datetime.date) and not isinstance(issue_date, datetime.datetime):
         issue_date = date_as_min_dt(issue_date)
     if amount:
         line_item = {"Flat Subscription Fee Adjustment": amount}

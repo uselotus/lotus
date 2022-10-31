@@ -172,6 +172,9 @@ def subs_uuid():
 def btst_uuid():
     return "btst_" + str(uuid.uuid4())
 
+def invoice_uuid():
+    return "inv_" + str(uuid.uuid4())
+
 
 def date_as_min_dt(date):
     return datetime.datetime.combine(
