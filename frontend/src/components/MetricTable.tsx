@@ -89,6 +89,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     <ProTable<MetricType>
       columns={columns}
       dataSource={metricArray}
+      toolBarRender={false}
       rowKey="customer_id"
       formRef={formRef}
       search={false}
