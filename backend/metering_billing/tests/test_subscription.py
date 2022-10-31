@@ -366,7 +366,7 @@ class TestUpdateSub:
             customer=setup_dict["customer"],
         )
         new_invoices_len = Invoice.objects.all().count()
-
+        print(Subscription.objects.all().values_list("status", flat=True))
         assert response.status_code == status.HTTP_200_OK
         assert len(after_active_subscriptions) == len(active_subscriptions)
         assert len(after_canceled_subscriptions) == 1
