@@ -68,11 +68,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             onClick={() => setSelectedVersion(version)}
             className={[
               "flex items-center justify-center versionChip mx-1",
-              isSelectedVersion(version.version_id) &&
-                "border border-black border-opacity-100",
-              version.status === "active"
+              isSelectedVersion(version.version_id)
                 ? "bg-[#c3986b] text-white opacity-100"
                 : "bg-[#EAEAEB] text-black",
+              version.status === "active" &&
+                "border-2 border-[#c3986b] border-opacity-100",
             ].join(" ")}
           >
             v{version.version}

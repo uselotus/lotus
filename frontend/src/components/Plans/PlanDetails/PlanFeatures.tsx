@@ -25,7 +25,7 @@ const PlanFeatures: FC<PlanFeaturesProps> = ({ features }) => {
           ))
         ) : (
           <div className="flex items-center justify-start flex-wrap">
-            No components
+            No features
           </div>
         )}
       </div>

@@ -33,7 +33,8 @@ import { PageLayout } from "../components/base/PageLayout";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
-import { planDetailPlaceholder } from "../placeholderData/planPlaceholder";
+import TargetCustomerForm from "../components/Plans/VersionActiveForm";
+import VersionActiveForm from "../components/Plans/VersionActiveForm";
 
 interface CustomizedState {
   plan: PlanType;
@@ -49,13 +50,16 @@ const EditPlan = ({ type, plan }: Props) => {
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [targetCustomerFormVisible, setTargetCustomerFormVisible] =
     useState<boolean>(false);
-  const location = useLocation();
+  const [versionActiveFormVisible, setVersionActiveFormVisible] =
+    useState<boolean>(false);
+  const [activeVersion, setActiveVersion] = useState<boolean>(false);
   const { replacementPlan } = usePlanState();
   const { setReplacementPlan } = usePlanUpdater();
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
+  const [targetCustomerId, setTargetCustomerId] = useState<string>(); // target customer id
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([
@@ -63,6 +67,7 @@ const EditPlan = ({ type, plan }: Props) => {
     { label: "Quarterly", name: "quarterly" },
     { label: "Yearly", name: "yearly" },
   ]);
+  const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>("");
 
   const { planId } = useParams();
 
@@ -110,12 +115,15 @@ const EditPlan = ({ type, plan }: Props) => {
     (post: CreatePlanType) => Plan.createPlan(post),
     {
       onSuccess: (res) => {
-        if (type == "backtest") {
-          setReplacementPlan(res);
-        }
         queryClient.invalidateQueries(["plan_list"]);
         form.resetFields();
-        navigate("/create-experiment");
+        if (type == "backtest") {
+          setReplacementPlan(res);
+          navigate("/create-experiment");
+        }
+        if (type == "custom") {
+          navigate("/plans");
+        }
       },
       onError: () => {
         toast.error("Failed to create Plan", {
@@ -218,6 +226,26 @@ const EditPlan = ({ type, plan }: Props) => {
     return target_customer_id;
   };
 
+  const onFinish = () => {
+    if (type === "custom") {
+      setTargetCustomerFormVisible(true);
+    } else if (type == "version") {
+      setVersionActiveFormVisible(true);
+    } else {
+      form.submit();
+    }
+  };
+
+  const completeCustomPlan = (target_customer_id: string) => {
+    setTargetCustomerId(target_customer_id);
+    form.submit();
+  };
+
+  const completeNewVersion = (active: boolean) => {
+    setActiveVersion(active);
+    form.submit();
+  };
+
   const submitPricingPlan = () => {
     form
       .validateFields()
@@ -264,6 +292,7 @@ const EditPlan = ({ type, plan }: Props) => {
             components: usagecomponentslist,
             features: planFeatures,
             usage_billing_frequency: values.usage_billing_frequency,
+            make_active: activeVersion,
           };
 
           mutation.mutate(newVersion);
@@ -271,7 +300,7 @@ const EditPlan = ({ type, plan }: Props) => {
           // target_id = await targetCustomerFormVisible(true);
 
           newPlan["parent_plan_id"] = plan.plan_id;
-          newPlan["target_customer_id"] = "3242342";
+          newPlan["target_customer_id"] = targetCustomerId;
           createPlanMutation.mutate(newPlan);
         }
       })
@@ -315,7 +344,7 @@ const EditPlan = ({ type, plan }: Props) => {
         </Button>,
         <Button
           key="create"
-          onClick={() => form.submit()}
+          onClick={() => onFinish()}
           className="bg-black text-white justify-self-end"
           size="large"
         >
@@ -329,10 +358,11 @@ const EditPlan = ({ type, plan }: Props) => {
           name="create_plan"
           initialValues={{
             name: plan.plan_name,
-            description: plan.description,
-            flat_rate: plan.flat_rate,
-            pay_in_advance: plan.pay_in_advance,
-            billing_interval: plan.interval,
+            description: plan.versions[0].description,
+            flat_rate: plan.versions[0].flat_rate,
+            pay_in_advance: plan.versions[0].flat_fee_billing_type,
+            usage_billing_frequency: plan.versions[0].usage_billing_frequency,
+            flat_fee_billing_type: plan.versions[0].flat_fee_billing_type,
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -346,35 +376,22 @@ const EditPlan = ({ type, plan }: Props) => {
               <Row gutter={[24, 24]}>
                 <Col span="24">
                   <Card title="Plan Information">
-                    <Form.Item
-                      label="Plan Name"
-                      name="name"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please Name Your Plan",
-                        },
-                      ]}
-                    >
-                      <Input placeholder="Ex: Starter Plan" />
+                    <Form.Item label="Plan Name" name="name">
+                      <Input
+                        placeholder="Ex: Starter Plan"
+                        disabled={type === "version" ? true : false}
+                      />
                     </Form.Item>
                     <Form.Item label="Description" name="description">
                       <Input
+                        disabled={type === "version" ? true : false}
                         type="textarea"
                         placeholder="Ex: Cheapest plan for small scale businesses"
                       />
                     </Form.Item>
-                    <Form.Item
-                      label="Plan Duration"
-                      name="plan_duration"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select a duration",
-                        },
-                      ]}
-                    >
+                    <Form.Item label="Plan Duration" name="plan_duration">
                       <Radio.Group
+                        disabled={type === "version" ? true : false}
                         onChange={(e) => {
                           if (e.target.value === "monthly") {
                             setAvailableBillingTypes([
@@ -422,61 +439,129 @@ const EditPlan = ({ type, plan }: Props) => {
                     </Form.Item>
                   </Card>
                 </Col>
-                <Col span="24">
-                  <Card
-                    title="Added Features"
-                    extra={[
-                      <Button htmlType="button" onClick={showFeatureModal}>
-                        Add Feature
-                      </Button>,
-                    ]}
-                  >
-                    <Form.Item
-                      wrapperCol={{ span: 24 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.components !== curValues.components
-                      }
-                    >
-                      <FeatureDisplay
-                        planFeatures={planFeatures}
-                        removeFeature={removeFeature}
-                        editFeatures={editFeatures}
-                      />
-                    </Form.Item>
-                  </Card>
-                </Col>
               </Row>
             </Col>
 
             <Col span={12}>
-              <Row gutter={[24, 24]}>
-                <Col span={24}>
-                  <Card
-                    title="Added Components"
-                    extra={[
-                      <Button
-                        htmlType="button"
-                        onClick={() => showComponentModal()}
-                      >
-                        Add Component
-                      </Button>,
-                    ]}
+              <Card
+                title="Added Components"
+                className="h-full"
+                extra={[
+                  <Button
+                    htmlType="button"
+                    onClick={() => showComponentModal()}
                   >
+                    Add Component
+                  </Button>,
+                ]}
+              >
+                <Form.Item
+                  wrapperCol={{ span: 24 }}
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <ComponentDisplay
+                    componentsData={componentsData}
+                    handleComponentEdit={handleComponentEdit}
+                    deleteComponent={deleteComponent}
+                  />
+                </Form.Item>
+                <div className="absolute inset-x-0 bottom-0 justify-center">
+                  <div className="w-full border-t border-gray-300 py-2" />
+                  <div className="mx-4">
                     <Form.Item
-                      wrapperCol={{ span: 24 }}
-                      shouldUpdate={(prevValues, curValues) =>
-                        prevValues.components !== curValues.components
+                      label="Usage Billing Frequency"
+                      name="usage_billing_frequency"
+                      shouldUpdate={(prevValues, currentValues) =>
+                        prevValues.plan_duration !== currentValues.plan_duration
                       }
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please select an interval",
+                        },
+                      ]}
                     >
-                      <ComponentDisplay
-                        componentsData={componentsData}
-                        handleComponentEdit={handleComponentEdit}
-                        deleteComponent={deleteComponent}
-                      />
+                      <Radio.Group disabled={type === "version" ? true : false}>
+                        {availableBillingTypes.map((type) => (
+                          <Radio value={type.name}>{type.label}</Radio>
+                        ))}
+                      </Radio.Group>
                     </Form.Item>
-                  </Card>
-                </Col>
-              </Row>
+                  </div>
+                </div>
+              </Card>
+            </Col>
+            <Col span="24">
+              <Card
+                className="w-full my-5"
+                title="Added Features"
+                extra={[
+                  <Button htmlType="button" onClick={showFeatureModal}>
+                    Add Feature
+                  </Button>,
+                ]}
+              >
+                <Form.Item
+                  wrapperCol={{ span: 24 }}
+                  shouldUpdate={(prevValues, curValues) =>
+                    prevValues.components !== curValues.components
+                  }
+                >
+                  <FeatureDisplay
+                    planFeatures={planFeatures}
+                    removeFeature={removeFeature}
+                    editFeatures={editFeatures}
+                  />
+                </Form.Item>
+              </Card>
+            </Col>
+            <Col span="24">
+              <Card className="w-6/12 mb-20" title="Price Adjustment/Discount">
+                <div className="grid grid-cols-2">
+                  <Form.Item
+                    wrapperCol={{ span: 20 }}
+                    label="Type"
+                    name="price_adjustment_type"
+                  >
+                    <Select
+                      onChange={(value) => {
+                        setPriceAdjustmentType(value);
+                      }}
+                    >
+                      <Select.Option value="price_override">
+                        Overwrite Price
+                      </Select.Option>
+                      <Select.Option value="percentage">
+                        Percentage
+                      </Select.Option>
+                      <Select.Option value="flat">Flat Amount</Select.Option>
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    name="price_adjustment_amount"
+                    wrapperCol={{ span: 24 }}
+                    shouldUpdate={(prevValues, curValues) =>
+                      prevValues.price_adjustment_type !==
+                      curValues.price_adjustment_type
+                    }
+                  >
+                    <InputNumber
+                      addonAfter={
+                        priceAdjustmentType === "percentage" ? "%" : null
+                      }
+                      addonBefore={
+                        priceAdjustmentType === "flat" ||
+                        priceAdjustmentType === "price_override"
+                          ? "$"
+                          : null
+                      }
+                    />
+                  </Form.Item>
+                </div>
+              </Card>
             </Col>
           </Row>
         </Form>
@@ -498,13 +583,20 @@ const EditPlan = ({ type, plan }: Props) => {
           />
         )}
       </Form.Provider>
-      {/* {targetCustomerFormVisible && (
+      {targetCustomerFormVisible && (
         <TargetCustomerForm
           visible={targetCustomerFormVisible}
           onCancel={hideTargetCustomerForm}
           onAddTargetCustomer={completeCustomPlan}
         />
-      )} */}
+      )}
+      {versionActiveFormVisible && (
+        <VersionActiveForm
+          visible={versionActiveFormVisible}
+          onCancel={() => setVersionActiveFormVisible(false)}
+          onOk={completeNewVersion}
+        />
+      )}
     </PageLayout>
   );
 };

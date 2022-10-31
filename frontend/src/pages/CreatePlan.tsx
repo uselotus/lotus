@@ -48,6 +48,7 @@ interface ComponentDisplay {
 const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
+  const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>("");
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
@@ -392,17 +393,49 @@ const CreatePlan = () => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Discount">
-                <Form.Item wrapperCol={{ span: 7 }} label="Type">
-                  <Select>
-                    <Select.Option value="none">Overwrite</Select.Option>
-                    <Select.Option value="percentage">Percentage</Select.Option>
-                    <Select.Option value="flat">Flat</Select.Option>
-                  </Select>
-                </Form.Item>
-                <Form.Item name="discount">
-                  <Input />
-                </Form.Item>
+              <Card className="w-6/12 mb-20" title="Price Adjustment/Discount">
+                <div className="grid grid-cols-2">
+                  <Form.Item
+                    wrapperCol={{ span: 20 }}
+                    label="Type"
+                    name="price_adjustment_type"
+                  >
+                    <Select
+                      onChange={(value) => {
+                        setPriceAdjustmentType(value);
+                      }}
+                    >
+                      <Select.Option value="price_override">
+                        Overwrite Price
+                      </Select.Option>
+                      <Select.Option value="percentage">
+                        Percentage
+                      </Select.Option>
+                      <Select.Option value="flat">Flat Amount</Select.Option>
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    name="price_adjustment_amount"
+                    wrapperCol={{ span: 24 }}
+                    shouldUpdate={(prevValues, curValues) =>
+                      prevValues.price_adjustment_type !==
+                      curValues.price_adjustment_type
+                    }
+                  >
+                    <InputNumber
+                      addonAfter={
+                        priceAdjustmentType === "percentage" ? "%" : null
+                      }
+                      addonBefore={
+                        priceAdjustmentType === "flat" ||
+                        priceAdjustmentType === "price_override"
+                          ? "$"
+                          : null
+                      }
+                    />
+                  </Form.Item>
+                </div>
               </Card>
             </Col>
           </Row>

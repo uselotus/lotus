@@ -24,30 +24,18 @@ const PlanDetails: FC = () => {
     data: plan,
     isLoading,
     isError,
-  } = useQuery<PlanDetailType>(["plan_detail", planId], () =>
-    Plan.getPlan(planId).then((res) => {
-      return res;
-    })
+  } = useQuery<PlanDetailType>(
+    ["plan_detail", planId],
+    () =>
+      Plan.getPlan(planId).then((res) => {
+        return res;
+      }),
+    { refetchOnMount: "always" }
   );
 
   const navigateCreateCustomPlan = () => {
     navigate("/create-custom/" + planId);
   };
-
-  const versions = [
-    {
-      version_name: "Version 4",
-    },
-    {
-      version_name: "Version 3",
-    },
-    {
-      version_name: "Version 2",
-    },
-    {
-      version_name: "Version 1",
-    },
-  ];
 
   return (
     <Fragment>
