@@ -115,7 +115,6 @@ class CustomerSummarySerializer(serializers.ModelSerializer):
         )
 
     subscriptions = SubscriptionCustomerSummarySerializer(read_only=True, many=True)
-    customer_name = serializers.CharField(source="name")
 
 
 class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer):
