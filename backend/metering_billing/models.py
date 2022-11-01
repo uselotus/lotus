@@ -766,7 +766,7 @@ class Subscription(models.Model):
     )
     prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
     flat_fee_already_billed = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
+        decimal_places=10, max_digits=20, default=0.0
     )
     history = HistoricalRecords()
 
@@ -857,7 +857,7 @@ class Subscription(models.Model):
             if due < 0:
                 self.customer.balance = due
             elif due > 0:
-                generate_invoice(self, draft=False, issue_date=now_utc(), amount=due)
+                generate_invoice(self, draft=False, amount=due)
                 self.flat_fee_already_billed += due
                 self.save()
                 self.customer.balance = 0
