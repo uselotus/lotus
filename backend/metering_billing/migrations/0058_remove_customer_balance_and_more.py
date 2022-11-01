@@ -47,7 +47,9 @@ class Migration(migrations.Migration):
             model_name="invoice",
             name="invoice_id",
             field=models.CharField(
-                blank=True, default=uuid.uuid4, max_length=100,
+                blank=True,
+                default=uuid.uuid4,
+                max_length=100,
             ),
         ),
         migrations.AddField(
