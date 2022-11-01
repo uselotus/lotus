@@ -42,7 +42,7 @@ class PaymentProviderView(APIView):
         serializer = PaymentProviderPostRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         payment_processor_name = serializer.validated_data["pp_info"][
-            "payment_processor_name"
+            "payment_processor"
         ]
         data = serializer.validated_data["pp_info"]["data"]
 
