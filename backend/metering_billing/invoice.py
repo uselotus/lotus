@@ -40,7 +40,7 @@ def generate_invoice(subscription, draft=False):
     organization = subscription.organization
     billing_plan = subscription.billing_plan
     plan_currency = billing_plan.flat_rate.currency
-    customer_balance = customer.get_balance(plan_currency)
+    customer_balance = customer.get_currency_balance(plan_currency)
 
     summary_dict = {"line_items": []}
     # usage calculation
@@ -51,7 +51,7 @@ def generate_invoice(subscription, draft=False):
                 subscription.start_date,
                 subscription.end_date,
             )
-            usg_rev = pc_usg_and_rev.items()[0][1]
+            usg_rev = list(pc_usg_and_rev.items())[0][1]
             line_item = {
                 "name": plan_component.billable_metric.billable_metric_name,
                 "start_date": subscription.start_date,
@@ -64,7 +64,7 @@ def generate_invoice(subscription, draft=False):
             summary_dict["line_items"].append(line_item)
     # flat fee calculation for current plan
     flat_costs_dict_list = sorted(
-        subscription.prorated_flat_costs_dict.items(), key=lambda x: x[0]
+        list(subscription.prorated_flat_costs_dict.items()), key=lambda x: x[0]
     )
     date_range_costs = [
         (
@@ -76,9 +76,9 @@ def generate_invoice(subscription, draft=False):
     ]
     for k, v in flat_costs_dict_list:
         last_elem_amount, last_elem_plan, last_elem_start, _ = date_range_costs[-1]
-        assert type(k) == type(issue_date.date())
+        assert type(k) == type(str(issue_date.date())), "k is not a string"
         if (
-            issue_date.date() < k
+            str(issue_date.date()) < k
         ):  # only add flat fee if it is before or equal the issue date
             break
         if v["plan_version_id"] != last_elem_plan:
@@ -93,7 +93,7 @@ def generate_invoice(subscription, draft=False):
             )
     for amount, plan_version_id, start, end in date_range_costs:
         cur_bp = PlanVersion.objects.get(version_id=plan_version_id)
-        billing_plan_name = cur_bp.plan.name
+        billing_plan_name = cur_bp.plan.plan_name
         billing_plan_version = cur_bp.version
         summary_dict["line_items"].append(
             {
@@ -115,13 +115,13 @@ def generate_invoice(subscription, draft=False):
         if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             summary_dict["line_items"].append(
                 {
-                    "name": f"{next_bp.plan.name} v{next_bp.version} Flat Fee",
+                    "name": f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee",
                     "start_date": subscription.end_date,
                     "end_date": calculate_end_date(
                         next_bp.plan.plan_duration, subscription.end_date
                     ),
                     "quantity": 1,
-                    "subtotal": next_bp.flat_fee.amount,
+                    "subtotal": next_bp.flat_rate.amount,
                     "type": "In Advance",
                     "associated_version": next_bp,
                 }
@@ -130,7 +130,7 @@ def generate_invoice(subscription, draft=False):
 
     for line_item in summary_dict["line_items"]:
         associated_version = line_item.get("associated_version")
-        billing_plan_name = associated_version.plan.name
+        billing_plan_name = associated_version.plan.plan_name
         billing_plan_version = associated_version.version
         plan_name = f"{billing_plan_name} v{billing_plan_version}"
         if associated_version not in summary_dict["subtotal_by_plan"]:
@@ -141,21 +141,18 @@ def generate_invoice(subscription, draft=False):
         summary_dict["subtotal_by_plan"][plan_name]["amount"] += line_item["subtotal"]
         del line_item["associated_version"]
         line_item["source"] = plan_name
-    summary_dict["subtotal_by_plan"] = {
-        k: v["amount"] for k, v in summary_dict["subtotal_by_plan"].items()
-    }
 
     summary_dict["subtotal_by_plan_after_adjustments"] = {}
     for plan_name, plan_dict in summary_dict["subtotal_by_plan"].items():
         subtotal_adjustment_dict = {}
         plan_version = plan_dict["plan"]
-        plan_amount = plan_dict["amount"]
+        plan_amount = convert_to_decimal(plan_dict["amount"])
         if plan_version.price_adjustment:
             subtotal_adjustment_dict["price_adjustment"] = str(
                 billing_plan.price_adjustment
             )
             new_amount_due = billing_plan.price_adjustment.apply(plan_amount)
-            subtotal_adjustment_dict["amount"] = max(new_amount_due, 0)
+            subtotal_adjustment_dict["amount"] = max(new_amount_due, Decimal(0))
         else:
             subtotal_adjustment_dict["price_adjustment"] = "None"
             subtotal_adjustment_dict["amount"] = plan_amount
@@ -163,8 +160,15 @@ def generate_invoice(subscription, draft=False):
             plan_name
         ] = subtotal_adjustment_dict
 
-    summary_dict["total"] = sum(
-        x["amount"] for x in summary_dict["subtotal_by_plan_after_adjustments"].values()
+    summary_dict["subtotal_by_plan"] = {
+        k: v["amount"] for k, v in summary_dict["subtotal_by_plan"].items()
+    }
+
+    summary_dict["total"] = convert_to_decimal(
+        sum(
+            x["amount"]
+            for x in summary_dict["subtotal_by_plan_after_adjustments"].values()
+        )
     )
 
     summary_dict["already_paid"] = subscription.flat_fee_already_billed

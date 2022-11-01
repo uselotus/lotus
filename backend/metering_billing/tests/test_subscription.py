@@ -103,7 +103,6 @@ def subscription_test_common_setup(
             )
         payload = {
             "name": "test_subscription",
-            "balance": -30,
             "start_date": now_utc().date() - timedelta(days=35),
             "status": "active",
             "customer_id": customer.customer_id,
@@ -207,27 +206,27 @@ class TestCreateSubscription:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions + 1
 
-    def test_deny_customer_and_bp_different_currency(
-        self, subscription_test_common_setup, get_subscriptions_in_org
-    ):
-        # covers user_org_and_api_key_org_different = True
-        num_subscriptions = 1
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=num_subscriptions,
-            auth_method="api_key",
-            user_org_and_api_key_org_different=False,
-        )
-        setup_dict["customer"].balance = Money(0, "GBP")
-        setup_dict["customer"].save()
+    # def test_deny_customer_and_bp_different_currency(
+    #     self, subscription_test_common_setup, get_subscriptions_in_org
+    # ):
+    #     # covers user_org_and_api_key_org_different = True
+    #     num_subscriptions = 1
+    #     setup_dict = subscription_test_common_setup(
+    #         num_subscriptions=num_subscriptions,
+    #         auth_method="api_key",
+    #         user_org_and_api_key_org_different=False,
+    #     )
+    #     setup_dict["customer"].balance = Money(0, "GBP")
+    #     setup_dict["customer"].save()
 
-        response = setup_dict["client"].post(
-            reverse("subscription-list"),
-            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
+    #     response = setup_dict["client"].post(
+    #         reverse("subscription-list"),
+    #         data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+    #         content_type="application/json",
+    #     )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
+    #     assert response.status_code == status.HTTP_400_BAD_REQUEST
+    #     assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
 
 
 @pytest.mark.django_db(transaction=True)

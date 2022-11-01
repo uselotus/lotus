@@ -200,7 +200,7 @@ class Customer(models.Model):
             Q(expires_at__gte=now) | Q(expires_at__isnull=True),
             effective_at__lte=now,
             amount_currency=currency,
-        ).aggregate(balance=Sum("amount_amount"))["balance"] or Decimal(0)
+        ).aggregate(balance=Sum("amount"))["balance"] or Decimal(0)
         return balance
 
 
@@ -216,7 +216,7 @@ class CustomerBalanceAdjustment(models.Model):
     description = models.TextField(null=True, blank=True)
     created = models.DateTimeField(default=now_utc)
     effective_at = models.DateTimeField(default=now_utc)
-    expire = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.customer.name} {self.amount} {self.created}"
@@ -795,7 +795,7 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    scheduled_end_date = models.DateTimeField()
+    scheduled_end_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_STATUS.choices,
@@ -893,21 +893,8 @@ class Subscription(models.Model):
         )
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            new_sub_daily_cost_dict = self.prorated_flat_costs_dict
-            prorated_cost = sum(d["amount"] for d in new_sub_daily_cost_dict.values())
-            due = (
-                prorated_cost
-                + self.customer.balance.amount
-                - self.flat_fee_already_billed
-            )
-            if due < 0:
-                self.customer.balance = due
-            elif due > 0:
-                generate_invoice(self, draft=False, amount=due)
-                self.flat_fee_already_billed += due
-                self.save()
-                self.customer.balance = 0
-            self.customer.save()
+            invoice = generate_invoice(self)
+            self.flat_fee_already_billed += invoice.cost_due
 
 
 class Backtest(models.Model):

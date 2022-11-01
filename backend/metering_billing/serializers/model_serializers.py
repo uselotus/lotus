@@ -148,7 +148,6 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = (
             "customer_name",
             "customer_id",
-            "balance",
         )
 
     customer_name = serializers.CharField(source="name")
@@ -346,7 +345,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         fields = (
             "customer_id",
             "email",
-            "balance",
             "customer_name",
             "invoices",
             "total_amount_due",
@@ -849,13 +847,13 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                 f"Customer already has an active subscription to this plan"
             )
 
-        # check that customer and billing_plan currencies match
-        customer_currency = data["customer"].balance.currency
-        billing_plan_currency = data["billing_plan"].flat_rate.currency
-        if customer_currency != billing_plan_currency:
-            raise serializers.ValidationError(
-                f"Customer currency {customer_currency} does not match billing plan currency {billing_plan_currency}"
-            )
+        # # check that customer and billing_plan currencies match
+        # customer_currency = data["customer"].balance.currency
+        # billing_plan_currency = data["billing_plan"].flat_rate.currency
+        # if customer_currency != billing_plan_currency:
+        #     raise serializers.ValidationError(
+        #         f"Customer currency {customer_currency} does not match billing plan currency {billing_plan_currency}"
+        #     )
 
         # check that if the plan is designed for a specific customer, that the customer is that customer
         tc = data["billing_plan"].plan.target_customer

@@ -161,10 +161,10 @@ class TestGenerateInvoice:
 
         pct_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
-            price_adjustment_name=r"10% discount",
-            price_adjustment_description=r"10% discount for being a valued customer",
+            price_adjustment_name=r"1% discount",
+            price_adjustment_description=r"1% discount for being a valued customer",
             price_adjustment_type=PRICE_ADJUSTMENT_TYPE.PERCENTAGE,
-            price_adjustment_amount=-10,
+            price_adjustment_amount=-1,
         )
         setup_dict["billing_plan"].price_adjustment = pct_price_adjustment
         setup_dict["billing_plan"].save()
@@ -173,14 +173,14 @@ class TestGenerateInvoice:
 
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data[0]["cost_due"]
-        assert before_cost * Decimal("0.9") == after_cost
+        assert before_cost * Decimal("0.99") == after_cost
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
-            price_adjustment_name=r"$10 discount",
-            price_adjustment_description=r"$10 discount for being a valued customer",
+            price_adjustment_name=r"$1 discount",
+            price_adjustment_description=r"$1 discount for being a valued customer",
             price_adjustment_type=PRICE_ADJUSTMENT_TYPE.FIXED,
-            price_adjustment_amount=-10,
+            price_adjustment_amount=-1,
         )
         setup_dict["billing_plan"].price_adjustment = fixed_price_adjustment
         setup_dict["billing_plan"].save()
@@ -189,7 +189,7 @@ class TestGenerateInvoice:
 
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data[0]["cost_due"]
-        assert before_cost - Decimal("10") == after_cost
+        assert before_cost - Decimal("1") == after_cost
 
         override_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
