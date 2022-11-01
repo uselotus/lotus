@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             name="customer_id",
             field=models.CharField(
                 blank=True,
-                default=metering_billing.utils.utils.cust_uuid,
+                default=metering_billing.utils.utils.customer_uuid,
                 max_length=50,
             ),
         ),
@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
             name="customer_id",
             field=models.CharField(
                 blank=True,
-                default=metering_billing.utils.utils.cust_uuid,
+                default=metering_billing.utils.utils.customer_uuid,
                 max_length=50,
             ),
         ),

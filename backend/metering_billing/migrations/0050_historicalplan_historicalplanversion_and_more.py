@@ -480,7 +480,8 @@ class Migration(migrations.Migration):
                 (
                     "version_id",
                     models.CharField(
-                        default=metering_billing.utils.utils.vers_uuid, max_length=250
+                        default=metering_billing.utils.utils.plan_version_uuid,
+                        max_length=250,
                     ),
                 ),
                 ("history_id", models.AutoField(primary_key=True, serialize=False)),
@@ -547,7 +548,7 @@ class Migration(migrations.Migration):
                     "product_id",
                     models.CharField(
                         db_index=True,
-                        default=metering_billing.utils.utils.prod_uuid,
+                        default=metering_billing.utils.utils.product_uuid,
                         max_length=100,
                     ),
                 ),
@@ -1050,7 +1051,8 @@ class Migration(migrations.Migration):
                 (
                     "version_id",
                     models.CharField(
-                        default=metering_billing.utils.utils.vers_uuid, max_length=250
+                        default=metering_billing.utils.utils.plan_version_uuid,
+                        max_length=250,
                     ),
                 ),
                 (
@@ -1120,7 +1122,7 @@ class Migration(migrations.Migration):
                 (
                     "product_id",
                     models.CharField(
-                        default=metering_billing.utils.utils.prod_uuid,
+                        default=metering_billing.utils.utils.product_uuid,
                         max_length=100,
                         unique=True,
                     ),
@@ -1178,7 +1180,7 @@ class Migration(migrations.Migration):
             name="backtest_id",
             field=models.CharField(
                 blank=True,
-                default=metering_billing.utils.utils.btst_uuid,
+                default=metering_billing.utils.utils.backtest_uuid,
                 max_length=100,
                 unique=True,
             ),
@@ -1197,7 +1199,7 @@ class Migration(migrations.Migration):
             name="customer_id",
             field=models.CharField(
                 blank=True,
-                default=metering_billing.utils.utils.cust_uuid,
+                default=metering_billing.utils.utils.customer_uuid,
                 max_length=40,
             ),
         ),
@@ -1207,7 +1209,7 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 blank=True,
                 db_index=True,
-                default=metering_billing.utils.utils.btst_uuid,
+                default=metering_billing.utils.utils.backtest_uuid,
                 max_length=100,
             ),
         ),
@@ -1225,7 +1227,7 @@ class Migration(migrations.Migration):
             name="customer_id",
             field=models.CharField(
                 blank=True,
-                default=metering_billing.utils.utils.cust_uuid,
+                default=metering_billing.utils.utils.customer_uuid,
                 max_length=40,
             ),
         ),
@@ -1247,7 +1249,7 @@ class Migration(migrations.Migration):
             name="subscription_id",
             field=models.CharField(
                 blank=True,
-                default=metering_billing.utils.utils.subs_uuid,
+                default=metering_billing.utils.utils.subscription_uuid,
                 max_length=100,
             ),
         ),
@@ -1269,7 +1271,7 @@ class Migration(migrations.Migration):
             name="subscription_id",
             field=models.CharField(
                 blank=True,
-                default=metering_billing.utils.utils.subs_uuid,
+                default=metering_billing.utils.utils.subscription_uuid,
                 max_length=100,
             ),
         ),
