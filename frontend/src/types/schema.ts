@@ -102,7 +102,7 @@ export interface paths {
     /** Get the current settings for the organization. */
     get: operations["organization_retrieve"];
   };
-  "/api/organization/invite": {
+  "/api/organization/invite/": {
     post: operations["organization_invite_create"];
   };
   "/api/payment_providers/": {

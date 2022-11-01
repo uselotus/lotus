@@ -151,7 +151,7 @@ urlpatterns = [
         name="set-new-password",
     ),
     path(
-        "api/organization/invite",
+        "api/organization/invite/",
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
     ),
