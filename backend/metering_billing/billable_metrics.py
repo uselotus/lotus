@@ -46,7 +46,7 @@ class BillableMetricHandler(abc.ABC):
         end_date: datetime.date,
         customer: Optional[Customer],
         billable_only: bool,
-    ) -> dict[Customer.name, dict[datetime.datetime, float]]:
+    ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         """This method will be used to calculate the usage at the given granularity. This is purely how much has been used and will typically be used in dahsboarding to show usage of the metric. You should be able to handle any aggregation type returned in the allowed_aggregation_types method.
 
         Customer can either be a customer object or None. If it is None, then you should return the per-customer usage. If it is a customer object, then you should return the usage for that customer.
@@ -104,7 +104,7 @@ class AggregationHandler(BillableMetricHandler):
             "time_created__lte": end_date,
         }
         pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {"customer_name": F("customer__name")}
+        groupby_kwargs = {"customer_name": F("customer__customer_name")}
         post_groupby_annotation_kwargs = {}
         if customer:
             filter_kwargs["customer"] = customer
@@ -301,7 +301,7 @@ class StatefulHandler(BillableMetricHandler):
             "time_created__lte": end_date,
         }
         pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {"customer_name": F("customer__name")}
+        groupby_kwargs = {"customer_name": F("customer__customer_name")}
         post_groupby_annotation_kwargs = {}
         if customer:
             filter_kwargs["customer"] = customer
@@ -375,7 +375,7 @@ class StatefulHandler(BillableMetricHandler):
                 customer=customer,
                 properties__has_key=self.property_name,
             )
-            .annotate(customer_name=F("customer__name"))
+            .annotate(customer_name=F("customer__customer_name"))
             .order_by("customer_name", "-time_created")
             .distinct("customer_name")
             .annotate(property_value=F(f"properties__{self.property_name}"))

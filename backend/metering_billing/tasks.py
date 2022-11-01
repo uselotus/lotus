@@ -69,7 +69,9 @@ def calculate_invoice():
     for old_subscription in ending_subscriptions:
         # Generate the invoice
         try:
-            generate_invoice(old_subscription)
+            generate_invoice(
+                old_subscription, charge_next_plan=old_subscription.auto_renew
+            )
         except Exception as e:
             print(e)
             print(
@@ -358,7 +360,7 @@ def run_backtest(backtest_id):
         top_cust_dict["original_plan_revenue"] = [
             {
                 "customer_id": customer.customer_id,
-                "customer_name": customer.name,
+                "customer_name": customer.customer_name,
                 "value": rev_dict["original_plan_revenue"],
             }
             for customer, rev_dict in top_original
@@ -369,7 +371,7 @@ def run_backtest(backtest_id):
         top_cust_dict["new_plan_revenue"] = [
             {
                 "customer_id": customer.customer_id,
-                "customer_name": customer.name,
+                "customer_name": customer.customer_name,
                 "value": rev_dict["new_plan_revenue"],
             }
             for customer, rev_dict in top_new
@@ -389,7 +391,7 @@ def run_backtest(backtest_id):
         top_cust_dict["biggest_pct_increase"] = [
             {
                 "customer_id": customer.customer_id,
-                "customer_name": customer.name,
+                "customer_name": customer.customer_name,
                 "value": pct_change,
             }
             for customer, pct_change in all_pct_change[-5:]
@@ -397,7 +399,7 @@ def run_backtest(backtest_id):
         top_cust_dict["biggest_pct_decrease"] = [
             {
                 "customer_id": customer.customer_id,
-                "customer_name": customer.name,
+                "customer_name": customer.customer_name,
                 "value": pct_change,
             }
             for customer, pct_change in all_pct_change[:5]

@@ -139,7 +139,7 @@ class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="org_customers"
     )
-    name = models.CharField(max_length=100)
+    customer_name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(
         max_length=50, blank=True, null=False, default=customer_uuid
@@ -218,7 +218,7 @@ class CustomerBalanceAdjustment(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.customer.name} {self.amount} {self.created}"
+        return f"{self.customer.customer_name} {self.amount} {self.created}"
 
     class Meta:
         ordering = ["-created"]
@@ -347,7 +347,7 @@ class BillableMetric(models.Model):
         granularity,
         customer=None,
         billable_only=False,
-    ) -> dict[Customer.name, dict[datetime.datetime, float]]:
+    ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
@@ -412,7 +412,7 @@ class PlanComponent(models.Model):
             billable_only=True,
         )
 
-        usage = usage.get(customer.name, {})
+        usage = usage.get(customer.customer_name, {})
 
         period_revenue_dict = {
             period: {}
@@ -815,7 +815,7 @@ class Subscription(models.Model):
         unique_together = ("organization", "subscription_id")
 
     def __str__(self):
-        return f"{self.customer.name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
+        return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
         if not self.end_date:

@@ -149,7 +149,7 @@ class StripeConnector(PaymentProvider):
                 stripe_id = stripe_customer.id
                 stripe_email = stripe_customer.email
                 stripe_metadata = stripe_customer.metadata
-                stripe_name = stripe_customer.name
+                stripe_name = stripe_customer.customer_name
                 stripe_name = stripe_name if stripe_name else "no_stripe_name"
                 stripe_currency = stripe_customer.currency
                 customer = Customer.objects.filter(
@@ -243,7 +243,7 @@ class StripeConnector(PaymentProvider):
         stripe.api_key = self.secret_key
         assert customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id") is None
         customer_kwargs = {
-            "name": customer.name,
+            "name": customer.customer_name,
             "email": customer.email,
         }
         if not self.self_hosted:
@@ -257,7 +257,7 @@ class StripeConnector(PaymentProvider):
             "id": stripe_customer.id,
             "email": customer.email,
             "metadata": {},
-            "name": customer.name,
+            "name": customer.customer_name,
         }
         customer.save()
 

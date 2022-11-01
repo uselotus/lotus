@@ -22,7 +22,7 @@ from .webhooks import invoice_created_webhook
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
-def generate_invoice(subscription, draft=False):
+def generate_invoice(subscription, draft=False, charge_next_plan=False):
     """
     Generate an invoice for a subscription.
     """
@@ -107,7 +107,7 @@ def generate_invoice(subscription, draft=False):
             }
         )
     # next plan flat fee calculation
-    if issue_date > subscription.end_date:
+    if charge_next_plan:
         if billing_plan.replace_with:
             next_bp = subscription.replace_with
         else:
