@@ -17,7 +17,7 @@ class EventPreviewSerializer(serializers.Serializer):
 class CustomerNameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("name",)
+        fields = ("customer_name",)
 
 
 class CustomerIDSerializer(serializers.ModelSerializer):
@@ -46,8 +46,6 @@ class InvoiceCustomerSerializer(serializers.ModelSerializer):
             "customer_name",
             "customer_id",
         )
-
-    customer_name = serializers.CharField(source="name")
 
 
 class InvoicePlanVersionSerializer(serializers.ModelSerializer):
