@@ -61,26 +61,24 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     },
   ];
 
-  const handleDelete = (id: number) => {
-    Metrics.deleteMetric(id).then((res) => {});
-  };
-
   return (
-    <ProTable<MetricType>
-      columns={columns}
-      dataSource={metricArray}
-      toolBarRender={false}
-      rowKey="customer_id"
-      formRef={formRef}
-      search={false}
-      className="w-full"
-      pagination={{
-        showTotal: (total, range) => (
-          <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-        ),
-      }}
-      options={false}
-    />
+    <div className="border-2 border-solid rounded border-[#EAEAEB]">
+      <ProTable<MetricType>
+        columns={columns}
+        dataSource={metricArray}
+        toolBarRender={false}
+        rowKey="customer_id"
+        formRef={formRef}
+        search={false}
+        className="w-full"
+        pagination={{
+          showTotal: (total, range) => (
+            <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
+          ),
+        }}
+        options={false}
+      />
+    </div>
   );
 };
 

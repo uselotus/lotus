@@ -414,7 +414,7 @@ const CreatePlan = () => {
                         setPriceAdjustmentType(value);
                       }}
                     >
-                      <Select.Option value="none">Percentage</Select.Option>
+                      <Select.Option value="none">None</Select.Option>
                       <Select.Option value="price_override">
                         Overwrite Price
                       </Select.Option>

@@ -215,7 +215,7 @@ const SubscriptionView: FC<Props> = ({
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
-        <h3 className="text-xl font-main m-3">No Subscription</h3>
+        <h2 className="m-3">No Subscription</h2>
         <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
           <Form

@@ -64,6 +64,21 @@ const columns: ProColumns<CustomerTableItem>[] = [
     ),
     dataIndex: "total_amount_due",
   },
+  {
+    title: "Subscription Renews",
+    width: 120,
+    render: (_, record) => (
+      <div>
+        {record.subscriptions[0] !== undefined &&
+          (record.subscriptions[0].auto_renew ? (
+            <Tag color={"green"}>Renews</Tag>
+          ) : (
+            <Tag color={"red"}>Ends</Tag>
+          ))}
+      </div>
+    ),
+    dataIndex: "auto_renew",
+  },
 ];
 
 interface Props {
@@ -139,7 +154,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   };
 
   return (
-    <div className="border-solid rounded border-[#EAEAEB]">
+    <div className="border-2 border-solid rounded border-[#EAEAEB]">
       <ProTable
         columns={columns}
         dataSource={tableData}
@@ -162,14 +177,16 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
         options={false}
       />
 
-      <CustomerDetail
-        key={customerState.customer_id}
-        visible={customerVisible}
-        onCancel={onDetailCancel}
-        changePlan={changePlan}
-        plans={data}
-        customer_id={customerState.customer_id}
-      />
+      {customerVisible && (
+        <CustomerDetail
+          key={customerState.customer_id}
+          visible={customerVisible}
+          onCancel={onDetailCancel}
+          changePlan={changePlan}
+          plans={data}
+          customer_id={customerState.customer_id}
+        />
+      )}
     </div>
   );
 };
