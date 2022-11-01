@@ -177,7 +177,7 @@ class PeriodSubscriptionsView(APIView):
                 Q(start_date__range=[p_start, p_end])
                 | Q(end_date__range=[p_start, p_end]),
                 organization=organization,
-            ).values(customer_name=F("customer__name"), new=F("is_new"))
+            ).values(customer_name=F("customer__customer_name"), new=F("is_new"))
             seen_dict = {}
             for sub in p_subs:
                 if (
@@ -357,6 +357,12 @@ class CustomerDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="CustomerDetailRequestSerializer",
+                fields={"customer_id": serializers.CharField()},
+            ),
+        ],
         responses={200: CustomerDetailSerializer},
     )
     def get(self, request, format=None):
@@ -554,7 +560,7 @@ class GetCustomerAccessView(APIView):
                             granularity=REVENUE_CALC_GRANULARITY.TOTAL,
                             customer=customer,
                         )
-                        metric_usage = metric_usage.get(customer.name, {})
+                        metric_usage = metric_usage.get(customer.customer_name, {})
                         metric_usage = list(metric_usage.values())
                         if len(metric_usage) > 0:
                             metric_usage = metric_usage[0]

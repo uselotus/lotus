@@ -421,7 +421,7 @@ const CreatePlan = () => {
                       <Select.Option value="percentage">
                         Percentage
                       </Select.Option>
-                      <Select.Option value="flat">Flat Amount</Select.Option>
+                      <Select.Option value="fixed">Fixed Amount</Select.Option>
                     </Select>
                   </Form.Item>
 
@@ -446,7 +446,7 @@ const CreatePlan = () => {
                         priceAdjustmentType === "percentage" ? "%" : null
                       }
                       addonBefore={
-                        priceAdjustmentType === "flat" ||
+                        priceAdjustmentType === "fixed" ||
                         priceAdjustmentType === "price_override"
                           ? "$"
                           : null

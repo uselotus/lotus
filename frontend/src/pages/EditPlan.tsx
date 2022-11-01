@@ -563,7 +563,7 @@ const EditPlan = ({ type, plan }: Props) => {
                       <Select.Option value="percentage">
                         Percentage
                       </Select.Option>
-                      <Select.Option value="flat">Flat Amount</Select.Option>
+                      <Select.Option value="fixed">Flat Amount</Select.Option>
                     </Select>
                   </Form.Item>
 
@@ -588,7 +588,7 @@ const EditPlan = ({ type, plan }: Props) => {
                         priceAdjustmentType === "percentage" ? "%" : null
                       }
                       addonBefore={
-                        priceAdjustmentType === "flat" ||
+                        priceAdjustmentType === "fixed" ||
                         priceAdjustmentType === "price_override"
                           ? "$"
                           : null

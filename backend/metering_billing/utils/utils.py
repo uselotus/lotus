@@ -63,7 +63,7 @@ def years_bwn_twodates(start_date, end_date):
         yield (start_date + relativedelta(years=n)).year
 
 
-def months_bwn_twodates(start_date, end_date):
+def months_bwn_two_dates(start_date, end_date):
     months_btwn = (
         12 * relativedelta(end_date, start_date).years
         + relativedelta(end_date, start_date).months
@@ -145,11 +145,11 @@ def calculate_end_date(interval, start_date):
         return start_date + relativedelta(years=+1) - relativedelta(days=+1)
 
 
-def prod_uuid():
+def product_uuid():
     return "prod_" + str(uuid.uuid4())
 
 
-def cust_uuid():
+def customer_uuid():
     return "cust_" + str(uuid.uuid4())
 
 
@@ -157,7 +157,7 @@ def metric_uuid():
     return "metric_" + str(uuid.uuid4())
 
 
-def vers_uuid():
+def plan_version_uuid():
     return "plnvrs_" + str(uuid.uuid4())
 
 
@@ -165,11 +165,11 @@ def plan_uuid():
     return "plan_" + str(uuid.uuid4())
 
 
-def subs_uuid():
+def subscription_uuid():
     return "subs_" + str(uuid.uuid4())
 
 
-def btst_uuid():
+def backtest_uuid():
     return "btst_" + str(uuid.uuid4())
 
 

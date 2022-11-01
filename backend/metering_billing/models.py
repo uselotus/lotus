@@ -12,10 +12,10 @@ from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
-    btst_uuid,
+    backtest_uuid,
     calculate_end_date,
     convert_to_decimal,
-    cust_uuid,
+    customer_uuid,
     dates_bwn_two_dts,
     invoice_uuid,
     metric_uuid,
@@ -23,9 +23,9 @@ from metering_billing.utils import (
     now_utc,
     periods_bwn_twodates,
     plan_uuid,
-    prod_uuid,
-    subs_uuid,
-    vers_uuid,
+    plan_version_uuid,
+    product_uuid,
+    subscription_uuid,
 )
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
@@ -51,7 +51,6 @@ from metering_billing.utils.enums import (
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
-from sqlalchemy import ForeignKey
 
 
 class Organization(models.Model):
@@ -113,7 +112,7 @@ class Product(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_products"
     )
-    product_id = models.CharField(default=prod_uuid, max_length=100, unique=True)
+    product_id = models.CharField(default=product_uuid, max_length=100, unique=True)
     status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
     history = HistoricalRecords()
 
@@ -140,10 +139,10 @@ class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="org_customers"
     )
-    name = models.CharField(max_length=100)
+    customer_name = models.CharField(max_length=100)
     email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(
-        max_length=50, blank=True, null=False, default=cust_uuid
+        max_length=50, blank=True, null=False, default=customer_uuid
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -219,7 +218,7 @@ class CustomerBalanceAdjustment(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.customer.name} {self.amount} {self.created}"
+        return f"{self.customer.customer_name} {self.amount} {self.created}"
 
     class Meta:
         ordering = ["-created"]
@@ -348,7 +347,7 @@ class BillableMetric(models.Model):
         granularity,
         customer=None,
         billable_only=False,
-    ) -> dict[Customer.name, dict[datetime.datetime, float]]:
+    ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
@@ -413,7 +412,7 @@ class PlanComponent(models.Model):
             billable_only=True,
         )
 
-        usage = usage.get(customer.name, {})
+        usage = usage.get(customer.customer_name, {})
 
         period_revenue_dict = {
             period: {}
@@ -566,7 +565,7 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.CharField(max_length=250, default=vers_uuid)
+    version_id = models.CharField(max_length=250, default=plan_version_uuid)
     history = HistoricalRecords()
 
     class Meta:
@@ -804,7 +803,7 @@ class Subscription(models.Model):
     auto_renew = models.BooleanField(default=True)
     is_new = models.BooleanField(default=True)
     subscription_id = models.CharField(
-        max_length=100, null=False, blank=True, default=subs_uuid
+        max_length=100, null=False, blank=True, default=subscription_uuid
     )
     prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
     flat_fee_already_billed = models.DecimalField(
@@ -816,22 +815,25 @@ class Subscription(models.Model):
         unique_together = ("organization", "subscription_id")
 
     def __str__(self):
-        return f"{self.customer.name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
+        return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
         if not self.end_date:
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration, self.start_date
             )
+        if not self.scheduled_end_date:
             self.scheduled_end_date = self.end_date
         if self.status == SUBSCRIPTION_STATUS.ACTIVE:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
-            dates_bwn = list(dates_bwn_two_dts(self.start_date, self.end_date))
+            dates_bwn = list(
+                dates_bwn_two_dts(self.start_date, self.scheduled_end_date)
+            )
             for day in dates_bwn:
                 if isinstance(day, datetime.datetime):
                     day = day.date()
-                if day >= today:
+                if day >= today or not self.pk:
                     flat_fee_dictionary[str(day)] = {
                         "plan_version_id": self.billing_plan.version_id,
                         "amount": float(self.billing_plan.flat_rate.amount)
@@ -910,7 +912,7 @@ class Backtest(models.Model):
     )
     time_created = models.DateTimeField(default=now_utc)
     backtest_id = models.CharField(
-        max_length=100, null=False, blank=True, default=btst_uuid, unique=True
+        max_length=100, null=False, blank=True, default=backtest_uuid, unique=True
     )
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, null=True, blank=True)

@@ -238,7 +238,7 @@ class TestCalculateBillableMetric:
             granularity=REVENUE_CALC_GRANULARITY.TOTAL,
             customer=customer,
         )
-        metric_usage = metric_usage[customer.name]
+        metric_usage = metric_usage[customer.customer_name]
         metric_usage = list(metric_usage.values())[0]
 
         assert metric_usage == 2

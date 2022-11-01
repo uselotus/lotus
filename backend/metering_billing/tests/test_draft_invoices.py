@@ -26,6 +26,9 @@ def draft_invoice_test_common_setup(
     add_users_to_org,
     api_client_with_api_key_auth,
     add_customers_to_org,
+    add_product_to_org,
+    add_plan_to_product,
+    add_plan_version_to_plan,
 ):
     def do_draft_invoice_test_common_setup(*, auth_method):
         setup_dict = {}
@@ -77,12 +80,9 @@ def draft_invoice_test_common_setup(
             _quantity=3,
         )
         setup_dict["metrics"] = metric_set
-        billing_plan = baker.make(
-            PlanVersion,
-            organization=org,
-            description="test_plan for testing",
-            flat_rate=30.0,
-        )
+        product = add_product_to_org(org)
+        plan = add_plan_to_product(product)
+        plan_version = add_plan_version_to_plan(plan)
         plan_component_set = baker.make(
             PlanComponent,
             billable_metric=itertools.cycle(metric_set),
@@ -92,14 +92,13 @@ def draft_invoice_test_common_setup(
             _quantity=3,
         )
         setup_dict["plan_components"] = plan_component_set
-        billing_plan.components.add(*plan_component_set)
-        billing_plan.save()
-        setup_dict["billing_plan"] = billing_plan
-        subscription = baker.make(
-            Subscription,
+        plan_version.components.add(*plan_component_set)
+        plan_version.save()
+        setup_dict["billing_plan"] = plan_version
+        subscription = Subscription.objects.create(
             organization=org,
             customer=customer,
-            billing_plan=billing_plan,
+            billing_plan=plan_version,
             start_date=now_utc() - timedelta(days=3),
             status="active",
         )
@@ -173,7 +172,7 @@ class TestGenerateInvoice:
 
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data[0]["cost_due"]
-        assert before_cost * Decimal("0.99") == after_cost
+        assert (before_cost * Decimal("0.99")).quantize(Decimal(10) ** -2) == after_cost
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],

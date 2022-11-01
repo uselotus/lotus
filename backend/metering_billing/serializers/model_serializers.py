@@ -150,8 +150,6 @@ class CustomerSerializer(serializers.ModelSerializer):
             "customer_id",
         )
 
-    customer_name = serializers.CharField(source="name")
-
 
 ## BILLABLE METRIC
 class CategoricalFilterSerializer(serializers.ModelSerializer):
@@ -351,7 +349,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "subscriptions",
         )
 
-    customer_name = serializers.CharField(source="name")
     subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
@@ -626,7 +623,7 @@ class CustomerNameAndIDSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
-            "name",
+            "customer_name",
             "customer_id",
         )
 

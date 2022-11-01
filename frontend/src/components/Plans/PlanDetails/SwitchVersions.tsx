@@ -27,7 +27,7 @@ function getPriceAdjustmentEnding(
   switch (type) {
     case "percentage":
       return amount + "%";
-    case "flat":
+    case "fixed":
       return "$ " + amount;
     case "price_override":
       return "$ " + amount;
