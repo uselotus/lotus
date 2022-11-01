@@ -28,7 +28,9 @@ const Dashboard: FC = () => {
       GetRevenue.getMonthlyRevenue(
         dateRange[0].format("YYYY-MM-DD"),
         dateRange[1].format("YYYY-MM-DD"),
-        dateRange[0].subtract(1, "month").format("YYYY-MM-DD"),
+        dateRange[0]
+          .subtract(dayjs.duration(dateRange[0].diff(dateRange[1])))
+          .format("YYYY-MM-DD"),
         dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
       ).then((res) => {
         return res;
@@ -41,6 +43,15 @@ const Dashboard: FC = () => {
       extra={[
         <RangePicker
           format={dateFormat}
+          ranges={{
+            "This month": [dayjs().startOf("month"), dayjs().endOf("month")],
+            "Last month": [
+              dayjs().subtract(1, "months").startOf("month"),
+              dayjs().subtract(1, "months").endOf("month"),
+            ],
+            "This year": [dayjs().startOf("year"), dayjs().endOf("year")],
+            "All time": [dayjs().subtract(10, "years"), dayjs()],
+          }}
           defaultValue={dateRange}
           onCalendarChange={(dates) => {
             setDateRange(dates);
