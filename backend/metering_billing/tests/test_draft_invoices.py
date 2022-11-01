@@ -28,8 +28,7 @@ def draft_invoice_test_common_setup(
     add_customers_to_org,
     add_product_to_org,
     add_plan_to_product,
-    add_plan_version_to_plan
-
+    add_plan_version_to_plan,
 ):
     def do_draft_invoice_test_common_setup(*, auth_method):
         setup_dict = {}

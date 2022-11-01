@@ -357,10 +357,12 @@ class CustomerDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        parameters=[inline_serializer(
-            name="CustomerDetailRequestSerializer",
-            fields={"customer_id": serializers.CharField()},
-        ),],
+        parameters=[
+            inline_serializer(
+                name="CustomerDetailRequestSerializer",
+                fields={"customer_id": serializers.CharField()},
+            ),
+        ],
         responses={200: CustomerDetailSerializer},
     )
     def get(self, request, format=None):
