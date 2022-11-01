@@ -4,7 +4,6 @@ import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import Organization, User
-from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 

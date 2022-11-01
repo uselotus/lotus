@@ -1,6 +1,7 @@
 export interface EventPages {
-  events: EventPreviewType[];
-  total_pages: number;
+  results: EventPreviewType[];
+  next: string;
+  previous: string;
 }
 
 export interface EventPreviewType {
@@ -9,5 +10,5 @@ export interface EventPreviewType {
   properties?: object;
   idempotency_id: string;
   time_created: string;
-  customer_id: number;
+  customer: string;
 }

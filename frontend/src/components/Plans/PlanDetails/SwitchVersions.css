@@ -1,0 +1,18 @@
+.versionChip {
+  border-radius: 20px;
+  width: fit-content;
+  min-width: 100px;
+  padding: 5px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.versionChip:hover {
+  transform: scale(1.08);
+}
+
+.addVersionButton {
+  vertical-align: center;
+  padding-right: 5px;
+  color: #1d1d1f;
+}

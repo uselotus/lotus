@@ -20,11 +20,19 @@ import django_heroku
 import posthog
 import sentry_sdk
 from decouple import config
+from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+# try:
+#     path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
+#     load_dotenv(dotenv_path=path)
+# except:
+#     pass
 
+VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
+VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT", default="")
 EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
 EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
@@ -42,7 +50,6 @@ SENTRY_DSN = config("SENTRY_DSN", default="")
 SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
-
 # Stripe required
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
 
@@ -95,7 +102,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "metering_billing",
     "corsheaders",
     "social_django",
     "djmoney",
@@ -106,6 +112,7 @@ INSTALLED_APPS = [
     "simple_history",
     "knox",
     "anymail",
+    "metering_billing",
 ]
 
 ANYMAIL = {
@@ -180,7 +187,7 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 AUTH_USER_MODEL = "metering_billing.User"
-AUTHENTICATION_BACKENDS = ["metering_billing.auth_utils.EmailOrUsernameModelBackend"]
+AUTHENTICATION_BACKENDS = ["metering_billing.model_backend.EmailOrUsernameModelBackend"]
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # SESSION_COOKIE_AGE = 2 * 60 * 60  # set just 10 seconds to test
@@ -346,6 +353,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
     ],
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
@@ -364,11 +372,6 @@ SPECTACULAR_SETTINGS = {
                 "type": "apiKey",
                 "in": "header",
                 "name": "X-API-KEY",
-            },
-            "TokenAuth": {
-                "type": "apiKey",
-                "in": "header",
-                "name": "Authorization",
             },
         }
     },

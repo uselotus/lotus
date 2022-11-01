@@ -8,13 +8,18 @@ import dayjs from "dayjs";
 
 const { Panel } = Collapse;
 
-const EventPreivew: FC = () => {
-  const [page, setPage] = useState<number>(1);
+const EventPreview: FC = () => {
+  const [c, setCursor] = useState<string>("");
+  const [next, setNext] = useState<string>("");
+  const [previous, setPrev] = useState<string>("");
 
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
     ["preview events"],
     () =>
-      Events.getEventPreviews(page).then((res) => {
+      Events.getEventPreviews(c).then((res) => {
+        setCursor(c);
+        setNext(res.next);
+        setPrev(res.previous);
         return res;
       }),
     {
@@ -29,7 +34,7 @@ const EventPreivew: FC = () => {
       </div>
     );
   }
-  if (data.events.length === 0) {
+  if (data.results.length === 0) {
     return (
       <div className="align-center">
         <h3 className="text-xl font-main align-center">No Events</h3>
@@ -39,20 +44,20 @@ const EventPreivew: FC = () => {
   return (
     <div className="w-full">
       <Collapse expandIconPosition="end" bordered={false}>
-        {data.events.map((event) => (
+        {data.results.map((event) => (
           <Panel
             header={
               <div className="grid grid-cols-2">
                 <p className="text-left	">event_name: {event.event_name}</p>
-                <p className="text-left	">customer_id: {event.customer_id}</p>
+                <p className="text-left	">customer_id: {event.customer}</p>
               </div>
             }
             key={event.id}
           >
             <div className="grid grid-row-2">
               <div className="grid grid-cols-2">
-                <p>Id: {event.idempotency_id}</p>
-                <p>properties: </p>
+                <p>ID: {event.idempotency_id}</p>
+                <p>Properties: </p>
               </div>
               <div className="grid grid-cols-2">
                 <p className="text-left	">time_created: {event.time_created}</p>
@@ -77,4 +82,4 @@ const EventPreivew: FC = () => {
   );
 };
 
-export default EventPreivew;
+export default EventPreview;

@@ -14,6 +14,7 @@ from metering_billing.models import APIToken, Customer, Event
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
+from metering_billing.utils import now_utc
 from rest_framework.decorators import api_view
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
@@ -102,9 +103,7 @@ def track_event(request):
         timeout = (
             60 * 60 * 25 * 7
             if expiry_date is None
-            else (
-                expiry_date - datetime.datetime.now(timezone.utc).astimezone()
-            ).total_seconds()
+            else (expiry_date - now_utc()).total_seconds()
         )
         cache.set(prefix, organization_pk, timeout)
     event_list = load_event(request)
@@ -155,7 +154,7 @@ def track_event(request):
 
     # get the events currently in cache
     cache_tup = cache.get("events_to_insert")
-    now = datetime.datetime.now(timezone.utc).astimezone()
+    now = now_utc()
     cached_events, cached_idems, last_flush_dt = (
         cache_tup if cache_tup else ([], set(), now)
     )

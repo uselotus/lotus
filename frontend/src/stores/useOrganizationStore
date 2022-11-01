@@ -1,0 +1,19 @@
+import create from "zustand";
+import { persist } from "zustand/middleware";
+
+const useOrganizationStore = create(
+  persist(
+    (set) => ({
+      company_name: "", //company name
+      changeCompanyName: () =>
+        set((state) => ({
+          company_name: state.company,
+        })),
+    }),
+    {
+      name: "company_name",
+    }
+  )
+);
+
+export default useOrganizationStore;

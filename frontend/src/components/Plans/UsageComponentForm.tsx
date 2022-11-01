@@ -39,11 +39,7 @@ function UsageComponentForm({
   const [isLimit, setIsLimit] = useState(
     editComponentItem?.max_metric_units ? true : false
   );
-  const initalData = editComponentItem ?? {
-    cost_per_batch: 0.0,
-    metric_units_per_batch: 1,
-    free_amount: 0,
-  };
+  const initalData = editComponentItem ?? null;
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -129,7 +125,15 @@ function UsageComponentForm({
                   setIsCharge(!isCharge);
                   if (!isCharge) {
                     form.setFieldsValue({
-                      free_amount: 0,
+                      free_metric_units: 0,
+                      cost_per_batch: 0,
+                      metric_units_per_batch: 1,
+                    });
+                  } else {
+                    form.setFieldsValue({
+                      free_metric_units: undefined,
+                      cost_per_batch: undefined,
+                      metric_units_per_batch: undefined,
                     });
                   }
                 }}
@@ -137,7 +141,7 @@ function UsageComponentForm({
             </div>
             <div className=" space-x-4 mb-4">
               {isCharge && (
-                <Form.Item name="free_amount" label="Free Units">
+                <Form.Item name="free_metric_units" label="Free Units">
                   <InputNumber<string>
                     defaultValue="0"
                     style={{

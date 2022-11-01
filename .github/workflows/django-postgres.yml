@@ -30,7 +30,7 @@ jobs:
           - 5432:5432
         # needed because the postgres container does not provide a healthcheck
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-      
+
       redis:
         image: redis
         ports:
@@ -68,13 +68,13 @@ jobs:
           pipenv install --dev
 
       - name: Migrate
-        
+
         run: |
           pipenv run python manage.py migrate --noinput
 
       - name: Test Pytest
         run: |
-          pipenv run pytest -k "not test_tasks"
+          pipenv run pytest -k "not test_integrations"
 
       - name: Test Setup Tasks
         run: |
@@ -85,7 +85,6 @@ jobs:
     defaults:
       run:
         working-directory: ./backend
-
 
     services:
       postgres:
@@ -98,7 +97,7 @@ jobs:
           - 5432:5432
         # needed because the postgres container does not provide a healthcheck
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
-      
+
       redis:
         image: redis
         # Set health checks to wait until redis has started

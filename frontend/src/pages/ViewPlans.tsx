@@ -1,21 +1,10 @@
+// @ts-ignore
 import React, { FC, useEffect, useState } from "react";
-import {
-  Avatar,
-  Divider,
-  List,
-  Skeleton,
-  Button,
-  Card,
-  PageHeader,
-  Row,
-  Col,
-} from "antd";
-import InfiniteScroll from "react-infinite-scroll-component";
+import { Button, Row, Col, Tabs } from "antd";
 import { Plan } from "../api/api";
-import { PlanType } from "../types/plan-type";
-import PlanDisplayBasic from "../components/PlanDisplayBasic";
+import { ArrowRightOutlined } from "@ant-design/icons";
+import { Component, PlanType } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import {
   useQuery,
   UseQueryResult,
@@ -23,62 +12,153 @@ import {
   useQueryClient,
 } from "react-query";
 import { PageLayout } from "../components/base/PageLayout";
+import { FeatureType } from "../types/feature-type";
+import PlanCard from "../components/Plans/PlanCard/PlanCard";
 
 const ViewPlans: FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [yearlyPlans, setYearlyPlans] = useState<PlanType[]>([]);
+  const [yearlyCustom, setYearlyCustom] = useState<PlanType[]>([]);
+  const [monthlyCustom, setMonthlyCustom] = useState<PlanType[]>([]);
+  const [monthlyPlans, setMonthlyPlans] = useState<PlanType[]>([]);
+  const [quarterlyPlans, setQuarterlyPlans] = useState<PlanType[]>([]);
+  const [quarterlyCustom, setQuarterlyCustom] = useState<PlanType[]>([]);
 
   const navigateCreatePlan = () => {
     navigate("/create-plan");
   };
 
-  const {
-    data: plans,
-    isLoading,
-    isError,
-  }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(["plan_list"], () =>
-    Plan.getPlans().then((res) => {
-      return res;
-    })
-  );
+  const setPlans = (data: PlanType[]) => {
+    const yearlystandard = data.filter(
+      (plan) => plan.plan_duration === "yearly" && !plan.parent_plan
+    );
+    const yearlycustom = data.filter(
+      (plan) => plan.plan_duration === "yearly" && plan.parent_plan
+    );
+    const monthlystandard = data.filter(
+      (plan) => plan.plan_duration === "monthly" && !plan.parent_plan
+    );
+    const monthlycustom = data.filter(
+      (plan) => plan.plan_duration === "monthly" && plan.parent_plan
+    );
+    const quarterlystandard = data.filter(
+      (plan) => plan.plan_duration === "quarterly" && !plan.parent_plan
+    );
+    const quarterlycustom = data.filter(
+      (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
+    );
 
-  const mutation = useMutation((post: string) => Plan.deletePlan(post), {
-    onSuccess: () => {
-      toast.success("Successfully deleted Plan");
-      queryClient.invalidateQueries(["plan_list"]);
-    },
-
-    onError: (e) => {
-      toast.error("Error deleting plan");
-    },
-  });
-
-  const deletePlan = (billing_plan_id: string) => {
-    mutation.mutate(billing_plan_id);
+    setYearlyPlans(yearlystandard);
+    setMonthlyPlans(monthlystandard);
+    setYearlyCustom(yearlycustom);
+    setMonthlyCustom(monthlycustom);
+    setQuarterlyPlans(quarterlystandard);
+    setQuarterlyCustom(quarterlycustom);
   };
 
+  const { data, isLoading, isError }: UseQueryResult<PlanType[]> = useQuery<
+    PlanType[]
+  >(
+    ["plan_list"],
+    () =>
+      Plan.getPlans().then((res) => {
+        return res;
+      }),
+    {
+      onSuccess: (data) => {
+        setPlans(data);
+      },
+      refetchOnMount: "always",
+    }
+  );
+
+  useEffect(() => {
+    if (data) {
+      setPlans(data);
+    }
+  }, []);
+
   return (
-    <PageLayout
-      title="Plans"
-      extra={[
-        <Button
-          onClick={navigateCreatePlan}
-          className="bg-black text-white justify-self-end"
-          size="large"
-          key={"create-plan"}
-        >
-          Create Plan
-        </Button>,
-      ]}
-    >
-      <Row gutter={[0, 24]}>
-        {plans?.map((item, key) => (
-          <Col span={24} key={key}>
-            <PlanDisplayBasic plan={item} deletePlan={deletePlan} />
-          </Col>
-        ))}
-      </Row>
-    </PageLayout>
+    <div>
+      <PageLayout
+        title="Plans"
+        extra={[
+          <Button
+            onClick={navigateCreatePlan}
+            type="primary"
+            size="large"
+            key="create-plan"
+          >
+            <div className="flex items-center justify-between text-white">
+              <div>Create new Plan</div>
+              <ArrowRightOutlined className="pl-2" />
+            </div>
+          </Button>,
+        ]}
+      >
+        <Tabs defaultActiveKey="1" size="large">
+          <Tabs.TabPane tab="Monthly" key="1">
+            <div className=" flex flex-col space-y-6 ">
+              <Row gutter={[24, 32]}>
+                {monthlyPlans?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+              {monthlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+
+              <Row gutter={[24, 32]}>
+                {monthlyCustom?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="Quarterly" key="2">
+            <div className=" flex flex-col space-y-6 ">
+              <Row gutter={[24, 32]}>
+                {quarterlyPlans?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+              {quarterlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+              <Row gutter={[24, 32]}>
+                {quarterlyCustom?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="Yearly" key="3">
+            <div className=" flex flex-col space-y-6 ">
+              <Row gutter={[24, 32]}>
+                {yearlyPlans?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+              {yearlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+              <Row gutter={[24, 32]}>
+                {yearlyCustom?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          </Tabs.TabPane>
+        </Tabs>
+      </PageLayout>
+    </div>
   );
 };
 

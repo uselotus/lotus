@@ -19,7 +19,7 @@ interface InvoiceOrganization {
 
 interface LineItem {
   components: object;
-  flat_revenue_due: number;
-  total_revenue_due: number;
-  usage_revenue_due: number;
+  flat_amount_due: number;
+  total_amount_due: number;
+  usage_amount_due: number;
 }

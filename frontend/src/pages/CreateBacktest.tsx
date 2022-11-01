@@ -58,8 +58,8 @@ const CreateBacktest: FC = () => {
     if (currentPlan && replacementPlan) {
       singlesubscription = [
         {
-          original_plans: [currentPlan.billing_plan_id],
-          new_plan: replacementPlan.billing_plan_id,
+          original_plans: [currentPlan.version_id],
+          new_plan: replacementPlan.version_id,
           new_plan_name: replacementPlan.name,
           original_plan_names: [currentPlan.name],
         },
@@ -101,18 +101,18 @@ const CreateBacktest: FC = () => {
   };
 
   const changeCurrentPlanModal = (plan_id: string) => {
-    const current = plans?.find((plan) => plan.billing_plan_id === plan_id);
+    const current = plans?.find((plan) => plan.version_id === plan_id);
 
     setCurrentPlanModal(current);
   };
 
   const changeReplacementPlanModal = (plan_id: string) => {
-    const replacement = plans?.find((plan) => plan.billing_plan_id === plan_id);
+    const replacement = plans?.find((plan) => plan.version_id === plan_id);
     setReplacementPlanModal(replacement);
   };
 
   const addCurrentPlanSlot = (plan_id: string) => {
-    const current = plans?.find((plan) => plan.billing_plan_id === plan_id);
+    const current = plans?.find((plan) => plan.version_id === plan_id);
     if (current) {
       setCurrentPlan(current);
     }
@@ -121,7 +121,7 @@ const CreateBacktest: FC = () => {
   const addReplacementPlanSlot = (plan_id: string) => {
     if (plans) {
       const replacement = plans.find(
-        (plan) => plan.billing_plan_id === plan_id
+        (plan) => plan.version_id === plan_id
       );
       if (replacement) {
         setReplacementPlan(replacement);
@@ -141,8 +141,8 @@ const CreateBacktest: FC = () => {
       setSubstitutions([
         ...substitutions,
         {
-          original_plans: [currentPlan.billing_plan_id],
-          new_plan: replacementPlan.billing_plan_id,
+          original_plans: [currentPlan.version_id],
+          new_plan: replacementPlan.version_id,
           new_plan_name: replacementPlan.name,
           original_plan_names: [currentPlan.name],
         },
@@ -323,10 +323,10 @@ const CreateBacktest: FC = () => {
           <Select
             onChange={addCurrentPlanSlot}
             className="w-8/12"
-            defaultValue={currentPlan?.billing_plan_id}
+            defaultValue={currentPlan?.version_id}
           >
             {plans?.map((plan) => (
-              <Select.Option value={plan.billing_plan_id}>
+              <Select.Option value={plan.version_id}>
                 {plan.name}
               </Select.Option>
             ))}
@@ -366,10 +366,10 @@ const CreateBacktest: FC = () => {
           <Select
             className="w-8/12"
             onChange={addReplacementPlanSlot}
-            defaultValue={replacementPlan?.billing_plan_id}
+            defaultValue={replacementPlan?.version_id}
           >
             {plans?.map((plan) => (
-              <Select.Option value={plan.billing_plan_id}>
+              <Select.Option value={plan.version_id}>
                 {plan.name}
               </Select.Option>
             ))}

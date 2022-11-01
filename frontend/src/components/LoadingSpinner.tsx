@@ -1,7 +1,8 @@
 import { PropagateLoader } from "react-spinners";
+import React from "react";
 function LoadingSpinner() {
   return (
-    <div className="grid place-items-center justify-items-center">
+    <div className="flex items-center justify-center h-full">
       <PropagateLoader
         color="#CCA43B"
         loading={true}

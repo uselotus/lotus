@@ -37,9 +37,10 @@ const ViewExperiments: FC = () => {
       extra={[
         <Button
           onClick={navigateCreatePlan}
-          className="bg-black text-white justify-self-end"
+          className="text-white"
           size="large"
           key={"create-plan"}
+          type="primary"
         >
           Create Experiment
         </Button>,
@@ -50,7 +51,6 @@ const ViewExperiments: FC = () => {
           <LoadingSpinner />
         ) : (
           <div>
-            <h2 className=" px-7 py-6">Backtests</h2>
             <BacktestTable backtests={data} />
           </div>
         )}

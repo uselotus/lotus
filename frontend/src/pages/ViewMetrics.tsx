@@ -1,6 +1,5 @@
 import React, { FC, useEffect, useState } from "react";
-import { Card, List, Skeleton, Button, Divider } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Card, Button, Divider } from "antd";
 import MetricTable from "../components/MetricTable";
 import { Metrics } from "../api/api";
 import { MetricType } from "../types/metric-type";
@@ -15,7 +14,7 @@ import CreateMetricForm, {
   CreateMetricState,
 } from "../components/CreateMetricForm";
 import { toast } from "react-toastify";
-import EventPreivew from "../components/EventPreview";
+import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
 
@@ -30,7 +29,6 @@ const defaultMetricState: CreateMetricState = {
 };
 
 const ViewMetrics: FC = () => {
-  const navigate = useNavigate();
   const [visible, setVisible] = useState<boolean>(false);
   const [metricState, setMetricState] =
     useState<CreateMetricState>(defaultMetricState);
@@ -88,7 +86,7 @@ const ViewMetrics: FC = () => {
       title="Metrics"
       extra={[
         <Button
-          className="bg-black text-white justify-self-end"
+          type="primary"
           size="large"
           key={"create-plan"}
           onClick={createMetricButton}
@@ -97,26 +95,22 @@ const ViewMetrics: FC = () => {
         </Button>,
       ]}
     >
-      <div>
-        <div className="grid grid-cols-2">
-          <div className="flex flex-col">
-            {isLoading || data === undefined ? (
-              <LoadingSpinner />
-            ) : (
-              <MetricTable metricArray={data} />
-            )}
-            {isError && (
-              <div className=" text-danger">Something went wrong</div>
-            )}
+      <div className="flex flex-col space-y-4 bg-background">
+        {isLoading || data === undefined ? (
+          <div className="flex justify-center">
+            <LoadingSpinner />{" "}
           </div>
-          <Card className="flex flex-row justify-center bg-light h-full">
-            <h1 className="text-2xl font-main mb-5">Event Stream</h1>
-            <Divider />
-            <div>
-              <EventPreivew />
-            </div>
-          </Card>
-        </div>
+        ) : (
+          <MetricTable metricArray={data} />
+        )}
+        {isError && <div className=" text-danger">Something went wrong</div>}
+        <Card className="flex flex-row justify-center h-full  bg-grey1">
+          <h1 className="text-2xl font-main mb-5">Event Stream</h1>
+          <Divider />
+          <div>
+            <EventPreview />
+          </div>
+        </Card>
         <CreateMetricForm
           state={metricState}
           visible={visible}

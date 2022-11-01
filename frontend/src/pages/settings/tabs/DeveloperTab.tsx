@@ -65,13 +65,13 @@ export const DeveloperTab = () => {
   if (isLoading) return <div>Loading...</div>;
   return (
     <div>
-      <div className="mt-10 ">
+      <div>
         <Typography.Title level={2}>API Keys</Typography.Title>
         <Typography.Paragraph>
-          Getting a new api key will revoke your existing key!
+          Getting a new API key will revoke your existing key!
         </Typography.Paragraph>
         <Popconfirm
-          title="Are you sure to revoke your existing key?"
+          title="Are you sure to want to revoke your existing key?"
           onConfirm={getKey}
           okText="Yes"
         >
@@ -79,7 +79,7 @@ export const DeveloperTab = () => {
         </Popconfirm>
       </div>
       <Divider />
-      <div className="mt-10 flex flex-row">
+      {/* <div className="mt-10 flex flex-row">
         <Typography.Title level={2}>Webhook URLs</Typography.Title>
       </div>
       <div>
@@ -121,7 +121,7 @@ export const DeveloperTab = () => {
             </td>
           </tr>
         </table>
-      </div>
+      </div> */}
       <Modal
         visible={visible}
         title="New API Key"

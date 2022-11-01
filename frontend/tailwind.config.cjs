@@ -5,7 +5,7 @@ module.exports = {
     extend: {
       fontFamily: {
         // add new font family
-        main: ["Inter", "sans-serif"],
+        main: ["Satoshi", "sans-serif"],
       },
     },
     colors: {
@@ -13,6 +13,7 @@ module.exports = {
       primary: "#441151",
       darkgold: "#C3986B",
       secondary: "#EE85B5",
+      background: "#FAFAFA",
       violet: "#883677",
       congo: "##FF958C",
       success: "#5FC790",
@@ -21,7 +22,7 @@ module.exports = {
       dark: "#2E3A44",
       info: "#1CA7EC",
       black: "#000000",
-      grey1: "#A0AABF",
+      grey1: "#FAFAFA",
       grey2: "#C0C6D4",
       grey3: "#F7F8FD",
       light: "#F9FBFC",

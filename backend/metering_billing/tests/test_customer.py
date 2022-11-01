@@ -3,9 +3,7 @@ import json
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from lotus.urls import router
 from metering_billing.models import Customer
-from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -121,7 +119,6 @@ def insert_customer_payload():
     payload = {
         "customer_name": "test_customer",
         "customer_id": "test_customer_id",
-        "balance": 30,
         "currency": "USD",
         "payment_provider_id": "test_payment_provider_id",
         "payment_provider": "stripe",
