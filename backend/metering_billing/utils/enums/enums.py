@@ -24,6 +24,12 @@ class METRIC_AGGREGATION(models.TextChoices):
     AVERAGE = ("average", _("Average"))
 
 
+class PRICE_ADJUSTMENT_TYPE(models.TextChoices):
+    PERCENTAGE = ("percentage", _("Percentage"))
+    FIXED = ("fixed", _("Fixed"))
+    PRICE_OVERRIDE = ("price_override", _("Price Override"))
+
+
 class PAYMENT_PROVIDERS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
 
@@ -34,8 +40,20 @@ class METRIC_TYPE(models.TextChoices):
 
 
 class PLAN_DURATION(models.TextChoices):
-    MONTH = ("month", _("Month"))
-    YEAR = ("year", _("Year"))
+    MONTHLY = ("monthly", _("Monthly"))
+    QUARTERLY = ("quarterly", _("Quarterly"))
+    YEARLY = ("yearly", _("Yearly"))
+
+
+class USAGE_BILLING_FREQUENCY(models.TextChoices):
+    MONTHLY = ("monthly", _("Monthly"))
+    QUARTERLY = ("quarterly", _("Quarterly"))
+    YEARLY = ("yearly", _("Yearly"))
+
+
+class FLAT_FEE_BILLING_TYPE(models.TextChoices):
+    IN_ARREARS = ("in_arrears", _("In Arrears"))
+    IN_ADVANCE = ("in_advance", _("In Advance"))
 
 
 class REVENUE_CALC_GRANULARITY(models.TextChoices):
@@ -62,21 +80,6 @@ class NUMERIC_FILTER_OPERATORS(models.TextChoices):
 class CATEGORICAL_FILTER_OPERATORS(models.TextChoices):
     ISIN = ("isin", _("Is in"))
     ISNOTIN = ("isnotin", _("Is not in"))
-
-
-class USAGE_BILLING_TYPE(models.TextChoices):
-    IN_ARREARS = ("in_arrears", _("In Arrears"))
-    PAY_AS_YOU_GO_QUARTERLY = (
-        "pay_as_you_go_quarterly",
-        _("Pay as you go (Quarterly)"),
-    )
-    PAY_AS_YOU_GO_MONTHLY = ("pay_as_you_go_monthly", _("Pay as you go (Monthly)"))
-    PAY_AS_YOU_GO_WEEKLY = ("pay_as_you_go_weekly", _("Pay as you go (Weekly)"))
-
-
-class FLAT_FEE_BILLING_TYPE(models.TextChoices):
-    IN_ARREARS = ("in_arrears", _("In Arrears"))
-    IN_ADVANCE = ("in_advance", _("In Advance"))
 
 
 class SUBSCRIPTION_STATUS(models.TextChoices):

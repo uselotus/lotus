@@ -2,9 +2,9 @@ from drf_spectacular.utils import extend_schema
 from metering_billing.auth import parse_organization
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.payment_provider_serializers import (
-    PaymentProviderGetResponseSerializer,
     PaymentProviderPostRequestSerializer,
     PaymentProviderPostResponseSerializer,
+    SinglePaymentProviderSerializer,
 )
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -16,18 +16,19 @@ class PaymentProviderView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        responses={200: PaymentProviderGetResponseSerializer()},
+        responses={200: SinglePaymentProviderSerializer(many=True)},
     )
     def get(self, request, format=None):
         organization = parse_organization(request)
         response = []
         for payment_processor_name, pp_obj in PAYMENT_PROVIDER_MAP.items():
-            response = {
-                "name": payment_processor_name,
+            pp_response = {
+                "payment_provider_name": payment_processor_name,
                 "connected": pp_obj.organization_connected(organization),
-                "redirect_link": pp_obj.get_redirect_link(organization),
+                "redirect_url": pp_obj.get_redirect_url(),
             }
-        serializer = PaymentProviderGetResponseSerializer(data=response)
+            response.append(pp_response)
+        serializer = SinglePaymentProviderSerializer(data=response, many=True)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 

@@ -67,7 +67,9 @@ const Login: FC = () => {
   );
 
   const handleLogin = (event: React.FormEvent<FormElements>) => {
-    mutation.mutate({ username, password });
+    // const pwBitArray = sjcl.hash.sha256.hash(password);
+    // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
+    mutation.mutate({ username, password: password });
   };
 
   if (!isAuthenticated) {
@@ -105,7 +107,12 @@ const Login: FC = () => {
                 <Form.Item>
                   <Button htmlType="submit">Login</Button>
                 </Form.Item>
-                <Link to="/reset-password">Forgot Password?</Link>
+                <Link
+                  to="/reset-password"
+                  className=" text-darkgold hover:text-black"
+                >
+                  Forgot Password?
+                </Link>
               </Form>
             </Card>
             <div>

@@ -5,8 +5,9 @@ from typing import TypedDict
 
 from dateutil import parser
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
 from metering_billing.invoice import generate_invoice
@@ -16,6 +17,7 @@ from metering_billing.utils import (
     convert_to_decimal,
     cust_uuid,
     dates_bwn_two_dts,
+    invoice_uuid,
     metric_uuid,
     now_plus_day,
     now_utc,
@@ -39,12 +41,13 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
+    PRICE_ADJUSTMENT_TYPE,
     PRODUCT_STATUS,
     PRORATION_GRANULARITY,
     REPLACE_IMMEDIATELY_TYPE,
     REVENUE_CALC_GRANULARITY,
     SUBSCRIPTION_STATUS,
-    USAGE_BILLING_TYPE,
+    USAGE_BILLING_FREQUENCY,
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
@@ -144,9 +147,6 @@ class Customer(models.Model):
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
-    balance = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
-    )
     history = HistoricalRecords()
 
     class Meta:
@@ -189,10 +189,53 @@ class Customer(models.Model):
         for subscription in customer_subscriptions:
             sub_dict = subscription.get_usage_and_revenue()
             del sub_dict["components"]
-            sub_dict["billing_plan_name"] = subscription.billing_plan.name
+            sub_dict["billing_plan_name"] = subscription.billing_plan.plan.plan_name
             subscription_usages["subscriptions"].append(sub_dict)
 
         return subscription_usages
+
+    def get_currency_balance(self, currency):
+        now = now_utc()
+        balance = self.customer_balance_adjustments.filter(
+            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            effective_at__lte=now,
+            amount_currency=currency,
+        ).aggregate(balance=Sum("amount"))["balance"] or Decimal(0)
+        return balance
+
+
+class CustomerBalanceAdjustment(models.Model):
+    """
+    This model is used to store the customer balance adjustments.
+    """
+
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="customer_balance_adjustments"
+    )
+    amount = MoneyField(decimal_places=10, max_digits=20)
+    description = models.TextField(null=True, blank=True)
+    created = models.DateTimeField(default=now_utc)
+    effective_at = models.DateTimeField(default=now_utc)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.customer.name} {self.amount} {self.created}"
+
+    class Meta:
+        ordering = ["-created"]
+
+    class Meta:
+        unique_together = ("customer", "created")
+
+    def __str__(self):
+        return f"{self.customer} {self.amount} {self.created}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError(
+                "you may not edit an existing %s" % self._meta.model_name
+            )
+        super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
 
 class Event(models.Model):
@@ -440,6 +483,9 @@ class Invoice(models.Model):
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
+    invoice_id = models.CharField(
+        max_length=100, null=False, blank=True, default=invoice_uuid, unique=True
+    )
     external_payment_obj = models.JSONField(default=dict, blank=True, null=True)
     external_payment_obj_id = models.CharField(max_length=200, blank=True, null=True)
     external_payment_obj_type = models.CharField(
@@ -450,6 +496,9 @@ class Invoice(models.Model):
     customer = models.JSONField()
     subscription = models.JSONField()
     history = HistoricalRecords()
+
+    def __str__(self):
+        return str(self.invoice_id)
 
 
 class APIToken(AbstractAPIKey):
@@ -492,8 +541,8 @@ class PlanVersion(models.Model):
     flat_fee_billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
     )
-    usage_billing_type = models.CharField(
-        max_length=40, choices=USAGE_BILLING_TYPE.choices
+    usage_billing_frequency = models.CharField(
+        max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
     )
     proration_granularity = models.CharField(
         max_length=40, choices=PRORATION_GRANULARITY.choices, null=True, blank=True
@@ -506,6 +555,9 @@ class PlanVersion(models.Model):
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
     components = models.ManyToManyField(PlanComponent, blank=True)
     features = models.ManyToManyField(Feature, blank=True)
+    price_adjustment = models.ForeignKey(
+        "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
+    )
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
@@ -526,6 +578,41 @@ class PlanVersion(models.Model):
     def num_active_subs(self):
         cnt = self.bp_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).count()
         return cnt
+
+
+class PriceAdjustment(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="org_price_adjustments"
+    )
+    price_adjustment_name = models.CharField(max_length=200, null=False)
+    price_adjustment_description = models.CharField(
+        max_length=200, blank=True, null=True
+    )
+    price_adjustment_type = models.CharField(
+        max_length=40, choices=PRICE_ADJUSTMENT_TYPE.choices
+    )
+    price_adjustment_amount = models.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+    )
+
+    def __str__(self):
+        if self.price_adjustment_name != "":
+            return str(self.price_adjustment_name)
+        else:
+            return (
+                str(self.price_adjustment_amount)
+                + " "
+                + str(self.price_adjustment_type)
+            )
+
+    def apply(self, amount):
+        if self.price_adjustment_type == PRICE_ADJUSTMENT_TYPE.PERCENTAGE:
+            return amount * (1 + self.price_adjustment_amount / 100)
+        elif self.price_adjustment_type == PRICE_ADJUSTMENT_TYPE.FIXED:
+            return amount + self.price_adjustment_amount
+        elif self.price_adjustment_type == PRICE_ADJUSTMENT_TYPE.PRICE_OVERRIDE:
+            return self.price_adjustment_amount
 
 
 class Plan(models.Model):
@@ -589,7 +676,7 @@ class Plan(models.Model):
         versions_count = versions.annotate(
             active_subscriptions=Count(
                 "bp_subscription",
-                filter=Q(status=SUBSCRIPTION_STATUS.ACTIVE),
+                filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
                 output_field=models.IntegerField(),
             )
         )
@@ -622,7 +709,6 @@ class Plan(models.Model):
             MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL,
             MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE,
         ]:
-            print("grandfathering", make_active_type)
             # 1
             replace_with_lst = [PLAN_VERSION_STATUS.RETIRING]
             # 2a
@@ -709,6 +795,7 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
+    scheduled_end_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_STATUS.choices,
@@ -721,7 +808,7 @@ class Subscription(models.Model):
     )
     prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
     flat_fee_already_billed = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
+        decimal_places=10, max_digits=20, default=0.0
     )
     history = HistoricalRecords()
 
@@ -736,6 +823,7 @@ class Subscription(models.Model):
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration, self.start_date
             )
+            self.scheduled_end_date = self.end_date
         if self.status == SUBSCRIPTION_STATUS.ACTIVE:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
@@ -770,13 +858,13 @@ class Subscription(models.Model):
                 plan_end_date,
             )
             sub_dict["components"].append((plan_component.pk, plan_component_summary))
-        sub_dict["usage_revenue_due"] = Decimal(0)
+        sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
             for date, date_dict in component_dict.items():
-                sub_dict["usage_revenue_due"] += date_dict["revenue"]
-        sub_dict["flat_revenue_due"] = plan.flat_rate.amount
-        sub_dict["total_revenue_due"] = (
-            sub_dict["flat_revenue_due"] + sub_dict["usage_revenue_due"]
+                sub_dict["usage_amount_due"] += date_dict["revenue"]
+        sub_dict["flat_amount_due"] = plan.flat_rate.amount
+        sub_dict["total_amount_due"] = (
+            sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]
         )
         return sub_dict
 
@@ -787,10 +875,10 @@ class Subscription(models.Model):
                     self.status
                 )
             )
+        self.auto_renew = False
+        self.end_date = now_utc()
         if bill:
             generate_invoice(self)
-        self.turn_off_auto_renew()
-        self.end_date = now_utc()
         self.status = SUBSCRIPTION_STATUS.ENDED
         self.save()
 
@@ -800,19 +888,13 @@ class Subscription(models.Model):
 
     def switch_subscription_bp(self, new_version):
         self.billing_plan = new_version
+        self.scheduled_end_date = self.end_date = calculate_end_date(
+            new_version.plan.plan_duration, self.start_date
+        )
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            new_sub_daily_cost_dict = self.prorated_flat_costs_dict
-            prorated_cost = sum(d["amount"] for d in new_sub_daily_cost_dict.values())
-            due = prorated_cost - self.customer.balance - self.flat_fee_already_billed
-            if due < 0:
-                self.customer.balance = abs(due)
-            elif due > 0:
-                generate_invoice(self, draft=False, issue_date=now_utc(), amount=due)
-                self.flat_fee_already_billed += due
-                self.save()
-                self.customer.balance = 0
-            self.customer.save()
+            invoice = generate_invoice(self)
+            self.flat_fee_already_billed += invoice.cost_due
 
 
 class Backtest(models.Model):

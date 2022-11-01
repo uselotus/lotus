@@ -9,32 +9,67 @@ import {
   Dropdown,
   Menu,
   Statistic,
+  Cascader,
 } from "antd";
+import type { DefaultOptionType } from "antd/es/cascader";
+import {
+  CreateSubscriptionType,
+  TurnSubscriptionAutoRenewOffType,
+  ChangeSubscriptionPlanType,
+  CancelSubscriptionType,
+} from "../../types/subscription-type";
+//import the Customer type from the api.ts file
+import { Customer, Plan } from "../../api/api";
+import dayjs from "dayjs";
 
 import { CustomerDetailSubscription } from "../../types/customer-type";
 
 interface Props {
+  customer_id: string;
   subscriptions: CustomerDetailSubscription[];
   plans: PlanType[] | undefined;
-  onChange: (subscription: any) => void;
-  onCancel: (subscription: cancelSubscriptionType) => void;
+  onAutoRenewOff: (
+    subscription_id: string,
+    props: TurnSubscriptionAutoRenewOffType
+  ) => void;
+  onCancel: (subscription_id: string, props: CancelSubscriptionType) => void;
+  onPlanChange: (
+    subscription_id: string,
+    props: ChangeSubscriptionPlanType
+  ) => void;
+  onCreate: (props: CreateSubscriptionType) => void;
 }
-interface SubscriptionType {
-  billing_plan_name: string;
-  subscription_id: string;
-  auto_renew: boolean;
+
+const filter = (inputValue: string, path: DefaultOptionType[]) =>
+  (path[0].label as string).toLowerCase().indexOf(inputValue.toLowerCase()) >
+  -1;
+
+const displayRender = (labels: string[]) => labels[labels.length - 1];
+
+interface PlanOption {
+  value: string;
+  label: string;
+  children?: ChangeOption[];
+  disabled?: boolean;
 }
-export interface cancelSubscriptionType {
-  subscription_id: string;
-  bill_now: boolean;
-  revoke_access: boolean;
+
+interface ChangeOption {
+  value:
+    | "change_subscription_plan"
+    | "end_current_subscription_and_bill"
+    | "end_current_subscription_dont_bill";
+  label: string;
+  disabled?: boolean;
 }
 
 const SubscriptionView: FC<Props> = ({
+  customer_id,
   subscriptions,
   plans,
-  onChange,
   onCancel,
+  onAutoRenewOff,
+  onPlanChange,
+  onCreate,
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<string>();
   const [form] = Form.useForm();
@@ -47,44 +82,44 @@ const SubscriptionView: FC<Props> = ({
     setSelectedPlan(plan_id);
   };
 
-  const cancelSubscription = (props: cancelSubscriptionType) => {
-    onCancel(props);
-  };
-
-  const cancelAcessBillNowSubscription = () => {
-    cancelSubscription({
-      subscription_id: subscriptions[0].subscription_id,
-      bill_now: true,
-      revoke_access: true,
+  const cancelAndBill = () => {
+    onCancel(subscriptions[0].subscription_id, {
+      status: "ended",
+      replace_immediately_type: "end_current_subscription_and_bill",
     });
   };
 
-  const cancelDontBillSubscription = () => {
-    cancelSubscription({
-      subscription_id: subscriptions[0].subscription_id,
-      bill_now: false,
-      revoke_access: true,
+  const cancelAndDontBill = () => {
+    onCancel(subscriptions[0].subscription_id, {
+      status: "ended",
+      replace_immediately_type: "end_current_subscription_dont_bill",
     });
   };
-  const cancelDontRenewSubscriptions = () => {
-    cancelSubscription({
-      subscription_id: subscriptions[0].subscription_id,
-      bill_now: false,
-      revoke_access: false,
+
+  const turnAutoRenewOff = () => {
+    onAutoRenewOff(subscriptions[0].subscription_id, {
+      auto_renew: false,
     });
   };
 
   useEffect(() => {
     if (plans !== undefined) {
       const planMap = plans.reduce((acc, plan) => {
-        acc[plan.version_id] = plan;
+        acc[plan.plan_id] = plan;
         return acc;
       }, {} as { [key: number]: PlanType });
       setIDtoPlan(planMap);
-      const newplanList: { label: string; value: string }[] = plans.map(
-        (plan) => {
-          return { label: plan.name, value: plan.version_id };
-        }
+      const newplanList: { label: string; value: string }[] = plans.reduce(
+        (acc, plan) => {
+          if (
+            plan.target_customer === null ||
+            plan.target_customer?.customer_id === customer_id
+          ) {
+            acc.push({ label: plan.plan_name, value: plan.plan_id });
+          }
+          return acc;
+        },
+        [] as { label: string; value: string }[]
       );
       setPlanList(newplanList);
     }
@@ -95,35 +130,84 @@ const SubscriptionView: FC<Props> = ({
       items={[
         {
           label: (
-            <span onClick={() => cancelAcessBillNowSubscription()}>
-              Cancel and Bill Now
-            </span>
+            <span onClick={() => cancelAndBill()}>Cancel and Bill Now</span>
           ),
           key: "0",
         },
         {
           label: (
-            <span onClick={() => cancelDontBillSubscription()}>
+            <span onClick={() => cancelAndDontBill()}>
               Cancel Without Billing
             </span>
           ),
           key: "1",
         },
         {
-          label: (
-            <span onClick={() => cancelDontRenewSubscriptions()}>
-              Cancel Renewal
-            </span>
-          ),
-          key: "1",
+          label: <span onClick={() => turnAutoRenewOff()}>Cancel Renewal</span>,
+          key: "2",
         },
       ]}
     />
   );
 
-  const handleSubmit = () => {
+  const plansWithSwitchOptions = planList?.reduce((acc, plan) => {
+    if (plan.label !== subscriptions[0]?.billing_plan_name) {
+      acc.push({
+        label: plan.label,
+        value: plan.value,
+        children: [
+          {
+            label:
+              "End current subscription and bill + start new subscription with selected plan",
+            value: "end_current_subscription_and_bill",
+          },
+          {
+            label:
+              "End current subscription and don't bill + start new subscription with selected plan",
+            value: "end_current_subscription_dont_bill",
+          },
+          {
+            label: "Switch plan mid-subscription",
+            value: "change_subscription_plan",
+          },
+        ],
+      } as PlanOption);
+    }
+    return acc;
+  }, [] as PlanOption[]);
+
+  const onChange = (value: string[], selectedOptions: PlanOption[]) => {
+    onPlanChange(subscriptions[0].subscription_id, {
+      plan_id: selectedOptions[0].value,
+      replace_immediately_type: value[1] as
+        | "change_subscription_plan"
+        | "end_current_subscription_and_bill"
+        | "end_current_subscription_dont_bill",
+    });
+  };
+
+  const switchMenu = (
+    <Cascader
+      options={plansWithSwitchOptions}
+      onChange={onChange}
+      expandTrigger="hover"
+      placeholder="Please select"
+      showSearch={{ filter }}
+      displayRender={displayRender}
+      changeOnSelect
+    />
+  );
+
+  const handleAttachPlanSubmit = () => {
     if (selectedPlan) {
-      onChange(idtoPlan[selectedPlan]);
+      let plan = idtoPlan[selectedPlan];
+      let props: CreateSubscriptionType = {
+        customer_id: customer_id,
+        plan_id: plan.plan_id,
+        start_date: new Date().toISOString(),
+        status: "active",
+      };
+      onCreate(props);
     }
     form.resetFields();
   };
@@ -131,10 +215,14 @@ const SubscriptionView: FC<Props> = ({
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
-        <h3 className="text-xl font-main m-3">No Subscription</h3>
+        <h2 className="m-3">No Subscription</h2>
         <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
-          <Form onFinish={handleSubmit} form={form} name="create_subscription">
+          <Form
+            onFinish={handleAttachPlanSubmit}
+            form={form}
+            name="create_subscription"
+          >
             <Form.Item name="plan">
               <Select
                 showSearch
@@ -149,7 +237,7 @@ const SubscriptionView: FC<Props> = ({
             <Form.Item>
               <Button htmlType="submit">
                 {" "}
-                Attatch Plan and Start Subscription
+                Attach Plan and Start Subscription
               </Button>
             </Form.Item>
           </Form>
@@ -164,23 +252,29 @@ const SubscriptionView: FC<Props> = ({
         <List>
           {subscriptions.map((subscription) => (
             <List.Item>
-              <Card className=" bg-grey3 w-7/12">
-                <div className="grid grid-cols-2 items-stretch">
+              <Card className=" bg-grey3 w-full">
+                <div className="grid grid-cols-3 items-stretch">
                   <h2 className="font-main font-bold">
                     {subscription.billing_plan_name}
                   </h2>
                   <div className="flex flex-col justify-center space-y-3">
                     <p>
-                      <b>Subscription Id:</b> {subscription.subscription_id}
+                      <b>Subscription ID:</b> {subscription.subscription_id}
                     </p>
                     <p>
-                      <b>Start Date:</b> {subscription.start_date}
+                      <b>Start Date:</b>{" "}
+                      {dayjs(subscription.start_date).format(
+                        "YYYY/MM/DD HH:mm"
+                      )}{" "}
+                      UTC
                     </p>
                     <p>
-                      <b>End Date:</b> {subscription.end_date}
+                      <b>End Date:</b>{" "}
+                      {dayjs(subscription.end_date).format("YYYY/MM/DD HH:mm")}{" "}
+                      UTC
                     </p>
                     <p>
-                      <b>Renews:</b> {subscription.auto_renew ? "yes" : "no"}
+                      <b>Renews:</b> {subscription.auto_renew ? "Yes" : "No"}
                     </p>
                   </div>
                 </div>
@@ -188,8 +282,8 @@ const SubscriptionView: FC<Props> = ({
             </List.Item>
           ))}
         </List>
-        <div className="grid grid-cols-2 w-7/12">
-          <Dropdown overlay={cancelMenu} disabled={true} trigger={["click"]}>
+        <div className="grid grid-cols-2 w-full space-x-5 my-6">
+          <Dropdown overlay={switchMenu} trigger={["click"]}>
             <Button>Switch Plan</Button>
           </Dropdown>
           <Dropdown overlay={cancelMenu} trigger={["click"]}>

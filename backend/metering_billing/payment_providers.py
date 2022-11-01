@@ -2,7 +2,8 @@ import abc
 import datetime
 from decimal import Decimal
 from re import S
-from typing import Optional, Tuple, Union
+from typing import Union
+from urllib.parse import urlencode
 
 import pytz
 import stripe
@@ -11,6 +12,7 @@ from django.db.models import Q
 from djmoney.money import Money
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
+    SinglePaymentProviderSerializer,
 )
 from metering_billing.utils import decimal_to_cents
 from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
@@ -19,6 +21,8 @@ from rest_framework import serializers, status
 
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
+VITE_STRIPE_CLIENT = settings.VITE_STRIPE_CLIENT
+VITE_API_URL = settings.VITE_API_URL
 
 
 class PaymentProvider(abc.ABC):
@@ -70,7 +74,7 @@ class PaymentProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_redirect_link(self) -> str:
+    def get_redirect_url(self) -> str:
         """The link returned by this method will be called when a user clicks on the connect button for a payment processor. It should return a link that the user will be redirected to in order to connect their account to the payment processor."""
         pass
 
@@ -84,7 +88,17 @@ class StripeConnector(PaymentProvider):
     def __init__(self):
         self.secret_key = STRIPE_SECRET_KEY
         self.self_hosted = SELF_HOSTED
-        self.redirect_link = "https://connect.stripe.com/oauth/authorize?scope=read-write&response_type=code"
+        redirect_dict = {
+            "response_type": "code",
+            "scope": "read_write",
+            "client_id": VITE_STRIPE_CLIENT,
+            "redirect_uri": VITE_API_URL + "redirectstripe",
+        }
+        qstr = urlencode(redirect_dict)
+        if not self.self_hosted:
+            self.redirect_url = "https://connect.stripe.com/oauth/authorize?" + qstr
+        else:
+            self.redirect_url = ""
 
     def working(self) -> bool:
         return self.secret_key != "" and self.secret_key != None
@@ -97,7 +111,7 @@ class StripeConnector(PaymentProvider):
 
     def organization_connected(self, organization) -> bool:
         if self.self_hosted:
-            return self.secret_key != ""
+            return self.secret_key != "" and self.secret_key != None
         else:
             return (
                 organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "")
@@ -244,7 +258,6 @@ class StripeConnector(PaymentProvider):
             "email": customer.email,
             "metadata": {},
             "name": customer.name,
-            "currency": customer.balance.currency,
         }
         customer.save()
 
@@ -296,7 +309,11 @@ class StripeConnector(PaymentProvider):
             )
         except:
             return Response(
-                {"success": False, "details": "Invalid authorization code"},
+                {
+                    "payment_processor": PAYMENT_PROVIDERS.STRIPE,
+                    "success": False,
+                    "details": "Invalid authorization code",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -308,17 +325,16 @@ class StripeConnector(PaymentProvider):
 
         response = {
             "payment_processor": PAYMENT_PROVIDERS.STRIPE,
-            "data": {
-                "success": True,
-            },
+            "success": True,
+            "details": "Successfully connected to Stripe",
         }
         serializer = PaymentProviderPostResponseSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
         return Response(validated_data, status=status.HTTP_200_OK)
 
-    def get_redirect_link(self) -> str:
-        return self.redirect_link
+    def get_redirect_url(self) -> str:
+        return self.redirect_url
 
 
 PAYMENT_PROVIDER_MAP = {

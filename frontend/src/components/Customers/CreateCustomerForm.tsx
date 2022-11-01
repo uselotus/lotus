@@ -6,26 +6,20 @@ export interface CreateCustomerState {
   customer_id: string;
   title: string;
   subscriptions: string[];
-  total_revenue_due: number;
+  total_amount_due: number;
 }
 
 const CreateCustomerForm = (props: {
-  state: CreateCustomerState;
   visible: boolean;
   onSave: (state: CreateCustomerState) => void;
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
 
-  form.setFieldsValue({
-    name: props.state.name,
-    customer_id: props.state.customer_id,
-  });
-
   return (
     <Modal
       visible={props.visible}
-      title={props.state.title}
+      title="Create a Customer"
       okText="Create"
       okType="default"
       cancelText="Cancel"
@@ -57,7 +51,7 @@ const CreateCustomerForm = (props: {
         </Form.Item>
         <Form.Item
           name="customer_id"
-          label="Customer Id"
+          label="Customer ID"
           rules={[
             {
               required: true,

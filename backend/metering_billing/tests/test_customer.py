@@ -119,7 +119,6 @@ def insert_customer_payload():
     payload = {
         "customer_name": "test_customer",
         "customer_id": "test_customer_id",
-        "balance": 30,
         "currency": "USD",
         "payment_provider_id": "test_payment_provider_id",
         "payment_provider": "stripe",

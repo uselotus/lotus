@@ -59,7 +59,7 @@ const BacktestTable: FC<Props> = ({ backtests }) => {
     navigate(`/experiment/${row.backtest_id}`);
   };
   return (
-    <div>
+    <div className="border-2 border-solid rounded border-[#EAEAEB]">
       <ProTable
         columns={columns}
         dataSource={backtests}

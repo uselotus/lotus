@@ -9,7 +9,6 @@ from .models import (
     APIToken,
     Backtest,
     BillableMetric,
-    PlanVersion,
     CategoricalFilter,
     Customer,
     Event,
@@ -18,7 +17,9 @@ from .models import (
     NumericFilter,
     Organization,
     OrganizationInviteToken,
+    Plan,
     PlanComponent,
+    PlanVersion,
     Subscription,
     User,
 )
@@ -34,12 +35,11 @@ admin.site.register(Alert, SimpleHistoryAdmin)
 admin.site.register(User, CustomAdmin)
 admin.site.register(Customer, SimpleHistoryAdmin)
 admin.site.register(Event)
-admin.site.register(NumericFilter)
+admin.site.register(Plan, SimpleHistoryAdmin)
 admin.site.register(Backtest)
-admin.site.register(CategoricalFilter)
 admin.site.register(BillableMetric, SimpleHistoryAdmin)
 admin.site.register(PlanComponent)
-admin.site.register(Feature)
+admin.site.register(Feature, SimpleHistoryAdmin)
 admin.site.register(PlanVersion, SimpleHistoryAdmin)
 admin.site.register(Subscription, SimpleHistoryAdmin)
 admin.site.register(Invoice, SimpleHistoryAdmin)

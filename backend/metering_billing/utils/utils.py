@@ -137,9 +137,11 @@ def now_utc():
 
 
 def calculate_end_date(interval, start_date):
-    if interval == PLAN_DURATION.MONTH:
+    if interval == PLAN_DURATION.MONTHLY:
         return start_date + relativedelta(months=+1) - relativedelta(days=+1)
-    elif interval == PLAN_DURATION.YEAR:
+    elif interval == PLAN_DURATION.QUARTERLY:
+        return start_date + relativedelta(months=+3) - relativedelta(days=+1)
+    elif interval == PLAN_DURATION.YEARLY:
         return start_date + relativedelta(years=+1) - relativedelta(days=+1)
 
 
@@ -171,13 +173,13 @@ def btst_uuid():
     return "btst_" + str(uuid.uuid4())
 
 
+def invoice_uuid():
+    return "inv_" + str(uuid.uuid4())
+
+
 def date_as_min_dt(date):
-    return datetime.datetime.combine(
-        date, datetime.time.min, tzinfo=datetime.timezone.utc
-    )
+    return datetime.datetime.combine(date, datetime.time.min, tzinfo=pytz.UTC)
 
 
 def date_as_max_dt(date):
-    return datetime.datetime.combine(
-        date, datetime.time.max, tzinfo=datetime.timezone.utc
-    )
+    return datetime.datetime.combine(date, datetime.time.max, tzinfo=pytz.UTC)

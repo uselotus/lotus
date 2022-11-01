@@ -109,7 +109,7 @@ function MetricBarGraph(props: { range: any }) {
   return (
     <Paper>
       <div className="flex flex-row items-center mb-5 space-x-4">
-        <h2>Metric Usage By Customer</h2>
+        <h2>Metric Usage</h2>
         <Select
           defaultValue="Select Metric"
           onChange={changeMetric}

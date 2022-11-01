@@ -1,6 +1,6 @@
 import { Modal, Form, Input, Select, Radio, Tooltip } from "antd";
 import { MetricType } from "../types/metric-type";
-import React, { Fragment, useState } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 const { Option } = Select;
 
 export interface CreateMetricState extends MetricType {
@@ -17,6 +17,12 @@ const CreateMetricForm = (props: {
 }) => {
   const [form] = Form.useForm();
   const [eventType, setEventType] = useState("");
+
+  // useEffect(() => {
+  //   if (props.visible === false) {
+  //     form.resetFields();
+  //   }
+  // }, [props.visible]);
 
   form.setFieldsValue({
     event_name: props.state.event_name,
@@ -36,7 +42,6 @@ const CreateMetricForm = (props: {
           .validateFields()
           .then((values) => {
             props.onSave(values);
-            form.resetFields();
           })
           .catch((info) => {
             console.log("Validate Failed:", info);
@@ -115,7 +120,7 @@ const CreateMetricForm = (props: {
                 {({ getFieldValue }) =>
                   getFieldValue("aggregation_type") === "sum" ||
                   getFieldValue("aggregation_type") === "max" ||
-                  getFieldValue("aggregation_type") === "last" ||
+                  getFieldValue("aggregation_type") === "latest" ||
                   getFieldValue("aggregation_type") == "unique" ? (
                     <Form.Item
                       name="property_name"
@@ -143,7 +148,7 @@ const CreateMetricForm = (props: {
               >
                 <Select defaultValue={"max"}>
                   <Option value="max">max</Option>
-                  <Option value="last">last</Option>
+                  <Option value="latest">latest</Option>
                 </Select>
               </Form.Item>
               <Form.Item

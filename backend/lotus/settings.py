@@ -25,12 +25,14 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-try:
-    path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
-    load_dotenv(dotenv_path=path)
-except:
-    pass
+# try:
+#     path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
+#     load_dotenv(dotenv_path=path)
+# except:
+#     pass
 
+VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
+VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT", default="")
 EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
 EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
@@ -41,14 +43,13 @@ SECRET_KEY = config("SECRET_KEY", default="")
 if SECRET_KEY == "":
     SECRET_KEY = os.urandom(32)
     print("SECRET_KEY not set. Defaulting to a random one.")
-POSTGRES_DB_NAME = config("POSTGRES_DB_NAME", default="lotus")
+POSTGRES_DB = config("POSTGRES_DB", default="lotus")
 POSTGRES_USER = config("POSTGRES_USER", default="lotus")
 POSTGRES_PASSWORD = config("POSTGRES_PASSWORD", default="lotus")
 SENTRY_DSN = config("SENTRY_DSN", default="")
 SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
-
 # Stripe required
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
 
@@ -208,7 +209,7 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": POSTGRES_DB_NAME,
+            "NAME": POSTGRES_DB,
             "USER": POSTGRES_USER,
             "PASSWORD": POSTGRES_PASSWORD,
             "HOST": "db" if DOCKERIZED else "localhost",

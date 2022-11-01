@@ -375,16 +375,11 @@ class PlanViewSet(viewsets.ModelViewSet):
                 Prefetch(
                     "versions",
                     queryset=PlanVersion.objects.filter(
+                        ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
                         organization=organization,
-                        status__in=[
-                            PLAN_VERSION_STATUS.ACTIVE,
-                            PLAN_VERSION_STATUS.GRANDFATHERED,
-                            PLAN_VERSION_STATUS.RETIRING,
-                            PLAN_VERSION_STATUS.INACTIVE,
-                        ],
                     ).annotate(
                         active_subscriptions=Count(
-                            "bp_subscriptions",
+                            "bp_subscription",
                             filter=Q(
                                 bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE
                             ),

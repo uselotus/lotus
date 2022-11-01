@@ -1,11 +1,5 @@
 import React, { FC, useState, useEffect, useRef } from "react";
-import {
-  DownOutlined,
-  EllipsisOutlined,
-  QuestionCircleOutlined,
-  DeleteOutlined,
-  DeleteFilled,
-} from "@ant-design/icons";
+
 import {
   ProTable,
   ProFormInstance,
@@ -65,43 +59,18 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       dataIndex: "property_name",
       align: "left",
     },
-    // {
-    //   title: "Actions",
-    //   align: "right",
-    //   valueType: "option",
-    //   render: (_, record) => [
-    //     <a
-    //       key="delete"
-    //       onClick={() => {
-    //         const tableDataSource = formRef.current?.getFieldValue(
-    //           "table"
-    //         ) as MetricType[];
-    //         formRef.current?.setFieldsValue({
-    //           table: tableDataSource.filter((item) => item.id !== record?.id),
-    //         });
-    //       }}
-    //     >
-    //       <DeleteOutlined />
-    //     </a>,
-    //   ],
-    // },
   ];
 
-  const handleDelete = (id: number) => {
-    Metrics.deleteMetric(id).then((res) => {});
-  };
-
-  const navigateCreateCustomer = () => {
-    navigate("/customers/create");
-  };
   return (
-    <React.Fragment>
+    <div className="border-2 border-solid rounded border-[#EAEAEB]">
       <ProTable<MetricType>
         columns={columns}
         dataSource={metricArray}
+        toolBarRender={false}
         rowKey="customer_id"
         formRef={formRef}
         search={false}
+        className="w-full"
         pagination={{
           showTotal: (total, range) => (
             <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
@@ -109,7 +78,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
         }}
         options={false}
       />
-    </React.Fragment>
+    </div>
   );
 };
 
