@@ -43,13 +43,20 @@ function App() {
 
   const isAuthenticated = isLoading ? false : sessionData?.isAuthenticated;
 
+  const contextClass = {
+    success: "bg-[#cca43b] text-[#cca43b]",
+  };
+
   if (isLoading) {
     return <LoadingSpinner />;
   } else {
     if (isAuthenticated) {
       return (
         <div>
-          <ToastContainer autoClose={1000} />
+          <ToastContainer
+            autoClose={1000}
+            bodyClassName=" text-gold font-main"
+          />
           <PlanProvider>
             <AppRoutes />
           </PlanProvider>
@@ -58,7 +65,11 @@ function App() {
     } else {
       return (
         <div>
-          <ToastContainer autoClose={1000} />
+          <ToastContainer
+            autoClose={1000}
+            toastClassName="rounded-md bg-background font-main"
+            bodyClassName=" text-gold font-main"
+          />
           <ExternalRoutes />
         </div>
       );

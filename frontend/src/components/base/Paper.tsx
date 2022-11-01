@@ -9,8 +9,9 @@ export const Paper = (props: Props | any) => {
       {...props}
       className={[
         "py-4 px-8 rounded-lg",
-        props.color === "gold" ? "bg-[#CCA43B69]" : "bg-[#FAFAFA]",
+        props.color === "white" ? "bg-[#FFFFFF]" : "bg-[#FAFAFA]",
         props.className,
+        props.border ? "border-2 border-solid rounded border-[#EAEAEB]" : "",
       ].join(" ")}
     />
   );

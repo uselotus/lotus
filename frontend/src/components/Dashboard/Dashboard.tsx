@@ -3,7 +3,9 @@ import { Card, Col, Divider, PageHeader, Row } from "antd";
 import RevenueDisplay from "./RevenueDisplay";
 import SubscriptionStatistics from "./SubscriptionStatistics";
 import MetricBarGraph from "./MetricBarGraph";
-import dayjs, { Dayjs } from "dayjs";
+import { Dayjs } from "dayjs";
+import * as dayjs from "dayjs";
+import * as duration from "dayjs/plugin/duration";
 import dayjsGenerateConfig from "rc-picker/lib/generate/dayjs";
 import generatePicker from "antd/es/date-picker/generatePicker";
 import { useQuery, UseQueryResult } from "react-query";
@@ -13,12 +15,13 @@ import RevenueBarGraph from "./RevenueBarGraph";
 
 import { PageLayout } from "../base/PageLayout";
 import { CustomerByPlanPie } from "./CustomerByPlanPie";
+import { toast } from "react-toastify";
 
 const DatePicker = generatePicker<Dayjs>(dayjsGenerateConfig);
 const { RangePicker } = DatePicker;
 
 const dateFormat = "YYYY/MM/DD";
-const defaultDate = [dayjs().subtract(1, "months"), dayjs()];
+const defaultDate = [dayjs().subtract(1, "months").add(1, "day"), dayjs()];
 
 const Dashboard: FC = () => {
   const [dateRange, setDateRange] = React.useState<any>(defaultDate);
@@ -54,6 +57,7 @@ const Dashboard: FC = () => {
           }}
           defaultValue={dateRange}
           onCalendarChange={(dates) => {
+            toast.info("Loading...");
             setDateRange(dates);
           }}
         />,
