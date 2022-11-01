@@ -51,7 +51,6 @@ from metering_billing.utils.enums import (
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
-from sqlalchemy import ForeignKey
 
 
 class Organization(models.Model):
