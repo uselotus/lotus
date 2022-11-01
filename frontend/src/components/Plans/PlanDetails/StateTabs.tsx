@@ -12,13 +12,24 @@ const StateTabs: FC<StateTabsProps> = ({ tabs, activeTab }) => {
   const [currentActiveTab, setCurrentActiveTab] = useState(activeTab);
 
   const getToolTipText = (tab) => {
-    switch (tab) {
-      case "Inactive":
-        return "Make this Plan Inactive";
-      case "Active":
-        return "If you make this version active, your other active version will become inactive.";
-      case "Grandfathered":
-        return "Make this Plan Grandfathered";
+    if (tab === currentActiveTab) {
+      switch (tab) {
+        case "Inactive":
+          return "This version is not active and has no subscriptions";
+        case "Active":
+          return "This version is active and is the default version for new subscriptions";
+        case "Grandfathered":
+          return "This version has past subscriptions still on it.";
+      }
+    } else {
+      switch (tab) {
+        case "Inactive":
+          return "Make this version Inactive";
+        case "Active":
+          return "If you make this version active, your other active version will become inactive.";
+        case "Grandfathered":
+          return "Make this version Grandfathered";
+      }
     }
   };
 
@@ -27,7 +38,7 @@ const StateTabs: FC<StateTabsProps> = ({ tabs, activeTab }) => {
       {tabs.map((tab) => (
         <Tooltip title={getToolTipText(tab)}>
           <div
-            onClick={() => setCurrentActiveTab(tab)}
+            // onClick={() => setCurrentActiveTab(tab)}
             className={[
               "tabItem flex items-center",
               currentActiveTab === tab && "activeTab text-black",

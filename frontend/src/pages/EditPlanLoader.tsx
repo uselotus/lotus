@@ -23,7 +23,6 @@ interface EditPlanLoaderProps {
 const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
   const navigate = useNavigate();
   const { planId } = useParams<PlanDetailParams>();
-  //@todo Have to add the code to load details using the Plan Id
 
   const {
     data: plan,

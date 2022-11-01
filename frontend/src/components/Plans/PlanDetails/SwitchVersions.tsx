@@ -19,6 +19,23 @@ interface SwitchVersionProps {
   className: string;
 }
 
+//function that takes in a string and returns a string based on the cases of the string equals percentage, flat, or override
+function getPriceAdjustmentEnding(
+  type: string | undefined,
+  amount: number | undefined
+) {
+  switch (type) {
+    case "percentage":
+      return amount + "%";
+    case "flat":
+      return "$ " + amount;
+    case "price_override":
+      return "$ " + amount;
+    default:
+      return "No Adjustment";
+  }
+}
+
 function capitalize(word: string) {
   return word[0].toUpperCase() + word.slice(1).toLowerCase();
 }
@@ -157,7 +174,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
                 {selectedVersion.flat_fee_billing_type}
               </div>
             </div>
-            <div className="flex items-center planInfo py-2 mt-2">
+            {/* <div className="flex items-center planInfo py-2 mt-2">
               <div className="pr-2 infoLabel">
                 Components Billing Frequency:
               </div>
@@ -165,7 +182,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
                 {" "}
                 {selectedVersion.usage_billing_frequency}
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -178,15 +195,15 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
 
         <div className="separator pt-4" />
 
-        <div className="px-4 py-4 flex items-center justify-start ">
+        <div className="px-4 py-4 flex justify-start align-middle ">
           <div className="pb-5 pt-3 font-main font-bold text-[20px]">
             Price Adjustments:
           </div>
-          <div className="mx-3">
-            {selectedVersion.price_adjustment?.price_adjustment_type} :{" "}
-          </div>
-          <div>
-            {selectedVersion.price_adjustment?.price_adjustment_amount} :{" "}
+          <div className="mb-5 mt-3 px-4 font-main font-bold text-[20px] bg-background self-center">
+            {getPriceAdjustmentEnding(
+              selectedVersion.price_adjustment?.price_adjustment_type,
+              selectedVersion.price_adjustment?.price_adjustment_amount
+            )}
           </div>
         </div>
 

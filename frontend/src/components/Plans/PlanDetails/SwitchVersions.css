@@ -12,7 +12,7 @@
 }
 
 .addVersionButton {
-  margin-top: -7px;
+  vertical-align: center;
   padding-right: 5px;
   color: #1d1d1f;
 }

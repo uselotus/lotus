@@ -12,6 +12,10 @@
   }
 }
 
+svg {
+  vertical-align: baseline;
+}
+
 h1 {
   font-style: normal;
   font-weight: 700;

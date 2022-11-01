@@ -37,7 +37,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
       {components && components.length > 0 ? (
         <div className="flex items-center justify-start flex-wrap">
           {components.map((component) => (
-            <div className="py-2 bg-[#FAFAFA] rounded planComponent mr-4 mb-2">
+            <div className="pt-2 pb-4 bg-[#FAFAFA] rounded planComponent mr-4 mb-2 px-4">
               <div className="planDetails planComponentMetricName">
                 <div className="pr-1">Metric:</div>
                 <div> {component.billable_metric.billable_metric_name}</div>
@@ -45,7 +45,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
               <div className="planDetails">
                 <div className="pr-1 planComponentLabel">Cost:</div>
                 <div className="planComponentCost">
-                  {" "}
+                  {" $"}
                   {component.cost_per_batch} /{" "}
                   {component.metric_units_per_batch} Unit
                   {component.metric_units_per_batch > 1 ? "s" : null}{" "}

@@ -30,11 +30,13 @@ export interface CreatePlanVersionType {
   description?: string;
   plan_id?: string;
   features: FeatureType[];
-  components: Component[];
+  components: CreateComponent[];
   flat_rate: number;
-  usage_billing_frequency: string;
+  usage_billing_frequency?: string;
   flat_fee_billing_type: string;
   price_adjustment?: PriceAdjustment;
+  make_active?: boolean;
+  make_active_type?: string;
 }
 
 export interface PriceAdjustment {
@@ -42,7 +44,8 @@ export interface PriceAdjustment {
   price_adjustment_amount: number;
 }
 
-export interface PlanVersionType extends CreatePlanVersionType {
+export interface PlanVersionType
+  extends Omit<CreatePlanVersionType, "components"> {
   description: string;
   plan_id: string;
   flat_fee_billing_type: string;
@@ -55,7 +58,7 @@ export interface PlanVersionType extends CreatePlanVersionType {
   created_on: string;
   active_subscriptions: number;
   features: FeatureType[];
-  usage_billing_frequency: "monthly" | "quarterly" | "yearly";
+  usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
 }
 
 export interface PlansByCustomerArray {
@@ -83,9 +86,9 @@ export interface CreateVersionType {
   flat_fee_billing_type: string;
   plan_id: number;
   flat_rate: number;
-  components: Component[];
+  components: CreateComponent[];
   features: FeatureType[];
-  usage_billing_frequency: string;
+  usage_billing_frequency?: string;
   replace_plan_version_id?: string;
   make_active: boolean;
   make_active_type?: string;

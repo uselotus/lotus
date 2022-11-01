@@ -19,7 +19,6 @@ import {
   CreatePlanType,
   CreateComponent,
   PlanType,
-  UpdatePlanType,
   PlanDetailType,
   CreateInitialVersionType,
   CreatePlanVersionType,
@@ -33,7 +32,7 @@ import { PageLayout } from "../components/base/PageLayout";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
-import TargetCustomerForm from "../components/Plans/VersionActiveForm";
+import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
 
 interface CustomizedState {
@@ -53,6 +52,7 @@ const EditPlan = ({ type, plan }: Props) => {
   const [versionActiveFormVisible, setVersionActiveFormVisible] =
     useState<boolean>(false);
   const [activeVersion, setActiveVersion] = useState<boolean>(false);
+  const [activeVersionType, setActiveVersionType] = useState<string>();
   const { replacementPlan } = usePlanState();
   const { setReplacementPlan } = usePlanUpdater();
   const navigate = useNavigate();
@@ -221,19 +221,21 @@ const EditPlan = ({ type, plan }: Props) => {
     navigate(-1);
   };
 
-  const setTargetCustomer = async (target_customer_id: string) => {
-    hideTargetCustomerForm();
-    return target_customer_id;
-  };
-
   const onFinish = () => {
-    if (type === "custom") {
-      setTargetCustomerFormVisible(true);
-    } else if (type == "version") {
-      setVersionActiveFormVisible(true);
-    } else {
-      form.submit();
-    }
+    form
+      .validateFields()
+      .then(() => {
+        if (type === "custom") {
+          setTargetCustomerFormVisible(true);
+        } else if (type === "version") {
+          setVersionActiveFormVisible(true);
+        } else {
+          form.submit();
+        }
+      })
+      .catch((errorInfo) => {
+        toast.error(errorInfo.errorFields[0].errors[0]);
+      });
   };
 
   const completeCustomPlan = (target_customer_id: string) => {
@@ -241,8 +243,11 @@ const EditPlan = ({ type, plan }: Props) => {
     form.submit();
   };
 
-  const completeNewVersion = (active: boolean) => {
+  const completeNewVersion = (active: boolean, active_type: string) => {
     setActiveVersion(active);
+    if (active) {
+      setActiveVersionType(active_type);
+    }
     form.submit();
   };
 
@@ -272,8 +277,17 @@ const EditPlan = ({ type, plan }: Props) => {
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
-          usage_billing_frequency: values.usage_billing_frequency,
+          // usage_billing_frequency: values.usage_billing_frequency,
         };
+        if (
+          values.price_adjustment_type !== undefined &&
+          values.price_adjustment_type !== "none"
+        ) {
+          initialPlanVersion["price_adjustment"] = {
+            price_adjustment_type: values.price_adjustment_type,
+            price_adjustment_amount: values.price_adjustment_amount,
+          };
+        }
 
         const newPlan: CreatePlanType = {
           plan_name: values.name,
@@ -291,9 +305,19 @@ const EditPlan = ({ type, plan }: Props) => {
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: planFeatures,
-            usage_billing_frequency: values.usage_billing_frequency,
+            // usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
+            make_active_type: activeVersionType,
           };
+          if (
+            values.price_adjustment_type !== undefined &&
+            values.price_adjustment_type !== "none"
+          ) {
+            newVersion["price_adjustment"] = {
+              price_adjustment_type: values.price_adjustment_type,
+              price_adjustment_amount: values.price_adjustment_amount,
+            };
+          }
 
           mutation.mutate(newVersion);
         } else if (type === "custom") {
@@ -315,7 +339,7 @@ const EditPlan = ({ type, plan }: Props) => {
     } else if (type === "version") {
       return "Create New Version:" + " " + plan.plan_name;
     } else {
-      return "Create Custom Plan" + " " + plan.plan_name;
+      return "Create Custom Plan:" + " " + plan.plan_name;
     }
   }
 
@@ -347,6 +371,7 @@ const EditPlan = ({ type, plan }: Props) => {
           onClick={() => onFinish()}
           className="bg-black text-white justify-self-end"
           size="large"
+          type="primary"
         >
           {returnSubmitButtonText()}
         </Button>,
@@ -361,7 +386,8 @@ const EditPlan = ({ type, plan }: Props) => {
             description: plan.versions[0].description,
             flat_rate: plan.versions[0].flat_rate,
             pay_in_advance: plan.versions[0].flat_fee_billing_type,
-            usage_billing_frequency: plan.versions[0].usage_billing_frequency,
+            // usage_billing_frequency: plan.versions[0].usage_billing_frequency,
+            plan_duration: plan.plan_duration,
             flat_fee_billing_type: plan.versions[0].flat_fee_billing_type,
           }}
           onFinish={submitPricingPlan}
@@ -467,7 +493,7 @@ const EditPlan = ({ type, plan }: Props) => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                <div className="absolute inset-x-0 bottom-0 justify-center">
+                {/* <div className="absolute inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -490,7 +516,7 @@ const EditPlan = ({ type, plan }: Props) => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div>
+                </div> */}
               </Card>
             </Col>
             <Col span="24">
@@ -530,6 +556,7 @@ const EditPlan = ({ type, plan }: Props) => {
                         setPriceAdjustmentType(value);
                       }}
                     >
+                      <Select.Option value="none">Percentage</Select.Option>
                       <Select.Option value="price_override">
                         Overwrite Price
                       </Select.Option>
@@ -542,11 +569,19 @@ const EditPlan = ({ type, plan }: Props) => {
 
                   <Form.Item
                     name="price_adjustment_amount"
-                    wrapperCol={{ span: 24 }}
+                    wrapperCol={{ span: 24, offset: 4 }}
                     shouldUpdate={(prevValues, curValues) =>
                       prevValues.price_adjustment_type !==
                       curValues.price_adjustment_type
                     }
+                    rules={[
+                      {
+                        required:
+                          priceAdjustmentType !== undefined ||
+                          priceAdjustmentType !== "none",
+                        message: "Please enter a price adjustment value",
+                      },
+                    ]}
                   >
                     <InputNumber
                       addonAfter={

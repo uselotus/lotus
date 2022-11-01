@@ -139,7 +139,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   };
 
   return (
-    <div>
+    <div className="border-solid rounded border-[#EAEAEB]">
       <ProTable
         columns={columns}
         dataSource={tableData}

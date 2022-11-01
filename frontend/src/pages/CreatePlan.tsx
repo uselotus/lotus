@@ -192,6 +192,15 @@ const CreatePlan = () => {
           features: planFeatures,
           usage_billing_frequency: values.usage_billing_frequency,
         };
+        if (
+          values.price_adjustment_type !== undefined &&
+          values.price_adjustment_type !== "none"
+        ) {
+          initialPlanVersion["price_adjustment"] = {
+            price_adjustment_type: values.price_adjustment_type,
+            price_adjustment_amount: values.price_adjustment_amount,
+          };
+        }
 
         const plan: CreatePlanType = {
           plan_name: values.name,
@@ -405,6 +414,7 @@ const CreatePlan = () => {
                         setPriceAdjustmentType(value);
                       }}
                     >
+                      <Select.Option value="none">Percentage</Select.Option>
                       <Select.Option value="price_override">
                         Overwrite Price
                       </Select.Option>
@@ -417,11 +427,19 @@ const CreatePlan = () => {
 
                   <Form.Item
                     name="price_adjustment_amount"
-                    wrapperCol={{ span: 24 }}
+                    wrapperCol={{ span: 24, offset: 4 }}
                     shouldUpdate={(prevValues, curValues) =>
                       prevValues.price_adjustment_type !==
                       curValues.price_adjustment_type
                     }
+                    rules={[
+                      {
+                        required:
+                          priceAdjustmentType !== undefined ||
+                          priceAdjustmentType !== "none",
+                        message: "Please enter a price adjustment value",
+                      },
+                    ]}
                   >
                     <InputNumber
                       addonAfter={
