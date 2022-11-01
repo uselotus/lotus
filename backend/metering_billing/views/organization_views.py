@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
 class OrganizationView(APIView):
@@ -59,7 +60,7 @@ class InviteView(APIView):
 def send_invite_email(reset_url, organization_name, to):
     subject = f"Join {organization_name} in Lotus"
     body = f"Use this link to join {organization_name} team: {reset_url}"
-    from_email = f"Lotus <{settings.DEFAULT_FROM_EMAIL}>"
+    from_email = f"Lotus <{DEFAULT_FROM_EMAIL}>"
     html = """
             <p>Register to <a href={url}>join {organization_name}</a> team</p>""".format(
         url=reset_url, organization_name=organization_name

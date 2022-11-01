@@ -182,7 +182,7 @@ export const Authentication = {
 
 export const Organization = {
   invite: (email): Promise<{ email: string }> =>
-    requests.post("api/organization/invite", { email }),
+    requests.post("api/organization/invite/", { email }),
   get: (): Promise<any> => requests.get("api/organization"),
 };
 

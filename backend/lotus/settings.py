@@ -135,9 +135,9 @@ else:
     EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
     APP_URL = "https://app.uselotus.io"
 
-
-DEFAULT_FROM_EMAIL = "you@uselotus.io"
-SECURITY_FROM_EMAIL = "security@uselotus.io"
+EMAIL_DOMAIN = os.environ.get("MAILGUN_DOMAIN") or "uselotus.io"
+EMAIL_USERNAME = "noreply" if EMAIL_DOMAIN == "uselotus.io" else "mailgun"
+DEFAULT_FROM_EMAIL = f"{EMAIL_USERNAME}@{EMAIL_DOMAIN}"
 SERVER_EMAIL = "you@uselotus.io"  # ditto (default from-email for Django errors)
 
 if PROFILER_ENABLED:
