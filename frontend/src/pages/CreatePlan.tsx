@@ -190,7 +190,7 @@ const CreatePlan = () => {
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
-          usage_billing_frequency: values.usage_billing_frequency,
+          // usage_billing_frequency: values.usage_billing_frequency,
         };
         if (
           values.price_adjustment_type !== undefined &&
@@ -350,7 +350,7 @@ const CreatePlan = () => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                <div className="absolute inset-x-0 bottom-0 justify-center">
+                {/* <div className="absolute inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -373,7 +373,7 @@ const CreatePlan = () => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div>
+                </div> */}
               </Card>
             </Col>
 
