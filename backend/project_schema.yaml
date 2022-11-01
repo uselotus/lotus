@@ -144,6 +144,13 @@ paths:
     get:
       operationId: customer_detail_retrieve
       description: Get the current settings for the organization.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
       tags:
       - customer_detail
       security:
@@ -1738,13 +1745,6 @@ components:
         customer_id:
           type: string
           maxLength: 50
-        balance:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
       required:
       - customer_name
     CustomerDetail:
@@ -1758,13 +1758,6 @@ components:
           format: email
           nullable: true
           maxLength: 100
-        balance:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
         customer_name:
           type: string
         invoices:
@@ -1998,31 +1991,39 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        created_on:
-          type: string
-          format: date-time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         description:
           type: string
           nullable: true
           maxLength: 200
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        version:
-          type: integer
+        created_on:
+          type: string
+          format: date-time
           readOnly: true
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
+        version_id:
+          type: string
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         flat_rate:
           type: number
           format: double
@@ -2030,19 +2031,11 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        created_by:
-          type: string
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
-        version_id:
-          type: string
-          readOnly: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
       required:
       - active_subscriptions
       - created_by
@@ -2461,33 +2454,20 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
         num_versions:
           type: integer
           readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        created_by:
-          type: string
-          readOnly: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
         plan_name:
           type: string
           maxLength: 100
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
         versions:
           type: array
           items:
@@ -2496,6 +2476,19 @@ components:
         product_id:
           type: string
           nullable: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
+        active_subscriptions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by

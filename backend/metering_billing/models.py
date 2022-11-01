@@ -827,11 +827,11 @@ class Subscription(models.Model):
         if self.status == SUBSCRIPTION_STATUS.ACTIVE:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
-            dates_bwn = list(dates_bwn_two_dts(self.start_date, self.end_date))
+            dates_bwn = list(dates_bwn_two_dts(self.start_date, self.scheduled_end_date))
             for day in dates_bwn:
                 if isinstance(day, datetime.datetime):
                     day = day.date()
-                if day >= today:
+                if day >= today or not self.pk:
                     flat_fee_dictionary[str(day)] = {
                         "plan_version_id": self.billing_plan.version_id,
                         "amount": float(self.billing_plan.flat_rate.amount)
