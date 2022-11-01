@@ -721,9 +721,14 @@ class Plan(models.Model):
             ).update(replace_with=new_version, status=PLAN_VERSION_STATUS.RETIRING)
             # 2b
             if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE:
-                self.versions.all().filter(
+                prev_active = self.versions.all().get(
                     ~Q(pk=new_version.pk), status=PLAN_VERSION_STATUS.ACTIVE
-                ).update(status=PLAN_VERSION_STATUS.GRANDFATHERED)
+                )
+                if prev_active.num_active_subs() > 0:
+                    prev_active.status = PLAN_VERSION_STATUS.GRANDFATHERED
+                else:
+                    prev_active.status = PLAN_VERSION_STATUS.INACTIVE
+                prev_active.save()
         else:
             # 2c
             versions = (

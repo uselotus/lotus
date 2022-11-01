@@ -115,7 +115,7 @@ class PeriodMetricRevenueView(APIView):
                         total_period_rev += bp.flat_rate.amount
                     for plan_component in bp.components.all():
                         billable_metric = plan_component.billable_metric
-                        revenue_per_day = plan_component.calculate_usage_revenue(
+                        revenue_per_day = plan_component.calculate_revenue(
                             sub.customer,
                             sub.start_date,
                             sub.end_date,
