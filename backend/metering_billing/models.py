@@ -5,8 +5,9 @@ from typing import TypedDict
 
 from dateutil import parser
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.db.models.constraints import UniqueConstraint
 from djmoney.models.fields import MoneyField
 from metering_billing.invoice import generate_invoice
@@ -146,9 +147,6 @@ class Customer(models.Model):
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
-    balance = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
-    )
     history = HistoricalRecords()
 
     class Meta:
@@ -195,6 +193,49 @@ class Customer(models.Model):
             subscription_usages["subscriptions"].append(sub_dict)
 
         return subscription_usages
+
+    def get_currency_balance(self, currency):
+        now = now_utc()
+        balance = self.customer_balance_adjustments.filter(
+            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            effective_at__lte=now,
+            amount_currency=currency,
+        ).aggregate(balance=Sum("amount_amount"))["balance"] or Decimal(0)
+        return balance
+
+
+class CustomerBalanceAdjustment(models.Model):
+    """
+    This model is used to store the customer balance adjustments.
+    """
+
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="customer_balance_adjustments"
+    )
+    amount = MoneyField(decimal_places=10, max_digits=20)
+    description = models.TextField(null=True, blank=True)
+    created = models.DateTimeField(default=now_utc)
+    effective_at = models.DateTimeField(default=now_utc)
+    expire = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.customer.name} {self.amount} {self.created}"
+
+    class Meta:
+        ordering = ["-created"]
+
+    class Meta:
+        unique_together = ("customer", "created")
+
+    def __str__(self):
+        return f"{self.customer} {self.amount} {self.created}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError(
+                "you may not edit an existing %s" % self._meta.model_name
+            )
+        super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
 
 class Event(models.Model):
@@ -754,6 +795,7 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
+    scheduled_end_date = models.DateTimeField()
     status = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_STATUS.choices,
@@ -781,6 +823,7 @@ class Subscription(models.Model):
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration, self.start_date
             )
+            self.scheduled_end_date = self.end_date
         if self.status == SUBSCRIPTION_STATUS.ACTIVE:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
@@ -845,6 +888,9 @@ class Subscription(models.Model):
 
     def switch_subscription_bp(self, new_version):
         self.billing_plan = new_version
+        self.scheduled_end_date = self.end_date = calculate_end_date(
+            new_version.plan.plan_duration, self.start_date
+        )
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             new_sub_daily_cost_dict = self.prorated_flat_costs_dict

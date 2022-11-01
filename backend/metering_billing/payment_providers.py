@@ -258,7 +258,6 @@ class StripeConnector(PaymentProvider):
             "email": customer.email,
             "metadata": {},
             "name": customer.name,
-            "currency": customer.balance.currency,
         }
         customer.save()
 
