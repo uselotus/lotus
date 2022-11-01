@@ -28,7 +28,7 @@ function SubscriptionStatistics(props: { range: any[] }) {
   }
 
   return (
-    <Paper>
+    <Paper border={true} color="white">
       <h1 className="text-base font-normal mb-4">Subscriptions</h1>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <div className="flex items-center">

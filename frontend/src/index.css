@@ -16,6 +16,10 @@ svg {
   vertical-align: baseline;
 }
 
+:root {
+  --toastify-color-success: #cca43b;
+}
+
 h1 {
   font-style: normal;
   font-weight: 700;
@@ -146,6 +150,11 @@ a {
 .ant-menu > .ant-menu-item-divider {
   margin: 24px auto;
   width: 75%;
+}
+
+.ant-picker-ranges > .ant-picker-preset {
+  background: none;
+  border-color: #1d1d1d;
 }
 
 /**

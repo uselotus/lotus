@@ -17,6 +17,13 @@ const computePercentageChange = (
   return ((current - previous) / previous) * 100;
 };
 
+const displayMetric = (metric: number | undefined): number => {
+  if (metric === undefined) {
+    return 0;
+  }
+  return metric;
+};
+
 function RevenueDisplay(props: {
   total_revenue_1: number | undefined;
   total_revenue_2: number | undefined;
@@ -28,11 +35,7 @@ function RevenueDisplay(props: {
       computePercentageChange(props.total_revenue_1, props.total_revenue_2)
     );
   }, [props.total_revenue_1, props.total_revenue_2]);
-  if (
-    props.isLoading ||
-    props.total_revenue_1 === undefined ||
-    props.total_revenue_2 === undefined
-  ) {
+  if (props.isLoading) {
     return (
       <div>
         <LoadingSpinner />
@@ -40,14 +43,14 @@ function RevenueDisplay(props: {
     );
   }
   return (
-    <Paper>
+    <Paper color="white" border={true}>
       <h1 className="text-base font-normal mb-4">Total Revenue</h1>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <span className="text-3xl font-bold">
           {new Intl.NumberFormat("en-US", {
             style: "currency",
             currency: "USD",
-          }).format(props.total_revenue_1)}
+          }).format(displayMetric(props.total_revenue_1))}
         </span>
         <div>
           {percentageChange >= 0 ? (
