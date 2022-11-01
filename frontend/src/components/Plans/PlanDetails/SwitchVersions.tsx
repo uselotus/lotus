@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useState, version } from "react";
+import React, { FC, useEffect, useState, version } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate, Link } from "react-router-dom";
@@ -42,6 +42,7 @@ function capitalize(word: string) {
 
 const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
   const [selectedVersion, setSelectedVersion] = useState(versions[0]);
+  const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
 
   const isSelectedVersion = (other_id: string) =>
@@ -56,6 +57,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
       },
     }
   );
+
+  useEffect(() => {
+    setCapitalizedState(capitalize(selectedVersion.status));
+    console.log(capitalize(selectedVersion.status));
+  }, [selectedVersion.status]);
 
   const menu = (
     <Menu>
@@ -113,7 +119,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           <div className="text-2xl font-main px-4 flex items-center">
             <span className="pr-6">Plan Information</span>
             <StateTabs
-              activeTab={capitalize(selectedVersion.status)}
+              activeTab={capitalizedState}
               tabs={["Active", "Grandfathered", "Inactive"]}
             />
           </div>

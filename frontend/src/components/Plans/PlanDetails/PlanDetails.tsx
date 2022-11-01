@@ -57,18 +57,20 @@ const PlanDetails: FC = () => {
                 : plan.plan_name
             }
             backIcon
-            extra={[
-              <Button
-                onClick={navigateCreateCustomPlan}
-                type="primary"
-                size="large"
-                key="create-custom-plan"
-              >
-                <div className="flex items-center justify-between text-white">
-                  <div>Create Custom Plan</div>
-                </div>
-              </Button>,
-            ]}
+            extra={
+              plan.target_customer === null && [
+                <Button
+                  onClick={navigateCreateCustomPlan}
+                  type="primary"
+                  size="large"
+                  key="create-custom-plan"
+                >
+                  <div className="flex items-center justify-between text-white">
+                    <div>Create Custom Plan</div>
+                  </div>
+                </Button>,
+              ]
+            }
           ></PageLayout>
           <div className="mx-10">
             <div className="planDetails">

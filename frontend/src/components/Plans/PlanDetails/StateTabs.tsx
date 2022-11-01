@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import "./StateTabs.css";
 import { Tooltip } from "antd";
 
@@ -10,6 +10,10 @@ interface StateTabsProps {
 
 const StateTabs: FC<StateTabsProps> = ({ tabs, activeTab }) => {
   const [currentActiveTab, setCurrentActiveTab] = useState(activeTab);
+
+  useEffect(() => {
+    setCurrentActiveTab(activeTab);
+  }, [activeTab]);
 
   const getToolTipText = (tab) => {
     if (tab === currentActiveTab) {
