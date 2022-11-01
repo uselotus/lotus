@@ -297,7 +297,6 @@ class StripeConnector(PaymentProvider):
     def get_post_data_serializer(self) -> serializers.Serializer:
         class StripePostRequestDataSerializer(serializers.Serializer):
             authorization_code = serializers.CharField()
-            stripe_user_id = serializers.CharField()
 
         return StripePostRequestDataSerializer
 
