@@ -69,8 +69,6 @@ const EditPlan = ({ type, plan }: Props) => {
   ]);
   const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>("");
 
-  const { planId } = useParams();
-
   const queryClient = useQueryClient();
 
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
@@ -101,7 +99,7 @@ const EditPlan = ({ type, plan }: Props) => {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries(["plan_list"]);
-        navigate("/plans");
+        navigate("/plans/" + plan.plan_id);
       },
       onError: () => {
         toast.error("Failed to create version", {
@@ -389,6 +387,10 @@ const EditPlan = ({ type, plan }: Props) => {
             // usage_billing_frequency: plan.versions[0].usage_billing_frequency,
             plan_duration: plan.plan_duration,
             flat_fee_billing_type: plan.versions[0].flat_fee_billing_type,
+            price_adjustment_amount:
+              plan.versions[0].price_adjustment?.price_adjustment_amount,
+            price_adjustment_type:
+              plan.versions[0].price_adjustment?.price_adjustment_type,
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -556,7 +558,7 @@ const EditPlan = ({ type, plan }: Props) => {
                         setPriceAdjustmentType(value);
                       }}
                     >
-                      <Select.Option value="none">Percentage</Select.Option>
+                      <Select.Option value="none">None</Select.Option>
                       <Select.Option value="price_override">
                         Overwrite Price
                       </Select.Option>
@@ -567,34 +569,36 @@ const EditPlan = ({ type, plan }: Props) => {
                     </Select>
                   </Form.Item>
 
-                  <Form.Item
-                    name="price_adjustment_amount"
-                    wrapperCol={{ span: 24, offset: 4 }}
-                    shouldUpdate={(prevValues, curValues) =>
-                      prevValues.price_adjustment_type !==
-                      curValues.price_adjustment_type
-                    }
-                    rules={[
-                      {
-                        required:
-                          priceAdjustmentType !== undefined ||
-                          priceAdjustmentType !== "none",
-                        message: "Please enter a price adjustment value",
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      addonAfter={
-                        priceAdjustmentType === "percentage" ? "%" : null
+                  {priceAdjustmentType !== "none" && (
+                    <Form.Item
+                      name="price_adjustment_amount"
+                      wrapperCol={{ span: 24, offset: 4 }}
+                      shouldUpdate={(prevValues, curValues) =>
+                        prevValues.price_adjustment_type !==
+                        curValues.price_adjustment_type
                       }
-                      addonBefore={
-                        priceAdjustmentType === "fixed" ||
-                        priceAdjustmentType === "price_override"
-                          ? "$"
-                          : null
-                      }
-                    />
-                  </Form.Item>
+                      rules={[
+                        {
+                          required:
+                            priceAdjustmentType !== undefined ||
+                            priceAdjustmentType !== "none",
+                          message: "Please enter a price adjustment value",
+                        },
+                      ]}
+                    >
+                      <InputNumber
+                        addonAfter={
+                          priceAdjustmentType === "percentage" ? "%" : null
+                        }
+                        addonBefore={
+                          priceAdjustmentType === "fixed" ||
+                          priceAdjustmentType === "price_override"
+                            ? "$"
+                            : null
+                        }
+                      />
+                    </Form.Item>
+                  )}
                 </div>
               </Card>
             </Col>
