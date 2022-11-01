@@ -823,6 +823,7 @@ class Subscription(models.Model):
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration, self.start_date
             )
+        if not self.scheduled_end_date:
             self.scheduled_end_date = self.end_date
         if self.status == SUBSCRIPTION_STATUS.ACTIVE:
             flat_fee_dictionary = self.prorated_flat_costs_dict

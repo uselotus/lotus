@@ -63,7 +63,7 @@ def years_bwn_twodates(start_date, end_date):
         yield (start_date + relativedelta(years=n)).year
 
 
-def months_bwn_twodates(start_date, end_date):
+def months_bwn_two_dates(start_date, end_date):
     months_btwn = (
         12 * relativedelta(end_date, start_date).years
         + relativedelta(end_date, start_date).months
