@@ -68,10 +68,10 @@ class TestEventPreview:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         events = data["results"]
-        assert len(events) == 20
+        assert len(events) == 10
 
         response = setup_dict["client"].get(data["next"], payload)
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         events = data["results"]
-        assert len(events) == 20
+        assert len(events) == 10
