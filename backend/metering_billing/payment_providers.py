@@ -307,18 +307,18 @@ class StripeConnector(PaymentProvider):
             code=data["authorization_code"],
         )
 
-        if response.json().get("error"):
+        if response.get("error"):
             return Response(
                 {
                     "payment_processor": PAYMENT_PROVIDERS.STRIPE,
                     "success": False,
-                    "details": response.json().get("error_description"),
+                    "details": response.get("error_description"),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         org_pp_ids = organization.payment_provider_ids
-        org_pp_ids[PAYMENT_PROVIDERS.STRIPE] = response.json()["stripe_user_id"]
+        org_pp_ids[PAYMENT_PROVIDERS.STRIPE] = response["stripe_user_id"]
         organization.payment_provider_ids = org_pp_ids
         organization.save()
         self.import_customers(organization)
