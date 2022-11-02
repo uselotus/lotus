@@ -16,8 +16,8 @@ from metering_billing.serializers.payment_provider_serializers import (
 )
 from metering_billing.utils import decimal_to_cents
 from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
-from requests import Response
 from rest_framework import serializers, status
+from rest_framework.response import Response
 
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
@@ -301,23 +301,23 @@ class StripeConnector(PaymentProvider):
         return StripePostRequestDataSerializer
 
     def handle_post(self, data, organization) -> PaymentProviderPostResponseSerializer:
-        try:
-            response = stripe.OAuth.token(
-                grant_type="authorization_code",
-                code=data["authorization_code"],
-            )
-        except:
+        response = stripe.OAuth.token(
+            grant_type="authorization_code",
+            code=data["authorization_code"],
+        )
+
+        if response.json().get("error"):
             return Response(
                 {
                     "payment_processor": PAYMENT_PROVIDERS.STRIPE,
                     "success": False,
-                    "details": "Invalid authorization code",
+                    "details": response.json().get("error_description"),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         org_pp_ids = organization.payment_provider_ids
-        org_pp_ids[PAYMENT_PROVIDERS.STRIPE] = response["stripe_user_id"]
+        org_pp_ids[PAYMENT_PROVIDERS.STRIPE] = response.json()["stripe_user_id"]
         organization.payment_provider_ids = org_pp_ids
         organization.save()
         self.import_customers(organization)

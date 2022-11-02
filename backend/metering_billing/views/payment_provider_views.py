@@ -56,7 +56,7 @@ class PaymentProviderView(APIView):
 
         # call payment processor specific post method
         response = PAYMENT_PROVIDER_MAP[payment_processor_name].handle_post(
-            organization, data
+            data, organization
         )
 
         return response
