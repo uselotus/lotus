@@ -9,6 +9,7 @@ import { useQuery } from "react-query";
 import { Plan } from "../../../api/api";
 import { PlanDetailType } from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
+import LinkExternalIds from "../LinkExternalIds";
 
 type PlanDetailParams = {
   planId: string;
@@ -81,6 +82,12 @@ const PlanDetails: FC = () => {
               <div className="pr-1 planDetailsLabel">Plan Duration:</div>
               <div className="planDetailsValue"> {plan.plan_duration}</div>
             </div>
+              <div className="planDetails">
+                  <div className="pr-1 planDetailsLabel">Linked External Ids:</div>
+                  <div className="pl-2 mb-2">
+                      <LinkExternalIds externalIds={[]}/>
+                  </div>
+              </div>
           </div>
           <div className="separator mt-4" />
 
