@@ -301,6 +301,7 @@ class StripeConnector(PaymentProvider):
         return StripePostRequestDataSerializer
 
     def handle_post(self, data, organization) -> PaymentProviderPostResponseSerializer:
+        stripe.api_key = self.secret_key
         response = stripe.OAuth.token(
             grant_type="authorization_code",
             code=data["authorization_code"],
