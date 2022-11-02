@@ -9,8 +9,7 @@ import {
 } from "antd";
 import React, { useState } from "react";
 import { useQuery } from "react-query";
-import { Alerts, APIToken } from "../../../api/api";
-import { Paper } from "../../../components/base/Paper";
+import { Alerts, APIToken } from "../../../../api/api";
 import { DeleteOutlined } from "@ant-design/icons";
 
 export const DeveloperTab = () => {

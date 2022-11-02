@@ -2,9 +2,9 @@ import React, { FC, useState } from "react";
 import { useQuery, useMutation } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col, Input, Button, Form } from "antd";
-import { Organization } from "../../../api/api";
+import { Organization } from "../../../../api/api";
 import { toast } from "react-toastify";
-import LoadingSpinner from "../../../components/LoadingSpinner";
+import LoadingSpinner from "../../../../components/LoadingSpinner";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -38,7 +38,7 @@ const TeamTab: FC = () => {
       onSuccess: (response) => {
         toast.success("Invite sent");
       },
-      onError: (error) => {
+      onError: (error: any) => {
         if (error.response.data) {
           toast.error(
             Array.isArray(error.response.data.email)
@@ -63,7 +63,7 @@ const TeamTab: FC = () => {
       <Typography.Title level={2}>Team Members</Typography.Title>
 
       <Row gutter={[0, 24]}>
-        { organization?.team_members?.map((member, key) => (
+        {organization?.team_members?.map((member, key) => (
           <Col span={24} key={key}>
             {member}
           </Col>
