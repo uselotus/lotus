@@ -24,6 +24,8 @@ import {
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
+import LinkExternalIds from "../components/Plans/LinkExternalIds";
+// @ts-ignore
 import React from "react";
 import { Paper } from "../components/base/Paper";
 import { PageLayout } from "../components/base/PageLayout";
@@ -314,6 +316,13 @@ const CreatePlan = () => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
+
+                      <Form.Item
+                          name="flat_fee_billing_type"
+                          label="Link External ids"
+                      >
+                          <LinkExternalIds externalIds={[]}/>
+                      </Form.Item>
                   </Card>
                 </Col>
               </Row>
