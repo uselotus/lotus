@@ -32,13 +32,13 @@ function SubscriptionStatistics(props: { range: any[] }) {
       <h1 className="text-base font-normal mb-4">Subscriptions</h1>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <div className="flex items-center">
-          <h2 className="text-3xl px-0 my-0 pr-4">
+          <h2 className="text-3xl font-bold px-0 my-0 pr-4">
             {data.period_1_total_subscriptions}
           </h2>
           <span>Total</span>
         </div>
         <div className="flex items-center">
-          <h2 className="text-3xl px-0 my-0 pr-4">
+          <h2 className="text-3xl font-bold px-0 my-0 pr-4">
             {data.period_1_new_subscriptions}
           </h2>
           <span>New</span>

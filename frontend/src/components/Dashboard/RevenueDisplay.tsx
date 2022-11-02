@@ -44,15 +44,20 @@ function RevenueDisplay(props: {
   }
   return (
     <Paper color="white" border={true}>
-      <h1 className="text-base font-normal mb-4">Total Revenue</h1>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
-        <span className="text-3xl font-bold">
-          {new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: "USD",
-          }).format(displayMetric(props.total_revenue_1))}
-        </span>
         <div>
+          <p className="text-base font-normal mb-4">Total Revenue</p>
+          <span className="text-3xl font-bold">
+            {new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "USD",
+            }).format(displayMetric(props.total_revenue_1))}
+          </span>
+          <span></span>
+        </div>
+
+        <div>
+          <p className="text-base font-normal mb-4">Previous Period</p>
           {percentageChange >= 0 ? (
             <span className="text-[#34B220] text-3xl">
               +{percentageChange.toFixed(2)}%{" "}
@@ -62,7 +67,6 @@ function RevenueDisplay(props: {
               {percentageChange.toFixed(0)}%{" "}
             </span>
           )}
-          <span>Previous-period</span>
         </div>
       </div>
     </Paper>
