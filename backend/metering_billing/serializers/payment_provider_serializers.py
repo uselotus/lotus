@@ -18,6 +18,10 @@ class PaymentProviderPostResponseSerializer(serializers.Serializer):
     details = serializers.CharField()
 
 
-class PaymentProviderPostRequestSerializer(serializers.Serializer):
+class PaymentProviderPostDataSerializer(serializers.Serializer):
     payment_processor = serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
     data = serializers.JSONField()
+
+
+class PaymentProviderPostRequestSerializer(serializers.Serializer):
+    pp_info = PaymentProviderPostDataSerializer()

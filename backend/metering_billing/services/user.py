@@ -5,6 +5,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
 from rest_framework.authtoken.models import Token
 
+DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
+
 
 class UserService(object):
     def __init__(self, User):
@@ -26,7 +28,7 @@ class UserService(object):
     def send_reset_password_email(self, reset_url, to):
         subject = "Reset Your Password"
         body = f"Use this link to reset your password: {reset_url}"
-        from_email = f"Lotus <{settings.SECURITY_FROM_EMAIL}>"
+        from_email = f"Lotus <{DEFAULT_FROM_EMAIL}>"
         html = """
             <p>Please <a href={url}>reset your password</a></p>""".format(
             url=reset_url

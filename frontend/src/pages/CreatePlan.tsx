@@ -24,12 +24,6 @@ import {
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
-import {
-  DeleteOutlined,
-  ArrowLeftOutlined,
-  SaveOutlined,
-  EditOutlined,
-} from "@ant-design/icons";
 import React from "react";
 import { Paper } from "../components/base/Paper";
 import { PageLayout } from "../components/base/PageLayout";
@@ -425,34 +419,36 @@ const CreatePlan = () => {
                     </Select>
                   </Form.Item>
 
-                  <Form.Item
-                    name="price_adjustment_amount"
-                    wrapperCol={{ span: 24, offset: 4 }}
-                    shouldUpdate={(prevValues, curValues) =>
-                      prevValues.price_adjustment_type !==
-                      curValues.price_adjustment_type
-                    }
-                    rules={[
-                      {
-                        required:
-                          priceAdjustmentType !== undefined ||
-                          priceAdjustmentType !== "none",
-                        message: "Please enter a price adjustment value",
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      addonAfter={
-                        priceAdjustmentType === "percentage" ? "%" : null
+                  {priceAdjustmentType !== "none" && (
+                    <Form.Item
+                      name="price_adjustment_amount"
+                      wrapperCol={{ span: 24, offset: 4 }}
+                      shouldUpdate={(prevValues, curValues) =>
+                        prevValues.price_adjustment_type !==
+                        curValues.price_adjustment_type
                       }
-                      addonBefore={
-                        priceAdjustmentType === "fixed" ||
-                        priceAdjustmentType === "price_override"
-                          ? "$"
-                          : null
-                      }
-                    />
-                  </Form.Item>
+                      rules={[
+                        {
+                          required:
+                            priceAdjustmentType !== undefined ||
+                            priceAdjustmentType !== "none",
+                          message: "Please enter a price adjustment value",
+                        },
+                      ]}
+                    >
+                      <InputNumber
+                        addonAfter={
+                          priceAdjustmentType === "percentage" ? "%" : null
+                        }
+                        addonBefore={
+                          priceAdjustmentType === "fixed" ||
+                          priceAdjustmentType === "price_override"
+                            ? "$"
+                            : null
+                        }
+                      />
+                    </Form.Item>
+                  )}
                 </div>
               </Card>
             </Col>

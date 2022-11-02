@@ -39,10 +39,12 @@ class PaymentProviderView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         # parse outer level request
-        serializer = PaymentProviderPostRequestSerializer(data=request)
+        serializer = PaymentProviderPostRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        payment_processor_name = serializer.validated_data["payment_processor_name"]
-        data = serializer.validated_data["data"]
+        payment_processor_name = serializer.validated_data["pp_info"][
+            "payment_processor"
+        ]
+        data = serializer.validated_data["pp_info"]["data"]
 
         # validate payment processor specific data
         data_serializer = PAYMENT_PROVIDER_MAP[
