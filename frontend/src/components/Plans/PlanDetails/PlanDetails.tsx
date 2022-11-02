@@ -18,7 +18,6 @@ const PlanDetails: FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { planId } = useParams<PlanDetailParams>();
-  //@todo Have to add the code to load details using the Plan Id
 
   const {
     data: plan,
