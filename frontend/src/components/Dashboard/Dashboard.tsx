@@ -3,9 +3,8 @@ import { Card, Col, Divider, PageHeader, Row } from "antd";
 import RevenueDisplay from "./RevenueDisplay";
 import SubscriptionStatistics from "./SubscriptionStatistics";
 import MetricBarGraph from "./MetricBarGraph";
-import { Dayjs } from "dayjs";
-import * as dayjs from "dayjs";
-import * as duration from "dayjs/plugin/duration";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
 import dayjsGenerateConfig from "rc-picker/lib/generate/dayjs";
 import generatePicker from "antd/es/date-picker/generatePicker";
 import { useQuery, UseQueryResult } from "react-query";
@@ -17,7 +16,9 @@ import { PageLayout } from "../base/PageLayout";
 import { CustomerByPlanPie } from "./CustomerByPlanPie";
 import { toast } from "react-toastify";
 
-const DatePicker = generatePicker<Dayjs>(dayjsGenerateConfig);
+dayjs.extend(duration);
+
+const DatePicker = generatePicker<dayjs.Dayjs>(dayjsGenerateConfig);
 const { RangePicker } = DatePicker;
 
 const dateFormat = "YYYY/MM/DD";
