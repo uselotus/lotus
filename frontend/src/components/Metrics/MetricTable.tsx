@@ -7,8 +7,8 @@ import {
 } from "@ant-design/pro-components";
 import { Button, Tag, Tooltip } from "antd";
 import { useNavigate } from "react-router-dom";
-import { MetricType } from "../types/metric-type";
-import { Metrics } from "../api/api";
+import { MetricType } from "../../types/metric-type";
+import { Metrics } from "../../api/api";
 
 const colorMap = new Map<string, string>([
   ["count", "green"],

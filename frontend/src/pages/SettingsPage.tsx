@@ -11,9 +11,6 @@ const SettingsPage: FC = () => {
   return (
     <PageLayout title="Settings">
       <Tabs size="large">
-        {/* <Tabs.TabPane tab="Profile" key="profile">
-          Profile
-        </Tabs.TabPane> */}
         <Tabs.TabPane tab="Integrations" key="integrations">
           <IntegrationsTab />
         </Tabs.TabPane>
