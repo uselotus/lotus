@@ -760,9 +760,9 @@ class PlanSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # we'll feed the version data into the serializer later, checking now breaks it
         plan_version = data.pop("initial_version")
-        external_links = data.get("external_links")
-        if external_links:
-            data.pop("external_links")
+        initial_external_links = data.get("initial_external_links")
+        if initial_external_links:
+            data.pop("initial_external_links")
         super().validate(data)
         target_cust_null = data.get("target_customer") is None
         parent_plan_null = data.get("parent_plan") is None
@@ -773,27 +773,27 @@ class PlanSerializer(serializers.ModelSerializer):
                 "either both or none of target_customer and parent_plan must be set"
             )
         data["initial_version"] = plan_version
-        if external_links:
-            data["external_links"] = external_links
+        if initial_external_links:
+            data["initial_external_links"] = initial_external_links
         return data
 
     def create(self, validated_data):
         display_version_data = validated_data.pop("initial_version")
-        external_links = validated_data.get("external_links")
-        if external_links:
-            validated_data.pop("external_links")
+        initial_external_links = validated_data.get("initial_external_links")
+        if initial_external_links:
+            validated_data.pop("initial_external_links")
         plan = Plan.objects.create(**validated_data)
         display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
         display_version_data["plan"] = plan
         display_version_data["organization"] = validated_data["organization"]
         display_version_data["created_by"] = validated_data["created_by"]
         plan_version = InitialPlanVersionSerializer().create(display_version_data)
-        if external_links:
-            for link_data in external_links:
+        if initial_external_links:
+            for link_data in initial_external_links:
                 link_data["plan"] = plan
                 link_data["organization"] = validated_data["organization"]
-                ExternalPlanLinkSerializer().validate(link_data)
-                InitialPlanVersionSerializer().create(link_data)
+                ExternalPlanLinkSerializer(context = {"organization": validated_data["organization"]}).validate(link_data)
+                ExternalPlanLinkSerializer().create(link_data)
         plan.display_version = plan_version
         plan.save()
         return plan
