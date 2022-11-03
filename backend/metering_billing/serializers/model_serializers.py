@@ -11,6 +11,7 @@ from metering_billing.models import (
     Invoice,
     NumericFilter,
     Organization,
+    OrganizationInviteToken,
     OrganizationSetting,
     Plan,
     PlanComponent,
@@ -21,7 +22,7 @@ from metering_billing.models import (
     User,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import calculate_end_date
+from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
@@ -34,15 +35,60 @@ from rest_framework import serializers
 from .serializer_utils import SlugRelatedFieldWithOrganization
 
 
+class OrganizationUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "email", "role", "status")
+
+    role = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_role(self, obj) -> str:
+        return "Admin"
+
+    def get_status(self, obj) -> str:
+        return "Active"
+
+
+class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("email", "role", "status")
+
+    role = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_role(self, obj) -> str:
+        return "Admin"
+
+    def get_status(self, obj) -> str:
+        return "Invited"
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
-            "id",
             "company_name",
             "payment_plan",
             "payment_provider_ids",
+            "users",
         )
+
+    users = serializers.SerializerMethodField()
+
+    def get_users(self, obj) -> OrganizationUserSerializer(many=True):
+        users = User.objects.filter(organization=obj)
+        users_data = list(OrganizationUserSerializer(users, many=True).data)
+        now = now_utc()
+        invited_users = OrganizationInviteToken.objects.filter(
+            organization=obj, expire_at__gt=now
+        )
+        invited_users_data = OrganizationInvitedUserSerializer(
+            invited_users, many=True
+        ).data
+        invited_users_data = [{**x, "username": ""} for x in invited_users_data]
+        return users_data + invited_users_data
 
 
 class EventSerializer(serializers.ModelSerializer):

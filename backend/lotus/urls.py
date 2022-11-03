@@ -80,6 +80,9 @@ router.register(
     OrganizationSettingViewSet,
     basename="organization_setting",
 )
+router.register(
+    r"organization", organization_views.OrganizationViewSet, basename="organization"
+)
 
 
 urlpatterns = [
@@ -171,11 +174,6 @@ urlpatterns = [
         "api/organization/invite/",
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
-    ),
-    path(
-        "api/organization",
-        organization_views.OrganizationView.as_view(),
-        name="organization",
     ),
 ]
 

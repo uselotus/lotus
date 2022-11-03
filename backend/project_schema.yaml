@@ -797,10 +797,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/APIKeyCreateSuccess'
           description: ''
-  /api/organization:
+  /api/organization/:
     get:
-      operationId: organization_retrieve
-      description: Get the current settings for the organization.
+      operationId: organization_list
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
       tags:
       - organization
       security:
@@ -809,7 +809,13 @@ paths:
         TokenAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+          description: ''
   /api/organization/invite/:
     post:
       operationId: organization_invite_create
@@ -2296,8 +2302,23 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        version:
+          type: integer
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        version_id:
+          type: string
+          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -2305,42 +2326,27 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
+        active_subscriptions:
+          type: integer
           readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
         features:
           type: array
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
         created_by:
           type: string
           readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        version:
-          type: integer
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
         description:
           type: string
           nullable: true
           maxLength: 200
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -2469,6 +2475,26 @@ components:
       - lt
       - lte
       type: string
+    Organization:
+      type: object
+      properties:
+        company_name:
+          type: string
+          maxLength: 100
+        payment_plan:
+          $ref: '#/components/schemas/PaymentPlanEnum'
+        payment_provider_ids:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationUser'
+          readOnly: true
+      required:
+      - company_name
+      - users
     OrganizationSetting:
       type: object
       properties:
@@ -2490,6 +2516,30 @@ components:
       - setting_id
       - setting_name
       - setting_value
+    OrganizationUser:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        role:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - role
+      - status
+      - username
     PaginatedEventList:
       type: object
       properties:
@@ -2554,6 +2604,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
           writeOnly: true
+    PaymentPlanEnum:
+      enum:
+      - self_hosted_free
+      - cloud
+      - self_hosted_enterprise
+      type: string
     PaymentProcessorEnum:
       enum:
       - stripe
@@ -2810,8 +2866,11 @@ components:
     PlanDetail:
       type: object
       properties:
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
@@ -2819,25 +2878,13 @@ components:
         product_id:
           type: string
           nullable: true
-        plan_name:
+        created_on:
           type: string
-          maxLength: 100
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        num_versions:
-          type: integer
-          readOnly: true
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExternalPlanLink'
+          format: date-time
           readOnly: true
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        active_subscriptions:
-          type: integer
           readOnly: true
         versions:
           type: array
@@ -2847,18 +2894,27 @@ components:
         created_by:
           type: string
           readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
         plan_id:
           type: string
           maxLength: 100
-        created_on:
-          type: string
-          format: date-time
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        num_versions:
+          type: integer
           readOnly: true
-        initial_external_links:
+        plan_name:
+          type: string
+          maxLength: 100
+        external_links:
           type: array
           items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
