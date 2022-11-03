@@ -186,8 +186,8 @@ export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("api/organization/invite/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("api/organization/"),
-  getActionStream: (): Promise<PaginatedActionsType> =>
-    requests.get("api/actions/"),
+  getActionStream: (c: string): Promise<PaginatedActionsType> =>
+    requests.get("api/actions/", { params: { c } }),
 };
 
 export const GetRevenue = {
