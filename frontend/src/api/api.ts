@@ -18,6 +18,11 @@ import {
   ArchivePlanVersionType,
   PlanVersionUpdateDescriptionType,
 } from "../types/plan-type";
+import {
+  PaymentProcessorConnectionResponseType,
+  PaymentProcessorStatusType,
+  PaymentProcessorConnectionRequestType,
+} from "../types/payment-processor-type";
 import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -31,7 +36,6 @@ import {
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
-import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
 import {
@@ -39,15 +43,15 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
-import { version } from "react";
 
 const cookies = new Cookies();
-
-const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
 )}`;
+
+console.log(111);
+const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
 // axios.defaults.xsrfCookieName = "csrftoken";
@@ -263,4 +267,14 @@ export const Backtests = {
     requests.post("api/backtests/", post),
   getBacktestResults: (id: string): Promise<BacktestResultType> =>
     requests.get(`api/backtests/${id}/`),
+};
+
+export const PaymentProcessorIntegration = {
+  getPaymentProcessorConnectionStatus: (): Promise<
+    PaymentProcessorStatusType[]
+  > => requests.get("api/payment_providers/"),
+  connectPaymentProcessor: (
+    pp_info: PaymentProcessorConnectionRequestType
+  ): Promise<PaymentProcessorConnectionResponseType> =>
+    requests.post("api/payment_providers/", { pp_info }),
 };

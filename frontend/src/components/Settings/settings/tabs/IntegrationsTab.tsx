@@ -2,9 +2,9 @@ import React, { FC, useState } from "react";
 import {
   PaymentProcessorStatusType,
   integrationsMap,
-} from "../../../types/payment-processor-type";
+} from "../../../../types/payment-processor-type";
 import { useQuery } from "react-query";
-import { PaymentProcessorIntegration } from "../../../api/api";
+import { PaymentProcessorIntegration } from "../../../../api/api";
 import { useNavigate } from "react-router-dom";
 import { Divider, Typography, Row, Col } from "antd";
 
@@ -25,7 +25,7 @@ const IntegrationsTab: FC = () => {
 
   const { status, error, data, isLoading } = useQuery<
     PaymentProcessorStatusType[]
-  >(["PaymentProcessorIntegration"], fetchPaymentProcessorConnect, {});
+  >(["PaymentProcessorIntegration"], fetchPaymentProcessorConnect);
 
   const handleConnectWithPaymentProcessorClick = (path: string) => {
     console.log("path", path);

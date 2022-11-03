@@ -1,6 +1,6 @@
 import React, { FC, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { PaymentProcessorIntegration } from "./api";
+import { PaymentProcessorIntegration } from "../api/api";
 import {
   PaymentProcessorConnectionRequestType,
   PaymentProcessorConnectionResponseType,
