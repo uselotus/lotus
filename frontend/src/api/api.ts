@@ -30,7 +30,11 @@ import {
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
-import { CreateOrgAccountType, OrganizationType } from "../types/account-type";
+import {
+  CreateOrgAccountType,
+  OrganizationType,
+  PaginatedActionsType,
+} from "../types/account-type";
 import { FeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
 import {
@@ -182,6 +186,8 @@ export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("api/organization/invite/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("api/organization/"),
+  getActionStream: (): Promise<PaginatedActionsType> =>
+    requests.get("api/actions/"),
 };
 
 export const GetRevenue = {

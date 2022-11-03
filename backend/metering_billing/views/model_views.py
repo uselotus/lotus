@@ -268,7 +268,7 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         except:
             user = None
         if user:
-            action.send(user, verb='created', action_object=instance)
+            action.send(user, verb="created", action_object=instance)
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -359,7 +359,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
                 event=f"{self.action}_plan_version",
                 properties={},
-            )   
+            )
         return response
 
     def perform_create(self, serializer):
@@ -367,10 +367,14 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = self.request.user
         except:
             user = None
-        instance = serializer.save(organization=parse_organization(self.request), created_by=user)
+        instance = serializer.save(
+            organization=parse_organization(self.request), created_by=user
+        )
         if user:
-            action.send(user, verb='created', action_object=instance, target=instance.plan)
-    
+            action.send(
+                user, verb="created", action_object=instance, target=instance.plan
+            )
+
     def perform_update(self, serializer):
         instance = serializer.save()
         try:
@@ -380,9 +384,13 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         user = self.request.user
         if user:
             if instance.status == PLAN_VERSION_STATUS.ACTIVE:
-                action.send(user, verb='activated', action_object=instance, target=instance.plan)
+                action.send(
+                    user, verb="activated", action_object=instance, target=instance.plan
+                )
             elif instance.status == PLAN_VERSION_STATUS.ARCHIVED:
-                action.send(user, verb='archived', action_object=instance, target=instance.plan)
+                action.send(
+                    user, verb="archived", action_object=instance, target=instance.plan
+                )
 
 
 class PlanViewSet(viewsets.ModelViewSet):
@@ -457,10 +465,12 @@ class PlanViewSet(viewsets.ModelViewSet):
             user = self.request.user
         except:
             user = None
-        instance = serializer.save(organization=parse_organization(self.request), created_by=user)
+        instance = serializer.save(
+            organization=parse_organization(self.request), created_by=user
+        )
         if user:
-            action.send(user, verb='created', action_object=instance)
-    
+            action.send(user, verb="created", action_object=instance)
+
     def perform_update(self, serializer):
         instance = serializer.save()
         try:
@@ -470,7 +480,7 @@ class PlanViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user:
             if instance.status == PLAN_STATUS.ARCHIVED:
-                action.send(user, verb='activated', action_object=instance)
+                action.send(user, verb="activated", action_object=instance)
 
 
 class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -507,7 +517,9 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         except:
             user = None
         if user:
-            action.send(user, verb='created', action_object=instance, target=instance.customer)
+            action.send(
+                user, verb="created", action_object=instance, target=instance.customer
+            )
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -535,9 +547,18 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         user = self.request.user
         if user:
             if instance.status == SUBSCRIPTION_STATUS.ENDED:
-                action.send(user, verb='canceled', action_object=instance)
-            elif self.request.body.get("replace_immediately_type") == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN:
-                action.send(user, verb='switched to', action_object=instance.billing_plan, target=instance)
+                action.send(user, verb="canceled", action_object=instance)
+            elif (
+                serializer.validated_data.get("replace_immediately_type")
+                == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
+            ):
+                action.send(
+                    user,
+                    verb="switched to",
+                    action_object=instance.billing_plan,
+                    target=instance,
+                )
+
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
@@ -700,8 +721,10 @@ class ProductViewSet(viewsets.ModelViewSet):
         context.update({"organization": organization})
         return context
 
+
 class ActionCursorSetPagination(CursorSetPagination):
     ordering = "-timestamp"
+
 
 class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
@@ -719,11 +742,8 @@ class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return (
-            super()
-            .get_queryset()
-            .filter(actior__organization=organization)
-        )
+        return super().get_queryset().filter(actor_object_id__in=list(User.objects.filter(organization=organization).values_list('id', flat=True)))
+
 
 class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
     """
