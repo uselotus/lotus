@@ -26,14 +26,17 @@ const columns: ProColumns<CustomerTableItem>[] = [
   {
     title: "Customer ID",
     width: 120,
+
     dataIndex: "customer_id",
     align: "left",
+    ellipsis: true,
   },
   {
     title: "Name",
     width: 120,
     dataIndex: "customer_name",
     align: "left",
+    search: { transform: (value: any) => value },
   },
   {
     title: "Plans",

@@ -1,6 +1,6 @@
 import React, { FC, useEffect, useState } from "react";
 import { Card, Button, Divider } from "antd";
-import MetricTable from "../components/MetricTable";
+import MetricTable from "../components/Metrics/MetricTable";
 import { Metrics } from "../api/api";
 import { MetricType } from "../types/metric-type";
 import {
@@ -12,7 +12,7 @@ import {
 import LoadingSpinner from "../components/LoadingSpinner";
 import CreateMetricForm, {
   CreateMetricState,
-} from "../components/CreateMetricForm";
+} from "../components/Metrics/CreateMetricForm";
 import { toast } from "react-toastify";
 import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";

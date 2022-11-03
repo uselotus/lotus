@@ -31,7 +31,6 @@ import {
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { CreateOrgAccountType } from "../types/account-type";
-import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
 import { FeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
 import {
@@ -39,7 +38,6 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
-import { version } from "react";
 
 const cookies = new Cookies();
 

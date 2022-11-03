@@ -1,5 +1,6 @@
 import { Avatar, Card, Tag } from "antd";
 import React from "react";
+import { Link } from "react-router-dom";
 
 type Props = {
   title: string;
@@ -57,6 +58,12 @@ export const AppCard = ({
           }
           description={description}
         />
+        <div className="separator pt-4" />
+        <div className="flex justify-end pt-4">
+          <Link to={title.toLowerCase()}>
+            <h3 className="text-darkgold">View Integration</h3>
+          </Link>
+        </div>
       </Card>
     </div>
   );
