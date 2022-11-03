@@ -826,6 +826,17 @@ paths:
     get:
       operationId: organization_settings_list
       description: A simple ViewSet for viewing and editing OrganizationSettings.
+      parameters:
+      - in: query
+        name: setting_group
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: setting_name
+        schema:
+          type: string
+          minLength: 1
       tags:
       - organization_settings
       security:
@@ -2271,40 +2282,22 @@ components:
           $ref: '#/components/schemas/SourceEnum'
       required:
       - source
+    InitialExternalPlanLink:
+      type: object
+      properties:
+        source:
+          $ref: '#/components/schemas/SourceEnum'
+        external_plan_id:
+          type: string
+          maxLength: 100
+      required:
+      - external_plan_id
+      - source
     InitialPlanVersion:
       type: object
       properties:
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
         flat_fee_billing_type:
           $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
         flat_rate:
           type: number
           format: double
@@ -2312,12 +2305,41 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        created_by:
+          type: string
+          readOnly: true
+        version_id:
+          type: string
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
         description:
           type: string
           nullable: true
           maxLength: 200
-        created_by:
+        created_on:
           type: string
+          format: date-time
           readOnly: true
       required:
       - active_subscriptions
@@ -2692,10 +2714,11 @@ components:
           maxLength: 100
         status:
           $ref: '#/components/schemas/Status13eEnum'
-        external_links:
+        initial_external_links:
           type: array
           items:
-            $ref: '#/components/schemas/ExternalPlanLink'
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
         initial_version:
           allOf:
           - $ref: '#/components/schemas/InitialPlanVersion'
@@ -2706,6 +2729,11 @@ components:
         target_customer_id:
           type: string
           writeOnly: true
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
@@ -2736,6 +2764,7 @@ components:
       - created_by
       - created_on
       - display_version
+      - external_links
       - initial_version
       - num_versions
       - parent_plan
@@ -2781,53 +2810,60 @@ components:
     PlanDetail:
       type: object
       properties:
-        product_id:
-          type: string
-          nullable: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        created_by:
+        product_id:
           type: string
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        num_versions:
-          type: integer
-          readOnly: true
+          nullable: true
         plan_name:
           type: string
           maxLength: 100
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        num_versions:
+          type: integer
+          readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+          readOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
+        created_by:
+          type: string
+          readOnly: true
         plan_id:
           type: string
           maxLength: 100
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
+        created_on:
+          type: string
+          format: date-time
           readOnly: true
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
       required:
       - active_subscriptions
       - created_by
       - created_on
+      - external_links
       - num_versions
       - parent_plan
       - plan_duration

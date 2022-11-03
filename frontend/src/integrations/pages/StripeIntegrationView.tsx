@@ -31,7 +31,7 @@ const StripeIntegrationView: FC = () => {
           Charge and invoice your customers through your Stripe account
         </h2>
         <div className="grid grid-cols-2 justify-start items-center gap-6 border-2 border-solid rounded border-[#EAEAEB] px-5 py-10">
-          <h3>Import Stripe Customers:"</h3>
+          <h3>Import Stripe Customers:</h3>
           <Button size="large" className="w-4/12">
             Import
           </Button>

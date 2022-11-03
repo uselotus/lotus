@@ -259,7 +259,7 @@ const SubscriptionView: FC<Props> = ({
                   </h2>
                   <div className="flex flex-col justify-center space-y-3">
                     <p>
-                      <b>Subscription ID:</b> {subscription.subscription_id}
+                      <b>Subscription ID: </b> {subscription.subscription_id}
                     </p>
                     <p>
                       <b>Start Date:</b>{" "}

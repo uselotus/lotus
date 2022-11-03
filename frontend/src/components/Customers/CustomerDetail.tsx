@@ -151,7 +151,7 @@ function CustomerDetail(props: {
           <div className="text-left	">
             <h1 className="mb-3">{data?.customer_name}</h1>
             <div className="flex flex-row">
-              <div className="plansDetailLabel">ID: </div>
+              <div className="plansDetailLabel">ID:&nbsp; </div>
               <div className="plansDetailValue">{props.customer_id}</div>
             </div>
           </div>

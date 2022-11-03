@@ -676,6 +676,12 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
 
+    def get_serializer_context(self):
+        context = super(ExternalPlanLinkViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
     @extend_schema(
         parameters=[
             inline_serializer(
@@ -687,8 +693,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         ],
     )
     def destroy(self, request):
-        # your non-standard behaviour
-        return super().create(request)
+        return super().destroy(request)
 
 
 class OrganizationSettingViewSet(viewsets.ModelViewSet):
@@ -710,3 +715,17 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
         if setting_group:
             filter_kwargs["setting_group"] = setting_group
         return OrganizationSetting.objects.filter(**filter_kwargs)
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="SettingFilterSerializer",
+                fields={
+                    "setting_name": serializers.CharField(required=False),
+                    "setting_group": serializers.CharField(required=False),
+                },
+            ),
+        ],
+    )
+    def list(self, request):
+        return super().list(request)
