@@ -1,2 +1,2 @@
 [run]
-omit = */tests/*, */migrations/*, */management/*, */template_tags/*,
+omit = */tests/*, */migrations/*, */management/*, */template_tags/*, */lotus/*, */manage.py, */model_backend.py

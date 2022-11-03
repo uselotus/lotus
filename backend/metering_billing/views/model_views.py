@@ -1,4 +1,7 @@
 import datetime
+import operator
+from functools import reduce
+from unicodedata import name
 
 import posthog
 from actstream import action
@@ -7,6 +10,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
 from metering_billing.models import (
@@ -15,8 +20,10 @@ from metering_billing.models import (
     BillableMetric,
     Customer,
     Event,
+    ExternalPlanLink,
     Feature,
     Invoice,
+    OrganizationSetting,
     Plan,
     PlanVersion,
     Product,
@@ -35,8 +42,10 @@ from metering_billing.serializers.model_serializers import (
     BillableMetricSerializer,
     CustomerSerializer,
     EventSerializer,
+    ExternalPlanLinkSerializer,
     FeatureSerializer,
     InvoiceSerializer,
+    OrganizationSettingSerializer,
     PlanDetailSerializer,
     PlanSerializer,
     PlanUpdateSerializer,
@@ -51,12 +60,13 @@ from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
+    PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
 )
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -714,3 +724,88 @@ class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             .get_queryset()
             .filter(actior__organization=organization)
         )
+
+class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing ExternalPlanLink.
+    """
+
+    serializer_class = ExternalPlanLinkSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "external_plan_id"
+    http_method_names = ["post", "head", "delete"]
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": parse_organization(self.request)}
+        source = self.request.query_params.get("source")
+        if source:
+            filter_kwargs["source"] = source
+        return ExternalPlanLink.objects.filter(**filter_kwargs)
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_external_plan_link",
+                properties={},
+            )
+        return response
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def get_serializer_context(self):
+        context = super(ExternalPlanLinkViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="SourceSerializer",
+                fields={
+                    "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                },
+            ),
+        ],
+    )
+    def destroy(self, request):
+        return super().destroy(request)
+
+
+class OrganizationSettingViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing OrganizationSettings.
+    """
+
+    serializer_class = OrganizationSettingSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "head", "patch"]
+    lookup_field = "setting_id"
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": parse_organization(self.request)}
+        setting_name = self.request.query_params.get("setting_name")
+        if setting_name:
+            filter_kwargs["setting_name"] = setting_name
+        setting_group = self.request.query_params.get("setting_group")
+        if setting_group:
+            filter_kwargs["setting_group"] = setting_group
+        return OrganizationSetting.objects.filter(**filter_kwargs)
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="SettingFilterSerializer",
+                fields={
+                    "setting_name": serializers.CharField(required=False),
+                    "setting_group": serializers.CharField(required=False),
+                },
+            ),
+        ],
+    )
+    def list(self, request):
+        return super().list(request)

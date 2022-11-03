@@ -8,14 +8,19 @@ from urllib.parse import urlencode
 import pytz
 import stripe
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import F, Prefetch, Q
 from djmoney.money import Money
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
     SinglePaymentProviderSerializer,
 )
-from metering_billing.utils import decimal_to_cents
-from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
+from metering_billing.utils import decimal_to_cents, now_utc
+from metering_billing.utils.enums import (
+    INVOICE_STATUS,
+    PAYMENT_PROVIDERS,
+    PLAN_STATUS,
+    SUBSCRIPTION_STATUS,
+)
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
@@ -33,22 +38,17 @@ class PaymentProvider(abc.ABC):
 
     @abc.abstractmethod
     def customer_connected(self, customer) -> bool:
-        """This method will be called in order to gate calls to generate_payment_object."""
+        """This method will be called in order to gate calls to create_payment_object."""
         pass
 
     @abc.abstractmethod
     def organization_connected(self, organization) -> bool:
-        """This method will be called in order to gate calls to generate_payment_object. If the organization is not connected, then won't generate a payment object for the organization."""
+        """This method will be called in order to gate calls to create_payment_object. If the organization is not connected, then won't generate a payment object for the organization."""
         pass
 
     @abc.abstractmethod
     def working(self) -> bool:
         """In order to prevent errors on object creation, this method will be called to decide whether this payment processor is connected to this instance of Lotus."""
-        pass
-
-    @abc.abstractmethod
-    def generate_payment_object(self, invoice) -> str:
-        """This method will be called when an external payment object needs to be generated (this can vary greatly depending on the payment processor). It should return the id of this object as a string so that the status of the payment can later be updated."""
         pass
 
     @abc.abstractmethod
@@ -58,11 +58,34 @@ class PaymentProvider(abc.ABC):
         """This method will be called periodically when the status of a payment object needs to be updated. It should return the status of the payment object, which should be either paid or unpaid."""
         pass
 
+    ## IMPORT METHODS
     @abc.abstractmethod
     def import_customers(self, organization) -> int:
         """This method will be called periodically to match customers from the payment processor with customers in Lotus. Keep in mind that Customers have a payment_provider field that can be used to determine which payment processor the customer should be connected to, and that the payment_provider_id field can be used to store the id of the customer in the associated payment processor. Return the number of customers that were imported."""
         pass
 
+    @abc.abstractmethod
+    def import_payment_objects(self, organization) -> dict[str, list[str]]:
+        """Similar to the import_customers method, this method will be called periodically to match invoices from the payment processor with invoices in Lotus. Keep in mind that Invoices have a payment_provider field that can be used to determine which payment processor the invoice should be connected to, and that the payment_provider_id field can be used to store the id of the invoice in the associated payment processor. Return a dictionary mapping customer ids to lists of Lotus Invoice objects that were created from the imports."""
+        pass
+
+    @abc.abstractmethod
+    def transfer_subscriptions(self, organization, end_now=False) -> int:
+        """This method will be used when transferring data from a payment provider's billing solution into Lotus. This method works by taking currently active subscriptions from the payment provider, and checking two things. First, there has to be a customer in Lotus with a linked customer_id (or equivalent) the same as in the subscription. Second, there has to be a Plan with a linked product_id/price_id (or equivalent) the same as in the subscription. If both of these conditions are met, then a Subscription object will be created in Lotus. If the end_now parameter is True, then the subscription in the payment provider will be cancelled and the subscription in Lotus will be set to start immediately. Otherwise, the renew parameter in the payment_provider's subscription will be turned off, and a Subscription object will be created in Lotus with the same start as the end date as the subscription in the payment provider. Return the number of subscriptions that were transferred."""
+        pass
+
+    # EXPORT METHODS
+    @abc.abstractmethod
+    def create_customer(self, customer) -> str:
+        """Depending on global settings and the way you want to use Lotus, this method will be called when a customer is created in Lotus in order to create the same customer in the payment provider. It should return the id of the customer in the payment processor."""
+        pass
+
+    @abc.abstractmethod
+    def create_payment_object(self, invoice) -> str:
+        """This method will be called when an external payment object needs to be generated (this can vary greatly depending on the payment processor). It should return the id of this object as a string so that the status of the payment can later be updated."""
+        pass
+
+    # FRONTEND REQUEST METHODS
     @abc.abstractmethod
     def get_post_data_serializer(self) -> serializers.Serializer:
         """This method will be called when a POST request is made to the payment provider endpoint. It should return a serializer that can be used to validate the data that is sent in the POST request. The data sent in the request will naturally be dependent on the payment processor, so we use this method to dynamically use the serializer."""
@@ -79,8 +102,8 @@ class PaymentProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def import_payment_objects(self, organization) -> dict[str, list[str]]:
-        """Similar to the import_customers method, this method will be called periodically to match invoices from the payment processor with invoices in Lotus. Keep in mind that Invoices have a payment_provider field that can be used to determine which payment processor the invoice should be connected to, and that the payment_provider_id field can be used to store the id of the invoice in the associated payment processor. Return a dictionary mapping customer ids to lists of Lotus Invoice objects that were created from the imports."""
+    def initialize_settings(self, organization) -> None:
+        """This method will be called when a user clicks on the connect button for a payment processor. It should initialize the settings for the payment processor for the organization."""
         pass
 
 
@@ -149,7 +172,7 @@ class StripeConnector(PaymentProvider):
                 stripe_id = stripe_customer.id
                 stripe_email = stripe_customer.email
                 stripe_metadata = stripe_customer.metadata
-                stripe_name = stripe_customer.customer_name
+                stripe_name = stripe_customer.name
                 stripe_name = stripe_name if stripe_name else "no_stripe_name"
                 stripe_currency = stripe_customer.currency
                 customer = Customer.objects.filter(
@@ -170,7 +193,7 @@ class StripeConnector(PaymentProvider):
                 else:
                     customer_kwargs = {
                         "organization": organization,
-                        "name": stripe_name,
+                        "customer_name": stripe_name,
                         "email": stripe_email,
                         "integrations": {
                             PAYMENT_PROVIDERS.STRIPE: {
@@ -185,7 +208,7 @@ class StripeConnector(PaymentProvider):
                     customer = Customer.objects.create(**customer_kwargs)
                     num_cust_added += 1
         except Exception as e:
-            print(e)
+            print("Ran into exception:", e)
 
         return num_cust_added
 
@@ -237,31 +260,50 @@ class StripeConnector(PaymentProvider):
             lotus_invoices.append(lotus_invoice)
         return lotus_invoices
 
-    def create_pp_customer(
+    def create_customer(
         self, customer
     ) -> Union[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID]:
         stripe.api_key = self.secret_key
-        assert customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id") is None
-        customer_kwargs = {
-            "name": customer.customer_name,
-            "email": customer.email,
-        }
-        if not self.self_hosted:
-            org_stripe_acct = customer.organization.payment_provider_ids.get(
-                PAYMENT_PROVIDERS.STRIPE, ""
-            )
-            assert org_stripe_acct != ""
-            customer_kwargs["stripe_account"] = org_stripe_acct
-        stripe_customer = stripe.Customer.create(**customer_kwargs)
-        customer.integrations[PAYMENT_PROVIDERS.STRIPE] = {
-            "id": stripe_customer.id,
-            "email": customer.email,
-            "metadata": {},
-            "name": customer.customer_name,
-        }
-        customer.save()
+        from metering_billing.models import OrganizationSetting
 
-    def generate_payment_object(self, invoice) -> str:
+        setting = OrganizationSetting.objects.get(
+            setting_name="generate_customer_after_creating_in_lotus",
+            organization=customer.organization,
+            setting_group=PAYMENT_PROVIDERS.STRIPE,
+        )
+        if setting.setting_value == "true":
+            assert (
+                customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id")
+                is None
+            ), "Customer already has a Stripe ID"
+            customer_kwargs = {
+                "name": customer.customer_name,
+                "email": customer.email,
+            }
+            if not self.self_hosted:
+                org_stripe_acct = customer.organization.payment_provider_ids.get(
+                    PAYMENT_PROVIDERS.STRIPE, ""
+                )
+                assert (
+                    org_stripe_acct != ""
+                ), "Organization does not have a Stripe account ID"
+                customer_kwargs["stripe_account"] = org_stripe_acct
+            stripe_customer = stripe.Customer.create(**customer_kwargs)
+            customer.integrations[PAYMENT_PROVIDERS.STRIPE] = {
+                "id": stripe_customer.id,
+                "email": customer.email,
+                "metadata": {},
+                "name": customer.customer_name,
+            }
+            customer.save()
+        elif setting.setting_value == "false":
+            pass
+        else:
+            raise Exception(
+                "Invalid value for generate_customer_after_creating_in_lotus setting"
+            )
+
+    def create_payment_object(self, invoice) -> str:
         from metering_billing.models import Customer, Organization
 
         stripe.api_key = self.secret_key
@@ -276,19 +318,20 @@ class StripeConnector(PaymentProvider):
         stripe_customer_id = customer.integrations.get(
             PAYMENT_PROVIDERS.STRIPE, {}
         ).get("id")
-        assert stripe_customer_id is not None
+        assert stripe_customer_id is not None, "Customer does not have a Stripe ID"
         invoice_kwargs = {
             "customer": stripe_customer_id,
             "currency": invoice.cost_due.currency,
             "payment_method_types": ["card"],
             "amount": decimal_to_cents(invoice.cost_due.amount),
-            "metadata": invoice.line_items,
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
                 PAYMENT_PROVIDERS.STRIPE, ""
             )
-            assert org_stripe_acct != ""
+            assert (
+                org_stripe_acct != ""
+            ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
         stripe_invoice = stripe.PaymentIntent.create(**invoice_kwargs)
@@ -321,7 +364,7 @@ class StripeConnector(PaymentProvider):
         org_pp_ids[PAYMENT_PROVIDERS.STRIPE] = response["stripe_user_id"]
         organization.payment_provider_ids = org_pp_ids
         organization.save()
-        self.import_customers(organization)
+        self.initialize_settings(organization)
 
         response = {
             "payment_processor": PAYMENT_PROVIDERS.STRIPE,
@@ -335,6 +378,125 @@ class StripeConnector(PaymentProvider):
 
     def get_redirect_url(self) -> str:
         return self.redirect_url
+
+    def transfer_subscriptions(self, organization, end_now=False) -> int:
+        from metering_billing.models import (
+            Customer,
+            ExternalPlanLink,
+            Plan,
+            Subscription,
+        )
+
+        stripe.api_key = self.secret_key
+
+        org_ppis = organization.payment_provider_ids
+        stripe_cust_kwargs = {}
+        if org_ppis.get(PAYMENT_PROVIDERS.STRIPE) not in [None, ""]:
+            stripe_cust_kwargs["stripe_account"] = org_ppis.get(
+                PAYMENT_PROVIDERS.STRIPE
+            )
+        else:
+            if not self.self_hosted:
+                raise Exception(
+                    "Organization does not have a Stripe ID. Cannot transfer subscriptions."
+                )
+
+        stripe_subscriptions = stripe.Subscription.search(
+            query="status:'active'",
+        )
+        plans_with_links = (
+            Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+            .prefetch_related(
+                Prefetch(
+                    "external_links",
+                    queryset=ExternalPlanLink.objects.filter(
+                        source=PAYMENT_PROVIDERS.STRIPE
+                    ),
+                )
+            )
+            .values("id", external_id=F("external_links__external_plan_id"))
+        )
+        plan_dict = {}
+        for plan_obj in plans_with_links:
+            if plan_obj["id"] not in plan_dict:
+                plan_dict[plan_obj["id"]] = set()
+            plan_dict[plan_obj["id"]].add(plan_obj["external_id"])
+
+        lotus_plans = [
+            (plan_id, external_plan_ids)
+            for plan_id, external_plan_ids in plan_dict.items()
+        ]
+        for subscription in stripe_subscriptions.auto_paging_iter():
+            if (
+                subscription.cancel_at_period_end
+            ):  # don't transfer subscriptions that are ending
+                continue
+            try:  # if no customer matches, don't transfer
+                customer = Customer.objects.get(
+                    organization=organization,
+                    integrations__stripe__id=subscription.customer,
+                )
+            except Customer.DoesNotExist:
+                continue
+            sub_items = subscription["items"]
+            item_ids = set([x["price"]["id"] for x in sub_items["data"]]) | set(
+                [x["price"]["product"] for x in sub_items["data"]]
+            )
+            matching_plans = list(filter(lambda x: x[1] & item_ids, lotus_plans))
+            # if no plans match any of the items, don't transfer
+            if len(matching_plans) == 0:
+                continue
+            # great, in this case we transfer the subscription
+            elif len(matching_plans) == 1:
+                billing_plan = Plan.objects.get(id=matching_plans[0][0])
+                subscription_kwargs = {
+                    "organization": organization,
+                    "customer": customer,
+                    "billing_plan": billing_plan.display_version,
+                    "auto_renew": True,
+                    "is_new": False,
+                }
+                if end_now:
+                    subscription_kwargs["start_date"] = now_utc()
+                    subscription_kwargs["status"] = SUBSCRIPTION_STATUS.ACTIVE
+                    stripe.Subscription.delete(
+                        subscription.id,
+                        prorate=True,
+                        invoice_now=True,
+                    )
+                else:
+                    subscription_kwargs[
+                        "start_date"
+                    ] = datetime.datetime.utcfromtimestamp(
+                        subscription.current_period_end
+                    ).replace(
+                        tzinfo=pytz.utc
+                    )
+                    subscription_kwargs["status"] = SUBSCRIPTION_STATUS.NOT_STARTED
+                    stripe.Subscription.modify(
+                        subscription.id,
+                        cancel_at_period_end=True,
+                    )
+                Subscription.objects.create(**subscription_kwargs)
+            else:  # error if multiple plans match
+                err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(
+                    subscription
+                )
+                for plan_id, linked_ids in matching_plans:
+                    err_msg += "Plan {} matches items {}".format(
+                        plan_id, item_ids.intersection(linked_ids)
+                    )
+                raise ValueError(err_msg)
+
+    def initialize_settings(self, organization):
+        from metering_billing.models import OrganizationSetting
+
+        OrganizationSetting.objects.create(
+            organization=organization,
+            setting_name="generate_customer_after_creating_in_lotus",
+            setting_value="True",
+            setting_group=PAYMENT_PROVIDERS.STRIPE,
+        )
 
 
 PAYMENT_PROVIDER_MAP = {

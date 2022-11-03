@@ -29,6 +29,18 @@ def use_dummy_cache_backend(settings):
 
 
 @pytest.fixture
+def turn_off_stripe_connection():
+    from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+
+    sk = PAYMENT_PROVIDER_MAP["stripe"].secret_key
+    PAYMENT_PROVIDER_MAP["stripe"].secret_key = None
+
+    yield
+
+    PAYMENT_PROVIDER_MAP["stripe"].secret_key = sk
+
+
+@pytest.fixture
 def api_client_with_api_key_auth():
     from rest_framework.test import APIClient
 
