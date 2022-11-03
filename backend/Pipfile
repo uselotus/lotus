@@ -42,6 +42,7 @@ django-rest-knox = "*"
 django-anymail = {extras = ["mailgun"], version = "*"}
 numpy = "*"
 pytz = "*"
+django-activity-stream = "*"
 
 [dev-packages]
 platformdirs = "*"

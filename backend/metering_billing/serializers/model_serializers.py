@@ -1,3 +1,4 @@
+from actstream.models import Action
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
@@ -1053,6 +1054,112 @@ class ExperimentalToActiveRequestSerializer(serializers.Serializer):
     )
 
 
+
+class SubscriptionActionSerializer(SubscriptionSerializer):
+    class Meta(SubscriptionSerializer.Meta):
+        model = Subscription
+        fields = SubscriptionSerializer.Meta.fields + (
+            "string_repr",
+        )
+    
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.subscription_id
+
+class UserActionSerializer(UserSerializer):
+    class Meta(UserSerializer.Meta):
+        model = User
+        fields = UserSerializer.Meta.fields + (
+            "string_repr",
+        )
+    
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.username
+
+class PlanVersionActionSerializer(PlanVersionSerializer):
+    class Meta(PlanVersionSerializer.Meta):
+        model = PlanVersion
+        fields = PlanVersionSerializer.Meta.fields + (
+            "string_repr",
+        )
+    
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.plan.plan_name + " v" + obj.version
+
+class PlanActionSerializer(PlanSerializer):
+    class Meta(PlanSerializer.Meta):
+        model = Plan
+        fields = PlanSerializer.Meta.fields + (
+            "string_repr",
+        )
+    
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.plan_name
+
+class BillableMetricActionSerializer(BillableMetricSerializer):
+    class Meta(BillableMetricSerializer.Meta):
+        model = BillableMetric
+        fields = BillableMetricSerializer.Meta.fields + (
+            "string_repr",
+        )
+    
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.billable_metric_name
+
+class CustomerActionSerializer(CustomerSerializer):
+    class Meta(CustomerSerializer.Meta):
+        model = Customer
+        fields = CustomerSerializer.Meta.fields + (
+            "string_repr",
+        )
+    
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.customer_name
+
+GFK_MODEL_SERIALIZER_MAPPING = {
+    User: UserActionSerializer,
+    PlanVersion: PlanVersionActionSerializer,
+    Plan: PlanActionSerializer,
+    Subscription: SubscriptionActionSerializer,
+    BillableMetric: BillableMetricActionSerializer,
+    Customer: CustomerActionSerializer,
+}
+
+
+class ActivityGenericRelatedField(serializers.Field):
+    """
+    DRF Serializer field that serializers GenericForeignKey fields on the :class:`~activity.models.Action`
+    of known model types to their respective ActionSerializer implementation.
+    """
+
+    def to_representation(self, value):
+        serializer_cls = GFK_MODEL_SERIALIZER_MAPPING.get(type(value), None)
+        return serializer_cls(value, context=self.context).data if serializer_cls else str(value)
+
+
+class ActionSerializer(serializers.ModelSerializer):
+    """
+    DRF serializer for :class:`~activity.models.Action`.
+    """
+    actor = ActivityGenericRelatedField(read_only=True)
+    action_object = ActivityGenericRelatedField(read_only=True)
+    target = ActivityGenericRelatedField(read_only=True)
+
+    class Meta:
+        model = Action
+        fields = ('id', 'actor', 'verb', 'action_object', 'target', 'public', 'description', 'timestamp')
+   
 class OrganizationSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSetting
