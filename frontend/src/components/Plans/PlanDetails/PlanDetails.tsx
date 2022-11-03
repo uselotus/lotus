@@ -2,14 +2,15 @@
 import React, { FC, Fragment } from "react";
 import "./PlanDetails.css";
 import { PageLayout } from "../../base/PageLayout";
-import { Button, Col, Dropdown, Menu, Row, Switch, Tabs } from "antd";
+import { Button } from "antd";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import SwitchVersions from "./SwitchVersions";
-import { useQuery } from "react-query";
+import {useMutation, useQuery} from "react-query";
 import { Plan } from "../../../api/api";
-import { PlanDetailType } from "../../../types/plan-type";
+import {CreatePlanExternalLinkType, InitialExternalLinks, PlanDetailType} from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
 import LinkExternalIds from "../LinkExternalIds";
+import {toast} from "react-toastify";
 
 type PlanDetailParams = {
   planId: string;
@@ -19,6 +20,61 @@ const PlanDetails: FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { planId } = useParams<PlanDetailParams>();
+
+    const createExternalLinkMutation = useMutation(
+        (post: CreatePlanExternalLinkType) => Plan.createExternalLinks(post),
+        {
+            onSuccess: () => {
+                toast.success("Successfully created Plan external links", {
+                    position: toast.POSITION.TOP_CENTER,
+                });
+            },
+            onError: () => {
+                toast.error("Failed to create Plan external links", {
+                    position: toast.POSITION.TOP_CENTER,
+                });
+            },
+        }
+    );
+
+    const deleteExternalLinkMutation = useMutation(
+        (post: InitialExternalLinks) => Plan.deleteExternalLinks(post),
+        {
+            onSuccess: () => {
+                toast.success("Successfully deleted Plan external links", {
+                    position: toast.POSITION.TOP_CENTER,
+                });
+            },
+            onError: () => {
+                toast.error("Failed to delete Plan external links", {
+                    position: toast.POSITION.TOP_CENTER,
+                });
+            },
+        }
+    );
+
+    const createPlanExternalLink = (link: string) => {
+        if(plan.external_links.find(links => links.external_plan_id === link)) {
+            toast.error(`Duplicate  external link for ${plan.plan_name}`, {
+                position: toast.POSITION.TOP_CENTER,
+            });
+            return
+        }
+        const data :CreatePlanExternalLinkType = {
+            plan_id:plan.plan_id,
+            source:"stripe",
+            external_plan_id:link
+        }
+        createExternalLinkMutation.mutate(data);
+    }
+
+    const deletePlanExternalLink = (link: string) => {
+        const data :InitialExternalLinks = {
+            source:"stripe",
+            external_plan_id:link
+        }
+        deleteExternalLinkMutation.mutate(data);
+    }
 
   const {
     data: plan,
@@ -84,7 +140,10 @@ const PlanDetails: FC = () => {
               <div className="planDetails">
                   <div className="pr-1 planDetailsLabel">Linked External Ids:</div>
                   <div className="pl-2 mb-2">
-                      <LinkExternalIds externalIds={[]}/>
+                      <LinkExternalIds
+                          createExternalLink={createPlanExternalLink}
+                          deleteExternalLink={deletePlanExternalLink}
+                          externalIds={plan.external_links.map(l => l.external_plan_id)}/>
                   </div>
               </div>
           </div>

@@ -6,17 +6,17 @@ import {
   CustomerDetailType,
 } from "../types/customer-type";
 import {
-  PlanType,
-  CreatePlanType,
-  UpdatePlanType,
-  PlansByCustomerArray,
-  CreatePlanVersionType,
-  PlanDetailType,
-  PlanVersionType,
-  ReplaceLaterType,
-  ReplaceImmediatelyType,
-  ArchivePlanVersionType,
-  PlanVersionUpdateDescriptionType,
+    PlanType,
+    CreatePlanType,
+    UpdatePlanType,
+    PlansByCustomerArray,
+    CreatePlanVersionType,
+    PlanDetailType,
+    PlanVersionType,
+    ReplaceLaterType,
+    ReplaceImmediatelyType,
+    ArchivePlanVersionType,
+    PlanVersionUpdateDescriptionType, CreatePlanExternalLinkType, InitialExternalLinks,
 } from "../types/plan-type";
 import { RevenueType } from "../types/revenue-type";
 import {
@@ -117,6 +117,13 @@ export const Plan = {
   //create plan version
   createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
     requests.post("api/plan_versions/", post),
+   //create plan external links
+  createExternalLinks: (post: CreatePlanExternalLinkType): Promise<InitialExternalLinks> =>
+     requests.post("api/external_plan_link/", post),
+  //delete plan external links
+  deleteExternalLinks: (post: InitialExternalLinks) :Promise<any> =>
+        requests.delete(`api/external_plan_link/${post.external_plan_id}/?source=${post.source}`),
+
   //update plans methods
   updatePlan: (
     plan_id: string,

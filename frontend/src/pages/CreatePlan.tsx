@@ -199,8 +199,6 @@ const CreatePlan = () => {
                     external_plan_id: link
                 }))
         }
-
-        console.log(plan)
         mutation.mutate(plan);
       })
       .catch((info) => {
@@ -319,7 +317,9 @@ const CreatePlan = () => {
                           name="initial_external_links"
                           label="Link External ids"
                       >
-                          <LinkExternalIds externalIds={[]} setExternalLinks={setExternalLinks}/>
+                          <LinkExternalIds
+                              externalIds={[]}
+                              setExternalLinks={setExternalLinks}/>
                       </Form.Item>
                   </Card>
                 </Col>
