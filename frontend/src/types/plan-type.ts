@@ -75,6 +75,12 @@ export interface CreatePlanType {
   initial_version: CreateInitialVersionType;
   parent_plan_id?: string;
   target_customer_id?: string;
+  initial_external_links?: InitialExternalLinks[];
+}
+
+export interface InitialExternalLinks {
+    source: string;
+    external_plan_id: string;
 }
 
 export interface CreateInitialVersionType extends CreatePlanVersionType {
