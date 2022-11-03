@@ -38,6 +38,7 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
+import {Source, StripeDetails, StripeImportCustomerResponse, TransferSub} from "../types/stripe-type";
 
 const cookies = new Cookies();
 
@@ -268,4 +269,19 @@ export const Backtests = {
     requests.post("api/backtests/", post),
   getBacktestResults: (id: string): Promise<BacktestResultType> =>
     requests.get(`api/backtests/${id}/`),
+};
+
+export const Stripe = {
+
+    //Import Customers
+    importCustomers:(post:Source): Promise<StripeImportCustomerResponse> =>
+        requests.post("api/import_customers/", post),
+
+    //Import Payments
+    importPayments:(post:Source): Promise<StripeImportCustomerResponse> =>
+        requests.post("api/import_payment_objects/", post),
+
+    //transfer Subscription
+    transferSubscriptions:(post:TransferSub): Promise<StripeImportCustomerResponse> =>
+        requests.post("api/transfer_subscriptions/", post),
 };
