@@ -24,6 +24,9 @@ import CustomerDetail from "./CustomerDetail";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
+    width: 10,
+  },
+  {
     title: "Customer ID",
     width: 120,
     dataIndex: "customer_id",

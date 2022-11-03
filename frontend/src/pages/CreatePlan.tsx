@@ -25,7 +25,6 @@ import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import React from "react";
-import { Paper } from "../components/base/Paper";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
@@ -42,7 +41,8 @@ interface ComponentDisplay {
 const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
-  const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>("");
+  const [priceAdjustmentType, setPriceAdjustmentType] =
+    useState<string>("none");
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
@@ -227,7 +227,11 @@ const CreatePlan = () => {
         <Form
           form={form}
           name="create_plan"
-          initialValues={{ flat_rate: 0, flat_fee_billing_type: "in_advance" }}
+          initialValues={{
+            flat_rate: 0,
+            flat_fee_billing_type: "in_advance",
+            price_adjustment_type: "none",
+          }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
           autoComplete="off"
@@ -235,7 +239,7 @@ const CreatePlan = () => {
           wrapperCol={{ span: 16 }}
           labelAlign="left"
         >
-          <Row gutter={24}>
+          <Row gutter={[24, 24]}>
             <Col span={12}>
               <Row gutter={[24, 24]}>
                 <Col span="24">

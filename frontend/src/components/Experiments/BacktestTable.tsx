@@ -9,16 +9,20 @@ import dayjs from "dayjs";
 
 const columns: ProColumns<BacktestType>[] = [
   {
+    width: 10,
+  },
+  {
     title: "Name",
     dataIndex: "backtest_name",
     align: "left",
+    width: 120,
   },
-  // {
-  //   title: "Creator",
-  //   dataIndex: "creator",
-  //   align: "left",
-  //   width: 150,
-  // },
+  {
+    title: "Creator",
+    dataIndex: "creator",
+    align: "left",
+    width: 150,
+  },
   {
     title: "Date Created",
     width: 150,

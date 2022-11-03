@@ -399,7 +399,7 @@ const EditPlan = ({ type, plan }: Props) => {
           wrapperCol={{ span: 16 }}
           labelAlign="left"
         >
-          <Row gutter={24}>
+          <Row gutter={[24, 24]}>
             <Col span={12}>
               <Row gutter={[24, 24]}>
                 <Col span="24">

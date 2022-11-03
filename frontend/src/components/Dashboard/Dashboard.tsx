@@ -46,6 +46,7 @@ const Dashboard: FC = () => {
       title={"Dashboard"}
       extra={[
         <RangePicker
+          id="preset"
           format={dateFormat}
           ranges={{
             "This month": [dayjs().startOf("month"), dayjs().endOf("month")],
