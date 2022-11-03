@@ -6,10 +6,12 @@ from metering_billing.models import (
     CategoricalFilter,
     Customer,
     Event,
+    ExternalPlanLink,
     Feature,
     Invoice,
     NumericFilter,
     Organization,
+    OrganizationSetting,
     Plan,
     PlanComponent,
     PlanVersion,
@@ -18,12 +20,8 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import (
-    calculate_end_date,
-    date_as_max_dt,
-    date_as_min_dt,
-    now_utc,
-)
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.utils import calculate_end_date
 from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
@@ -149,6 +147,14 @@ class CustomerSerializer(serializers.ModelSerializer):
             "customer_id",
         )
 
+    def create(self, validated_data):
+        customer = Customer.objects.create(**validated_data)
+        org = customer.organization
+        for connector in PAYMENT_PROVIDER_MAP.values():
+            if connector.organization_connected(org):
+                connector.create_customer(customer)
+        return customer
+
 
 ## BILLABLE METRIC
 class CategoricalFilterSerializer(serializers.ModelSerializer):
@@ -226,6 +232,33 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         bm.save()
 
         return bm
+
+
+class ExternalPlanLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExternalPlanLink
+        fields = ("plan_id", "source", "external_plan_id")
+
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="plan",
+        queryset=Plan.objects.all(),
+        write_only=True,
+    )
+
+    def validate(self, data):
+        super().validate(data)
+        query = ExternalPlanLink.objects.filter(
+            plan=data["plan"],
+            source=data["source"],
+            external_plan_id=data["external_plan_id"],
+        )
+        if query.exists():
+            plan_name = data["plan"].plan_name
+            raise serializers.ValidationError(
+                f"This external plan link already exists in plan {plan_name}"
+            )
+        return data
 
 
 ## FEATURE
@@ -636,6 +669,7 @@ class PlanSerializer(serializers.ModelSerializer):
             "product_id",
             "plan_id",
             "status",
+            "external_links",
             # write only
             "initial_version",
             "parent_plan_id",
@@ -670,6 +704,7 @@ class PlanSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    external_links = ExternalPlanLinkSerializer(many=True, required=False)
 
     # WRITE ONLY
     initial_version = InitialPlanVersionSerializer(write_only=True)
@@ -939,3 +974,17 @@ class ExperimentalToActiveRequestSerializer(serializers.Serializer):
         slug_field="version_id",
         read_only=False,
     )
+
+
+class OrganizationSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationSetting
+        fields = ("setting_id", "setting_name", "setting_value", "setting_group")
+        read_only_fields = ("setting_id", "setting_name", "setting_group")
+
+    def update(self, instance, validated_data):
+        instance.setting_value = validated_data.get(
+            "setting_value", instance.setting_value
+        )
+        instance.save()
+        return instance

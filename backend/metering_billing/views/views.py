@@ -1,15 +1,14 @@
-import datetime
 from decimal import Decimal
 
 import posthog
 from dateutil import parser
 from django.conf import settings
-from django.core.paginator import Paginator
 from django.db.models import Count, F, Prefetch, Q
 from drf_spectacular.utils import extend_schema, inline_serializer
-from metering_billing.auth import KnoxTokenScheme, parse_organization
+from metering_billing.auth import parse_organization
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.backtest_serializers import *
@@ -21,15 +20,14 @@ from metering_billing.utils import (
     convert_to_decimal,
     make_all_dates_times_strings,
     make_all_decimals_floats,
-    now_utc,
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
+    PAYMENT_PROVIDERS,
     REVENUE_CALC_GRANULARITY,
     SUBSCRIPTION_STATUS,
 )
-from metering_billing.view_utils import sync_payment_provider_customers
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -609,24 +607,26 @@ class GetCustomerAccessView(APIView):
         )
 
 
-class SyncCustomersView(APIView):
+class ImportCustomersView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         request=inline_serializer(
-            name="SyncCustomersRequest",
-            fields={},
+            name="ImportCustomersRequest",
+            fields={
+                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+            },
         ),
         responses={
             200: inline_serializer(
-                name="SyncCustomerSuccess",
+                name="ImportCustomerSuccess",
                 fields={
                     "status": serializers.ChoiceField(choices=["success"]),
                     "detail": serializers.CharField(),
                 },
             ),
             400: inline_serializer(
-                name="SyncCustomerFailure",
+                name="ImportCustomerFailure",
                 fields={
                     "status": serializers.ChoiceField(choices=["error"]),
                     "detail": serializers.CharField(),
@@ -636,21 +636,128 @@ class SyncCustomersView(APIView):
     )
     def post(self, request, format=None):
         organization = parse_organization(request)
-
+        source = request.data["source"]
+        assert source in PAYMENT_PROVIDERS.choices
+        connector = PAYMENT_PROVIDER_MAP[source]
         try:
-            success_providers = sync_payment_provider_customers(organization)
+            num = connector.import_customers(organization)
         except Exception as e:
             return Response(
                 {
                     "status": "error",
-                    "detail": f"Error syncing customers: {e}",
+                    "detail": f"Error importing customers: {e}",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response(
             {
                 "status": "success",
-                "detail": f"Customers succesfully imported from {success_providers}.",
+                "detail": f"Customers succesfully imported {num} customers from {source}.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ImportPaymentObjectsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ImportPaymentObjectsRequest",
+            fields={
+                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="ImportPaymentObjectSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="ImportPaymentObjectFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        source = request.data["source"]
+        assert source in PAYMENT_PROVIDERS.choices
+        connector = PAYMENT_PROVIDER_MAP[source]
+        try:
+            num = connector.import_payment_objects(organization)
+        except Exception as e:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Error importing payment objects: {e}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        num = sum([len(v) for v in num.values()])
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Payment objects succesfully imported {num} payment objects from {source}.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class TransferSubscriptionsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="TransferSubscriptionsRequest",
+            fields={
+                "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices),
+                "end_now": serializers.BooleanField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="TransferSubscriptionsSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="TransferSubscriptionsFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        source = request.data["source"]
+        assert source in PAYMENT_PROVIDERS.choices
+        end_now = request.data.get("end_now", False)
+        connector = PAYMENT_PROVIDER_MAP[source]
+        try:
+            num = connector.transfer_subscriptions(organization, end_now)
+        except Exception as e:
+            return Response(
+                {
+                    "status": "error",
+                    "detail": f"Error importing customers: {e}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "status": "success",
+                "detail": f"Succesfully transferred {num} subscriptions from {source}.",
             },
             status=status.HTTP_201_CREATED,
         )

@@ -214,7 +214,7 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
                 org_conn = pp_connector.organization_connected(organization)
                 if customer_conn and org_conn:
                     invoice.external_payment_obj_id = (
-                        pp_connector.generate_payment_object(invoice)
+                        pp_connector.create_payment_object(invoice)
                     )
                     invoice.external_payment_obj_type = pp
                     invoice.save()

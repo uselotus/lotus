@@ -25,8 +25,10 @@ from metering_billing.views.model_views import (
     BillableMetricViewSet,
     CustomerViewSet,
     EventViewSet,
+    ExternalPlanLinkViewSet,
     FeatureViewSet,
     InvoiceViewSet,
+    OrganizationSettingViewSet,
     PlanVersionViewSet,
     PlanViewSet,
     ProductViewSet,
@@ -43,11 +45,13 @@ from metering_billing.views.views import (  # MergeCustomersView,
     DraftInvoiceView,
     ExperimentalToActiveView,
     GetCustomerAccessView,
+    ImportCustomersView,
+    ImportPaymentObjectsView,
     PeriodMetricRevenueView,
     PeriodMetricUsageView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
-    SyncCustomersView,
+    TransferSubscriptionsView,
 )
 from rest_framework import routers
 
@@ -68,6 +72,14 @@ router.register(r"products", ProductViewSet, basename="product")
 router.register(r"plans", PlanViewSet, basename="plan")
 router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")
+router.register(
+    r"external_plan_link", ExternalPlanLinkViewSet, basename="external_plan_links"
+)
+router.register(
+    r"organization_settings",
+    OrganizationSettingViewSet,
+    basename="organization_setting",
+)
 
 
 urlpatterns = [
@@ -116,15 +128,20 @@ urlpatterns = [
         GetCustomerAccessView.as_view(),
         name="customer_access",
     ),
-    # path(
-    #     "api/merge_customers/",
-    #     MergeCustomersView.as_view(),
-    #     name="merge_customers",
-    # ),
     path(
-        "api/sync_customers/",
-        SyncCustomersView.as_view(),
-        name="sync_customers",
+        "api/import_customers/",
+        ImportCustomersView.as_view(),
+        name="import_customers",
+    ),
+    path(
+        "api/import_payment_objects/",
+        ImportPaymentObjectsView.as_view(),
+        name="import_payment_objects",
+    ),
+    path(
+        "api/transfer_subscriptions/",
+        TransferSubscriptionsView.as_view(),
+        name="transfer_subscriptions",
     ),
     path(
         "api/payment_providers/",

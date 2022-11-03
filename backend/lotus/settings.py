@@ -25,11 +25,11 @@ from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-# try:
-#     path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
-#     load_dotenv(dotenv_path=path)
-# except:
-#     pass
+try:
+    path = Path(__file__).resolve().parent.parent.parent / "env/.env.test"
+    load_dotenv(dotenv_path=path)
+except:
+    pass
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
 VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT", default="")
