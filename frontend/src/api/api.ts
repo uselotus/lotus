@@ -122,7 +122,7 @@ export const Plan = {
      requests.post("api/external_plan_link/", post),
   //delete plan external links
   deleteExternalLinks: (post: InitialExternalLinks) :Promise<any> =>
-        requests.delete(`api/external_plan_link/${post.external_plan_id}/?source=${post.source}`),
+     requests.delete(`api/external_plan_link/${post.external_plan_id}/?source=${post.source}`),
 
   //update plans methods
   updatePlan: (
