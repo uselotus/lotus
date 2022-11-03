@@ -18,12 +18,6 @@ const CreateMetricForm = (props: {
   const [form] = Form.useForm();
   const [eventType, setEventType] = useState("");
 
-  // useEffect(() => {
-  //   if (props.visible === false) {
-  //     form.resetFields();
-  //   }
-  // }, [props.visible]);
-
   form.setFieldsValue({
     event_name: props.state.event_name,
     property_name: props.state.property_name,

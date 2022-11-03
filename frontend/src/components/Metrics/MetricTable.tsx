@@ -14,6 +14,10 @@ const colorMap = new Map<string, string>([
   ["count", "green"],
   ["sum", "blue"],
   ["max", "pink"],
+  ["min", "purple"],
+  ["latest", "orange"],
+  ["average", "cyan"],
+  ["unique", "geekblue"],
 ]);
 
 interface Props {
