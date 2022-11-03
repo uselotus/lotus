@@ -113,7 +113,11 @@ INSTALLED_APPS = [
     "knox",
     "anymail",
     "metering_billing",
+    "actstream",
 ]
+
+SITE_ID = 1
+
 
 ANYMAIL = {
     "MAILGUN_API_KEY": os.environ.get("MAILGUN_API_KEY"),

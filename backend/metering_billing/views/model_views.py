@@ -1,6 +1,8 @@
 import datetime
 
 import posthog
+from actstream import action
+from actstream.models import Action
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Prefetch, Q
@@ -28,6 +30,7 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestSummarySerializer,
 )
 from metering_billing.serializers.model_serializers import (
+    ActionSerializer,
     AlertSerializer,
     BillableMetricSerializer,
     CustomerSerializer,
@@ -50,6 +53,7 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
+    REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
 )
 from rest_framework import mixins, status, viewsets
@@ -246,9 +250,15 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(organization=parse_organization(self.request))
+            instance = serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
             raise DuplicateBillableMetric
+        try:
+            user = self.request.user
+        except:
+            user = None
+        if user:
+            action.send(user, verb='created', action_object=instance)
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -339,7 +349,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
                 event=f"{self.action}_plan_version",
                 properties={},
-            )
+            )   
         return response
 
     def perform_create(self, serializer):
@@ -347,7 +357,22 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = self.request.user
         except:
             user = None
-        serializer.save(organization=parse_organization(self.request), created_by=user)
+        instance = serializer.save(organization=parse_organization(self.request), created_by=user)
+        if user:
+            action.send(user, verb='created', action_object=instance, target=instance.plan)
+    
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        try:
+            user = self.request.user
+        except:
+            user = None
+        user = self.request.user
+        if user:
+            if instance.status == PLAN_VERSION_STATUS.ACTIVE:
+                action.send(user, verb='activated', action_object=instance, target=instance.plan)
+            elif instance.status == PLAN_VERSION_STATUS.ARCHIVED:
+                action.send(user, verb='archived', action_object=instance, target=instance.plan)
 
 
 class PlanViewSet(viewsets.ModelViewSet):
@@ -422,7 +447,20 @@ class PlanViewSet(viewsets.ModelViewSet):
             user = self.request.user
         except:
             user = None
-        serializer.save(organization=parse_organization(self.request), created_by=user)
+        instance = serializer.save(organization=parse_organization(self.request), created_by=user)
+        if user:
+            action.send(user, verb='created', action_object=instance)
+    
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        try:
+            user = self.request.user
+        except:
+            user = None
+        user = self.request.user
+        if user:
+            if instance.status == PLAN_STATUS.ARCHIVED:
+                action.send(user, verb='activated', action_object=instance)
 
 
 class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -453,7 +491,13 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if serializer.validated_data["start_date"] <= now_utc():
             serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
-        serializer.save(organization=parse_organization(self.request))
+        instance = serializer.save(organization=parse_organization(self.request))
+        try:
+            user = self.request.user
+        except:
+            user = None
+        if user:
+            action.send(user, verb='created', action_object=instance, target=instance.customer)
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -472,6 +516,18 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         return response
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        try:
+            user = self.request.user
+        except:
+            user = None
+        user = self.request.user
+        if user:
+            if instance.status == SUBSCRIPTION_STATUS.ENDED:
+                action.send(user, verb='canceled', action_object=instance)
+            elif self.request.body.get("replace_immediately_type") == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN:
+                action.send(user, verb='switched to', action_object=instance.billing_plan, target=instance)
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
@@ -633,3 +689,28 @@ class ProductViewSet(viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context
+
+class ActionCursorSetPagination(CursorSetPagination):
+    ordering = "-timestamp"
+
+class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    API endpoint that allows events to be viewed.
+    """
+
+    queryset = Action.objects.all()
+    serializer_class = ActionSerializer
+    pagination_class = ActionCursorSetPagination
+    permission_classes = [IsAuthenticated]
+    http_method_names = [
+        "get",
+        "head",
+    ]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return (
+            super()
+            .get_queryset()
+            .filter(actior__organization=organization)
+        )
