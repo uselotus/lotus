@@ -47,7 +47,13 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
-import {Source, StripeDetails, StripeImportCustomerResponse, TransferSub} from "../types/stripe-type";
+import {
+    OrganizationSettingsParams, OrganizationSettings,
+    Source,
+    StripeDetails,
+    StripeImportCustomerResponse,
+    TransferSub, UpdateOrganizationSettingsParams
+} from "../types/stripe-type";
 
 const cookies = new Cookies();
 
@@ -55,7 +61,6 @@ axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
 )}`;
 
-console.log(111);
 const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
@@ -296,6 +301,14 @@ export const Stripe = {
     //transfer Subscription
     transferSubscriptions:(post:TransferSub): Promise<StripeImportCustomerResponse> =>
         requests.post("api/transfer_subscriptions/", post),
+
+    //Get Organization Settings
+    getOrganizationSettings:(data:OrganizationSettingsParams): Promise<OrganizationSettings[]> =>
+        requests.get("api/organization_settings/", { params: data  }),
+
+    //Update Organization Settings
+    updateOrganizationSettings:(data:UpdateOrganizationSettingsParams): Promise<OrganizationSettings> =>
+        requests.patch(`api/organization_settings/${data.setting_id}/`, { setting_value: data.setting_value}),
 };
 
 export const PaymentProcessorIntegration = {
