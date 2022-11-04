@@ -1,6 +1,5 @@
 import datetime
 import operator
-from functools import reduce
 from unicodedata import name
 
 import posthog
@@ -10,7 +9,6 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
-from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
@@ -57,7 +55,7 @@ from metering_billing.serializers.model_serializers import (
     UserSerializer,
 )
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import now_utc
+from metering_billing.utils import now_utc, now_utc_ts
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
     PAYMENT_PROVIDERS,
@@ -72,6 +70,33 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+
+
+class CustomPagination(CursorPagination):
+    def get_paginated_response(self, data):
+        if self.get_next_link():
+            next_link = self.get_next_link()
+            next_cursor = next_link[
+                next_link.index(f"{self.cursor_query_param}=")
+                + len(f"{self.cursor_query_param}=") :
+            ]
+        else:
+            next_cursor = None
+        if self.get_previous_link():
+            previous_link = self.get_previous_link()
+            previous_cursor = previous_link[
+                previous_link.index(f"{self.cursor_query_param}=")
+                + len(f"{self.cursor_query_param}=") :
+            ]
+        else:
+            previous_cursor = None
+        return Response(
+            {
+                "next": next_cursor,
+                "previous": previous_cursor,
+                "results": data,
+            }
+        )
 
 
 class PermissionPolicyMixin:
@@ -122,7 +147,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.save(organization=parse_organization(self.request))
 
 
-class CursorSetPagination(CursorPagination):
+class CursorSetPagination(CustomPagination):
     page_size = 10
     page_size_query_param = "page_size"
     ordering = "-time_created"
@@ -268,7 +293,11 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         except:
             user = None
         if user:
-            action.send(user, verb="created", action_object=instance)
+            action.send(
+                user,
+                verb="created",
+                action_object=instance,
+            )
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -372,7 +401,10 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
         if user:
             action.send(
-                user, verb="created", action_object=instance, target=instance.plan
+                user,
+                verb="created",
+                action_object=instance,
+                target=instance.plan,
             )
 
     def perform_update(self, serializer):
@@ -385,11 +417,17 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if user:
             if instance.status == PLAN_VERSION_STATUS.ACTIVE:
                 action.send(
-                    user, verb="activated", action_object=instance, target=instance.plan
+                    user,
+                    verb="activated",
+                    action_object=instance,
+                    target=instance.plan,
                 )
             elif instance.status == PLAN_VERSION_STATUS.ARCHIVED:
                 action.send(
-                    user, verb="archived", action_object=instance, target=instance.plan
+                    user,
+                    verb="archived",
+                    action_object=instance,
+                    target=instance.plan,
                 )
 
 
@@ -469,7 +507,11 @@ class PlanViewSet(viewsets.ModelViewSet):
             organization=parse_organization(self.request), created_by=user
         )
         if user:
-            action.send(user, verb="created", action_object=instance)
+            action.send(
+                user,
+                verb="created",
+                action_object=instance,
+            )
 
     def perform_update(self, serializer):
         instance = serializer.save()
@@ -480,7 +522,11 @@ class PlanViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user:
             if instance.status == PLAN_STATUS.ARCHIVED:
-                action.send(user, verb="activated", action_object=instance)
+                action.send(
+                    user,
+                    verb="archived",
+                    action_object=instance,
+                )
 
 
 class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -514,12 +560,15 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         instance = serializer.save(organization=parse_organization(self.request))
         try:
             user = self.request.user
-        except:
-            user = None
-        if user:
+            print(user)
             action.send(
-                user, verb="created", action_object=instance, target=instance.customer
+                user,
+                verb="subscribed",
+                action_object=instance.customer,
+                target=instance.billing_plan,
             )
+        except:
+            user = None            
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -547,7 +596,12 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         user = self.request.user
         if user:
             if instance.status == SUBSCRIPTION_STATUS.ENDED:
-                action.send(user, verb="canceled", action_object=instance)
+                action.send(
+                    user,
+                    verb="canceled",
+                    action_object=instance.billing_plan,
+                    target=instance.customer,
+                )
             elif (
                 serializer.validated_data.get("replace_immediately_type")
                 == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
@@ -556,7 +610,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     user,
                     verb="switched to",
                     action_object=instance.billing_plan,
-                    target=instance,
+                    target=instance.customer,
                 )
 
 
@@ -742,7 +796,17 @@ class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return super().get_queryset().filter(actor_object_id__in=list(User.objects.filter(organization=organization).values_list('id', flat=True)))
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                actor_object_id__in=list(
+                    User.objects.filter(organization=organization).values_list(
+                        "id", flat=True
+                    )
+                )
+            )
+        )
 
 
 class ExternalPlanLinkViewSet(viewsets.ModelViewSet):

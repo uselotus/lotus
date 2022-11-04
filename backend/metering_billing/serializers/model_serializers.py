@@ -1057,12 +1057,16 @@ class ExperimentalToActiveRequestSerializer(serializers.Serializer):
 class SubscriptionActionSerializer(SubscriptionSerializer):
     class Meta(SubscriptionSerializer.Meta):
         model = Subscription
-        fields = SubscriptionSerializer.Meta.fields + ("string_repr",)
+        fields = SubscriptionSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
 
     def get_string_repr(self, obj):
         return obj.subscription_id
+
+    def get_object_type(self, obj):
+        return "Subscription"
 
 
 class UserActionSerializer(OrganizationUserSerializer):
@@ -1079,45 +1083,61 @@ class UserActionSerializer(OrganizationUserSerializer):
 class PlanVersionActionSerializer(PlanVersionSerializer):
     class Meta(PlanVersionSerializer.Meta):
         model = PlanVersion
-        fields = PlanVersionSerializer.Meta.fields + ("string_repr",)
+        fields = PlanVersionSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
 
     def get_string_repr(self, obj):
-        return obj.plan.plan_name + " v" + obj.version
+        return obj.plan.plan_name + " v" + str(obj.version)
+
+    def get_object_type(self, obj):
+        return "Plan Version"
 
 
 class PlanActionSerializer(PlanSerializer):
     class Meta(PlanSerializer.Meta):
         model = Plan
-        fields = PlanSerializer.Meta.fields + ("string_repr",)
+        fields = PlanSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
 
     def get_string_repr(self, obj):
         return obj.plan_name
+
+    def get_object_type(self, obj):
+        return "Plan"
 
 
 class BillableMetricActionSerializer(BillableMetricSerializer):
     class Meta(BillableMetricSerializer.Meta):
         model = BillableMetric
-        fields = BillableMetricSerializer.Meta.fields + ("string_repr",)
+        fields = BillableMetricSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
 
     def get_string_repr(self, obj):
         return obj.billable_metric_name
+
+    def get_object_type(self, obj):
+        return "Metric"
 
 
 class CustomerActionSerializer(CustomerSerializer):
     class Meta(CustomerSerializer.Meta):
         model = Customer
-        fields = CustomerSerializer.Meta.fields + ("string_repr",)
+        fields = CustomerSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
 
     def get_string_repr(self, obj):
         return obj.customer_name
+
+    def get_object_type(self, obj):
+        return "Customer"
 
 
 GFK_MODEL_SERIALIZER_MAPPING = {

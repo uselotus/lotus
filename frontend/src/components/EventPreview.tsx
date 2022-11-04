@@ -14,12 +14,12 @@ const EventPreview: FC = () => {
   const [previous, setPrev] = useState<string>("");
 
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
-    ["preview events"],
+    ["preview events", c],
     () =>
       Events.getEventPreviews(c).then((res) => {
         setCursor(c);
-        setNext(res.next);
-        setPrev(res.previous);
+        setNext(decodeURIComponent(res.next));
+        setPrev(decodeURIComponent(res.previous));
         return res;
       }),
     {
@@ -60,7 +60,10 @@ const EventPreview: FC = () => {
                 <p>Properties: </p>
               </div>
               <div className="grid grid-cols-2">
-                <p className="text-left	">time_created: {event.time_created}</p>
+                <p className="text-left	">
+                  time_created:{" "}
+                  {dayjs(event.time_created).format("YYYY/MM/DD HH:mm")}
+                </p>
                 <div className="text-left flex-col flex">
                   {event.properties &&
                     Object.keys(event.properties).map((keyName, i) => (

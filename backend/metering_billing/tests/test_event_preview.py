@@ -70,7 +70,9 @@ class TestEventPreview:
         events = data["results"]
         assert len(events) == 10
 
-        response = setup_dict["client"].get(data["next"], payload)
+        response = setup_dict["client"].get(
+            reverse("event-list"), payload, params={"c": data["next"]}
+        )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         events = data["results"]
