@@ -27,7 +27,8 @@ function MetricBarGraph(props: { range: any }) {
     useQuery<MetricUsage>(["dashboard_metric_graph", props.range], () =>
       Metrics.getMetricUsage(
         props.range[0].format("YYYY-MM-DD"),
-        props.range[1].format("YYYY-MM-DD")
+        props.range[1].format("YYYY-MM-DD"),
+        10
       ).then((res) => {
         return res;
       })
