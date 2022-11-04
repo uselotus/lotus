@@ -78,7 +78,7 @@ export default function ActivityStream() {
         <div className="flex justify-end space-x-4">
           <button
             onClick={() => {
-              if (previous) {
+              if (previous !== null) {
                 setCursor(previous);
               }
             }}
@@ -100,7 +100,7 @@ export default function ActivityStream() {
           </button>
           <button
             onClick={() => {
-              if (next) {
+              if (next !== null) {
                 setCursor(next);
               }
             }}
