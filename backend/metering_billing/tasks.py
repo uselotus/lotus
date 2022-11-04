@@ -19,6 +19,7 @@ from metering_billing.models import (
     PlanComponent,
     Subscription,
 )
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
@@ -31,6 +32,7 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
+    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
     SUBSCRIPTION_STATUS,
 )
@@ -42,28 +44,17 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 @shared_task
 def calculate_invoice():
+    # GENERAL PHILOSOPHY: this task is for periodic maintenance of ending susbcriptions. We only end and re-start subscriptions when they're scheduled to end, if for some other reason they end early then it is up to the other process to handle the invoice creationg and .
     # get ending subs
-    now = now_utc()
+    now_minus_30 = now_utc() + relativedelta(
+        minutes=-30
+    )  # grace period of 30 minutes for sending events
     ending_subscriptions = list(
-        Subscription.objects.filter(status=SUBSCRIPTION_STATUS.ACTIVE, end_date__lt=now)
+        Subscription.objects.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE, scheduled_end_date__lt=now_minus_30
+        )
     )
-    invoice_sub_ids_seen = Invoice.objects.filter(
-        ~Q(payment_status=INVOICE_STATUS.DRAFT)
-    ).values_list("subscription__subscription_id", flat=True)
 
-    if len(invoice_sub_ids_seen) > 0:
-        ended_subs_no_invoice = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ENDED, end_date__lt=now
-        ).exclude(subscription_id__in=list(invoice_sub_ids_seen))
-        ending_subscriptions.extend(ended_subs_no_invoice)
-
-    # prefetch organization customer stripe keys
-    # orgs_seen = set()
-    # for sub in ending_subscriptions:
-    #     org_pk = sub.organization.pk
-    #     if org_pk not in orgs_seen:
-    #         orgs_seen.add(org_pk)
-    #         import_stripe_customers(sub.organization)
     # now generate invoices and new subs
     for old_subscription in ending_subscriptions:
         # Generate the invoice
@@ -78,39 +69,31 @@ def calculate_invoice():
             )
             continue
         # End the old subscription and delete draft invoices
-        already_ended = old_subscription.status == SUBSCRIPTION_STATUS.ENDED
         old_subscription.status = SUBSCRIPTION_STATUS.ENDED
         old_subscription.save()
         now = now_utc()
         Invoice.objects.filter(
-            issue_date__lt=now, payment_status=INVOICE_STATUS.DRAFT
+            issue_date__lt=now,
+            payment_status=INVOICE_STATUS.DRAFT,
+            subscription__subscription_id=old_subscription.subscription_id,
         ).delete()
         # Renew the subscription
-        if old_subscription.auto_renew and not already_ended:
-            if old_subscription.auto_renew_billing_plan:
-                new_bp = old_subscription.auto_renew_billing_plan
+        if old_subscription.auto_renew:
+            if old_subscription.billing_plan.replace_with is not None:
+                new_bp = old_subscription.billing_plan.replace_with
             else:
                 new_bp = old_subscription.billing_plan
-            # if we'e scheduled this plan for deletion, check if its still active in subs
-            # otherwise just renew with the new plan
-            if new_bp.scheduled_for_deletion:
-                replacement_bp = new_bp.replacement_billing_plan
-                num_with_bp = Subscription.objects.filter(
-                    status=SUBSCRIPTION_STATUS.ACTIVE, billing_plan=new_bp
-                ).count()
-                if num_with_bp == 0:
-                    new_bp.delete()
-                new_bp = replacement_bp
             subscription_kwargs = {
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
                 "billing_plan": new_bp,
-                "start_date": old_subscription.end_date + relativedelta(days=+1),
+                "start_date": old_subscription.scheduled_end_date
+                + relativedelta(seconds=+1),
                 "auto_renew": True,
                 "is_new": False,
             }
             sub = Subscription.objects.create(**subscription_kwargs)
-            if new_bp.pay_in_advance:
+            if new_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
                 sub.flat_fee_already_billed = Decimal(new_bp.flat_rate.amount)
             if sub.start_date <= now <= sub.end_date:
                 sub.status = SUBSCRIPTION_STATUS.ACTIVE
@@ -121,9 +104,9 @@ def calculate_invoice():
 
 @shared_task
 def start_subscriptions():
-    now = datetime.date.today()
+    now = now_utc()
     starting_subscriptions = Subscription.objects.filter(
-        status=SUBSCRIPTION_STATUS.NOT_STARTED, start_date__lte=now
+        status=SUBSCRIPTION_STATUS.NOT_STARTED, start_date__lt=now, end_date__gt=now
     )
     for new_subscription in starting_subscriptions:
         new_subscription.status = SUBSCRIPTION_STATUS.ACTIVE
@@ -133,27 +116,22 @@ def start_subscriptions():
 @shared_task
 def update_invoice_status():
     incomplete_invoices = Invoice.objects.filter(
-        Q(payment_status=INVOICE_STATUS.UNPAID)
+        Q(payment_status=INVOICE_STATUS.UNPAID), external_payment_obj_id__isnull=False
     )
     for incomplete_invoice in incomplete_invoices:
-        pass
-        # pi_id = incomplete_invoice.external_payment_obj_id
-        # if pi_id is not None:
-        #     try:
-        #         pi = stripe.PaymentIntent.retrieve(pi_id)
-        #     except Exception as e:
-        #         print(e)
-        #         print("Error retrieving payment intent {}".format(pi_id))
-        #         continue
-        #     if pi.status == "succeeded":
-        #         incomplete_invoice.payment_status = INVOICE_STATUS.PAID
-        #         incomplete_invoice.save()
-        #         posthog.capture(
-        #             POSTHOG_PERSON
-        #             if POSTHOG_PERSON
-        #             else incomplete_invoice.organization["company_name"],
-        #             "invoice_status_succeeded",
-        #         )
+        pp = incomplete_invoice.external_payment_obj_type
+        if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+            status = PAYMENT_PROVIDER_MAP[pp].update_payment_object_status(
+                incomplete_invoice.external_payment_obj_id
+            )
+            if status == INVOICE_STATUS.PAID:
+                incomplete_invoice.payment_status = INVOICE_STATUS.PAID
+                posthog.capture(
+                    POSTHOG_PERSON
+                    if POSTHOG_PERSON
+                    else incomplete_invoice.organization["company_name"],
+                    "invoice_status_succeeded",
+                )
 
 
 @shared_task
