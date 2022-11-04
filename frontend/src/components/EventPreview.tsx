@@ -43,8 +43,10 @@ const EventPreview: FC = () => {
         <div className="flex justify-end space-x-4">
           <button
             onClick={() => {
-              setCursor(previous);
-              queryClient.invalidateQueries(["preview_events"]);
+              if (previous) {
+                setCursor(previous);
+                queryClient.invalidateQueries(["preview_events"]);
+              }
             }}
           >
             <svg
@@ -64,8 +66,10 @@ const EventPreview: FC = () => {
           </button>
           <button
             onClick={() => {
-              setCursor(next);
-              queryClient.invalidateQueries(["preview_events"]);
+              if (next) {
+                setCursor(next);
+                queryClient.invalidateQueries(["preview_events"]);
+              }
             }}
           >
             <svg
@@ -88,7 +92,7 @@ const EventPreview: FC = () => {
     );
   }
   return (
-    <div className="w-full flex">
+    <div className="w-full rounded">
       <Collapse expandIconPosition="end" bordered={false}>
         {data.results.map((event) => (
           <Panel
@@ -132,8 +136,10 @@ const EventPreview: FC = () => {
       <div className="flex justify-end space-x-4">
         <button
           onClick={() => {
-            setCursor(previous);
-            queryClient.invalidateQueries(["preview_events"]);
+            if (previous !== null) {
+              setCursor(previous);
+              queryClient.invalidateQueries(["preview_events"]);
+            }
           }}
         >
           <svg
@@ -153,8 +159,10 @@ const EventPreview: FC = () => {
         </button>
         <button
           onClick={() => {
-            setCursor(next);
-            queryClient.invalidateQueries(["preview_events"]);
+            if (next !== null) {
+              setCursor(next);
+              queryClient.invalidateQueries(["preview_events"]);
+            }
           }}
         >
           <svg
