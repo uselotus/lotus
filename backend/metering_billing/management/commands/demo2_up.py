@@ -38,7 +38,9 @@ class Command(BaseCommand):
             Organization.objects.get(company_name="demo2").delete()
         except Organization.DoesNotExist:
             print("organization doesn't exist")
-        user, created = User.objects.get_or_create(username="demo2", email="demo2@demo2.com")
+        user, created = User.objects.get_or_create(
+            username="demo2", email="demo2@demo2.com"
+        )
         if created:
             user.set_password("demo2")
             user.save()
@@ -109,7 +111,7 @@ class Command(BaseCommand):
             plan_name="Free Plan",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         free_bp = PlanVersion.objects.create(
             organization=organization,
@@ -134,7 +136,7 @@ class Command(BaseCommand):
             plan_name="40K Words Plan",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_40_og = PlanVersion.objects.create(
             organization=organization,
@@ -160,7 +162,7 @@ class Command(BaseCommand):
             plan_name="100K Words Plan",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_100_og = PlanVersion.objects.create(
             organization=organization,
@@ -185,7 +187,7 @@ class Command(BaseCommand):
             plan_name="300K Words Plan",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_300_og = PlanVersion.objects.create(
             organization=organization,
@@ -210,7 +212,7 @@ class Command(BaseCommand):
             plan_name="40K Words Plan - UB Language + Seats",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_40_language_seats = PlanVersion.objects.create(
             organization=organization,
@@ -243,7 +245,7 @@ class Command(BaseCommand):
             plan_name="100K Words Plan - UB Language + Seats",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_100_language_seats = PlanVersion.objects.create(
             organization=organization,
@@ -275,7 +277,7 @@ class Command(BaseCommand):
             plan_name="300K Words Plan - UB Language + Seats",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_300_language_seats = PlanVersion.objects.create(
             organization=organization,
@@ -304,7 +306,7 @@ class Command(BaseCommand):
             plan_name="40K Words Plan - UB Calls + Content Types",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_40_calls_subsections = PlanVersion.objects.create(
             organization=organization,
@@ -337,7 +339,7 @@ class Command(BaseCommand):
             plan_name="100K Words Plan - UB Calls + Content Types",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_100_calls_subsections = PlanVersion.objects.create(
             organization=organization,
@@ -370,7 +372,7 @@ class Command(BaseCommand):
             plan_name="300K Words Plan - UB Calls + Content Types",
             organization=organization,
             plan_duration=PLAN_DURATION.MONTHLY,
-            status = PLAN_STATUS.ACTIVE,
+            status=PLAN_STATUS.ACTIVE,
         )
         bp_300_calls_subsections = PlanVersion.objects.create(
             organization=organization,
@@ -399,9 +401,7 @@ class Command(BaseCommand):
         )
         bp_300_calls_subsections.components.add(pc1, pc2, pc3)
         bp_300_calls_subsections.save()
-        six_months_ago = (
-            now_utc() - relativedelta(months=6) - relativedelta(days=5)
-        )
+        six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
         for i, customer in enumerate(big_customers):
             beginning = six_months_ago
             offset = np.random.randint(0, 30)

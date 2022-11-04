@@ -567,7 +567,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 target=instance.billing_plan,
             )
         except:
-            pass        
+            pass
 
     def get_serializer_class(self):
         if self.action == "partial_update":

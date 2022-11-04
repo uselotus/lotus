@@ -2,6 +2,7 @@ import abc
 import datetime
 from typing import Optional
 
+from dateutil import parser
 from django.apps import apps
 from django.db.models import (
     Avg,
@@ -96,6 +97,10 @@ class AggregationHandler(BillableMetricHandler):
         self, granularity, start_date, end_date, customer=None, billable_only=False
     ):
         now = now_utc()
+        if type(start_date) == str:
+            start_date = parser.parse(start_date)
+        if type(end_date) == str:
+            end_date = parser.parse(end_date)
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
@@ -116,7 +121,7 @@ class AggregationHandler(BillableMetricHandler):
         if granularity != REVENUE_CALC_GRANULARITY.TOTAL:
             groupby_kwargs["time_created_truncated"] = Trunc(
                 expression=F("time_created"),
-                kind=granularity.value,
+                kind=granularity,
                 output_field=DateTimeField(),
             )
         else:
@@ -293,6 +298,10 @@ class StatefulHandler(BillableMetricHandler):
         # the min or the max when this combination of TOTAL granularity and not billable_only is
         # set.
         now = now_utc()
+        if type(start_date) == str:
+            start_date = parser.parse(start_date)
+        if type(end_date) == str:
+            end_date = parser.parse(end_date)
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
@@ -313,7 +322,7 @@ class StatefulHandler(BillableMetricHandler):
         if granularity != REVENUE_CALC_GRANULARITY.TOTAL:
             groupby_kwargs["time_created_truncated"] = Trunc(
                 expression=F("time_created"),
-                kind=granularity.value,
+                kind=granularity,
                 output_field=DateTimeField(),
             )
         else:
@@ -367,14 +376,16 @@ class StatefulHandler(BillableMetricHandler):
                 latest_in_period_usages[cust] = {}
             latest_in_period_usages[cust][tc_trunc] = usage_qty
         # grab pre-query initial values
+        filter_kwargs = {
+            "organization": self.organization,
+            "event_name": self.event_name,
+            "time_created__lt": start_date,
+            "properties__has_key": self.property_name,
+        }
+        if customer:
+            filter_kwargs["customer"] = customer
         last_usage = (
-            Event.objects.filter(
-                organization=self.organization,
-                event_name=self.event_name,
-                time_created__lt=start_date,
-                customer=customer,
-                properties__has_key=self.property_name,
-            )
+            Event.objects.filter(**filter_kwargs)
             .annotate(customer_name=F("customer__customer_name"))
             .order_by("customer_name", "-time_created")
             .distinct("customer_name")

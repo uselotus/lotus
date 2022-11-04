@@ -302,7 +302,7 @@ def run_backtest(backtest_id):
         cum_rev_lst = sorted(cum_rev.items(), key=lambda x: x[0], reverse=True)
         date_cumrev_list = []
         for date, cum_rev_dict in cum_rev_lst:
-            date_cumrev_list.append((date.date(),cum_rev_dict))
+            date_cumrev_list.append((date.date(), cum_rev_dict))
         cum_rev_lst = date_cumrev_list
         every_date = list(dates_bwn_two_dts(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
         date, rev_dict = cum_rev_lst.pop(-1)
