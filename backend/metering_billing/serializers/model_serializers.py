@@ -796,7 +796,7 @@ class PlanSerializer(serializers.ModelSerializer):
     external_links = ExternalPlanLinkSerializer(many=True, read_only=True)
 
     def get_created_by(self, obj) -> str:
-        if obj.created_by != None:
+        if obj.created_by:
             return obj.created_by.username
         else:
             return None
