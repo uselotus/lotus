@@ -28,7 +28,7 @@ class BacktestCreateSerializer(serializers.ModelSerializer):
         fields = ("start_date", "end_date", "substitutions", "kpis", "backtest_name")
 
     kpis = serializers.ListSerializer(
-        child=serializers.ChoiceField(choices=[x.value for x in BACKTEST_KPI]),
+        child=serializers.ChoiceField(choices=BACKTEST_KPI.choices),
         required=True,
     )
     substitutions = serializers.ListSerializer(

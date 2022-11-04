@@ -190,7 +190,6 @@ class PeriodSubscriptionsView(APIView):
             return_dict[f"period_{i+1}_new_subscriptions"] = sum(
                 [1 for k, v in seen_dict.items() if v]
             )
-
         serializer = PeriodSubscriptionsResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
@@ -274,6 +273,17 @@ class PeriodMetricUsageView(APIView):
                 }
                 for k, v in metric_d["data"].items()
             ]
+            if metric_dict["top_n_customers"]:
+                for date_dict in metric_d["data"]:
+                    new_dict = {}
+                    for customer, usage in date_dict["customer_usages"].items():
+                        if customer not in metric_dict["top_n_customers"]:
+                            if "Other" not in new_dict:
+                                new_dict["Other"] = 0
+                            new_dict["Other"] += usage
+                        else:
+                            new_dict[customer] = usage
+                    date_dict["customer_usages"] = new_dict
             metric_d["data"] = sorted(metric_d["data"], key=lambda x: x["date"])
         return_dict = {"metrics": return_dict}
         serializer = PeriodMetricUsageResponseSerializer(data=return_dict)

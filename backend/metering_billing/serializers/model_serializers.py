@@ -618,7 +618,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
     created_by = serializers.SerializerMethodField(read_only=True)
 
     def get_created_by(self, obj) -> str:
-        if obj.created_by:
+        if obj.created_by != None:
             return obj.created_by.username
         else:
             return None
@@ -796,7 +796,10 @@ class PlanSerializer(serializers.ModelSerializer):
     external_links = ExternalPlanLinkSerializer(many=True, read_only=True)
 
     def get_created_by(self, obj) -> str:
-        return obj.created_by.username
+        if obj.created_by:
+            return obj.created_by.username
+        else:
+            return None
 
     def get_num_versions(self, obj) -> int:
         return len(obj.version_numbers())

@@ -33,7 +33,7 @@ const Dashboard: FC = () => {
         dateRange[0].format("YYYY-MM-DD"),
         dateRange[1].format("YYYY-MM-DD"),
         dateRange[0]
-          .subtract(dayjs.duration(dateRange[0].diff(dateRange[1])))
+          .subtract(dayjs.duration(dateRange[1].diff(dateRange[0])))
           .format("YYYY-MM-DD"),
         dateRange[1].subtract(1, "month").format("YYYY-MM-DD")
       ).then((res) => {

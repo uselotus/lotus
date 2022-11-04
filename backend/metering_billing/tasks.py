@@ -24,6 +24,8 @@ from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
 from metering_billing.utils import (
+    date_as_max_dt,
+    date_as_min_dt,
     dates_bwn_two_dts,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
@@ -174,14 +176,16 @@ def run_backtest(backtest_id):
     backtest_substitutions = backtest.backtest_substitutions.all()
     queries = [Q(billing_plan=x.original_plan) for x in backtest_substitutions]
     query = queries.pop()
+    start_date = date_as_min_dt(backtest.start_date)
+    end_date = date_as_max_dt(backtest.end_date)
     for item in queries:
         query |= item
     all_subs_time_period = (
         Subscription.objects.filter(
             query,
-            start_date__lte=backtest.end_date,
-            end_date__gte=backtest.start_date,
-            end_date__lte=backtest.end_date,
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+            end_date__lte=end_date,
             organization=backtest.organization,
         )
         .prefetch_related("billing_plan")
@@ -192,14 +196,14 @@ def run_backtest(backtest_id):
     }
     for subst in backtest_substitutions:
         outer_results = {
-            "substitution_name": f"{subst.original_plan.name} --> {subst.new_plan.name}",
+            "substitution_name": f"{str(subst.original_plan)} --> {str(subst.new_plan)}",
             "original_plan": {
-                "plan_name": subst.original_plan.name,
+                "plan_name": str(subst.original_plan),
                 "plan_id": subst.original_plan.version_id,
                 "plan_revenue": Decimal(0),
             },
             "new_plan": {
-                "plan_name": subst.new_plan.name,
+                "plan_name": str(subst.new_plan),
                 "plan_id": subst.new_plan.version_id,
                 "plan_revenue": Decimal(0),
             },
@@ -296,6 +300,10 @@ def run_backtest(backtest_id):
         cum_rev_dict_list = []
         cum_rev = inner_results.pop("cumulative_revenue")
         cum_rev_lst = sorted(cum_rev.items(), key=lambda x: x[0], reverse=True)
+        date_cumrev_list = []
+        for date, cum_rev_dict in cum_rev_lst:
+            date_cumrev_list.append((date.date(), cum_rev_dict))
+        cum_rev_lst = date_cumrev_list
         every_date = list(dates_bwn_two_dts(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
         date, rev_dict = cum_rev_lst.pop(-1)
         last_dict = {**rev_dict, "date": date}

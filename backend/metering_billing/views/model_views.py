@@ -560,7 +560,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         instance = serializer.save(organization=parse_organization(self.request))
         try:
             user = self.request.user
-            print(user)
             action.send(
                 user,
                 verb="subscribed",
@@ -568,7 +567,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 target=instance.billing_plan,
             )
         except:
-            user = None
+            pass
 
     def get_serializer_class(self):
         if self.action == "partial_update":
