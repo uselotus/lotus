@@ -9,9 +9,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         # Create schedules
-        every_day_at_6_am, _ = CrontabSchedule.objects.get_or_create(
-            minute="0", hour="6", day_of_week="*", day_of_month="*", month_of_year="*"
-        )
         every_hour, _ = IntervalSchedule.objects.get_or_create(
             every=1,
             period=IntervalSchedule.HOURS,
@@ -25,7 +22,7 @@ class Command(BaseCommand):
         PeriodicTask.objects.update_or_create(
             name="Check end of subscriptions",
             task="metering_billing.tasks.calculate_invoice",
-            defaults={"crontab": every_day_at_6_am},
+            defaults={"interval": every_hour, "crontab": None},
         )
 
         PeriodicTask.objects.update_or_create(
