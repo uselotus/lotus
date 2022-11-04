@@ -20,3 +20,24 @@ export interface OrganizationType {
   payment_provider_ids: object;
   users: UserType[];
 }
+
+export interface ActionUserType extends UserType {
+  string_repr: string;
+}
+
+export interface Action {
+  id: number;
+  actor: ActionUserType;
+  verb: any;
+  action_object: any;
+  target: any;
+  public: boolean;
+  description: string;
+  timestamp: string;
+}
+
+export interface PaginatedActionsType {
+  next: string;
+  previous: string;
+  results: Action[];
+}
