@@ -130,7 +130,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   }, [customerArray, totals]);
 
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
-    ["plans"],
+    ["plan_list"],
     () =>
       Plan.getPlans().then((res) => {
         return res;
