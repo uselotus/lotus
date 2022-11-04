@@ -13,7 +13,9 @@ export const FeatureDisplay: FC<{
       {planFeatures.map((feature) => (
         <div className=" py-2 bg-[#FAFAFA] rounded planComponent mr-4 mb-2">
           <div className="planDetails planComponentMetricName px-4 justify-between">
-            <div className="pr-1">{feature.feature_name}</div>
+            <div className="pr-1 font-main font-bold">
+              {feature.feature_name}
+            </div>
             <Button
               size="small"
               type="text"

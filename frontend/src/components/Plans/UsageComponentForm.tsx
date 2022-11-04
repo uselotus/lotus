@@ -198,11 +198,11 @@ function UsageComponentForm({
           <div>
             <p>Price per unit</p>
             <div className="grid grid-cols-2 space-x-4 mt-4">
-              <div className="flex  align-middle">
+              <div className="flex align-middle">
                 <Form.Item name="cost_per_batch" labelAlign="right">
                   <InputNumber addonBefore="$" defaultValue={0} precision={4} />
                 </Form.Item>
-                <p className="pt-1 px-2">Per</p>
+                <p className="px-2">Per</p>
                 <Form.Item name="metric_units_per_batch">
                   <InputNumber<string>
                     addonAfter="units"

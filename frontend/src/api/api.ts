@@ -18,6 +18,11 @@ import {
     ArchivePlanVersionType,
     PlanVersionUpdateDescriptionType, CreatePlanExternalLinkType, InitialExternalLinks,
 } from "../types/plan-type";
+import {
+  PaymentProcessorConnectionResponseType,
+  PaymentProcessorStatusType,
+  PaymentProcessorConnectionRequestType,
+} from "../types/payment-processor-type";
 import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -30,7 +35,11 @@ import {
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
-import { CreateOrgAccountType } from "../types/account-type";
+import {
+  CreateOrgAccountType,
+  OrganizationType,
+  PaginatedActionsType,
+} from "../types/account-type";
 import { FeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
 import {
@@ -42,11 +51,12 @@ import {Source, StripeDetails, StripeImportCustomerResponse, TransferSub} from "
 
 const cookies = new Cookies();
 
-const API_HOST = import.meta.env.VITE_API_URL;
-
 axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
 )}`;
+
+console.log(111);
+const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
 // axios.defaults.xsrfCookieName = "csrftoken";
@@ -187,9 +197,11 @@ export const Authentication = {
 };
 
 export const Organization = {
-  invite: (email): Promise<{ email: string }> =>
+  invite: (email: string): Promise<{ email: string }> =>
     requests.post("api/organization/invite/", { email }),
-  get: (): Promise<any> => requests.get("api/organization"),
+  get: (): Promise<OrganizationType[]> => requests.get("api/organization/"),
+  getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
+    requests.get("api/actions/", { params: { c: cursor } }),
 };
 
 export const GetRevenue = {
@@ -284,4 +296,14 @@ export const Stripe = {
     //transfer Subscription
     transferSubscriptions:(post:TransferSub): Promise<StripeImportCustomerResponse> =>
         requests.post("api/transfer_subscriptions/", post),
+};
+
+export const PaymentProcessorIntegration = {
+  getPaymentProcessorConnectionStatus: (): Promise<
+    PaymentProcessorStatusType[]
+  > => requests.get("api/payment_providers/"),
+  connectPaymentProcessor: (
+    pp_info: PaymentProcessorConnectionRequestType
+  ): Promise<PaymentProcessorConnectionResponseType> =>
+    requests.post("api/payment_providers/", { pp_info }),
 };

@@ -121,6 +121,7 @@ const SubscriptionView: FC<Props> = ({
         },
         [] as { label: string; value: string }[]
       );
+      console.log(plans, newplanList);
       setPlanList(newplanList);
     }
   }, [plans]);

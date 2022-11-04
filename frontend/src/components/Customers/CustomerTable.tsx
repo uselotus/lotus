@@ -24,6 +24,9 @@ import CustomerDetail from "./CustomerDetail";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
+    width: 10,
+  },
+  {
     title: "Customer ID",
     width: 120,
 
@@ -130,7 +133,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   }, [customerArray, totals]);
 
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
-    ["plans"],
+    ["plan_list"],
     () =>
       Plan.getPlans().then((res) => {
         return res;

@@ -5,6 +5,36 @@ info:
   description: Lotus is an open-core pricing and billing engine. We enable API companies
     to automate and optimize their custom usage-based pricing for any metric.
 paths:
+  /api/actions/:
+    get:
+      operationId: actions_list
+      description: API endpoint that allows events to be viewed.
+      parameters:
+      - name: c
+        required: false
+        in: query
+        description: The pagination cursor value.
+        schema:
+          type: string
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - actions
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedActionList'
+          description: ''
   /api/backtests/:
     get:
       operationId: backtests_list
@@ -797,10 +827,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/APIKeyCreateSuccess'
           description: ''
-  /api/organization:
+  /api/organization/:
     get:
-      operationId: organization_retrieve
-      description: Get the current settings for the organization.
+      operationId: organization_list
+      description: A simple ViewSet for viewing and editing OrganizationSettings.
       tags:
       - organization
       security:
@@ -809,7 +839,13 @@ paths:
         TokenAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+          description: ''
   /api/organization/invite/:
     post:
       operationId: organization_invite_create
@@ -1747,6 +1783,39 @@ components:
           type: string
       required:
       - api_key
+    Action:
+      type: object
+      description: DRF serializer for :class:`~activity.models.Action`.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        actor:
+          type: string
+          readOnly: true
+        verb:
+          type: string
+          maxLength: 255
+        action_object:
+          type: string
+          readOnly: true
+        target:
+          type: string
+          readOnly: true
+        public:
+          type: boolean
+        description:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+      required:
+      - action_object
+      - actor
+      - id
+      - target
+      - verb
     AggregationTypeEnum:
       enum:
       - count
@@ -2285,30 +2354,17 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
-        source:
-          $ref: '#/components/schemas/SourceEnum'
         external_plan_id:
           type: string
           maxLength: 100
+        source:
+          $ref: '#/components/schemas/SourceEnum'
       required:
       - external_plan_id
       - source
     InitialPlanVersion:
       type: object
       properties:
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustment'
         features:
@@ -2316,30 +2372,43 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        active_subscriptions:
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        version:
           type: integer
           readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
         created_by:
           type: string
           readOnly: true
         version_id:
           type: string
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        created_on:
-          type: string
-          format: date-time
           readOnly: true
       required:
       - active_subscriptions
@@ -2469,6 +2538,26 @@ components:
       - lt
       - lte
       type: string
+    Organization:
+      type: object
+      properties:
+        company_name:
+          type: string
+          maxLength: 100
+        payment_plan:
+          $ref: '#/components/schemas/PaymentPlanEnum'
+        payment_provider_ids:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationUser'
+          readOnly: true
+      required:
+      - company_name
+      - users
     OrganizationSetting:
       type: object
       properties:
@@ -2490,6 +2579,43 @@ components:
       - setting_id
       - setting_name
       - setting_value
+    OrganizationUser:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        role:
+          type: string
+          readOnly: true
+        status:
+          type: string
+          readOnly: true
+      required:
+      - email
+      - role
+      - status
+      - username
+    PaginatedActionList:
+      type: object
+      properties:
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
     PaginatedEventList:
       type: object
       properties:
@@ -2554,6 +2680,12 @@ components:
           allOf:
           - $ref: '#/components/schemas/ReplaceImmediatelyTypeEnum'
           writeOnly: true
+    PaymentPlanEnum:
+      enum:
+      - self_hosted_free
+      - cloud
+      - self_hosted_enterprise
+      type: string
     PaymentProcessorEnum:
       enum:
       - stripe
@@ -2810,33 +2942,34 @@ components:
     PlanDetail:
       type: object
       properties:
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
-        product_id:
-          type: string
-          nullable: true
-        plan_name:
+        plan_id:
           type: string
           maxLength: 100
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        num_versions:
-          type: integer
-          readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        active_subscriptions:
+        product_id:
+          type: string
+          nullable: true
+        num_versions:
           type: integer
           readOnly: true
         versions:
@@ -2844,21 +2977,20 @@ components:
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        created_by:
-          type: string
-          readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
         created_on:
           type: string
           format: date-time
           readOnly: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        active_subscriptions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by

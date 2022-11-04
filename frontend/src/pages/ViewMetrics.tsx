@@ -53,6 +53,12 @@ const ViewMetrics: FC = () => {
           position: toast.POSITION.TOP_CENTER,
         });
       },
+
+      onError: () => {
+        toast.error("Error creating metric", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
     }
   );
   const createMetricButton = () => {

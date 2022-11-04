@@ -21,6 +21,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, track
 from metering_billing.views.model_views import (
+    ActionViewSet,
     BacktestViewSet,
     BillableMetricViewSet,
     CustomerViewSet,
@@ -72,6 +73,7 @@ router.register(r"products", ProductViewSet, basename="product")
 router.register(r"plans", PlanViewSet, basename="plan")
 router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")
+router.register(r"actions", ActionViewSet, basename="action")
 router.register(
     r"external_plan_link", ExternalPlanLinkViewSet, basename="external_plan_links"
 )
@@ -79,6 +81,9 @@ router.register(
     r"organization_settings",
     OrganizationSettingViewSet,
     basename="organization_setting",
+)
+router.register(
+    r"organization", organization_views.OrganizationViewSet, basename="organization"
 )
 
 
@@ -171,11 +176,6 @@ urlpatterns = [
         "api/organization/invite/",
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
-    ),
-    path(
-        "api/organization",
-        organization_views.OrganizationView.as_view(),
-        name="organization",
     ),
 ]
 

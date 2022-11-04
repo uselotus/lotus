@@ -19,12 +19,12 @@ const TeamTab: FC = () => {
   const [email, setEmail] = useState("");
 
   const {
-    data: organization,
+    data: organization, // organization is the data returned from the query
     isLoading,
     isError,
   } = useQuery(["organization"], () =>
     Organization.get().then((res) => {
-      return res;
+      return res[0];
     })
   );
 
@@ -101,19 +101,19 @@ const TeamTab: FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {organization?.team_members?.map((person, key) => (
+                      {organization?.users?.map((person) => (
                         <tr key={person.email}>
                           <td className="whitespace-nowrap py-4 pl-4 pr-3  text-gray-900 sm:pl-6 lg:pl-8">
-                            {"N/A"}
+                            {person.username}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-gray-500">
-                            {person}
+                            {person.email}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-gray-500">
-                            {"Admin"}
+                            {person.role}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-gray-500">
-                            <Tag>{"Joined"}</Tag>
+                            <Tag>{person.status}</Tag>
                           </td>
                           {/* <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right  sm:pr-6 lg:pr-8">
                             <a

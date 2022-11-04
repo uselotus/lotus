@@ -6,7 +6,7 @@ from metering_billing.models import OrganizationInviteToken
 from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.utils import now_plus_day
-from rest_framework import status
+from rest_framework import mixins, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,19 +15,34 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
 
-class OrganizationView(APIView):
-    permission_classes = [IsAuthenticated]
+class OrganizationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    A simple ViewSet for viewing and editing OrganizationSettings.
+    """
 
-    def get(self, request, format=None):
-        """
-        Get the current settings for the organization.
-        """
-        organization = parse_organization(request)
-        team_members = organization.org_users.all().values_list("email", flat=True)
-        return Response(
-            {"organization": organization.company_name, "team_members": team_members},
-            status=status.HTTP_200_OK,
-        )
+    serializer_class = OrganizationSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "head"]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return Organization.objects.filter(pk=organization.pk)
+
+
+# class OrganizationView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request, format=None):
+#         """
+#         Get the current settings for the organization.
+#         """
+#         organization = parse_organization(request)
+#         OrganizationSerializer(organization).data
+#         team_members = organization.org_users.all().values_list("email", flat=True)
+#         return Response(
+#             {"organization": organization.company_name, "team_members": team_members},
+#             status=status.HTTP_200_OK,
+#         )
 
 
 class InviteView(APIView):

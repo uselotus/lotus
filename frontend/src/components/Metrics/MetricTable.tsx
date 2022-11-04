@@ -14,6 +14,10 @@ const colorMap = new Map<string, string>([
   ["count", "green"],
   ["sum", "blue"],
   ["max", "pink"],
+  ["min", "purple"],
+  ["latest", "orange"],
+  ["average", "cyan"],
+  ["unique", "geekblue"],
 ]);
 
 interface Props {
@@ -25,6 +29,9 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
   const formRef = useRef<ProFormInstance>();
 
   const columns: ProColumns<MetricType>[] = [
+    {
+      width: 10,
+    },
     {
       title: "Metric Name",
       width: 150,

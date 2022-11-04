@@ -1,3 +1,4 @@
+from actstream.models import Action
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
@@ -11,6 +12,7 @@ from metering_billing.models import (
     Invoice,
     NumericFilter,
     Organization,
+    OrganizationInviteToken,
     OrganizationSetting,
     Plan,
     PlanComponent,
@@ -21,7 +23,7 @@ from metering_billing.models import (
     User,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import calculate_end_date
+from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
@@ -34,15 +36,60 @@ from rest_framework import serializers
 from .serializer_utils import SlugRelatedFieldWithOrganization
 
 
+class OrganizationUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "email", "role", "status")
+
+    role = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_role(self, obj) -> str:
+        return "Admin"
+
+    def get_status(self, obj) -> str:
+        return "Active"
+
+
+class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("email", "role", "status")
+
+    role = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_role(self, obj) -> str:
+        return "Admin"
+
+    def get_status(self, obj) -> str:
+        return "Invited"
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
-            "id",
             "company_name",
             "payment_plan",
             "payment_provider_ids",
+            "users",
         )
+
+    users = serializers.SerializerMethodField()
+
+    def get_users(self, obj) -> OrganizationUserSerializer(many=True):
+        users = User.objects.filter(organization=obj)
+        users_data = list(OrganizationUserSerializer(users, many=True).data)
+        now = now_utc()
+        invited_users = OrganizationInviteToken.objects.filter(
+            organization=obj, expire_at__gt=now
+        )
+        invited_users_data = OrganizationInvitedUserSerializer(
+            invited_users, many=True
+        ).data
+        invited_users_data = [{**x, "username": ""} for x in invited_users_data]
+        return users_data + invited_users_data
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -1005,6 +1052,140 @@ class ExperimentalToActiveRequestSerializer(serializers.Serializer):
         slug_field="version_id",
         read_only=False,
     )
+
+
+class SubscriptionActionSerializer(SubscriptionSerializer):
+    class Meta(SubscriptionSerializer.Meta):
+        model = Subscription
+        fields = SubscriptionSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.subscription_id
+
+    def get_object_type(self, obj):
+        return "Subscription"
+
+
+class UserActionSerializer(OrganizationUserSerializer):
+    class Meta(OrganizationUserSerializer.Meta):
+        model = User
+        fields = OrganizationUserSerializer.Meta.fields + ("string_repr",)
+
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.username
+
+
+class PlanVersionActionSerializer(PlanVersionSerializer):
+    class Meta(PlanVersionSerializer.Meta):
+        model = PlanVersion
+        fields = PlanVersionSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.plan.plan_name + " v" + str(obj.version)
+
+    def get_object_type(self, obj):
+        return "Plan Version"
+
+
+class PlanActionSerializer(PlanSerializer):
+    class Meta(PlanSerializer.Meta):
+        model = Plan
+        fields = PlanSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.plan_name
+
+    def get_object_type(self, obj):
+        return "Plan"
+
+
+class BillableMetricActionSerializer(BillableMetricSerializer):
+    class Meta(BillableMetricSerializer.Meta):
+        model = BillableMetric
+        fields = BillableMetricSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.billable_metric_name
+
+    def get_object_type(self, obj):
+        return "Metric"
+
+
+class CustomerActionSerializer(CustomerSerializer):
+    class Meta(CustomerSerializer.Meta):
+        model = Customer
+        fields = CustomerSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.customer_name
+
+    def get_object_type(self, obj):
+        return "Customer"
+
+
+GFK_MODEL_SERIALIZER_MAPPING = {
+    User: UserActionSerializer,
+    PlanVersion: PlanVersionActionSerializer,
+    Plan: PlanActionSerializer,
+    Subscription: SubscriptionActionSerializer,
+    BillableMetric: BillableMetricActionSerializer,
+    Customer: CustomerActionSerializer,
+}
+
+
+class ActivityGenericRelatedField(serializers.Field):
+    """
+    DRF Serializer field that serializers GenericForeignKey fields on the :class:`~activity.models.Action`
+    of known model types to their respective ActionSerializer implementation.
+    """
+
+    def to_representation(self, value):
+        serializer_cls = GFK_MODEL_SERIALIZER_MAPPING.get(type(value), None)
+        return (
+            serializer_cls(value, context=self.context).data
+            if serializer_cls
+            else str(value)
+        )
+
+
+class ActionSerializer(serializers.ModelSerializer):
+    """
+    DRF serializer for :class:`~activity.models.Action`.
+    """
+
+    actor = ActivityGenericRelatedField(read_only=True)
+    action_object = ActivityGenericRelatedField(read_only=True)
+    target = ActivityGenericRelatedField(read_only=True)
+
+    class Meta:
+        model = Action
+        fields = (
+            "id",
+            "actor",
+            "verb",
+            "action_object",
+            "target",
+            "public",
+            "description",
+            "timestamp",
+        )
 
 
 class OrganizationSettingSerializer(serializers.ModelSerializer):
