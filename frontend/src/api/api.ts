@@ -30,8 +30,11 @@ import {
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
-import { CreateOrgAccountType } from "../types/account-type";
-import { cancelSubscriptionType } from "../components/Customers/CustomerSubscriptionView";
+import {
+  CreateOrgAccountType,
+  OrganizationType,
+  PaginatedActionsType,
+} from "../types/account-type";
 import { FeatureType } from "../types/feature-type";
 import Cookies from "universal-cookie";
 import {
@@ -39,7 +42,6 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
-import { version } from "react";
 
 const cookies = new Cookies();
 
@@ -181,9 +183,11 @@ export const Authentication = {
 };
 
 export const Organization = {
-  invite: (email): Promise<{ email: string }> =>
+  invite: (email: string): Promise<{ email: string }> =>
     requests.post("api/organization/invite/", { email }),
-  get: (): Promise<any> => requests.get("api/organization"),
+  get: (): Promise<OrganizationType[]> => requests.get("api/organization/"),
+  getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
+    requests.get("api/actions/", { params: { c: cursor } }),
 };
 
 export const GetRevenue = {

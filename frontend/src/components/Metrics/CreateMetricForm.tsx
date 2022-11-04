@@ -1,5 +1,5 @@
 import { Modal, Form, Input, Select, Radio, Tooltip } from "antd";
-import { MetricType } from "../types/metric-type";
+import { MetricType } from "../../types/metric-type";
 import React, { Fragment, useEffect, useState } from "react";
 const { Option } = Select;
 
@@ -17,12 +17,6 @@ const CreateMetricForm = (props: {
 }) => {
   const [form] = Form.useForm();
   const [eventType, setEventType] = useState("");
-
-  // useEffect(() => {
-  //   if (props.visible === false) {
-  //     form.resetFields();
-  //   }
-  // }, [props.visible]);
 
   form.setFieldsValue({
     event_name: props.state.event_name,

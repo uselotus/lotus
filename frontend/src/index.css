@@ -7,7 +7,7 @@
 
 @supports (font-variation-settings: normal) {
   html {
-    font-size: 16px;
+    font-size: 14px;
     font-family: "Satoshi", sans-serif;
   }
 }

@@ -3,19 +3,19 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Dashboard from "../components/Dashboard/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
-import SettingsPage from "../pages/settings/SettingsPage";
+import SettingsPage from "../pages/SettingsPage";
 import StripeRedirect from "../integrations/PaymentProcessorIntegrations";
 import SideBar from "../components/SideBar";
 import { Avatar, Col, Divider, Layout, PageHeader, Row } from "antd";
 import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import CreatePlan from "../pages/CreatePlan";
 import ViewMetrics from "../pages/ViewMetrics";
-import EditPlan from "../pages/EditPlan";
 import ViewExperiments from "../pages/ViewExperiments";
 import CreateBacktest from "../pages/CreateBacktest";
 import ExperimentResults from "../pages/ExperimentResults";
 import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
+import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -66,6 +66,10 @@ const AppRoutes: FC = () => {
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/settings/stripe"
+              element={<StripeIntegrationView />}
+            />
             <Route path="/redirectstripe" element={<StripeRedirect />} />
             <Route path="/experiments" element={<ViewExperiments />} />
             <Route path="/experiment">

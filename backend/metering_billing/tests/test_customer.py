@@ -128,6 +128,7 @@ def insert_customer_payload():
 
 
 @pytest.mark.django_db(transaction=True)
+@pytest.mark.usefixtures("turn_off_stripe_connection")
 class TestInsertCustomer:
     """Testing the POST of Customer endpoint:
     POST: Return list of customers associated with the organization with API key / user.
@@ -139,7 +140,10 @@ class TestInsertCustomer:
     """
 
     def test_api_key_can_create_customer_empty_before(
-        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
+        self,
+        customer_test_common_setup,
+        insert_customer_payload,
+        get_customers_in_org,
     ):
         # covers num_customers_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
         num_customers = 0

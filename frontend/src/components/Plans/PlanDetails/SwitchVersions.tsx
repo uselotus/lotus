@@ -106,7 +106,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           to={"/create-version/" + selectedVersion.plan_id}
           className="mx-4"
         >
-          <div className="flex items-center justify-center hover:bg-background">
+          <div className="flex items-center justify-center px-2 py-2 rounded-[20px] hover:bg-[#EAEAEB]">
             <div className="addVersionButton">
               <PlusOutlined />
             </div>
@@ -205,7 +205,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           <div className="pb-5 pt-3 font-main font-bold text-[20px]">
             Price Adjustments:
           </div>
-          <div className="mb-5 mt-3 px-4 font-main font-bold text-[20px] bg-background self-center">
+          <div className="mb-5 mt-3 px-4 font-main font-bold text-[20px] self-center">
             {getPriceAdjustmentEnding(
               selectedVersion.price_adjustment?.price_adjustment_type,
               selectedVersion.price_adjustment?.price_adjustment_amount

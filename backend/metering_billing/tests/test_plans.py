@@ -152,7 +152,6 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_version_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert PlanVersion.objects.all().count() == 2
         assert set(PlanVersion.objects.values_list("version", flat=True)) == set([1, 2])

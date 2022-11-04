@@ -152,7 +152,7 @@ class Customer(models.Model):
         unique_together = ("organization", "customer_id")
 
     def __str__(self) -> str:
-        return str(self.name) + " " + str(self.customer_id)
+        return str(self.customer_name) + " " + str(self.customer_id)
 
     def save(self, *args, **kwargs):
         for k, v in self.integrations.items():
@@ -285,7 +285,7 @@ class BillableMetric(models.Model):
         null=False,
         related_name="org_billable_metrics",
     )
-    event_name = models.CharField(max_length=200, null=False)
+    event_name = models.CharField(max_length=200)
     property_name = models.CharField(max_length=200, blank=True, null=True)
     aggregation_type = models.CharField(
         max_length=10,
@@ -656,6 +656,7 @@ class Plan(models.Model):
         blank=True,
         related_name="custom_plans",
     )
+
     history = HistoricalRecords()
 
     class Meta:
@@ -768,6 +769,25 @@ class Plan(models.Model):
                         )
 
 
+class ExternalPlanLink(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="org_external_plan_links",
+    )
+    plan = models.ForeignKey(
+        Plan, on_delete=models.CASCADE, related_name="external_links"
+    )
+    source = models.CharField(choices=PAYMENT_PROVIDERS.choices, max_length=40)
+    external_plan_id = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.plan} - {self.source} - {self.external_plan_id}"
+
+    class Meta:
+        unique_together = ("organization", "source", "external_plan_id")
+
+
 class Subscription(models.Model):
     """
     Subscription object. An explanation of the Subscription's fields follows:
@@ -812,7 +832,7 @@ class Subscription(models.Model):
     )
     prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
     flat_fee_already_billed = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0
+        decimal_places=10, max_digits=20, default=Decimal(0)
     )
     history = HistoricalRecords()
 
@@ -829,7 +849,7 @@ class Subscription(models.Model):
             )
         if not self.scheduled_end_date:
             self.scheduled_end_date = self.end_date
-        if self.status == SUBSCRIPTION_STATUS.ACTIVE:
+        if self.status == SUBSCRIPTION_STATUS.ACTIVE or not self.pk:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
             dates_bwn = list(
@@ -901,7 +921,7 @@ class Subscription(models.Model):
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             invoice = generate_invoice(self)
-            self.flat_fee_already_billed += invoice.cost_due
+            self.flat_fee_already_billed += Decimal(invoice.cost_due)
 
 
 class Backtest(models.Model):
@@ -950,3 +970,49 @@ class BacktestSubstitution(models.Model):
 
     def __str__(self):
         return f"{self.backtest}"
+
+
+class OrganizationSetting(models.Model):
+    """
+    This model is used to store settings for an organization.
+    """
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="org_settings"
+    )
+    setting_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
+    setting_name = models.CharField(max_length=100, null=False, blank=False)
+    setting_value = models.CharField(max_length=100, null=False, blank=False)
+    setting_group = models.CharField(max_length=100, null=True, blank=True)
+    history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        if self.setting_value.lower() == "true":
+            self.setting_value = "true"
+        elif self.setting_value.lower() == "false":
+            self.setting_value = "false"
+        super(OrganizationSetting, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.setting_name} - {self.setting_value}"
+
+    class Meta:
+        unique_together = ("organization", "setting_name")
+        constraints = [
+            UniqueConstraint(
+                fields=[
+                    "organization",
+                    "setting_name",
+                    "setting_group",
+                ],
+                name="unique_with_group",
+            ),
+            UniqueConstraint(
+                fields=[
+                    "organization",
+                    "setting_name",
+                ],
+                condition=Q(setting_group=None),
+                name="unique_without_group",
+            ),
+        ]
