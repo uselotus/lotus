@@ -649,7 +649,7 @@ class ImportCustomersView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in PAYMENT_PROVIDERS.choices
+        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
             num = connector.import_customers(organization)
@@ -700,7 +700,7 @@ class ImportPaymentObjectsView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in PAYMENT_PROVIDERS.choices
+        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
             num = connector.import_payment_objects(organization)
@@ -753,7 +753,7 @@ class TransferSubscriptionsView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in PAYMENT_PROVIDERS.choices
+        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
         end_now = request.data.get("end_now", False)
         connector = PAYMENT_PROVIDER_MAP[source]
         try:

@@ -1,34 +1,18 @@
-import {
-  Button,
-  Checkbox,
-  Form,
-  Card,
-  Input,
-  InputNumber,
-  Row,
-  Col,
-  Radio,
-  Select,
-} from "antd";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {Button, Card, Col, Form, Input, InputNumber, Radio, Row, Select,} from "antd";
+// @ts-ignore
+import React, {useState} from "react";
+import {useNavigate} from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
-import { useMutation, useQuery, useQueryClient } from "react-query";
-import { toast } from "react-toastify";
+import {useMutation, useQueryClient} from "react-query";
+import {toast} from "react-toastify";
 
-import {
-  CreatePlanType,
-  CreateComponent,
-  CreateInitialVersionType,
-} from "../types/plan-type";
-import { Plan } from "../api/api";
-import { FeatureType } from "../types/feature-type";
+import {CreateComponent, CreateInitialVersionType, CreatePlanType, InitialExternalLinks,} from "../types/plan-type";
+import {Plan} from "../api/api";
+import {FeatureType} from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import LinkExternalIds from "../components/Plans/LinkExternalIds";
-// @ts-ignore
-import React from "react";
-import { PageLayout } from "../components/base/PageLayout";
-import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
+import {PageLayout} from "../components/base/PageLayout";
+import {ComponentDisplay} from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 
 interface ComponentDisplay {
@@ -161,6 +145,10 @@ const CreatePlan = () => {
     navigate(-1);
   };
 
+  const setExternalLinks = (links: string[]) => {
+      form.setFieldValue("initial_external_links", links)
+  }
+
   const submitPricingPlan = () => {
     form
       .validateFields()
@@ -203,6 +191,15 @@ const CreatePlan = () => {
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
+
+        const links = values.initial_external_links;
+        if(links?.length) {
+            plan.initial_external_links = links.map(link => (
+                {
+                    source: "stripe",
+                    external_plan_id: link
+                }))
+        }
         mutation.mutate(plan);
       })
       .catch((info) => {
@@ -322,10 +319,12 @@ const CreatePlan = () => {
                     </Form.Item>
 
                       <Form.Item
-                          name="flat_fee_billing_type"
+                          name="initial_external_links"
                           label="Link External ids"
                       >
-                          <LinkExternalIds externalIds={[]}/>
+                          <LinkExternalIds
+                              externalIds={[]}
+                              setExternalLinks={setExternalLinks}/>
                       </Form.Item>
                   </Card>
                 </Col>

@@ -20,6 +20,7 @@ export interface PlanType {
   display_version?: PlanVersionType;
   num_versions: number;
   active_subscriptions: number;
+  external_links?: InitialExternalLinks[];
 }
 
 export interface PlanDetailType extends Omit<PlanType, "display_version"> {
@@ -37,6 +38,10 @@ export interface CreatePlanVersionType {
   price_adjustment?: PriceAdjustment;
   make_active?: boolean;
   make_active_type?: string;
+}
+
+export interface CreatePlanExternalLinkType extends InitialExternalLinks {
+    plan_id: string,
 }
 
 export interface PriceAdjustment {
@@ -75,6 +80,12 @@ export interface CreatePlanType {
   initial_version: CreateInitialVersionType;
   parent_plan_id?: string;
   target_customer_id?: string;
+  initial_external_links?: InitialExternalLinks[];
+}
+
+export interface InitialExternalLinks {
+    source: string;
+    external_plan_id: string;
 }
 
 export interface CreateInitialVersionType extends CreatePlanVersionType {

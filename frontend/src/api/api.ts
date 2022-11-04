@@ -6,17 +6,17 @@ import {
   CustomerDetailType,
 } from "../types/customer-type";
 import {
-  PlanType,
-  CreatePlanType,
-  UpdatePlanType,
-  PlansByCustomerArray,
-  CreatePlanVersionType,
-  PlanDetailType,
-  PlanVersionType,
-  ReplaceLaterType,
-  ReplaceImmediatelyType,
-  ArchivePlanVersionType,
-  PlanVersionUpdateDescriptionType,
+    PlanType,
+    CreatePlanType,
+    UpdatePlanType,
+    PlansByCustomerArray,
+    CreatePlanVersionType,
+    PlanDetailType,
+    PlanVersionType,
+    ReplaceLaterType,
+    ReplaceImmediatelyType,
+    ArchivePlanVersionType,
+    PlanVersionUpdateDescriptionType, CreatePlanExternalLinkType, InitialExternalLinks,
 } from "../types/plan-type";
 import {
   PaymentProcessorConnectionResponseType,
@@ -47,6 +47,13 @@ import {
   BacktestType,
   BacktestResultType,
 } from "../types/experiment-type";
+import {
+    OrganizationSettingsParams, OrganizationSettings,
+    Source,
+    StripeDetails,
+    StripeImportCustomerResponse,
+    TransferSub, UpdateOrganizationSettingsParams
+} from "../types/stripe-type";
 
 const cookies = new Cookies();
 
@@ -54,7 +61,6 @@ axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
 )}`;
 
-console.log(111);
 const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
@@ -127,6 +133,13 @@ export const Plan = {
   //create plan version
   createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
     requests.post("api/plan_versions/", post),
+   //create plan external links
+  createExternalLinks: (post: CreatePlanExternalLinkType): Promise<InitialExternalLinks> =>
+     requests.post("api/external_plan_link/", post),
+  //delete plan external links
+  deleteExternalLinks: (post: InitialExternalLinks) :Promise<any> =>
+     requests.delete(`api/external_plan_link/${post.external_plan_id}/?source=${post.source}`),
+
   //update plans methods
   updatePlan: (
     plan_id: string,
@@ -273,6 +286,29 @@ export const Backtests = {
     requests.post("api/backtests/", post),
   getBacktestResults: (id: string): Promise<BacktestResultType> =>
     requests.get(`api/backtests/${id}/`),
+};
+
+export const Stripe = {
+
+    //Import Customers
+    importCustomers:(post:Source): Promise<StripeImportCustomerResponse> =>
+        requests.post("api/import_customers/", post),
+
+    //Import Payments
+    importPayments:(post:Source): Promise<StripeImportCustomerResponse> =>
+        requests.post("api/import_payment_objects/", post),
+
+    //transfer Subscription
+    transferSubscriptions:(post:TransferSub): Promise<StripeImportCustomerResponse> =>
+        requests.post("api/transfer_subscriptions/", post),
+
+    //Get Organization Settings
+    getOrganizationSettings:(data:OrganizationSettingsParams): Promise<OrganizationSettings[]> =>
+        requests.get("api/organization_settings/", { params: data  }),
+
+    //Update Organization Settings
+    updateOrganizationSettings:(data:UpdateOrganizationSettingsParams): Promise<OrganizationSettings> =>
+        requests.patch(`api/organization_settings/${data.setting_id}/`, { setting_value: data.setting_value}),
 };
 
 export const PaymentProcessorIntegration = {

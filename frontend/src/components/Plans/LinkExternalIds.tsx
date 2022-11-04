@@ -6,9 +6,12 @@ import React, { useEffect, useRef, useState } from 'react';
 
 interface LinkExternalIdsProps {
     externalIds:string[]
+    setExternalLinks?:(links: string[]) => void
+    createExternalLink?:(link) => void
+    deleteExternalLink?:(link) => void
 }
 
-const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({externalIds}) => {
+const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({externalIds, setExternalLinks, createExternalLink, deleteExternalLink}) => {
     const [tags, setTags] = useState<string[]>(externalIds);
     const [inputVisible, setInputVisible] = useState(false);
     const [inputValue, setInputValue] = useState('');
@@ -28,6 +31,8 @@ const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({externalIds}) => {
     const handleClose = (removedTag: string) => {
         const newTags = tags.filter(tag => tag !== removedTag);
         setTags(newTags);
+        setExternalLinks && setExternalLinks(newTags);
+        deleteExternalLink && deleteExternalLink(removedTag);
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,7 +41,10 @@ const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({externalIds}) => {
 
     const handleInputConfirm = () => {
         if (inputValue && tags.indexOf(inputValue) === -1) {
-            setTags([...tags, inputValue]);
+            const links = [...tags, inputValue]
+            setTags(links);
+            setExternalLinks && setExternalLinks(links)
+            createExternalLink && createExternalLink(inputValue)
         }
         setInputVisible(false);
         setInputValue('');

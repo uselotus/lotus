@@ -855,7 +855,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
             ),
         ],
     )
-    def destroy(self, request):
+    def destroy(self, request, *args, **kwargs):
         return super().destroy(request)
 
 
