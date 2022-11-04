@@ -7,6 +7,7 @@ import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
 import { Plan } from "../../../api/api";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 interface PlanCardProps {
   plan: PlanType;
 }
@@ -24,6 +25,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
+        toast.success("Plan archived");
       },
     }
   );

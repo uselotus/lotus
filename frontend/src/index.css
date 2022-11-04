@@ -33,7 +33,7 @@ h1 {
 }
 
 h2 {
-  font-size: 20px;
+  font-size: 26px;
   line-height: 100%;
   color: #1d1d1f;
   font-weight: 700;
@@ -152,9 +152,10 @@ a {
   width: 75%;
 }
 
-.ant-picker-ranges > .ant-picker-preset {
+.ant-picker-ranges .ant-picker-preset > .ant-tag-blue [id="preset"] {
   background: none;
-  border-color: #1d1d1d;
+  border-color: #cca43b;
+  color: #1d1d1d;
 }
 
 /**

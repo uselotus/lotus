@@ -1,5 +1,5 @@
 import React, { FC, useState, useEffect, useRef } from "react";
-import { useQuery, UseQueryResult } from "react-query";
+import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { List, Descriptions, Collapse } from "antd";
 import { EventPreviewType, EventPages } from "../types/event-type";
 import { Events } from "../api/api";
@@ -12,12 +12,12 @@ const EventPreview: FC = () => {
   const [c, setCursor] = useState<string>("");
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
+  const queryClient = useQueryClient();
 
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
     ["preview events", c],
     () =>
       Events.getEventPreviews(c).then((res) => {
-        setCursor(c);
         setNext(decodeURIComponent(res.next));
         setPrev(decodeURIComponent(res.previous));
         return res;
@@ -38,11 +38,57 @@ const EventPreview: FC = () => {
     return (
       <div className="align-center">
         <h3 className="text-xl font-main align-center">No Events</h3>
+        <div className="separator mb-5 mt-5" />
+
+        <div className="flex justify-end space-x-4">
+          <button
+            onClick={() => {
+              setCursor(previous);
+              queryClient.invalidateQueries(["preview_events"]);
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              setCursor(next);
+              queryClient.invalidateQueries(["preview_events"]);
+            }}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
     );
   }
   return (
-    <div className="w-full">
+    <div className="w-full flex">
       <Collapse expandIconPosition="end" bordered={false}>
         {data.results.map((event) => (
           <Panel
@@ -81,6 +127,52 @@ const EventPreview: FC = () => {
           </Panel>
         ))}
       </Collapse>
+      <div className="separator mb-5 mt-5" />
+
+      <div className="flex justify-end space-x-4">
+        <button
+          onClick={() => {
+            setCursor(previous);
+            queryClient.invalidateQueries(["preview_events"]);
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={() => {
+            setCursor(next);
+            queryClient.invalidateQueries(["preview_events"]);
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="w-6 h-6"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"
+            />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 };

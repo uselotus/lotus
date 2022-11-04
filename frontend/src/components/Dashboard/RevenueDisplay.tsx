@@ -35,24 +35,22 @@ function RevenueDisplay(props: {
       computePercentageChange(props.total_revenue_1, props.total_revenue_2)
     );
   }, [props.total_revenue_1, props.total_revenue_2]);
-  if (props.isLoading) {
-    return (
-      <div>
-        <LoadingSpinner />
-      </div>
-    );
-  }
   return (
     <Paper color="white" border={true}>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <div>
           <p className="text-base font-normal mb-4">Total Revenue</p>
-          <span className="text-3xl font-bold">
-            {new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }).format(displayMetric(props.total_revenue_1))}
-          </span>
+          {props.isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <span className="text-3xl font-bold">
+              {new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+              }).format(displayMetric(props.total_revenue_1))}
+            </span>
+          )}
+
           <span></span>
         </div>
 

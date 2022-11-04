@@ -18,6 +18,11 @@ import {
   ArchivePlanVersionType,
   PlanVersionUpdateDescriptionType,
 } from "../types/plan-type";
+import {
+  PaymentProcessorConnectionResponseType,
+  PaymentProcessorStatusType,
+  PaymentProcessorConnectionRequestType,
+} from "../types/payment-processor-type";
 import { RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
@@ -45,11 +50,12 @@ import {
 
 const cookies = new Cookies();
 
-const API_HOST = import.meta.env.VITE_API_URL;
-
 axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
 )}`;
+
+console.log(111);
+const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
 // axios.defaults.xsrfCookieName = "csrftoken";
@@ -267,4 +273,14 @@ export const Backtests = {
     requests.post("api/backtests/", post),
   getBacktestResults: (id: string): Promise<BacktestResultType> =>
     requests.get(`api/backtests/${id}/`),
+};
+
+export const PaymentProcessorIntegration = {
+  getPaymentProcessorConnectionStatus: (): Promise<
+    PaymentProcessorStatusType[]
+  > => requests.get("api/payment_providers/"),
+  connectPaymentProcessor: (
+    pp_info: PaymentProcessorConnectionRequestType
+  ): Promise<PaymentProcessorConnectionResponseType> =>
+    requests.post("api/payment_providers/", { pp_info }),
 };

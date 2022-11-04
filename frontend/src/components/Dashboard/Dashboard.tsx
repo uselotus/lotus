@@ -46,6 +46,7 @@ const Dashboard: FC = () => {
       title={"Dashboard"}
       extra={[
         <RangePicker
+          id="preset"
           format={dateFormat}
           ranges={{
             "This month": [dayjs().startOf("month"), dayjs().endOf("month")],
@@ -58,7 +59,6 @@ const Dashboard: FC = () => {
           }}
           defaultValue={dateRange}
           onCalendarChange={(dates) => {
-            toast.info("Loading...");
             setDateRange(dates);
           }}
         />,
