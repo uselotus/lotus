@@ -1,7 +1,7 @@
 import React, { FC, useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { useNavigate } from "react-router-dom";
-import { PlanType } from "../types/plan-type";
+import { PlanDetailType, PlanType, PlanVersionType } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { Form, Button, Input, Radio, Select, Modal } from "antd";
 import { PageLayout } from "../components/base/PageLayout";
@@ -23,10 +23,16 @@ const CreateBacktest: FC = () => {
   const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
   const { currentPlan, replacementPlan } = usePlanState();
   const [currentPlanModal, setCurrentPlanModal] = useState<PlanType>();
-  const [replacementPlanModal, setReplacementPlanModal] = useState<PlanType>();
+  const [replacementPlanModal, setReplacementPlanModal] =
+    useState<PlanVersionType>();
   const { setCurrentPlan, setReplacementPlan } = usePlanUpdater();
   const [replacePlanVisible, setReplacePlanVisible] = useState<boolean>(false);
   const [newPlanVisible, setNewPlanVisible] = useState<boolean>(false);
+
+  //temp
+  const [currentVersion, setCurrentVersion] = useState<PlanVersionType>();
+  const [replacementVersion, setReplacementVersion] =
+    useState<PlanVersionType>();
 
   const {
     data: plans,
@@ -34,6 +40,16 @@ const CreateBacktest: FC = () => {
     isError,
   } = useQuery<PlanType[]>(["plan_list"], () =>
     Plan.getPlans().then((res) => {
+      return res;
+    })
+  );
+
+  const {
+    data: planDetails,
+    isLoading: planDetailsLoading,
+    isError: planDetailsError,
+  } = useQuery<PlanDetailType>(["plan_details", currentPlan?.plan_id], () =>
+    Plan.getPlan(currentPlan?.plan_id || "11").then((res) => {
       return res;
     })
   );
@@ -46,7 +62,6 @@ const CreateBacktest: FC = () => {
         queryClient.invalidateQueries(["experiments_list"]);
         navigate("/experiments");
       },
-
       onError: (e) => {
         toast.error("Error creating backtest");
       },
@@ -54,14 +69,12 @@ const CreateBacktest: FC = () => {
   );
 
   const runBacktest = () => {
-    var singlesubscription;
+    var singlesubscription: Substitution[];
     if (currentPlan && replacementPlan) {
       singlesubscription = [
         {
           original_plans: [currentPlan.version_id],
           new_plan: replacementPlan.version_id,
-          new_plan_name: replacementPlan.name,
-          original_plan_names: [currentPlan.name],
         },
       ];
       setCurrentPlan();
@@ -101,30 +114,52 @@ const CreateBacktest: FC = () => {
   };
 
   const changeCurrentPlanModal = (plan_id: string) => {
-    const current = plans?.find((plan) => plan.version_id === plan_id);
+    const current = plans?.find((plan) => plan.plan_id === plan_id);
 
     setCurrentPlanModal(current);
   };
 
   const changeReplacementPlanModal = (plan_id: string) => {
-    const replacement = plans?.find((plan) => plan.version_id === plan_id);
+    const replacement = plans?.find((plan) => plan.plan_id === plan_id);
     setReplacementPlanModal(replacement);
   };
 
   const addCurrentPlanSlot = (plan_id: string) => {
-    const current = plans?.find((plan) => plan.version_id === plan_id);
+    const current = plans?.find((plan) => plan.plan_id === plan_id);
     if (current) {
+      console.log(current);
       setCurrentPlan(current);
+      queryClient.invalidateQueries(["plan_details"]);
     }
   };
 
   const addReplacementPlanSlot = (plan_id: string) => {
     if (plans) {
-      const replacement = plans.find(
-        (plan) => plan.version_id === plan_id
-      );
+      const replacement = plans.find((plan) => plan.plan_id === plan_id);
       if (replacement) {
         setReplacementPlan(replacement);
+      }
+    }
+  };
+
+  const addCurrentPlanVersion = (version_id: string) => {
+    if (planDetails) {
+      const current = planDetails.versions.find(
+        (version) => version.version_id === version_id
+      );
+      if (current) {
+        setCurrentVersion(current);
+      }
+    }
+  };
+
+  const addReplacementPlanVersion = (version_id: string) => {
+    if (planDetails) {
+      const replacement = planDetails.versions.find(
+        (version) => version.version_id === version_id
+      );
+      if (replacement) {
+        setReplacementVersion(replacement);
       }
     }
   };
@@ -141,10 +176,10 @@ const CreateBacktest: FC = () => {
       setSubstitutions([
         ...substitutions,
         {
-          original_plans: [currentPlan.version_id],
-          new_plan: replacementPlan.version_id,
-          new_plan_name: replacementPlan.name,
-          original_plan_names: [currentPlan.name],
+          original_plans: [currentVersion?.version_id],
+          new_plan: replacementVersion?.version_id,
+          new_plan_name: replacementPlan.plan_name,
+          original_plan_names: [currentPlan.plan_name],
         },
       ]);
       // setCurrentPlan();
@@ -190,8 +225,8 @@ const CreateBacktest: FC = () => {
               value="backtest"
             >
               <Radio.Button value="backtest">Backtest</Radio.Button>
-              <Radio.Button value="forcast" disabled={true}>
-                Forcast
+              <Radio.Button value="forecast" disabled={true}>
+                Forecast
               </Radio.Button>
               <Radio.Button value="deployment" disabled={true}>
                 Deployed Test
@@ -323,14 +358,29 @@ const CreateBacktest: FC = () => {
           <Select
             onChange={addCurrentPlanSlot}
             className="w-8/12"
-            defaultValue={currentPlan?.version_id}
+            defaultValue={currentPlan?.plan_name}
           >
             {plans?.map((plan) => (
-              <Select.Option value={plan.version_id}>
-                {plan.name}
+              <Select.Option value={plan.plan_id}>
+                {plan.plan_name}
               </Select.Option>
             ))}
           </Select>
+          <div className="my-10">
+            {planDetails !== undefined && (
+              <Select
+                onChange={addCurrentPlanVersion}
+                className="w-8/12"
+                defaultValue={currentVersion?.version.toString()}
+              >
+                {planDetails?.versions.map((version) => (
+                  <Select.Option value={version.version_id}>
+                    {version.version}
+                  </Select.Option>
+                ))}
+              </Select>
+            )}
+          </div>
         </div>
       </Modal>
       <Modal
@@ -364,16 +414,31 @@ const CreateBacktest: FC = () => {
             Start From An Existing Plan, Then Edit The Differences
           </h4>
           <Select
-            className="w-8/12"
+            className="w-8/12 mb-5"
             onChange={addReplacementPlanSlot}
-            defaultValue={replacementPlan?.version_id}
+            defaultValue={replacementPlan?.plan_name}
           >
             {plans?.map((plan) => (
-              <Select.Option value={plan.version_id}>
-                {plan.name}
+              <Select.Option value={plan.plan_id}>
+                {plan.plan_name}
               </Select.Option>
             ))}
           </Select>
+          <div className="my-10">
+            {planDetails !== undefined && (
+              <Select
+                onChange={addReplacementPlanVersion}
+                className="w-8/12"
+                defaultValue={replacementVersion?.version.toString()}
+              >
+                {planDetails?.versions.map((version) => (
+                  <Select.Option value={version.version_id}>
+                    {version.version}
+                  </Select.Option>
+                ))}
+              </Select>
+            )}
+          </div>
         </div>
       </Modal>
     </PageLayout>
