@@ -136,6 +136,10 @@ def now_utc():
     return datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
 
 
+def now_utc_ts():
+    return str(now_utc().timestamp())
+
+
 def calculate_end_date(interval, start_date):
     if interval == PLAN_DURATION.MONTHLY:
         return start_date + relativedelta(months=+1) - relativedelta(days=+1)

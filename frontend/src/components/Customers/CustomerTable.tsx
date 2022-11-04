@@ -29,14 +29,17 @@ const columns: ProColumns<CustomerTableItem>[] = [
   {
     title: "Customer ID",
     width: 120,
+
     dataIndex: "customer_id",
     align: "left",
+    ellipsis: true,
   },
   {
     title: "Name",
     width: 120,
     dataIndex: "customer_name",
     align: "left",
+    search: { transform: (value: any) => value },
   },
   {
     title: "Plans",
@@ -130,7 +133,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   }, [customerArray, totals]);
 
   const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
-    ["plans"],
+    ["plan_list"],
     () =>
       Plan.getPlans().then((res) => {
         return res;

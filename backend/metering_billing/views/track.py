@@ -15,7 +15,9 @@ from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
 from metering_billing.utils import now_utc
+from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 
@@ -92,16 +94,14 @@ def track_event(request):
     prefix, _, _ = key.partition(".")
     organization_pk = cache.get(prefix)
     if not organization_pk:
-        api_token = APIToken.objects.filter(prefix=prefix).values_list(
-            "organization",
-            "expiry_date",
-        )
-        if len(api_token) == 0:
+        api_token = APIToken.objects.filter(prefix=prefix)
+        if not api_token.exists():
             return HttpResponseBadRequest("Invalid API key")
+        api_token = api_token.values_list("organization", "expiry_date")
         organization_pk = api_token[0][0]
         expiry_date = api_token[0][1]
         timeout = (
-            60 * 60 * 25 * 7
+            60 * 60 * 24 * 7
             if expiry_date is None
             else (expiry_date - now_utc()).total_seconds()
         )
@@ -117,38 +117,38 @@ def track_event(request):
     bad_events = {}
     events_to_insert = {}
     for data in event_list:
-        customer_id = data["customer_id"]
+        customer_id = data.get("customer_id")
+        idempotency_id = data.get("idempotency_id", None)
+        if not customer_id or not idempotency_id:
+            if not idempotency_id:
+                bad_events["no_idempotency_id"] = "No idempotency_id provided"
+            else:
+                bad_events[idempotency_id] = "No customer_id provided"
+            continue
         customer_cache_key = f"{organization_pk}-{customer_id}"
         customer_pk = cache.get(customer_cache_key)
         if customer_pk is None:
-            customer_pk_list = Customer.objects.filter(
+            customer = Customer.objects.filter(
                 organization=organization_pk, customer_id=customer_id
-            ).values_list("id", flat=True)
-            if len(customer_pk_list) == 0:
-                bad_events[data["idempotency_id"]] = "Customer does not exist"
+            )
+            if not customer.exists():
+                bad_events[idempotency_id] = "Customer does not exist"
                 continue
             else:
-                customer_pk = customer_pk_list[0]
-                cache.set(customer_cache_key, customer_pk, 60 * 60 * 24 * 7)
+                cache.set(customer_cache_key, customer.first().pk, 60 * 60 * 24 * 7)
 
-        event_idem_ct = (
-            Event.objects.filter(
-                idempotency_id=data["idempotency_id"],
-            )
-            .values_list("id", flat=True)
-            .count()
-        )
-        if event_idem_ct > 0:
-            bad_events[data["idempotency_id"]] = "Event idempotency already exists"
+        event_idem_exists = Event.objects.filter(
+            idempotency_id=idempotency_id,
+        ).exists()
+        if event_idem_exists > 0:
+            bad_events[idempotency_id] = "Event idempotency already exists"
             continue
 
-        if data["idempotency_id"] in events_to_insert:
-            bad_events[
-                data["idempotency_id"]
-            ] = "Duplicate event idempotency in request"
+        if idempotency_id in events_to_insert:
+            bad_events[idempotency_id] = "Duplicate event idempotency in request"
             continue
 
-        events_to_insert[data["idempotency_id"]] = ingest_event(
+        events_to_insert[idempotency_id] = ingest_event(
             data, customer_pk, organization_pk
         )
 
@@ -176,12 +176,14 @@ def track_event(request):
     cache.set("events_to_insert", (cached_events, cached_idems, last_flush_dt), None)
 
     if len(bad_events) == len(event_list):
-        return JsonResponse(
-            {"success": "none", "failed_events": bad_events}, status=400
+        return Response(
+            {"success": "none", "failed_events": bad_events},
+            status=status.HTTP_400_BAD_REQUEST,
         )
     elif len(bad_events) > 0:
         return JsonResponse(
-            {"success": "some", "failed_events": bad_events}, status=201
+            {"success": "some", "failed_events": bad_events},
+            status=status.HTTP_201_CREATED,
         )
     else:
-        return JsonResponse({"success": "all"}, status=201)
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)

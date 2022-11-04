@@ -46,7 +46,7 @@ const StripeRedirect: FC = () => {
   };
 
   return (
-    <div>
+    <div className="flex items-center justify-center h-full">
       <h1>Stripe Redirect: {connected} </h1>
       <button onClick={returnToDashboard}>Go To Dashboard</button>
     </div>

@@ -1,10 +1,15 @@
 import datetime
+import operator
+from unicodedata import name
 
 import posthog
+from actstream import action
+from actstream.models import Action
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
+from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
 from metering_billing.models import (
@@ -13,8 +18,10 @@ from metering_billing.models import (
     BillableMetric,
     Customer,
     Event,
+    ExternalPlanLink,
     Feature,
     Invoice,
+    OrganizationSetting,
     Plan,
     PlanVersion,
     Product,
@@ -28,12 +35,15 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestSummarySerializer,
 )
 from metering_billing.serializers.model_serializers import (
+    ActionSerializer,
     AlertSerializer,
     BillableMetricSerializer,
     CustomerSerializer,
     EventSerializer,
+    ExternalPlanLinkSerializer,
     FeatureSerializer,
     InvoiceSerializer,
+    OrganizationSettingSerializer,
     PlanDetailSerializer,
     PlanSerializer,
     PlanUpdateSerializer,
@@ -45,19 +55,48 @@ from metering_billing.serializers.model_serializers import (
     UserSerializer,
 )
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import now_utc
+from metering_billing.utils import now_utc, now_utc_ts
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
+    PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
+    REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
 )
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+
+
+class CustomPagination(CursorPagination):
+    def get_paginated_response(self, data):
+        if self.get_next_link():
+            next_link = self.get_next_link()
+            next_cursor = next_link[
+                next_link.index(f"{self.cursor_query_param}=")
+                + len(f"{self.cursor_query_param}=") :
+            ]
+        else:
+            next_cursor = None
+        if self.get_previous_link():
+            previous_link = self.get_previous_link()
+            previous_cursor = previous_link[
+                previous_link.index(f"{self.cursor_query_param}=")
+                + len(f"{self.cursor_query_param}=") :
+            ]
+        else:
+            previous_cursor = None
+        return Response(
+            {
+                "next": next_cursor,
+                "previous": previous_cursor,
+                "results": data,
+            }
+        )
 
 
 class PermissionPolicyMixin:
@@ -108,7 +147,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer.save(organization=parse_organization(self.request))
 
 
-class CursorSetPagination(CursorPagination):
+class CursorSetPagination(CustomPagination):
     page_size = 10
     page_size_query_param = "page_size"
     ordering = "-time_created"
@@ -246,9 +285,19 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(organization=parse_organization(self.request))
+            instance = serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
             raise DuplicateBillableMetric
+        try:
+            user = self.request.user
+        except:
+            user = None
+        if user:
+            action.send(
+                user,
+                verb="created",
+                action_object=instance,
+            )
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -347,7 +396,39 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = self.request.user
         except:
             user = None
-        serializer.save(organization=parse_organization(self.request), created_by=user)
+        instance = serializer.save(
+            organization=parse_organization(self.request), created_by=user
+        )
+        if user:
+            action.send(
+                user,
+                verb="created",
+                action_object=instance,
+                target=instance.plan,
+            )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        try:
+            user = self.request.user
+        except:
+            user = None
+        user = self.request.user
+        if user:
+            if instance.status == PLAN_VERSION_STATUS.ACTIVE:
+                action.send(
+                    user,
+                    verb="activated",
+                    action_object=instance,
+                    target=instance.plan,
+                )
+            elif instance.status == PLAN_VERSION_STATUS.ARCHIVED:
+                action.send(
+                    user,
+                    verb="archived",
+                    action_object=instance,
+                    target=instance.plan,
+                )
 
 
 class PlanViewSet(viewsets.ModelViewSet):
@@ -422,7 +503,30 @@ class PlanViewSet(viewsets.ModelViewSet):
             user = self.request.user
         except:
             user = None
-        serializer.save(organization=parse_organization(self.request), created_by=user)
+        instance = serializer.save(
+            organization=parse_organization(self.request), created_by=user
+        )
+        if user:
+            action.send(
+                user,
+                verb="created",
+                action_object=instance,
+            )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        try:
+            user = self.request.user
+        except:
+            user = None
+        user = self.request.user
+        if user:
+            if instance.status == PLAN_STATUS.ARCHIVED:
+                action.send(
+                    user,
+                    verb="archived",
+                    action_object=instance,
+                )
 
 
 class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -453,7 +557,18 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         if serializer.validated_data["start_date"] <= now_utc():
             serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
-        serializer.save(organization=parse_organization(self.request))
+        instance = serializer.save(organization=parse_organization(self.request))
+        try:
+            user = self.request.user
+            print(user)
+            action.send(
+                user,
+                verb="subscribed",
+                action_object=instance.customer,
+                target=instance.billing_plan,
+            )
+        except:
+            user = None
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -471,6 +586,32 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 properties={},
             )
         return response
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        try:
+            user = self.request.user
+        except:
+            user = None
+        user = self.request.user
+        if user:
+            if instance.status == SUBSCRIPTION_STATUS.ENDED:
+                action.send(
+                    user,
+                    verb="canceled",
+                    action_object=instance.billing_plan,
+                    target=instance.customer,
+                )
+            elif (
+                serializer.validated_data.get("replace_immediately_type")
+                == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
+            ):
+                action.send(
+                    user,
+                    verb="switched to",
+                    action_object=instance.billing_plan,
+                    target=instance.customer,
+                )
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -633,3 +774,122 @@ class ProductViewSet(viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context
+
+
+class ActionCursorSetPagination(CursorSetPagination):
+    ordering = "-timestamp"
+
+
+class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    """
+    API endpoint that allows events to be viewed.
+    """
+
+    queryset = Action.objects.all()
+    serializer_class = ActionSerializer
+    pagination_class = ActionCursorSetPagination
+    permission_classes = [IsAuthenticated]
+    http_method_names = [
+        "get",
+        "head",
+    ]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                actor_object_id__in=list(
+                    User.objects.filter(organization=organization).values_list(
+                        "id", flat=True
+                    )
+                )
+            )
+        )
+
+
+class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing ExternalPlanLink.
+    """
+
+    serializer_class = ExternalPlanLinkSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "external_plan_id"
+    http_method_names = ["post", "head", "delete"]
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": parse_organization(self.request)}
+        source = self.request.query_params.get("source")
+        if source:
+            filter_kwargs["source"] = source
+        return ExternalPlanLink.objects.filter(**filter_kwargs)
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            organization = parse_organization(self.request)
+            posthog.capture(
+                organization.company_name,
+                event=f"{self.action}_external_plan_link",
+                properties={},
+            )
+        return response
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def get_serializer_context(self):
+        context = super(ExternalPlanLinkViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="SourceSerializer",
+                fields={
+                    "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
+                },
+            ),
+        ],
+    )
+    def destroy(self, request):
+        return super().destroy(request)
+
+
+class OrganizationSettingViewSet(viewsets.ModelViewSet):
+    """
+    A simple ViewSet for viewing and editing OrganizationSettings.
+    """
+
+    serializer_class = OrganizationSettingSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "head", "patch"]
+    lookup_field = "setting_id"
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": parse_organization(self.request)}
+        setting_name = self.request.query_params.get("setting_name")
+        if setting_name:
+            filter_kwargs["setting_name"] = setting_name
+        setting_group = self.request.query_params.get("setting_group")
+        if setting_group:
+            filter_kwargs["setting_group"] = setting_group
+        return OrganizationSetting.objects.filter(**filter_kwargs)
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="SettingFilterSerializer",
+                fields={
+                    "setting_name": serializers.CharField(required=False),
+                    "setting_group": serializers.CharField(required=False),
+                },
+            ),
+        ],
+    )
+    def list(self, request):
+        return super().list(request)

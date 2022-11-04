@@ -121,6 +121,7 @@ const SubscriptionView: FC<Props> = ({
         },
         [] as { label: string; value: string }[]
       );
+      console.log(plans, newplanList);
       setPlanList(newplanList);
     }
   }, [plans]);
@@ -259,7 +260,7 @@ const SubscriptionView: FC<Props> = ({
                   </h2>
                   <div className="flex flex-col justify-center space-y-3">
                     <p>
-                      <b>Subscription ID:</b> {subscription.subscription_id}
+                      <b>Subscription ID: </b> {subscription.subscription_id}
                     </p>
                     <p>
                       <b>Start Date:</b>{" "}

@@ -34,7 +34,6 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS,
     SUBSCRIPTION_STATUS,
 )
-from metering_billing.view_utils import sync_payment_provider_customers
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 EVENT_CACHE_FLUSH_SECONDS = settings.EVENT_CACHE_FLUSH_SECONDS
@@ -112,7 +111,7 @@ def calculate_invoice():
             }
             sub = Subscription.objects.create(**subscription_kwargs)
             if new_bp.pay_in_advance:
-                sub.flat_fee_already_billed = new_bp.flat_rate.amount
+                sub.flat_fee_already_billed = Decimal(new_bp.flat_rate.amount)
             if sub.start_date <= now <= sub.end_date:
                 sub.status = SUBSCRIPTION_STATUS.ACTIVE
             else:
@@ -189,12 +188,6 @@ def check_event_cache_flushed():
         cached_events = []
         cached_idems = set()
         cache.set("events_to_insert", (cached_events, cached_idems, now), None)
-
-
-@shared_task
-def sync_payment_provider_customers_all_orgs():
-    for org in Organization.objects.all():
-        sync_payment_provider_customers(org)
 
 
 @shared_task

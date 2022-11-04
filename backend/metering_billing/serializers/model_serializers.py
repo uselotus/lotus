@@ -1,3 +1,4 @@
+from actstream.models import Action
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
@@ -6,10 +7,13 @@ from metering_billing.models import (
     CategoricalFilter,
     Customer,
     Event,
+    ExternalPlanLink,
     Feature,
     Invoice,
     NumericFilter,
     Organization,
+    OrganizationInviteToken,
+    OrganizationSetting,
     Plan,
     PlanComponent,
     PlanVersion,
@@ -18,12 +22,8 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.utils import (
-    calculate_end_date,
-    date_as_max_dt,
-    date_as_min_dt,
-    now_utc,
-)
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     PLAN_STATUS,
@@ -36,15 +36,60 @@ from rest_framework import serializers
 from .serializer_utils import SlugRelatedFieldWithOrganization
 
 
+class OrganizationUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "email", "role", "status")
+
+    role = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_role(self, obj) -> str:
+        return "Admin"
+
+    def get_status(self, obj) -> str:
+        return "Active"
+
+
+class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("email", "role", "status")
+
+    role = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+
+    def get_role(self, obj) -> str:
+        return "Admin"
+
+    def get_status(self, obj) -> str:
+        return "Invited"
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
-            "id",
             "company_name",
             "payment_plan",
             "payment_provider_ids",
+            "users",
         )
+
+    users = serializers.SerializerMethodField()
+
+    def get_users(self, obj) -> OrganizationUserSerializer(many=True):
+        users = User.objects.filter(organization=obj)
+        users_data = list(OrganizationUserSerializer(users, many=True).data)
+        now = now_utc()
+        invited_users = OrganizationInviteToken.objects.filter(
+            organization=obj, expire_at__gt=now
+        )
+        invited_users_data = OrganizationInvitedUserSerializer(
+            invited_users, many=True
+        ).data
+        invited_users_data = [{**x, "username": ""} for x in invited_users_data]
+        return users_data + invited_users_data
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -149,6 +194,14 @@ class CustomerSerializer(serializers.ModelSerializer):
             "customer_id",
         )
 
+    def create(self, validated_data):
+        customer = Customer.objects.create(**validated_data)
+        org = customer.organization
+        for connector in PAYMENT_PROVIDER_MAP.values():
+            if connector.organization_connected(org):
+                connector.create_customer(customer)
+        return customer
+
 
 ## BILLABLE METRIC
 class CategoricalFilterSerializer(serializers.ModelSerializer):
@@ -226,6 +279,46 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         bm.save()
 
         return bm
+
+
+class ExternalPlanLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExternalPlanLink
+        fields = ("plan_id", "source", "external_plan_id")
+
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="plan",
+        queryset=Plan.objects.all(),
+        write_only=True,
+    )
+
+    def validate(self, data):
+        super().validate(data)
+        query = ExternalPlanLink.objects.filter(
+            organization=self.context["organization"],
+            source=data["source"],
+            external_plan_id=data["external_plan_id"],
+        )
+        if query.exists():
+            plan_name = data["plan"].plan_name
+            raise serializers.ValidationError(
+                f"This external plan link already exists in plan {plan_name}"
+            )
+        return data
+
+
+class InitialExternalPlanLinkSerializer(ExternalPlanLinkSerializer):
+    class Meta(ExternalPlanLinkSerializer.Meta):
+        model = ExternalPlanLink
+        fields = tuple(
+            set(ExternalPlanLinkSerializer.Meta.fields)
+            - set(
+                [
+                    "plan_id",
+                ]
+            )
+        )
 
 
 ## FEATURE
@@ -637,10 +730,12 @@ class PlanSerializer(serializers.ModelSerializer):
             "plan_id",
             "status",
             # write only
+            "initial_external_links",
             "initial_version",
             "parent_plan_id",
             "target_customer_id",
             # read-only
+            "external_links",
             "parent_plan",
             "target_customer",
             "created_on",
@@ -687,6 +782,9 @@ class PlanSerializer(serializers.ModelSerializer):
         source="target_customer",
         required=False,
     )
+    initial_external_links = InitialExternalPlanLinkSerializer(
+        many=True, required=False, write_only=True
+    )
 
     # READ ONLY
     parent_plan = PlanNameAndIDSerializer(read_only=True)
@@ -695,6 +793,7 @@ class PlanSerializer(serializers.ModelSerializer):
     display_version = PlanVersionSerializer(read_only=True)
     num_versions = serializers.SerializerMethodField(read_only=True)
     active_subscriptions = serializers.SerializerMethodField(read_only=True)
+    external_links = ExternalPlanLinkSerializer(many=True, read_only=True)
 
     def get_created_by(self, obj) -> str:
         return obj.created_by.username
@@ -708,6 +807,9 @@ class PlanSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # we'll feed the version data into the serializer later, checking now breaks it
         plan_version = data.pop("initial_version")
+        external_links = data.get("external_links")
+        if external_links:
+            data.pop("external_links")
         super().validate(data)
         target_cust_null = data.get("target_customer") is None
         parent_plan_null = data.get("parent_plan") is None
@@ -718,16 +820,27 @@ class PlanSerializer(serializers.ModelSerializer):
                 "either both or none of target_customer and parent_plan must be set"
             )
         data["initial_version"] = plan_version
+        if external_links:
+            data["external_links"] = external_links
         return data
 
     def create(self, validated_data):
         display_version_data = validated_data.pop("initial_version")
+        external_links = validated_data.get("external_links")
+        if external_links:
+            validated_data.pop("external_links")
         plan = Plan.objects.create(**validated_data)
         display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
         display_version_data["plan"] = plan
         display_version_data["organization"] = validated_data["organization"]
         display_version_data["created_by"] = validated_data["created_by"]
         plan_version = InitialPlanVersionSerializer().create(display_version_data)
+        if external_links:
+            for link_data in external_links:
+                link_data["plan"] = plan
+                link_data["organization"] = validated_data["organization"]
+                ExternalPlanLinkSerializer().validate(link_data)
+                InitialPlanVersionSerializer().create(link_data)
         plan.display_version = plan_version
         plan.save()
         return plan
@@ -939,3 +1052,151 @@ class ExperimentalToActiveRequestSerializer(serializers.Serializer):
         slug_field="version_id",
         read_only=False,
     )
+
+
+class SubscriptionActionSerializer(SubscriptionSerializer):
+    class Meta(SubscriptionSerializer.Meta):
+        model = Subscription
+        fields = SubscriptionSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.subscription_id
+
+    def get_object_type(self, obj):
+        return "Subscription"
+
+
+class UserActionSerializer(OrganizationUserSerializer):
+    class Meta(OrganizationUserSerializer.Meta):
+        model = User
+        fields = OrganizationUserSerializer.Meta.fields + ("string_repr",)
+
+    string_repr = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.username
+
+
+class PlanVersionActionSerializer(PlanVersionSerializer):
+    class Meta(PlanVersionSerializer.Meta):
+        model = PlanVersion
+        fields = PlanVersionSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.plan.plan_name + " v" + str(obj.version)
+
+    def get_object_type(self, obj):
+        return "Plan Version"
+
+
+class PlanActionSerializer(PlanSerializer):
+    class Meta(PlanSerializer.Meta):
+        model = Plan
+        fields = PlanSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.plan_name
+
+    def get_object_type(self, obj):
+        return "Plan"
+
+
+class BillableMetricActionSerializer(BillableMetricSerializer):
+    class Meta(BillableMetricSerializer.Meta):
+        model = BillableMetric
+        fields = BillableMetricSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.billable_metric_name
+
+    def get_object_type(self, obj):
+        return "Metric"
+
+
+class CustomerActionSerializer(CustomerSerializer):
+    class Meta(CustomerSerializer.Meta):
+        model = Customer
+        fields = CustomerSerializer.Meta.fields + ("string_repr", "object_type")
+
+    string_repr = serializers.SerializerMethodField()
+    object_type = serializers.SerializerMethodField()
+
+    def get_string_repr(self, obj):
+        return obj.customer_name
+
+    def get_object_type(self, obj):
+        return "Customer"
+
+
+GFK_MODEL_SERIALIZER_MAPPING = {
+    User: UserActionSerializer,
+    PlanVersion: PlanVersionActionSerializer,
+    Plan: PlanActionSerializer,
+    Subscription: SubscriptionActionSerializer,
+    BillableMetric: BillableMetricActionSerializer,
+    Customer: CustomerActionSerializer,
+}
+
+
+class ActivityGenericRelatedField(serializers.Field):
+    """
+    DRF Serializer field that serializers GenericForeignKey fields on the :class:`~activity.models.Action`
+    of known model types to their respective ActionSerializer implementation.
+    """
+
+    def to_representation(self, value):
+        serializer_cls = GFK_MODEL_SERIALIZER_MAPPING.get(type(value), None)
+        return (
+            serializer_cls(value, context=self.context).data
+            if serializer_cls
+            else str(value)
+        )
+
+
+class ActionSerializer(serializers.ModelSerializer):
+    """
+    DRF serializer for :class:`~activity.models.Action`.
+    """
+
+    actor = ActivityGenericRelatedField(read_only=True)
+    action_object = ActivityGenericRelatedField(read_only=True)
+    target = ActivityGenericRelatedField(read_only=True)
+
+    class Meta:
+        model = Action
+        fields = (
+            "id",
+            "actor",
+            "verb",
+            "action_object",
+            "target",
+            "public",
+            "description",
+            "timestamp",
+        )
+
+
+class OrganizationSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationSetting
+        fields = ("setting_id", "setting_name", "setting_value", "setting_group")
+        read_only_fields = ("setting_id", "setting_name", "setting_group")
+
+    def update(self, instance, validated_data):
+        instance.setting_value = validated_data.get(
+            "setting_value", instance.setting_value
+        )
+        instance.save()
+        return instance
