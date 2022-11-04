@@ -28,11 +28,11 @@ const StateTabs: FC<StateTabsProps> = ({ tabs, activeTab }) => {
     } else {
       switch (tab) {
         case "Inactive":
-          return "Make this version Inactive";
+          return "Inactive";
         case "Active":
           return "If you make this version active, your other active version will become inactive.";
         case "Grandfathered":
-          return "Make this version Grandfathered";
+          return "Grandfathered";
       }
     }
   };

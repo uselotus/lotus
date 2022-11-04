@@ -16,18 +16,13 @@ const CreateMetricForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
-  const [eventType, setEventType] = useState("");
+  const [eventType, setEventType] = useState("aggregation");
 
   // useEffect(() => {
   //   if (props.visible === false) {
   //     form.resetFields();
   //   }
   // }, [props.visible]);
-
-  form.setFieldsValue({
-    event_name: props.state.event_name,
-    property_name: props.state.property_name,
-  });
 
   return (
     <Modal
@@ -42,13 +37,23 @@ const CreateMetricForm = (props: {
           .validateFields()
           .then((values) => {
             props.onSave(values);
+            form.resetFields();
           })
           .catch((info) => {
             console.log("Validate Failed:", info);
           });
       }}
     >
-      <Form form={form} layout="vertical" name="customer_form">
+      <Form
+        form={form}
+        layout="vertical"
+        name="customer_form"
+        initialValues={{
+          metric_type: "aggregation",
+          aggregation_type: "count",
+          aggregation_type_2: "max",
+        }}
+      >
         <Form.Item
           name="event_name"
           label="Event Name"

@@ -59,7 +59,6 @@ const Dashboard: FC = () => {
           }}
           defaultValue={dateRange}
           onCalendarChange={(dates) => {
-            toast.info("Loading...");
             setDateRange(dates);
           }}
         />,
