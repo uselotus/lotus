@@ -13,13 +13,20 @@ from metering_billing.models import (
     Customer,
     Event,
     Organization,
+    Plan,
     PlanComponent,
     PlanVersion,
     Subscription,
     User,
 )
 from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
-from metering_billing.utils.enums import SUBSCRIPTION_STATUS
+from metering_billing.utils.enums import (
+    FLAT_FEE_BILLING_TYPE,
+    PLAN_DURATION,
+    PLAN_STATUS,
+    PLAN_VERSION_STATUS,
+    SUBSCRIPTION_STATUS,
+)
 from model_bakery import baker
 
 
@@ -28,40 +35,39 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            Organization.objects.get(company_name="c.ai").delete()
-        except:
+            Organization.objects.get(company_name="demo2").delete()
+        except Organization.DoesNotExist:
             print("organization doesn't exist")
-        fake = Faker()
-        user, created = User.objects.get_or_create(username="cai", email="cai@cai.com")
+        user, created = User.objects.get_or_create(username="demo2", email="demo2@demo2.com")
         if created:
-            user.set_password("password")
+            user.set_password("demo2")
             user.save()
         if user.organization is None:
-            organization, _ = Organization.objects.get_or_create(company_name="c.ai")
+            organization, _ = Organization.objects.get_or_create(company_name="demo2")
             user.organization = organization
             user.save()
         organization = user.organization
-        big_customers = baker.make(
-            Customer,
-            _quantity=4,
-            organization=organization,
-            name=("BigCompany " + str(uuid.uuid4())[:6] for _ in range(400)),
-            customer_id=(fake.unique.ean() for _ in range(400)),
-        )
-        medium_customers = baker.make(
-            Customer,
-            _quantity=10,
-            organization=organization,
-            name=("MediumCompany " + str(uuid.uuid4())[:6] for _ in range(1000)),
-            customer_id=(fake.unique.ean() for _ in range(1000)),
-        )
-        small_customers = baker.make(
-            Customer,
-            _quantity=30,
-            organization=organization,
-            name=("SmallCompany " + str(uuid.uuid4())[:6] for _ in range(3000)),
-            customer_id=(fake.unique.ean() for _ in range(3000)),
-        )
+        big_customers = []
+        for _ in range(10):
+            customer = Customer.objects.create(
+                organization=organization,
+                customer_name="BigComp" + str(uuid.uuid4())[:6],
+            )
+            big_customers.append(customer)
+        medium_customers = []
+        for _ in range(25):
+            customer = Customer.objects.create(
+                organization=organization,
+                customer_name="MediumCompany" + str(uuid.uuid4())[:6],
+            )
+            medium_customers.append(customer)
+        small_customers = []
+        for _ in range(75):
+            customer = Customer.objects.create(
+                organization=organization,
+                customer_name="SmallCompany" + str(uuid.uuid4())[:6],
+            )
+            small_customers.append(customer)
         calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
             BillableMetric,
             organization=organization,
@@ -98,28 +104,21 @@ class Command(BaseCommand):
             billable_metric_name="User Seats",
             _quantity=1,
         )
-        # for bm in [
-        #     calls,
-        #     sum_words,
-        #     sum_compute,
-        #     unique_lang,
-        #     unique_subsections,
-        #     num_seats,
-        # ]:
-        #     serializer = BillableMetricSerializer(bm)
-        #     dict_repr = serializer.data
-        #     dict_repr.pop("billable_metric_name")
-        #     new_name = serializer.custom_name(dict_repr)
-        #     bm.billable_metric_name = new_name
-        #     bm.save()
         # SET THE BILLING PLANS
+        plan = Plan.objects.create(
+            plan_name="Free Plan",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         free_bp = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="Free Plan",
             description="The free tier",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=0,
-            pay_in_advance=True,
             version_id="free",
         )
         pc1 = PlanComponent.objects.create(
@@ -131,13 +130,20 @@ class Command(BaseCommand):
         )
         free_bp.components.add(pc1, pc2)
         free_bp.save()
+        plan = Plan.objects.create(
+            plan_name="40K Words Plan",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_40_og = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="40K Words Plan",
-            description="40K words per month",
+            description="40K Words Plan",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=49,
-            pay_in_advance=True,
             version_id="40_og",
         )
         pc1 = PlanComponent.objects.create(
@@ -150,13 +156,20 @@ class Command(BaseCommand):
         )
         bp_40_og.components.add(pc1, pc2)
         bp_40_og.save()
+        plan = Plan.objects.create(
+            plan_name="100K Words Plan",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_100_og = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="100K Words Plan",
             description="100K words per month",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=99,
-            pay_in_advance=True,
             version_id="100_og",
         )
         pc1 = PlanComponent.objects.create(
@@ -168,13 +181,20 @@ class Command(BaseCommand):
         )
         bp_100_og.components.add(pc1, pc2)
         bp_100_og.save()
+        plan = Plan.objects.create(
+            plan_name="300K Words Plan",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_300_og = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="300K Words Plan",
             description="300K words per month",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=279,
-            pay_in_advance=True,
             version_id="300_og",
         )
         pc1 = PlanComponent.objects.create(
@@ -186,13 +206,20 @@ class Command(BaseCommand):
         )
         bp_300_og.components.add(pc1, pc2)
         bp_300_og.save()
+        plan = Plan.objects.create(
+            plan_name="40K Words Plan - UB Language + Seats",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_40_language_seats = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="40K Words Plan - UB Language + Seats",
             description="40K words per month + usage based pricing on Languages and Seats",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=19,
-            pay_in_advance=True,
             version_id="40_language_seats",
         )
         pc1 = PlanComponent.objects.create(
@@ -202,23 +229,30 @@ class Command(BaseCommand):
             billable_metric=unique_lang,
             cost_per_batch=7,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=num_seats,
             cost_per_batch=10,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         bp_40_language_seats.components.add(pc1, pc2, pc3)
         bp_40_language_seats.save()
+        plan = Plan.objects.create(
+            plan_name="100K Words Plan - UB Language + Seats",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_100_language_seats = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="100K Words Plan - UB Language + Seats",
             description="100K words per month + usage based pricing on Languages and Seats",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=59,
-            pay_in_advance=True,
             version_id="100_language_seats",
         )
         pc1 = PlanComponent.objects.create(
@@ -228,22 +262,29 @@ class Command(BaseCommand):
             billable_metric=unique_lang,
             cost_per_batch=10,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=num_seats,
             cost_per_batch=12,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         bp_100_language_seats.components.add(pc1, pc2, pc3)
+        plan = Plan.objects.create(
+            plan_name="300K Words Plan - UB Language + Seats",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_300_language_seats = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="300K Words Plan - UB Language + Seats",
             description="300K words per month + usage based pricing on Languages and Seats",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=179,
-            pay_in_advance=True,
             version_id="300_language_seats",
         )
         pc1 = PlanComponent.objects.create(
@@ -253,19 +294,26 @@ class Command(BaseCommand):
             billable_metric=unique_lang,
             cost_per_batch=10,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         pc3 = PlanComponent.objects.create(
-            billable_metric=num_seats, cost_per_batch=10, free_metric_quantity=0
+            billable_metric=num_seats, cost_per_batch=10, free_metric_units=0
         )
         bp_300_language_seats.components.add(pc1, pc2, pc3)
+        plan = Plan.objects.create(
+            plan_name="40K Words Plan - UB Calls + Content Types",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_40_calls_subsections = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="40K Words Plan - UB Calls + Content Types",
             description="40K words per month + usage based pricing on Calls and Content Types",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=0,
-            pay_in_advance=True,
             version_id="40_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
@@ -275,7 +323,7 @@ class Command(BaseCommand):
             billable_metric=calls,
             cost_per_batch=0.30,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=unique_subsections,
@@ -285,13 +333,20 @@ class Command(BaseCommand):
         )
         bp_40_calls_subsections.components.add(pc1, pc2, pc3)
         bp_40_calls_subsections.save()
+        plan = Plan.objects.create(
+            plan_name="100K Words Plan - UB Calls + Content Types",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_100_calls_subsections = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="100K Words Plan - UB Calls + Content Types",
             description="100K words per month + usage based pricing on Calls and Content Types",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=0,
-            pay_in_advance=True,
             version_id="100_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
@@ -301,7 +356,7 @@ class Command(BaseCommand):
             billable_metric=calls,
             cost_per_batch=0.25,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=unique_subsections,
@@ -311,13 +366,20 @@ class Command(BaseCommand):
         )
         bp_100_calls_subsections.components.add(pc1, pc2, pc3)
         bp_100_calls_subsections.save()
+        plan = Plan.objects.create(
+            plan_name="300K Words Plan - UB Calls + Content Types",
+            organization=organization,
+            plan_duration=PLAN_DURATION.MONTHLY,
+            status = PLAN_STATUS.ACTIVE,
+        )
         bp_300_calls_subsections = PlanVersion.objects.create(
             organization=organization,
-            interval="month",
-            name="300K Words Plan - UB Calls + Content Types",
             description="300K words per month + usage based pricing on Calls and Content Types",
+            version=1,
+            flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
             flat_rate=0,
-            pay_in_advance=True,
             version_id="300_calls_subsections",
         )
         pc1 = PlanComponent.objects.create(
@@ -327,7 +389,7 @@ class Command(BaseCommand):
             billable_metric=calls,
             cost_per_batch=0.20,
             metric_units_per_batch=1,
-            free_metric_quantity=0,
+            free_metric_units=0,
         )
         pc3 = PlanComponent.objects.create(
             billable_metric=unique_subsections,
@@ -338,7 +400,7 @@ class Command(BaseCommand):
         bp_300_calls_subsections.components.add(pc1, pc2, pc3)
         bp_300_calls_subsections.save()
         six_months_ago = (
-            datetime.date.today() - relativedelta(months=6) - relativedelta(days=5)
+            now_utc() - relativedelta(months=6) - relativedelta(days=5)
         )
         for i, customer in enumerate(big_customers):
             beginning = six_months_ago
@@ -542,7 +604,7 @@ class Command(BaseCommand):
                 max_users = float(
                     plan.components.get(billable_metric=num_seats).max_metric_units
                 )
-                n = int(random.gauss(6, 1.5) // 1)
+                n = int(max(random.gauss(6, 1.5) // 1, 1))
                 baker.make(
                     Event,
                     organization=organization,
@@ -554,11 +616,10 @@ class Command(BaseCommand):
                     _quantity=n,
                 )
         now = now_utc()
-        today = now.date()
         Subscription.objects.filter(
             organization=organization,
             status=SUBSCRIPTION_STATUS.ENDED,
-            end_date__gt=today,
+            end_date__gt=now,
         ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
 
 
@@ -573,7 +634,7 @@ def random_date(start, end, n):
             # Get a random amount of seconds between `start` and `end`
             seconds=random.randint(0, int((end - start).total_seconds())),
         )
-        yield pytz.utc.localize(dt)
+        yield dt
 
 
 def gaussian_raise_issue(n):

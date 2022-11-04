@@ -214,14 +214,14 @@ def run_backtest(backtest_id):
     }
     for subst in backtest_substitutions:
         outer_results = {
-            "substitution_name": f"{subst.original_plan.name} --> {subst.new_plan.name}",
+            "substitution_name": f"{str(subst.original_plan)} --> {str(subst.new_plan)}",
             "original_plan": {
-                "plan_name": subst.original_plan.name,
+                "plan_name": str(subst.original_plan),
                 "plan_id": subst.original_plan.version_id,
                 "plan_revenue": Decimal(0),
             },
             "new_plan": {
-                "plan_name": subst.new_plan.name,
+                "plan_name": str(subst.new_plan),
                 "plan_id": subst.new_plan.version_id,
                 "plan_revenue": Decimal(0),
             },
