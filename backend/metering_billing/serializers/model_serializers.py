@@ -842,7 +842,9 @@ class PlanSerializer(serializers.ModelSerializer):
             for link_data in initial_external_links:
                 link_data["plan"] = plan
                 link_data["organization"] = validated_data["organization"]
-                ExternalPlanLinkSerializer(context = {"organization": validated_data["organization"]}).validate(link_data)
+                ExternalPlanLinkSerializer(
+                    context={"organization": validated_data["organization"]}
+                ).validate(link_data)
                 ExternalPlanLinkSerializer().create(link_data)
         plan.display_version = plan_version
         plan.save()

@@ -155,6 +155,8 @@ class StripeConnector(PaymentProvider):
         """
         from metering_billing.models import Customer
 
+        stripe.api_key = self.secret_key
+
         num_cust_added = 0
         org_ppis = organization.payment_provider_ids
 
@@ -213,6 +215,7 @@ class StripeConnector(PaymentProvider):
         return num_cust_added
 
     def import_payment_objects(self, organization):
+        stripe.api_key = self.secret_key
         imported_invoices = {}
         for customer in organization.org_customers.all():
             if PAYMENT_PROVIDERS.STRIPE in customer.integrations:
