@@ -114,7 +114,7 @@ class SingleSubstitutionSerializer(serializers.Serializer):
     substitution_name = serializers.CharField()
     original_plan = PlanRepresentationSerializer()
     new_plan = PlanRepresentationSerializer()
-    pct_revenue_change = serializers.FloatField()
+    pct_revenue_change = serializers.FloatField(allow_null=True)
     results = SingleSubstitutionResultsSerializer()
 
 
@@ -124,7 +124,7 @@ class AllSubstitutionResultsSerializer(serializers.Serializer):
     )
     original_plans_revenue = serializers.FloatField(required=False)
     new_plans_revenue = serializers.FloatField(required=False)
-    pct_revenue_change = serializers.FloatField(required=False)
+    pct_revenue_change = serializers.FloatField(required=False, allow_null=True)
 
 
 class BacktestDetailSerializer(BacktestSummarySerializer):
