@@ -15,7 +15,8 @@ import {
 import { PlanType, PlanVersionType } from "../../types/plan-type";
 
 const PlanStateContext = React.createContext<State>(initialState);
-const PlanUpdaterContext = React.createContext<Omit<ActionCreators, "init">>({
+const PlanUpdaterContext = React.createContext<ActionCreators>({
+  init,
   setCurrentPlan,
   setCurrentPlanVersion,
   setReplacementPlanVersion,
@@ -49,6 +50,7 @@ export default function PlanProvider({ children }: ProviderProps) {
       setExperimentName: (data: string | null) =>
         dispatch(setExperimentName(data)),
       setDateRange: (data: string | null) => dispatch(setDateRange(data)),
+      init: () => dispatch(init()),
     }),
     []
   );

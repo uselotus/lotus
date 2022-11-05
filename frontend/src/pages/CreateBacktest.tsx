@@ -39,6 +39,7 @@ const CreateBacktest: FC = () => {
     setReplacementPlanVersion,
     setExperimentName,
     setDateRange,
+    init,
   } = usePlanUpdater();
   const [replacePlanVisible, setReplacePlanVisible] = useState<boolean>(false);
   const [newPlanVisible, setNewPlanVisible] = useState<boolean>(false);
@@ -71,6 +72,7 @@ const CreateBacktest: FC = () => {
       onSuccess: () => {
         toast.success("Started Backtest");
         queryClient.invalidateQueries(["experiments_list"]);
+        init();
         navigate("/experiments");
       },
       onError: (e) => {
@@ -305,13 +307,12 @@ const CreateBacktest: FC = () => {
                   {substitutions.map((substitution, index) => {
                     return (
                       <div key={index}>
-                        <p>
-                          <div className="flex rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 justify-center">
-                            <span className="font-bold">
-                              {substitution.original_plan_names[0]}
-                            </span>
-                          </div>
-                        </p>
+                        <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
+                          <p>Plan</p>
+                          <span className="font-bold">
+                            {substitution.original_plan_names[0]}
+                          </span>
+                        </div>
                       </div>
                     );
                   })}
@@ -341,7 +342,8 @@ const CreateBacktest: FC = () => {
                     return (
                       <div key={index}>
                         <p>
-                          <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                          <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
+                            <p>Plan</p>
                             <span className="font-bold">
                               {substitution.new_plan_name}
                             </span>
