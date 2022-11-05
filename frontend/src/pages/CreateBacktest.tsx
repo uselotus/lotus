@@ -82,15 +82,8 @@ const CreateBacktest: FC = () => {
   const runBacktest = () => {
     var singlesubscription: Substitution[];
     if (currentPlan && replacementPlan) {
-      singlesubscription = [
-        {
-          original_plans: [currentPlan.version_id],
-          new_plan: replacementPlan.version_id,
-        },
-      ];
-      setCurrentPlan();
-      setReplacementPlan();
-    } else {
+      submitSubstitution();
+    } else if (substitutions.length === 0) {
       toast.error("Please select a few plans");
       return null;
     }
@@ -103,7 +96,7 @@ const CreateBacktest: FC = () => {
         start_date: start_date,
         end_date: dayjs().format("YYYY-MM-DD"),
         kpis: ["total_revenue"],
-        substitutions: singlesubscription,
+        substitutions: substitutions,
       };
 
       mutation.mutate(post);
@@ -199,6 +192,8 @@ const CreateBacktest: FC = () => {
       ]);
       setCurrentPlan(null);
       setReplacementPlan(null);
+      setCurrentPlanVersion(null);
+      setReplacementPlanVersion(null);
     }
   };
 
@@ -311,7 +306,7 @@ const CreateBacktest: FC = () => {
                     return (
                       <div key={index}>
                         <p>
-                          <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                          <div className="flex rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 justify-center">
                             <span className="font-bold">
                               {substitution.original_plan_names[0]}
                             </span>
@@ -322,9 +317,12 @@ const CreateBacktest: FC = () => {
                   })}
                 </div>
                 <div className="mt-4">
-                  {currentPlan && (
-                    <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
-                      <span className="font-bold">{currentPlan.plan_name}</span>
+                  {currentPlan && currentPlanVersion && (
+                    <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
+                      <p>Plan</p>
+                      <span className="font-bold">
+                        {currentPlan.plan_name}: v{currentPlanVersion?.version}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -354,10 +352,12 @@ const CreateBacktest: FC = () => {
                   })}
                 </div>
                 <div className="mt-4">
-                  {replacementPlan && (
-                    <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
+                  {replacementPlan && replacementPlanVersion && (
+                    <div className="flex flex-col rounded-lg text-xl bg-[#FAFAFA] py-3 px-2 items-center">
+                      <p>Plan</p>
                       <span className="font-bold">
-                        {replacementPlan.plan_name}
+                        {replacementPlan.plan_name}: v
+                        {replacementPlanVersion?.version}
                       </span>
                     </div>
                   )}
