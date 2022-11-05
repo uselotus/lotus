@@ -44,6 +44,8 @@ const CreateBacktest: FC = () => {
   const [replacePlanVisible, setReplacePlanVisible] = useState<boolean>(false);
   const [newPlanVisible, setNewPlanVisible] = useState<boolean>(false);
 
+  const [planInFocus, setPlanInFocus] = useState<PlanType>();
+
   //temp
 
   const {
@@ -60,8 +62,8 @@ const CreateBacktest: FC = () => {
     data: planDetails,
     isLoading: planDetailsLoading,
     isError: planDetailsError,
-  } = useQuery<PlanDetailType>(["plan_details", currentPlan?.plan_id], () =>
-    Plan.getPlan(currentPlan?.plan_id || "11").then((res) => {
+  } = useQuery<PlanDetailType>(["plan_details", planInFocus?.plan_id], () =>
+    Plan.getPlan(planInFocus?.plan_id || "11").then((res) => {
       return res;
     })
   );
@@ -141,6 +143,7 @@ const CreateBacktest: FC = () => {
     if (current) {
       console.log(current);
       setCurrentPlan(current);
+      setPlanInFocus(current);
       queryClient.invalidateQueries(["plan_details"]);
     }
   };
@@ -150,6 +153,8 @@ const CreateBacktest: FC = () => {
       const replacement = plans.find((plan) => plan.plan_id === plan_id);
       if (replacement) {
         setReplacementPlan(replacement);
+        setPlanInFocus(replacement);
+        queryClient.invalidateQueries(["plan_details"]);
       }
     }
   };
