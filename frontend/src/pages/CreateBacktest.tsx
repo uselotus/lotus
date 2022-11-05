@@ -21,18 +21,29 @@ const CreateBacktest: FC = () => {
 
   const [form] = Form.useForm();
   const [substitutions, setSubstitutions] = useState<Substitution[]>([]);
-  const { currentPlan, replacementPlan } = usePlanState();
+  const {
+    currentPlan,
+    replacementPlan,
+    currentPlanVersion,
+    replacementPlanVersion,
+    experimentName,
+    dateRange,
+  } = usePlanState();
   const [currentPlanModal, setCurrentPlanModal] = useState<PlanType>();
   const [replacementPlanModal, setReplacementPlanModal] =
     useState<PlanVersionType>();
-  const { setCurrentPlan, setReplacementPlan } = usePlanUpdater();
+  const {
+    setCurrentPlan,
+    setReplacementPlan,
+    setCurrentPlanVersion,
+    setReplacementPlanVersion,
+    setExperimentName,
+    setDateRange,
+  } = usePlanUpdater();
   const [replacePlanVisible, setReplacePlanVisible] = useState<boolean>(false);
   const [newPlanVisible, setNewPlanVisible] = useState<boolean>(false);
 
   //temp
-  const [currentVersion, setCurrentVersion] = useState<PlanVersionType>();
-  const [replacementVersion, setReplacementVersion] =
-    useState<PlanVersionType>();
 
   const {
     data: plans,
@@ -104,6 +115,7 @@ const CreateBacktest: FC = () => {
   };
   const closeplanCurrentModal = () => {
     setReplacePlanVisible(false);
+    submitSubstitution();
   };
 
   const openplanNewModal = () => {
@@ -111,18 +123,23 @@ const CreateBacktest: FC = () => {
   };
   const closeplanNewModal = () => {
     setNewPlanVisible(false);
+    submitSubstitution();
   };
 
-  const changeCurrentPlanModal = (plan_id: string) => {
-    const current = plans?.find((plan) => plan.plan_id === plan_id);
+  useEffect(() => {
+    submitSubstitution();
+  }, []);
 
-    setCurrentPlanModal(current);
-  };
+  // const changeCurrentPlanModal = (plan_id: string) => {
+  //   const current = plans?.find((plan) => plan.plan_id === plan_id);
 
-  const changeReplacementPlanModal = (plan_id: string) => {
-    const replacement = plans?.find((plan) => plan.plan_id === plan_id);
-    setReplacementPlanModal(replacement);
-  };
+  //   setCurrentPlanModal(current);
+  // };
+
+  // const changeReplacementPlanModal = (plan_id: string) => {
+  //   const replacement = plans?.find((plan) => plan.plan_id === plan_id);
+  //   setReplacementPlanModal(replacement);
+  // };
 
   const addCurrentPlanSlot = (plan_id: string) => {
     const current = plans?.find((plan) => plan.plan_id === plan_id);
@@ -148,7 +165,7 @@ const CreateBacktest: FC = () => {
         (version) => version.version_id === version_id
       );
       if (current) {
-        setCurrentVersion(current);
+        setCurrentPlanVersion(current);
       }
     }
   };
@@ -159,37 +176,31 @@ const CreateBacktest: FC = () => {
         (version) => version.version_id === version_id
       );
       if (replacement) {
-        setReplacementVersion(replacement);
+        setReplacementPlanVersion(replacement);
       }
     }
   };
 
-  const generateRandomExperimentName = () => {
-    const randomName = "experiment-" + Math.random().toString(36).substring(7);
-    return randomName;
-  };
-
-  const experimentStarterName = generateRandomExperimentName();
-
   const submitSubstitution = () => {
-    if (currentPlan && replacementPlan) {
+    if (
+      currentPlan &&
+      replacementPlan &&
+      currentPlanVersion &&
+      replacementPlanVersion
+    ) {
       setSubstitutions([
         ...substitutions,
         {
-          original_plans: [currentVersion?.version_id],
-          new_plan: replacementVersion?.version_id,
+          original_plans: [currentPlanVersion?.version_id],
+          new_plan: replacementPlanVersion?.version_id,
           new_plan_name: replacementPlan.plan_name,
           original_plan_names: [currentPlan.plan_name],
         },
       ]);
-      // setCurrentPlan();
-      // setReplacementPlan();
+      setCurrentPlan(null);
+      setReplacementPlan(null);
     }
   };
-
-  // useEffect(() => {
-  //   submitSubstitution();
-  // }, [currentPlan, replacementPlan]);
 
   return (
     <PageLayout
@@ -214,7 +225,8 @@ const CreateBacktest: FC = () => {
             runBacktest();
           }}
           initialValues={{
-            ["backtest_name"]: experimentStarterName,
+            ["backtest_name"]: experimentName,
+            ["date_range"]: dateRange,
           }}
         >
           <div className="border-b border-gray-200 bg-white px-4 py-5 sm:px-6">
@@ -245,7 +257,12 @@ const CreateBacktest: FC = () => {
                 },
               ]}
             >
-              <Radio.Group buttonStyle="solid">
+              <Radio.Group
+                buttonStyle="solid"
+                onChange={(e) => {
+                  setDateRange(e.target.value);
+                }}
+              >
                 <Radio.Button value={1}>1 Month</Radio.Button>
                 <Radio.Button value={3}>3 Months</Radio.Button>
                 <Radio.Button value={6}>6 Months</Radio.Button>
@@ -266,7 +283,11 @@ const CreateBacktest: FC = () => {
                     },
                   ]}
                 >
-                  <Input />
+                  <Input
+                    onChange={(e) => {
+                      setExperimentName(e.target.value);
+                    }}
+                  />
                 </Form.Item>
               </div>
               <div>
@@ -303,7 +324,7 @@ const CreateBacktest: FC = () => {
                 <div className="mt-4">
                   {currentPlan && (
                     <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
-                      <span className="font-bold">{currentPlan.name}</span>
+                      <span className="font-bold">{currentPlan.plan_name}</span>
                     </div>
                   )}
                 </div>
@@ -335,7 +356,9 @@ const CreateBacktest: FC = () => {
                 <div className="mt-4">
                   {replacementPlan && (
                     <div className="flex rounded-lg text-xl bg-[#F7F8FD] py-3 px-2 justify-center">
-                      <span className="font-bold">{replacementPlan.name}</span>
+                      <span className="font-bold">
+                        {replacementPlan.plan_name}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -368,11 +391,7 @@ const CreateBacktest: FC = () => {
           </Select>
           <div className="my-10">
             {planDetails !== undefined && (
-              <Select
-                onChange={addCurrentPlanVersion}
-                className="w-8/12"
-                defaultValue={currentVersion?.version.toString()}
-              >
+              <Select onChange={addCurrentPlanVersion} className="w-8/12">
                 {planDetails?.versions.map((version) => (
                   <Select.Option value={version.version_id}>
                     {version.version}
@@ -397,7 +416,7 @@ const CreateBacktest: FC = () => {
             key="submit"
             type="primary"
             onClick={() => {
-              navigate("/backtest-plan");
+              navigate("/backtest-plan/" + replacementPlan?.plan_id);
             }}
           >
             Edit
@@ -426,11 +445,7 @@ const CreateBacktest: FC = () => {
           </Select>
           <div className="my-10">
             {planDetails !== undefined && (
-              <Select
-                onChange={addReplacementPlanVersion}
-                className="w-8/12"
-                defaultValue={replacementVersion?.version.toString()}
-              >
+              <Select onChange={addReplacementPlanVersion} className="w-8/12">
                 {planDetails?.versions.map((version) => (
                   <Select.Option value={version.version_id}>
                     {version.version}

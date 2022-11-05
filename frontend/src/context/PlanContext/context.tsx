@@ -1,19 +1,28 @@
 import React from "react";
 import planReducer from "./reducer";
-import InitialState from "./state";
-import { State, ActionCreators } from "./types";
+import initialState from "./state";
+import { State, ActionCreators, ActionTypes } from "./types";
 import {
   setCurrentPlan,
+  setCurrentPlanVersion,
+  setReplacementPlanVersion,
   init,
   setOnSubstitutionChangeFn,
   setReplacementPlan,
+  setExperimentName,
+  setDateRange,
 } from "./actions";
-import { PlanType } from "../../types/plan-type";
+import { PlanType, PlanVersionType } from "../../types/plan-type";
 
-const PlanStateContext = React.createContext<State>(InitialState);
+const PlanStateContext = React.createContext<State>(initialState);
 const PlanUpdaterContext = React.createContext<Omit<ActionCreators, "init">>({
-  setCurrentPlan: () => {},
-  setOnSubstitutionChangeFn: null,
+  setCurrentPlan,
+  setCurrentPlanVersion,
+  setReplacementPlanVersion,
+  setReplacementPlan,
+  setExperimentName,
+  setDateRange,
+  setOnSubstitutionChangeFn,
 });
 
 interface ProviderProps {
@@ -21,18 +30,25 @@ interface ProviderProps {
 }
 
 export default function PlanProvider({ children }: ProviderProps) {
-  const [state, dispatch] = React.useReducer(planReducer, InitialState);
+  const [state, dispatch] = React.useReducer(planReducer, initialState);
   React.useEffect(() => {
-    dispatch(init());
+    dispatch({ type: ActionTypes.INIT });
   }, []);
 
   const actions = React.useMemo(
     () => ({
-      setCurrentPlan: (data: PlanType) => dispatch(setCurrentPlan(data)),
-      setReplacementPlan: (data: PlanType) =>
+      setCurrentPlan: (data: PlanType | null) => dispatch(setCurrentPlan(data)),
+      setReplacementPlan: (data: PlanType | null) =>
         dispatch(setReplacementPlan(data)),
       setOnSubstitutionChangeFn: (data) =>
         dispatch(setOnSubstitutionChangeFn(data)),
+      setCurrentPlanVersion: (data: PlanVersionType | null) =>
+        dispatch(setCurrentPlanVersion(data)),
+      setReplacementPlanVersion: (data: PlanVersionType | null) =>
+        dispatch(setReplacementPlanVersion(data)),
+      setExperimentName: (data: string | null) =>
+        dispatch(setExperimentName(data)),
+      setDateRange: (data: string | null) => dispatch(setDateRange(data)),
     }),
     []
   );
@@ -48,6 +64,7 @@ export default function PlanProvider({ children }: ProviderProps) {
 
 function usePlanState() {
   const state = React.useContext(PlanStateContext);
+  console.log(state);
   if (typeof state === "undefined") {
     throw new Error("usePlanState must be used within a PlanProvider");
   }

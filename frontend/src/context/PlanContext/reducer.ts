@@ -1,6 +1,6 @@
 import { State, Actions, ActionTypes } from "./types";
 
-export default function planReducer(state: State, action: Actions) {
+export default function planReducer(state: State, action: Actions): State {
   switch (action.type) {
     case ActionTypes.SET_CURRENT: {
       return {
@@ -14,6 +14,18 @@ export default function planReducer(state: State, action: Actions) {
         replacementPlan: action.payload,
       };
     }
+    case ActionTypes.VERSION_CURRENT: {
+      return {
+        ...state,
+        currentPlanVersion: action.payload,
+      };
+    }
+    case ActionTypes.VERSION_REPLACEMENT: {
+      return {
+        ...state,
+        replacementPlanVersion: action.payload,
+      };
+    }
     case ActionTypes.SET_SUBSTITUTION_CALLBACK: {
       return {
         ...state,
@@ -24,6 +36,18 @@ export default function planReducer(state: State, action: Actions) {
       // NOTE: We can handle persisted data here, like from localStorage
       return {
         ...state,
+      };
+    }
+    case ActionTypes.SET_NAME: {
+      return {
+        ...state,
+        experimentName: action.payload,
+      };
+    }
+    case ActionTypes.SET_RANGE: {
+      return {
+        ...state,
+        dateRange: action.payload,
       };
     }
     default: {

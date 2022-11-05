@@ -390,7 +390,8 @@ const EditPlan = ({ type, plan }: Props) => {
             price_adjustment_amount:
               plan.versions[0].price_adjustment?.price_adjustment_amount,
             price_adjustment_type:
-              plan.versions[0].price_adjustment?.price_adjustment_type,
+              plan.versions[0].price_adjustment?.price_adjustment_type ||
+              "none",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
