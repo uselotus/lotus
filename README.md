@@ -23,10 +23,10 @@
 
 <!-- PROJECT LOGO -->
 
-![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.jpg#gh-dark-mode-only)
+![Lotus Logo](./design_resources/Logo1.1-total-black.png#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing & Billing On Any Metric
+# Lotus: Pricing & Packaging Infrustructure For Any Model
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <p align="center">
@@ -64,9 +64,11 @@ There are a few ways to use Lotus. After you set it up, head over to the [Docs](
 
 ### :cloud: Cloud Version
 
+Test out Lotus with a demo account [here](https://demo.uselotus.io/register).
+
 Best for convenience and fast deployment. This version also gets access to features faster than the self-hosted version.
 
-Sign up for our `alpha` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
+Sign up for our `beta` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
 
 ### :bust_in_silhouette: Self-Hosted Version
 
@@ -143,22 +145,12 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Get in Touch
 
-Lotus founders - founders@uselotus.io
+Email Us: founders@uselotus.io
+
+
+Message Us on Slack: <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"><img src="https://img.shields.io/badge/slack-lotus-E01E5A.svg?logo=slack&labelColor=2EB67D" alt="Join Lotus on Slack"></a>
 
 Or visit www.uselotus.io
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
-## Contributors
-
-<a href = "https://github.com/uselotus/lotus/graphs/contributors">
-  <img src = "https://contrib.rocks/image?repo=uselotus/lotus"/>
-</a>
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
