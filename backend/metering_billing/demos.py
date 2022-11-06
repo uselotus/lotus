@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.models import (
+    Backtest,
     BillableMetric,
     Customer,
     Event,
@@ -19,8 +20,10 @@ from metering_billing.models import (
     Subscription,
     User,
 )
+from metering_billing.tasks import run_backtest
 from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
 from metering_billing.utils.enums import (
+    BACKTEST_KPI,
     FLAT_FEE_BILLING_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
@@ -509,6 +512,15 @@ def setup_demo_3(company_name, username, email, password):
         status=SUBSCRIPTION_STATUS.ENDED,
         end_date__gt=now,
     ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
+    backtest = Backtest.objects.create(
+        backtest_name=organization,
+        start_date="2022-08-01",
+        end_date="2022-11-01",
+        organization=organization,
+        time_created=now,
+        kpis=[BACKTEST_KPI.TOTAL_REVENUE],
+    )
+    run_backtest(backtest.backtest_id)
     return user
 
 
