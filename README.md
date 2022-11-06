@@ -26,7 +26,7 @@
 ![Lotus Logo](./design_resources/Logo1.1-total-black.png#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing & Packaging Infrustructure For Any Model
+# Lotus: Pricing & Packaging Infrastructure For Any Model
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <p align="center">
