@@ -83,7 +83,7 @@ posthog.host = "https://app.posthog.com"
 
 if not PRODUCT_ANALYTICS_OPT_IN or DEBUG:
     posthog.disabled = True
-POSTHOG_PERSON = hash(SECRET_KEY) if SELF_HOSTED else None
+POSTHOG_PERSON = ("self-hosted" + hash(SECRET_KEY)) if SELF_HOSTED else None
 
 if DEBUG or SELF_HOSTED:
     ALLOWED_HOSTS = ["*"]
