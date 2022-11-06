@@ -66,18 +66,14 @@ const DemoSignup: React.FC = () => {
     setEmail(event.target.value);
   };
 
-  const handleSignUp = (user: {
-    username: string;
-    email: string;
-    password: string;
-  }) => {
+  const handleSignUp = () => {
     // const pwBitArray = sjcl.hash.sha256.hash(user.password);
     // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
     const register_object: DemoSignupProps = {
       company_name: organization.company_name,
-      email: user.email,
-      password: user.password,
-      username: user.username,
+      email: email,
+      password: password,
+      username: username,
     };
 
     mutation.mutate(register_object);
