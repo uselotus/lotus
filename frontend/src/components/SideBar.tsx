@@ -27,7 +27,7 @@ const SideBar: FC = () => {
     });
   };
 
-  const menuItems: any = [
+  const menuItemsBasic: any = [
     {
       key: "/dashboard",
       icon: <DashboardOutlined />,
@@ -70,13 +70,19 @@ const SideBar: FC = () => {
       onClick: () =>
         window.open("https://docs.uselotus.io/docs/intro", "_blank"),
     },
-    {
-      key: "/settings",
-      icon: <SettingOutlined />,
-      label: "Settings",
-      onClick: () => navigate("/settings"),
-    },
   ];
+  const menuItems =
+    import.meta.env.VITE_IS_DEMO === "true"
+      ? menuItemsBasic
+      : menuItemsBasic +
+        [
+          {
+            key: "/settings",
+            icon: <SettingOutlined />,
+            label: "Settings",
+            onClick: () => navigate("/settings"),
+          },
+        ];
 
   return (
     <div

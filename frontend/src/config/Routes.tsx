@@ -65,10 +65,25 @@ const AppRoutes: FC = () => {
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/settings"
+              element={
+                import.meta.env.VITE_IS_DEMO === true ? (
+                  <Navigate replace to={"/"} />
+                ) : (
+                  <SettingsPage />
+                )
+              }
+            />
             <Route
               path="/settings/stripe"
-              element={<StripeIntegrationView />}
+              element={
+                import.meta.env.VITE_IS_DEMO === true ? (
+                  <Navigate replace to={"/"} />
+                ) : (
+                  <StripeIntegrationView />
+                )
+              }
             />
             <Route path="/redirectstripe" element={<StripeRedirect />} />
             <Route path="/experiments" element={<ViewExperiments />} />

@@ -4,15 +4,30 @@ import Login from "../pages/Login";
 import ResetPassword from "../pages/ResetPassword";
 import Register from "../pages/Registration";
 import SetNewPassword from "../pages/SetNewPassword";
+import DemoSignup from "../pages/DemoSignup";
 
 const ExternalRoutes: FC = () => {
   return (
     <Routes>
-      <Route path="/register" element={<Register />} />
+      <Route
+        path="/register"
+        element={
+          import.meta.env.VITE_IS_DEMO === "true" ? (
+            <DemoSignup />
+          ) : (
+            <Register />
+          )
+        }
+      />
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/set-new-password" element={<SetNewPassword />} />
-      <Route path="/*" element={<Login />} />
+      <Route
+        path="/*"
+        element={
+          import.meta.env.VITE_IS_DEMO === "true" ? <DemoSignup /> : <Login />
+        }
+      />
     </Routes>
   );
 };

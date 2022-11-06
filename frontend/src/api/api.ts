@@ -6,17 +6,19 @@ import {
   CustomerDetailType,
 } from "../types/customer-type";
 import {
-    PlanType,
-    CreatePlanType,
-    UpdatePlanType,
-    PlansByCustomerArray,
-    CreatePlanVersionType,
-    PlanDetailType,
-    PlanVersionType,
-    ReplaceLaterType,
-    ReplaceImmediatelyType,
-    ArchivePlanVersionType,
-    PlanVersionUpdateDescriptionType, CreatePlanExternalLinkType, InitialExternalLinks,
+  PlanType,
+  CreatePlanType,
+  UpdatePlanType,
+  PlansByCustomerArray,
+  CreatePlanVersionType,
+  PlanDetailType,
+  PlanVersionType,
+  ReplaceLaterType,
+  ReplaceImmediatelyType,
+  ArchivePlanVersionType,
+  PlanVersionUpdateDescriptionType,
+  CreatePlanExternalLinkType,
+  InitialExternalLinks,
 } from "../types/plan-type";
 import {
   PaymentProcessorConnectionResponseType,
@@ -35,6 +37,7 @@ import {
 } from "../types/subscription-type";
 import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
+import { DemoSignupProps } from "../pages/DemoSignup";
 import {
   CreateOrgAccountType,
   OrganizationType,
@@ -48,11 +51,12 @@ import {
   BacktestResultType,
 } from "../types/experiment-type";
 import {
-    OrganizationSettingsParams, OrganizationSettings,
-    Source,
-    StripeDetails,
-    StripeImportCustomerResponse,
-    TransferSub, UpdateOrganizationSettingsParams
+  OrganizationSettingsParams,
+  OrganizationSettings,
+  Source,
+  StripeImportCustomerResponse,
+  TransferSub,
+  UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
 
 const cookies = new Cookies();
@@ -133,12 +137,16 @@ export const Plan = {
   //create plan version
   createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
     requests.post("api/plan_versions/", post),
-   //create plan external links
-  createExternalLinks: (post: CreatePlanExternalLinkType): Promise<InitialExternalLinks> =>
-     requests.post("api/external_plan_link/", post),
+  //create plan external links
+  createExternalLinks: (
+    post: CreatePlanExternalLinkType
+  ): Promise<InitialExternalLinks> =>
+    requests.post("api/external_plan_link/", post),
   //delete plan external links
-  deleteExternalLinks: (post: InitialExternalLinks) :Promise<any> =>
-     requests.delete(`api/external_plan_link/${post.external_plan_id}/?source=${post.source}`),
+  deleteExternalLinks: (post: InitialExternalLinks): Promise<any> =>
+    requests.delete(
+      `api/external_plan_link/${post.external_plan_id}/?source=${post.source}`
+    ),
 
   //update plans methods
   updatePlan: (
@@ -191,6 +199,9 @@ export const Authentication = {
     requests.post("api/register/", {
       register,
     }),
+  registerDemo: (register: DemoSignupProps) =>
+    requests.post("api/register_demo/", { register }),
+
   resetPassword: (email: string): Promise<{ email: string }> =>
     requests.post("api/user/password/reset/init/", { email }),
   setNewPassword: (
@@ -289,26 +300,33 @@ export const Backtests = {
 };
 
 export const Stripe = {
+  //Import Customers
+  importCustomers: (post: Source): Promise<StripeImportCustomerResponse> =>
+    requests.post("api/import_customers/", post),
 
-    //Import Customers
-    importCustomers:(post:Source): Promise<StripeImportCustomerResponse> =>
-        requests.post("api/import_customers/", post),
+  //Import Payments
+  importPayments: (post: Source): Promise<StripeImportCustomerResponse> =>
+    requests.post("api/import_payment_objects/", post),
 
-    //Import Payments
-    importPayments:(post:Source): Promise<StripeImportCustomerResponse> =>
-        requests.post("api/import_payment_objects/", post),
+  //transfer Subscription
+  transferSubscriptions: (
+    post: TransferSub
+  ): Promise<StripeImportCustomerResponse> =>
+    requests.post("api/transfer_subscriptions/", post),
 
-    //transfer Subscription
-    transferSubscriptions:(post:TransferSub): Promise<StripeImportCustomerResponse> =>
-        requests.post("api/transfer_subscriptions/", post),
+  //Get Organization Settings
+  getOrganizationSettings: (
+    data: OrganizationSettingsParams
+  ): Promise<OrganizationSettings[]> =>
+    requests.get("api/organization_settings/", { params: data }),
 
-    //Get Organization Settings
-    getOrganizationSettings:(data:OrganizationSettingsParams): Promise<OrganizationSettings[]> =>
-        requests.get("api/organization_settings/", { params: data  }),
-
-    //Update Organization Settings
-    updateOrganizationSettings:(data:UpdateOrganizationSettingsParams): Promise<OrganizationSettings> =>
-        requests.patch(`api/organization_settings/${data.setting_id}/`, { setting_value: data.setting_value}),
+  //Update Organization Settings
+  updateOrganizationSettings: (
+    data: UpdateOrganizationSettingsParams
+  ): Promise<OrganizationSettings> =>
+    requests.patch(`api/organization_settings/${data.setting_id}/`, {
+      setting_value: data.setting_value,
+    }),
 };
 
 export const PaymentProcessorIntegration = {
