@@ -100,72 +100,60 @@ const DemoSignup: React.FC = () => {
           <LoadingSpinner />
         </div>
       ) : (
-        <div className="space-y-4">
-          <div>
-            <Card title={"Create Lotus Demo Account"} className="flex flex-col">
-              <Form
-                form={form}
-                onFinish={handleSignUp}
-                name="create_organization"
+        <div className="space-y-4 w-2/12">
+          <div className="">
+            <div>
+              <Card
+                title={"Create Lotus Demo Account"}
+                className="flex flex-col"
               >
-                <Form.Item
-                  rules={[
-                    {
-                      required: true,
-                      message: "You must enter a username",
-                    },
-                  ]}
-                >
-                  <label htmlFor="username">Username</label>
-                  <Input
-                    type="text"
-                    name="company_name"
-                    value={username}
-                    defaultValue="username123"
-                    onChange={handleUserNameChange}
-                  />
-                </Form.Item>
-                <Form.Item
-                  rules={[
-                    {
-                      required: true,
-                      type: "email",
-                      message: "The input is not valid E-mail!",
-                    },
-                  ]}
-                >
-                  <label htmlFor="username">Email</label>
-                  <Input
-                    type="email"
-                    name="email"
-                    value={email}
-                    defaultValue="elon@musk.com"
-                    onChange={handleEmailChange}
-                  />
-                </Form.Item>
-                <Form.Item
-                  rules={[
-                    {
-                      required: true,
-                      message: "You must enter a password",
-                    },
-                  ]}
-                >
-                  <label htmlFor="password">Password</label>
-                  <Input
-                    type="password"
-                    name="password"
-                    value={password}
-                    defaultValue="password123"
-                    onChange={handlePasswordChange}
-                  />
-                </Form.Item>
+                {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
+                <Form onFinish={handleSignUp} name="create_organization">
+                  <Form.Item>
+                    <label htmlFor="username">Username</label>
+                    <Input
+                      type="text"
+                      name="company_name"
+                      value={username}
+                      defaultValue="username123"
+                      onChange={handleUserNameChange}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    rules={[
+                      {
+                        required: true,
+                        type: "email",
+                        message: "The input is not valid E-mail!",
+                      },
+                    ]}
+                  >
+                    <label htmlFor="username">Email</label>
+                    <Input
+                      type="email"
+                      name="email"
+                      value={email}
+                      defaultValue="elon@musk.com"
+                      onChange={handleEmailChange}
+                    />
+                  </Form.Item>
+                  <Form.Item>
+                    <label htmlFor="password">Password</label>
+                    <Input
+                      type="password"
+                      name="password"
+                      value={password}
+                      defaultValue="password123"
+                      onChange={handlePasswordChange}
+                    />
+                  </Form.Item>
 
-                <Form.Item className="justify-self-center	">
-                  <Button htmlType="submit">Continue to Demo</Button>
-                </Form.Item>
-              </Form>
-            </Card>
+                  <Form.Item className="justify-self-center	">
+                    <Button htmlType="submit">Continue to Demo</Button>
+                  </Form.Item>
+                </Form>
+              </Card>
+            </div>
           </div>
 
           <div className="">
