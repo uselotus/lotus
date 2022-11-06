@@ -200,7 +200,7 @@ export const Authentication = {
       register,
     }),
   registerDemo: (register: DemoSignupProps) =>
-    requests.post("api/register_demo/", { register }),
+    requests.post("api/demo_register/", { register }),
 
   resetPassword: (email: string): Promise<{ email: string }> =>
     requests.post("api/user/password/reset/init/", { email }),

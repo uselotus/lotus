@@ -1,13 +1,16 @@
 import { Button, message, Card, Form, Input } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import CreateOrganization from "../components/Registration/CreateOrganization";
 import { Organizaton } from "../components/Registration/CreateOrganization";
 import { Authentication } from "../api/api";
 import { useMutation, useQueryClient } from "react-query";
-import { CreateOrgAccountType } from "../types/account-type";
-import SignUp from "../components/Registration/SignUp";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { instance } from "../api/api";
+import Cookies from "universal-cookie";
+import { toast } from "react-toastify";
+
+const cookies = new Cookies();
+
 // import sjcl from "sjcl";
 
 export interface DemoSignupProps {
@@ -48,9 +51,16 @@ const DemoSignup: React.FC = () => {
   const mutation = useMutation(
     (register: DemoSignupProps) => Authentication.registerDemo(register),
     {
-      onSuccess: () => {
+      onSuccess: (response) => {
+        const { token, detail } = response;
+        cookies.set("Token", token);
+        instance.defaults.headers.common["Authorization"] = `Token ${token}`;
         queryClient.invalidateQueries("session");
-        navigate("/login");
+      },
+      onError: (error: any) => {
+        toast.error(error.response.data.detail, {
+          position: "top-center",
+        });
       },
     }
   );
@@ -146,7 +156,7 @@ const DemoSignup: React.FC = () => {
               className="w-full"
               onClick={() => navigate("/login")}
             >
-              Log In Into Your Demo
+              Login to Your Demo
             </Button>
           </div>
         </div>
