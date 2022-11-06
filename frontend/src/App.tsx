@@ -56,6 +56,7 @@ function App() {
           <ToastContainer
             autoClose={1000}
             bodyClassName=" text-gold font-main"
+            position="top-center"
           />
           <PlanProvider>
             <AppRoutes />

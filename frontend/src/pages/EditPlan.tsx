@@ -27,9 +27,9 @@ import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { ArrowLeftOutlined } from "@ant-design/icons";
+import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import React from "react";
 import { PageLayout } from "../components/base/PageLayout";
-import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
@@ -42,9 +42,10 @@ interface CustomizedState {
 interface Props {
   type: "backtest" | "version" | "custom";
   plan: PlanDetailType;
+  versionIndex: number;
 }
 
-const EditPlan = ({ type, plan }: Props) => {
+const EditPlan = ({ type, plan, versionIndex }: Props) => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [targetCustomerFormVisible, setTargetCustomerFormVisible] =
@@ -53,11 +54,10 @@ const EditPlan = ({ type, plan }: Props) => {
     useState<boolean>(false);
   const [activeVersion, setActiveVersion] = useState<boolean>(false);
   const [activeVersionType, setActiveVersionType] = useState<string>();
-  const { replacementPlan } = usePlanState();
-  const { setReplacementPlan } = usePlanUpdater();
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
+  const { setReplacementPlan } = usePlanUpdater();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
   const [targetCustomerId, setTargetCustomerId] = useState<string>(); // target customer id
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
@@ -67,16 +67,17 @@ const EditPlan = ({ type, plan }: Props) => {
     { label: "Quarterly", name: "quarterly" },
     { label: "Yearly", name: "yearly" },
   ]);
-  const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>("");
+  const [priceAdjustmentType, setPriceAdjustmentType] =
+    useState<string>("none");
 
   const queryClient = useQueryClient();
 
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
-    plan.versions[0].features
+    plan.versions[versionIndex].features
   );
 
   useEffect(() => {
-    const initialComponents: any[] = plan.versions[0].components.map(
+    const initialComponents: any[] = plan.versions[versionIndex].components.map(
       (component) => {
         return {
           metric: component.billable_metric.billable_metric_name,
@@ -89,7 +90,7 @@ const EditPlan = ({ type, plan }: Props) => {
     );
     console.log(initialComponents);
     setComponentsData(initialComponents);
-  }, [plan.versions[0].components]);
+  }, [plan.versions[versionIndex].components]);
 
   const mutation = useMutation(
     (data: CreatePlanVersionType) => Plan.createVersion(data),
@@ -381,16 +382,19 @@ const EditPlan = ({ type, plan }: Props) => {
           name="create_plan"
           initialValues={{
             name: plan.plan_name,
-            description: plan.versions[0].description,
-            flat_rate: plan.versions[0].flat_rate,
-            pay_in_advance: plan.versions[0].flat_fee_billing_type,
-            // usage_billing_frequency: plan.versions[0].usage_billing_frequency,
+            description: plan.versions[versionIndex].description,
+            flat_rate: plan.versions[versionIndex].flat_rate,
+            pay_in_advance: plan.versions[versionIndex].flat_fee_billing_type,
+            // usage_billing_frequency: plan.versions[versionIndex].usage_billing_frequency,
             plan_duration: plan.plan_duration,
-            flat_fee_billing_type: plan.versions[0].flat_fee_billing_type,
+            flat_fee_billing_type:
+              plan.versions[versionIndex].flat_fee_billing_type,
             price_adjustment_amount:
-              plan.versions[0].price_adjustment?.price_adjustment_amount,
+              plan.versions[versionIndex].price_adjustment
+                ?.price_adjustment_amount,
             price_adjustment_type:
-              plan.versions[0].price_adjustment?.price_adjustment_type,
+              plan.versions[versionIndex].price_adjustment
+                ?.price_adjustment_type || "none",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}

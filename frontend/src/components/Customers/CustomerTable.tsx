@@ -29,7 +29,6 @@ const columns: ProColumns<CustomerTableItem>[] = [
   {
     title: "Customer ID",
     width: 120,
-
     dataIndex: "customer_id",
     align: "left",
     ellipsis: true,
@@ -59,8 +58,10 @@ const columns: ProColumns<CustomerTableItem>[] = [
   {
     title: "Outstanding Revenue",
     width: 120,
+    sorter: (a, b) => a.total_amount_due - b.total_amount_due,
+
     render: (_, record) => (
-      <div>
+      <div className="self-center">
         {record.total_amount_due !== undefined ? (
           <p>${record.total_amount_due.toFixed(2)}</p>
         ) : (

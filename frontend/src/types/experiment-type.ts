@@ -71,4 +71,6 @@ export interface CreateBacktestType {
 export interface Substitution {
   new_plan: string;
   original_plans: string[];
+  new_plan_name: string;
+  original_plan_names: string[];
 }

@@ -22,6 +22,7 @@ from .models import (
     PlanVersion,
     Subscription,
     User,
+    BacktestSubstitution,
 )
 
 
@@ -45,6 +46,7 @@ admin.site.register(Subscription, SimpleHistoryAdmin)
 admin.site.register(Invoice, SimpleHistoryAdmin)
 admin.site.register(OrganizationInviteToken)
 admin.site.unregister(APIKey)
+admin.site.register(BacktestSubstitution)
 
 
 @admin.register(APIToken)

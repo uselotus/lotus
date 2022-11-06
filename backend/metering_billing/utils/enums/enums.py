@@ -109,6 +109,7 @@ class BACKTEST_KPI(models.TextChoices):
 class BACKTEST_STATUS(models.TextChoices):
     RUNNING = ("running", _("Running"))
     COMPLETED = ("completed", _("Completed"))
+    FAILED = ("failed", _("Failed"))
 
 
 class PRODUCT_STATUS(models.TextChoices):
