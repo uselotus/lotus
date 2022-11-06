@@ -5,7 +5,7 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
     def get_queryset(self):
         queryset = self.queryset
         org = self.context.get("organization", None)
-        queryset.filter(organization=org)
+        queryset = queryset.filter(organization=org)
         return queryset
 
 

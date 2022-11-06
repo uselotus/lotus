@@ -373,7 +373,7 @@ class PlanComponent(models.Model):
         BillableMetric, on_delete=models.CASCADE, related_name="+"
     )
     free_metric_units = models.DecimalField(
-        decimal_places=10, max_digits=20, default=0.0, blank=True, null=True
+        decimal_places=10, max_digits=20, blank=True, null=True
     )
     cost_per_batch = models.DecimalField(
         decimal_places=10, max_digits=20, blank=True, null=True
