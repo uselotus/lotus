@@ -71,18 +71,60 @@ const SideBar: FC = () => {
         window.open("https://docs.uselotus.io/docs/intro", "_blank"),
     },
   ];
+
+  const menuItemsAdmin: any = [
+    {
+      key: "/dashboard",
+      icon: <DashboardOutlined />,
+      label: "Dashboard",
+      onClick: () => navigate("/dashboard"),
+    },
+    {
+      key: "/experiments",
+      icon: <ExperimentOutlined />,
+      label: "Experiments",
+      onClick: () => navigate("/experiments"),
+    },
+    {
+      key: "/customers",
+      icon: <UserOutlined />,
+      label: "Customers",
+      onClick: () => navigate("/customers"),
+    },
+    {
+      key: "/plans",
+      icon: <BorderlessTableOutlined />,
+      label: "Plans",
+      onClick: () => navigate("/plans"),
+    },
+
+    {
+      key: "/metrics",
+      icon: <LineChartOutlined />,
+
+      label: "Metrics",
+      onClick: () => navigate("/metrics"),
+    },
+    {
+      type: "divider",
+    },
+    {
+      label: "Docs",
+      key: "/docs",
+      icon: <BookOutlined />,
+      onClick: () =>
+        window.open("https://docs.uselotus.io/docs/intro", "_blank"),
+    },
+    {
+      key: "/settings",
+      icon: <SettingOutlined />,
+      label: "Settings",
+      onClick: () => navigate("/settings"),
+    },
+  ];
+
   const menuItems =
-    import.meta.env.VITE_IS_DEMO === "true"
-      ? menuItemsBasic
-      : menuItemsBasic +
-        [
-          {
-            key: "/settings",
-            icon: <SettingOutlined />,
-            label: "Settings",
-            onClick: () => navigate("/settings"),
-          },
-        ];
+    import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
 
   return (
     <div

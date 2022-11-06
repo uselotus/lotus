@@ -33,6 +33,7 @@ const DemoSignup: React.FC = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [form] = Form.useForm();
 
   const queryClient = useQueryClient();
   const next = () => {
@@ -79,75 +80,92 @@ const DemoSignup: React.FC = () => {
   const handleSignUp = () => {
     // const pwBitArray = sjcl.hash.sha256.hash(user.password);
     // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
-    const register_object: DemoSignupProps = {
-      company_name: organization.company_name,
-      email: email,
-      password: password,
-      username: username,
-    };
+    form.validateFields().then(() => {
+      const register_object: DemoSignupProps = {
+        company_name: organization.company_name,
+        email: email,
+        password: password,
+        username: username,
+      };
 
-    mutation.mutate(register_object);
+      mutation.mutate(register_object);
+    });
   };
 
   return (
-    <div className="grid h-screen place-items-center gap-3">
+    <div className="grid h-screen place-items-center">
       {mutation.isLoading ? (
         <div>
           <h1>Creating your account...</h1>
           <LoadingSpinner />
         </div>
       ) : (
-        <div className="space-y-4 w-2/12">
-          <div className="">
-            <div>
-              <Card title={"Lotus Demo Account"} className="flex flex-col">
-                {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
-                <Form onFinish={handleSignUp} name="create_organization">
-                  <Form.Item>
-                    <label htmlFor="username">Username</label>
-                    <Input
-                      type="text"
-                      name="company_name"
-                      value={username}
-                      defaultValue="username123"
-                      onChange={handleUserNameChange}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    rules={[
-                      {
-                        required: true,
-                        type: "email",
-                        message: "The input is not valid E-mail!",
-                      },
-                    ]}
-                  >
-                    <label htmlFor="username">Email</label>
-                    <Input
-                      type="email"
-                      name="email"
-                      value={email}
-                      defaultValue="elon@musk.com"
-                      onChange={handleEmailChange}
-                    />
-                  </Form.Item>
-                  <Form.Item>
-                    <label htmlFor="password">Password</label>
-                    <Input
-                      type="password"
-                      name="password"
-                      value={password}
-                      defaultValue="password123"
-                      onChange={handlePasswordChange}
-                    />
-                  </Form.Item>
+        <div className="space-y-4">
+          <div>
+            <Card title={"Create Lotus Demo Account"} className="flex flex-col">
+              <Form
+                form={form}
+                onFinish={handleSignUp}
+                name="create_organization"
+              >
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: "You must enter a username",
+                    },
+                  ]}
+                >
+                  <label htmlFor="username">Username</label>
+                  <Input
+                    type="text"
+                    name="company_name"
+                    value={username}
+                    defaultValue="username123"
+                    onChange={handleUserNameChange}
+                  />
+                </Form.Item>
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      type: "email",
+                      message: "The input is not valid E-mail!",
+                    },
+                  ]}
+                >
+                  <label htmlFor="username">Email</label>
+                  <Input
+                    type="email"
+                    name="email"
+                    value={email}
+                    defaultValue="elon@musk.com"
+                    onChange={handleEmailChange}
+                  />
+                </Form.Item>
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: "You must enter a password",
+                    },
+                  ]}
+                >
+                  <label htmlFor="password">Password</label>
+                  <Input
+                    type="password"
+                    name="password"
+                    value={password}
+                    defaultValue="password123"
+                    onChange={handlePasswordChange}
+                  />
+                </Form.Item>
 
-                  <Form.Item className="justify-self-center	">
-                    <Button htmlType="submit">Continue to Demo</Button>
-                  </Form.Item>
-                </Form>
-              </Card>
-            </div>
+                <Form.Item className="justify-self-center	">
+                  <Button htmlType="submit">Continue to Demo</Button>
+                </Form.Item>
+              </Form>
+            </Card>
           </div>
 
           <div className="">
@@ -156,7 +174,7 @@ const DemoSignup: React.FC = () => {
               className="w-full"
               onClick={() => navigate("/login")}
             >
-              Login to Your Demo
+              Login to Your Demo Instead
             </Button>
           </div>
         </div>
