@@ -228,7 +228,7 @@ def setup_demo_3(company_name, username, email, password):
     )
     pc2 = PlanComponent.objects.create(
         billable_metric=sum_compute,
-        cost_per_batch=.33,
+        cost_per_batch=0.33,
         metric_units_per_batch=10,
         free_metric_units=75,
     )
@@ -261,7 +261,7 @@ def setup_demo_3(company_name, username, email, password):
     )
     pc2 = PlanComponent.objects.create(
         billable_metric=sum_compute,
-        cost_per_batch=.47,
+        cost_per_batch=0.47,
         metric_units_per_batch=10,
         free_metric_units=100,
     )
@@ -293,7 +293,7 @@ def setup_demo_3(company_name, username, email, password):
     )
     pc2 = PlanComponent.objects.create(
         billable_metric=sum_compute,
-        cost_per_batch=.67,
+        cost_per_batch=0.67,
         metric_units_per_batch=10,
         free_metric_units=200,
     )
