@@ -1,4 +1,5 @@
 import json
+import time
 
 import posthog
 from django.conf import settings
@@ -8,6 +9,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
+from metering_billing.demos import setup_demo_3
 from metering_billing.models import Organization, OrganizationInviteToken, User
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.internal_serializers import *
@@ -217,6 +219,54 @@ class RegisterView(LoginViewMixin, APIView):
         )
         if token:
             token.delete()
+        return Response(
+            {
+                "detail": "Successfully registered.",
+                "token": AuthToken.objects.create(user)[1],
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+@extend_schema(
+    request=DemoRegistrationSerializer,
+    responses={
+        201: inline_serializer(
+            "RegistrationResponse", fields={"detail": serializers.CharField()}
+        )
+    },
+)
+class DemoRegisterView(LoginViewMixin, APIView):
+    def post(self, request, format=None):
+        start = time.time()
+        serializer = DemoRegistrationSerializer(
+            data=request.data,
+        )
+        serializer.is_valid(raise_exception=True)
+        reg_dict = serializer.validated_data["register"]
+        username = reg_dict["username"]
+        email = reg_dict["email"]
+        password = reg_dict["password"]
+        company_name = username  # different
+
+        existing_user_num = User.objects.filter(username=username).count()
+        if existing_user_num > 0:
+            msg = f"User with username already exists"
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        existing_user_num = User.objects.filter(email=email).count()
+        if existing_user_num > 0:
+            msg = f"User with email already exists"
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = setup_demo_3(company_name, username, email, password)
+
+        posthog.capture(
+            email,
+            event="demo_register",
+            properties={"username": username},
+        )
+        end = time.time()
+        print(f"Demo register took {end - start} seconds")
         return Response(
             {
                 "detail": "Successfully registered.",

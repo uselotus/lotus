@@ -20,3 +20,13 @@ class RegistrationDetailSerializer(serializers.Serializer):
 
 class RegistrationSerializer(serializers.Serializer):
     register = RegistrationDetailSerializer()
+
+
+class DemoRegistrationDetailSerializer(serializers.Serializer):
+    email = serializers.CharField()
+    password = serializers.CharField()
+    username = serializers.CharField()
+
+
+class DemoRegistrationSerializer(serializers.Serializer):
+    register = DemoRegistrationDetailSerializer()
