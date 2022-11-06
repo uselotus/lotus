@@ -131,6 +131,8 @@ def setup_demo_3(company_name, username, email, password):
     )
     free_bp.components.add(pc1, pc2)
     free_bp.save()
+    plan.display_version = free_bp
+    plan.save()
     plan = Plan.objects.create(
         plan_name="10K Words Plan",
         organization=organization,
@@ -157,6 +159,8 @@ def setup_demo_3(company_name, username, email, password):
     )
     bp_10_og.components.add(pc1, pc2)
     bp_10_og.save()
+    plan.display_version = bp_10_og
+    plan.save()
     plan = Plan.objects.create(
         plan_name="25K Words Plan",
         organization=organization,
@@ -182,6 +186,8 @@ def setup_demo_3(company_name, username, email, password):
     )
     bp_25_og.components.add(pc1, pc2)
     bp_25_og.save()
+    plan.display_version = bp_25_og
+    plan.save()
     plan = Plan.objects.create(
         plan_name="50K Words Plan",
         organization=organization,
@@ -207,6 +213,8 @@ def setup_demo_3(company_name, username, email, password):
     )
     bp_50_og.components.add(pc1, pc2)
     bp_50_og.save()
+    plan.display_version = bp_50_og
+    plan.save()
     plan = Plan.objects.create(
         plan_name="10K Words Plan - UB Compute + Seats",
         organization=organization,
@@ -240,6 +248,8 @@ def setup_demo_3(company_name, username, email, password):
     )
     bp_10_compute_seats.components.add(pc1, pc2, pc3)
     bp_10_compute_seats.save()
+    plan.display_version = bp_10_compute_seats
+    plan.save()
     plan = Plan.objects.create(
         plan_name="25K Words Plan - UB Compute + Seats",
         organization=organization,
@@ -272,6 +282,9 @@ def setup_demo_3(company_name, username, email, password):
         free_metric_units=0,
     )
     bp_25_compute_seats.components.add(pc1, pc2, pc3)
+    bp_25_compute_seats.save()
+    plan.display_version = bp_25_compute_seats
+    plan.save()
     plan = Plan.objects.create(
         plan_name="50K Words Plan - UB Compute + Seats",
         organization=organization,
@@ -301,6 +314,9 @@ def setup_demo_3(company_name, username, email, password):
         billable_metric=num_seats, cost_per_batch=10, free_metric_units=0
     )
     bp_50_compute_seats.components.add(pc1, pc2, pc3)
+    bp_50_compute_seats.save()
+    plan.display_version = bp_10_compute_seats
+    plan.save()
     six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
     for i, customer in enumerate(big_customers):
         beginning = six_months_ago
