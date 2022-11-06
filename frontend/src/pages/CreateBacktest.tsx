@@ -372,7 +372,7 @@ const CreateBacktest: FC = () => {
               </div>
             </div>
             <div className="grid justify-items-center">
-              <Button className=" max-w-md">+</Button>
+              {/* <Button className=" max-w-md">+</Button> */}
             </div>
           </div>
         </Form>

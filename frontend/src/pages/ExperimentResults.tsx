@@ -87,83 +87,107 @@ const ExperimentResults: FC = () => {
       {isError || experiment === undefined ? (
         <div>Something went wrong</div>
       ) : (
-        <div>
-          <div className=" border-2 border-gray-200 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-4">
-            <div className="grid grid-cols-2 gap-5">
-              <div className=" mb-3">
-                <NewTitle>{experiment?.backtest_name}</NewTitle>
-              </div>
-              <h3 className="font-bold">
-                Date Run: {dayjs(experiment.time_created).format("YYYY-MM-DD")}
-              </h3>
-
-              <div className=" col-span-1 self-center">
-                <h3 className=" font-bold">
-                  Date Range: {experiment.start_date} to {experiment.end_date}
+        <div className="">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-1 border-2 border-solid rounded border-[#EAEAEB] px-6 py-5 bg-white">
+              <div className="grid grid-cols-1 gap-5">
+                <div className="mb-3">
+                  <h2 className="font-bold">{experiment?.backtest_name}</h2>
+                </div>
+                <h3 className="font-bold">
+                  Date Run:{" "}
+                  {dayjs(experiment.time_created).format("YYYY-MM-DD")}
                 </h3>
-              </div>
-              <div className="col-span-1">
-                <h3 className=" font-bold">Status: {experiment.status}</h3>
+
+                <div className=" col-span-1 self-center">
+                  <h3 className=" font-bold">
+                    Date Range: {experiment.start_date} to {experiment.end_date}
+                  </h3>
+                </div>
+                <div className="col-span-1">
+                  <h3 className=" font-bold">Status: {experiment.status}</h3>
+                </div>
               </div>
             </div>
-          </div>
-          {/* <div className="justify-self-center mt-6">
-            <Card key="total_revenue" maxWidth="max-w-xs">
-              <Flex
-                justifyContent="justify-start"
-                alignItems="items-baseline"
-                spaceX="space-x-3"
-                truncate={true}
-              >
-                <Text>{"Total Revenue"}</Text>
-                <Text
-                  color={
-                    experiment.backtest_results.pct_revenue_change >= 0
-                      ? "green"
-                      : "red"
-                  }
+            <div className="col-span-2 flex flex-col border-2 col border-solid rounded border-[#EAEAEB] px-6 py-5 bg-white ">
+              <div className="flex flex-row space-x-8 content-center	 ">
+                <h2> Substitutions</h2>
+                <Select
+                  defaultValue="Select a substitution"
+                  className=" w-full"
+                  onChange={changeSubstitution}
+                  value={selectedSubstitution?.substitution_name}
+                  showArrow={false}
                 >
-                  {(
-                    experiment.backtest_results.pct_revenue_change * 100
-                  ).toFixed(2) + "%"}
-                </Text>
-              </Flex>
-              <Flex
-                justifyContent="justify-start"
-                alignItems="items-baseline"
-                spaceX="space-x-3"
-                truncate={true}
-              >
-                <Metric>
-                  {dataFormatter(experiment.backtest_results.new_plans_revenue)}
-                </Metric>
-                <Text truncate={true}>
-                  from{" "}
-                  {dataFormatter(
-                    experiment.backtest_results.original_plans_revenue
+                  {experiment.backtest_results.substitution_results.map(
+                    (substitution) => (
+                      <Option
+                        key={substitution.substitution_name}
+                        value={substitution.substitution_name}
+                      >
+                        {substitution.substitution_name}
+                      </Option>
+                    )
                   )}
-                </Text>
-              </Flex>
-            </Card>
-          </div> */}
-          <div>
-            <h2> Substitutions</h2>
-            <Select
-              defaultValue="Select a substitution"
-              onChange={changeSubstitution}
-              value={selectedSubstitution?.substitution_name}
-            >
-              {experiment.backtest_results.substitution_results.map(
-                (substitution) => (
-                  <Option
-                    key={substitution.substitution_name}
-                    value={substitution.substitution_name}
-                  >
-                    {substitution.substitution_name}
-                  </Option>
-                )
-              )}
-            </Select>
+                </Select>
+              </div>
+
+              <div className="">
+                {selectedSubstitution && (
+                  <div className="grid grid-cols-3 gap-3 justify-between m-3">
+                    <div className="w-full mt-6">
+                      <Card key={234}>
+                        <div className="justify-center">
+                          <h3>
+                            Plan:{" "}
+                            {selectedSubstitution?.original_plan.plan_name}
+                          </h3>
+
+                          <Metric>
+                            {dataFormatter(
+                              selectedSubstitution.original_plan.plan_revenue
+                            )}
+                          </Metric>
+                        </div>
+                      </Card>
+                    </div>
+                    <div className="justify-self-center self-center	mt-6">
+                      <img src={arrowURL} alt="arrow" className="mb-4" />
+                    </div>
+                    <div className="w-full mt-6">
+                      <Card key={232342}>
+                        <Flex
+                          justifyContent="justify-between"
+                          alignItems="items-start"
+                          spaceX="space-x-6"
+                        >
+                          <h3>
+                            Plan: {selectedSubstitution?.new_plan.plan_name}
+                          </h3>
+                          <h3
+                            className={[
+                              "",
+                              selectedSubstitution.pct_revenue_change >= 0
+                                ? "text-green"
+                                : "text-red",
+                            ].join("")}
+                          >
+                            {(
+                              selectedSubstitution.pct_revenue_change * 100
+                            ).toFixed(2) + "%"}
+                          </h3>
+                        </Flex>
+                        <Metric>
+                          {dataFormatter(
+                            selectedSubstitution.new_plan.plan_revenue
+                          )}
+                        </Metric>
+                      </Card>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           {selectedSubstitution && (
             <BacktestSubstitution substitution={selectedSubstitution} />

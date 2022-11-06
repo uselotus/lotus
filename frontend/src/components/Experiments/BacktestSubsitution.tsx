@@ -122,40 +122,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="justify-self-end w-2/5 mt-6">
-          <Card key={234}>
-            <div className="justify-center">
-              <Text>{substitution.original_plan.plan_name}</Text>
-
-              <Metric>
-                {dataFormatter(substitution.original_plan.plan_revenue)}
-              </Metric>
-            </div>
-          </Card>
-        </div>
-        <div className="justify-self-center self-center	">
-          <img src={arrowURL} alt="arrow" className="mb-4" />
-        </div>
-        <div className="justify-self-start mt-6">
-          <Card key={232342}>
-            <Flex
-              justifyContent="justify-between"
-              alignItems="items-start"
-              spaceX="space-x-6"
-            >
-              <Text>{substitution.new_plan.plan_name}</Text>
-              <Text
-                color={substitution.pct_revenue_change >= 0 ? "green" : "red"}
-              >
-                {(substitution.pct_revenue_change * 100).toFixed(2) + "%"}
-              </Text>
-            </Flex>
-            <Metric>{dataFormatter(substitution.new_plan.plan_revenue)}</Metric>
-          </Card>
-        </div>
-      </div>
-      <div className="border-2 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-white px-4 py-5 sm:px-6 my-7 ">
         <h2>Revenue Over Time</h2>
         <LineChart
           data={revenueLineGraph}
@@ -175,7 +142,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
           marginTop="mt-0"
         />
       </div>
-      <div className="border-2 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-white px-4 py-5 sm:px-6 my-7 ">
         <h2>Revenue By Metric</h2>
         <ColGrid numColsMd={2}>
           <div>
@@ -189,7 +156,7 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
         </ColGrid>
       </div>
 
-      <div className="border-2 bg-[#FAFAFA] px-4 py-5 sm:px-6 my-7 ">
+      <div className="border-2 bg-white px-4 py-5 sm:px-6 my-7 ">
         <h2>Top Customers</h2>
 
         <ColGrid numColsMd={4} gapX="gap-x-8" gapY="gap-y-2">
