@@ -154,16 +154,3 @@ Or visit www.uselotus.io
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
 
-## Contributors
-
-<a href = "https://github.com/uselotus/lotus/graphs/contributors">
-  <img src = "https://contrib.rocks/image?repo=uselotus/lotus"/>
-</a>
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-
-<!-- ALL-CONTRIBUTORS-LIST:END -->
