@@ -52,7 +52,7 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 
 <br/>
 
-[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/intro) · [Contact Us](founders@uselotus.io)
+[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/overview/why-lotus) · [Contact Us](founders@uselotus.io)
 
 <br/>
 
@@ -60,7 +60,7 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 
 ## Getting Started
 
-There are a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/lotus-docs) to learn how to use Lotus!
+There are a few ways to use Lotus. After you set it up, head over to the [Docs](https://docs.uselotus.io/docs/overview/why-lotus) to learn how to use Lotus!
 
 ### :cloud: Cloud Version
 
