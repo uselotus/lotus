@@ -26,7 +26,7 @@
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.jpg#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing & Billing On Any Metric
+# Lotus: Pricing & Packaging Infrustructure For Any Business Model
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <p align="center">
@@ -143,7 +143,10 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Get in Touch
 
-Lotus founders - founders@uselotus.io
+Email Us: founders@uselotus.io
+
+
+Message Us on Slack: <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"><img src="https://img.shields.io/badge/slack-lotus-E01E5A.svg?logo=slack&labelColor=2EB67D" alt="Join Lotus on Slack"></a>
 
 Or visit www.uselotus.io
 
