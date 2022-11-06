@@ -141,7 +141,6 @@ const CreateBacktest: FC = () => {
   const addCurrentPlanSlot = (plan_id: string) => {
     const current = plans?.find((plan) => plan.plan_id === plan_id);
     if (current) {
-      console.log(current);
       setCurrentPlan(current);
       setPlanInFocus(current);
       queryClient.invalidateQueries(["plan_details"]);

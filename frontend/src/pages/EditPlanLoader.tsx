@@ -39,9 +39,7 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
       }),
 
     {
-      onSuccess: (data) => {
-        console.log("plan detail data", data.versions[0].status);
-      },
+      onSuccess: (data) => {},
     }
   );
 
@@ -55,7 +53,6 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
         );
       } else {
         setVersionIndex(plan.versions.findIndex((x) => x.status === "active"));
-        console.log(plan.versions.findIndex((x) => x.status === "active"));
       }
     }
   }, [plan]);

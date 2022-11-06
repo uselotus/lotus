@@ -39,9 +39,7 @@ const CreateMetricForm = (props: {
             props.onSave(values);
             form.resetFields();
           })
-          .catch((info) => {
-            console.log("Validate Failed:", info);
-          });
+          .catch((info) => {});
       }}
     >
       <Form

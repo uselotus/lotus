@@ -31,9 +31,7 @@ const CreateCustomerForm = (props: {
             form.resetFields();
             props.onSave(values);
           })
-          .catch((info) => {
-            console.log("Validate Failed:", info);
-          });
+          .catch((info) => {});
       }}
     >
       <Form form={form} layout="vertical" name="customer_form">

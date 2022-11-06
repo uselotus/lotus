@@ -30,7 +30,6 @@ export default function ActivityStream() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    console.log(cursor);
     queryClient.invalidateQueries("stream");
   }, [cursor]);
 

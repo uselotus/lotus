@@ -88,7 +88,6 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         };
       }
     );
-    console.log(initialComponents);
     setComponentsData(initialComponents);
   }, [plan.versions[versionIndex].components]);
 
@@ -256,7 +255,6 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components: any = Object.values(componentsData);
-        console.log(components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -327,9 +325,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           createPlanMutation.mutate(newPlan);
         }
       })
-      .catch((info) => {
-        console.log("Validate Failed:", info);
-      });
+      .catch((info) => {});
   };
 
   function returnPageTitle(): string {

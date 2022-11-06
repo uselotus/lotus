@@ -77,13 +77,10 @@ function UsageComponentForm({
           .validateFields()
           .then((values) => {
             handleComponentAdd(values);
-            console.log("values", values);
 
             form.submit();
           })
-          .catch((info) => {
-            console.log("Validate Failed:", info);
-          });
+          .catch((info) => {});
       }}
     >
       <Form

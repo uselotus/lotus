@@ -112,7 +112,6 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
       for (let i = 0; i < newRevLineGraph.length; i++) {
         newRevLineGraph[i][categories[0]] =
           newRevLineGraph[i]["original_plan_revenue"];
-        console.log(newRevLineGraph);
         newRevLineGraph[i][categories[1]] =
           newRevLineGraph[i]["new_plan_revenue"];
       }

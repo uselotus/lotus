@@ -129,7 +129,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
         }
       }
       setTableData(dataInstance);
-      console.log(dataInstance);
     }
   }, [customerArray, totals]);
 
@@ -145,9 +144,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
     setCustomerVisible(false);
   };
 
-  const changePlan = (plan_id: string, customer_id: string) => {
-    console.log(plan_id, customer_id);
-  };
+  const changePlan = (plan_id: string, customer_id: string) => {};
 
   const rowModal = (record: any) => {
     setCustomerVisible(true);

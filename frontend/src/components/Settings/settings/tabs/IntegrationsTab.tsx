@@ -23,7 +23,6 @@ const IntegrationsTab: FC = () => {
     PaymentProcessorStatusType[]
   >(["PaymentProcessorIntegration"], fetchPaymentProcessorConnect);
   const handleConnectWithPaymentProcessorClick = (path: string) => {
-    console.log("path", path);
     if (path !== "") {
       window.location.href = path;
     }

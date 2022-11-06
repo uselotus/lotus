@@ -27,7 +27,6 @@ export const DeveloperTab = () => {
     data: webhookData,
     isLoading,
   } = useQuery<any>(["urls"], Alerts.getUrls);
-  console.log(webhookData);
 
   const getKey = () => {
     APIToken.newAPIToken().then((data) => {

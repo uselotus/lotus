@@ -60,7 +60,6 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
 
   useEffect(() => {
     setCapitalizedState(capitalize(selectedVersion.status));
-    console.log(capitalize(selectedVersion.status));
   }, [selectedVersion.status]);
 
   const menu = (

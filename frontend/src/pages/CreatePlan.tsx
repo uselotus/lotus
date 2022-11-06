@@ -1,18 +1,33 @@
-import {Button, Card, Col, Form, Input, InputNumber, Radio, Row, Select,} from "antd";
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Radio,
+  Row,
+  Select,
+} from "antd";
 // @ts-ignore
-import React, {useState} from "react";
-import {useNavigate} from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
-import {useMutation, useQueryClient} from "react-query";
-import {toast} from "react-toastify";
+import { useMutation, useQueryClient } from "react-query";
+import { toast } from "react-toastify";
 
-import {CreateComponent, CreateInitialVersionType, CreatePlanType, InitialExternalLinks,} from "../types/plan-type";
-import {Plan} from "../api/api";
-import {FeatureType} from "../types/feature-type";
+import {
+  CreateComponent,
+  CreateInitialVersionType,
+  CreatePlanType,
+  InitialExternalLinks,
+} from "../types/plan-type";
+import { Plan } from "../api/api";
+import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import LinkExternalIds from "../components/Plans/LinkExternalIds";
-import {PageLayout} from "../components/base/PageLayout";
-import {ComponentDisplay} from "../components/Plans/ComponentDisplay";
+import { PageLayout } from "../components/base/PageLayout";
+import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 
 interface ComponentDisplay {
@@ -101,7 +116,6 @@ const CreatePlan = () => {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
-    console.log("editComponentItem", editComponentItem);
 
     if (editComponentItem) {
       const index = componentsData.findIndex(
@@ -146,8 +160,8 @@ const CreatePlan = () => {
   };
 
   const setExternalLinks = (links: string[]) => {
-      form.setFieldValue("initial_external_links", links)
-  }
+    form.setFieldValue("initial_external_links", links);
+  };
 
   const submitPricingPlan = () => {
     form
@@ -193,18 +207,15 @@ const CreatePlan = () => {
         };
 
         const links = values.initial_external_links;
-        if(links?.length) {
-            plan.initial_external_links = links.map(link => (
-                {
-                    source: "stripe",
-                    external_plan_id: link
-                }))
+        if (links?.length) {
+          plan.initial_external_links = links.map((link) => ({
+            source: "stripe",
+            external_plan_id: link,
+          }));
         }
         mutation.mutate(plan);
       })
-      .catch((info) => {
-        console.log("Validate Failed:", info);
-      });
+      .catch((info) => {});
   };
 
   return (
@@ -318,14 +329,15 @@ const CreatePlan = () => {
                       </Select>
                     </Form.Item>
 
-                      <Form.Item
-                          name="initial_external_links"
-                          label="Link External ids"
-                      >
-                          <LinkExternalIds
-                              externalIds={[]}
-                              setExternalLinks={setExternalLinks}/>
-                      </Form.Item>
+                    <Form.Item
+                      name="initial_external_links"
+                      label="Link External ids"
+                    >
+                      <LinkExternalIds
+                        externalIds={[]}
+                        setExternalLinks={setExternalLinks}
+                      />
+                    </Form.Item>
                   </Card>
                 </Col>
               </Row>

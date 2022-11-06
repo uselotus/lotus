@@ -66,7 +66,6 @@ export default function PlanProvider({ children }: ProviderProps) {
 
 function usePlanState() {
   const state = React.useContext(PlanStateContext);
-  console.log(state);
   if (typeof state === "undefined") {
     throw new Error("usePlanState must be used within a PlanProvider");
   }
