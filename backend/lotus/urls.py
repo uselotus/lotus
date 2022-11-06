@@ -161,7 +161,7 @@ urlpatterns = [
     path("api/login/", auth_views.LoginView.as_view(), name="api-login"),
     path("api/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
     path("api/session/", auth_views.SessionView.as_view(), name="api-session"),
-    path("api/register/", auth_views.DemoRegisterView.as_view(), name="register"),
+    path("api/register/", auth_views.RegisterView.as_view(), name="register"),
     path(
         "api/demo_register/",
         auth_views.DemoRegisterView.as_view(),
