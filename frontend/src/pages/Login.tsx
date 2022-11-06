@@ -1,13 +1,12 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Authentication } from "../api/api";
-import { Card, Input, Button, Form, Modal } from "antd";
+import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
 import { useQueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
-import axios from "axios";
 import Cookies from "universal-cookie";
 
 const cookies = new Cookies();
@@ -116,7 +115,11 @@ const Login: FC = () => {
               </Form>
             </Card>
             <div>
-              <Button type="primary" onClick={() => navigate("/register")}>
+              <Button
+                type="primary"
+                className="w-full"
+                onClick={() => navigate("/register")}
+              >
                 Sign Up
               </Button>
             </div>

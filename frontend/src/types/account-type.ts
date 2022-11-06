@@ -4,7 +4,7 @@ export interface CreateOrgAccountType {
   email: string;
   company_name: string;
   industry: string;
-  invite_token?: string;
+  invite_token?: string | null;
 }
 
 export interface UserType {

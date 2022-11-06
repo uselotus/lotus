@@ -9,6 +9,8 @@ from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.models import (
+    Backtest,
+    BacktestSubstitution,
     BillableMetric,
     Customer,
     Event,
@@ -19,8 +21,10 @@ from metering_billing.models import (
     Subscription,
     User,
 )
+from metering_billing.tasks import run_backtest
 from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
 from metering_billing.utils.enums import (
+    BACKTEST_KPI,
     FLAT_FEE_BILLING_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
@@ -204,29 +208,29 @@ def setup_demo_3(company_name, username, email, password):
     bp_50_og.components.add(pc1, pc2)
     bp_50_og.save()
     plan = Plan.objects.create(
-        plan_name="10K Words Plan - UB Language + Seats",
+        plan_name="10K Words Plan - UB Compute + Seats",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
         status=PLAN_STATUS.ACTIVE,
     )
-    bp_10_language_seats = PlanVersion.objects.create(
+    bp_10_compute_seats = PlanVersion.objects.create(
         organization=organization,
-        description="10K words per month + usage based pricing on Languages and Seats",
+        description="10K words per month + usage based pricing on Compute Time and Seats",
         version=1,
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=19,
-        version_id="10_language_seats",
+        version_id="10_compute_seats",
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=10_000
     )
     pc2 = PlanComponent.objects.create(
-        billable_metric=unique_lang,
-        cost_per_batch=7,
-        metric_units_per_batch=1,
-        free_metric_units=0,
+        billable_metric=sum_compute,
+        cost_per_batch=0.33,
+        metric_units_per_batch=10,
+        free_metric_units=75,
     )
     pc3 = PlanComponent.objects.create(
         billable_metric=num_seats,
@@ -234,32 +238,32 @@ def setup_demo_3(company_name, username, email, password):
         metric_units_per_batch=1,
         free_metric_units=0,
     )
-    bp_10_language_seats.components.add(pc1, pc2, pc3)
-    bp_10_language_seats.save()
+    bp_10_compute_seats.components.add(pc1, pc2, pc3)
+    bp_10_compute_seats.save()
     plan = Plan.objects.create(
-        plan_name="25K Words Plan - UB Language + Seats",
+        plan_name="25K Words Plan - UB Compute + Seats",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
         status=PLAN_STATUS.ACTIVE,
     )
-    bp_25_language_seats = PlanVersion.objects.create(
+    bp_25_compute_seats = PlanVersion.objects.create(
         organization=organization,
-        description="25K words per month + usage based pricing on Languages and Seats",
+        description="25K words per month + usage based pricing on Compute Time and Seats",
         version=1,
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=59,
-        version_id="25_language_seats",
+        version_id="25_compute_seats",
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=25_000
     )
     pc2 = PlanComponent.objects.create(
-        billable_metric=unique_lang,
-        cost_per_batch=10,
-        metric_units_per_batch=1,
-        free_metric_units=0,
+        billable_metric=sum_compute,
+        cost_per_batch=0.47,
+        metric_units_per_batch=10,
+        free_metric_units=100,
     )
     pc3 = PlanComponent.objects.create(
         billable_metric=num_seats,
@@ -267,36 +271,36 @@ def setup_demo_3(company_name, username, email, password):
         metric_units_per_batch=1,
         free_metric_units=0,
     )
-    bp_25_language_seats.components.add(pc1, pc2, pc3)
+    bp_25_compute_seats.components.add(pc1, pc2, pc3)
     plan = Plan.objects.create(
-        plan_name="50K Words Plan - UB Language + Seats",
+        plan_name="50K Words Plan - UB Compute + Seats",
         organization=organization,
         plan_duration=PLAN_DURATION.MONTHLY,
         status=PLAN_STATUS.ACTIVE,
     )
-    bp_50_language_seats = PlanVersion.objects.create(
+    bp_50_compute_seats = PlanVersion.objects.create(
         organization=organization,
-        description="50K words per month + usage based pricing on Languages and Seats",
+        description="50K words per month + usage based pricing on Compute Time and Seats",
         version=1,
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=179,
-        version_id="50_language_seats",
+        version_id="50_compute_seats",
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=50_000
     )
     pc2 = PlanComponent.objects.create(
-        billable_metric=unique_lang,
-        cost_per_batch=10,
-        metric_units_per_batch=1,
-        free_metric_units=0,
+        billable_metric=sum_compute,
+        cost_per_batch=0.67,
+        metric_units_per_batch=10,
+        free_metric_units=200,
     )
     pc3 = PlanComponent.objects.create(
         billable_metric=num_seats, cost_per_batch=10, free_metric_units=0
     )
-    bp_50_language_seats.components.add(pc1, pc2, pc3)
+    bp_50_compute_seats.components.add(pc1, pc2, pc3)
     six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
     for i, customer in enumerate(big_customers):
         beginning = six_months_ago
@@ -509,6 +513,20 @@ def setup_demo_3(company_name, username, email, password):
         status=SUBSCRIPTION_STATUS.ENDED,
         end_date__gt=now,
     ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
+    backtest = Backtest.objects.create(
+        backtest_name=organization,
+        start_date="2022-08-01",
+        end_date="2022-11-01",
+        organization=organization,
+        time_created=now,
+        kpis=[BACKTEST_KPI.TOTAL_REVENUE],
+    )
+    BacktestSubstitution.objects.create(
+        backtest=backtest,
+        original_plan=bp_10_og,
+        new_plan=bp_10_compute_seats,
+    )
+    run_backtest(backtest.backtest_id)
     return user
 
 

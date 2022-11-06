@@ -247,7 +247,7 @@ class DemoRegisterView(LoginViewMixin, APIView):
         username = reg_dict["username"]
         email = reg_dict["email"]
         password = reg_dict["password"]
-        company_name = username  # different
+        company_name = "demo_" + username  # different
 
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
