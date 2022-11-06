@@ -32,7 +32,7 @@ function App() {
           error?.response?.status === 401 &&
           !publicRoutes.includes(pathname)
         ) {
-          navigate("/login");
+          navigate("/");
         }
         return error;
       });

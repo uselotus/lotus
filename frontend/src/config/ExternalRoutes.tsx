@@ -25,7 +25,11 @@ const ExternalRoutes: FC = () => {
       <Route
         path="/*"
         element={
-          import.meta.env.VITE_IS_DEMO === "true" ? <DemoSignup /> : <Login />
+          import.meta.env.VITE_IS_DEMO === "true" ? (
+            <Navigate replace to={"/register"} />
+          ) : (
+            <Login />
+          )
         }
       />
     </Routes>
