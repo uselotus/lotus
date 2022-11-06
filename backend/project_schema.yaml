@@ -320,6 +320,35 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/demo_register/:
+    post:
+      operationId: demo_register_create
+      tags:
+      - demo_register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoRegistration'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DemoRegistration'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DemoRegistration'
+        required: true
+      security:
+      - basicAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResponse'
+          description: ''
   /api/draft_invoice/:
     get:
       operationId: draft_invoice_retrieve
@@ -1855,6 +1884,7 @@ components:
         pct_revenue_change:
           type: number
           format: double
+          nullable: true
     BacktestCreate:
       type: object
       properties:
@@ -1901,7 +1931,7 @@ components:
           type: object
           additionalProperties: {}
         status:
-          $ref: '#/components/schemas/Status33bEnum'
+          $ref: '#/components/schemas/Status57dEnum'
         backtest_id:
           type: string
           maxLength: 100
@@ -1958,7 +1988,7 @@ components:
           type: object
           additionalProperties: {}
         status:
-          $ref: '#/components/schemas/Status33bEnum'
+          $ref: '#/components/schemas/Status57dEnum'
         backtest_id:
           type: string
           maxLength: 100
@@ -2146,6 +2176,26 @@ components:
       required:
       - customer_usages
       - date
+    DemoRegistration:
+      type: object
+      properties:
+        register:
+          $ref: '#/components/schemas/DemoRegistrationDetail'
+      required:
+      - register
+    DemoRegistrationDetail:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        username:
+          type: string
+      required:
+      - email
+      - password
+      - username
     DraftInvoice:
       type: object
       properties:
@@ -2357,13 +2407,14 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
+        version:
+          type: integer
+          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -2371,30 +2422,22 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
         description:
           type: string
           nullable: true
           maxLength: 200
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         created_on:
           type: string
           format: date-time
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        created_by:
-          type: string
           readOnly: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        version:
-          type: integer
-          readOnly: true
         version_id:
           type: string
           readOnly: true
@@ -2402,6 +2445,13 @@ components:
           allOf:
           - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        created_by:
+          type: string
+          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
       required:
       - active_subscriptions
       - created_by
@@ -2923,55 +2973,55 @@ components:
     PlanDetail:
       type: object
       properties:
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        num_versions:
+          type: integer
           readOnly: true
         created_on:
           type: string
           format: date-time
-          readOnly: true
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
           readOnly: true
         initial_external_links:
           type: array
           items:
             $ref: '#/components/schemas/InitialExternalPlanLink'
           writeOnly: true
-        created_by:
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        plan_name:
           type: string
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
+          maxLength: 100
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
-        plan_id:
+        created_by:
           type: string
-          maxLength: 100
-        plan_name:
-          type: string
-          maxLength: 100
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+          readOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
+          readOnly: true
         product_id:
           type: string
           nullable: true
-        num_versions:
-          type: integer
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
       required:
       - active_subscriptions
       - created_by
@@ -3283,6 +3333,7 @@ components:
         pct_revenue_change:
           type: number
           format: double
+          nullable: true
         results:
           $ref: '#/components/schemas/SingleSubstitutionResults'
       required:
@@ -3324,10 +3375,11 @@ components:
       - ended
       - not_started
       type: string
-    Status33bEnum:
+    Status57dEnum:
       enum:
       - running
       - completed
+      - failed
       type: string
     Status956Enum:
       enum:
