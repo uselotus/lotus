@@ -255,7 +255,10 @@ def run_backtest(backtest_id):
                     inner_results["revenue_by_metric"][metric_name][
                         "original_plan_revenue"
                     ] += sum(
-                        [info_dict["revenue"] for _, info_dict in component_dict.items()]
+                        [
+                            info_dict["revenue"]
+                            for _, info_dict in component_dict.items()
+                        ]
                     )
                 if "flat_fees" not in inner_results["revenue_by_metric"]:
                     inner_results["revenue_by_metric"]["flat_fees"] = {
@@ -292,7 +295,10 @@ def run_backtest(backtest_id):
                     inner_results["revenue_by_metric"][metric_name][
                         "new_plan_revenue"
                     ] += sum(
-                        [info_dict["revenue"] for _, info_dict in component_dict.items()]
+                        [
+                            info_dict["revenue"]
+                            for _, info_dict in component_dict.items()
+                        ]
                     )
                 inner_results["revenue_by_metric"]["flat_fees"][
                     "new_plan_revenue"
@@ -306,7 +312,9 @@ def run_backtest(backtest_id):
                 date_cumrev_list.append((date.date(), cum_rev_dict))
             cum_rev_lst = date_cumrev_list
             try:
-                every_date = list(dates_bwn_two_dts(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
+                every_date = list(
+                    dates_bwn_two_dts(cum_rev_lst[-1][0], cum_rev_lst[0][0])
+                )
             except IndexError:
                 every_date = []
             if cum_rev_lst:
@@ -320,10 +328,14 @@ def run_backtest(backtest_id):
                 ):  # have not reached the next data point yet, dont add
                     new_dict = last_dict.copy()
                     new_dict["date"] = date
-                elif date == cum_rev_lst[-1][0]:  # have reached the next data point, add it
+                elif (
+                    date == cum_rev_lst[-1][0]
+                ):  # have reached the next data point, add it
                     date, rev_dict = cum_rev_lst.pop()
                     new_dict = {**rev_dict, "date": date}
-                    new_dict["original_plan_revenue"] += last_dict["original_plan_revenue"]
+                    new_dict["original_plan_revenue"] += last_dict[
+                        "original_plan_revenue"
+                    ]
                     new_dict["new_plan_revenue"] += last_dict["new_plan_revenue"]
                     last_dict = new_dict
                 else:
@@ -341,7 +353,9 @@ def run_backtest(backtest_id):
             top_cust_dict = {}
             top_cust = inner_results.pop("top_customers")
             top_original = sorted(
-                top_cust.items(), key=lambda x: x[1]["original_plan_revenue"], reverse=True
+                top_cust.items(),
+                key=lambda x: x[1]["original_plan_revenue"],
+                reverse=True,
             )[:5]
             top_cust_dict["original_plan_revenue"] = [
                 {
@@ -374,7 +388,8 @@ def run_backtest(backtest_id):
                     pct_change = None
                 all_pct_change.append((customer, pct_change))
             all_pct_change = sorted(
-                [tup for tup in all_pct_change if tup[1] is not None], key=lambda x: x[1]
+                [tup for tup in all_pct_change if tup[1] is not None],
+                key=lambda x: x[1],
             )
             top_cust_dict["biggest_pct_increase"] = [
                 {
@@ -417,14 +432,16 @@ def run_backtest(backtest_id):
                 outer_results["pct_revenue_change"] = None
             all_results["substitution_results"].append(outer_results)
         all_results["original_plans_revenue"] = sum(
-            x["original_plan"]["plan_revenue"] for x in all_results["substitution_results"]
+            x["original_plan"]["plan_revenue"]
+            for x in all_results["substitution_results"]
         )
         all_results["new_plans_revenue"] = sum(
             x["new_plan"]["plan_revenue"] for x in all_results["substitution_results"]
         )
         try:
             all_results["pct_revenue_change"] = (
-                all_results["new_plans_revenue"] / all_results["original_plans_revenue"] - 1
+                all_results["new_plans_revenue"] / all_results["original_plans_revenue"]
+                - 1
             )
         except (ZeroDivisionError, InvalidOperation):
             all_results["pct_revenue_change"] = None

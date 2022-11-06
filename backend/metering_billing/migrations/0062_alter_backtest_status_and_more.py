@@ -6,18 +6,37 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0061_organizationsetting_historicalorganizationsetting_and_more'),
+        (
+            "metering_billing",
+            "0061_organizationsetting_historicalorganizationsetting_and_more",
+        ),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='backtest',
-            name='status',
-            field=models.CharField(choices=[('running', 'Running'), ('completed', 'Completed'), ('failed', 'Failed')], default='running', max_length=40),
+            model_name="backtest",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("running", "Running"),
+                    ("completed", "Completed"),
+                    ("failed", "Failed"),
+                ],
+                default="running",
+                max_length=40,
+            ),
         ),
         migrations.AlterField(
-            model_name='historicalbacktest',
-            name='status',
-            field=models.CharField(choices=[('running', 'Running'), ('completed', 'Completed'), ('failed', 'Failed')], default='running', max_length=40),
+            model_name="historicalbacktest",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("running", "Running"),
+                    ("completed", "Completed"),
+                    ("failed", "Failed"),
+                ],
+                default="running",
+                max_length=40,
+            ),
         ),
     ]
