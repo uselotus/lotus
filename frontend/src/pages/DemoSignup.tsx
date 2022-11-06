@@ -93,7 +93,7 @@ const DemoSignup: React.FC = () => {
     <div className="grid h-screen place-items-center gap-3">
       {mutation.isLoading ? (
         <div>
-          <h1>Creating your account...</h1>
+          <h1>Creating your demo account...</h1>
           <LoadingSpinner />
         </div>
       ) : (

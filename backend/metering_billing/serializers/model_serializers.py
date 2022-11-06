@@ -349,7 +349,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     billable_metric = BillableMetricSerializer(read_only=True)
 
     # WRITE-ONLY
-    billable_metric_name = serializers.SlugRelatedField(
+    billable_metric_name = SlugRelatedFieldWithOrganization(
         slug_field="billable_metric_name",
         write_only=True,
         source="billable_metric",
@@ -616,6 +616,11 @@ class PlanVersionSerializer(serializers.ModelSerializer):
     # READ-ONLY
     active_subscriptions = serializers.IntegerField(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # We pass the "upper serializer" context to the "nested one"
+        self.fields["components"].context.update(self.context)
 
     def get_created_by(self, obj) -> str:
         if obj.created_by != None:
