@@ -291,14 +291,17 @@ class StripeConnector(PaymentProvider):
                     org_stripe_acct != ""
                 ), "Organization does not have a Stripe account ID"
                 customer_kwargs["stripe_account"] = org_stripe_acct
-            stripe_customer = stripe.Customer.create(**customer_kwargs)
-            customer.integrations[PAYMENT_PROVIDERS.STRIPE] = {
-                "id": stripe_customer.id,
-                "email": customer.email,
-                "metadata": {},
-                "name": customer.customer_name,
-            }
-            customer.save()
+            try:
+                stripe_customer = stripe.Customer.create(**customer_kwargs)
+                customer.integrations[PAYMENT_PROVIDERS.STRIPE] = {
+                    "id": stripe_customer.id,
+                    "email": customer.email,
+                    "metadata": {},
+                    "name": customer.customer_name,
+                }
+                customer.save()
+            except:
+                pass
         elif setting.setting_value == "false":
             pass
         else:
