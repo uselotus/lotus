@@ -320,7 +320,9 @@ class APIKeyCreate(APIView):
         except:
             user = None
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else (user.username if user else organization.company_name + " (Unknown)"),
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (user.username if user else organization.company_name + " (Unknown)"),
             event="create_api_key",
             properties={"organization": organization.company_name},
         )
@@ -485,7 +487,9 @@ class DraftInvoiceView(APIView):
         except:
             user = None
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else (user.username if user else organization.company_name + " (Unknown)"),
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (user.username if user else organization.company_name + " (Unknown)"),
             event="draft_invoice",
             properties={"organization": organization.company_name},
         )
@@ -534,7 +538,9 @@ class GetCustomerAccessView(APIView):
         except:
             user = None
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else (user.username if user else organization.company_name + " (Unknown)"),
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (user.username if user else organization.company_name + " (Unknown)"),
             event="get_access",
             properties={"organization": organization.company_name},
         )
