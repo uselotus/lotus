@@ -232,7 +232,7 @@ class RegisterView(LoginViewMixin, APIView):
     request=DemoRegistrationSerializer,
     responses={
         201: inline_serializer(
-            "RegistrationResponse", fields={"detail": serializers.CharField()}
+            "DemoRegistrationResponse", fields={"detail": serializers.CharField()}
         )
     },
 )
