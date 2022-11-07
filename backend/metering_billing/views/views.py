@@ -379,7 +379,13 @@ class CustomerDetailView(APIView):
                 fields={"customer_id": serializers.CharField()},
             ),
         ],
-        responses={200: CustomerDetailSerializer},
+        responses={
+            200: CustomerDetailSerializer,
+            400: inline_serializer(
+                name="CustomerDetailErrorResponseSerializer",
+                fields={"error_detail": serializers.CharField()},
+            ),
+        },
     )
     def get(self, request, format=None):
         """
@@ -387,22 +393,34 @@ class CustomerDetailView(APIView):
         """
         organization = parse_organization(request)
         customer_id = request.query_params.get("customer_id")
-        customer = (
-            Customer.objects.filter(organization=organization, customer_id=customer_id)
-            .prefetch_related(
-                Prefetch(
-                    "customer_subscriptions",
-                    queryset=Subscription.objects.filter(organization=organization),
-                    to_attr="subscriptions",
-                ),
-                Prefetch(
-                    "subscriptions__billing_plan",
-                    queryset=PlanVersion.objects.filter(organization=organization),
-                    to_attr="billing_plans",
-                ),
+        try:
+            customer = (
+                Customer.objects.filter(
+                    organization=organization, customer_id=customer_id
+                )
+                .prefetch_related(
+                    Prefetch(
+                        "customer_subscriptions",
+                        queryset=Subscription.objects.filter(organization=organization),
+                        to_attr="subscriptions",
+                    ),
+                    Prefetch(
+                        "subscriptions__billing_plan",
+                        queryset=PlanVersion.objects.filter(organization=organization),
+                        to_attr="billing_plans",
+                    ),
+                )
+                .get()
             )
-            .get()
-        )
+        except Customer.DoesNotExist:
+            return Response(
+                {
+                    "error_detail": "Customer with customer_id {} does not exist".format(
+                        customer_id
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         sub_usg_summaries = customer.get_usage_and_revenue()
         total_amount_due = sum(
             x["total_amount_due"] for x in sub_usg_summaries["subscriptions"]

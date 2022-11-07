@@ -163,7 +163,7 @@ class Command(BaseCommand):
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
                 )
-                n = int(random.gauss(6, 1.5) // 1)
+                n = max(int(random.gauss(6, 1.5) // 1), 1)
                 baker.make(
                     Event,
                     organization=organization,

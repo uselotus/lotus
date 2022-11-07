@@ -468,7 +468,7 @@ class Command(BaseCommand):
                 max_users = float(
                     plan.components.get(billable_metric=num_seats).max_metric_units
                 )
-                n = int(random.gauss(6, 1.5) // 1)
+                n = max(int(random.gauss(6, 1.5) // 1), 1)
                 baker.make(
                     Event,
                     organization=organization,
@@ -537,7 +537,7 @@ class Command(BaseCommand):
                 max_users = float(
                     plan.components.get(billable_metric=num_seats).max_metric_units
                 )
-                n = int(random.gauss(6, 1.5) // 1)
+                n = max(int(random.gauss(6, 1.5) // 1), 1)
                 baker.make(
                     Event,
                     organization=organization,

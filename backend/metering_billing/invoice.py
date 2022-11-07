@@ -92,7 +92,9 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
                 k,
             )
     for amount, plan_version_id, start, end in date_range_costs:
-        cur_bp = PlanVersion.objects.get(version_id=plan_version_id)
+        cur_bp = PlanVersion.objects.get(
+            organization=organization, version_id=plan_version_id
+        )
         billing_plan_name = cur_bp.plan.plan_name
         billing_plan_version = cur_bp.version
         summary_dict["line_items"].append(
