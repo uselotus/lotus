@@ -133,6 +133,9 @@ def update_invoice_status():
                     if POSTHOG_PERSON
                     else incomplete_invoice.organization["company_name"],
                     "invoice_status_succeeded",
+                    properties={
+                        "organization": incomplete_invoice.organization["company_name"],
+                    },
                 )
 
 
@@ -148,7 +151,11 @@ def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events)
     posthog.capture(
         POSTHOG_PERSON if POSTHOG_PERSON else org.company_name,
         "track_event",
-        {"sent_events": len_sent_events, "ingested_events": len_ingested_events},
+        {
+            "sent_events": len_sent_events,
+            "ingested_events": len_ingested_events,
+            "organization": org.company_name,
+        },
     )
 
 

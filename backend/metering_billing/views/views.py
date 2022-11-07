@@ -315,10 +315,16 @@ class APIKeyCreate(APIView):
         api_key, key = APIToken.objects.create_key(
             name="new_api_key", organization=organization
         )
+        try:
+            user = self.request.user
+        except:
+            user = None
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (user.username if user else organization.company_name + " (Unknown)"),
             event="create_api_key",
-            properties={},
+            properties={"organization": organization.company_name},
         )
         return Response({"api_key": key}, status=status.HTTP_200_OK)
 
@@ -476,10 +482,16 @@ class DraftInvoiceView(APIView):
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)
+        try:
+            user = self.request.user
+        except:
+            user = None
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (user.username if user else organization.company_name + " (Unknown)"),
             event="draft_invoice",
-            properties={},
+            properties={"organization": organization.company_name},
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -521,10 +533,16 @@ class GetCustomerAccessView(APIView):
         serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
+        try:
+            user = self.request.user
+        except:
+            user = None
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else organization.company_name,
+            POSTHOG_PERSON
+            if POSTHOG_PERSON
+            else (user.username if user else organization.company_name + " (Unknown)"),
             event="get_access",
-            properties={},
+            properties={"organization": organization.company_name},
         )
         customer_id = serializer.validated_data["customer_id"]
         try:

@@ -32,7 +32,10 @@ class BacktestCreateSerializer(serializers.ModelSerializer):
         required=True,
     )
     substitutions = serializers.ListSerializer(
-        child=BacktestSubstitutionMultiSerializer(), required=True, write_only=True
+        child=BacktestSubstitutionMultiSerializer(),
+        required=True,
+        write_only=True,
+        allow_empty=False,
     )
 
     def create(self, validated_data):
