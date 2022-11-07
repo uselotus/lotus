@@ -383,7 +383,7 @@ def setup_demo_3(company_name, username, email, password):
             max_users = float(
                 plan.components.get(billable_metric=num_seats).max_metric_units
             )
-            n = int(random.gauss(6, 1.5) // 1)
+            n = max(int(random.gauss(6, 1.5) // 1), 1)
             baker.make(
                 Event,
                 organization=organization,
@@ -452,7 +452,7 @@ def setup_demo_3(company_name, username, email, password):
             max_users = float(
                 plan.components.get(billable_metric=num_seats).max_metric_units
             )
-            n = int(random.gauss(6, 1.5) // 1)
+            n = max(int(random.gauss(6, 1.5) // 1), 1)
             baker.make(
                 Event,
                 organization=organization,
