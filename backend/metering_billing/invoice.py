@@ -236,9 +236,7 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
             if POSTHOG_PERSON
             else subscription.organization.company_name,
             "generate_invoice",
-            {
-                "amount": amount,
-            },
+            properties={"organization": organization.company_name,"amount": amount,},
         )
 
     return invoice

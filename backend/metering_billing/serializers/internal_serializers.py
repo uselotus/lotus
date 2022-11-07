@@ -4,8 +4,6 @@ from rest_framework import serializers
 
 from .model_serializers import EventSerializer
 
-POSTHOG_PERSON = settings.POSTHOG_PERSON
-
 ## CUSTOM SERIALIZERS
 
 

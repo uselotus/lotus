@@ -68,8 +68,9 @@ class LoginView(LoginViewMixin, APIView):
 
         login(request, user)
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else user.organization.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else username,
             event="succesful login",
+            properties={"organization": user.organization.company_name},
         )
         token = AuthToken.objects.create(user)
         return Response(
@@ -86,12 +87,6 @@ class LogoutView(LogoutViewMixin):
             return JsonResponse(
                 {"detail": "You're not logged in."}, status=status.HTTP_400_BAD_REQUEST
             )
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else request.user.organization.company_name,
-            event="logout",
-        )
         return super(LogoutView, self).post(request, format)
 
 
@@ -213,9 +208,9 @@ class RegisterView(LoginViewMixin, APIView):
             organization=org,
         )
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else org.company_name,
+            POSTHOG_PERSON if POSTHOG_PERSON else username,
             event="register",
-            properties={"company_name": org.company_name},
+            properties={"organization": org.company_name},
         )
         if token:
             token.delete()
@@ -261,9 +256,9 @@ class DemoRegisterView(LoginViewMixin, APIView):
         user = setup_demo_3(company_name, username, email, password)
 
         posthog.capture(
-            email,
+            username,
             event="demo_register",
-            properties={"username": username},
+            properties={"organization": user.organization.company_name},
         )
         end = time.time()
         print(f"Demo register took {end - start} seconds")
