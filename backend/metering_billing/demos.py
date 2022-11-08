@@ -125,7 +125,7 @@ def setup_demo_3(company_name, username, email, password):
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=0,
-        version_id=plan_version_uuid,
+        version_id=plan_version_uuid(),
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=2_000
@@ -152,7 +152,7 @@ def setup_demo_3(company_name, username, email, password):
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=49,
-        version_id=plan_version_uuid,
+        version_id=plan_version_uuid(),
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words,
@@ -180,7 +180,7 @@ def setup_demo_3(company_name, username, email, password):
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=99,
-        version_id=plan_version_uuid,
+        version_id=plan_version_uuid(),
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=25_000
@@ -207,7 +207,7 @@ def setup_demo_3(company_name, username, email, password):
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=279,
-        version_id=plan_version_uuid,
+        version_id=plan_version_uuid(),
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=50_000
@@ -234,7 +234,7 @@ def setup_demo_3(company_name, username, email, password):
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=19,
-        version_id=plan_version_uuid,
+        version_id=plan_version_uuid(),
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=10_000
@@ -269,7 +269,7 @@ def setup_demo_3(company_name, username, email, password):
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=59,
-        version_id=plan_version_uuid,
+        version_id=plan_version_uuid(),
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=25_000
@@ -304,7 +304,7 @@ def setup_demo_3(company_name, username, email, password):
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=179,
-        version_id=plan_version_uuid,
+        version_id=plan_version_uuid(),
     )
     pc1 = PlanComponent.objects.create(
         billable_metric=sum_words, max_metric_units=50_000
