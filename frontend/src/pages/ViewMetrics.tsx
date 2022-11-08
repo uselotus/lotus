@@ -21,11 +21,12 @@ import { PageLayout } from "../components/base/PageLayout";
 const defaultMetricState: CreateMetricState = {
   title: "Create a new Metric",
   event_name: "",
-  aggregation_type: "count",
+  usage_aggregation_type: "count",
   property_name: "",
-  metric_type: "",
-  aggregation_type_2: "max",
+  metric_type: "counter",
+  usage_aggregation_type_2: "max",
   property_name_2: "",
+  event_type: "delta",
 };
 
 const ViewMetrics: FC = () => {
@@ -73,16 +74,23 @@ const ViewMetrics: FC = () => {
   const onSave = (state: CreateMetricState) => {
     const metricInstance: MetricType = {
       event_name: state.event_name,
-      aggregation_type:
+      usage_aggregation_type:
         state.metric_type === "stateful"
-          ? state.aggregation_type_2
-          : state.aggregation_type,
+          ? state.usage_aggregation_type_2
+          : state.usage_aggregation_type,
       property_name:
         state.metric_type == "stateful"
           ? state.property_name_2
           : state.property_name,
+      granularity:
+        state.metric_type === "stateful"
+          ? state.granularity_2
+          : state.granularity,
       billable_metric_name: state.billable_metric_name,
       metric_type: state.metric_type,
+      billable_aggregation_type: state.billable_aggregation_type,
+      //defaults for now
+      event_type: state.metric_type === "stateful" ? "total" : "delta",
     };
     mutation.mutate(metricInstance);
   };

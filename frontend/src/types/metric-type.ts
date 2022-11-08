@@ -1,12 +1,15 @@
 export interface MetricType {
   event_name: string;
   property_name: string;
-  aggregation_type: string;
+  usage_aggregation_type: string;
+  billable_aggregation_type?: string;
   id?: number;
   billable_metric_name?: string;
-  metric_type: string;
+  metric_type: "counter" | "stateful";
   numeric_filters?: string[];
   categorical_filters?: string[];
+  granularity?: string;
+  event_type: string;
 }
 
 export interface MetricNameType {

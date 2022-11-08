@@ -1,12 +1,13 @@
-import { Modal, Form, Input, Select, Radio, Tooltip } from "antd";
+import { Modal, Form, Input, Select, Radio, Tooltip, Switch } from "antd";
 import { MetricType } from "../../types/metric-type";
 import React, { Fragment, useEffect, useState } from "react";
 const { Option } = Select;
 
 export interface CreateMetricState extends MetricType {
   title: string;
-  aggregation_type_2: string;
+  usage_aggregation_type_2: string;
   property_name_2: string;
+  granularity_2?: string;
 }
 
 const CreateMetricForm = (props: {
@@ -16,13 +17,64 @@ const CreateMetricForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
-  const [eventType, setEventType] = useState("aggregation");
+  const [eventType, setEventType] = useState("counter");
+  const [rate, setRate] = useState(false);
+  const [preset, setPreset] = useState("none");
 
   // useEffect(() => {
   //   if (props.visible === false) {
   //     form.resetFields();
   //   }
   // }, [props.visible]);
+
+  const changeFormPreset = (preset: string) => {
+    switch (preset) {
+      case "none":
+        setEventType("counter");
+        setRate(false);
+
+        form.resetFields();
+        break;
+      case "seats":
+        setEventType("stateful");
+        setRate(false);
+
+        form.setFieldsValue({
+          aggregation_type_2: "max",
+          event_name: "seats",
+          metric_type: "stateful",
+          property_name_2: "seat_count",
+          granularity_2: "day",
+          billable_metric_name: "Seats",
+        });
+        break;
+      case "calls":
+        setEventType("counter");
+        setRate(false);
+
+        form.setFieldsValue({
+          usage_aggregation_type: "count",
+          billable_metric_name: "API Post Calls",
+          event_name: "api_post",
+          metric_type: "counter",
+        });
+        break;
+      case "rate":
+        setEventType("counter");
+        setRate(true);
+
+        form.setFieldsValue({
+          usage_aggregation_type: "sum",
+          billable_metric_name: "Database Insert Rate",
+          event_name: "db_insert",
+          metric_type: "counter",
+          property_name: "#_of_inserts",
+          rate: true,
+          billable_aggregation_type: "max",
+          granularity: "minute",
+        });
+    }
+  };
 
   return (
     <Modal
@@ -31,6 +83,7 @@ const CreateMetricForm = (props: {
       okText="Create"
       okType="default"
       cancelText="Cancel"
+      width={800}
       onCancel={props.onCancel}
       onOk={() => {
         form
@@ -38,34 +91,77 @@ const CreateMetricForm = (props: {
           .then((values) => {
             props.onSave(values);
             form.resetFields();
+            setRate(false);
+            setEventType("counter");
+            setPreset("none");
           })
           .catch((info) => {});
       }}
     >
+      <div className="grid grid-cols-8 my-4 gap-4 items-center">
+        <h3 className="col-span-2">Templates</h3>
+        <Radio.Group
+          buttonStyle="solid"
+          optionType="button"
+          className="col-span-6 space-x-4"
+          value={preset}
+          onChange={(e) => {
+            setPreset(e.target.value);
+            changeFormPreset(e.target.value);
+          }}
+        >
+          <Radio value="none">No Template</Radio>
+          <Radio value="seats">Seats (prorated per day)</Radio>
+          <Radio value="calls">API Calls</Radio>
+          <Radio value="rate">Insert Rate</Radio>
+        </Radio.Group>
+      </div>
+      <div className="seperator" />
       <Form
         form={form}
         layout="vertical"
         name="customer_form"
         initialValues={{
-          metric_type: "aggregation",
-          aggregation_type: "count",
-          aggregation_type_2: "max",
+          metric_type: "counter",
+          usage_aggregation_type: "count",
+          usage_aggregation_type_2: "max",
         }}
       >
-        <Form.Item
-          name="event_name"
-          label="Event Name"
-          rules={[
-            {
-              required: true,
-              message: "Please input the name of the event you want to track",
-            },
-          ]}
-        >
-          <Input />
-        </Form.Item>
+        <div className="grid grid-cols-2 gap-4">
+          <Tooltip
+            placement="left"
+            title="Define a display name for this metric"
+          >
+            <Form.Item
+              name="billable_metric_name"
+              label="Metric Name"
+              rules={[
+                {
+                  required: true,
+                  message: "Please define a unique name for this metric",
+                },
+              ]}
+            >
+              <Input />
+            </Form.Item>
+          </Tooltip>
+          <Form.Item
+            name="event_name"
+            label="Event Name"
+            rules={[
+              {
+                required: true,
+                message: "Please input the name of the event you want to track",
+              },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+        </div>
+
         <Form.Item
           name="metric_type"
+          className="justify-center"
           label="Type"
           rules={[
             {
@@ -83,8 +179,8 @@ const CreateMetricForm = (props: {
               setEventType(e.target.value);
             }}
           >
-            <Radio value="aggregation">Aggregation</Radio>
-            <Radio value="stateful">Stateful</Radio>
+            <Radio value="counter">Counter</Radio>
+            <Radio value="stateful">Continuous</Radio>
           </Radio.Group>
         </Form.Item>
         <Form.Item
@@ -93,10 +189,10 @@ const CreateMetricForm = (props: {
             prevValues.metric_type !== currentValues.metric_type
           }
         >
-          {eventType === "aggregation" && (
+          {eventType === "counter" && (
             <Fragment>
               <Form.Item
-                name="aggregation_type"
+                name="usage_aggregation_type"
                 label="Aggregation Type"
                 rules={[
                   {
@@ -121,10 +217,10 @@ const CreateMetricForm = (props: {
                 }
               >
                 {({ getFieldValue }) =>
-                  getFieldValue("aggregation_type") === "sum" ||
-                  getFieldValue("aggregation_type") === "max" ||
-                  getFieldValue("aggregation_type") === "latest" ||
-                  getFieldValue("aggregation_type") == "unique" ? (
+                  getFieldValue("usage_aggregation_type") === "sum" ||
+                  getFieldValue("usage_aggregation_type") === "max" ||
+                  getFieldValue("usage_aggregation_type") === "latest" ||
+                  getFieldValue("usage_aggregation_type") == "unique" ? (
                     <Form.Item
                       name="property_name"
                       label="Property Name"
@@ -135,12 +231,60 @@ const CreateMetricForm = (props: {
                   ) : null
                 }
               </Form.Item>
+              <div className="mb-5">
+                <h4>
+                  Add Rate. This will allow you to track the metric over windows
+                  of time.
+                </h4>
+                <Switch
+                  checked={rate}
+                  onChange={() => {
+                    setRate(!rate);
+                  }}
+                />
+              </div>
+
+              {rate && (
+                <Fragment>
+                  <Form.Item
+                    name="granularity"
+                    label="Rate Period"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Period is required",
+                      },
+                    ]}
+                  >
+                    <Select defaultValue={"day"}>
+                      <Option value="day">day</Option>
+                      <Option value="hour">hour</Option>
+                      <Option value="hour">minute</Option>
+                    </Select>
+                  </Form.Item>
+                  <Form.Item
+                    name="billable_aggregation_type"
+                    label="Rate Aggregation Type"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Aggregation type is required",
+                      },
+                    ]}
+                  >
+                    <Select defaultValue={"max"}>
+                      <Option value="sum">sum</Option>
+                      <Option value="max">max</Option>
+                    </Select>
+                  </Form.Item>
+                </Fragment>
+              )}
             </Fragment>
           )}
           {eventType === "stateful" && (
             <Fragment>
               <Form.Item
-                name="aggregation_type_2"
+                name="usage_aggregation_type_2"
                 label="Aggregation Type"
                 rules={[
                   {
@@ -161,8 +305,8 @@ const CreateMetricForm = (props: {
               >
                 <Input />
               </Form.Item>
-              {/* <Form.Item
-                name="stateful_aggregation_period"
+              <Form.Item
+                name="granularity_2"
                 label="Period"
                 rules={[
                   {
@@ -174,26 +318,12 @@ const CreateMetricForm = (props: {
                 <Select defaultValue={"day"}>
                   <Option value="day">day</Option>
                   <Option value="hour">hour</Option>
+                  <Option value="week">week</Option>
                 </Select>
-              </Form.Item> */}
+              </Form.Item>
             </Fragment>
           )}
         </Form.Item>
-
-        <Tooltip placement="left" title="Define a display name for this metric">
-          <Form.Item
-            name="billable_metric_name"
-            label="Metric Name"
-            rules={[
-              {
-                required: true,
-                message: "Please define a unique name for this metric",
-              },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-        </Tooltip>
       </Form>
     </Modal>
   );
