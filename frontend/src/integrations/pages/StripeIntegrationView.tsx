@@ -186,10 +186,11 @@ const StripeIntegrationView: FC = () => {
               disabled={isSettingValue || !currentOrganizationSetting}
               checked={currentOrganizationSetting?.setting_value === "true"}
               onChange={(value) => {
-                updateOrganizationSettings.mutate({
-                  setting_value: value.target.checked.toString(),
-                  setting_id: currentOrganizationSetting?.setting_id,
-                });
+                currentOrganizationSetting &&
+                  updateOrganizationSettings.mutate({
+                    setting_value: value.target.checked.toString(),
+                    setting_id: currentOrganizationSetting.setting_id,
+                  });
                 setIsSettingValue(true);
               }}
               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
