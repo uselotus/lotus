@@ -186,7 +186,13 @@ class TestInsertBillableMetric:
         )
 
         payload = insert_billable_metric_payload
-        BillableMetric.objects.create(**{**payload, "organization": setup_dict["org"], "billable_metric_name": "[coun] sum of test_property of test_event"})
+        BillableMetric.objects.create(
+            **{
+                **payload,
+                "organization": setup_dict["org"],
+                "billable_metric_name": "[coun] sum of test_property of test_event",
+            }
+        )
         response = setup_dict["client"].post(
             reverse("metric-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),

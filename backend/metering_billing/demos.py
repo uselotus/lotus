@@ -84,7 +84,9 @@ def setup_demo_3(company_name, username, email, password):
         property_name=itertools.cycle(
             ["", "words", "compute_time", "language", "subsection"]
         ),
-        usage_aggregation_type=itertools.cycle(["count", "sum", "sum", "unique", "unique"]),
+        usage_aggregation_type=itertools.cycle(
+            ["count", "sum", "sum", "unique", "unique"]
+        ),
         billable_metric_name=itertools.cycle(
             [
                 "API Calls",

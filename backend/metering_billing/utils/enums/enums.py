@@ -53,6 +53,7 @@ class EVENT_TYPE(models.TextChoices):
     DELTA = ("delta", _("Delta"))
     TOTAL = ("total", _("Total"))
 
+
 class PLAN_DURATION(models.TextChoices):
     MONTHLY = ("monthly", _("Monthly"))
     QUARTERLY = ("quarterly", _("Quarterly"))

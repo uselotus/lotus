@@ -280,7 +280,7 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
-        bm, created  = BillableMetric.objects.get_or_create(**validated_data)
+        bm, created = BillableMetric.objects.get_or_create(**validated_data)
         if not created:
             raise DuplicateBillableMetric
 
