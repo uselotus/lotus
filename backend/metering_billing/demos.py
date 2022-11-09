@@ -31,6 +31,7 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     BACKTEST_KPI,
     FLAT_FEE_BILLING_TYPE,
+    METRIC_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -83,7 +84,7 @@ def setup_demo_3(company_name, username, email, password):
         property_name=itertools.cycle(
             ["", "words", "compute_time", "language", "subsection"]
         ),
-        aggregation_type=itertools.cycle(["count", "sum", "sum", "unique", "unique"]),
+        usage_aggregation_type=itertools.cycle(["count", "sum", "sum", "unique", "unique"]),
         billable_metric_name=itertools.cycle(
             [
                 "API Calls",
@@ -105,8 +106,8 @@ def setup_demo_3(company_name, username, email, password):
                 "qty",
             ]
         ),
-        aggregation_type=itertools.cycle(["max"]),
-        metric_type="stateful",
+        usage_aggregation_type=itertools.cycle(["max"]),
+        metric_type=METRIC_TYPE.STATEFUL,
         billable_metric_name="User Seats",
         _quantity=1,
     )

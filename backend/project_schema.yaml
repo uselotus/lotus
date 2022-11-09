@@ -194,6 +194,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerDetail'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDetailErrorResponse'
+          description: ''
   /api/customer_summary/:
     get:
       operationId: customer_summary_list
@@ -1845,16 +1851,6 @@ components:
       - id
       - target
       - verb
-    AggregationTypeEnum:
-      enum:
-      - count
-      - sum
-      - max
-      - min
-      - unique
-      - latest
-      - average
-      type: string
     Alert:
       type: object
       properties:
@@ -2005,6 +2001,15 @@ components:
             $ref: '#/components/schemas/Event'
       required:
       - batch
+    BillableAggregationTypeEnum:
+      enum:
+      - count
+      - sum
+      - max
+      - unique
+      - latest
+      - average
+      type: string
     BillableMetric:
       type: object
       properties:
@@ -2015,8 +2020,18 @@ components:
           type: string
           nullable: true
           maxLength: 200
-        aggregation_type:
-          $ref: '#/components/schemas/AggregationTypeEnum'
+        usage_aggregation_type:
+          $ref: '#/components/schemas/UsageAggregationTypeEnum'
+        billable_aggregation_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/BillableAggregationTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        granularity:
+          $ref: '#/components/schemas/GranularityEnum'
+        event_type:
+          $ref: '#/components/schemas/EventTypeEnum'
         metric_type:
           $ref: '#/components/schemas/MetricTypeEnum'
         billable_metric_name:
@@ -2038,6 +2053,11 @@ components:
           nullable: true
       required:
       - event_name
+      - metric_type
+      - usage_aggregation_type
+    BlankEnum:
+      enum:
+      - ''
     CategoricalFilter:
       type: object
       properties:
@@ -2102,6 +2122,13 @@ components:
       - invoices
       - subscriptions
       - total_amount_due
+    CustomerDetailErrorResponse:
+      type: object
+      properties:
+        error_detail:
+          type: string
+      required:
+      - error_detail
     CustomerNameAndID:
       type: object
       properties:
@@ -2266,6 +2293,11 @@ components:
       - event_name
       - idempotency_id
       - time_created
+    EventTypeEnum:
+      enum:
+      - delta
+      - total
+      type: string
     ExperimentalToActiveFailure:
       type: object
       properties:
@@ -2346,6 +2378,16 @@ components:
             $ref: '#/components/schemas/MetricUsage'
       required:
       - access
+    GranularityEnum:
+      enum:
+      - minute
+      - hour
+      - day
+      - week
+      - month
+      - quarter
+      - total
+      type: string
     ImportCustomerFailure:
       type: object
       properties:
@@ -2403,22 +2445,17 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
-        source:
-          $ref: '#/components/schemas/SourceEnum'
         external_plan_id:
           type: string
           maxLength: 100
+        source:
+          $ref: '#/components/schemas/SourceEnum'
       required:
       - external_plan_id
       - source
     InitialPlanVersion:
       type: object
       properties:
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        active_subscriptions:
-          type: integer
-          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -2426,22 +2463,21 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        created_by:
-          type: string
-          readOnly: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         version:
           type: integer
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
           readOnly: true
         version_id:
           type: string
@@ -2451,14 +2487,20 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
+        created_by:
+          type: string
+          readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
-        created_on:
-          type: string
-          format: date-time
+        active_subscriptions:
+          type: integer
           readOnly: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
       required:
       - active_subscriptions
       - created_by
@@ -2543,8 +2585,9 @@ components:
       - original_plan_revenue
     MetricTypeEnum:
       enum:
-      - aggregation
+      - counter
       - stateful
+      - rate
       type: string
     MetricUsage:
       type: object
@@ -2564,6 +2607,9 @@ components:
       - metric_limit
       - metric_name
       - metric_usage
+    NullEnum:
+      enum:
+      - null
     NumericFilter:
       type: object
       properties:
@@ -2980,55 +3026,55 @@ components:
     PlanDetail:
       type: object
       properties:
-        num_versions:
-          type: integer
-          readOnly: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExternalPlanLink'
-          readOnly: true
-        created_by:
-          type: string
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+        product_id:
+          type: string
+          nullable: true
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
         plan_id:
           type: string
           maxLength: 100
-        product_id:
-          type: string
-          nullable: true
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
-          readOnly: true
         created_on:
           type: string
           format: date-time
           readOnly: true
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        num_versions:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
       required:
       - active_subscriptions
       - created_by
@@ -3591,6 +3637,15 @@ components:
       required:
       - detail
       - status
+    UsageAggregationTypeEnum:
+      enum:
+      - count
+      - sum
+      - max
+      - unique
+      - latest
+      - average
+      type: string
     User:
       type: object
       properties:

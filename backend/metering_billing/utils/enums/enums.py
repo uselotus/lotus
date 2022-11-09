@@ -18,7 +18,6 @@ class METRIC_AGGREGATION(models.TextChoices):
     COUNT = ("count", _("Count"))
     SUM = ("sum", _("Sum"))
     MAX = ("max", _("Max"))
-    MIN = ("min", _("Min"))
     UNIQUE = ("unique", _("Unique"))
     LATEST = ("latest", _("Latest"))
     AVERAGE = ("average", _("Average"))
@@ -35,9 +34,24 @@ class PAYMENT_PROVIDERS(models.TextChoices):
 
 
 class METRIC_TYPE(models.TextChoices):
-    AGGREGATION = ("aggregation", _("Aggregatable"))
+    COUNTER = ("counter", _("Counter"))
     STATEFUL = ("stateful", _("State Logging"))
+    RATE = ("rate", _("Rate"))
 
+
+class METRIC_GRANULARITY(models.TextChoices):
+    MINUTE = ("minute", _("Minute"))
+    HOUR = ("hour", _("Hour"))
+    DAY = ("day", _("Day"))
+    WEEK = ("week", _("Week"))
+    MONTH = ("month", _("Month"))
+    QUARTER = ("quarter", _("Quarter"))
+    TOTAL = ("total", _("Total"))
+
+
+class EVENT_TYPE(models.TextChoices):
+    DELTA = ("delta", _("Delta"))
+    TOTAL = ("total", _("Total"))
 
 class PLAN_DURATION(models.TextChoices):
     MONTHLY = ("monthly", _("Monthly"))
@@ -56,17 +70,9 @@ class FLAT_FEE_BILLING_TYPE(models.TextChoices):
     IN_ADVANCE = ("in_advance", _("In Advance"))
 
 
-class REVENUE_CALC_GRANULARITY(models.TextChoices):
+class USAGE_CALC_GRANULARITY(models.TextChoices):
     DAILY = ("day", _("Daily"))
     TOTAL = ("total", _("Total"))
-
-
-class PRORATION_GRANULARITY(models.TextChoices):
-    MONTHLY = ("monthly", _("Monthly"))
-    WEEKLY = ("weekly", _("Weekly"))
-    DAILY = ("daily", _("Daily"))
-    HOURLY = ("hourly", _("Hourly"))
-    NONE = ("none", _("None"))
 
 
 class NUMERIC_FILTER_OPERATORS(models.TextChoices):

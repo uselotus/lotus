@@ -89,6 +89,9 @@ const CreateMetricForm = (props: {
         form
           .validateFields()
           .then((values) => {
+            if (rate) {
+              values.metric_type = "rate";
+            }
             props.onSave(values);
             form.resetFields();
             setRate(false);
@@ -219,8 +222,7 @@ const CreateMetricForm = (props: {
                 {({ getFieldValue }) =>
                   getFieldValue("usage_aggregation_type") === "sum" ||
                   getFieldValue("usage_aggregation_type") === "max" ||
-                  getFieldValue("usage_aggregation_type") === "latest" ||
-                  getFieldValue("usage_aggregation_type") == "unique" ? (
+                  getFieldValue("usage_aggregation_type") === "unique" ? (
                     <Form.Item
                       name="property_name"
                       label="Property Name"
@@ -259,7 +261,7 @@ const CreateMetricForm = (props: {
                     <Select defaultValue={"day"}>
                       <Option value="day">day</Option>
                       <Option value="hour">hour</Option>
-                      <Option value="hour">minute</Option>
+                      <Option value="minute">minute</Option>
                     </Select>
                   </Form.Item>
                   <Form.Item
@@ -273,7 +275,6 @@ const CreateMetricForm = (props: {
                     ]}
                   >
                     <Select defaultValue={"max"}>
-                      <Option value="sum">sum</Option>
                       <Option value="max">max</Option>
                     </Select>
                   </Form.Item>

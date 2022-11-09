@@ -26,7 +26,6 @@ const defaultMetricState: CreateMetricState = {
   metric_type: "counter",
   usage_aggregation_type_2: "max",
   property_name_2: "",
-  event_type: "delta",
 };
 
 const ViewMetrics: FC = () => {
@@ -90,7 +89,7 @@ const ViewMetrics: FC = () => {
       metric_type: state.metric_type,
       billable_aggregation_type: state.billable_aggregation_type,
       //defaults for now
-      event_type: state.metric_type === "stateful" ? "total" : "delta",
+      event_type: state.metric_type === "stateful" ? "total" : undefined,
     };
     mutation.mutate(metricInstance);
   };

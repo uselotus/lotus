@@ -19,6 +19,7 @@ from metering_billing.models import (
 )
 from metering_billing.serializers.model_serializers import BillableMetricSerializer
 from metering_billing.utils import date_as_max_dt, date_as_min_dt
+from metering_billing.utils.enums import METRIC_TYPE
 from model_bakery import baker
 
 
@@ -52,7 +53,7 @@ class Command(BaseCommand):
             organization=organization,
             event_name="raise_issue",
             property_name=itertools.cycle(["", "stacktrace_len", "latency", "project"]),
-            aggregation_type=itertools.cycle(["count", "sum", "max", "unique"]),
+            usage_aggregation_type=itertools.cycle(["count", "sum", "max", "unique"]),
             metric_type="aggregation",
             _quantity=4,
         )
@@ -65,8 +66,8 @@ class Command(BaseCommand):
                     "qty",
                 ]
             ),
-            aggregation_type=itertools.cycle(["max"]),
-            metric_type="stateful",
+            usage_aggregation_type=itertools.cycle(["max"]),
+            metric_type=METRIC_TYPE.STATEFUL,
             _quantity=1,
         )
         for bm in [bm_e1_1, bm_e1_2, bm_e1_3, bm_e1_4, bm_e2_1]:

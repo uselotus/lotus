@@ -5,11 +5,11 @@ export interface MetricType {
   billable_aggregation_type?: string;
   id?: number;
   billable_metric_name?: string;
-  metric_type: "counter" | "stateful";
+  metric_type: "counter" | "stateful" | "rate";
   numeric_filters?: string[];
   categorical_filters?: string[];
   granularity?: string;
-  event_type: string;
+  event_type?: "delta" | "total";
 }
 
 export interface MetricNameType {

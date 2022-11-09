@@ -22,6 +22,7 @@ from metering_billing.models import (
 from metering_billing.utils import date_as_max_dt, date_as_min_dt, now_utc
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
+    METRIC_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -77,7 +78,7 @@ class Command(BaseCommand):
             property_name=itertools.cycle(
                 ["", "words", "compute_time", "language", "subsection"]
             ),
-            aggregation_type=itertools.cycle(
+            usage_aggregation_type=itertools.cycle(
                 ["count", "sum", "sum", "unique", "unique"]
             ),
             billable_metric_name=itertools.cycle(
@@ -89,7 +90,7 @@ class Command(BaseCommand):
                     "Content Types",
                 ]
             ),
-            metric_type="aggregation",
+            metric_type=METRIC_TYPE.COUNTER,
             _quantity=5,
         )
         (num_seats,) = baker.make(
@@ -101,8 +102,8 @@ class Command(BaseCommand):
                     "qty",
                 ]
             ),
-            aggregation_type=itertools.cycle(["max"]),
-            metric_type="stateful",
+            usage_aggregation_type=itertools.cycle(["max"]),
+            metric_type=METRIC_TYPE.STATEFUL,
             billable_metric_name="User Seats",
             _quantity=1,
         )
