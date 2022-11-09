@@ -40,12 +40,12 @@ class METRIC_TYPE(models.TextChoices):
 
 
 class METRIC_GRANULARITY(models.TextChoices):
-    MINUTE = ("minute", _("Minute"))
-    HOUR = ("hour", _("Hour"))
-    DAY = ("day", _("Day"))
-    WEEK = ("week", _("Week"))
-    MONTH = ("month", _("Month"))
-    QUARTER = ("quarter", _("Quarter"))
+    MINUTE = ("minutes", _("Minute"))
+    HOUR = ("hours", _("Hour"))
+    DAY = ("days", _("Day"))
+    WEEK = ("weeks", _("Week"))
+    MONTH = ("months", _("Month"))
+    QUARTER = ("quarters", _("Quarter"))
     TOTAL = ("total", _("Total"))
 
 
