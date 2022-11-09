@@ -44,7 +44,7 @@ const CreateMetricForm = (props: {
           event_name: "seats",
           metric_type: "stateful",
           property_name_2: "seat_count",
-          granularity_2: "day",
+          granularity_2: "days",
           billable_metric_name: "Seats",
         });
         break;
@@ -71,7 +71,7 @@ const CreateMetricForm = (props: {
           property_name: "#_of_inserts",
           rate: true,
           billable_aggregation_type: "max",
-          granularity: "minute",
+          granularity: "minutes",
         });
     }
   };
@@ -214,8 +214,8 @@ const CreateMetricForm = (props: {
               <Form.Item
                 noStyle
                 shouldUpdate={(prevValues, currentValues) =>
-                  prevValues.aggregation_type !==
-                    currentValues.aggregation_type ||
+                  prevValues.usage_aggregation_type !==
+                    currentValues.usage_aggregation_type ||
                   prevValues.metric_type !== currentValues.metric_type
                 }
               >
@@ -242,6 +242,13 @@ const CreateMetricForm = (props: {
                   checked={rate}
                   onChange={() => {
                     setRate(!rate);
+                    if (!rate) {
+                      form.setFieldsValue({
+                        metric_type: "rate",
+                        billable_aggregation_type: "max",
+                        granularity: "days",
+                      });
+                    }
                   }}
                 />
               </div>
@@ -258,10 +265,10 @@ const CreateMetricForm = (props: {
                       },
                     ]}
                   >
-                    <Select defaultValue={"day"}>
-                      <Option value="day">day</Option>
-                      <Option value="hour">hour</Option>
-                      <Option value="minute">minute</Option>
+                    <Select defaultValue="days">
+                      <Option value="days">day</Option>
+                      <Option value="hours">hour</Option>
+                      <Option value="minutes">minute</Option>
                     </Select>
                   </Form.Item>
                   <Form.Item
@@ -316,10 +323,10 @@ const CreateMetricForm = (props: {
                   },
                 ]}
               >
-                <Select defaultValue={"day"}>
-                  <Option value="day">day</Option>
-                  <Option value="hour">hour</Option>
-                  <Option value="week">week</Option>
+                <Select defaultValue={"days"}>
+                  <Option value="days">day</Option>
+                  <Option value="hours">hour</Option>
+                  <Option value="weeks">week</Option>
                 </Select>
               </Form.Item>
             </Fragment>

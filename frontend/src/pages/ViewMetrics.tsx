@@ -54,8 +54,8 @@ const ViewMetrics: FC = () => {
         });
       },
 
-      onError: () => {
-        toast.error("Error creating metric", {
+      onError: (error: any) => {
+        toast.error("Error creating metric: " + error.response.data.detail, {
           position: toast.POSITION.TOP_CENTER,
         });
       },
