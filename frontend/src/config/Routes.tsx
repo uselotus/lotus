@@ -8,6 +8,10 @@ import StripeRedirect from "../integrations/PaymentProcessorIntegrations";
 import SideBar from "../components/SideBar";
 import { Avatar, Col, Divider, Layout, PageHeader, Row } from "antd";
 import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
+import IntegrationsTab from "../components/Settings/settings/tabs/IntegrationsTab";
+import { DeveloperTab } from "../components/Settings/settings/tabs/DeveloperTab";
+import TeamTab from "../components/Settings/settings/tabs/TeamTab";
+import ActivityStream from "../components/Settings/settings/tabs/ActivityTab";
 import CreatePlan from "../pages/CreatePlan";
 import ViewMetrics from "../pages/ViewMetrics";
 import ViewExperiments from "../pages/ViewExperiments";
@@ -16,6 +20,7 @@ import ExperimentResults from "../pages/ExperimentResults";
 import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
+import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -74,9 +79,16 @@ const AppRoutes: FC = () => {
                   <SettingsPage />
                 )
               }
-            />
+            >
+              <Route path="general" element={<GeneralTab />} />
+              <Route path="integrations" element={<IntegrationsTab />} />
+
+              <Route path="team" element={<TeamTab />} />
+              <Route path="activity" element={<ActivityStream />} />
+              <Route path="developer-settings" element={<DeveloperTab />} />
+            </Route>
             <Route
-              path="/settings/stripe"
+              path="settings/integrations/stripe"
               element={
                 import.meta.env.VITE_IS_DEMO === true ? (
                   <Navigate replace to={"/"} />
