@@ -74,10 +74,10 @@ export default function ActivityStream() {
         </Paper>
         <div className="separator mb-5 mt-5" />
 
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 mb-4">
           <button
             onClick={() => {
-              if (previous !== null) {
+              if (previous !== "null") {
                 setCursor(previous);
               }
             }}
@@ -99,7 +99,7 @@ export default function ActivityStream() {
           </button>
           <button
             onClick={() => {
-              if (next !== null) {
+              if (next !== "null") {
                 setCursor(next);
               }
             }}
