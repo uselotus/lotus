@@ -20,7 +20,7 @@ export default function ActivityStream() {
       Organization.getActionStream(cursor).then((res) => {
         setNext(decodeURIComponent(res.next));
         setPrevious(decodeURIComponent(res.previous));
-        return res.results;
+        return res;
       }),
 
     {
@@ -30,8 +30,11 @@ export default function ActivityStream() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    queryClient.invalidateQueries("stream");
-  }, [cursor]);
+    if (activityItems !== undefined) {
+      setNext(decodeURIComponent(activityItems.next));
+      setPrevious(decodeURIComponent(activityItems.previous));
+    }
+  }, [activityItems]);
 
   return (
     <Fragment>
@@ -39,7 +42,7 @@ export default function ActivityStream() {
       <div className="w-1/2 justify-center">
         <Paper border={true}>
           <ul role="list" className="divide-y divide-gray-200">
-            {activityItems?.map((activityItem) => (
+            {activityItems?.results.map((activityItem) => (
               <li key={activityItem.id} className="py-4">
                 <div className="flex space-x-3">
                   <div className="flex-1 space-y-3">
@@ -79,6 +82,7 @@ export default function ActivityStream() {
             onClick={() => {
               if (previous !== "null") {
                 setCursor(previous);
+                queryClient.invalidateQueries(["stream"]);
               }
             }}
           >
@@ -101,6 +105,7 @@ export default function ActivityStream() {
             onClick={() => {
               if (next !== "null") {
                 setCursor(next);
+                queryClient.invalidateQueries("stream");
               }
             }}
           >

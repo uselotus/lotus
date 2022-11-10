@@ -27,8 +27,8 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
     PAYMENT_PROVIDERS,
-    REVENUE_CALC_GRANULARITY,
     SUBSCRIPTION_STATUS,
+    USAGE_CALC_GRANULARITY,
 )
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -86,7 +86,7 @@ class PeriodMetricRevenueView(APIView):
                         "data": {
                             x: Decimal(0)
                             for x in periods_bwn_twodates(
-                                REVENUE_CALC_GRANULARITY.DAILY, p_start, p_end
+                                USAGE_CALC_GRANULARITY.DAILY, p_start, p_end
                             )
                         },
                         "total_revenue": Decimal(0),
@@ -115,12 +115,7 @@ class PeriodMetricRevenueView(APIView):
                         total_period_rev += bp.flat_rate.amount
                     for plan_component in bp.components.all():
                         billable_metric = plan_component.billable_metric
-                        revenue_per_day = plan_component.calculate_revenue(
-                            sub.customer,
-                            sub.start_date,
-                            sub.end_date,
-                            revenue_granularity=REVENUE_CALC_GRANULARITY.DAILY,
-                        )
+                        revenue_per_day = plan_component.calculate_total_revenue(sub)
                         metric_dict = return_dict[
                             f"daily_usage_revenue_period_{p_num}"
                         ][billable_metric.id]
@@ -229,7 +224,7 @@ class PeriodMetricUsageView(APIView):
             usage_summary = metric.get_usage(
                 q_start,
                 q_end,
-                granularity=REVENUE_CALC_GRANULARITY.DAILY,
+                granularity=USAGE_CALC_GRANULARITY.DAILY,
             )
             return_dict[metric.billable_metric_name] = {
                 "data": {},
@@ -600,18 +595,7 @@ class GetCustomerAccessView(APIView):
                                 "access": True,
                             }
                             continue
-                        metric_usage = metric.get_usage(
-                            sub.start_date,
-                            sub.end_date,
-                            granularity=REVENUE_CALC_GRANULARITY.TOTAL,
-                            customer=customer,
-                        )
-                        metric_usage = metric_usage.get(customer.customer_name, {})
-                        metric_usage = list(metric_usage.values())
-                        if len(metric_usage) > 0:
-                            metric_usage = metric_usage[0]
-                        else:
-                            metric_usage = Decimal(0)
+                        metric_usage = metric.get_current_usage(sub)
                         metric_usages[metric.billable_metric_name] = {
                             "metric_usage": metric_usage,
                             "metric_limit": metric_limit,

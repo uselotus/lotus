@@ -46,12 +46,7 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
     # usage calculation
     if subscription.end_date < issue_date:
         for plan_component in billing_plan.components.all():
-            pc_usg_and_rev = plan_component.calculate_revenue(
-                customer,
-                subscription.start_date,
-                subscription.end_date,
-            )
-            usg_rev = list(pc_usg_and_rev.items())[0][1]
+            usg_rev = plan_component.calculate_total_revenue(subscription)
             line_item = {
                 "name": plan_component.billable_metric.billable_metric_name,
                 "start_date": subscription.start_date,

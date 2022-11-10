@@ -7,7 +7,11 @@ from decimal import ROUND_DOWN, ROUND_UP, Decimal
 import pytz
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
-from metering_billing.utils.enums import PLAN_DURATION, REVENUE_CALC_GRANULARITY
+from metering_billing.utils.enums import (
+    METRIC_GRANULARITY,
+    PLAN_DURATION,
+    USAGE_CALC_GRANULARITY,
+)
 from numpy import isin
 
 
@@ -102,30 +106,44 @@ def periods_bwn_twodates(granularity, start_date, end_date):
     start_time = date_as_min_dt(start_date)
     end_time = date_as_max_dt(end_date)
     rd = relativedelta(start_time, end_time)
-    if granularity == REVENUE_CALC_GRANULARITY.TOTAL:
+    if (
+        granularity == USAGE_CALC_GRANULARITY.TOTAL
+        or granularity == METRIC_GRANULARITY.TOTAL
+    ):
         periods_btwn = 0
-    # elif granularity == REVENUE_CALC_GRANULARITY.HOUR:
-    #     periods_btwn = (
-    #         rd.years * 365 * 24 + rd.months * 30 * 24 + rd.days * 24 + rd.hours
-    #     )
-    elif granularity == REVENUE_CALC_GRANULARITY.DAILY:
+    elif granularity == METRIC_GRANULARITY.HOUR:
+        periods_btwn = (
+            rd.years * 365 * 24 + rd.months * 30 * 24 + rd.days * 24 + rd.hours
+        )
+    elif (
+        granularity == USAGE_CALC_GRANULARITY.DAILY
+        or granularity == METRIC_GRANULARITY.DAY
+    ):
         periods_btwn = rd.years * 365 + rd.months * 30 + rd.days
-    # elif granularity == REVENUE_CALC_GRANULARITY.WEEK:
-    #     periods_btwn = rd.years * 52 + rd.months * 4 + rd.weeks
-    # elif granularity == REVENUE_CALC_GRANULARITY.MONTH:
-    #     periods_btwn = rd.years * 12 + rd.months
+    elif granularity == METRIC_GRANULARITY.WEEK:
+        periods_btwn = rd.years * 52 + rd.months * 4 + rd.weeks
+    elif granularity == METRIC_GRANULARITY.MONTH:
+        periods_btwn = rd.years * 12 + rd.months
     periods_btwn = abs(periods_btwn)
     for n in range(periods_btwn + 1):
-        if granularity == REVENUE_CALC_GRANULARITY.TOTAL:
-            yield start_time
-        # elif granularity == REVENUE_CALC_GRANULARITY.HOUR:
-        #     yield start_time + relativedelta(hours=n)
-        elif granularity == REVENUE_CALC_GRANULARITY.DAILY:
-            yield start_time + relativedelta(days=n)
-        # elif granularity == REVENUE_CALC_GRANULARITY.WEEK:
-        #     yield start_time + relativedelta(weeks=n)
-        # elif granularity == REVENUE_CALC_GRANULARITY.MONTH:
-        #     yield start_time + relativedelta(months=n)
+        if (
+            granularity == USAGE_CALC_GRANULARITY.TOTAL
+            or granularity == METRIC_GRANULARITY.TOTAL
+        ):
+            res = start_time
+        elif granularity == METRIC_GRANULARITY.HOUR:
+            res = start_time + relativedelta(hours=n)
+        elif (
+            granularity == USAGE_CALC_GRANULARITY.DAILY
+            or granularity == METRIC_GRANULARITY.DAY
+        ):
+            res = start_time + relativedelta(days=n)
+        elif granularity == METRIC_GRANULARITY.WEEK:
+            res = start_time + relativedelta(weeks=n)
+        elif granularity == METRIC_GRANULARITY.MONTH:
+            res = start_time + relativedelta(months=n)
+        if res <= end_time:
+            yield res
 
 
 def now_plus_day():

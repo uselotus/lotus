@@ -30,10 +30,12 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CATEGORICAL_FILTER_OPERATORS,
+    EVENT_TYPE,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_AGGREGATION,
+    METRIC_GRANULARITY,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PAYMENT_PLANS,
@@ -43,11 +45,10 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
     PRICE_ADJUSTMENT_TYPE,
     PRODUCT_STATUS,
-    PRORATION_GRANULARITY,
     REPLACE_IMMEDIATELY_TYPE,
-    REVENUE_CALC_GRANULARITY,
     SUBSCRIPTION_STATUS,
     USAGE_BILLING_FREQUENCY,
+    USAGE_CALC_GRANULARITY,
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
@@ -279,6 +280,7 @@ class CategoricalFilter(models.Model):
 
 
 class BillableMetric(models.Model):
+    # meta
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -286,53 +288,54 @@ class BillableMetric(models.Model):
         related_name="org_billable_metrics",
     )
     event_name = models.CharField(max_length=200)
-    property_name = models.CharField(max_length=200, blank=True, null=True)
-    aggregation_type = models.CharField(
-        max_length=10,
-        choices=METRIC_AGGREGATION.choices,
-        default=METRIC_AGGREGATION.COUNT,
-        blank=False,
-        null=False,
-    )
     metric_type = models.CharField(
         max_length=20,
         choices=METRIC_TYPE.choices,
-        default=METRIC_TYPE.AGGREGATION,
-        blank=False,
-        null=False,
+        default=METRIC_TYPE.COUNTER,
     )
+    properties = models.JSONField(default=dict, blank=True, null=True)
     billable_metric_name = models.CharField(
         max_length=200, null=False, blank=True, default=metric_uuid
     )
+    event_type = models.CharField(
+        max_length=20,
+        choices=EVENT_TYPE.choices,
+        default=EVENT_TYPE.TOTAL,
+        null=True,
+        blank=True,
+    )
+
+    # metric type specific
+    usage_aggregation_type = models.CharField(
+        max_length=10,
+        choices=METRIC_AGGREGATION.choices,
+        default=METRIC_AGGREGATION.COUNT,
+    )
+    billable_aggregation_type = models.CharField(
+        max_length=10,
+        choices=METRIC_AGGREGATION.choices,
+        default=METRIC_AGGREGATION.SUM,
+        null=True,
+        blank=True,
+    )
+    property_name = models.CharField(max_length=200, blank=True, null=True)
+    granularity = models.CharField(
+        choices=METRIC_GRANULARITY.choices,
+        default=METRIC_GRANULARITY.TOTAL,
+        max_length=10,
+        null=True,
+        blank=True,
+    )
+
+    # filters
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
     categorical_filters = models.ManyToManyField(CategoricalFilter, blank=True)
-    properties = models.JSONField(default=dict, blank=True, null=True)
+
+    # records
     history = HistoricalRecords()
 
     class Meta:
         unique_together = ("organization", "billable_metric_name")
-        constraints = [
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "event_name",
-                    "aggregation_type",
-                    "property_name",
-                    "metric_type",
-                ],
-                name="unique_with_property_name",
-            ),
-            UniqueConstraint(
-                fields=[
-                    "organization",
-                    "event_name",
-                    "aggregation_type",
-                    "metric_type",
-                ],
-                condition=Q(property_name=None),
-                name="unique_without_property_name",
-            ),
-        ]
 
     def __str__(self):
         return self.billable_metric_name
@@ -342,23 +345,38 @@ class BillableMetric(models.Model):
 
     def get_usage(
         self,
-        query_start_date,
-        query_end_date,
+        start_date,
+        end_date,
         granularity,
         customer=None,
-        billable_only=False,
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-
         usage = handler.get_usage(
-            granularity=granularity,
-            start_date=query_start_date,
-            end_date=query_end_date,
+            results_granularity=granularity,
+            start_date=start_date,
+            end_date=end_date,
             customer=customer,
-            billable_only=billable_only,
         )
+
+        return usage
+
+    def get_current_usage(self, subscription):
+        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type](self)
+
+        usage = handler.get_current_usage(subscription)
+
+        return usage
+
+    def get_earned_usage_per_day(self, subscription):
+        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type](self)
+
+        usage = handler.get_earned_usage_per_day(subscription)
 
         return usage
 
@@ -388,36 +406,70 @@ class PlanComponent(models.Model):
     def __str__(self):
         return str(self.billable_metric)
 
-    def calculate_revenue(
-        self,
-        customer,
-        plan_start_date,
-        plan_end_date,
-        revenue_granularity=REVENUE_CALC_GRANULARITY.TOTAL,
+    def calculate_total_revenue(
+        self, subscription
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
-        assert isinstance(
-            revenue_granularity, REVENUE_CALC_GRANULARITY
-        ), "revenue_granularity must be part of REVENUE_CALC_GRANULARITY enum"
-        if type(plan_start_date) == str:
-            plan_start_date = parser.parse(plan_start_date)
-        if type(plan_end_date) == str:
-            plan_end_date = parser.parse(plan_end_date)
-
         billable_metric = self.billable_metric
         usage = billable_metric.get_usage(
-            plan_start_date,
-            plan_end_date,
-            revenue_granularity,
-            customer=customer,
-            billable_only=True,
+            granularity=USAGE_CALC_GRANULARITY.TOTAL,
+            start_date=subscription.start_date,
+            end_date=subscription.end_date,
+            customer=subscription.customer,
         )
+        # extract usage
+        usage = usage.get(subscription.customer.customer_name, {})
+        if len(usage) > 1:  # this means it's a stateful metric
+            usage_qty = sum(usage.values())
+            revenue = 0
+            for usage in usage.values():
+                billable_units = max(usage - self.free_metric_units, 0)
+                billable_batches = billable_units // self.metric_units_per_batch
+                usage_revenue = billable_batches * self.cost_per_batch
+                revenue += convert_to_decimal(usage_revenue)
+        elif len(usage) == 1:
+            _, usage_qty = list(usage.items())[0]
+            usage_qty = convert_to_decimal(usage_qty)
+            if (
+                self.cost_per_batch == 0
+                or self.cost_per_batch is None
+                or self.metric_units_per_batch == 0
+                or self.metric_units_per_batch is None
+            ):
+                revenue = Decimal(0)
+            else:
+                free_units = self.free_metric_units or Decimal(0)
+                billable_units = max(usage_qty - free_units, 0)
+                billable_batches = billable_units // self.metric_units_per_batch
+                usage_revenue = billable_batches * self.cost_per_batch
+                revenue = convert_to_decimal(usage_revenue)
+        else:
+            usage_qty = Decimal(0)
+            revenue = Decimal(0)
 
-        usage = usage.get(customer.customer_name, {})
+        # calculate revenue
+
+        # wrap up and return
+        revenue_dict = {
+            "revenue": revenue,
+            "usage_qty": convert_to_decimal(usage_qty),
+        }
+
+        return revenue_dict
+
+    def calculate_earned_revenue_per_day(
+        self, subscription
+    ) -> dict[datetime.datetime, UsageRevenueSummary]:
+        billable_metric = self.billable_metric
+        usage = billable_metric.get_earned_usage_per_day(subscription)
+
+        usage = usage.get(subscription.customer.customer_name, {})
 
         period_revenue_dict = {
             period: {}
             for period in periods_bwn_twodates(
-                revenue_granularity, plan_start_date, plan_end_date
+                USAGE_CALC_GRANULARITY.DAILY,
+                subscription.start_date,
+                subscription.end_date,
             )
         }
         free_units_usage_left = self.free_metric_units
@@ -542,9 +594,6 @@ class PlanVersion(models.Model):
     )
     usage_billing_frequency = models.CharField(
         max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
-    )
-    proration_granularity = models.CharField(
-        max_length=40, choices=PRORATION_GRANULARITY.choices, null=True, blank=True
     )
     plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
     status = models.CharField(max_length=40, choices=PLAN_VERSION_STATUS.choices)
@@ -879,16 +928,11 @@ class Subscription(models.Model):
         plan_components_qs = plan.components.all()
         # For each component of the plan, calculate usage/revenue
         for plan_component in plan_components_qs:
-            plan_component_summary = plan_component.calculate_revenue(
-                customer,
-                plan_start_date,
-                plan_end_date,
-            )
+            plan_component_summary = plan_component.calculate_total_revenue(self)
             sub_dict["components"].append((plan_component.pk, plan_component_summary))
         sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
-            for date, date_dict in component_dict.items():
-                sub_dict["usage_amount_due"] += date_dict["revenue"]
+            sub_dict["usage_amount_due"] += component_dict["revenue"]
         sub_dict["flat_amount_due"] = plan.flat_rate.amount
         sub_dict["total_amount_due"] = (
             sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]

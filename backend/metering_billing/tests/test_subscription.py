@@ -66,7 +66,7 @@ def subscription_test_common_setup(
             organization=org,
             event_name="email_sent",
             property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),
-            aggregation_type=itertools.cycle(["sum", "max", "count"]),
+            usage_aggregation_type=itertools.cycle(["sum", "max", "count"]),
             _quantity=3,
         )
         setup_dict["metrics"] = metric_set
