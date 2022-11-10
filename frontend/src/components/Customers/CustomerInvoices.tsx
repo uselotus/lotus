@@ -66,10 +66,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
             </Tag>
             { record.payment_status === "unpaid" && (
                 <Tag onClick={()=> {
-                    console.log(record)
                     markInvoiceAsPaid.mutate( {
                         invoice_id: record.invoice_id,
-                        status:"PAID",
+                        status:"paid",
                     })
                 }} color="blue" key={record.invoice_id}>
                     Mark As Paid
