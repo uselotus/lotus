@@ -542,15 +542,18 @@ class Invoice(models.Model):
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     line_items = models.JSONField()
-    organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
-    )
-    customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
-    )
-    subscription = models.ForeignKey(
-        "Subscription", on_delete=models.CASCADE, null=True, related_name="invoices"
-    )
+    old_organization = models.JSONField(null=True, blank=True)
+    old_customer = models.JSONField(null=True, blank=True)
+    old_subscription = models.JSONField(null=True, blank=True)
+    # organization = models.ForeignKey(
+    #     Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
+    # )
+    # customer = models.ForeignKey(
+    #     Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
+    # )
+    # subscription = models.ForeignKey(
+    #     "Subscription", on_delete=models.CASCADE, null=True, related_name="invoices"
+    # )
     history = HistoricalRecords()
 
     def __str__(self):
@@ -978,9 +981,9 @@ class Backtest(models.Model):
     This model is used to store the results of a backtest.
     """
 
-    backtest_name = models.CharField(max_length=100, null=False, blank=False)
-    start_date = models.DateField(null=False, blank=False)
-    end_date = models.DateField(null=False, blank=False)
+    backtest_name = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_date = models.DateField()
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="org_backtests"
     )
