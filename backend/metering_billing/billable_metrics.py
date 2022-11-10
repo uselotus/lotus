@@ -337,7 +337,9 @@ class CounterHandler(BillableMetricHandler):
         assert metric_type == METRIC_TYPE.COUNTER
         assert (
             usg_agg_type in CounterHandler._allowed_usage_aggregation_types()
-        ), "[METRIC TYPE: COUNTER] Must specify usage aggregation type"
+        ), "[METRIC TYPE: COUNTER] Usage aggregation type {} is not allowed.".format(
+            usg_agg_type
+        )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             assert (
                 property_name is not None
@@ -413,7 +415,9 @@ class StatefulHandler(BillableMetricHandler):
         assert metric_type == METRIC_TYPE.STATEFUL
         assert (
             usg_agg_type in StatefulHandler._allowed_usage_aggregation_types()
-        ), "[METRIC TYPE: STATEFUL] Must specify usage aggregation type"
+        ), "[METRIC TYPE: STATEFUL] Usage aggregation type {} is not allowed.".format(
+            usg_agg_type
+        )
         assert granularity, "[METRIC TYPE: STATEFUL] Must specify granularity"
         if numeric_filters or categorical_filters:
             print("[METRIC TYPE: STATEFUL] Filters not currently supported. Removing")
@@ -699,10 +703,14 @@ class RateHandler(BillableMetricHandler):
         assert metric_type == METRIC_TYPE.RATE
         assert (
             usg_agg_type in RateHandler._allowed_usage_aggregation_types()
-        ), "[METRIC TYPE: RATE] Must specify usage aggregation type"
+        ), "[METRIC TYPE: RATE] Usage aggregation type {} is not allowed.".format(
+            usg_agg_type
+        )
         assert (
             bill_agg_type in RateHandler._allowed_billable_aggregation_types()
-        ), "[METRIC TYPE: RATE] Must specify billable aggregation type"
+        ), "[METRIC TYPE: RATE] Billable aggregation type {} is not allowed.".format(
+            bill_agg_type
+        )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             assert (
                 property_name is not None
@@ -844,10 +852,10 @@ class RateHandler(BillableMetricHandler):
             subquery = subquery.annotate(
                 usage_qty=Window(Max(Cast(F("property_value"), FloatField())))
             )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-            subquery = subquery.annotate(
-                usage_qty=Window(Count(F("property_value"), distinct=True))
-            )
+        # elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+        #     subquery = subquery.annotate(
+        #         usage_qty=Window(Count(F("property_value"), distinct=True))
+        #     )
 
         rate_per_event = q_pre_gb_ann.annotate(
             usage_qty=Subquery(
@@ -882,7 +890,6 @@ class RateHandler(BillableMetricHandler):
     @staticmethod
     def _allowed_usage_aggregation_types():
         return [
-            METRIC_AGGREGATION.UNIQUE,
             METRIC_AGGREGATION.SUM,
             METRIC_AGGREGATION.COUNT,
             METRIC_AGGREGATION.AVERAGE,

@@ -202,6 +202,17 @@ const CreateMetricForm = (props: {
                     required: true,
                     message: "Aggregation type is required",
                   },
+                  //if rate is selected, don't allow unique
+                  {
+                    validator: (_, value) => {
+                      if (rate && value === "unique") {
+                        return Promise.reject(
+                          new Error("Cannot use unique with rate")
+                        );
+                      }
+                      return Promise.resolve();
+                    },
+                  },
                 ]}
               >
                 <Select defaultValue={"count"}>
@@ -244,12 +255,18 @@ const CreateMetricForm = (props: {
                     setRate(!rate);
                     if (!rate) {
                       form.setFieldsValue({
-                        metric_type: "rate",
                         billable_aggregation_type: "max",
                         granularity: "days",
                       });
+                    } else {
+                      form.setFieldsValue({
+                        metric_type: "counter",
+                      });
                     }
                   }}
+                  // disabled={
+                  //   form.getFieldValue("usage_aggregation_type") !== "unique"
+                  // }
                 />
               </div>
 
