@@ -234,9 +234,10 @@ class CustomerSerializer(serializers.ModelSerializer):
             customer.properties = customer_properties
             customer.save()
         else:
-            PAYMENT_PROVIDER_MAP[validated_data["payment_provider"]].create_customer(
-                customer
-            )
+            if "payment_provider" in validated_data:
+                PAYMENT_PROVIDER_MAP[
+                    validated_data["payment_provider"]
+                ].create_customer(customer)
         return customer
 
 
