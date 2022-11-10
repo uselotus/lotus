@@ -1237,7 +1237,7 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
 class InvoiceUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
-        fields = ("status")
+        fields = ("status",)
 
     status = serializers.ChoiceField(
         choices=[INVOICE_STATUS.PAID], required=True
