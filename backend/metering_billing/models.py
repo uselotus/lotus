@@ -545,15 +545,15 @@ class Invoice(models.Model):
     old_organization = models.JSONField(null=True, blank=True)
     old_customer = models.JSONField(null=True, blank=True)
     old_subscription = models.JSONField(null=True, blank=True)
-    # organization = models.ForeignKey(
-    #     Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
-    # )
-    # customer = models.ForeignKey(
-    #     Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
-    # )
-    # subscription = models.ForeignKey(
-    #     "Subscription", on_delete=models.CASCADE, null=True, related_name="invoices"
-    # )
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
+    )
+    subscription = models.ForeignKey(
+        "Subscription", on_delete=models.CASCADE, null=True, related_name="invoices"
+    )
     history = HistoricalRecords()
 
     def __str__(self):

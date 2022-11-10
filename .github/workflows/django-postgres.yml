@@ -74,7 +74,7 @@ jobs:
 
       - name: Test Pytest
         run: |
-          pipenv run pytest -k customers
+          pipenv run pytest -k "not test_integrations"
 
       - name: Test Setup Tasks
         run: |
