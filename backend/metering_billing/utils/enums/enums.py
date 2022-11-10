@@ -35,7 +35,7 @@ class PAYMENT_PROVIDERS(models.TextChoices):
 
 class METRIC_TYPE(models.TextChoices):
     COUNTER = ("counter", _("Counter"))
-    STATEFUL = ("stateful", _("State Logging"))
+    STATEFUL = ("stateful", _("Stateful"))
     RATE = ("rate", _("Rate"))
 
 

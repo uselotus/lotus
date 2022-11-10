@@ -1,5 +1,6 @@
 import abc
 import datetime
+from datetime import timedelta
 from typing import Optional
 
 from dateutil import parser
@@ -19,6 +20,7 @@ from django.db.models import (
     Subquery,
     Sum,
     Value,
+    Window,
 )
 from django.db.models.functions import Cast, Trunc
 from metering_billing.utils import date_as_min_dt, now_utc, periods_bwn_twodates
@@ -558,13 +560,11 @@ class StatefulHandler(BillableMetricHandler):
                     last_usage = latest_in_period
                 else:
                     last_usage = period_usage
-
         # ok we got here, but now we have a problem. Usage dicts is indexed in time periods of
         # self.granularity. However, we need to have it in units of results_granularity. We
         # have two cases: 1) results_granularity is coarser than self.granularity (eg want
-        # total usage, but we have self.granularity in days. In this case, sicne stateful
-        # metrics represent an "integral" in a way, we can just sum up the values of self.gran
-        # to get, say, user-hours in a month (instead of per hour, as we have here). 2) self.
+        # total usage, but we have self.granularity in days. Let's just pass up the dictionary
+        # and let whoever called this function handled that, don't assume. 2) self.
         # granularity is coarser than results_granularity. eg, we are charging for user-months,
         # but we want to get daily usage. In this case, since we aren't billing on this, we can
         # probably just extend that same valeu for the other days
@@ -574,11 +574,12 @@ class StatefulHandler(BillableMetricHandler):
             results_granularity == USAGE_CALC_GRANULARITY.TOTAL
             and self.granularity != METRIC_GRANULARITY.TOTAL
         ):
-            sd = date_as_min_dt(start_date)
-            new_usage_dict = {}
-            for customer_name, cust_usages in usage_dict.items():
-                new_usage_dict[customer_name] = {sd: sum(cust_usages.values())}
-            usage_dict = new_usage_dict
+            return usage_dict
+            # sd = date_as_min_dt(start_date)
+            # new_usage_dict = {}
+            # for customer_name, cust_usages in usage_dict.items():
+            #     new_usage_dict[customer_name] = {sd: sum(cust_usages.values())}
+            # usage_dict = new_usage_dict
         else:
             # this means that the metric granularity is coarser than the results_granularity
             new_usage_dict = {}
@@ -792,14 +793,11 @@ class RateHandler(BillableMetricHandler):
             "time_created__gte": start_date,
             "time_created__lte": end_date,
         }
+        # print(Event.objects.all().count())#filter(**filter_kwargs).count())
         pre_groupby_annotation_kwargs = {}
         groupby_kwargs = {
             "customer_name": F("customer__customer_name"),
-            "time_created_truncated": Trunc(
-                "time_created", self.granularity, output_field=DateTimeField()
-            ),
         }
-        post_groupby_annotation_kwargs = {}
 
         if results_granularity != USAGE_CALC_GRANULARITY.TOTAL:
             groupby_kwargs["time_created_truncated"] = Trunc(
@@ -818,87 +816,51 @@ class RateHandler(BillableMetricHandler):
                 f"properties__{self.property_name}"
             )
 
-        if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
-            pre_groupby_annotation_kwargs["usage_qty"] = Count(
-                "pk",
-                filter=(
-                    Q(
-                        time_created__range=(
-                            F("time_created") - relativedelta(**{self.granularity: 1}),
-                            F("time_created"),
-                        )
-                    )
-                    & Q(customer__customer_name=F("customer__customer_name"))
-                ),
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.SUM:
-            pre_groupby_annotation_kwargs["usage_qty"] = Sum(
-                Cast(F("property_value"), FloatField()),
-                filter=(
-                    Q(
-                        time_created__range=(
-                            F("time_created") - relativedelta(**{self.granularity: 1}),
-                            F("time_created"),
-                        )
-                    )
-                    & Q(customer__customer_name=F("customer__customer_name"))
-                ),
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-            pre_groupby_annotation_kwargs["usage_qty"] = Avg(
-                Cast(F("property_value"), FloatField()),
-                filter=(
-                    Q(
-                        time_created__range=(
-                            F("time_created") - relativedelta(**{self.granularity: 1}),
-                            F("time_created"),
-                        )
-                    )
-                    & Q(customer__customer_name=F("customer__customer_name"))
-                ),
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
-            pre_groupby_annotation_kwargs["usage_qty"] = Max(
-                Cast(F("property_value"), FloatField()),
-                filter=(
-                    Q(
-                        time_created__range=(
-                            F("time_created") - relativedelta(**{self.granularity: 1}),
-                            F("time_created"),
-                        )
-                    )
-                    & Q(customer__customer_name=F("customer__customer_name"))
-                ),
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-            pre_groupby_annotation_kwargs["usage_qty"] = Count(
-                F("property_value"),
-                distinct=True,
-                filter=(
-                    Q(
-                        time_created__range=(
-                            F("time_created") - relativedelta(**{self.granularity: 1}),
-                            F("time_created"),
-                        )
-                    )
-                    & Q(customer__customer_name=F("customer__customer_name"))
-                ),
-            )
-
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
-        q_gb = q_pre_gb_ann.values(**groupby_kwargs)
-        q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
+
+        subquery = q_pre_gb_ann.filter(
+            time_created__gte=OuterRef("time_created")
+            - timedelta(**{self.granularity: 1}),
+            time_created__lte=OuterRef("time_created"),
+            customer=OuterRef("customer"),
+        ).values("customer")
+        if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
+            subquery = subquery.annotate(usage_qty=Window(Count("pk")))
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.SUM:
+            subquery = subquery.annotate(
+                usage_qty=Window(Sum(Cast(F("property_value"), FloatField())))
+            )
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+            subquery = subquery.annotate(
+                usage_qty=Window(Avg(Cast(F("property_value"), FloatField())))
+            )
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
+            subquery = subquery.annotate(
+                usage_qty=Window(Max(Cast(F("property_value"), FloatField())))
+            )
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+            subquery = subquery.annotate(
+                usage_qty=Window(Count(F("property_value"), distinct=True))
+            )
+
+        rate_per_event = q_pre_gb_ann.annotate(
+            usage_qty=Subquery(
+                subquery.values("usage_qty")[:1], output_field=FloatField()
+            )
+        )
+
+        q_gb = rate_per_event.values(**groupby_kwargs)
+        q_post_gb_ann = q_gb.annotate(new_usage_qty=Max("usage_qty"))
 
         period_usages = {}
         for x in q_post_gb_ann:
             cust = x["customer_name"]
             tc_trunc = x["time_created_truncated"]
-            usage_qty = x["usage_qty"]
+            usage_qty = x["new_usage_qty"]
             if cust not in period_usages:
                 period_usages[cust] = {}
             period_usages[cust][tc_trunc] = usage_qty
-
         return period_usages
 
     # def get_earned_usage_per_day(self, subscription):

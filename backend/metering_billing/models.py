@@ -418,26 +418,35 @@ class PlanComponent(models.Model):
         )
         # extract usage
         usage = usage.get(subscription.customer.customer_name, {})
-        if len(usage) > 0:
+        if len(usage) > 1:  # this means it's a stateful metric
+            usage_qty = sum(usage.values())
+            revenue = 0
+            for usage in usage.values():
+                billable_units = max(usage - self.free_metric_units, 0)
+                billable_batches = billable_units // self.metric_units_per_batch
+                usage_revenue = billable_batches * self.cost_per_batch
+                revenue += convert_to_decimal(usage_revenue)
+        elif len(usage) == 1:
             _, usage_qty = list(usage.items())[0]
             usage_qty = convert_to_decimal(usage_qty)
+            if (
+                self.cost_per_batch == 0
+                or self.cost_per_batch is None
+                or self.metric_units_per_batch == 0
+                or self.metric_units_per_batch is None
+            ):
+                revenue = Decimal(0)
+            else:
+                free_units = self.free_metric_units or Decimal(0)
+                billable_units = max(usage_qty - free_units, 0)
+                billable_batches = billable_units // self.metric_units_per_batch
+                usage_revenue = billable_batches * self.cost_per_batch
+                revenue = convert_to_decimal(usage_revenue)
         else:
             usage_qty = Decimal(0)
+            revenue = Decimal(0)
 
         # calculate revenue
-        if (
-            self.cost_per_batch == 0
-            or self.cost_per_batch is None
-            or self.metric_units_per_batch == 0
-            or self.metric_units_per_batch is None
-        ):
-            revenue = Decimal(0)
-        else:
-            free_units = self.free_metric_units or Decimal(0)
-            billable_units = max(usage_qty - free_units, 0)
-            billable_batches = billable_units // self.metric_units_per_batch
-            usage_revenue = billable_batches * self.cost_per_batch
-            revenue = convert_to_decimal(usage_revenue)
 
         # wrap up and return
         revenue_dict = {
