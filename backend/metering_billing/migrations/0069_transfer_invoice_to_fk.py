@@ -15,48 +15,58 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
     for invoice in Invoice.objects.all():
         try:
             invoice_org = invoice.old_organization["company_name"]
+        except KeyError:
+            invoice_org = None
+        try:
+            invoice_customer = invoice.old_customer["customer_id"]
         except:
-            print(invoice.__dict__)
-            raise
-        invoice_customer = invoice.old_customer["customer_id"]
-        invoice_sub = invoice.old_subscription["subscription_id"]
+            invoice_customer = None
+        try:
+            invoice_sub = invoice.old_subscription["subscription_id"]
+        except:
+            invoice_sub = None
 
-        if invoice_org in invoice_org_dict:
-            invoice_org_object = invoice_org_dict[invoice_org]
-        else:
-            try:
-                invoice_org_object = Organization.objects.get(company_name=invoice_org)
-            except Organization.DoesNotExist:
-                invoice_org_object = None
-                print(f"Invoice {invoice.pk} has no organization")
-            invoice_org_dict[invoice_org] = invoice_org_object
-        invoice.organization = invoice_org_object
+        if invoice_org:
+            if invoice_org in invoice_org_dict:
+                invoice_org_object = invoice_org_dict[invoice_org]
+            else:
+                try:
+                    invoice_org_object = Organization.objects.get(
+                        company_name=invoice_org
+                    )
+                except Organization.DoesNotExist:
+                    invoice_org_object = None
+                    print(f"Invoice {invoice.pk} has no organization")
+                invoice_org_dict[invoice_org] = invoice_org_object
+            invoice.organization = invoice_org_object
 
-        if invoice_customer in invoice_customer_dict:
-            invoice_customer_object = invoice_customer_dict[invoice_customer]
-        else:
-            try:
-                invoice_customer_object = Customer.objects.get(
-                    organization=invoice_org_object, customer_id=invoice_customer
-                )
-            except:
-                invoice_customer_object = None
-                print(f"Invoice {invoice.pk} has no customer")
-            invoice_customer_dict[invoice_customer] = invoice_customer_object
-        invoice.customer = invoice_customer_object
+        if invoice_customer:
+            if invoice_customer in invoice_customer_dict:
+                invoice_customer_object = invoice_customer_dict[invoice_customer]
+            else:
+                try:
+                    invoice_customer_object = Customer.objects.get(
+                        organization=invoice_org_object, customer_id=invoice_customer
+                    )
+                except:
+                    invoice_customer_object = None
+                    print(f"Invoice {invoice.pk} has no customer")
+                invoice_customer_dict[invoice_customer] = invoice_customer_object
+            invoice.customer = invoice_customer_object
 
-        if invoice_sub in invoice_sub_dict:
-            invoice_sub_object = invoice_sub_dict[invoice_sub]
-        else:
-            try:
-                invoice_sub_object = Subscription.objects.get(
-                    organization=invoice_org_object, subscription_id=invoice_sub
-                )
-            except:
-                invoice_sub_object = None
-                print(f"Invoice {invoice.pk} has no subscription")
-            invoice_sub_dict[invoice_sub] = invoice_sub_object
-        invoice.subscription = invoice_sub_object
+        if invoice_sub:
+            if invoice_sub in invoice_sub_dict:
+                invoice_sub_object = invoice_sub_dict[invoice_sub]
+            else:
+                try:
+                    invoice_sub_object = Subscription.objects.get(
+                        organization=invoice_org_object, subscription_id=invoice_sub
+                    )
+                except:
+                    invoice_sub_object = None
+                    print(f"Invoice {invoice.pk} has no subscription")
+                invoice_sub_dict[invoice_sub] = invoice_sub_object
+            invoice.subscription = invoice_sub_object
 
         invoice.save()
 
