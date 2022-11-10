@@ -96,7 +96,7 @@ def setup_demo_3(company_name, username, email, password):
                 "Content Types",
             ]
         ),
-        metric_type="aggregation",
+        metric_type=METRIC_TYPE.COUNTER,
         _quantity=5,
     )
     (num_seats,) = baker.make(

@@ -13,7 +13,9 @@ def migrate_metric_type(apps, schema_editor):
 
 def migrate_all_mins_to_max(apps, schema_editor):
     BillableMetric = apps.get_model("metering_billing", "BillableMetric")
-    BillableMetric.objects.filter(usage_aggregation_type="min").update(usage_aggregation_type="max")
+    BillableMetric.objects.filter(usage_aggregation_type="min").update(
+        usage_aggregation_type="max"
+    )
 
 
 def migrate_stateful_other_to_max(apps, schema_editor):

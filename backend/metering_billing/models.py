@@ -932,8 +932,7 @@ class Subscription(models.Model):
             sub_dict["components"].append((plan_component.pk, plan_component_summary))
         sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
-            for date, date_dict in component_dict.items():
-                sub_dict["usage_amount_due"] += date_dict["revenue"]
+            sub_dict["usage_amount_due"] += component_dict["revenue"]
         sub_dict["flat_amount_due"] = plan.flat_rate.amount
         sub_dict["total_amount_due"] = (
             sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]

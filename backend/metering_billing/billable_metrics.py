@@ -593,9 +593,14 @@ class StatefulHandler(BillableMetricHandler):
                 j = 0
                 last_amt = 0
                 while i < len(fine_periods):
-                    cur_coarse, coarse_usage = coarse_periods[j]
+                    try:
+                        cur_coarse, coarse_usage = coarse_periods[j]
+                    except IndexError:
+                        cur_coarse = None
                     cur_fine = fine_periods[i]
-                    if cur_fine < cur_coarse:
+                    cc_none = cur_coarse is None
+                    cf_less_cc = cur_fine < cur_coarse if not cc_none else False
+                    if cc_none or cf_less_cc:
                         new_usage_dict[customer_name][cur_fine] = last_amt
                     else:
                         new_usage_dict[customer_name][cur_fine] = coarse_usage
