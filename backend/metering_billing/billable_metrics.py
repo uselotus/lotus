@@ -844,10 +844,10 @@ class RateHandler(BillableMetricHandler):
             subquery = subquery.annotate(
                 usage_qty=Window(Max(Cast(F("property_value"), FloatField())))
             )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-            subquery = subquery.annotate(
-                usage_qty=Window(Count(F("property_value"), distinct=True))
-            )
+        # elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+        #     subquery = subquery.annotate(
+        #         usage_qty=Window(Count(F("property_value"), distinct=True))
+        #     )
 
         rate_per_event = q_pre_gb_ann.annotate(
             usage_qty=Subquery(
@@ -882,7 +882,6 @@ class RateHandler(BillableMetricHandler):
     @staticmethod
     def _allowed_usage_aggregation_types():
         return [
-            METRIC_AGGREGATION.UNIQUE,
             METRIC_AGGREGATION.SUM,
             METRIC_AGGREGATION.COUNT,
             METRIC_AGGREGATION.AVERAGE,
