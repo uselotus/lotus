@@ -99,6 +99,7 @@ const defaultCustomerState: CreateCustomerState = {
   customer_id: "",
   subscriptions: [],
   total_amount_due: 0,
+  email: "",
 };
 
 const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
@@ -154,6 +155,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
       customer_id: record.customer_id,
       subscriptions: record.subscriptions,
       total_amount_due: record.total_amount_due,
+      email: record.email,
     });
   };
 

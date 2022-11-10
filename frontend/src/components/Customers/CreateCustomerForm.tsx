@@ -1,4 +1,4 @@
-import { Modal, Form, Input } from "antd";
+import { Modal, Form, Input, Select } from "antd";
 import React from "react";
 
 export interface CreateCustomerState {
@@ -7,6 +7,9 @@ export interface CreateCustomerState {
   title: string;
   subscriptions: string[];
   total_amount_due: number;
+  email: string;
+  payment_provider?: string;
+  payment_provider_id?: string;
 }
 
 const CreateCustomerForm = (props: {
@@ -34,7 +37,14 @@ const CreateCustomerForm = (props: {
           .catch((info) => {});
       }}
     >
-      <Form form={form} layout="vertical" name="customer_form">
+      <Form
+        form={form}
+        layout="vertical"
+        name="customer_form"
+        initialValues={{
+          payment_provider: "stripe",
+        }}
+      >
         <Form.Item
           name="name"
           label="Name"
@@ -42,6 +52,18 @@ const CreateCustomerForm = (props: {
             {
               required: true,
               message: "Please input the name of the customer",
+            },
+          ]}
+        >
+          <Input />
+        </Form.Item>
+        <Form.Item
+          name="email"
+          label="Email"
+          rules={[
+            {
+              required: true,
+              message: "Please input the email of the customer",
             },
           ]}
         >
@@ -59,6 +81,22 @@ const CreateCustomerForm = (props: {
         >
           <Input />
         </Form.Item>
+        <div className="grid grid-cols-6 items-center gap-4">
+          <Form.Item
+            className="col-span-2"
+            name="payment_provider"
+            label="Payment Provider"
+          >
+            <Select options={[{ label: "Stripe", value: "stripe" }]} />
+          </Form.Item>
+          <Form.Item
+            className="col-span-4"
+            name="payment_provider_id"
+            label="Payment Provider ID"
+          >
+            <Input />
+          </Form.Item>
+        </div>
       </Form>
     </Modal>
   );
