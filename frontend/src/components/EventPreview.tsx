@@ -27,6 +27,13 @@ const EventPreview: FC = () => {
     }
   );
 
+  useEffect(() => {
+    if (data !== undefined) {
+      setNext(decodeURIComponent(data.next));
+      setPrev(decodeURIComponent(data.previous));
+    }
+  }, [data]);
+
   if (isLoading || data === undefined) {
     return (
       <div>
@@ -138,7 +145,7 @@ const EventPreview: FC = () => {
           onClick={() => {
             if (previous !== "null") {
               setCursor(previous);
-              queryClient.invalidateQueries(["preview_events"]);
+              queryClient.invalidateQueries(["preview_events", c]);
             }
           }}
         >
@@ -161,7 +168,7 @@ const EventPreview: FC = () => {
           onClick={() => {
             if (next !== "null") {
               setCursor(next);
-              queryClient.invalidateQueries(["preview_events"]);
+              queryClient.invalidateQueries(["preview_events", c]);
             }
           }}
         >

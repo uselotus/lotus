@@ -129,21 +129,19 @@ const SubscriptionView: FC<Props> = ({
     <Menu
       items={[
         {
-          label: (
-            <span onClick={() => cancelAndBill()}>Cancel and Bill Now</span>
-          ),
+          label: <div onClick={() => cancelAndBill()}>Cancel and Bill Now</div>,
           key: "0",
         },
         {
           label: (
-            <span onClick={() => cancelAndDontBill()}>
+            <div onClick={() => cancelAndDontBill()}>
               Cancel Without Billing
-            </span>
+            </div>
           ),
           key: "1",
         },
         {
-          label: <span onClick={() => turnAutoRenewOff()}>Cancel Renewal</span>,
+          label: <div onClick={() => turnAutoRenewOff()}>Cancel Renewal</div>,
           key: "2",
         },
       ]}
