@@ -537,15 +537,20 @@ class Invoice(models.Model):
     invoice_id = models.CharField(
         max_length=100, null=False, blank=True, default=invoice_uuid, unique=True
     )
-    external_payment_obj = models.JSONField(default=dict, blank=True, null=True)
     external_payment_obj_id = models.CharField(max_length=200, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     line_items = models.JSONField()
-    organization = models.JSONField()
-    customer = models.JSONField()
-    subscription = models.JSONField()
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
+    )
+    subscription = models.ForeignKey(
+        "Subscription", on_delete=models.CASCADE, null=True, related_name="invoices"
+    )
     history = HistoricalRecords()
 
     def __str__(self):

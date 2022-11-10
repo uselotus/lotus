@@ -15,7 +15,6 @@ from metering_billing.utils import (
     now_utc,
 )
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
-from rest_framework import serializers
 
 from .webhooks import invoice_created_webhook
 
@@ -27,11 +26,6 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
     Generate an invoice for a subscription.
     """
     from metering_billing.models import CustomerBalanceAdjustment, Invoice, PlanVersion
-    from metering_billing.serializers.internal_serializers import (
-        InvoiceCustomerSerializer,
-        InvoiceOrganizationSerializer,
-        InvoiceSubscriptionSerializer,
-    )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
     issue_date = now_utc()
@@ -185,15 +179,12 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
     summary_dict = make_all_dates_times_strings(summary_dict)
 
     # create kwargs for invoice
-    org_serializer = InvoiceOrganizationSerializer(organization)
-    customer_serializer = InvoiceCustomerSerializer(customer)
-    subscription_serializer = InvoiceSubscriptionSerializer(subscription)
     invoice_kwargs = {
         "cost_due": amount,
         "issue_date": issue_date,
-        "organization": org_serializer.data,
-        "customer": customer_serializer.data,
-        "subscription": make_all_dates_times_strings(subscription_serializer.data),
+        "organization": organization,
+        "customer": customer,
+        "subscription": subscription,
         "payment_status": INVOICE_STATUS.DRAFT if draft else INVOICE_STATUS.UNPAID,
         "external_payment_obj_id": None,
         "external_payment_obj_type": None,

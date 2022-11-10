@@ -77,7 +77,7 @@ def calculate_invoice():
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=INVOICE_STATUS.DRAFT,
-            subscription__subscription_id=old_subscription.subscription_id,
+            subscription=old_subscription,
         ).delete()
         # Renew the subscription
         if old_subscription.auto_renew:
