@@ -167,7 +167,7 @@ const StripeIntegrationView: FC = () => {
             onClick={() => {
               const promise = transferSubscriptionsMutation.mutateAsync({
                 source: "stripe",
-                end_now: true,
+                end_now: false,
               });
               toast.promise(promise, {
                 pending: "Transfering Subscriptions From Stripe",
