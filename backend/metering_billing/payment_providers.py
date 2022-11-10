@@ -22,6 +22,7 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
 )
 from rest_framework import serializers, status
+from metering_billing.models import Customer, Organization, Invoice
 from rest_framework.response import Response
 
 SELF_HOSTED = settings.SELF_HOSTED
@@ -66,7 +67,7 @@ class PaymentProvider(abc.ABC):
 
     @abc.abstractmethod
     def import_payment_objects(self, organization) -> dict[str, list[str]]:
-        """Similar to the import_customers method, this method will be called periodically to match invoices from the payment processor with invoices in Lotus. Keep in mind that Invoices have a payment_provider field that can be used to determine which payment processor the invoice should be connected to, and that the payment_provider_id field can be used to store the id of the invoice in the associated payment processor. Return a dictionary mapping customer ids to lists of Lotus Invoice objects that were created from the imports."""
+        """Similar to the import_customers method, this method will be called periodically to match invoices from the payment processor with invoices in Lotus. Keep in mind that invoices have a payment_provider field that can be used to determine which payment processor the invoice should be connected to, and that the payment_provider_id field can be used to store the id of the invoice in the associated payment processor. Return a dictionary mapping customer ids to lists of Lotus Invoice objects that were created from the imports."""
         pass
 
     @abc.abstractmethod
@@ -105,6 +106,48 @@ class PaymentProvider(abc.ABC):
     def initialize_settings(self, organization) -> None:
         """This method will be called when a user clicks on the connect button for a payment processor. It should initialize the settings for the payment processor for the organization."""
         pass
+
+
+class BillConnector(PaymentProvider):
+    def __init__(self):
+        # self.secret_key = BILL_SECRET_KEY
+        self.self_hosted = SELF_HOSTED
+
+    ##TODO - Implement this method with a PING
+    def working(self) -> bool:
+        return self.self_secret_key is not None and self.secret_key != ""
+
+    def create_payment_object(self, invoice) -> str:
+        stripe.api_key = self.secret_key
+        # check everything works as expected + build invoice item
+        assert invoice.external_payment_obj_id is None
+        organization = Organization.objects.get(
+            company_name=invoice.organization["company_name"]
+        )
+        customer = Customer.objects.get(
+            organization=organization, customer_id=invoice.customer["customer_id"]
+        )
+        stripe_customer_id = customer.integrations.get(
+            PAYMENT_PROVIDERS.STRIPE, {}
+        ).get("id")
+        assert stripe_customer_id is not None, "Customer does not have a Stripe ID"
+        invoice_kwargs = {
+            "customer": stripe_customer_id,
+            "currency": invoice.cost_due.currency,
+            "payment_method_types": ["card"],
+            "amount": decimal_to_cents(invoice.cost_due.amount),
+        }
+        if not self.self_hosted:
+            org_stripe_acct = customer.organization.payment_provider_ids.get(
+                PAYMENT_PROVIDERS.STRIPE, ""
+            )
+            assert (
+                org_stripe_acct != ""
+            ), "Organization does not have a Stripe account ID"
+            invoice_kwargs["stripe_account"] = org_stripe_acct
+
+        stripe_invoice = stripe.PaymentIntent.create(**invoice_kwargs)
+        return stripe_invoice.id
 
 
 class StripeConnector(PaymentProvider):
@@ -151,7 +194,8 @@ class StripeConnector(PaymentProvider):
 
     def import_customers(self, organization):
         """
-        Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address), then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
+        Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address),
+        then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
         """
         from metering_billing.models import Customer
 
