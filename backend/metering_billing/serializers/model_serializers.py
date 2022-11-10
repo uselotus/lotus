@@ -33,6 +33,7 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
+    INVOICE_STATUS
 )
 from rest_framework import serializers
 
@@ -1229,5 +1230,34 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
         instance.setting_value = validated_data.get(
             "setting_value", instance.setting_value
         )
+        instance.save()
+        return instance
+
+
+class InvoiceUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = ("invoice_id", "status")
+
+    invoice_id = SlugRelatedFieldWithOrganization(
+        slug_field="invoice_id",
+        read_only=False,
+        source="invoice",
+        queryset=Invoice.objects.all(),
+        write_only=True,
+        required=True,
+    )
+    status = serializers.ChoiceField(
+        choices=[INVOICE_STATUS.PAID], required=True
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        if data.get("status") == INVOICE_STATUS.PAID:
+            raise serializers.ValidationError("Invoice Status is already paid")
+        return data
+
+    def update(self, instance, validated_data):
+        instance.status = validated_data.get("status")
         instance.save()
         return instance
