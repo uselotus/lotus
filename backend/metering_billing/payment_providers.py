@@ -225,10 +225,6 @@ class StripeConnector(PaymentProvider):
 
     def _import_payment_objects_for_customer(self, customer):
         from metering_billing.models import Invoice
-        from metering_billing.serializers.internal_serializers import (
-            InvoiceCustomerSerializer,
-            InvoiceOrganizationSerializer,
-        )
 
         stripe.api_key = self.secret_key
         invoices = stripe.PaymentIntent.list(
@@ -244,7 +240,7 @@ class StripeConnector(PaymentProvider):
                 Decimal(stripe_invoice.amount) / 100, stripe_invoice.currency
             )
             invoice_kwargs = {
-                "customer": InvoiceCustomerSerializer(customer).data,
+                "customer": customer,
                 "cost_due": cost_due,
                 "issue_date": datetime.datetime.fromtimestamp(
                     stripe_invoice.created, pytz.utc
@@ -253,10 +249,8 @@ class StripeConnector(PaymentProvider):
                 "cust_connected_to_payment_provider": True,
                 "external_payment_obj_id": stripe_invoice.id,
                 "external_payment_obj_type": PAYMENT_PROVIDERS.STRIPE,
-                "organization": InvoiceOrganizationSerializer(
-                    customer.organization
-                ).data,
-                "subscription": {},
+                "organization": customer.organization,
+                "subscription": None,
                 "line_items": {},
             }
             lotus_invoice = Invoice.objects.create(**invoice_kwargs)
@@ -315,12 +309,7 @@ class StripeConnector(PaymentProvider):
         stripe.api_key = self.secret_key
         # check everything works as expected + build invoice item
         assert invoice.external_payment_obj_id is None
-        organization = Organization.objects.get(
-            company_name=invoice.organization["company_name"]
-        )
-        customer = Customer.objects.get(
-            organization=organization, customer_id=invoice.customer["customer_id"]
-        )
+        customer = invoice.customer
         stripe_customer_id = customer.integrations.get(
             PAYMENT_PROVIDERS.STRIPE, {}
         ).get("id")
