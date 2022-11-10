@@ -1,4 +1,5 @@
 import datetime
+from random import choices
 import uuid
 from decimal import Decimal
 from typing import TypedDict
@@ -143,6 +144,9 @@ class Customer(models.Model):
     email = models.EmailField(max_length=100, blank=True, null=True)
     customer_id = models.CharField(
         max_length=50, blank=True, null=False, default=customer_uuid
+    )
+    payment_provider = models.CharField(
+        blank=True, null=True, choices=PAYMENT_PROVIDERS.choices, max_length=40
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)

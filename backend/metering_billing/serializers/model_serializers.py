@@ -30,6 +30,7 @@ from metering_billing.utils.enums import (
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
+    PAYMENT_PROVIDERS,
 )
 from rest_framework import serializers
 
@@ -192,14 +193,50 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = (
             "customer_name",
             "customer_id",
+            "email",
+            "payment_provider",
+            "payment_provider_id",
+            "properties",
         )
+        read_only_fields = ("properties",)
+
+    payment_provider_id = serializers.CharField(required=False, allow_null=True)
+
+    def validate(self, data):
+        super().validate(data)
+        payment_provider = data.get("payment_provider", None)
+        payment_provider_id = data.get("payment_provider_id", None)
+        if payment_provider or payment_provider_id:
+            if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
+                self.context["organization"]
+            ):
+                raise serializers.ValidationError(
+                    "Specified payment provider not connected to organization"
+                )
+            if payment_provider and not payment_provider_id:
+                raise serializers.ValidationError(
+                    "Payment provider ID required when payment provider is specified"
+                )
+            if payment_provider_id and not payment_provider:
+                raise serializers.ValidationError(
+                    "Payment provider required when payment provider ID is specified"
+                )
+
+        return data
 
     def create(self, validated_data):
+        pp_id = validated_data.pop("payment_provider_id", None)
         customer = Customer.objects.create(**validated_data)
-        org = customer.organization
-        for connector in PAYMENT_PROVIDER_MAP.values():
-            if connector.organization_connected(org):
-                connector.create_customer(customer)
+        if pp_id:
+            customer_properties = customer.properties
+            customer_properties[validated_data["payment_provider"]] = {}
+            customer_properties[validated_data["payment_provider"]]["id"] = pp_id
+            customer.properties = customer_properties
+            customer.save()
+        else:
+            PAYMENT_PROVIDER_MAP[validated_data["payment_provider"]].create_customer(
+                customer
+            )
         return customer
 
 
