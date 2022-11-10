@@ -43,7 +43,7 @@ const EventPreview: FC = () => {
         <div className="flex justify-end space-x-4">
           <button
             onClick={() => {
-              if (previous) {
+              if (previous !== "null") {
                 setCursor(previous);
                 queryClient.invalidateQueries(["preview_events"]);
               }
@@ -66,7 +66,7 @@ const EventPreview: FC = () => {
           </button>
           <button
             onClick={() => {
-              if (next) {
+              if (next !== "null") {
                 setCursor(next);
                 queryClient.invalidateQueries(["preview_events"]);
               }
@@ -136,7 +136,7 @@ const EventPreview: FC = () => {
       <div className="flex justify-end space-x-4">
         <button
           onClick={() => {
-            if (previous !== null) {
+            if (previous !== "null") {
               setCursor(previous);
               queryClient.invalidateQueries(["preview_events"]);
             }
@@ -159,7 +159,7 @@ const EventPreview: FC = () => {
         </button>
         <button
           onClick={() => {
-            if (next !== null) {
+            if (next !== "null") {
               setCursor(next);
               queryClient.invalidateQueries(["preview_events"]);
             }
