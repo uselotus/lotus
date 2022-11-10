@@ -37,14 +37,7 @@ const CreateCustomerForm = (props: {
           .catch((info) => {});
       }}
     >
-      <Form
-        form={form}
-        layout="vertical"
-        name="customer_form"
-        initialValues={{
-          payment_provider: "stripe",
-        }}
-      >
+      <Form form={form} layout="vertical" name="customer_form">
         <Form.Item
           name="name"
           label="Name"
