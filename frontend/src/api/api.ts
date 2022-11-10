@@ -58,6 +58,7 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
+import {MarkInvoiceStatusAsPaid} from "../types/invoice-type";
 
 const cookies = new Cookies();
 
@@ -337,4 +338,10 @@ export const PaymentProcessorIntegration = {
     pp_info: PaymentProcessorConnectionRequestType
   ): Promise<PaymentProcessorConnectionResponseType> =>
     requests.post("api/payment_providers/", { pp_info }),
+};
+
+export const Invoices = {
+    markStatusAsPaid: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
+        return requests.patch(`api/invoices/${data.invoice_id}/`, {status: data.status});
+    },
 };

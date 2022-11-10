@@ -1237,16 +1237,8 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
 class InvoiceUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
-        fields = ("invoice_id", "status")
+        fields = ("status")
 
-    invoice_id = SlugRelatedFieldWithOrganization(
-        slug_field="invoice_id",
-        read_only=False,
-        source="invoice",
-        queryset=Invoice.objects.all(),
-        write_only=True,
-        required=True,
-    )
     status = serializers.ChoiceField(
         choices=[INVOICE_STATUS.PAID], required=True
     )
@@ -1258,6 +1250,6 @@ class InvoiceUpdateSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
-        instance.status = validated_data.get("status")
+        instance.status = validated_data.get("status", INVOICE_STATUS.UNPAID)
         instance.save()
         return instance

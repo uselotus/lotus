@@ -670,6 +670,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "head", "patch"]
+    lookup_field = "invoice_id"
     permission_classes_per_method = {
         "list": [IsAuthenticated],
         "retrieve": [IsAuthenticated],
@@ -685,10 +686,13 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             organization=organization,
         )
 
-    def get_serializer_context(self):
+    def get_serializer_class(self):
         if self.action == "partial_update":
            return InvoiceUpdateSerializer
 
+        return InvoiceSerializer
+
+    def get_serializer_context(self):
         context = super(InvoiceViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
         context.update({"organization": organization})
