@@ -400,9 +400,10 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
     CORS_ALLOWED_ORIGINS = [
-        "https://demo.uselotus.io",
-        "https://app.uselotus.io",
-        "https://staging456.uselotus.io"
+        "*uselotus.io"
+        # "https://demo.uselotus.io",
+        # "https://app.uselotus.io",
+        # "https://staging456.uselotus.io"
     ]
 CORS_ALLOW_CREDENTIALS = True
 
