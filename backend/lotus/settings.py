@@ -399,12 +399,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
-    CORS_ALLOWED_ORIGINS = [
-        "*uselotus.io"
-        # "https://demo.uselotus.io",
-        # "https://app.uselotus.io",
-        # "https://staging456.uselotus.io"
-    ]
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://\w+\.uselotus\.io$",
+]
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
