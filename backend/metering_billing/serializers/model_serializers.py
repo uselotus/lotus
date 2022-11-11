@@ -27,6 +27,7 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
     EVENT_TYPE,
+    INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_GRANULARITY,
     PLAN_STATUS,
@@ -1181,6 +1182,32 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
+class InvoiceUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = ("payment_status",)
+
+    payment_status = serializers.ChoiceField(
+        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID], required=True
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        if self.instance.external_payment_obj_id is not None:
+            raise serializers.ValidationError(
+                f"Can't manually update connected invoices. This invoice is connected to {self.instance.external_payment_obj_type}"
+            )
+        return data
+
+    def update(self, instance, validated_data):
+        instance.payment_status = validated_data.get(
+            "payment_status", instance.payment_status
+        )
+        instance.save()
+        return instance
+
+
 ## INVOICE
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -1207,6 +1234,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     organization = OrganizationSerializer(read_only=True)
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
+
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
     class Meta:
