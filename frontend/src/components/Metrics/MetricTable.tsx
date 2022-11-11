@@ -53,10 +53,10 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     {
       title: "Aggregation Type",
       width: 120,
-      dataIndex: "aggregation_type",
+      dataIndex: "usage_aggregation_type",
       render: (_, record) => (
-        <Tag color={colorMap.get(record.aggregation_type)}>
-          {record.aggregation_type}
+        <Tag color={colorMap.get(record.usage_aggregation_type)}>
+          {record.usage_aggregation_type}
         </Tag>
       ),
     },

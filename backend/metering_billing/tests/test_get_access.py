@@ -67,7 +67,7 @@ def get_access_test_common_setup(
             organization=org,
             event_name="email_sent",
             property_name=itertools.cycle([""]),
-            aggregation_type=itertools.cycle(["count"]),
+            usage_aggregation_type=itertools.cycle(["count"]),
             _quantity=1,
         )
         setup_dict["deny_limit_metrics"] = deny_limit_metric_set
@@ -84,7 +84,7 @@ def get_access_test_common_setup(
             organization=org,
             event_name="api_call",
             property_name=itertools.cycle([""]),
-            aggregation_type=itertools.cycle(["count"]),
+            usage_aggregation_type=itertools.cycle(["count"]),
             _quantity=1,
         )
         setup_dict["allow_limit_metrics"] = allow_limit_metric_set
@@ -93,7 +93,7 @@ def get_access_test_common_setup(
             organization=org,
             event_name="bogus_event",
             property_name=itertools.cycle([""]),
-            aggregation_type=itertools.cycle(["count"]),
+            usage_aggregation_type=itertools.cycle(["count"]),
             _quantity=1,
         )
         setup_dict["allow_free_metrics"] = allow_free_metric_set
@@ -237,7 +237,7 @@ class TestGetAccess:
             organization=setup_dict["org"],
             event_name="log_num_users",
             property_name="num_users",
-            aggregation_type=METRIC_AGGREGATION.MAX,
+            usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
         )
         plan_component = PlanComponent.objects.create(

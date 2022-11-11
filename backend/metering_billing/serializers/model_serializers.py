@@ -1,6 +1,7 @@
 from actstream.models import Action
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.exceptions import DuplicateBillableMetric
 from metering_billing.models import (
     Alert,
     BillableMetric,
@@ -25,7 +26,10 @@ from metering_billing.models import (
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
+    EVENT_TYPE,
+    INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
+    METRIC_GRANULARITY,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
@@ -260,13 +264,21 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         fields = (
             "event_name",
             "property_name",
-            "aggregation_type",
+            "usage_aggregation_type",
+            "billable_aggregation_type",
+            "granularity",
+            "event_type",
             "metric_type",
             "billable_metric_name",
             "numeric_filters",
             "categorical_filters",
             "properties",
         )
+        extra_kwargs = {
+            "metric_type": {"required": True},
+            "usage_aggregation_type": {"required": True},
+            "event_name": {"required": True},
+        }
 
     numeric_filters = NumericFilterSerializer(
         many=True, allow_null=True, required=False
@@ -274,13 +286,27 @@ class BillableMetricSerializer(serializers.ModelSerializer):
     categorical_filters = CategoricalFilterSerializer(
         many=True, allow_null=True, required=False
     )
+    granularity = serializers.ChoiceField(
+        choices=METRIC_GRANULARITY.choices,
+        required=False,
+    )
+    event_type = serializers.ChoiceField(
+        choices=EVENT_TYPE.choices,
+        required=False,
+    )
     properties = serializers.JSONField(allow_null=True, required=False)
+
+    def validate(self, data):
+        super().validate(data)
+        metric_type = data["metric_type"]
+        data = METRIC_HANDLER_MAP[metric_type].validate_data(data)
+        return data
 
     def custom_name(self, validated_data) -> str:
         name = validated_data.get("billable_metric_name", None)
         if name in [None, "", " "]:
             name = f"[{validated_data['metric_type'][:4]}]"
-            name += " " + validated_data["aggregation_type"] + " of"
+            name += " " + validated_data["usage_aggregation_type"] + " of"
             if validated_data["property_name"] not in ["", " ", None]:
                 name += " " + validated_data["property_name"] + " of"
             name += " " + validated_data["event_name"]
@@ -293,12 +319,9 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
-        properties = validated_data.pop("properties", {})
-        properties = METRIC_HANDLER_MAP[
-            validated_data["metric_type"]
-        ].validate_properties(properties)
-
-        bm = BillableMetric.objects.create(**validated_data)
+        bm, created = BillableMetric.objects.get_or_create(**validated_data)
+        if not created:
+            raise DuplicateBillableMetric
 
         # get filters
         for num_filter in num_filter_data:
@@ -313,7 +336,6 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             except CategoricalFilter.MultipleObjectsReturned:
                 cf = CategoricalFilter.objects.filter(**cat_filter).first()
             bm.categorical_filters.add(cf)
-        bm.properties = properties
         bm.save()
 
         return bm
@@ -440,57 +462,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             billable_metric=billable_metric, **validated_data
         )
         return pc
-
-
-## INVOICE
-class InvoiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Invoice
-        fields = (
-            "invoice_id",
-            "cost_due",
-            "cost_due_currency",
-            "issue_date",
-            "payment_status",
-            "cust_connected_to_payment_provider",
-            "org_connected_to_cust_payment_provider",
-            "external_payment_obj_id",
-            "line_items",
-            "organization",
-            "customer",
-            "subscription",
-        )
-
-    cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
-    )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
-
-
-class CustomerDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = (
-            "customer_id",
-            "email",
-            "customer_name",
-            "invoices",
-            "total_amount_due",
-            "subscriptions",
-        )
-
-    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
-    invoices = serializers.SerializerMethodField()
-    total_amount_due = serializers.SerializerMethodField()
-
-    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
-        timeline = self.context.get("invoices")
-        timeline = InvoiceSerializer(timeline, many=True).data
-        return timeline
-
-    def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(self.context.get("total_amount_due"))
-        return total_amount_due
 
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):
@@ -1248,3 +1219,82 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
         )
         instance.save()
         return instance
+
+
+class InvoiceUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = ("payment_status",)
+
+    payment_status = serializers.ChoiceField(
+        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID], required=True
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        if self.instance.external_payment_obj_id is not None:
+            raise serializers.ValidationError(
+                f"Can't manually update connected invoices. This invoice is connected to {self.instance.external_payment_obj_type}"
+            )
+        return data
+
+    def update(self, instance, validated_data):
+        instance.payment_status = validated_data.get(
+            "payment_status", instance.payment_status
+        )
+        instance.save()
+        return instance
+
+
+## INVOICE
+class InvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = (
+            "invoice_id",
+            "cost_due",
+            "cost_due_currency",
+            "issue_date",
+            "payment_status",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "external_payment_obj_id",
+            "line_items",
+            "organization",
+            "customer",
+            "subscription",
+        )
+
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
+    cost_due_currency = serializers.CharField(source="cost_due.currency")
+    organization = OrganizationSerializer(read_only=True)
+    customer = CustomerSerializer(read_only=True)
+    subscription = SubscriptionSerializer(read_only=True)
+
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_id",
+            "email",
+            "customer_name",
+            "invoices",
+            "total_amount_due",
+            "subscriptions",
+        )
+
+    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
+    invoices = serializers.SerializerMethodField()
+    total_amount_due = serializers.SerializerMethodField()
+
+    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
+        timeline = self.context.get("invoices")
+        timeline = InvoiceSerializer(timeline, many=True).data
+        return timeline
+
+    def get_total_amount_due(self, obj) -> float:
+        total_amount_due = float(self.context.get("total_amount_due"))
+        return total_amount_due

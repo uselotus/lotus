@@ -43,6 +43,7 @@ from metering_billing.serializers.model_serializers import (
     ExternalPlanLinkSerializer,
     FeatureSerializer,
     InvoiceSerializer,
+    InvoiceUpdateSerializer,
     OrganizationSettingSerializer,
     PlanDetailSerializer,
     PlanSerializer,
@@ -668,12 +669,12 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head"]
+    http_method_names = ["get", "patch", "head"]
+    lookup_field = "invoice_id"
     permission_classes_per_method = {
         "list": [IsAuthenticated],
         "retrieve": [IsAuthenticated],
-        "create": [IsAuthenticated],
-        "destroy": [IsAuthenticated],
+        "partial_update": [IsAuthenticated],
     }
 
     def get_queryset(self):
@@ -682,6 +683,11 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             ~Q(payment_status=INVOICE_STATUS.DRAFT),
             organization=organization,
         )
+
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return InvoiceUpdateSerializer
+        return InvoiceSerializer
 
     def get_serializer_context(self):
         context = super(InvoiceViewSet, self).get_serializer_context()

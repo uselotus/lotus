@@ -77,7 +77,7 @@ def calculate_invoice():
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=INVOICE_STATUS.DRAFT,
-            subscription__subscription_id=old_subscription.subscription_id,
+            subscription=old_subscription,
         ).delete()
         # Renew the subscription
         if old_subscription.auto_renew:
@@ -261,12 +261,7 @@ def run_backtest(backtest_id):
                         }
                     inner_results["revenue_by_metric"][metric_name][
                         "original_plan_revenue"
-                    ] += sum(
-                        [
-                            info_dict["revenue"]
-                            for _, info_dict in component_dict.items()
-                        ]
-                    )
+                    ] += component_dict["revenue"]
                 if "flat_fees" not in inner_results["revenue_by_metric"]:
                     inner_results["revenue_by_metric"]["flat_fees"] = {
                         "original_plan_revenue": Decimal(0),
@@ -300,13 +295,8 @@ def run_backtest(backtest_id):
                             "original_plan_revenue": Decimal(0),
                         }
                     inner_results["revenue_by_metric"][metric_name][
-                        "new_plan_revenue"
-                    ] += sum(
-                        [
-                            info_dict["revenue"]
-                            for _, info_dict in component_dict.items()
-                        ]
-                    )
+                        "original_plan_revenue"
+                    ] += component_dict["revenue"]
                 inner_results["revenue_by_metric"]["flat_fees"][
                     "new_plan_revenue"
                 ] += new_usage_revenue["flat_amount_due"]
