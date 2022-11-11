@@ -978,9 +978,9 @@ class Backtest(models.Model):
     This model is used to store the results of a backtest.
     """
 
-    backtest_name = models.CharField(max_length=100, null=False, blank=False)
-    start_date = models.DateField(null=False, blank=False)
-    end_date = models.DateField(null=False, blank=False)
+    backtest_name = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_date = models.DateField()
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="org_backtests"
     )

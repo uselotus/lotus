@@ -27,13 +27,13 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
     EVENT_TYPE,
+    INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_GRANULARITY,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
-    INVOICE_STATUS
 )
 from rest_framework import serializers
 
@@ -424,57 +424,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             billable_metric=billable_metric, **validated_data
         )
         return pc
-
-
-## INVOICE
-class InvoiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Invoice
-        fields = (
-            "invoice_id",
-            "cost_due",
-            "cost_due_currency",
-            "issue_date",
-            "payment_status",
-            "cust_connected_to_payment_provider",
-            "org_connected_to_cust_payment_provider",
-            "external_payment_obj_id",
-            "line_items",
-            "organization",
-            "customer",
-            "subscription",
-        )
-
-    cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
-    )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
-
-
-class CustomerDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = (
-            "customer_id",
-            "email",
-            "customer_name",
-            "invoices",
-            "total_amount_due",
-            "subscriptions",
-        )
-
-    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
-    invoices = serializers.SerializerMethodField()
-    total_amount_due = serializers.SerializerMethodField()
-
-    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
-        timeline = self.context.get("invoices")
-        timeline = InvoiceSerializer(timeline, many=True).data
-        return timeline
-
-    def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(self.context.get("total_amount_due"))
-        return total_amount_due
 
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):
@@ -1253,3 +1202,54 @@ class InvoiceUpdateSerializer(serializers.ModelSerializer):
         instance.status = validated_data.get("status", INVOICE_STATUS.UNPAID)
         instance.save()
         return instance
+## INVOICE
+class InvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = (
+            "invoice_id",
+            "cost_due",
+            "cost_due_currency",
+            "issue_date",
+            "payment_status",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "external_payment_obj_id",
+            "line_items",
+            "organization",
+            "customer",
+            "subscription",
+        )
+
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
+    cost_due_currency = serializers.CharField(source="cost_due.currency")
+    organization = OrganizationSerializer(read_only=True)
+    customer = CustomerSerializer(read_only=True)
+    subscription = SubscriptionSerializer(read_only=True)
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_id",
+            "email",
+            "customer_name",
+            "invoices",
+            "total_amount_due",
+            "subscriptions",
+        )
+
+    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
+    invoices = serializers.SerializerMethodField()
+    total_amount_due = serializers.SerializerMethodField()
+
+    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
+        timeline = self.context.get("invoices")
+        timeline = InvoiceSerializer(timeline, many=True).data
+        return timeline
+
+    def get_total_amount_due(self, obj) -> float:
+        total_amount_due = float(self.context.get("total_amount_due"))
+        return total_amount_due
