@@ -1186,22 +1186,28 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
 class InvoiceUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
-        fields = ("status",)
+        fields = ("payment_status",)
 
-    status = serializers.ChoiceField(
-        choices=[INVOICE_STATUS.PAID], required=True
+    payment_status = serializers.ChoiceField(
+        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID], required=True
     )
 
     def validate(self, data):
         data = super().validate(data)
-        if data.get("status") == INVOICE_STATUS.PAID:
-            raise serializers.ValidationError("Invoice Status is already paid")
+        if self.instance.external_payment_obj_id is not None:
+            raise serializers.ValidationError(
+                f"Can't manually update connected invoices. This invoice is connected to {self.instance.external_payment_obj_type}"
+            )
         return data
 
     def update(self, instance, validated_data):
-        instance.status = validated_data.get("status", INVOICE_STATUS.UNPAID)
+        instance.payment_status = validated_data.get(
+            "payment_status", instance.payment_status
+        )
         instance.save()
         return instance
+
+
 ## INVOICE
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
@@ -1228,6 +1234,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     organization = OrganizationSerializer(read_only=True)
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
+
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
     class Meta:

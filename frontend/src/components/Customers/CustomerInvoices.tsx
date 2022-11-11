@@ -2,12 +2,12 @@ import { Table, Tag } from "antd";
 import { FC, useState } from "react";
 // @ts-ignore
 import React from "react";
-import {InvoiceType, MarkInvoiceStatusAsPaid} from "../../types/invoice-type";
+import { InvoiceType, MarkInvoiceStatusAsPaid } from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
-import {useMutation} from "react-query";
-import {Invoices} from "../../api/api";
-import {toast} from "react-toastify";
+import { useMutation } from "react-query";
+import { Invoices } from "../../api/api";
+import { toast } from "react-toastify";
 
 interface Props {
   invoices: InvoiceType[] | undefined;
@@ -17,21 +17,21 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
   const [invoiceVisible, setInvoiceVisible] = useState(false);
   const [invoiceState, setInvoiceState] = useState<InvoiceType>();
 
-    const markInvoiceAsPaid = useMutation(
-        (post: MarkInvoiceStatusAsPaid) => Invoices.markStatusAsPaid(post),
-        {
-            onSuccess: () => {
-                toast.success("Successfully Changed Invoice Status to Paid", {
-                    position: toast.POSITION.TOP_CENTER,
-                });
-            },
-            onError: () => {
-                toast.error("Failed to Changed Invoice Status to Paid", {
-                    position: toast.POSITION.TOP_CENTER,
-                });
-            },
-        }
-    );
+  const markInvoiceAsPaid = useMutation(
+    (post: MarkInvoiceStatusAsPaid) => Invoices.markStatusAsPaid(post),
+    {
+      onSuccess: () => {
+        toast.success("Successfully Changed Invoice Status to Paid", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+      onError: () => {
+        toast.error("Failed to Changed Invoice Status to Paid", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
 
   const columns = [
     {
@@ -61,21 +61,28 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       key: "status",
       render: (_, record) => (
         <div className="flex">
-            <Tag color={record.payment_status === "paid" ? "green" : "red"} key={record.payment_status}>
-                {record.payment_status.toUpperCase()}
+          <Tag
+            color={record.payment_status === "paid" ? "green" : "red"}
+            key={record.payment_status}
+          >
+            {record.payment_status.toUpperCase()}
+          </Tag>
+          {record.payment_status === "unpaid" && (
+            <Tag
+              onClick={() => {
+                markInvoiceAsPaid.mutate({
+                  invoice_id: record.invoice_id,
+                  payment_status: "paid",
+                });
+                record.payment_status = "paid";
+              }}
+              color="blue"
+              key={record.invoice_id}
+            >
+              Mark As Paid
             </Tag>
-            { record.payment_status === "unpaid" && (
-                <Tag onClick={()=> {
-                    markInvoiceAsPaid.mutate( {
-                        invoice_id: record.invoice_id,
-                        status:"paid",
-                    })
-                }} color="blue" key={record.invoice_id}>
-                    Mark As Paid
-                </Tag>
-            )}
+          )}
         </div>
-
       ),
     },
   ];

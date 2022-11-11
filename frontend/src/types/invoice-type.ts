@@ -25,6 +25,6 @@ interface LineItem {
 }
 
 export interface MarkInvoiceStatusAsPaid {
-    invoice_id: string,
-    status: string,
+  invoice_id: string;
+  payment_status: "paid" | "unpaid";
 }

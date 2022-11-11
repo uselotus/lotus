@@ -669,11 +669,12 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "head"]
-    lookup_field="invoice_id"
+    http_method_names = ["get", "patch", "head"]
+    lookup_field = "invoice_id"
     permission_classes_per_method = {
         "list": [IsAuthenticated],
         "retrieve": [IsAuthenticated],
+        "partial_update": [IsAuthenticated],
     }
 
     def get_queryset(self):
