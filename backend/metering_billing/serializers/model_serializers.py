@@ -30,11 +30,11 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_GRANULARITY,
+    PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
-    PAYMENT_PROVIDERS,
 )
 from rest_framework import serializers
 
@@ -204,7 +204,8 @@ class CustomerSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("properties",)
 
-    payment_provider_id = serializers.CharField(required=False, allow_null=True)
+    payment_provider_id = serializers.CharField(required=False, allow_null=True, write_only=True)
+    email = serializers.EmailField(required=True)
 
     def validate(self, data):
         super().validate(data)
