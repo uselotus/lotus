@@ -1,7 +1,7 @@
 import datetime
-from random import choices
 import uuid
 from decimal import Decimal
+from random import choices
 from typing import TypedDict
 
 from dateutil import parser
@@ -141,11 +141,9 @@ class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="org_customers"
     )
-    customer_name = models.CharField(max_length=100)
+    customer_name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(max_length=100, blank=True, null=True)
-    customer_id = models.CharField(
-        max_length=50, blank=True, null=False, default=customer_uuid
-    )
+    customer_id = models.CharField(max_length=50, default=customer_uuid)
     payment_provider = models.CharField(
         blank=True, null=True, choices=PAYMENT_PROVIDERS.choices, max_length=40
     )

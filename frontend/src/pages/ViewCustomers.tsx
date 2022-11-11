@@ -51,6 +51,11 @@ const ViewCustomers: FC = () => {
           position: toast.POSITION.TOP_CENTER,
         });
       },
+      onError: () => {
+        toast.error("Error creating customer", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
     }
   );
 

@@ -10,12 +10,7 @@ import {
 import { Button, Tag } from "antd";
 import LoadingSpinner from "../LoadingSpinner";
 import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
-import {
-  useMutation,
-  useQuery,
-  UseQueryResult,
-  useQueryClient,
-} from "react-query";
+import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Customer, Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
 import { CreateSubscriptionType } from "../../types/subscription-type";

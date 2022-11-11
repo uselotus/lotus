@@ -203,8 +203,14 @@ class CustomerSerializer(serializers.ModelSerializer):
             "properties",
         )
         read_only_fields = ("properties",)
+        extra_kwargs = {
+            "customer_id": {"required": True},
+            "email": {"required": True},
+        }
 
-    payment_provider_id = serializers.CharField(required=False, allow_null=True, write_only=True)
+    payment_provider_id = serializers.CharField(
+        required=False, allow_null=True, write_only=True
+    )
     email = serializers.EmailField(required=True)
 
     def validate(self, data):

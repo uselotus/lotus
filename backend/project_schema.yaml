@@ -2087,12 +2087,33 @@ components:
       properties:
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         customer_id:
           type: string
           maxLength: 50
+        email:
+          type: string
+          format: email
+        payment_provider:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentProcessorEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        payment_provider_id:
+          type: string
+          writeOnly: true
+          nullable: true
+        properties:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+          nullable: true
       required:
-      - customer_name
+      - customer_id
+      - email
+      - properties
     CustomerDetail:
       type: object
       properties:
@@ -2106,6 +2127,7 @@ components:
           maxLength: 100
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         invoices:
           type: array
@@ -2122,7 +2144,6 @@ components:
             $ref: '#/components/schemas/SubscriptionCustomerDetail'
           readOnly: true
       required:
-      - customer_name
       - invoices
       - subscriptions
       - total_amount_due
@@ -2138,17 +2159,17 @@ components:
       properties:
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         customer_id:
           type: string
           maxLength: 50
-      required:
-      - customer_name
     CustomerSummary:
       type: object
       properties:
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         customer_id:
           type: string
@@ -2159,7 +2180,6 @@ components:
             $ref: '#/components/schemas/SubscriptionCustomerSummary'
           readOnly: true
       required:
-      - customer_name
       - subscriptions
     CustomerWithRevenue:
       type: object
@@ -2333,7 +2353,7 @@ components:
           type: string
           writeOnly: true
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
         external_plan_id:
           type: string
           maxLength: 100
@@ -2413,7 +2433,7 @@ components:
       type: object
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
       required:
       - source
     ImportPaymentObjectFailure:
@@ -2440,7 +2460,7 @@ components:
       type: object
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
       required:
       - source
     InitialExternalPlanLink:
@@ -2450,7 +2470,7 @@ components:
           type: string
           maxLength: 100
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
       required:
       - external_plan_id
       - source
@@ -2464,43 +2484,43 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        version_id:
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        created_by:
           type: string
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        active_subscriptions:
+          type: integer
           readOnly: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         description:
           type: string
           nullable: true
           maxLength: 200
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
         flat_fee_billing_type:
           $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        version:
-          type: integer
+        version_id:
+          type: string
           readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
         created_on:
           type: string
           format: date-time
           readOnly: true
-        created_by:
-          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
       required:
       - active_subscriptions
@@ -2530,7 +2550,7 @@ components:
           type: string
           format: date-time
         payment_status:
-          $ref: '#/components/schemas/PaymentStatusEnum'
+          $ref: '#/components/schemas/InvoicePaymentStatusEnum'
         cust_connected_to_payment_provider:
           type: boolean
         org_connected_to_cust_payment_provider:
@@ -2562,16 +2582,23 @@ components:
       - organization
       - payment_status
       - subscription
+    InvoicePaymentStatusEnum:
+      enum:
+      - draft
+      - paid
+      - unpaid
+      type: string
     InvoiceUpdate:
       type: object
       properties:
-        status:
-          $ref: '#/components/schemas/InvoiceUpdateStatusEnum'
+        payment_status:
+          $ref: '#/components/schemas/InvoiceUpdatePaymentStatusEnum'
       required:
-      - status
-    InvoiceUpdateStatusEnum:
+      - payment_status
+    InvoiceUpdatePaymentStatusEnum:
       enum:
       - paid
+      - unpaid
       type: string
     KpisEnum:
       enum:
@@ -2742,8 +2769,8 @@ components:
     PatchedInvoiceUpdate:
       type: object
       properties:
-        status:
-          $ref: '#/components/schemas/InvoiceUpdateStatusEnum'
+        payment_status:
+          $ref: '#/components/schemas/InvoiceUpdatePaymentStatusEnum'
     PatchedOrganizationSetting:
       type: object
       properties:
@@ -2836,12 +2863,6 @@ components:
       - details
       - payment_processor
       - success
-    PaymentStatusEnum:
-      enum:
-      - draft
-      - paid
-      - unpaid
-      type: string
     PeriodMetricRevenueResponse:
       type: object
       properties:
@@ -3046,21 +3067,20 @@ components:
     PlanDetail:
       type: object
       properties:
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
-          readOnly: true
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
+        created_by:
+          type: string
+          readOnly: true
         active_subscriptions:
           type: integer
+          readOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
         num_versions:
           type: integer
@@ -3070,16 +3090,19 @@ components:
         plan_name:
           type: string
           maxLength: 100
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        plan_id:
-          type: string
-          maxLength: 100
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
         product_id:
           type: string
           nullable: true
@@ -3087,14 +3110,12 @@ components:
           type: string
           format: date-time
           readOnly: true
-        created_by:
-          type: string
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3432,10 +3453,6 @@ components:
       - cumulative_revenue
       - revenue_by_metric
       - top_customers
-    SourceEnum:
-      enum:
-      - stripe
-      type: string
     Status13eEnum:
       enum:
       - active
@@ -3641,7 +3658,7 @@ components:
       type: object
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
         end_now:
           type: boolean
       required:

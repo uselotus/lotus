@@ -38,16 +38,7 @@ const CreateCustomerForm = (props: {
       }}
     >
       <Form form={form} layout="vertical" name="customer_form">
-        <Form.Item
-          name="name"
-          label="Name"
-          rules={[
-            {
-              required: true,
-              message: "Please input the name of the customer",
-            },
-          ]}
-        >
+        <Form.Item name="name" label="Name">
           <Input />
         </Form.Item>
         <Form.Item
@@ -56,6 +47,7 @@ const CreateCustomerForm = (props: {
           rules={[
             {
               required: true,
+              type: "email",
               message: "Please input the email of the customer",
             },
           ]}
