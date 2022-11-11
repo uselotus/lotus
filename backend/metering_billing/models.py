@@ -542,9 +542,6 @@ class Invoice(models.Model):
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     line_items = models.JSONField()
-    old_organization = models.JSONField(null=True, blank=True)
-    old_customer = models.JSONField(null=True, blank=True)
-    old_subscription = models.JSONField(null=True, blank=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
