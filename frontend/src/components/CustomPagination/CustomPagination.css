@@ -1,0 +1,21 @@
+.movementButton {
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.movementButton[disabled]{
+    color: #666666;
+    cursor: not-allowed;
+}
+
+.currentPageNumber {
+    height: 40px;
+    width: 40px;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    font-weight: 400;
+    text-align: center;
+    border: 1px solid lightgray;
+    border-radius: 10px;
+}

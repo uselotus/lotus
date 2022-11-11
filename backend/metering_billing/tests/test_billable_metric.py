@@ -17,6 +17,7 @@ from metering_billing.models import (
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
+    EVENT_TYPE,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
@@ -472,3 +473,70 @@ class TestCalculateBillableMetric:
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
         # 1 dollar per for 64 rows
         assert usage_revenue_dict["revenue"] == Decimal(64)
+
+    def test_stateful_daily_granularity_delta_event(
+        self, billable_metric_test_common_setup
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = BillableMetric.objects.create(
+            organization=setup_dict["org"],
+            event_name="number_of_users",
+            property_name="number",
+            usage_aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.STATEFUL,
+            granularity=METRIC_GRANULARITY.DAY,
+            event_type=EVENT_TYPE.DELTA,
+        )
+        time_created = now_utc() - relativedelta(days=21)
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test"
+        )
+        event_times = [time_created] + [
+            time_created + relativedelta(days=i) for i in range(1, 11)
+        ]
+        properties = (
+            3 * [{"number": 1}]
+            + 3 * [{"number": 1}]  # 1 hr at 4, 1 hr at 5, 1 hr at 6
+            + 1 * [{"number": 0}]  # 1 hr at 6
+            + 3 * [{"number": -1}]  # 1 hr at 4, 1 hr at 5, 1 hr at 6
+            + 2 * [{"number": -1}]
+        )
+        baker.make(
+            Event,
+            event_name="number_of_users",
+            properties=iter(properties),
+            organization=setup_dict["org"],
+            time_created=iter(event_times),
+            customer=customer,
+            _quantity=11,
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            free_metric_units=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        billing_plan.components.add(plan_component)
+        billing_plan.save()
+        subscription = Subscription.objects.create(
+            organization=setup_dict["org"],
+            billing_plan=billing_plan,
+            customer=customer,
+            start_date=time_created,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        )
+
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12
+        assert usage_revenue_dict["revenue"] == Decimal(1200)

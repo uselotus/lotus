@@ -1,23 +1,26 @@
-import React, { FC, useState, useEffect, useRef } from "react";
+import React, { FC, useState, useEffect } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
-import { List, Descriptions, Collapse } from "antd";
-import { EventPreviewType, EventPages } from "../types/event-type";
+import { Collapse } from "antd";
+import { EventPages } from "../types/event-type";
 import { Events } from "../api/api";
 import LoadingSpinner from "./LoadingSpinner";
 import dayjs from "dayjs";
+import "./EventPreview.css"
+import CustomPagination from "./CustomPagination/CustomPagination";
 
 const { Panel } = Collapse;
 
 const EventPreview: FC = () => {
-  const [c, setCursor] = useState<string>("");
+  const [cursor, setCursor] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const [next, setNext] = useState<string>("");
   const [previous, setPrev] = useState<string>("");
   const queryClient = useQueryClient();
 
   const { data, isLoading }: UseQueryResult<EventPages> = useQuery<EventPages>(
-    ["preview events", c],
+    ["preview events", cursor],
     () =>
-      Events.getEventPreviews(c).then((res) => {
+      Events.getEventPreviews(cursor).then((res) => {
         setNext(decodeURIComponent(res.next));
         setPrev(decodeURIComponent(res.previous));
         return res;
@@ -34,74 +37,53 @@ const EventPreview: FC = () => {
     }
   }, [data]);
 
-  if (isLoading || data === undefined) {
+  if ((isLoading || !data) && !cursor) {
     return (
       <div>
         <LoadingSpinner />.
       </div>
     );
   }
-  if (data.results.length === 0) {
+  if (data?.results.length === 0) {
     return (
       <div className="align-center">
         <h3 className="text-xl font-main align-center">No Events</h3>
         <div className="separator mb-5 mt-5" />
-
-        <div className="flex justify-end space-x-4">
-          <button
-            onClick={() => {
-              if (previous !== "null") {
-                setCursor(previous);
-                queryClient.invalidateQueries(["preview_events"]);
-              }
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18"
-              />
-            </svg>
-          </button>
-          <button
-            onClick={() => {
-              if (next !== "null") {
-                setCursor(next);
-                queryClient.invalidateQueries(["preview_events"]);
-              }
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"
-              />
-            </svg>
-          </button>
-        </div>
       </div>
     );
   }
+
+  const handleMovements = (direction:"LEFT" | "RIGHT" | "START") => {
+      switch (direction){
+          case "LEFT":
+              setCursor(previous);
+              setCurrentPage(currentPage - 1)
+              queryClient.invalidateQueries(["preview_events", cursor]);
+              return
+          case "RIGHT":
+              setCursor(next);
+              setCurrentPage(currentPage + 1)
+              queryClient.invalidateQueries(["preview_events", cursor]);
+              return;
+          case "START":
+              setCursor(null);
+              setCurrentPage(1)
+              queryClient.invalidateQueries(["preview_events", null]);
+              return;
+      }
+
+  }
+
   return (
     <div className="w-full rounded">
       <Collapse expandIconPosition="end" bordered={false}>
-        {data.results.map((event) => (
+          {(!data && !!cursor) && (
+              <div className="loadMoreSpinner">
+                  <LoadingSpinner />.
+              </div>
+          )}
+
+        {data?.results.map((event) => (
           <Panel
             header={
               <div className="grid grid-cols-2">
@@ -140,54 +122,12 @@ const EventPreview: FC = () => {
       </Collapse>
       <div className="separator mb-5 mt-5" />
 
-      <div className="flex justify-end space-x-4">
-        <button
-          onClick={() => {
-            if (previous !== "null") {
-              setCursor(previous);
-              queryClient.invalidateQueries(["preview_events", c]);
-            }
-          }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6.75 15.75L3 12m0 0l3.75-3.75M3 12h18"
-            />
-          </svg>
-        </button>
-        <button
-          onClick={() => {
-            if (next !== "null") {
-              setCursor(next);
-              queryClient.invalidateQueries(["preview_events", c]);
-            }
-          }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-6 h-6"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"
-            />
-          </svg>
-        </button>
-      </div>
+      <CustomPagination cursor={cursor}
+                        previous={previous}
+                        next={next}
+                        currentPage={currentPage}
+                        handleMovements={handleMovements}
+                        />
     </div>
   );
 };

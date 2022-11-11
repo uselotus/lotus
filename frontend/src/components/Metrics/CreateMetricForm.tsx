@@ -46,6 +46,7 @@ const CreateMetricForm = (props: {
           property_name_2: "seat_count",
           granularity_2: "days",
           billable_metric_name: "Seats",
+          event_type: "total",
         });
         break;
       case "calls":
@@ -128,6 +129,8 @@ const CreateMetricForm = (props: {
           metric_type: "counter",
           usage_aggregation_type: "count",
           usage_aggregation_type_2: "max",
+          granularity_2: "days",
+          event_type: "total",
         }}
       >
         <div className="grid grid-cols-2 gap-4">
@@ -180,6 +183,9 @@ const CreateMetricForm = (props: {
             defaultValue={eventType}
             onChange={(e) => {
               setEventType(e.target.value);
+              if (e.target.value === "counter") {
+                setRate(false);
+              }
             }}
           >
             <Radio value="counter">Counter</Radio>
@@ -308,21 +314,34 @@ const CreateMetricForm = (props: {
           )}
           {eventType === "stateful" && (
             <Fragment>
-              <Form.Item
-                name="usage_aggregation_type_2"
-                label="Aggregation Type"
-                rules={[
-                  {
-                    required: true,
-                    message: "Aggregation type is required",
-                  },
-                ]}
-              >
-                <Select defaultValue={"max"}>
-                  <Option value="max">max</Option>
-                  <Option value="latest">latest</Option>
-                </Select>
-              </Form.Item>
+              <div className="grid grid-cols-2 gap-4">
+                <Form.Item
+                  name="usage_aggregation_type_2"
+                  label="Aggregation Type"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Aggregation type is required",
+                    },
+                  ]}
+                >
+                  <Select defaultValue={"max"}>
+                    <Option value="max">max</Option>
+                    <Option value="latest">latest</Option>
+                  </Select>
+                </Form.Item>
+                <Form.Item
+                  name="event_type"
+                  label="Event Type (how the property amount is reported)"
+                  rules={[{ required: true }]}
+                >
+                  <Select defaultValue={"total"}>
+                    <Option value="total">total</Option>
+                    <Option value="delta">delta</Option>
+                  </Select>
+                </Form.Item>
+              </div>
+
               <Form.Item
                 name="property_name_2"
                 label="Property Name"
