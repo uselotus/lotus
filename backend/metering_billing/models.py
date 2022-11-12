@@ -205,6 +205,18 @@ class Customer(models.Model):
         ).aggregate(balance=Sum("amount"))["balance"] or Decimal(0)
         return balance
 
+    def get_outstanding_revenue(self):
+        active_sub_amount_due = sum(
+            x["total_amount_due"] for x in self.get_usage_and_revenue()["subscriptions"]
+        )
+        unpaid_invoice_amount_due = (
+            self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
+            .aggregate(unpaid_inv_amount=Sum("cost_due"))
+            .get("unpaid_inv_amount")
+        )
+        total_amount_due = active_sub_amount_due + (unpaid_invoice_amount_due or 0)
+        return total_amount_due
+
 
 class CustomerBalanceAdjustment(models.Model):
     """

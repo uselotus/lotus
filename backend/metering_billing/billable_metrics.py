@@ -211,7 +211,6 @@ class CounterHandler(BillableMetricHandler):
         )
         if len(per_customer) == 0:
             return 0
-        print("per customer", per_customer)
         customer_usage = per_customer[subscription.customer.customer_name]
         _, customer_usage_val = list(customer_usage.items())[0]
         return customer_usage_val
@@ -439,7 +438,6 @@ class StatefulHandler(BillableMetricHandler):
         end_date,
         customer=None,
     ):
-        print(self.event_type)
         if self.event_type == EVENT_TYPE.TOTAL:
             return self._get_usage_total(
                 results_granularity, start_date, end_date, customer
@@ -456,7 +454,6 @@ class StatefulHandler(BillableMetricHandler):
         end_date,
         customer=None,
     ):
-        print("yoyoyoyoy")
         now = now_utc()
         if type(start_date) == str:
             start_date = parser.parse(start_date)
@@ -635,7 +632,6 @@ class StatefulHandler(BillableMetricHandler):
                         j += 1
                     i += 1
             usage_dict = new_usage_dict
-        print(usage_dict)
         return usage_dict
 
     def _get_usage_total(
@@ -1015,7 +1011,6 @@ class RateHandler(BillableMetricHandler):
             "time_created__gte": start_date,
             "time_created__lte": end_date,
         }
-        # print(Event.objects.all().count())#filter(**filter_kwargs).count())
         pre_groupby_annotation_kwargs = {}
         groupby_kwargs = {
             "customer_name": F("customer__customer_name"),
