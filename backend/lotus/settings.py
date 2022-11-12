@@ -51,6 +51,13 @@ SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
+STRIPE_LIVE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
+STRIPE_TEST_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
+STRIPE_LIVE_MODE = not DEBUG  # Matches debug
+# Get it from the section in the Stripe dashboard where you added the webhook endpoint
+DJSTRIPE_WEBHOOK_SECRET = config("WEBHOOK_SECRET", default=None)
+DJSTRIPE_USE_NATIVE_JSONFIELD = True
+DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default=None)
 
 
@@ -114,6 +121,7 @@ INSTALLED_APPS = [
     "anymail",
     "metering_billing",
     "actstream",
+    "djstripe",
 ]
 
 SITE_ID = 1

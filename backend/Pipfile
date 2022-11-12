@@ -43,6 +43,7 @@ django-anymail = {extras = ["mailgun"], version = "*"}
 numpy = "*"
 pytz = "*"
 django-activity-stream = "*"
+dj-stripe = "*"
 
 [dev-packages]
 platformdirs = "*"

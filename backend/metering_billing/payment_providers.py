@@ -143,8 +143,8 @@ class StripeConnector(PaymentProvider):
 
     def update_payment_object_status(self, payment_object_id):
         stripe.api_key = self.secret_key
-        invoice = stripe.PaymentIntent.retrieve(payment_object_id)
-        if invoice.status == "succeeded":
+        invoice = stripe.Invoice.retrieve(payment_object_id)
+        if invoice.status == "paid":
             return INVOICE_STATUS.PAID
         else:
             return INVOICE_STATUS.UNPAID
@@ -227,7 +227,7 @@ class StripeConnector(PaymentProvider):
         from metering_billing.models import Invoice
 
         stripe.api_key = self.secret_key
-        invoices = stripe.PaymentIntent.list(
+        invoices = stripe.Invoice.list(
             customer=customer.integrations[PAYMENT_PROVIDERS.STRIPE]["id"]
         )
         lotus_invoices = []
@@ -237,7 +237,7 @@ class StripeConnector(PaymentProvider):
             ).exists():
                 continue
             cost_due = Money(
-                Decimal(stripe_invoice.amount) / 100, stripe_invoice.currency
+                Decimal(stripe_invoice.amount_due) / 100, stripe_invoice.currency
             )
             invoice_kwargs = {
                 "customer": customer,
@@ -315,10 +315,14 @@ class StripeConnector(PaymentProvider):
         ).get("id")
         assert stripe_customer_id is not None, "Customer does not have a Stripe ID"
         invoice_kwargs = {
+            "auto_advance": True,
             "customer": stripe_customer_id,
+            "automatic_tax": {
+                "enabled": True,
+            },
+            "description": "Invoice from {}".format(customer.organization.company_name),
             "currency": invoice.cost_due.currency,
-            "payment_method_types": ["card"],
-            "amount": decimal_to_cents(invoice.cost_due.amount),
+            "amount_due": decimal_to_cents(invoice.cost_due.amount),
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
@@ -329,7 +333,7 @@ class StripeConnector(PaymentProvider):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
-        stripe_invoice = stripe.PaymentIntent.create(**invoice_kwargs)
+        stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
         return stripe_invoice.id
 
     def get_post_data_serializer(self) -> serializers.Serializer:
