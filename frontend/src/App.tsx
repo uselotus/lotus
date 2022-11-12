@@ -9,6 +9,14 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import React from "react";
 import { PlanProvider } from "./context/PlanContext";
 import { useNavigate, useLocation } from "react-router-dom";
+import posthog from "posthog-js";
+
+//telemetry for cloud version only
+if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
+  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+    api_host: "https://app.posthog.com",
+  });
+}
 
 const publicRoutes = [
   "/login",

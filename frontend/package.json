@@ -37,6 +37,7 @@
     "react-spinners": "0.13.4",
     "react-toastify": "9.0.8",
     "sjcl": "^1.0.8",
+    "ts-import-plugin": "^2.0.0",
     "universal-cookie": "4.0.4",
     "vite-tsconfig-paths": "3.5.0",
     "webfontloader": "^1.6.28",
