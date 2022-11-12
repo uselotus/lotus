@@ -119,10 +119,10 @@ def insert_customer_payload():
     payload = {
         "customer_name": "test_customer",
         "customer_id": "test_customer_id",
-        "currency": "USD",
-        "payment_provider_id": "test_payment_provider_id",
-        "payment_provider": "stripe",
-        "properties": {},
+        "email": "test@test.com",
+        # "payment_provider_id": "test_payment_provider_id",
+        # "payment_provider": "stripe",
+        # "properties": {},
     }
     return payload
 
@@ -158,7 +158,7 @@ class TestInsertCustomer:
             data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_customers_in_org(setup_dict["org"])) == 1

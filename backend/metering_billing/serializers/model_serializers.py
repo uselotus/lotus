@@ -27,8 +27,10 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
     EVENT_TYPE,
+    INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_GRANULARITY,
+    PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
@@ -195,14 +197,58 @@ class CustomerSerializer(serializers.ModelSerializer):
         fields = (
             "customer_name",
             "customer_id",
+            "email",
+            "payment_provider",
+            "payment_provider_id",
+            "properties",
         )
+        read_only_fields = ("properties",)
+        extra_kwargs = {
+            "customer_id": {"required": True},
+            "email": {"required": True},
+        }
+
+    payment_provider_id = serializers.CharField(
+        required=False, allow_null=True, write_only=True
+    )
+    email = serializers.EmailField(required=True)
+
+    def validate(self, data):
+        super().validate(data)
+        payment_provider = data.get("payment_provider", None)
+        payment_provider_id = data.get("payment_provider_id", None)
+        if payment_provider or payment_provider_id:
+            if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
+                self.context["organization"]
+            ):
+                raise serializers.ValidationError(
+                    "Specified payment provider not connected to organization"
+                )
+            if payment_provider and not payment_provider_id:
+                raise serializers.ValidationError(
+                    "Payment provider ID required when payment provider is specified"
+                )
+            if payment_provider_id and not payment_provider:
+                raise serializers.ValidationError(
+                    "Payment provider required when payment provider ID is specified"
+                )
+
+        return data
 
     def create(self, validated_data):
+        pp_id = validated_data.pop("payment_provider_id", None)
         customer = Customer.objects.create(**validated_data)
-        org = customer.organization
-        for connector in PAYMENT_PROVIDER_MAP.values():
-            if connector.organization_connected(org):
-                connector.create_customer(customer)
+        if pp_id:
+            customer_properties = customer.properties
+            customer_properties[validated_data["payment_provider"]] = {}
+            customer_properties[validated_data["payment_provider"]]["id"] = pp_id
+            customer.properties = customer_properties
+            customer.save()
+        else:
+            if "payment_provider" in validated_data:
+                PAYMENT_PROVIDER_MAP[
+                    validated_data["payment_provider"]
+                ].create_customer(customer)
         return customer
 
 
@@ -423,57 +469,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             billable_metric=billable_metric, **validated_data
         )
         return pc
-
-
-## INVOICE
-class InvoiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Invoice
-        fields = (
-            "invoice_id",
-            "cost_due",
-            "cost_due_currency",
-            "issue_date",
-            "payment_status",
-            "cust_connected_to_payment_provider",
-            "org_connected_to_cust_payment_provider",
-            "external_payment_obj_id",
-            "line_items",
-            "organization",
-            "customer",
-            "subscription",
-        )
-
-    cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
-    )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
-
-
-class CustomerDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = (
-            "customer_id",
-            "email",
-            "customer_name",
-            "invoices",
-            "total_amount_due",
-            "subscriptions",
-        )
-
-    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
-    invoices = serializers.SerializerMethodField()
-    total_amount_due = serializers.SerializerMethodField()
-
-    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
-        timeline = self.context.get("invoices")
-        timeline = InvoiceSerializer(timeline, many=True).data
-        return timeline
-
-    def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(self.context.get("total_amount_due"))
-        return total_amount_due
 
 
 class DraftInvoiceSerializer(serializers.ModelSerializer):
@@ -1231,3 +1226,82 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
         )
         instance.save()
         return instance
+
+
+class InvoiceUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = ("payment_status",)
+
+    payment_status = serializers.ChoiceField(
+        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID], required=True
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        if self.instance.external_payment_obj_id is not None:
+            raise serializers.ValidationError(
+                f"Can't manually update connected invoices. This invoice is connected to {self.instance.external_payment_obj_type}"
+            )
+        return data
+
+    def update(self, instance, validated_data):
+        instance.payment_status = validated_data.get(
+            "payment_status", instance.payment_status
+        )
+        instance.save()
+        return instance
+
+
+## INVOICE
+class InvoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Invoice
+        fields = (
+            "invoice_id",
+            "cost_due",
+            "cost_due_currency",
+            "issue_date",
+            "payment_status",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "external_payment_obj_id",
+            "line_items",
+            "organization",
+            "customer",
+            "subscription",
+        )
+
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
+    cost_due_currency = serializers.CharField(source="cost_due.currency")
+    organization = OrganizationSerializer(read_only=True)
+    customer = CustomerSerializer(read_only=True)
+    subscription = SubscriptionSerializer(read_only=True)
+
+
+class CustomerDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_id",
+            "email",
+            "customer_name",
+            "invoices",
+            "total_amount_due",
+            "subscriptions",
+        )
+
+    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
+    invoices = serializers.SerializerMethodField()
+    total_amount_due = serializers.SerializerMethodField()
+
+    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
+        timeline = self.context.get("invoices")
+        timeline = InvoiceSerializer(timeline, many=True).data
+        return timeline
+
+    def get_total_amount_due(self, obj) -> float:
+        total_amount_due = float(self.context.get("total_amount_due"))
+        return total_amount_due

@@ -123,6 +123,40 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/batch_create_customers/:
+    post:
+      operationId: batch_create_customers_create
+      tags:
+      - batch_create_customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreateCustomersRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchCreateCustomersRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchCreateCustomersRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCreateCustomerSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCreateCustomerFailure'
+          description: ''
   /api/customer_access/:
     get:
       operationId: customer_access_retrieve
@@ -677,44 +711,15 @@ paths:
                 items:
                   $ref: '#/components/schemas/Invoice'
           description: ''
-    post:
-      operationId: invoices_create
-      description: A simple ViewSet for viewing and editing Invoices.
-      tags:
-      - invoices
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Invoice'
-        required: true
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Invoice'
-          description: ''
-  /api/invoices/{id}/:
+  /api/invoices/{invoice_id}/:
     get:
       operationId: invoices_retrieve
       description: A simple ViewSet for viewing and editing Invoices.
       parameters:
       - in: path
-        name: id
+        name: invoice_id
         schema:
-          type: integer
-        description: A unique integer value identifying this invoice.
+          type: string
         required: true
       tags:
       - invoices
@@ -728,6 +733,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Invoice'
+          description: ''
+    patch:
+      operationId: invoices_partial_update
+      description: A simple ViewSet for viewing and editing Invoices.
+      parameters:
+      - in: path
+        name: invoice_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInvoiceUpdate'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceUpdate'
           description: ''
   /api/login/:
     post:
@@ -1992,6 +2030,39 @@ components:
       - backtest_name
       - end_date
       - start_date
+    BatchCreateCustomerFailure:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/Success5acEnum'
+        failed_customer_emails:
+          type: array
+          items: {}
+      required:
+      - failed_customer_emails
+      - success
+    BatchCreateCustomerSuccess:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/SuccessFabEnum'
+        failed_customer_emails:
+          type: array
+          items: {}
+      required:
+      - success
+    BatchCreateCustomersRequest:
+      type: object
+      properties:
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+        duplicate_email_behavior:
+          $ref: '#/components/schemas/DuplicateEmailBehaviorEnum'
+      required:
+      - customers
+      - duplicate_email_behavior
     BatchEvent:
       type: object
       properties:
@@ -2083,12 +2154,33 @@ components:
       properties:
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         customer_id:
           type: string
           maxLength: 50
+        email:
+          type: string
+          format: email
+        payment_provider:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/PaymentProcessorEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        payment_provider_id:
+          type: string
+          writeOnly: true
+          nullable: true
+        properties:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+          nullable: true
       required:
-      - customer_name
+      - customer_id
+      - email
+      - properties
     CustomerDetail:
       type: object
       properties:
@@ -2102,6 +2194,7 @@ components:
           maxLength: 100
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         invoices:
           type: array
@@ -2118,7 +2211,6 @@ components:
             $ref: '#/components/schemas/SubscriptionCustomerDetail'
           readOnly: true
       required:
-      - customer_name
       - invoices
       - subscriptions
       - total_amount_due
@@ -2134,17 +2226,17 @@ components:
       properties:
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         customer_id:
           type: string
           maxLength: 50
-      required:
-      - customer_name
     CustomerSummary:
       type: object
       properties:
         customer_name:
           type: string
+          nullable: true
           maxLength: 100
         customer_id:
           type: string
@@ -2155,7 +2247,6 @@ components:
             $ref: '#/components/schemas/SubscriptionCustomerSummary'
           readOnly: true
       required:
-      - customer_name
       - subscriptions
     CustomerWithRevenue:
       type: object
@@ -2262,6 +2353,12 @@ components:
       - cost_due
       - cost_due_currency
       - line_items
+    DuplicateEmailBehaviorEnum:
+      enum:
+      - ignore
+      - error
+      - update
+      type: string
     Event:
       type: object
       properties:
@@ -2329,7 +2426,7 @@ components:
           type: string
           writeOnly: true
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
         external_plan_id:
           type: string
           maxLength: 100
@@ -2409,7 +2506,7 @@ components:
       type: object
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
       required:
       - source
     ImportPaymentObjectFailure:
@@ -2436,14 +2533,14 @@ components:
       type: object
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
       required:
       - source
     InitialExternalPlanLink:
       type: object
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
         external_plan_id:
           type: string
           maxLength: 100
@@ -2453,27 +2550,44 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        version:
+          type: integer
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        version_id:
+          type: string
+          readOnly: true
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
-        version:
-          type: integer
-          readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
         description:
           type: string
           nullable: true
           maxLength: 200
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -2481,23 +2595,6 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        created_by:
-          type: string
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -2526,7 +2623,7 @@ components:
           type: string
           format: date-time
         payment_status:
-          $ref: '#/components/schemas/PaymentStatusEnum'
+          $ref: '#/components/schemas/InvoicePaymentStatusEnum'
         cust_connected_to_payment_provider:
           type: boolean
         org_connected_to_cust_payment_provider:
@@ -2539,19 +2636,43 @@ components:
           type: object
           additionalProperties: {}
         organization:
-          type: integer
-          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/Organization'
+          readOnly: true
         customer:
-          type: integer
-          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
         subscription:
-          type: integer
-          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/Subscription'
+          readOnly: true
       required:
       - cost_due
       - cost_due_currency
+      - customer
       - line_items
+      - organization
       - payment_status
+      - subscription
+    InvoicePaymentStatusEnum:
+      enum:
+      - draft
+      - paid
+      - unpaid
+      type: string
+    InvoiceUpdate:
+      type: object
+      properties:
+        payment_status:
+          $ref: '#/components/schemas/InvoiceUpdatePaymentStatusEnum'
+      required:
+      - payment_status
+    InvoiceUpdatePaymentStatusEnum:
+      enum:
+      - paid
+      - unpaid
+      type: string
     KpisEnum:
       enum:
       - total_revenue
@@ -2718,6 +2839,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Event'
+    PatchedInvoiceUpdate:
+      type: object
+      properties:
+        payment_status:
+          $ref: '#/components/schemas/InvoiceUpdatePaymentStatusEnum'
     PatchedOrganizationSetting:
       type: object
       properties:
@@ -2810,12 +2936,6 @@ components:
       - details
       - payment_processor
       - success
-    PaymentStatusEnum:
-      enum:
-      - draft
-      - paid
-      - unpaid
-      type: string
     PeriodMetricRevenueResponse:
       type: object
       properties:
@@ -3020,55 +3140,55 @@ components:
     PlanDetail:
       type: object
       properties:
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
         plan_name:
-          type: string
-          maxLength: 100
-        num_versions:
-          type: integer
-          readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
-          readOnly: true
-        plan_id:
           type: string
           maxLength: 100
         created_on:
           type: string
           format: date-time
           readOnly: true
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExternalPlanLink'
-          readOnly: true
         product_id:
           type: string
           nullable: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        created_by:
+          type: string
+          readOnly: true
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
-        created_by:
+        plan_id:
           type: string
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
+          maxLength: 100
         initial_external_links:
           type: array
           items:
             $ref: '#/components/schemas/InitialExternalPlanLink'
           writeOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
+        num_versions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3406,10 +3526,6 @@ components:
       - cumulative_revenue
       - revenue_by_metric
       - top_customers
-    SourceEnum:
-      enum:
-      - stripe
-      type: string
     Status13eEnum:
       enum:
       - active
@@ -3547,6 +3663,15 @@ components:
       enum:
       - ended
       type: string
+    Success5acEnum:
+      enum:
+      - none
+      type: string
+    SuccessFabEnum:
+      enum:
+      - all
+      - some
+      type: string
     TopCustomers:
       type: object
       properties:
@@ -3575,32 +3700,23 @@ components:
       type: object
       properties:
         success:
-          $ref: '#/components/schemas/TrackEventFailureSuccessEnum'
+          $ref: '#/components/schemas/Success5acEnum'
         failed_events:
           type: object
           additionalProperties: {}
       required:
       - failed_events
       - success
-    TrackEventFailureSuccessEnum:
-      enum:
-      - none
-      type: string
     TrackEventSuccess:
       type: object
       properties:
         success:
-          $ref: '#/components/schemas/TrackEventSuccessSuccessEnum'
+          $ref: '#/components/schemas/SuccessFabEnum'
         failed_events:
           type: object
           additionalProperties: {}
       required:
       - success
-    TrackEventSuccessSuccessEnum:
-      enum:
-      - all
-      - some
-      type: string
     TransferSubscriptionsFailure:
       type: object
       properties:
@@ -3615,7 +3731,7 @@ components:
       type: object
       properties:
         source:
-          $ref: '#/components/schemas/SourceEnum'
+          $ref: '#/components/schemas/PaymentProcessorEnum'
         end_now:
           type: boolean
       required:

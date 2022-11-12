@@ -3,7 +3,7 @@ from decimal import Decimal
 import posthog
 from dateutil import parser
 from django.conf import settings
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.invoice import generate_invoice
@@ -416,13 +416,11 @@ class CustomerDetailView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        sub_usg_summaries = customer.get_usage_and_revenue()
-        total_amount_due = sum(
-            x["total_amount_due"] for x in sub_usg_summaries["subscriptions"]
-        )
+
+        total_amount_due = customer.get_outstanding_revenue()
         invoices = Invoice.objects.filter(
-            organization__company_name=organization.company_name,
-            customer__customer_id=customer.customer_id,
+            organization=organization,
+            customer=customer,
         )
         serializer = CustomerDetailSerializer(
             customer,
@@ -449,14 +447,11 @@ class CustomersWithRevenueView(APIView):
         customers = Customer.objects.filter(organization=organization)
         cust = []
         for customer in customers:
-            sub_usg_summaries = customer.get_usage_and_revenue()
-            customer_total_amount_due = sum(
-                x["total_amount_due"] for x in sub_usg_summaries["subscriptions"]
-            )
+            total_amount_due = customer.get_outstanding_revenue()
             serializer = CustomerWithRevenueSerializer(
                 customer,
                 context={
-                    "total_amount_due": customer_total_amount_due,
+                    "total_amount_due": total_amount_due,
                 },
             )
             cust.append(serializer.data)
@@ -636,6 +631,87 @@ class GetCustomerAccessView(APIView):
         return Response(
             {"access": False},
             status=status.HTTP_200_OK,
+        )
+
+
+class BatchCreateCustomersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="BatchCreateCustomersRequest",
+            fields={
+                "customers": CustomerSerializer(many=True),
+                "duplicate_email_behavior": serializers.ChoiceField(
+                    choices=["ignore", "error", "update"]
+                ),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="BatchCreateCustomerSuccess",
+                fields={
+                    "success": serializers.ChoiceField(choices=["all", "some"]),
+                    "failed_customer_emails": serializers.ListField(required=False),
+                },
+            ),
+            400: inline_serializer(
+                name="BatchCreateCustomerFailure",
+                fields={
+                    "success": serializers.ChoiceField(choices=["none"]),
+                    "failed_customer_emails": serializers.ListField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        customers = CustomerSerializer(data=request.data.get("customers"), many=True)
+        customers.is_valid(raise_exception=True)
+        behavior = request.data.get("duplicate_email_behavior", "ignore")
+
+        failed_customer_emails = []
+        for customer in customers.validated_data:
+            c_obj = Customer.objects.filter(
+                organization=organization, email=customer["email"]
+            )
+            if c_obj.exists():
+                c_obj = c_obj.first()
+                if behavior == "ignore":
+                    continue
+                elif behavior == "error":
+                    failed_customer_emails.append(customer["email"])
+                elif behavior == "update":
+                    pp_id = customer.pop("payment_provider_id", None)
+                    pp = customer.pop("payment_provider", None)
+                    c_obj.update(**customer)
+                    if pp:
+                        c_obj.update(payment_provider=pp)
+                        if pp_id:
+                            integrations = c_obj.first().integrations
+                            if pp in integrations:
+                                integrations[pp]["payment_provider_id"] = pp_id
+                            else:
+                                integrations[pp] = {"id": pp_id}
+                            c_obj.update(integrations=integrations)
+            else:
+                CustomerSerializer(data=customer).save()
+                Customer.objects.create(organization=organization, **customer)
+
+        if len(failed_customer_emails) == len(customers.validated_data):
+            return Response(
+                {
+                    "success": "none",
+                    "failed_customer_emails": failed_customer_emails,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            {
+                "status": "success" if len(failed_customer_emails) == 0 else "some",
+                "failed_customer_emails": failed_customer_emails,
+            },
+            status=status.HTTP_201_CREATED,
         )
 
 

@@ -40,6 +40,7 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
+    BatchCreateCustomersView,
     CustomerDetailView,
     CustomersSummaryView,
     CustomersWithRevenueView,
@@ -91,6 +92,11 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/track/", csrf_exempt(track.track_event), name="track_event"),
+    path(
+        "api/batch_create_customers/",
+        BatchCreateCustomersView.as_view(),
+        name="batch_create_customers",
+    ),
     path(
         "api/customer_summary/",
         CustomersSummaryView.as_view(),

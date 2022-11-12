@@ -1,6 +1,7 @@
 import datetime
 import uuid
 from decimal import Decimal
+from random import choices
 from typing import TypedDict
 
 from dateutil import parser
@@ -140,10 +141,11 @@ class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="org_customers"
     )
-    customer_name = models.CharField(max_length=100)
+    customer_name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(max_length=100, blank=True, null=True)
-    customer_id = models.CharField(
-        max_length=50, blank=True, null=False, default=customer_uuid
+    customer_id = models.CharField(max_length=50, default=customer_uuid)
+    payment_provider = models.CharField(
+        blank=True, null=True, choices=PAYMENT_PROVIDERS.choices, max_length=40
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -202,6 +204,18 @@ class Customer(models.Model):
             amount_currency=currency,
         ).aggregate(balance=Sum("amount"))["balance"] or Decimal(0)
         return balance
+
+    def get_outstanding_revenue(self):
+        active_sub_amount_due = sum(
+            x["total_amount_due"] for x in self.get_usage_and_revenue()["subscriptions"]
+        )
+        unpaid_invoice_amount_due = (
+            self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
+            .aggregate(unpaid_inv_amount=Sum("cost_due"))
+            .get("unpaid_inv_amount")
+        )
+        total_amount_due = active_sub_amount_due + (unpaid_invoice_amount_due or 0)
+        return total_amount_due
 
 
 class CustomerBalanceAdjustment(models.Model):
@@ -542,9 +556,6 @@ class Invoice(models.Model):
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     line_items = models.JSONField()
-    old_organization = models.JSONField(null=True, blank=True)
-    old_customer = models.JSONField(null=True, blank=True)
-    old_subscription = models.JSONField(null=True, blank=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
     )

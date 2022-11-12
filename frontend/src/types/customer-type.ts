@@ -6,6 +6,9 @@ export interface CustomerType {
   customer_name: string;
   balance?: string;
   customer_id: string;
+  email: string;
+  payment_provider_id?: string;
+  payment_provider?: string;
 }
 
 export interface CustomerDetailType extends CustomerType {
