@@ -117,6 +117,9 @@ jobs:
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
+      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
       DEBUG: False
 
     steps:
