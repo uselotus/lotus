@@ -3,7 +3,7 @@ from decimal import Decimal
 import posthog
 from dateutil import parser
 from django.conf import settings
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.invoice import generate_invoice
@@ -416,13 +416,11 @@ class CustomerDetailView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        sub_usg_summaries = customer.get_usage_and_revenue()
-        total_amount_due = sum(
-            x["total_amount_due"] for x in sub_usg_summaries["subscriptions"]
-        )
+
+        total_amount_due = customer.get_outstanding_revenue()
         invoices = Invoice.objects.filter(
-            organization__company_name=organization.company_name,
-            customer__customer_id=customer.customer_id,
+            organization=organization,
+            customer=customer,
         )
         serializer = CustomerDetailSerializer(
             customer,
@@ -449,14 +447,11 @@ class CustomersWithRevenueView(APIView):
         customers = Customer.objects.filter(organization=organization)
         cust = []
         for customer in customers:
-            sub_usg_summaries = customer.get_usage_and_revenue()
-            customer_total_amount_due = sum(
-                x["total_amount_due"] for x in sub_usg_summaries["subscriptions"]
-            )
+            total_amount_due = customer.get_outstanding_revenue()
             serializer = CustomerWithRevenueSerializer(
                 customer,
                 context={
-                    "total_amount_due": customer_total_amount_due,
+                    "total_amount_due": total_amount_due,
                 },
             )
             cust.append(serializer.data)

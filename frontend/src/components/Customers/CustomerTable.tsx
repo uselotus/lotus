@@ -137,6 +137,8 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   );
 
   const onDetailCancel = () => {
+    queryClient.invalidateQueries(["customer_list"]);
+    queryClient.invalidateQueries(["customer_totals"]);
     setCustomerVisible(false);
   };
 
