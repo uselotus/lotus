@@ -123,6 +123,40 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/batch_create_customers/:
+    post:
+      operationId: batch_create_customers_create
+      tags:
+      - batch_create_customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreateCustomersRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchCreateCustomersRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchCreateCustomersRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCreateCustomerSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchCreateCustomerFailure'
+          description: ''
   /api/customer_access/:
     get:
       operationId: customer_access_retrieve
@@ -1996,6 +2030,39 @@ components:
       - backtest_name
       - end_date
       - start_date
+    BatchCreateCustomerFailure:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/Success5acEnum'
+        failed_customer_emails:
+          type: array
+          items: {}
+      required:
+      - failed_customer_emails
+      - success
+    BatchCreateCustomerSuccess:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/SuccessFabEnum'
+        failed_customer_emails:
+          type: array
+          items: {}
+      required:
+      - success
+    BatchCreateCustomersRequest:
+      type: object
+      properties:
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+        duplicate_email_behavior:
+          $ref: '#/components/schemas/DuplicateEmailBehaviorEnum'
+      required:
+      - customers
+      - duplicate_email_behavior
     BatchEvent:
       type: object
       properties:
@@ -2286,6 +2353,12 @@ components:
       - cost_due
       - cost_due_currency
       - line_items
+    DuplicateEmailBehaviorEnum:
+      enum:
+      - ignore
+      - error
+      - update
+      type: string
     Event:
       type: object
       properties:
@@ -2466,11 +2539,11 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/PaymentProcessorEnum'
         external_plan_id:
           type: string
           maxLength: 100
-        source:
-          $ref: '#/components/schemas/PaymentProcessorEnum'
       required:
       - external_plan_id
       - source
@@ -2481,24 +2554,15 @@ components:
           type: string
           format: date-time
           readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustment'
         version:
           type: integer
           readOnly: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
         created_by:
+          type: string
+          readOnly: true
+        version_id:
           type: string
           readOnly: true
         components:
@@ -2508,8 +2572,21 @@ components:
           nullable: true
         flat_fee_billing_type:
           $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        version_id:
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        description:
           type: string
+          nullable: true
+          maxLength: 200
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
         flat_rate:
           type: number
@@ -2518,10 +2595,6 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
       required:
       - active_subscriptions
       - created_by
@@ -3067,55 +3140,55 @@ components:
     PlanDetail:
       type: object
       properties:
+        plan_name:
+          type: string
+          maxLength: 100
         created_on:
           type: string
           format: date-time
           readOnly: true
+        product_id:
+          type: string
+          nullable: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        created_by:
+          type: string
+          readOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
         initial_external_links:
           type: array
           items:
             $ref: '#/components/schemas/InitialExternalPlanLink'
           writeOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        target_customer:
+        parent_plan:
           allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
+          - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
+        active_subscriptions:
+          type: integer
           readOnly: true
         status:
           $ref: '#/components/schemas/Status13eEnum'
-        product_id:
-          type: string
-          nullable: true
-        created_by:
-          type: string
-          readOnly: true
-        num_versions:
-          type: integer
-          readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+        num_versions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3590,6 +3663,15 @@ components:
       enum:
       - ended
       type: string
+    Success5acEnum:
+      enum:
+      - none
+      type: string
+    SuccessFabEnum:
+      enum:
+      - all
+      - some
+      type: string
     TopCustomers:
       type: object
       properties:
@@ -3618,32 +3700,23 @@ components:
       type: object
       properties:
         success:
-          $ref: '#/components/schemas/TrackEventFailureSuccessEnum'
+          $ref: '#/components/schemas/Success5acEnum'
         failed_events:
           type: object
           additionalProperties: {}
       required:
       - failed_events
       - success
-    TrackEventFailureSuccessEnum:
-      enum:
-      - none
-      type: string
     TrackEventSuccess:
       type: object
       properties:
         success:
-          $ref: '#/components/schemas/TrackEventSuccessSuccessEnum'
+          $ref: '#/components/schemas/SuccessFabEnum'
         failed_events:
           type: object
           additionalProperties: {}
       required:
       - success
-    TrackEventSuccessSuccessEnum:
-      enum:
-      - all
-      - some
-      type: string
     TransferSubscriptionsFailure:
       type: object
       properties:
