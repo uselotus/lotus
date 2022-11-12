@@ -7,7 +7,7 @@ from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
+from metering_billing.models import APIToken, BillableMetric, Customer, Subscription, CustomerBalanceAdjustment
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
@@ -884,4 +884,75 @@ class PlansByNumCustomersView(APIView):
                 "results": plans,
             },
             status=status.HTTP_200_OK,
+        )
+
+class BalancedAdjustmentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="CreateBalanceAdjustmentRequest",
+            fields={
+                "amount":  serializers.IntegerField(required=True),
+                "customer_id":  serializers.CharField(required=True),
+                "amount_currency": serializers.CharField(required=True),
+                "description": serializers.CharField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="CreateBalanceAdjustmentSuccess",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="CreateBalanceAdjustmentFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        customer_id = request.data.get("customer_id", None)
+        amount_currency = request.data.get("amount_currency", "USD")
+        amount = request.data.get("amount", 0)
+        description = request.data.get("description", 0)
+        try:
+            customer = Customer.objects.get(organization=organization, customer_id=customer_id)
+        except Customer.DoesNotExist:
+            return Response(
+                {
+                    "status": "error",
+                    "error_detail": "Customer with customer_id {} does not exist".format(customer_id)
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            CustomerBalanceAdjustment.objects.create(
+                    customer=customer,
+                    description=description,
+                    amount=amount,
+                    amount_currency=amount_currency
+                )
+        except Exception as e:
+            return Response(
+                {
+                   "status": "error",
+                   "detail": f"Error in creating balance adjustment: {e}",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "status": "success",
+                "detail": "Successfully created  balance adjustment",
+            },
+            status=status.HTTP_201_CREATED,
         )

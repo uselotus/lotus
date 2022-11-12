@@ -53,6 +53,7 @@ from metering_billing.views.views import (  # MergeCustomersView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
     TransferSubscriptionsView,
+    BalancedAdjustmentView
 )
 from rest_framework import routers
 
@@ -181,6 +182,11 @@ urlpatterns = [
         "api/organization/invite/",
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
+    ),
+    path(
+        "api/create_balance_adjustment/",
+        BalancedAdjustmentView.as_view(),
+        name="create_balance_adjustment",
     ),
 ]
 

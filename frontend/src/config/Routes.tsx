@@ -21,6 +21,7 @@ import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
+import CreateCredit from "../pages/CreateBalanceAdjustment";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -70,6 +71,7 @@ const AppRoutes: FC = () => {
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
+            <Route path="/customers-create-credit/:customerId" element={<CreateCredit />} />
             <Route
               path="/settings"
               element={

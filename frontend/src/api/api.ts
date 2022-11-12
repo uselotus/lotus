@@ -59,6 +59,7 @@ import {
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
 import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
+import {CreateBalanceAdjustmentType} from "../types/balance-adjustment";
 
 const cookies = new Cookies();
 
@@ -346,4 +347,9 @@ export const Invoices = {
       payment_status: data.payment_status,
     });
   },
+};
+
+export const BalanceAdjustment = {
+    createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
+        requests.post("api/create_balance_adjustment/", post),
 };
