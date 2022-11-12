@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 
 import pytz
 import stripe
+from dateutil import parser
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
 from djmoney.money import Money
@@ -143,8 +144,8 @@ class StripeConnector(PaymentProvider):
 
     def update_payment_object_status(self, payment_object_id):
         stripe.api_key = self.secret_key
-        invoice = stripe.PaymentIntent.retrieve(payment_object_id)
-        if invoice.status == "succeeded":
+        invoice = stripe.Invoice.retrieve(payment_object_id)
+        if invoice.status == "paid":
             return INVOICE_STATUS.PAID
         else:
             return INVOICE_STATUS.UNPAID
@@ -227,7 +228,7 @@ class StripeConnector(PaymentProvider):
         from metering_billing.models import Invoice
 
         stripe.api_key = self.secret_key
-        invoices = stripe.PaymentIntent.list(
+        invoices = stripe.Invoice.list(
             customer=customer.integrations[PAYMENT_PROVIDERS.STRIPE]["id"]
         )
         lotus_invoices = []
@@ -237,7 +238,7 @@ class StripeConnector(PaymentProvider):
             ).exists():
                 continue
             cost_due = Money(
-                Decimal(stripe_invoice.amount) / 100, stripe_invoice.currency
+                Decimal(stripe_invoice.amount_due) / 100, stripe_invoice.currency
             )
             invoice_kwargs = {
                 "customer": customer,
@@ -315,10 +316,13 @@ class StripeConnector(PaymentProvider):
         ).get("id")
         assert stripe_customer_id is not None, "Customer does not have a Stripe ID"
         invoice_kwargs = {
+            "auto_advance": True,
             "customer": stripe_customer_id,
+            # "automatic_tax": {
+            #     "enabled": True,
+            # },
+            "description": "Invoice from {}".format(customer.organization.company_name),
             "currency": invoice.cost_due.currency,
-            "payment_method_types": ["card"],
-            "amount": decimal_to_cents(invoice.cost_due.amount),
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
@@ -329,7 +333,63 @@ class StripeConnector(PaymentProvider):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
-        stripe_invoice = stripe.PaymentIntent.create(**invoice_kwargs)
+        for line_item in invoice.line_items["line_items"]:
+            name = line_item["name"]
+            amount = line_item["subtotal"]
+            customer = stripe_customer_id
+            currency = invoice.cost_due.currency
+            description = line_item["name"]
+            period = {
+                "start": int(parser.parse(line_item["start_date"]).timestamp()),
+                "end": int(parser.parse(line_item["end_date"]).timestamp()),
+            }
+            tax_behavior = "exclusive"
+            inv_dict = {
+                "description": name,
+                "amount": int(amount * 100),
+                "customer": customer,
+                "currency": currency,
+                "description": description,
+                "period": period,
+                "tax_behavior": tax_behavior,
+            }
+            stripe.InvoiceItem.create(**inv_dict)
+        for plan_name, original_plan_amount in invoice.line_items[
+            "subtotal_by_plan"
+        ].items():
+            adjusted_plan_amount = invoice.line_items[
+                "subtotal_by_plan_after_adjustments"
+            ][plan_name]["amount"]
+            if adjusted_plan_amount != original_plan_amount:
+                stripe.InvoiceItem.create(
+                    customer=stripe_customer_id,
+                    currency=invoice.cost_due.currency,
+                    amount=int((adjusted_plan_amount - original_plan_amount) * 100),
+                    description="Adjustment for plan {}: {}".format(
+                        plan_name,
+                        invoice.line_items["subtotal_by_plan_after_adjustments"][
+                            plan_name
+                        ]["price_adjustment"],
+                    ),
+                    tax_behavior="exclusive",
+                )
+        if invoice.line_items["already_paid"] != 0:
+            stripe.InvoiceItem.create(
+                customer=stripe_customer_id,
+                currency=invoice.cost_due.currency,
+                amount=int(invoice.line_items["already_paid"] * 100),
+                description="Adjustment for already paid amount",
+                tax_behavior="exclusive",
+            )
+        if invoice.line_items["customer_balance_adjustment"] != 0:
+            stripe.InvoiceItem.create(
+                customer=stripe_customer_id,
+                currency=invoice.cost_due.currency,
+                amount=int(invoice.line_items["customer_balance_adjustment"] * 100),
+                description="Adjustment for customer balance",
+                tax_behavior="exclusive",
+            )
+        stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
         return stripe_invoice.id
 
     def get_post_data_serializer(self) -> serializers.Serializer:
