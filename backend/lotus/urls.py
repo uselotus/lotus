@@ -182,6 +182,7 @@ urlpatterns = [
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
     ),
+    path("stripe/", include("djstripe.urls", namespace="djstripe")),
 ]
 
 if PROFILER_ENABLED:
