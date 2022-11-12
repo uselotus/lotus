@@ -2,7 +2,7 @@ import {Button, Dropdown, Menu, Table, Tag, Tooltip} from "antd";
 import { FC } from "react";
 // @ts-ignore
 import React from "react";
-import {BalancedAdjustments, InvoiceType, MarkInvoiceStatusAsPaid} from "../../types/invoice-type";
+import {BalanceAdjustments, InvoiceType, MarkInvoiceStatusAsPaid} from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
 import { useMutation } from "react-query";
@@ -15,10 +15,10 @@ import {integrationsMap} from "../../types/payment-processor-type";
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href
 
 interface Props {
-  balancedAdjustments: BalancedAdjustments[];
+  balanceAdjustments: BalanceAdjustments[];
 }
 
-const CustomerBalancedAdjustments: FC<Props> = ({ balancedAdjustments }) => {
+const CustomerBalancedAdjustments: FC<Props> = ({ balanceAdjustments }) => {
 
   const columns = [
     {
@@ -63,10 +63,10 @@ const CustomerBalancedAdjustments: FC<Props> = ({ balancedAdjustments }) => {
   return (
     <div>
       <h2 className="mb-5">Balanced Adjustments</h2>
-      {!!balancedAdjustments?.length ?  (
+      {!!balanceAdjustments?.length ?  (
         <Table
           columns={columns}
-          dataSource={balancedAdjustments}
+          dataSource={balanceAdjustments}
           pagination={{ pageSize: 10 }}
         />
       ) : (

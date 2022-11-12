@@ -9,7 +9,7 @@ export interface InvoiceType {
   external_payment_obj_type:string
 }
 
-export interface BalancedAdjustments {
+export interface BalanceAdjustments {
     amount:number,
     amount_currency:string
     description:string

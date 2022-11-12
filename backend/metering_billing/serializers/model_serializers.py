@@ -1304,7 +1304,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "customer_id",
             "email",
             "customer_name",
-            "balanced_adjustments",
+            "balance_adjustments",
             "invoices",
             "total_amount_due",
             "subscriptions",
@@ -1312,7 +1312,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 
     subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
     invoices = serializers.SerializerMethodField()
-    balanced_adjustments = serializers.SerializerMethodField()
+    balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
 
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
@@ -1320,8 +1320,8 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         timeline = InvoiceSerializer(timeline, many=True).data
         return timeline
 
-    def get_balanced_adjustments(self, obj) -> CustomerBalanceAdjustmentSerializer(many=True):
-        timeline = self.context.get("balanced_adjustments")
+    def get_balance_adjustments(self, obj) -> CustomerBalanceAdjustmentSerializer(many=True):
+        timeline = self.context.get("balance_adjustments")
         timeline = CustomerBalanceAdjustmentSerializer(timeline, many=True).data
         return timeline
 

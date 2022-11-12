@@ -423,7 +423,7 @@ class CustomerDetailView(APIView):
             customer=customer,
         )
 
-        balanced_adjustments = CustomerBalanceAdjustment.objects.filter(
+        balance_adjustments = CustomerBalanceAdjustment.objects.filter(
                     customer=customer,
                 )
         serializer = CustomerDetailSerializer(
@@ -431,7 +431,7 @@ class CustomerDetailView(APIView):
             context={
                 "total_amount_due": total_amount_due,
                 "invoices": invoices,
-                "balanced_adjustments": balanced_adjustments,
+                "balance_adjustments": balance_adjustments,
             },
         )
         return Response(serializer.data, status=status.HTTP_200_OK)

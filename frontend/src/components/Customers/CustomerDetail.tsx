@@ -194,7 +194,7 @@ function CustomerDetail(props: {
                 <CustomerInvoiceView invoices={data?.invoices} />
               </Tabs.TabPane>
               <Tabs.TabPane tab="Credits" key="credits">
-                    <CustomerBalancedAdjustments balancedAdjustments={data?.balanced_adjustments} />
+                    <CustomerBalancedAdjustments balanceAdjustments={data?.balance_adjustments} />
                 </Tabs.TabPane>{" "}
             </Tabs>
           </div>
