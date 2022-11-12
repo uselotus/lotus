@@ -45,6 +45,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
 
+  const activeVersion = versions.find((x) => x.status === "active")?.version;
+
   const isSelectedVersion = (other_id: string) =>
     selectedVersion.version_id === other_id;
 
@@ -119,7 +121,10 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             <span className="pr-6">Plan Information</span>
             <StateTabs
               activeTab={capitalizedState}
-              tabs={["Active", "Grandfathered", "Inactive"]}
+              version_id={selectedVersion.version_id}
+              version={selectedVersion.version}
+              activeVersion={activeVersion}
+              tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
             />
           </div>
 
