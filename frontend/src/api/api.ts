@@ -66,6 +66,7 @@ axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
 )}`;
 
+// @ts-ignore
 const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
@@ -341,7 +342,7 @@ export const PaymentProcessorIntegration = {
 };
 
 export const Invoices = {
-  markStatusAsPaid: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
+  changeStatus: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
     return requests.patch(`api/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     });

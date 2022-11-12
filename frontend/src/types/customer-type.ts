@@ -1,6 +1,6 @@
 import { PlanDisplay } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
-import { InvoiceType } from "./invoice-type";
+import {BalancedAdjustments, InvoiceType} from "./invoice-type";
 
 export interface CustomerType {
   customer_name: string;
@@ -18,6 +18,7 @@ export interface CustomerDetailType extends CustomerType {
   subscriptions: CustomerDetailSubscription[];
   billing_address: string;
   invoices: InvoiceType[];
+  balanced_adjustments: BalancedAdjustments[];
 }
 
 export interface CustomerPlus extends CustomerType {

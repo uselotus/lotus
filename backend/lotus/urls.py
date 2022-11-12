@@ -41,6 +41,7 @@ from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
     CustomerDetailView,
+    CustomerBalanceAdjustmentView,
     CustomersSummaryView,
     CustomersWithRevenueView,
     DraftInvoiceView,

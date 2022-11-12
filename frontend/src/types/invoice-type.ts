@@ -6,6 +6,16 @@ export interface InvoiceType {
   payment_status: string;
   line_items: LineItem[];
   customer: InvoiceCustomer;
+  external_payment_obj_type:string
+}
+
+export interface BalancedAdjustments {
+    amount:number,
+    amount_currency:string
+    description:string
+    created:string
+    effective_at:string
+    expires_at:string
 }
 
 interface InvoiceCustomer {

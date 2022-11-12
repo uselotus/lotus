@@ -1,5 +1,6 @@
 from actstream.models import Action
 from django.db.models import Q
+from datetime import timedelta
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateBillableMetric
 from metering_billing.models import (
@@ -7,6 +8,7 @@ from metering_billing.models import (
     BillableMetric,
     CategoricalFilter,
     Customer,
+    CustomerBalanceAdjustment,
     Event,
     ExternalPlanLink,
     Feature,
@@ -1266,6 +1268,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "cust_connected_to_payment_provider",
             "org_connected_to_cust_payment_provider",
             "external_payment_obj_id",
+            "external_payment_obj_type",
             "line_items",
             "organization",
             "customer",
@@ -1280,6 +1283,19 @@ class InvoiceSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
 
+class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerBalanceAdjustment
+        fields = (
+            "customer",
+            "amount",
+            "amount_currency",
+            "description",
+            "created",
+            "effective_at",
+            "expires_at",
+        )
+
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -1288,6 +1304,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "customer_id",
             "email",
             "customer_name",
+            "balanced_adjustments",
             "invoices",
             "total_amount_due",
             "subscriptions",
@@ -1295,11 +1312,17 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 
     subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
     invoices = serializers.SerializerMethodField()
+    balanced_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
 
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
+        return timeline
+
+    def get_balanced_adjustments(self, obj) -> CustomerBalanceAdjustmentSerializer(many=True):
+        timeline = self.context.get("balanced_adjustments")
+        timeline = CustomerBalanceAdjustmentSerializer(timeline, many=True).data
         return timeline
 
     def get_total_amount_due(self, obj) -> float:
