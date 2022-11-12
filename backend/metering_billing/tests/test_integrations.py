@@ -148,9 +148,9 @@ class TestStripeIntegration:
         )
         assert new_status == INVOICE_STATUS.UNPAID
         # now add payment method
-        stripe.Invoice.confirm(
+        stripe.Invoice.pay(
             invoice.external_payment_obj_id,
-            payment_method="pm_card_visa",
+            paid_out_of_band=True,
         )
         new_status = stripe_connector.update_payment_object_status(
             invoice.external_payment_obj_id
@@ -163,8 +163,13 @@ class TestStripeIntegration:
             .exclude(external_payment_obj_id__exact="")
             .count()
         )
-        stripe_pi2 = stripe.Invoice.create(
-            amount_due=5000,
+        bogus_invoice_item = stripe.InvoiceItem.create(
+            customer=new_cust.integrations["stripe"]["id"],
+            amount=1000,
+            currency="usd",
+            description="Bogus Invoice Item",
+        )
+        bogus_invoice = stripe.Invoice.create(
             currency="usd",
             # payment_method="pm_card_visa",
             customer=new_cust.integrations["stripe"]["id"],
