@@ -14,6 +14,19 @@ class PAYMENT_PLANS(models.TextChoices):
     SELF_HOSTED_ENTERPRISE = ("self_hosted_enterprise", _("Self-Hosted Enterprise"))
 
 
+class PRICE_TIER_TYPE(models.TextChoices):
+    FLAT = ("flat", _("Flat"))
+    PER_UNIT = ("per_unit", _("Per Unit"))
+    FREE = ("free", _("Free"))
+
+
+class BATCH_ROUNDING_TYPE(models.TextChoices):
+    ROUND_UP = ("round_up", _("Round Up"))
+    ROUND_DOWN = ("round_down", _("Round Down"))
+    ROUND_NEAREST = ("round_nearest", _("Round Nearest"))
+    NO_ROUNDING = ("no_rounding", _("No Rounding"))
+
+
 class METRIC_AGGREGATION(models.TextChoices):
     COUNT = ("count", _("Count"))
     SUM = ("sum", _("Sum"))

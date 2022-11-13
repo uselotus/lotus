@@ -39,7 +39,7 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
     summary_dict = {"line_items": []}
     # usage calculation
     if subscription.end_date < issue_date:
-        for plan_component in billing_plan.components.all():
+        for plan_component in billing_plan.plan_components.all():
             usg_rev = plan_component.calculate_total_revenue(subscription)
             line_item = {
                 "name": plan_component.billable_metric.billable_metric_name,

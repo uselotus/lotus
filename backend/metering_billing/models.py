@@ -1,4 +1,5 @@
 import datetime
+import math
 import uuid
 from decimal import Decimal
 from random import choices
@@ -30,6 +31,7 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
+    BATCH_ROUNDING_TYPE,
     CATEGORICAL_FILTER_OPERATORS,
     EVENT_TYPE,
     FLAT_FEE_BILLING_TYPE,
@@ -45,6 +47,7 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_ADJUSTMENT_TYPE,
+    PRICE_TIER_TYPE,
     PRODUCT_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
@@ -400,9 +403,66 @@ class UsageRevenueSummary(TypedDict):
     usage_qty: Decimal
 
 
+class PriceTier(models.Model):
+    plan_component = models.ForeignKey(
+        "PlanComponent",
+        on_delete=models.CASCADE,
+        related_name="tiers",
+        null=True,
+        blank=True,
+    )
+    type = models.CharField(choices=PRICE_TIER_TYPE.choices, max_length=10)
+    range_start = models.DecimalField(max_digits=20, decimal_places=10)
+    range_end = models.DecimalField(
+        max_digits=20, decimal_places=10, null=True, blank=True
+    )
+    cost_per_batch = models.DecimalField(
+        decimal_places=10, max_digits=20, blank=True, null=True
+    )
+    metric_units_per_batch = models.DecimalField(
+        decimal_places=10, max_digits=20, blank=True, null=True
+    )
+    batch_rounding_type = models.CharField(
+        choices=BATCH_ROUNDING_TYPE.choices, max_length=20
+    )
+
+    def calculate_revenue(self, usage_dict: dict):
+        dict_len = len(usage_dict)
+        revenue = 0
+        for usage in usage_dict.values():
+            if self.type == PRICE_TIER_TYPE.FLAT:
+                if self.range_start < usage:
+                    revenue += self.cost_per_batch / dict_len
+            elif self.type == PRICE_TIER_TYPE.PER_UNIT:
+                if self.range_start < usage <= self.range_end:
+                    billable_units = min(
+                        usage - self.range_start, self.range_end - self.range_start
+                    )
+                    billable_batches = billable_units / self.metric_units_per_batch
+                    if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
+                        billable_batches = math.ceil(billable_batches)
+                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
+                        billable_batches = math.floor(billable_batches)
+                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
+                        billable_batches = round(billable_batches)
+                    revenue += (self.cost_per_batch * billable_batches) / dict_len
+        return revenue
+
+
 class PlanComponent(models.Model):
     billable_metric = models.ForeignKey(
-        BillableMetric, on_delete=models.CASCADE, related_name="+"
+        BillableMetric,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
+    plan_version = models.ForeignKey(
+        "PlanVersion",
+        on_delete=models.CASCADE,
+        related_name="plan_components",
+        null=True,
+        blank=True,
     )
     free_metric_units = models.DecimalField(
         decimal_places=10, max_digits=20, blank=True, null=True
@@ -432,40 +492,21 @@ class PlanComponent(models.Model):
         )
         # extract usage
         usage = usage.get(subscription.customer.customer_name, {})
-        if len(usage) > 1:  # this means it's a stateful metric
+        if len(usage) >= 1:
             usage_qty = sum(usage.values())
-            revenue = 0
-            for usage in usage.values():
-                billable_units = max(usage - self.free_metric_units, 0)
-                billable_batches = billable_units // self.metric_units_per_batch
-                usage_revenue = billable_batches * self.cost_per_batch
-                revenue += convert_to_decimal(usage_revenue)
-        elif len(usage) == 1:
-            _, usage_qty = list(usage.items())[0]
             usage_qty = convert_to_decimal(usage_qty)
-            if (
-                self.cost_per_batch == 0
-                or self.cost_per_batch is None
-                or self.metric_units_per_batch == 0
-                or self.metric_units_per_batch is None
-            ):
-                revenue = Decimal(0)
-            else:
-                free_units = self.free_metric_units or Decimal(0)
-                billable_units = max(usage_qty - free_units, 0)
-                billable_batches = billable_units // self.metric_units_per_batch
-                usage_revenue = billable_batches * self.cost_per_batch
-                revenue = convert_to_decimal(usage_revenue)
+            revenue = 0
+            for tier in self.tiers.all():
+                tier_revenue = tier.calculate_revenue(usage)
+                revenue += tier_revenue
+            revenue = convert_to_decimal(revenue)
         else:
             usage_qty = Decimal(0)
             revenue = Decimal(0)
-
-        # calculate revenue
-
         # wrap up and return
         revenue_dict = {
             "revenue": revenue,
-            "usage_qty": convert_to_decimal(usage_qty),
+            "usage_qty": usage_qty,
         }
 
         return revenue_dict

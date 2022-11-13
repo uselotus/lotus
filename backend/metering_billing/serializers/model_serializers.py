@@ -19,6 +19,7 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceAdjustment,
+    PriceTier,
     Product,
     Subscription,
     User,
@@ -33,6 +34,7 @@ from metering_billing.utils.enums import (
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
+    PRICE_TIER_TYPE,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
 )
@@ -398,18 +400,50 @@ class FeatureSerializer(serializers.ModelSerializer):
         )
 
 
+class PriceTierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PriceTier
+        fields = (
+            "type",
+            "range_start",
+            "range_end",
+            "cost_per_batch",
+            "metric_units_per_batch",
+            "batch_rounding_type",
+        )
+
+    def validate(self, data):
+        data = super().validate(data)
+        assert data.get("range_start") and data.get("range_start") >= 0
+        assert (
+            data.get("range_end") > data.get("range_start")
+            or data.get("range_end") == None
+        )
+        if data.get("type") == PRICE_TIER_TYPE.FLAT:
+            assert data.get("cost_per_batch")
+            data["metric_units_per_batch"] = None
+            data["batch_rounding_type"] = None
+        elif data.get("type") == PRICE_TIER_TYPE.FREE:
+            data["cost_per_batch"] = None
+            data["metric_units_per_batch"] = None
+            data["batch_rounding_type"] = None
+        elif data.get("type") == PRICE_TIER_TYPE.PER_UNIT:
+            assert data.get("metric_units_per_batch")
+            assert data.get("cost_per_batch")
+            assert data.get("batch_rounding_type")
+        else:
+            raise serializers.ValidationError("Invalid price tier type")
+        return data
+
+    def create(self, validated_data):
+        return PriceTier.objects.create(**validated_data)
+
+
 ## PLAN COMPONENT
 class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
-        fields = (
-            "billable_metric_name",
-            "billable_metric",
-            "free_metric_units",
-            "cost_per_batch",
-            "metric_units_per_batch",
-            "max_metric_units",
-        )
+        fields = ("billable_metric_name", "billable_metric", "tiers")
         read_only_fields = ["billable_metric"]
 
     # READ-ONLY
@@ -424,50 +458,32 @@ class PlanComponentSerializer(serializers.ModelSerializer):
     )
 
     # both
-    free_metric_units = serializers.FloatField(allow_null=True, default=0)
-    cost_per_batch = serializers.FloatField(allow_null=True, default=0)
-    metric_units_per_batch = serializers.FloatField(allow_null=True, default=1)
+    tiers = PriceTierSerializer(many=True)
 
     def validate(self, data):
-        # fmu, cpb, and mupb must all be none or all be not none
-        fmu = data.get("free_metric_units", None)
-        cpb = data.get("cost_per_batch", None)
-        mupb = data.get("metric_units_per_batch", None)
-        together = [
-            fmu is not None,
-            cpb is not None,
-            mupb is not None,
-        ]
-        if not (all(together) or not any(together)):
-            raise serializers.ValidationError(
-                "Must specify exactly all or none of free_metric_units, cost_per_batch, metric_units_per_batch. Currently, free_metric_units: {}, cost_per_batch: {}, metric_units_per_batch: {}".format(
-                    *together
-                )
-            )
-        # cant have zero or negative units per batch
-        if (
-            data.get("metric_units_per_batch") is not None
-            and data.get("metric_units_per_batch") <= 0
-        ):
-            raise serializers.ValidationError(
-                "metric_units_per_batch must be greater than 0"
-            )
-        # free units can't be greater than max units
-        if (
-            data.get("free_metric_units") is not None
-            and data.get("max_metric_units") is not None
-            and data["free_metric_units"] > data["max_metric_units"]
-        ):
-            raise serializers.ValidationError(
-                "Free metric units cannot be greater than max metric units."
-            )
-        return super().validate(data)
+        data = super().validate(data)
+        tiers = data.get("tiers")
+        assert len(tiers) > 0, "Must have at least one price tier"
+        tiers_sorted = sorted(tiers, key=lambda x: x["range_start"])
+        assert tiers_sorted[0]["range_start"] == 0, "First tier must start at 0"
+        assert all(
+            x["range_end"] for x in tiers_sorted[:-1]
+        ), "All tiers must have an end, last one is the only one allowed to have open end"
+        for i, tier in enumerate(tiers_sorted[:-1]):
+            assert (
+                tier["range_end"] == tiers_sorted[i + 1]["range_start"]
+            ), "All tiers must be contiguous"
+        return data
 
     def create(self, validated_data):
         billable_metric = validated_data.pop("billable_metric_name")
         pc = PlanComponent.objects.create(
             billable_metric=billable_metric, **validated_data
         )
+        for tier in validated_data["tiers"]:
+            assert type(tier) == PriceTier
+            tier.plan_component = pc
+            tier.save()
         return pc
 
 
@@ -633,11 +649,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
     active_subscriptions = serializers.IntegerField(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # We pass the "upper serializer" context to the "nested one"
-        self.fields["components"].context.update(self.context)
-
     def get_created_by(self, obj) -> str:
         if obj.created_by != None:
             return obj.created_by.username
@@ -661,8 +672,9 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # exctract downstream components
         components_data = validated_data.pop("components", [])
+        if len(components_data) > 0:
+            assert type(components_data[0]) == PlanComponent
         features_data = validated_data.pop("features", [])
         price_adjustment_data = validated_data.pop("price_adjustment", None)
         make_active = validated_data.pop("make_active", False)
@@ -678,12 +690,9 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             )
         billing_plan = PlanVersion.objects.create(**validated_data)
         org = billing_plan.organization
-        for component_data in components_data:
-            try:
-                pc, _ = PlanComponent.objects.get_or_create(**component_data)
-            except PlanComponent.MultipleObjectsReturned:
-                pc = PlanComponent.objects.filter(**component_data).first()
-            billing_plan.components.add(pc)
+        for component in components_data:
+            component.plan_version = billing_plan
+            component.save()
         for feature_data in features_data:
             feature_data["organization"] = org
             try:
