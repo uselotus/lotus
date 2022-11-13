@@ -11,10 +11,15 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceAdjustment,
+    PriceTier,
     Subscription,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import INVOICE_STATUS, PRICE_ADJUSTMENT_TYPE
+from metering_billing.utils.enums import (
+    INVOICE_STATUS,
+    PRICE_ADJUSTMENT_TYPE,
+    PRICE_TIER_TYPE,
+)
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -83,17 +88,29 @@ def draft_invoice_test_common_setup(
         product = add_product_to_org(org)
         plan = add_plan_to_product(product)
         plan_version = add_plan_version_to_plan(plan)
-        plan_component_set = baker.make(
-            PlanComponent,
-            billable_metric=itertools.cycle(metric_set),
-            free_metric_units=itertools.cycle([50, 0, 1]),
-            cost_per_batch=itertools.cycle([5, 0.05, 2]),
-            metric_units_per_batch=itertools.cycle([100, 1, 1]),
-            _quantity=3,
-        )
-        setup_dict["plan_components"] = plan_component_set
-        plan_version.components.add(*plan_component_set)
-        plan_version.save()
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=plan_version,
+                billable_metric=metric_set[i],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PRICE_TIER_TYPE.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PRICE_TIER_TYPE.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
         setup_dict["billing_plan"] = plan_version
         subscription = Subscription.objects.create(
             organization=org,

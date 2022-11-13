@@ -9,10 +9,15 @@ from metering_billing.models import (
     Feature,
     PlanComponent,
     PlanVersion,
+    PriceTier,
     Subscription,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import METRIC_AGGREGATION, METRIC_TYPE
+from metering_billing.utils.enums import (
+    METRIC_AGGREGATION,
+    METRIC_TYPE,
+    PRICE_TIER_TYPE,
+)
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -106,26 +111,39 @@ def get_access_test_common_setup(
             plan=plan,
             flat_rate=30.0,
         )
-        plan_component_set = baker.make(
-            PlanComponent,  # sum char (over), max bw (ok), count (ok)
-            billable_metric=itertools.cycle(
-                deny_limit_metric_set + allow_limit_metric_set + allow_free_metric_set
-            ),
-            free_metric_units=itertools.cycle([1, 1, 20]),
-            cost_per_batch=itertools.cycle([10, 10, 10]),
-            metric_units_per_batch=itertools.cycle([1, 1, 1]),
-            max_metric_units=itertools.cycle([3, 6, 20]),
-            _quantity=3,
+        metric_set = (
+            deny_limit_metric_set + allow_limit_metric_set + allow_free_metric_set
         )
+        for i, (fmu, cpb, mupb, range_end) in enumerate(
+            zip([1, 1, 20], [10, 10, 10], [1, 1, 1], [3, 6, 20])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=metric_set[i],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PRICE_TIER_TYPE.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PRICE_TIER_TYPE.PER_UNIT,
+                range_start=start,
+                range_end=range_end,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
         feature_set = baker.make(
             Feature,
             organization=org,
             feature_name=itertools.cycle(["feature1", "feature2"]),
             _quantity=2,
         )
-        setup_dict["plan_components"] = plan_component_set
-        billing_plan.components.add(*plan_component_set)
-        billing_plan.save()
         setup_dict["features"] = feature_set
         billing_plan.features.add(*feature_set[:1])
         billing_plan.save()

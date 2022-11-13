@@ -420,24 +420,31 @@ class PriceTier(models.Model):
         decimal_places=10, max_digits=20, blank=True, null=True
     )
     metric_units_per_batch = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
+        decimal_places=10, max_digits=20, blank=True, null=True, default=1.0
     )
     batch_rounding_type = models.CharField(
-        choices=BATCH_ROUNDING_TYPE.choices, max_length=20
+        choices=BATCH_ROUNDING_TYPE.choices,
+        max_length=20,
+        default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
+        blank=True,
+        null=True,
     )
 
     def calculate_revenue(self, usage_dict: dict):
         dict_len = len(usage_dict)
         revenue = 0
         for usage in usage_dict.values():
-            if self.type == PRICE_TIER_TYPE.FLAT:
-                if self.range_start < usage:
+            usage = convert_to_decimal(usage)
+            if self.range_start < usage:
+                if self.type == PRICE_TIER_TYPE.FLAT:
                     revenue += self.cost_per_batch / dict_len
-            elif self.type == PRICE_TIER_TYPE.PER_UNIT:
-                if self.range_start < usage <= self.range_end:
-                    billable_units = min(
-                        usage - self.range_start, self.range_end - self.range_start
-                    )
+                elif self.type == PRICE_TIER_TYPE.PER_UNIT:
+                    if self.range_end is not None:
+                        billable_units = min(
+                            usage - self.range_start, self.range_end - self.range_start
+                        )
+                    else:
+                        billable_units = usage - self.range_start
                     billable_batches = billable_units / self.metric_units_per_batch
                     if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
                         billable_batches = math.ceil(billable_batches)

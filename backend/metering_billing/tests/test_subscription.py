@@ -12,10 +12,15 @@ from metering_billing.models import (
     Invoice,
     PlanComponent,
     PlanVersion,
+    PriceTier,
     Subscription,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import REPLACE_IMMEDIATELY_TYPE, SUBSCRIPTION_STATUS
+from metering_billing.utils.enums import (
+    PRICE_TIER_TYPE,
+    REPLACE_IMMEDIATELY_TYPE,
+    SUBSCRIPTION_STATUS,
+)
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -83,17 +88,29 @@ def subscription_test_common_setup(
         )
         plan.display_version = billing_plan
         plan.save()
-        plan_component_set = baker.make(
-            PlanComponent,
-            billable_metric=itertools.cycle(metric_set),
-            free_metric_units=itertools.cycle([50, 0, 1]),
-            cost_per_batch=itertools.cycle([5, 0.05, 2]),
-            metric_units_per_batch=itertools.cycle([100, 1, 1]),
-            _quantity=3,
-        )
-        setup_dict["plan_components"] = plan_component_set
-        billing_plan.components.add(*plan_component_set)
-        billing_plan.save()
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=metric_set[i],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PRICE_TIER_TYPE.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PRICE_TIER_TYPE.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
         setup_dict["billing_plan"] = billing_plan
 
         (customer,) = add_customers_to_org(org, n=1)
