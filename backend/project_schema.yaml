@@ -2005,6 +2005,13 @@ components:
             $ref: '#/components/schemas/Event'
       required:
       - batch
+    BatchRoundingTypeEnum:
+      enum:
+      - round_up
+      - round_down
+      - round_nearest
+      - no_rounding
+      type: string
     BillableAggregationTypeEnum:
       enum:
       - count
@@ -2466,49 +2473,40 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/PaymentProcessorEnum'
         external_plan_id:
           type: string
           maxLength: 100
-        source:
-          $ref: '#/components/schemas/PaymentProcessorEnum'
       required:
       - external_plan_id
       - source
     InitialPlanVersion:
       type: object
       properties:
-        created_on:
+        description:
           type: string
-          format: date-time
+          nullable: true
+          maxLength: 200
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         active_subscriptions:
           type: integer
           readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        version:
-          type: integer
+        created_on:
+          type: string
+          format: date-time
           readOnly: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
         created_by:
-          type: string
-          readOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        version_id:
           type: string
           readOnly: true
         flat_rate:
@@ -2518,10 +2516,19 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        description:
+        version_id:
           type: string
+          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        version:
+          type: integer
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
           nullable: true
-          maxLength: 200
       required:
       - active_subscriptions
       - created_by
@@ -3038,44 +3045,30 @@ components:
           allOf:
           - $ref: '#/components/schemas/BillableMetric'
           readOnly: true
-        free_metric_units:
-          type: number
-          format: double
-          nullable: true
-          default: 0.0
-        cost_per_batch:
-          type: number
-          format: double
-          nullable: true
-          default: 0.0
-        metric_units_per_batch:
-          type: number
-          format: double
-          nullable: true
-          default: 1.0
-        max_metric_units:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-          nullable: true
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceTier'
       required:
       - billable_metric
       - billable_metric_name
+      - tiers
     PlanDetail:
       type: object
       properties:
-        created_on:
-          type: string
-          format: date-time
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        num_versions:
+          type: integer
           readOnly: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        plan_id:
+          type: string
+          maxLength: 100
         active_subscriptions:
           type: integer
           readOnly: true
@@ -3088,34 +3081,30 @@ components:
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        product_id:
-          type: string
-          nullable: true
-        created_by:
-          type: string
-          readOnly: true
-        num_versions:
-          type: integer
-          readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        plan_id:
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        created_by:
           type: string
-          maxLength: 100
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+          readOnly: true
+        product_id:
+          type: string
+          nullable: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3296,6 +3285,51 @@ components:
       - fixed
       - price_override
       type: string
+    PriceTier:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        range_start:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        range_end:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
+        cost_per_batch:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
+        metric_units_per_batch:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          nullable: true
+        batch_rounding_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/BatchRoundingTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+      required:
+      - range_start
+      - type
     Product:
       type: object
       properties:
@@ -3674,6 +3708,12 @@ components:
       required:
       - detail
       - status
+    TypeEnum:
+      enum:
+      - flat
+      - per_unit
+      - free
+      type: string
     UsageAggregationTypeEnum:
       enum:
       - count
