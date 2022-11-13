@@ -7,8 +7,8 @@ const VersionActiveForm = (props: {
   onCancel: () => void;
   onOk: (active: boolean, activeType: string) => void;
 }) => {
-  const [active, setActive] = useState<boolean>(false); //id of the target customer
-  const [activeType, setActiveType] = useState<string>(""); //id of the target customer
+  const [active, setActive] = useState<boolean>(false);
+  const [activeType, setActiveType] = useState<string>("");
 
   return (
     <Modal
