@@ -63,10 +63,9 @@ const ViewCustomers: FC = () => {
 
   //batch create customers
   const importCustomers = useMutation(
-    (post: CustomerType) => Customer.createCustomer(post),
+    (post: CustomerType[]) => Customer.batchCreate(post),
     {
       onSuccess: () => {
-        setVisible(false);
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_totals"]);
         toast.success("Customer created successfully", {
@@ -106,6 +105,9 @@ const ViewCustomers: FC = () => {
     <PageLayout
       title="Customers"
       extra={[
+        <Button type="primary" onClick={() => setVisibleImport(true)}>
+          Import Customers
+        </Button>,
         <Button type="primary" size="large" onClick={openCustomerModal}>
           Create Customer
         </Button>,
@@ -133,9 +135,17 @@ const ViewCustomers: FC = () => {
               // required, may be called several times
               // receives a list of parsed objects based on defined fields and user column mapping;
               // (if this callback returns a promise, the widget will wait for it before parsing more data)
+              const batchCustomers: CustomerType[] = [];
               for (var row of rows) {
-                console.log(row);
+                batchCustomers.push({
+                  customer_id: row.customer_id,
+                  customer_name: row.customer_name,
+                  email: row.email,
+                  payment_provider: row.payment_provider,
+                  payment_provider_id: row.payment_provider_id,
+                });
               }
+              importCustomers.mutate(batchCustomers);
             }}
             onComplete={({ file, preview, fields, columnFields }) => {
               // optional, invoked right after import is done (but user did not dismiss/reset the widget yet)

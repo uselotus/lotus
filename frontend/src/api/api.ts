@@ -96,6 +96,8 @@ export const Customer = {
     requests.get(`api/customers/${customer_id}`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
     requests.post("api/customers/", post),
+  batchCreate: (post: CustomerType[]): Promise<CustomerType[]> =>
+    requests.post("api/batch_create_customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
   getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
