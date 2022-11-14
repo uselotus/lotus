@@ -166,6 +166,9 @@ class Customer(models.Model):
             id = v.get("id")
             if id is None:
                 raise ValueError(f"Payment provider {k} id was not provided")
+        Event.objects.filter(
+            organization=self.organization, cust_id=self.customer_id
+        ).update(customer=self)
         super(Customer, self).save(*args, **kwargs)
 
     def get_billing_plan_names(self) -> str:
@@ -265,11 +268,12 @@ class Event(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="+"
+        Organization, on_delete=models.CASCADE, related_name="+"
     )
     customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=False, related_name="+"
+        Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
+    cust_id = models.CharField(max_length=50, null=True, blank=True)
     event_name = models.CharField(max_length=200, null=False)
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)

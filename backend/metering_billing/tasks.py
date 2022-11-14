@@ -13,6 +13,7 @@ from django.db.models import Q
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
+    Customer,
     Event,
     Invoice,
     Organization,
@@ -142,6 +143,13 @@ def update_invoice_status():
 @shared_task
 def write_batch_events_to_db(events_list):
     event_obj_list = [Event(**dict(event)) for event in events_list]
+    customer_id_mappings = {}
+    for event in event_obj_list:
+        if event.cust_id not in customer_id_mappings:
+            customer_id_mappings[event.cust_id] = Customer.objects.filter(
+                organization=event.organization, customer_id=event.cust_id
+            ).first()
+        event.customer = customer_id_mappings[event.cust_id]
     Event.objects.bulk_create(event_obj_list)
 
 
