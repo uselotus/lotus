@@ -12,7 +12,6 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.backtest_serializers import *
-from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.request_serializers import *
 from metering_billing.serializers.response_serializers import *

@@ -11,7 +11,6 @@ from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.models import APIToken, Customer, Event
-from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
 from metering_billing.utils import now_utc
