@@ -273,49 +273,49 @@ class TestUpdateSub:
         assert len(after_canceled_subscriptions) == 1
         assert new_invoices_len == prev_invoices_len + 1
 
-    def test_end_subscription_dont_generate_invoice(
-        self, subscription_test_common_setup
-    ):
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=1, auth_method="session_auth"
-        )
+    # def test_end_subscription_dont_generate_invoice(
+    #     self, subscription_test_common_setup
+    # ):
+    #     setup_dict = subscription_test_common_setup(
+    #         num_subscriptions=1, auth_method="session_auth"
+    #     )
 
-        active_subscriptions = Subscription.objects.filter(
-            status="active",
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        prev_invoices_len = Invoice.objects.all().count()
-        assert len(active_subscriptions) == 1
+    #     active_subscriptions = Subscription.objects.filter(
+    #         status="active",
+    #         organization=setup_dict["org"],
+    #         customer=setup_dict["customer"],
+    #     )
+    #     prev_invoices_len = Invoice.objects.all().count()
+    #     assert len(active_subscriptions) == 1
 
-        payload = {
-            "status": SUBSCRIPTION_STATUS.ENDED,
-            "replace_immediately_type": REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_DONT_BILL,
-        }
-        response = setup_dict["client"].patch(
-            reverse(
-                "subscription-detail",
-                kwargs={"subscription_id": active_subscriptions[0].subscription_id},
-            ),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
+    #     payload = {
+    #         "status": SUBSCRIPTION_STATUS.ENDED,
+    #         "replace_immediately_type": REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_DONT_BILL,
+    #     }
+    #     response = setup_dict["client"].patch(
+    #         reverse(
+    #             "subscription-detail",
+    #             kwargs={"subscription_id": active_subscriptions[0].subscription_id},
+    #         ),
+    #         data=json.dumps(payload, cls=DjangoJSONEncoder),
+    #         content_type="application/json",
+    #     )
 
-        after_active_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        after_canceled_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ENDED,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        new_invoices_len = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_200_OK
-        assert len(after_active_subscriptions) + 1 == len(active_subscriptions)
-        assert len(after_canceled_subscriptions) == 1
-        assert new_invoices_len == prev_invoices_len
+    #     after_active_subscriptions = Subscription.objects.filter(
+    #         status=SUBSCRIPTION_STATUS.ACTIVE,
+    #         organization=setup_dict["org"],
+    #         customer=setup_dict["customer"],
+    #     )
+    #     after_canceled_subscriptions = Subscription.objects.filter(
+    #         status=SUBSCRIPTION_STATUS.ENDED,
+    #         organization=setup_dict["org"],
+    #         customer=setup_dict["customer"],
+    #     )
+    #     new_invoices_len = Invoice.objects.all().count()
+    #     assert response.status_code == status.HTTP_200_OK
+    #     assert len(after_active_subscriptions) + 1 == len(active_subscriptions)
+    #     assert len(after_canceled_subscriptions) == 1
+    #     assert new_invoices_len == prev_invoices_len
 
     def test_replace_bp_and_create_new_sub(
         self, subscription_test_common_setup, add_plan_to_product

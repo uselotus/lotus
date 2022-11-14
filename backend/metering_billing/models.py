@@ -187,12 +187,13 @@ class Customer(models.Model):
             .prefetch_related("billing_plan__components__billable_metric")
             .select_related("billing_plan")
         )
-        subscription_usages = {"subscriptions": []}
+        subscription_usages = {"subscriptions": [], "sub_objects": []}
         for subscription in customer_subscriptions:
             sub_dict = subscription.get_usage_and_revenue()
             del sub_dict["components"]
             sub_dict["billing_plan_name"] = subscription.billing_plan.plan.plan_name
             subscription_usages["subscriptions"].append(sub_dict)
+            subscription_usages["sub_objects"].append(subscription)
 
         return subscription_usages
 
@@ -206,11 +207,13 @@ class Customer(models.Model):
         return balance
 
     def get_outstanding_revenue(self):
+        usg_rev = self.get_usage_and_revenue()
         active_sub_amount_due = sum(
-            x["total_amount_due"] for x in self.get_usage_and_revenue()["subscriptions"]
+            x["total_amount_due"] for x in usg_rev["subscriptions"]
         )
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
+            .exclude(subscription__in=usg_rev["sub_objects"])
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
@@ -822,10 +825,10 @@ class Plan(models.Model):
                     ):
                         sub.switch_subscription_bp(billing_plan=new_version)
                     else:
-                        sub.end_subscription_now(
-                            bill=replace_immediately_type
-                            == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
+                        bill_usage = (
+                            REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
                         )
+                        sub.end_subscription_now(bill_usage=bill_usage, prorate=True)
                         Subscription.objects.create(
                             billing_plan=new_version,
                             organization=self.organization,
@@ -934,6 +937,15 @@ class Subscription(models.Model):
                     }
         super(Subscription, self).save(*args, **kwargs)
 
+    def amount_already_invoiced(self):
+        flat_fee_prev_invoices = self.flat_fee_already_billed or 0
+        billed_invoices = self.invoices.filter(
+            ~Q(payment_status=INVOICE_STATUS.VOIDED)
+            & ~Q(payment_status=INVOICE_STATUS.DRAFT)
+        ).aggregate(tot=Sum("cost_due"))["tot"]
+
+        return flat_fee_prev_invoices + (billed_invoices or 0)
+
     def get_usage_and_revenue(self):
         sub_dict = {}
         sub_dict["components"] = []
@@ -958,7 +970,7 @@ class Subscription(models.Model):
         )
         return sub_dict
 
-    def end_subscription_now(self, bill=True):
+    def end_subscription_now(self, bill_usage=True, prorate=True):
         if self.status != SUBSCRIPTION_STATUS.ACTIVE:
             raise Exception(
                 "Subscription needs to be active to end it. Subscription status is {}".format(
@@ -967,8 +979,11 @@ class Subscription(models.Model):
             )
         self.auto_renew = False
         self.end_date = now_utc()
-        if bill:
-            generate_invoice(self)
+        generate_invoice(
+            self,
+            flat_fee_behavior="prorate" if prorate else "full_amount",
+            include_usage=bill_usage,
+        )
         self.status = SUBSCRIPTION_STATUS.ENDED
         self.save()
 
@@ -983,8 +998,7 @@ class Subscription(models.Model):
         )
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            invoice = generate_invoice(self)
-            self.flat_fee_already_billed += Decimal(invoice.cost_due)
+            generate_invoice(self, include_usage=False, flat_fee_behavior="full_amount")
 
 
 class Backtest(models.Model):

@@ -1,4 +1,4 @@
-import {Button, Dropdown, Menu, Table, Tag, Tooltip} from "antd";
+import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import { FC } from "react";
 // @ts-ignore
 import React from "react";
@@ -9,10 +9,10 @@ import { useMutation } from "react-query";
 import { Invoices } from "../../api/api";
 import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
-import {integrationsMap} from "../../types/payment-processor-type";
+import { integrationsMap } from "../../types/payment-processor-type";
 
 // @ts-ignore
-const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href
+const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
 interface Props {
   invoices: InvoiceType[] | undefined;
@@ -23,7 +23,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
     (post: MarkInvoiceStatusAsPaid) => Invoices.changeStatus(post),
     {
       onSuccess: (data) => {
-        const status  = data.payment_status.toUpperCase()
+        const status = data.payment_status.toUpperCase();
         toast.success(`Successfully Changed Invoice Status to ${status}`, {
           position: toast.POSITION.TOP_CENTER,
         });
@@ -42,17 +42,23 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       dataIndex: "source",
       key: "source",
       render: (_, record) => (
-            <div className="flex">
-                {
-                 <Tooltip title={record.external_payment_obj_type ? "Stripe" : "Lotus"}>
-                     <img
-                         className="sourceIcon"
-                         src={ record.external_payment_obj_type ? integrationsMap.stripe.icon : lotusUrl}
-                         alt="Source icon"
-                     />
-                 </Tooltip>
+        <div className="flex">
+          {
+            <Tooltip
+              title={record.external_payment_obj_type ? "Stripe" : "Lotus"}
+            >
+              <img
+                className="sourceIcon"
+                src={
+                  record.external_payment_obj_type
+                    ? integrationsMap.stripe.icon
+                    : lotusUrl
                 }
-            </div>
+                alt="Source icon"
+              />
+            </Tooltip>
+          }
+        </div>
       ),
     },
     {
@@ -88,30 +94,50 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
           >
             {record.payment_status.toUpperCase()}
           </Tag>
-            { !record.external_payment_obj_type && (
-                <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
-                    <Dropdown overlay={
-                        <Menu>
-                            <Menu.Item
-                                key="1"
-                                onClick={() => {
-                                    changeStatus.mutate({
-                                        invoice_id: record.invoice_id,
-                                        payment_status: record.payment_status === "unpaid" ? "paid" : "unpaid"})
-                                    record.payment_status = record.payment_status === "unpaid" ? "paid" : "unpaid";
-                                }
-                                }
-                            >
-                                <div className="archiveLabel">{record.payment_status === "unpaid" ? "Mark As Paid" : "Mark As Unpaid"}</div>
-                            </Menu.Item>
-                        </Menu>
-                    } trigger={["click"]}>
-                        <Button type="text" size="small" onClick={(e) => e.preventDefault()}>
-                            <MoreOutlined />
-                        </Button>
-                    </Dropdown>
-                </div>
-            )}
+          {!record.external_payment_obj_type && (
+            <div
+              className="absolute right-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Dropdown
+                overlay={
+                  <Menu>
+                    <Menu.Item
+                      key="1"
+                      onClick={() => {
+                        changeStatus.mutate({
+                          invoice_id: record.invoice_id,
+                          payment_status:
+                            record.payment_status === "unpaid"
+                              ? "paid"
+                              : "unpaid",
+                        });
+                        record.payment_status =
+                          record.payment_status === "unpaid"
+                            ? "paid"
+                            : "unpaid";
+                      }}
+                    >
+                      <div className="archiveLabel">
+                        {record.payment_status === "unpaid"
+                          ? "Mark As Paid"
+                          : "Mark As Unpaid"}
+                      </div>
+                    </Menu.Item>
+                  </Menu>
+                }
+                trigger={["click"]}
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <MoreOutlined />
+                </Button>
+              </Dropdown>
+            </div>
+          )}
         </div>
       ),
     },

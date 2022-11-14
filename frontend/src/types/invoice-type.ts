@@ -6,16 +6,16 @@ export interface InvoiceType {
   payment_status: string;
   line_items: LineItem[];
   customer: InvoiceCustomer;
-  external_payment_obj_type:string
+  external_payment_obj_type: string;
 }
 
 export interface BalanceAdjustments {
-    amount:number,
-    amount_currency:string
-    description:string
-    created:string
-    effective_at:string
-    expires_at:string
+  amount: number;
+  amount_currency: string;
+  description: string;
+  created: string;
+  effective_at: string;
+  expires_at: string;
 }
 
 interface InvoiceCustomer {
@@ -36,5 +36,5 @@ interface LineItem {
 
 export interface MarkInvoiceStatusAsPaid {
   invoice_id: string;
-  payment_status: "paid" | "unpaid";
+  payment_status: "paid" | "unpaid" | "voided";
 }
