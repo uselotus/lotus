@@ -166,10 +166,10 @@ class Customer(models.Model):
             id = v.get("id")
             if id is None:
                 raise ValueError(f"Payment provider {k} id was not provided")
+        super(Customer, self).save(*args, **kwargs)
         Event.objects.filter(
             organization=self.organization, cust_id=self.customer_id
         ).update(customer=self)
-        super(Customer, self).save(*args, **kwargs)
 
     def get_billing_plan_names(self) -> str:
         subscription_set = Subscription.objects.filter(
