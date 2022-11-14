@@ -423,8 +423,8 @@ class CustomerDetailView(APIView):
         )
 
         balance_adjustments = CustomerBalanceAdjustment.objects.filter(
-                    customer=customer,
-                )
+            customer=customer,
+        )
         serializer = CustomerDetailSerializer(
             customer,
             context={
@@ -890,6 +890,7 @@ class PlansByNumCustomersView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class CustomerBalanceAdjustmentView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -914,18 +915,15 @@ class CustomerBalanceAdjustmentView(APIView):
         """
         organization = parse_organization(request)
         customer_id = request.query_params.get("customer_id")
-        customer_balances_adjustment = (
-                        CustomerBalanceAdjustment.objects.filter(
-                            customer_id=customer_id
-                        )
-                        .prefetch_related(
-                            Prefetch(
-                                "customer",
-                                queryset=Customer.objects.filter(organization=organization),
-                                to_attr="customers",
-                            ),
-                        )
-                    )
+        customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
+            customer_id=customer_id
+        ).prefetch_related(
+            Prefetch(
+                "customer",
+                queryset=Customer.objects.filter(organization=organization),
+                to_attr="customers",
+            ),
+        )
         if len(customer_balances_adjustment) == 0:
             return Response(
                 {

@@ -1277,6 +1277,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
 
+
 class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerBalanceAdjustment
@@ -1331,7 +1332,9 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         timeline = InvoiceSerializer(timeline, many=True).data
         return timeline
 
-    def get_balance_adjustments(self, obj) -> CustomerBalanceAdjustmentSerializer(many=True):
+    def get_balance_adjustments(
+        self, obj
+    ) -> CustomerBalanceAdjustmentSerializer(many=True):
         timeline = self.context.get("balance_adjustments")
         timeline = CustomerBalanceAdjustmentSerializer(timeline, many=True).data
         return timeline
