@@ -35,7 +35,7 @@ const StateTabs: FC<StateTabsProps> = ({
       }),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("plan_detail");
+        queryClient.invalidateQueries(["plan_detail"]);
       },
     }
   );
@@ -95,9 +95,11 @@ const StateTabs: FC<StateTabsProps> = ({
       ))}
       <Modal
         visible={visible}
-        onOk={() => setVisible(false)}
-        onCancel={() => {
+        onOk={() => {
           mutation.mutate(version_id);
+          setVisible(false);
+        }}
+        onCancel={() => {
           setVisible(false);
         }}
         title={"Are you sure you want to make v" + version + " active?"}

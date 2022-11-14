@@ -205,7 +205,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   };
 
   const deleteComponent = (name: string) => {
-    setComponentsData(componentsData.filter((item) => item.id !== name));
+    setComponentsData(componentsData.filter((item) => item.metric !== name));
   };
   const hideFeatureModal = () => {
     setFeatureVisible(false);

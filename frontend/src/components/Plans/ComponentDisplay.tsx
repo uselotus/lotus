@@ -32,7 +32,7 @@ export const ComponentDisplay: FC<{
                   size="small"
                   icon={<DeleteOutlined />}
                   danger
-                  onClick={() => deleteComponent(component.id)}
+                  onClick={() => deleteComponent(component.metric)}
                 />,
               ]}
             >
