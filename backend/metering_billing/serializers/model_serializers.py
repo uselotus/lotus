@@ -1,6 +1,7 @@
+from datetime import timedelta
+
 from actstream.models import Action
 from django.db.models import Q
-from datetime import timedelta
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateBillableMetric
 from metering_billing.models import (
@@ -29,6 +30,7 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import (
     EVENT_TYPE,
+    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_GRANULARITY,
@@ -976,6 +978,49 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             )
         return data
 
+    def create(self, validated_data):
+        sub = super().create(validated_data)
+        # new subscription means we need to create an invoice if its pay in advance
+        billing_plan_name = sub.billing_plan.plan.plan_name
+        billing_plan_version = sub.billing_plan.version
+        if sub.billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
+            invoice = Invoice.objects.create(
+                cost_due=sub.billing_plan.flat_rate,
+                issue_date=now_utc(),
+                payment_status=INVOICE_STATUS.UNPAID,
+                line_items=[
+                    {
+                        "name": f"{billing_plan_name} v{billing_plan_version} Flat Fee",
+                        "start_date": str(sub.start_date),
+                        "end_date": str(sub.end_date),
+                        "quantity": 1,
+                        "subtotal": float(sub.billing_plan.flat_rate.amount),
+                        "type": "In Advance",
+                    }
+                ],
+                organization=sub.organization,
+                customer=sub.customer,
+                subscription=sub,
+            )
+            invoice.cust_connected_to_payment_provider = False
+            invoice.org_connected_to_cust_payment_provider = False
+            for pp in sub.customer.integrations.keys():
+                if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+                    pp_connector = PAYMENT_PROVIDER_MAP[pp]
+                    customer_conn = pp_connector.customer_connected(sub.customer)
+                    org_conn = pp_connector.organization_connected(sub.organization)
+                    if customer_conn:
+                        invoice.cust_connected_to_payment_provider = True
+                    if customer_conn and org_conn:
+                        invoice.external_payment_obj_id = (
+                            pp_connector.create_payment_object(invoice)
+                        )
+                        invoice.external_payment_obj_type = pp
+                        invoice.org_connected_to_cust_payment_provider = True
+                        break
+            invoice.save()
+        return sub
+
 
 class SubscriptionInvoiceSerializer(SubscriptionSerializer):
     class Meta:
@@ -1052,10 +1097,13 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
         ):
             instance.switch_subscription_bp(new_bp)
         elif validated_data.get("status") or new_bp:
-            instance.end_subscription_now(
-                bill=validated_data.get("replace_immediately_type")
+            replace_type = validated_data.get("replace_immediately_type")
+            prorate = True if new_bp else False
+            bill_usage = (
+                replace_type
                 == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
             )
+            instance.end_subscription_now(prorate=prorate, bill_usage=bill_usage)
             if new_bp is not None:
                 Subscription.objects.create(
                     billing_plan=new_bp,

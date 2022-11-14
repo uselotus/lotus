@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 class INVOICE_STATUS(models.TextChoices):
     DRAFT = ("draft", _("Draft"))
+    VOIDED = ("voided", _("Voided"))
     PAID = ("paid", _("Paid"))
     UNPAID = ("unpaid", _("Unpaid"))
 
