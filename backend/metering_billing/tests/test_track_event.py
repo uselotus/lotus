@@ -116,8 +116,8 @@ class TestTrackEvent:
                     "event_name": event["event_name"],
                     "properties": event["properties"],
                     "time_created": event["time_created"],
-                    "organization_id": setup_dict["org"].pk,
-                    "customer_id": setup_dict["customer"].pk,
+                    "organization": setup_dict["org"],
+                    "cust_id": setup_dict["customer"].customer_id,
                 }
             )
         write_batch_events_to_db(events_list)
@@ -129,35 +129,35 @@ class TestTrackEvent:
             getattr(event, "idempotency_id") for event in customer_org_events
         ].count(setup_dict["idempotency_id"]) == 1
 
-    def test_request_invalid_if_customer_dont_exist(
-        self,
-        track_event_test_common_setup,
-        track_event_payload,
-        get_events_with_org_customer_id,
-        get_events_with_org,
-    ):
-        # idempotency_already_created=false, customer_id_exists = true
-        setup_dict = track_event_test_common_setup(
-            idempotency_already_created=False, customer_id_exists=False
-        )
-        time_created = now_utc()
+    # def test_request_invalid_if_customer_dont_exist(
+    #     self,
+    #     track_event_test_common_setup,
+    #     track_event_payload,
+    #     get_events_with_org_customer_id,
+    #     get_events_with_org,
+    # ):
+    #     # idempotency_already_created=false, customer_id_exists = true
+    #     setup_dict = track_event_test_common_setup(
+    #         idempotency_already_created=False, customer_id_exists=False
+    #     )
+    #     time_created = now_utc()
 
-        payload = track_event_payload(
-            setup_dict["idempotency_id"], time_created, setup_dict["customer_id"]
-        )
-        response = setup_dict["client"].post(
-            reverse("track_event"),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
+    #     payload = track_event_payload(
+    #         setup_dict["idempotency_id"], time_created, setup_dict["customer_id"]
+    #     )
+    #     response = setup_dict["client"].post(
+    #         reverse("track_event"),
+    #         data=json.dumps(payload, cls=DjangoJSONEncoder),
+    #         content_type="application/json",
+    #     )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        customer_org_events = get_events_with_org_customer_id(
-            setup_dict["org"], setup_dict["customer_id"]
-        )
-        assert len(customer_org_events) == 0
-        org_events = get_events_with_org(setup_dict["org"])
-        assert len(org_events) == setup_dict["num_events_in"]
+    #     assert response.status_code == status.HTTP_400_BAD_REQUEST
+    #     customer_org_events = get_events_with_org_customer_id(
+    #         setup_dict["org"], setup_dict["customer_id"]
+    #     )
+    #     assert len(customer_org_events) == 0
+    #     org_events = get_events_with_org(setup_dict["org"])
+    #     assert len(org_events) == setup_dict["num_events_in"]
 
     def test_request_invalid_if_idempotency_id_repeated(
         self,
@@ -221,12 +221,11 @@ class TestTrackEvent:
             events_list.append(
                 {
                     "idempotency_id": event["idempotency_id"],
-                    "customer_id": event["customer_id"],
+                    "cust_id": event["customer_id"],
                     "event_name": event["event_name"],
                     "properties": event["properties"],
                     "time_created": event["time_created"],
-                    "organization_id": setup_dict["org"].pk,
-                    "customer_id": setup_dict["customer"].pk,
+                    "organization": setup_dict["org"],
                 }
             )
         write_batch_events_to_db(events_list)
