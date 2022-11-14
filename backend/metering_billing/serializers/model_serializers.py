@@ -471,26 +471,6 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         return pc
 
 
-class DraftInvoiceSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Invoice
-        fields = (
-            "cost_due",
-            "cost_due_currency",
-            "cust_connected_to_payment_provider",
-            "org_connected_to_cust_payment_provider",
-            "line_items",
-            "organization",
-            "customer",
-            "subscription",
-        )
-
-    cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
-    )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
-
-
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
@@ -932,12 +912,17 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "billing_plan",
             "start_date",
             "end_date",
+            "scheduled_end_date",
             "status",
             "auto_renew",
             "is_new",
             "subscription_id",
         )
-        read_only_fields = ("customer", "billing_plan")
+        read_only_fields = (
+            "customer",
+            "billing_plan",
+            "scheduled_end_date",
+        )
 
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField(required=False)
@@ -981,15 +966,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"Customer already has an active subscription to this plan"
             )
-
-        # # check that customer and billing_plan currencies match
-        # customer_currency = data["customer"].balance.currency
-        # billing_plan_currency = data["billing_plan"].flat_rate.currency
-        # if customer_currency != billing_plan_currency:
-        #     raise serializers.ValidationError(
-        #         f"Customer currency {customer_currency} does not match billing plan currency {billing_plan_currency}"
-        #     )
-
         # check that if the plan is designed for a specific customer, that the customer is that customer
         tc = data["billing_plan"].plan.target_customer
         if tc is not None and tc != data["customer"]:
@@ -997,6 +973,26 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                 f"This plan is for a customer with customer_id {tc.customer_id}, not {data['customer'].customer_id}"
             )
         return data
+
+
+class SubscriptionInvoiceSerializer(SubscriptionSerializer):
+    class Meta:
+        model = Customer
+        fields = ("customer_name",)
+
+    class Meta(SubscriptionSerializer.Meta):
+        model = Subscription
+        fields = fields = tuple(
+            set(SubscriptionSerializer.Meta.fields)
+            - set(
+                [
+                    "customer_id",
+                    "plan_id",
+                    "billing_plan",
+                    "auto_renew",
+                ]
+            )
+        )
 
 
 class SubscriptionUpdateSerializer(serializers.ModelSerializer):
@@ -1267,7 +1263,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "org_connected_to_cust_payment_provider",
             "external_payment_obj_id",
             "line_items",
-            "organization",
             "customer",
             "subscription",
         )
@@ -1276,9 +1271,25 @@ class InvoiceSerializer(serializers.ModelSerializer):
         max_digits=10, decimal_places=2, source="cost_due.amount"
     )
     cost_due_currency = serializers.CharField(source="cost_due.currency")
-    organization = OrganizationSerializer(read_only=True)
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
+
+
+class DraftInvoiceSerializer(InvoiceSerializer):
+    class Meta(InvoiceSerializer.Meta):
+        model = Invoice
+        fields = (
+            "cost_due",
+            "cost_due_currency",
+            "cust_connected_to_payment_provider",
+            "org_connected_to_cust_payment_provider",
+            "line_items",
+        )
+
+    cost_due = serializers.DecimalField(
+        max_digits=10, decimal_places=2, source="cost_due.amount"
+    )
+    cost_due_currency = serializers.CharField(source="cost_due.currency")
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):

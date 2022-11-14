@@ -12,7 +12,6 @@ from knox.views import LogoutView as KnoxLogoutView
 from metering_billing.demos import setup_demo_3
 from metering_billing.models import Organization, OrganizationInviteToken, User
 from metering_billing.serializers.auth_serializers import *
-from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.serializer_utils import EmailSerializer
 from metering_billing.services.user import user_service
