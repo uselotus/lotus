@@ -5,22 +5,13 @@
     # Only install what we need to run the client in-action and tests against it
     # format:    `--filter <packagename>...`
     run_install: |
-      - args: [--filter cypress]
+      - args: [--filter myclient... --filter cypress-tests...]
 
-
-name: E2E in custom container
-on: [push]
-jobs:
-  cypress-run:
-    runs-on: ubuntu-20.04
-    # Cypress Docker image with Chrome v78
-    # and Firefox v70 pre-installed
-    container: cypress/browsers:node12.13.0-chrome78-ff70
-    steps:
-      - uses: actions/checkout@v2
-      - uses: cypress-io/github-action@v4
-        with:
-          install: false
-          browser: chrome
-#          testing only
-          project: ./frontend
+- name: Run Cypress tests
+  uses: cypress-io/github-action@v2
+  with:
+    # we have already installed all dependencies above
+    install: false
+    command: pnpm --dir cypress/ cypress:ci
+    start: pnpm --dir myclient/ dev
+    wait-on: 'https://localhost:8000'
