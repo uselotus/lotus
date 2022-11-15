@@ -119,7 +119,7 @@ const SideBar: FC = () => {
       key: "/settings",
       icon: <SettingOutlined />,
       label: "Settings",
-      onClick: () => navigate("/settings"),
+      onClick: () => navigate("/settings/general"),
     },
   ];
 
