@@ -41,7 +41,7 @@ export interface CreatePlanVersionType {
 }
 
 export interface CreatePlanExternalLinkType extends InitialExternalLinks {
-    plan_id: string,
+  plan_id: string;
 }
 
 export interface PriceAdjustment {
@@ -84,8 +84,8 @@ export interface CreatePlanType {
 }
 
 export interface InitialExternalLinks {
-    source: string;
-    external_plan_id: string;
+  source: string;
+  external_plan_id: string;
 }
 
 export interface CreateInitialVersionType extends CreatePlanVersionType {
@@ -113,11 +113,17 @@ export interface CreateComponent
 
 export interface Component {
   billable_metric: MetricType;
-  free_metric_units: number;
+  tiers: Tier[];
+  id?: number;
+}
+
+export interface Tier {
+  type: "flat" | "free" | "per_unit";
   cost_per_batch: number;
   metric_units_per_batch: number;
-  max_metric_units: number;
-  id?: number;
+  batch_rounding_type: string;
+  range_start: number;
+  range_end: number;
 }
 export interface PlanDisplay {
   name: string;
