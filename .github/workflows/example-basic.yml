@@ -10,4 +10,4 @@ jobs:
       - name: Cypress run
         uses: cypress-io/github-action@v4
         with:
-          project: ./lotus/frontend
+          project: ./lotus/lotus/frontend
