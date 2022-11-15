@@ -267,8 +267,8 @@ else:
     REDIS_URL = f"redis://localhost:6379"
 
 # Celery Settings
-CELERY_BROKER_URL = f"{REDIS_URL}/1"
-CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
+CELERY_BROKER_URL = f"{REDIS_URL}/0"
+CELERY_RESULT_BACKEND = f"{REDIS_URL}/0"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -278,7 +278,7 @@ if ON_HEROKU:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/3",
+            "LOCATION": f"{REDIS_URL}/0",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": ssl.CERT_NONE},

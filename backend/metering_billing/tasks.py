@@ -148,7 +148,9 @@ def write_batch_events_to_db(events_list):
 
 
 @shared_task
-def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events):
+def posthog_capture_track(
+    request, organization_pk, len_sent_events, len_ingested_events
+):
     org = Organization.objects.get(pk=organization_pk)
     posthog.capture(
         POSTHOG_PERSON
