@@ -799,9 +799,23 @@ class Plan(models.Model):
                 == MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
             ):
                 replace_with_lst.append(PLAN_VERSION_STATUS.ACTIVE)
-            self.versions.all().filter(
-                ~Q(pk=new_version.pk), status__in=replace_with_lst
-            ).update(replace_with=new_version, status=PLAN_VERSION_STATUS.RETIRING)
+            versions_to_replace = (
+                self.versions.all()
+                .filter(~Q(pk=new_version.pk), status__in=replace_with_lst)
+                .annotate(
+                    active_subscriptions=Count(
+                        "bp_subscription",
+                        filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
+                        output_field=models.IntegerField(),
+                    )
+                )
+            )
+            inactive = versions_to_replace.filter(active_subscriptions=0)
+            retiring = versions_to_replace.filter(active_subscriptions__gt=0)
+            inactive.query.annotations.clear()
+            retiring.query.annotations.clear()
+            inactive.filter().update(status=PLAN_VERSION_STATUS.INACTIVE)
+            retiring.filter().update(status=PLAN_VERSION_STATUS.RETIRING)
             # 2b
             if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE:
                 prev_active = self.versions.all().get(
