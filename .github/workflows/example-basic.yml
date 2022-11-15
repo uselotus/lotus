@@ -1,13 +1,13 @@
-name: Cypress tests
+name: E2E in custom container
 on: [push]
 jobs:
   cypress-run:
-    name: Cypress run
     runs-on: ubuntu-20.04
+    # Cypress Docker image with Chrome v78
+    # and Firefox v70 pre-installed
+    container: cypress/browsers:node12.13.0-chrome78-ff70
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Cypress run
-        uses: cypress-io/github-action@v4
+      - uses: actions/checkout@v2
+      - uses: cypress-io/github-action@v4
         with:
-          project: ./lotus/lotus/frontend
+          browser: chrome
