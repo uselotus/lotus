@@ -50,7 +50,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
                     ? component.cost_per_batch
                     : "0"}{" "}
                   {component.metric_units_per_batch &&
-                    "per" + component.metric_units_per_batch + "Unit"}
+                    "per " + component.metric_units_per_batch + " Unit"}
                   {component.metric_units_per_batch > 1 ? "s" : null}{" "}
                 </div>
               </div>

@@ -1,9 +1,11 @@
+// @ts-ignore
 import React, { FC, useState, useEffect } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Collapse } from "antd";
 import { EventPages } from "../types/event-type";
 import { Events } from "../api/api";
 import LoadingSpinner from "./LoadingSpinner";
+// @ts-ignore
 import dayjs from "dayjs";
 import "./EventPreview.css"
 import CustomPagination from "./CustomPagination/CustomPagination";

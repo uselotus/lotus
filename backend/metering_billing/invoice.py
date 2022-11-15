@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import posthog
 from django.conf import settings
+from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -21,12 +22,20 @@ from .webhooks import invoice_created_webhook
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
-def generate_invoice(subscription, draft=False, charge_next_plan=False):
+def generate_invoice(
+    subscription,
+    draft=False,
+    charge_next_plan=False,
+    flat_fee_behavior="prorate",
+    include_usage=True,
+):
     """
     Generate an invoice for a subscription.
     """
     from metering_billing.models import CustomerBalanceAdjustment, Invoice, PlanVersion
     from metering_billing.serializers.model_serializers import InvoiceSerializer
+
+    assert flat_fee_behavior in ["refund", "full_amount", "prorate"]
 
     issue_date = now_utc()
 
@@ -38,65 +47,67 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
 
     summary_dict = {"line_items": []}
     # usage calculation
-    if subscription.end_date < issue_date:
-        for plan_component in billing_plan.plan_components.all():
-            usg_rev = plan_component.calculate_total_revenue(subscription)
-            line_item = {
-                "name": plan_component.billable_metric.billable_metric_name,
-                "start_date": subscription.start_date,
-                "end_date": subscription.end_date,
-                "quantity": usg_rev["usage_qty"],
-                "subtotal": usg_rev["revenue"],
-                "type": "In Arrears",
-                "associated_version": billing_plan,
-            }
-            summary_dict["line_items"].append(line_item)
+    if include_usage:
+        if subscription.end_date < issue_date:
+            for plan_component in billing_plan.components.all():
+                usg_rev = plan_component.calculate_total_revenue(subscription)
+                line_item = {
+                    "name": plan_component.billable_metric.billable_metric_name,
+                    "start_date": subscription.start_date,
+                    "end_date": subscription.end_date,
+                    "quantity": usg_rev["usage_qty"],
+                    "subtotal": usg_rev["revenue"],
+                    "type": "In Arrears",
+                    "associated_version": billing_plan,
+                }
+                summary_dict["line_items"].append(line_item)
     # flat fee calculation for current plan
-    flat_costs_dict_list = sorted(
-        list(subscription.prorated_flat_costs_dict.items()), key=lambda x: x[0]
-    )
-    date_range_costs = [
-        (
-            0,
-            flat_costs_dict_list[0][1]["plan_version_id"],
-            flat_costs_dict_list[0][0],
-            flat_costs_dict_list[0][0],
+    if not flat_fee_behavior == "refund":
+        flat_costs_dict_list = sorted(
+            list(subscription.prorated_flat_costs_dict.items()), key=lambda x: x[0]
         )
-    ]
-    for k, v in flat_costs_dict_list:
-        last_elem_amount, last_elem_plan, last_elem_start, _ = date_range_costs[-1]
-        assert type(k) == type(str(issue_date.date())), "k is not a string"
-        if (
-            str(issue_date.date()) < k
-        ):  # only add flat fee if it is before or equal the issue date
-            break
-        if v["plan_version_id"] != last_elem_plan:
-            date_range_costs.append((v["amount"], v["plan_version_id"], k, k))
-        else:
-            last_elem_amount += v["amount"]
-            date_range_costs[-1] = (
-                last_elem_amount,
-                last_elem_plan,
-                last_elem_start,
-                k,
+        date_range_costs = [
+            (
+                0,
+                flat_costs_dict_list[0][1]["plan_version_id"],
+                flat_costs_dict_list[0][0],
+                flat_costs_dict_list[0][0],
             )
-    for amount, plan_version_id, start, end in date_range_costs:
-        cur_bp = PlanVersion.objects.get(
-            organization=organization, version_id=plan_version_id
-        )
-        billing_plan_name = cur_bp.plan.plan_name
-        billing_plan_version = cur_bp.version
-        summary_dict["line_items"].append(
-            {
-                "name": f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                "start_date": start,
-                "end_date": end,
-                "quantity": 1,
-                "subtotal": amount,
-                "type": "In Arrears",
-                "associated_version": cur_bp,
-            }
-        )
+        ]
+        for k, v in flat_costs_dict_list:
+            last_elem_amount, last_elem_plan, last_elem_start, _ = date_range_costs[-1]
+            assert type(k) == type(str(issue_date.date())), "k is not a string"
+            if (str(issue_date.date()) < k) and flat_fee_behavior == "prorate":
+                # only add flat fee if it is before or equal the issue date, or if we specified
+                # that we are NOT prorating
+                break
+            if v["plan_version_id"] != last_elem_plan:
+                date_range_costs.append((v["amount"], v["plan_version_id"], k, k))
+            else:
+                last_elem_amount += v["amount"]
+                date_range_costs[-1] = (
+                    last_elem_amount,
+                    last_elem_plan,
+                    last_elem_start,
+                    k,
+                )
+        for amount, plan_version_id, start, end in date_range_costs:
+            cur_bp = PlanVersion.objects.get(
+                organization=organization, version_id=plan_version_id
+            )
+            billing_plan_name = cur_bp.plan.plan_name
+            billing_plan_version = cur_bp.version
+            summary_dict["line_items"].append(
+                {
+                    "name": f"{billing_plan_name} v{billing_plan_version} Flat Fee",
+                    "start_date": start,
+                    "end_date": end,
+                    "quantity": 1,
+                    "subtotal": amount,
+                    "type": "In Arrears",
+                    "associated_version": cur_bp,
+                }
+            )
     # next plan flat fee calculation
     if charge_next_plan:
         if billing_plan.replace_with:
@@ -162,14 +173,14 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
         )
     )
 
-    summary_dict["already_paid"] = subscription.flat_fee_already_billed
+    summary_dict["already_invoiced"] = subscription.amount_already_invoiced()
     summary_dict["customer_balance_adjustment"] = max(
-        customer_balance, -(summary_dict["total"] - summary_dict["already_paid"])
+        customer_balance, -(summary_dict["total"] - summary_dict["already_invoiced"])
     )
 
     summary_dict["total_amount_due"] = (
         summary_dict["total"]
-        - summary_dict["already_paid"]
+        - summary_dict["already_invoiced"]
         + summary_dict["customer_balance_adjustment"]
     )
 
@@ -193,7 +204,6 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
 
     # Create the invoice
     invoice = Invoice.objects.create(**invoice_kwargs)
-
     if not draft:
         for pp in customer.integrations.keys():
             if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
@@ -211,7 +221,7 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
         if summary_dict["customer_balance_adjustment"] != 0:
             CustomerBalanceAdjustment.objects.create(
                 customer=customer,
-                amount=-summary_dict["customer_balance_adjustment"],
+                amount=Money(-summary_dict["customer_balance_adjustment"], "usd"),
                 description=f"Balance alteration from invoice {invoice.invoice_id} generated on {issue_date}",
                 created=issue_date,
                 effective_at=issue_date,
@@ -219,15 +229,5 @@ def generate_invoice(subscription, draft=False, charge_next_plan=False):
 
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else subscription.organization.company_name,
-            "generate_invoice",
-            properties={
-                "organization": organization.company_name,
-                "amount": amount,
-            },
-        )
 
     return invoice
