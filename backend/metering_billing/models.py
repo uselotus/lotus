@@ -627,7 +627,11 @@ class PlanVersion(models.Model):
         "self", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
     )
     transition_to = models.ForeignKey(
-        "Plan", on_delete=models.CASCADE, null=True, blank=True, related_name="transition_from"
+        "Plan",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="transition_from",
     )
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
     components = models.ManyToManyField(PlanComponent, blank=True)
