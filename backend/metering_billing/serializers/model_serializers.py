@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import Union
 
 from actstream.models import Action
 from django.db.models import Q
@@ -109,20 +110,20 @@ class EventSerializer(serializers.ModelSerializer):
             "properties",
             "time_created",
             "idempotency_id",
-            "customer_id",
+            # "customer_id",
             "customer",
         )
 
-    customer_id = SlugRelatedFieldWithOrganization(
-        slug_field="customer_id",
-        queryset=Customer.objects.all(),
-        write_only=True,
-        source="customer",
-    )
+    # customer_id = SlugRelatedFieldWithOrganization(
+    #     slug_field="customer_id",
+    #     queryset=Customer.objects.all(),
+    #     write_only=True,
+    #     source="customer",
+    # )
     customer = serializers.SerializerMethodField()
 
     def get_customer(self, obj) -> str:
-        return obj.customer.customer_id
+        return obj.customer_id
 
 
 class AlertSerializer(serializers.ModelSerializer):
@@ -489,6 +490,8 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
             "status",
             "make_active_type",
             "replace_immediately_type",
+            "transition_to_plan_id",
+            "transition_to_plan_version_id",
         )
 
     make_active_type = serializers.ChoiceField(
@@ -502,8 +505,25 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
         choices=[PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.ARCHIVED],
         required=False,
     )
+    transition_to_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.objects.all(),
+        write_only=True,
+        required=False,
+    )
+    transition_to_plan_version_id = SlugRelatedFieldWithOrganization(
+        slug_field="version_id",
+        queryset=PlanVersion.objects.all(),
+        write_only=True,
+        required=False,
+    )
 
     def validate(self, data):
+        transition_to_plan_id = data.get("transition_to_plan_id")
+        transition_to_plan_version_id = data.get("transition_to_plan_version_id")
+        assert not (
+            transition_to_plan_id and transition_to_plan_version_id
+        ), "Can't specify both transition_to_plan_id and transition_to_plan_version_id"
         data = super().validate(data)
         if (
             data.get("status") == PLAN_VERSION_STATUS.ARCHIVED
@@ -533,6 +553,14 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
                 validated_data.get("make_active_type"),
                 validated_data.get("replace_immediately_type"),
             )
+        transition_to_plan = validated_data.get("transition_to_plan_id", None)
+        transition_to_plan_version = validated_data.get(
+            "transition_to_plan_version_id", None
+        )
+        if transition_to_plan:
+            instance.transition_to = transition_to_plan.display_version
+        elif transition_to_plan_version:
+            instance.transition_to = transition_to_plan_version
         instance.save()
         return instance
 
@@ -557,7 +585,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "description",
             "plan_id",
             "flat_fee_billing_type",
-            "replace_plan_version_id",
             "flat_rate",
             "components",
             "features",
@@ -566,6 +593,8 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "make_active",
             "make_active_type",
             "replace_immediately_type",
+            "transition_to_plan_id",
+            # "transition_to_plan_version_id",
             # read-only
             "version",
             "version_id",
@@ -573,6 +602,8 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "created_by",
             "created_on",
             "status",
+            "replace_with",
+            "transition_to",
         )
         read_only_fields = (
             "version",
@@ -581,6 +612,8 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "created_by",
             "created_on",
             "status",
+            "replace_with",
+            "transition_to",
         )
         extra_kwargs = {
             "make_active_type": {"write_only": True},
@@ -596,13 +629,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         source="plan",
         required=False,
     )
-    replace_plan_version_id = SlugRelatedFieldWithOrganization(
-        slug_field="plan_id",
-        queryset=PlanVersion.objects.all(),
-        write_only=True,
-        source="replace_with",
-        required=False,
-    )
 
     # WRITE ONLY
     make_active = serializers.BooleanField(write_only=True)
@@ -612,10 +638,24 @@ class PlanVersionSerializer(serializers.ModelSerializer):
     replace_immediately_type = serializers.ChoiceField(
         choices=REPLACE_IMMEDIATELY_TYPE.choices, required=False, write_only=True
     )
+    transition_to_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.objects.all(),
+        write_only=True,
+        required=False,
+    )
+    # transition_to_plan_version_id = SlugRelatedFieldWithOrganization(
+    #     slug_field="version_id",
+    #     queryset=PlanVersion.objects.all(),
+    #     write_only=True,
+    #     required=False,
+    # )
 
     # READ-ONLY
     active_subscriptions = serializers.IntegerField(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
+    replace_with = serializers.SerializerMethodField(read_only=True)
+    transition_to = serializers.SerializerMethodField(read_only=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -628,7 +668,24 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         else:
             return None
 
+    def get_replace_with(self, obj) -> Union[int, None]:
+        if obj.replace_with != None:
+            return obj.replace_with.version
+        else:
+            return None
+
+    def get_transition_to(self, obj) -> Union[str, None]:
+        if obj.transition_to != None:
+            return str(obj.transition_to.display_version)
+        else:
+            return None
+
     def validate(self, data):
+        # transition_to_plan_id = data.get("transition_to_plan_id")
+        # transition_to_plan_version_id = data.get("transition_to_plan_version_id")
+        # assert not (
+        #     transition_to_plan_id and transition_to_plan_version_id
+        # ), "Can't specify both transition_to_plan_id and transition_to_plan_version_id"
         data = super().validate(data)
         if data.get("make_active") and not data.get("make_active_type"):
             raise serializers.ValidationError(
@@ -652,6 +709,10 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         make_active = validated_data.pop("make_active", False)
         make_active_type = validated_data.pop("make_active_type", None)
         replace_immediately_type = validated_data.pop("replace_immediately_type", None)
+        transition_to_plan = validated_data.get("transition_to_plan_id", None)
+        # transition_to_plan_version = validated_data.get(
+        #     "transition_to_plan_version_id", None
+        # )
         # create planVersion initially
         validated_data["version"] = len(validated_data["plan"].versions.all()) + 1
         if "status" not in validated_data:
@@ -661,6 +722,10 @@ class PlanVersionSerializer(serializers.ModelSerializer):
                 else PLAN_VERSION_STATUS.INACTIVE
             )
         billing_plan = PlanVersion.objects.create(**validated_data)
+        if transition_to_plan:
+            billing_plan.transition_to = transition_to_plan.display_version
+        # elif transition_to_plan_version:
+        #     billing_plan.transition_to = transition_to_plan_version
         org = billing_plan.organization
         for component_data in components_data:
             try:
