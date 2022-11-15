@@ -82,7 +82,9 @@ def calculate_invoice():
         ).delete()
         # Renew the subscription
         if old_subscription.auto_renew:
-            if old_subscription.billing_plan.replace_with is not None:
+            if old_subscription.billing_plan.transition_to is not None:
+                new_bp = old_subscription.billing_plan.transition_to.display_version
+            elif old_subscription.billing_plan.replace_with is not None:
                 new_bp = old_subscription.billing_plan.replace_with
             else:
                 new_bp = old_subscription.billing_plan
