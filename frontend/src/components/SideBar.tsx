@@ -68,7 +68,10 @@ const SideBar: FC = () => {
       key: "/docs",
       icon: <BookOutlined />,
       onClick: () =>
-        window.open("https://docs.uselotus.io/docs/intro", "_blank"),
+        window.open(
+          "https://docs.uselotus.io/docs/overview/why-lotus",
+          "_blank"
+        ),
     },
   ];
 
@@ -113,7 +116,10 @@ const SideBar: FC = () => {
       key: "/docs",
       icon: <BookOutlined />,
       onClick: () =>
-        window.open("https://docs.uselotus.io/docs/intro", "_blank"),
+        window.open(
+          "https://docs.uselotus.io/docs/overview/why-lotus",
+          "_blank"
+        ),
     },
     {
       key: "/settings",
