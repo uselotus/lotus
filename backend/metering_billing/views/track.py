@@ -11,7 +11,6 @@ from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.models import APIToken, Customer, Event
-from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
 from metering_billing.utils import now_utc
@@ -46,10 +45,10 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
     return event_data
 
 
-def ingest_event(data: dict, customer_pk: int, organization_pk: int) -> None:
+def ingest_event(data: dict, customer_id: str, organization_pk: int) -> None:
     event_kwargs = {
         "organization_id": organization_pk,
-        "customer_id": customer_pk,
+        "cust_id": customer_id,
         "event_name": data["event_name"],
         "idempotency_id": data["idempotency_id"],
         "time_created": data["time_created"],
@@ -125,22 +124,11 @@ def track_event(request):
             else:
                 bad_events[idempotency_id] = "No customer_id provided"
             continue
-        customer_cache_key = f"{organization_pk}-{customer_id}"
-        customer_pk = cache.get(customer_cache_key)
-        if customer_pk is None:
-            customer = Customer.objects.filter(
-                organization=organization_pk, customer_id=customer_id
-            )
-            if not customer.exists():
-                bad_events[idempotency_id] = "Customer does not exist"
-                continue
-            else:
-                cache.set(customer_cache_key, customer.first().pk, 60 * 60 * 24 * 7)
 
         event_idem_exists = Event.objects.filter(
             idempotency_id=idempotency_id,
         ).exists()
-        if event_idem_exists > 0:
+        if event_idem_exists:
             bad_events[idempotency_id] = "Event idempotency already exists"
             continue
 
@@ -149,7 +137,7 @@ def track_event(request):
             continue
 
         events_to_insert[idempotency_id] = ingest_event(
-            data, customer_pk, organization_pk
+            data, customer_id, organization_pk
         )
 
     # get the events currently in cache

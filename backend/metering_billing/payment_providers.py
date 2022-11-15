@@ -373,12 +373,12 @@ class StripeConnector(PaymentProvider):
                     ),
                     tax_behavior="exclusive",
                 )
-        if invoice.line_items["already_paid"] != 0:
+        if invoice.line_items["already_invoiced"] != 0:
             stripe.InvoiceItem.create(
                 customer=stripe_customer_id,
                 currency=invoice.cost_due.currency,
-                amount=int(invoice.line_items["already_paid"] * 100),
-                description="Adjustment for already paid amount",
+                amount=int(invoice.line_items["already_invoiced"] * 100),
+                description="Adjustment for already invoiced amount",
                 tax_behavior="exclusive",
             )
         if invoice.line_items["customer_balance_adjustment"] != 0:

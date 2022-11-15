@@ -1,7 +1,5 @@
 from rest_framework import serializers
 
-from .internal_serializers import CustomerNameSerializer
-
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
     period_1_total_subscriptions = serializers.IntegerField()

@@ -12,7 +12,6 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.backtest_serializers import *
-from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.request_serializers import *
 from metering_billing.serializers.response_serializers import *
@@ -422,11 +421,16 @@ class CustomerDetailView(APIView):
             organization=organization,
             customer=customer,
         )
+
+        balance_adjustments = CustomerBalanceAdjustment.objects.filter(
+            customer=customer,
+        )
         serializer = CustomerDetailSerializer(
             customer,
             context={
                 "total_amount_due": total_amount_due,
                 "invoices": invoices,
+                "balance_adjustments": balance_adjustments,
             },
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -885,3 +889,49 @@ class PlansByNumCustomersView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class CustomerBalanceAdjustmentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="CustomerBalanceAdjustmentRequestSerializer",
+                fields={"customer_id": serializers.CharField()},
+            ),
+        ],
+        responses={
+            200: CustomerDetailSerializer,
+            400: inline_serializer(
+                name="CustomerBalanceAdjustmentErrorResponseSerializer",
+                fields={"error_detail": serializers.CharField()},
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customer_id = request.query_params.get("customer_id")
+        customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
+            customer_id=customer_id
+        ).prefetch_related(
+            Prefetch(
+                "customer",
+                queryset=Customer.objects.filter(organization=organization),
+                to_attr="customers",
+            ),
+        )
+        if len(customer_balances_adjustment) == 0:
+            return Response(
+                {
+                    "error_detail": "CustomerBalanceAdjustmentView with customer_id {} does not exist".format(
+                        customer_id
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
+        return Response(serializer.data, status=status.HTTP_200_OK)
