@@ -131,15 +131,7 @@ def update_invoice_status():
             )
             if status == INVOICE_STATUS.PAID:
                 incomplete_invoice.payment_status = INVOICE_STATUS.PAID
-                posthog.capture(
-                    POSTHOG_PERSON
-                    if POSTHOG_PERSON
-                    else incomplete_invoice.organization["company_name"],
-                    "invoice_status_succeeded",
-                    properties={
-                        "organization": incomplete_invoice.organization["company_name"],
-                    },
-                )
+                incomplete_invoice.save()
 
 
 @shared_task
@@ -156,11 +148,14 @@ def write_batch_events_to_db(events_list):
 
 
 @shared_task
-def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events):
+def posthog_capture_track(
+    request, organization_pk, len_sent_events, len_ingested_events
+):
     org = Organization.objects.get(pk=organization_pk)
     posthog.capture(
-        POSTHOG_PERSON if POSTHOG_PERSON else org.company_name,
-        "track_event",
+        POSTHOG_PERSON
+        if POSTHOG_PERSON
+        else org.company_name + " (API Key)" "track_event",
         {
             "sent_events": len_sent_events,
             "ingested_events": len_ingested_events,

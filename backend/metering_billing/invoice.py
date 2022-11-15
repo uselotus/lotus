@@ -229,15 +229,5 @@ def generate_invoice(
 
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else subscription.organization.company_name,
-            "generate_invoice",
-            properties={
-                "organization": organization.company_name,
-                "amount": amount,
-            },
-        )
 
     return invoice
