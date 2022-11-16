@@ -106,8 +106,7 @@ export interface CreateVersionType {
   replace_immediately_type?: string;
 }
 
-export interface CreateComponent
-  extends Omit<Component, "id" | "billable_metric"> {
+export interface CreateComponent extends Omit<Component, "billable_metric"> {
   billable_metric_name: string;
 }
 
@@ -119,11 +118,15 @@ export interface Component {
 
 export interface Tier {
   type: "flat" | "free" | "per_unit";
-  cost_per_batch: number;
-  metric_units_per_batch: number;
-  batch_rounding_type: string;
+  cost_per_batch?: number;
+  metric_units_per_batch?: number;
+  batch_rounding_type?:
+    | "round_up"
+    | "round_down"
+    | "round_nearest"
+    | "no_rounding";
   range_start: number;
-  range_end: number;
+  range_end?: number;
 }
 export interface PlanDisplay {
   name: string;
