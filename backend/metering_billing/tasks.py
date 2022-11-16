@@ -207,7 +207,7 @@ def run_backtest(backtest_id):
                 organization=backtest.organization,
             )
             .prefetch_related("billing_plan")
-            .prefetch_related("billing_plan__components")
+            .prefetch_related("billing_plan__plan_components")
         )
         all_results = {
             "substitution_results": [],

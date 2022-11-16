@@ -190,8 +190,8 @@ class Customer(models.Model):
                 status=SUBSCRIPTION_STATUS.ACTIVE,
                 organization=self.organization,
             )
-            .prefetch_related("billing_plan__components")
-            .prefetch_related("billing_plan__components__billable_metric")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
             .select_related("billing_plan")
         )
         subscription_usages = {"subscriptions": [], "sub_objects": []}

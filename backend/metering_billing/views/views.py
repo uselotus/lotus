@@ -100,8 +100,8 @@ class PeriodMetricRevenueView(APIView):
                     )
                     .select_related("billing_plan")
                     .select_related("customer")
-                    .prefetch_related("billing_plan__components")
-                    .prefetch_related("billing_plan__components__billable_metric")
+                    .prefetch_related("billing_plan__plan_components")
+                    .prefetch_related("billing_plan__plan_components__billable_metric")
                 )
                 for sub in subs:
                     bp = sub.billing_plan
