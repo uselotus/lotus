@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from datetime import timezone
 from decimal import Decimal
 
@@ -18,9 +19,17 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
 
+import lotus
+
 from .webhooks import invoice_created_webhook
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+LOTUS_HOST = settings.LOTUS_HOST
+LOTUS_API_KEY = settings.LOTUS_API_KEY
+if LOTUS_HOST and LOTUS_API_KEY:
+    lotus.api_key = 'YOUR API KEY'
+    lotus.host = LOTUS_HOST
+
 
 
 def generate_invoice(
@@ -226,7 +235,18 @@ def generate_invoice(
                     invoice.external_payment_obj_type = pp
                     invoice.save()
                     break
-
+        if LOTUS_HOST and LOTUS_API_KEY:
+            lotus.track_event(
+                customer_id=organization.company_name + str(organization.pk),
+                event_name='create_invoice',
+                properties={
+                    'amount': invoice.cost_due,
+                    'customer': customer.customer_id,
+                    'subscription': subscription.subscription_id,
+                    'external_type': invoice.external_payment_obj_type,
+                    },
+                idemptotency_id=uuid.uuid4(),
+            )
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
 

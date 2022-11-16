@@ -1,5 +1,6 @@
 import datetime
 import operator
+import uuid
 from unicodedata import name
 
 import posthog
@@ -70,8 +71,14 @@ from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-POSTHOG_PERSON = settings.POSTHOG_PERSON
+import lotus
 
+POSTHOG_PERSON = settings.POSTHOG_PERSON
+LOTUS_HOST = settings.LOTUS_HOST
+LOTUS_API_KEY = settings.LOTUS_API_KEY
+if LOTUS_HOST and LOTUS_API_KEY:
+    lotus.api_key = 'YOUR API KEY'
+    lotus.host = LOTUS_HOST
 
 class CustomPagination(CursorPagination):
     def get_paginated_response(self, data):
@@ -259,6 +266,15 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 event=f"{self.action}_customer",
                 properties={"organization": organization.company_name},
             )
+            if self.action == "create":
+                if LOTUS_HOST and LOTUS_API_KEY:
+                    lotus.track_event(
+                        customer_id=organization.company_name + str(organization.pk),
+                        event_name='create_customer',
+                        properties={
+                            },
+                        idemptotency_id=uuid.uuid4(),
+                    )
         return response
 
 
