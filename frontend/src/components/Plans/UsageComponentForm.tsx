@@ -34,11 +34,43 @@ const validateTiers = (tiers: Tier[]) => {
       currentStart = tier.range_start;
       currentEnd = tier.range_end;
 
+      if (!["flat", "free", "per_unit"].includes(tier.type)) {
+        return false;
+      } else if (tier.type === "per_unit") {
+        return (
+          typeof tier.cost_per_batch === "number" &&
+          typeof tier.metric_units_per_batch === "number" &&
+          tier.metric_units_per_batch > 0 &&
+          tier.cost_per_batch >= 0
+        );
+      } else if (tier.type === "flat") {
+        return (
+          typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0
+        );
+      }
+
       //check if types are correct
     } else {
-      if (tier.range_start === currentEnd) {
+      if (currentEnd === undefined || tier.range_start < currentEnd) {
+        return false;
+      } else {
         currentStart = tier.range_start;
         currentEnd = tier.range_end;
+
+        if (!["flat", "free", "per_unit"].includes(tier.type)) {
+          return false;
+        } else if (tier.type === "per_unit") {
+          return (
+            typeof tier.cost_per_batch === "number" &&
+            typeof tier.metric_units_per_batch === "number" &&
+            tier.metric_units_per_batch > 0 &&
+            tier.cost_per_batch >= 0
+          );
+        } else if (tier.type === "flat") {
+          return (
+            typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0
+          );
+        }
       }
     }
   });
@@ -147,7 +179,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
             onBlur={save}
             onPressEnter={save}
           >
-            <Option value="per_metric">Per Metric</Option>
+            <Option value="per_unit">Per Unit</Option>
             <Option value="free">Free</Option>
             <Option value="flat">Flat</Option>
           </Select>
@@ -370,9 +402,17 @@ function UsageComponentForm({
           .then((values) => {
             console.log(values);
 
-            handleComponentAdd({ metric: values.metric, tiers: currentTiers });
+            if (validateTiers(currentTiers)) {
+              handleComponentAdd({
+                metric: values.metric,
+                tiers: currentTiers,
+              });
 
-            form.submit();
+              form.submit();
+              form.resetFields();
+            } else {
+              setErrorMessage("Tiers are not valid");
+            }
           })
           .catch((info) => {});
       }}
