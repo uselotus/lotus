@@ -75,9 +75,17 @@ class PLAN_DURATION(models.TextChoices):
 
 
 class USAGE_BILLING_FREQUENCY(models.TextChoices):
+    WEEKLY = ("weekly", _("Weekly"))
     MONTHLY = ("monthly", _("Monthly"))
     QUARTERLY = ("quarterly", _("Quarterly"))
-    YEARLY = ("yearly", _("Yearly"))
+    END_OF_PERIOD = ("end_of_period", _("End of Period"))
+
+
+class COMPONENT_RESET_FREQUENCY(models.TextChoices):
+    WEEKLY = ("weekly", _("Weekly"))
+    MONTHLY = ("monthly", _("Monthly"))
+    QUARTERLY = ("quarterly", _("Quarterly"))
+    NONE = ("none", _("None"))
 
 
 class FLAT_FEE_BILLING_TYPE(models.TextChoices):

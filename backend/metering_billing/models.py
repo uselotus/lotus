@@ -5,7 +5,7 @@ from decimal import Decimal
 from random import choices
 from typing import TypedDict
 
-from dateutil import parser
+from dateutil.relativedelta import relativedelta
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -33,6 +33,7 @@ from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     BATCH_ROUNDING_TYPE,
     CATEGORICAL_FILTER_OPERATORS,
+    COMPONENT_RESET_FREQUENCY,
     EVENT_TYPE,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
@@ -328,7 +329,6 @@ class BillableMetric(models.Model):
         null=True,
         blank=True,
     )
-
     # metric type specific
     usage_aggregation_type = models.CharField(
         max_length=10,
@@ -478,17 +478,12 @@ class PlanComponent(models.Model):
         null=True,
         blank=True,
     )
-    free_metric_units = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
-    )
-    cost_per_batch = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
-    )
-    metric_units_per_batch = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
-    )
-    max_metric_units = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
+    reset_frequency = models.CharField(
+        choices=COMPONENT_RESET_FREQUENCY.choices,
+        max_length=10,
+        null=True,
+        blank=True,
+        default=COMPONENT_RESET_FREQUENCY.NONE,
     )
 
     def __str__(self):
@@ -497,31 +492,55 @@ class PlanComponent(models.Model):
     def calculate_total_revenue(
         self, subscription
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
+        periods = []
+        start_date = subscription.start_date
+        end_date = start_date
+        now = now_utc()
+        while end_date < subscription.end_date:
+            if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
+                end_date = start_date + relativedelta(weeks=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
+                end_date = start_date + relativedelta(months=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
+                end_date = start_date + relativedelta(months=3)
+            else:
+                end_date = subscription.end_date
+            end_date = min(subscription.end_date, end_date)
+            periods.append((start_date, end_date))
+            start_date = end_date
+            if start_date > now:
+                break
         billable_metric = self.billable_metric
-        usage = billable_metric.get_usage(
-            granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            start_date=subscription.start_date,
-            end_date=subscription.end_date,
-            customer=subscription.customer,
-        )
-        # extract usage
-        usage = usage.get(subscription.customer.customer_name, {})
-        if len(usage) >= 1:
-            usage_qty = sum(usage.values())
-            usage_qty = convert_to_decimal(usage_qty)
-            revenue = 0
-            for tier in self.tiers.all():
-                tier_revenue = tier.calculate_revenue(usage)
-                revenue += tier_revenue
-            revenue = convert_to_decimal(revenue)
-        else:
-            usage_qty = Decimal(0)
-            revenue = Decimal(0)
-        # wrap up and return
-        revenue_dict = {
-            "revenue": revenue,
-            "usage_qty": usage_qty,
-        }
+        revenue_dict = {"revenue": Decimal(0), "subperiods": []}
+        for period_start, period_end in periods:
+            usage = billable_metric.get_usage(
+                granularity=USAGE_CALC_GRANULARITY.TOTAL,
+                start_date=period_start,
+                end_date=period_end,
+                customer=subscription.customer,
+            )
+            # extract usage
+            usage = usage.get(subscription.customer.customer_name, {})
+            if len(usage) >= 1:
+                usage_qty = sum(usage.values())
+                usage_qty = convert_to_decimal(usage_qty)
+                revenue = 0
+                for tier in self.tiers.all():
+                    tier_revenue = tier.calculate_revenue(usage)
+                    revenue += tier_revenue
+                revenue = convert_to_decimal(revenue)
+            else:
+                usage_qty = Decimal(0)
+                revenue = Decimal(0)
+            revenue_dict["revenue"] += revenue
+            revenue_dict["subperiods"].append(
+                {
+                    "start_date": period_start,
+                    "end_date": period_end,
+                    "usage_qty": usage_qty,
+                    "revenue": revenue,
+                }
+            )
 
         return revenue_dict
 
@@ -610,7 +629,7 @@ class Invoice(models.Model):
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
-    line_items = models.JSONField()
+    line_items = models.JSONField(null=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
@@ -624,6 +643,25 @@ class Invoice(models.Model):
 
     def __str__(self):
         return str(self.invoice_id)
+
+
+class InvoiceLineItem(models.Model):
+    name = models.CharField(max_length=200)
+    start_date = models.DateTimeField(max_length=100, default=now_utc)
+    end_date = models.DateTimeField(max_length=100, default=now_utc)
+    quantity = models.DecimalField(decimal_places=10, max_digits=20, default=1.0)
+    subtotal = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
+    )
+    billing_type = models.CharField(
+        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
+    )
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, null=True, related_name="inv_line_items"
+    )
+    associated_plan_version = models.ForeignKey(
+        "PlanVersion", on_delete=models.CASCADE, null=True, related_name="+"
+    )
 
 
 class APIToken(AbstractAPIKey):
@@ -682,7 +720,6 @@ class PlanVersion(models.Model):
         related_name="transition_from",
     )
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
-    components = models.ManyToManyField(PlanComponent, blank=True)
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
         "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
@@ -962,6 +999,7 @@ class Subscription(models.Model):
         related_query_name="bp_subscription",
     )
     start_date = models.DateTimeField()
+    next_billing_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField()
     scheduled_end_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
@@ -987,12 +1025,39 @@ class Subscription(models.Model):
         return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
+        now = now_utc()
         if not self.end_date:
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration, self.start_date
             )
         if not self.scheduled_end_date:
             self.scheduled_end_date = self.end_date
+        if not self.next_billing_date or self.next_billing_date < now:
+            start_date = self.start_date
+            next_billing_date = self.start_date
+            while next_billing_date < self.end_date:
+                if (
+                    self.billing_plan.usage_billing_frequency
+                    == USAGE_BILLING_FREQUENCY.WEEKLY
+                ):
+                    next_billing_date = start_date + relativedelta(weeks=1)
+                elif (
+                    self.billing_plan.usage_billing_frequency
+                    == USAGE_BILLING_FREQUENCY.MONTHLY
+                ):
+                    next_billing_date = start_date + relativedelta(months=1)
+                elif (
+                    self.billing_plan.usage_billing_frequency
+                    == USAGE_BILLING_FREQUENCY.QUARTERLY
+                ):
+                    next_billing_date = start_date + relativedelta(months=3)
+                else:
+                    next_billing_date = self.end_date
+                next_billing_date = min(self.end_date, next_billing_date)
+                start_date = next_billing_date
+                if start_date > now:
+                    break
+            self.next_billing_date = next_billing_date
         if self.status == SUBSCRIPTION_STATUS.ACTIVE or not self.pk:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
@@ -1029,7 +1094,7 @@ class Subscription(models.Model):
         plan_end_date = self.end_date
         # extract other objects that we need when calculating usage
         customer = self.customer
-        plan_components_qs = plan.components.all()
+        plan_components_qs = plan.plan_components.all()
         # For each component of the plan, calculate usage/revenue
         for plan_component in plan_components_qs:
             plan_component_summary = plan_component.calculate_total_revenue(self)

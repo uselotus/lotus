@@ -2066,6 +2066,11 @@ components:
       - event_name
       - metric_type
       - usage_aggregation_type
+    BillingTypeEnum:
+      enum:
+      - in_arrears
+      - in_advance
+      type: string
     BlankEnum:
       enum:
       - ''
@@ -2316,8 +2321,10 @@ components:
         org_connected_to_cust_payment_provider:
           type: boolean
         line_items:
-          type: object
-          additionalProperties: {}
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+          readOnly: true
       required:
       - cost_due
       - cost_due_currency
@@ -2513,34 +2520,6 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        created_by:
-          type: string
-          readOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -2548,27 +2527,61 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        transition_to:
-          type: string
-          nullable: true
+        version:
+          type: integer
           readOnly: true
         version_id:
           type: string
           readOnly: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        transition_to:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
-        version:
+        usage_billing_frequency:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        replace_with:
           type: integer
+          nullable: true
           readOnly: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -2615,8 +2628,10 @@ components:
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
         line_items:
-          type: object
-          additionalProperties: {}
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+          readOnly: true
         customer:
           allOf:
           - $ref: '#/components/schemas/Customer'
@@ -2632,6 +2647,45 @@ components:
       - line_items
       - payment_status
       - subscription
+    InvoiceLineItem:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        billing_type:
+          $ref: '#/components/schemas/BillingTypeEnum'
+        invoice_id:
+          type: string
+          readOnly: true
+        plan_version_id:
+          type: string
+          readOnly: true
+      required:
+      - billing_type
+      - invoice_id
+      - name
+      - plan_version_id
     InvoicePaymentStatusEnum:
       enum:
       - draft
@@ -3110,54 +3164,54 @@ components:
     PlanDetail:
       type: object
       properties:
-        num_versions:
-          type: integer
-          readOnly: true
         product_id:
           type: string
           nullable: true
         created_by:
           type: string
           readOnly: true
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
         status:
           $ref: '#/components/schemas/Status13eEnum'
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
         initial_external_links:
           type: array
           items:
             $ref: '#/components/schemas/InitialExternalPlanLink'
           writeOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
+        plan_id:
+          type: string
+          maxLength: 100
+        num_versions:
+          type: integer
+          readOnly: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        active_subscriptions:
+          type: integer
           readOnly: true
       required:
       - active_subscriptions
@@ -3242,6 +3296,12 @@ components:
           nullable: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustment'
+        usage_billing_frequency:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
         make_active:
           type: boolean
           writeOnly: true
@@ -3802,6 +3862,13 @@ components:
       - unique
       - latest
       - average
+      type: string
+    UsageBillingFrequencyEnum:
+      enum:
+      - weekly
+      - monthly
+      - quarterly
+      - end_of_period
       type: string
     User:
       type: object

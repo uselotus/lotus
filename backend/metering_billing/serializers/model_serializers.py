@@ -15,6 +15,7 @@ from metering_billing.models import (
     ExternalPlanLink,
     Feature,
     Invoice,
+    InvoiceLineItem,
     NumericFilter,
     Organization,
     OrganizationInviteToken,
@@ -605,6 +606,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "components",
             "features",
             "price_adjustment",
+            "usage_billing_frequency",
             # write only
             "make_active",
             "make_active_type",
@@ -1374,6 +1376,26 @@ class InvoiceUpdateSerializer(serializers.ModelSerializer):
 
 
 ## INVOICE
+class InvoiceLineItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceLineItem
+        fields = (
+            "name",
+            "start_date",
+            "end_date",
+            "quantity",
+            "subtotal",
+            "billing_type",
+            "invoice_id",
+            "plan_version_id",
+        )
+
+    invoice_id = serializers.CharField(source="invoice.invoice_id", read_only=True)
+    plan_version_id = serializers.CharField(
+        source="associated_plan_version.plan_version_id", read_only=True
+    )
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
@@ -1398,6 +1420,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     cost_due_currency = serializers.CharField(source="cost_due.currency")
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
+    line_items = InvoiceLineItemSerializer(
+        many=True, read_only=True, source="inv_line_items"
+    )
 
 
 class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):

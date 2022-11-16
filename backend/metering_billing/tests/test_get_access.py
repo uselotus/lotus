@@ -260,13 +260,16 @@ class TestGetAccess:
         )
         plan_component = PlanComponent.objects.create(
             billable_metric=metric,
-            free_metric_units=0,
-            max_metric_units=10,
+            plan_version=billing_plan,
+        )
+        PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=0,
+            range_end=10,
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        billing_plan.components.add(plan_component)
-        billing_plan.save()
         subscription = Subscription.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
