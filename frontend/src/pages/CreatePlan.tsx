@@ -421,7 +421,7 @@ const CreatePlan = () => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Price Adjustment/Discount">
+              <Card className="w-6/12 mb-20" title="Discount">
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}
@@ -438,9 +438,9 @@ const CreatePlan = () => {
                         Overwrite Price
                       </Select.Option>
                       <Select.Option value="percentage">
-                        Percentage
+                        Percentage Off
                       </Select.Option>
-                      <Select.Option value="fixed">Fixed Amount</Select.Option>
+                      <Select.Option value="fixed">Flat Discount</Select.Option>
                     </Select>
                   </Form.Item>
 

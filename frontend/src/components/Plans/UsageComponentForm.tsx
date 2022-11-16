@@ -269,7 +269,7 @@ function UsageComponentForm({
       setCurrentTiers([...currentTiers, newTierDefault]);
       console.log(currentTiers);
       setRangeEnd(rangeEnd);
-      setErrorMessage(undefined);
+      setErrorMessage("");
     } else {
       setErrorMessage("Please enter a range end");
     }
@@ -349,7 +349,8 @@ function UsageComponentForm({
       title: "Delete",
       dataIndex: "delete",
       render: (_, record) =>
-        currentTiers.length > 1 && (
+        currentTiers.length > 1 &&
+        record.range_start != 0 && (
           <Button
             size="small"
             type="text"
@@ -410,6 +411,7 @@ function UsageComponentForm({
 
               form.submit();
               form.resetFields();
+              setErrorMessage("");
             } else {
               setErrorMessage("Tiers are not valid");
             }
@@ -459,7 +461,7 @@ function UsageComponentForm({
             Add Tier
           </Button>
         </div>
-        {errorMessage && (
+        {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
       </Form>

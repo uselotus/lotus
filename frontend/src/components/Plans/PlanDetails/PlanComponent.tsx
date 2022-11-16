@@ -1,34 +1,36 @@
 // @ts-ignore
 import React, { FC } from "react";
 import "./PlanDetails.css";
-import { Component } from "../../../types/plan-type";
+import { Table } from "antd";
+import { Component, Tier } from "../../../types/plan-type";
 
 interface PlanComponentsProps {
   components?: Component[];
 }
+const renderCost = (record: Tier) => {
+  switch (record.type) {
+    case "per_unit":
+      return (
+        <span>
+          {"$"}
+          {record.cost_per_batch} per {record.metric_units_per_batch} Unit
+        </span>
+      );
+
+    case "flat":
+      return (
+        <span>
+          {"$"}
+          {record.cost_per_batch}{" "}
+        </span>
+      );
+
+    case "free":
+      return <span>{"Free"}</span>;
+  }
+};
 
 const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
-  const dummy_components = [
-    {
-      metric: "API calls",
-      cost: "$4 / 20 Unit(s)",
-      FreeUnits: 10,
-      MaxUnits: 10,
-    },
-    {
-      metric: "Unique Languages",
-      cost: "$4 / 20 Unit(s)",
-      FreeUnits: 10,
-      MaxUnits: 10,
-    },
-    {
-      metric: "API calls",
-      cost: "$4 / 20 Unit(s)",
-      FreeUnits: 10,
-      MaxUnits: 10,
-    },
-  ];
-
   return (
     <div className="">
       <div className="pb-5 pt-3 font-main font-bold text-[20px]">
@@ -42,27 +44,41 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
                 <div className="pr-1">Metric:</div>
                 <div> {component.billable_metric.billable_metric_name}</div>
               </div>
-              <div className="planDetails">
-                <div className="pr-1 planComponentLabel">Cost:</div>
-                <div className="planComponentCost">
-                  {" $"}
-                  {component.cost_per_batch > 0
-                    ? component.cost_per_batch
-                    : "0"}{" "}
-                  {component.metric_units_per_batch &&
-                    "per " + component.metric_units_per_batch + " Unit"}
-                  {component.metric_units_per_batch > 1 ? "s" : null}{" "}
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="planDetails pr-6">
-                  <div className="pr-2 planComponentLabel">Free Units:</div>
-                  <div>{component.free_metric_units}</div>
-                </div>
-                <div className="planDetails">
-                  <div className="pr-2 planComponentLabel">Max Units:</div>
-                  <div>{component.max_metric_units}</div>
-                </div>
+              <div className="">
+                <Table
+                  dataSource={component.tiers}
+                  pagination={false}
+                  showHeader={false}
+                  bordered={false}
+                  rowClassName="bg-[#FAFAFA]"
+                  className="bg-background"
+                  style={{ color: "blue" }}
+                  size="middle"
+                  columns={[
+                    {
+                      title: "Range",
+                      dataIndex: "range_start",
+                      key: "range_start",
+                      align: "left",
+                      width: "50%",
+                      render: (value: any, record: any) => (
+                        <span>
+                          From {value} to{" "}
+                          {record.range_end == null ? "∞" : record.range_end}
+                        </span>
+                      ),
+                    },
+                    {
+                      title: "Cost",
+                      align: "left",
+                      dataIndex: "cost_per_batch",
+                      key: "cost_per_batch",
+                      render: (value: any, record: any) => (
+                        <div>{renderCost(record)}</div>
+                      ),
+                    },
+                  ]}
+                />
               </div>
             </div>
           ))}
