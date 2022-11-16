@@ -638,7 +638,9 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "replace_immediately_type": {"write_only": True},
         }
 
-    components = PlanComponentSerializer(many=True, allow_null=True, required=False, source="plan_components")
+    components = PlanComponentSerializer(
+        many=True, allow_null=True, required=False, source="plan_components"
+    )
     features = FeatureSerializer(many=True, allow_null=True, required=False)
     price_adjustment = PriceAdjustmentSerializer(required=False)
     plan_id = SlugRelatedFieldWithOrganization(
@@ -662,13 +664,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
-    # transition_to_plan_version_id = SlugRelatedFieldWithOrganization(
-    #     slug_field="version_id",
-    #     queryset=PlanVersion.objects.all(),
-    #     write_only=True,
-    #     required=False,
-    # )
-
     # READ-ONLY
     active_subscriptions = serializers.IntegerField(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
@@ -694,11 +689,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             return None
 
     def validate(self, data):
-        # transition_to_plan_id = data.get("transition_to_plan_id")
-        # transition_to_plan_version_id = data.get("transition_to_plan_version_id")
-        # assert not (
-        #     transition_to_plan_id and transition_to_plan_version_id
-        # ), "Can't specify both transition_to_plan_id and transition_to_plan_version_id"
         data = super().validate(data)
         if data.get("make_active") and not data.get("make_active_type"):
             raise serializers.ValidationError(
@@ -715,7 +705,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        components_data = validated_data.pop("components", [])
+        components_data = validated_data.pop("plan_components", [])
         if len(components_data) > 0:
             components = PlanComponentSerializer(many=True).create(components_data)
             assert type(components[0]) == PlanComponent
@@ -727,10 +717,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         make_active_type = validated_data.pop("make_active_type", None)
         replace_immediately_type = validated_data.pop("replace_immediately_type", None)
         transition_to_plan = validated_data.get("transition_to_plan_id", None)
-        # transition_to_plan_version = validated_data.get(
-        #     "transition_to_plan_version_id", None
-        # )
-        # create planVersion initially
         validated_data["version"] = len(validated_data["plan"].versions.all()) + 1
         if "status" not in validated_data:
             validated_data["status"] = (
@@ -917,22 +903,26 @@ class PlanSerializer(serializers.ModelSerializer):
         if initial_external_links:
             validated_data.pop("initial_external_links")
         plan = Plan.objects.create(**validated_data)
-        display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
-        display_version_data["plan"] = plan
-        display_version_data["organization"] = validated_data["organization"]
-        display_version_data["created_by"] = validated_data["created_by"]
-        plan_version = InitialPlanVersionSerializer().create(display_version_data)
-        if initial_external_links:
-            for link_data in initial_external_links:
-                link_data["plan"] = plan
-                link_data["organization"] = validated_data["organization"]
-                ExternalPlanLinkSerializer(
-                    context={"organization": validated_data["organization"]}
-                ).validate(link_data)
-                ExternalPlanLinkSerializer().create(link_data)
-        plan.display_version = plan_version
-        plan.save()
-        return plan
+        try:
+            display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
+            display_version_data["plan"] = plan
+            display_version_data["organization"] = validated_data["organization"]
+            display_version_data["created_by"] = validated_data["created_by"]
+            plan_version = InitialPlanVersionSerializer().create(display_version_data)
+            if initial_external_links:
+                for link_data in initial_external_links:
+                    link_data["plan"] = plan
+                    link_data["organization"] = validated_data["organization"]
+                    ExternalPlanLinkSerializer(
+                        context={"organization": validated_data["organization"]}
+                    ).validate(link_data)
+                    ExternalPlanLinkSerializer().create(link_data)
+            plan.display_version = plan_version
+            plan.save()
+            return plan
+        except Exception as e:
+            plan.delete()
+            raise e
 
 
 class PlanUpdateSerializer(serializers.ModelSerializer):
