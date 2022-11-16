@@ -112,7 +112,7 @@ class PeriodMetricRevenueView(APIView):
                     )
                     if p_start <= flat_bill_date <= p_end:
                         total_period_rev += bp.flat_rate.amount
-                    for plan_component in bp.components.all():
+                    for plan_component in bp.plan_components.all():
                         billable_metric = plan_component.billable_metric
                         revenue_per_day = plan_component.calculate_total_revenue(sub)
                         metric_dict = return_dict[
