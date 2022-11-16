@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal
 from typing import Union
 
 from actstream.models import Action
@@ -420,11 +421,8 @@ class PriceTierSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
-        assert data.get("range_start") and data.get("range_start") >= 0
-        assert (
-            data.get("range_end") > data.get("range_start")
-            or data.get("range_end") == None
-        )
+        assert data.get("range_start") and data.get("range_start") >= Decimal(0)
+        assert data.get("range_end", float("inf")) > data.get("range_start")
         if data.get("type") == PRICE_TIER_TYPE.FLAT:
             assert data.get("cost_per_batch")
             data["metric_units_per_batch"] = None
