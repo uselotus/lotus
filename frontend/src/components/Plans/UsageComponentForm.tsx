@@ -141,7 +141,12 @@ const EditableCell: React.FC<EditableCellProps> = ({
         // ]}
       >
         {title === "Charge Type" ? (
-          <Select onChange={save} ref={inputRef}>
+          <Select
+            onChange={save}
+            ref={inputRef}
+            onBlur={save}
+            onPressEnter={save}
+          >
             <Option value="per_metric">Per Metric</Option>
             <Option value="free">Free</Option>
             <Option value="flat">Flat</Option>
@@ -193,6 +198,7 @@ function UsageComponentForm({
     editComponentItem?.max_metric_units ? true : false
   );
   const initalData = editComponentItem ?? null;
+  const [errorMessage, setErrorMessage] = useState("");
 
   const initialTier: Tier[] = [
     {
@@ -231,6 +237,9 @@ function UsageComponentForm({
       setCurrentTiers([...currentTiers, newTierDefault]);
       console.log(currentTiers);
       setRangeEnd(rangeEnd);
+      setErrorMessage(undefined);
+    } else {
+      setErrorMessage("Please enter a range end");
     }
   };
 
@@ -410,6 +419,9 @@ function UsageComponentForm({
             Add Tier
           </Button>
         </div>
+        {errorMessage && (
+          <p className="flex justify-center text-danger">{errorMessage}</p>
+        )}
       </Form>
     </Modal>
   );
