@@ -1,6 +1,6 @@
 .movementButton {
-    font-size: 20px;
     cursor: pointer;
+    font-size: 12px;
 }
 
 .movementButton[disabled]{
@@ -9,8 +9,8 @@
 }
 
 .currentPageNumber {
-    height: 40px;
-    width: 40px;
+    height: 30px;
+    width: 30px;
     align-items: center;
     justify-content: center;
     display: flex;
