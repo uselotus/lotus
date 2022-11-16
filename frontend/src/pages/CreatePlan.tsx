@@ -172,7 +172,7 @@ const CreatePlan = () => {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components: any = Object.values(componentsData);
-        console.log(typeof components[0].tiers[0].range_start);
+        console.log(components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
