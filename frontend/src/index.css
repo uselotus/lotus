@@ -152,10 +152,17 @@ a {
   width: 75%;
 }
 
-.ant-picker-ranges .ant-picker-preset > .ant-tag-blue [id="preset"] {
-  background: none;
-  border-color: #cca43b;
-  color: #1d1d1d;
+/*.ant-picker-ranges .ant-picker-preset > .ant-tag-blue [id="preset"] {*/
+/*  background: none;*/
+/*  border-color: #cca43b;*/
+/*  color: #1d1d1d;*/
+/*}*/
+
+.ant-picker-ranges .ant-picker-preset > .ant-tag-blue {
+    color: #1d1d1f;
+    background: #cca43b !important;
+    border-color: #1d1d1f!important;
+    cursor: pointer;
 }
 
 /**
