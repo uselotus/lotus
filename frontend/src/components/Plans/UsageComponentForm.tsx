@@ -51,7 +51,11 @@ const validateTiers = (tiers: Tier[]) => {
 
       //check if types are correct
     } else {
-      if (currentEnd === undefined || tier.range_start < currentEnd) {
+      if (
+        currentEnd === undefined ||
+        tier.range_start < currentEnd ||
+        tier.range_start > currentEnd + 1
+      ) {
         return false;
       } else {
         currentStart = tier.range_start;
