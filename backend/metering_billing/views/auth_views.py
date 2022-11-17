@@ -1,6 +1,7 @@
 import json
 import time
 
+import lotus_python
 import posthog
 from django.conf import settings
 from django.contrib.auth import authenticate, login
@@ -23,14 +24,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-import lotus
-
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 LOTUS_HOST = settings.LOTUS_HOST
 LOTUS_API_KEY = settings.LOTUS_API_KEY
 if LOTUS_HOST and LOTUS_API_KEY:
-    lotus.api_key = 'YOUR API KEY'
-    lotus.host = LOTUS_HOST
+    lotus_python.api_key = LOTUS_API_KEY
+    lotus_python.host = LOTUS_HOST
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -198,7 +197,7 @@ class RegisterView(LoginViewMixin, APIView):
             )
             token = None
             if LOTUS_HOST and LOTUS_API_KEY:
-                lotus.create_customer(
+                lotus_python.create_customer(
                     customer_id=org.company_name + str(org.pk),
                     name=org.company_name,
                 )

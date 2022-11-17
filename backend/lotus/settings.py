@@ -451,6 +451,6 @@ WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
 
 LOTUS_HOST = config("LOTUS_HOST", default=None)
 LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
-
+META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
 django_heroku.settings(locals())
