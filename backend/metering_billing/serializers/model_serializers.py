@@ -115,16 +115,16 @@ class EventSerializer(serializers.ModelSerializer):
             "properties",
             "time_created",
             "idempotency_id",
-            # "customer_id",
+            "customer_id",
             "customer",
         )
 
-    # customer_id = SlugRelatedFieldWithOrganization(
-    #     slug_field="customer_id",
-    #     queryset=Customer.objects.all(),
-    #     write_only=True,
-    #     source="customer",
-    # )
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        write_only=True,
+        source="customer",
+    )
     customer = serializers.SerializerMethodField()
 
     def get_customer(self, obj) -> str:
