@@ -28,6 +28,7 @@ import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
+// @ts-ignore
 import React from "react";
 import { PageLayout } from "../components/base/PageLayout";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
@@ -60,6 +61,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   const { setReplacementPlan } = usePlanUpdater();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
   const [targetCustomerId, setTargetCustomerId] = useState<string>(); // target customer id
+  const [allPlans, setAllPlans] =  useState<PlanType[]>([])
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([
@@ -75,6 +77,12 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>(
     plan.versions[versionIndex].features
   );
+
+  useEffect(() => {
+      if(!allPlans?.length) {
+          Plan.getPlans().then(data => setAllPlans(data))
+      }
+  }, [])
 
   useEffect(() => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
@@ -266,6 +274,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
           flat_fee_billing_type: values.flat_fee_billing_type,
+          transition_to_plan_id: values.transition_to_plan_id,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
@@ -301,6 +310,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             plan_id: plan.plan_id,
             description: values.description,
             flat_fee_billing_type: values.flat_fee_billing_type,
+            transition_to_plan_id: values.transition_to_plan_id,
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: planFeatures,
@@ -467,6 +477,20 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
+                     <Form.Item
+                          name="transition_to_plan_id"
+                          label="Plan on next cycle"
+                     >
+                          <Select>
+                              {
+                                  allPlans.map(plan => (
+                                      <Select.Option value={plan.plan_id}>
+                                          {plan.plan_name}
+                                      </Select.Option>
+                                  ))
+                              }
+                          </Select>
+                      </Form.Item>
                   </Card>
                 </Col>
               </Row>

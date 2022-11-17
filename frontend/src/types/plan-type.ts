@@ -35,6 +35,7 @@ export interface CreatePlanVersionType {
   flat_rate: number;
   usage_billing_frequency?: string;
   flat_fee_billing_type: string;
+  transition_to_plan_id: string;
   price_adjustment?: PriceAdjustment;
   make_active?: boolean;
   make_active_type?: string;
