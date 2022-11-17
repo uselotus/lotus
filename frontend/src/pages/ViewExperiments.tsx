@@ -1,4 +1,5 @@
-import React, { FC, useEffect, useState } from "react";
+// @ts-ignore
+import React, { FC } from "react";
 import BacktestTable from "../components/Experiments/BacktestTable";
 
 import { Backtests } from "../api/api";
@@ -6,8 +7,8 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { PageLayout } from "../components/base/PageLayout";
 import { BacktestType } from "../types/experiment-type";
-import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
+import {LotusButton} from "../components/base/Button";
 
 const ViewExperiments: FC = () => {
   const queryClient = useQueryClient();
@@ -34,17 +35,7 @@ const ViewExperiments: FC = () => {
   return (
     <PageLayout
       title="Experiments"
-      extra={[
-        <Button
-          onClick={navigateCreatePlan}
-          className="text-white"
-          size="large"
-          key={"create-plan"}
-          type="primary"
-        >
-          Create Experiment
-        </Button>,
-      ]}
+      extra={[<LotusButton text="Create Experiment" onClick={navigateCreatePlan}/>]}
     >
       <div>
         {isLoading || data === undefined ? (

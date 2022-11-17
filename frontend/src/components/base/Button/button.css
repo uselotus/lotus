@@ -1,0 +1,4 @@
+.lotus-button:hover {
+    background: #000000c7;
+    transform:scale(1.01);
+}
