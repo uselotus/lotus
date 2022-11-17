@@ -195,8 +195,13 @@ const CreatePlan = () => {
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
         ) {
-          if (values.price_adjustment_type === "percentage" || values.price_adjustment_type === "flat") {
-            values.price_adjustment_value = Math.abs(values.price_adjustment_value) * -1;
+          if (
+            values.price_adjustment_type === "percentage" ||
+            values.price_adjustment_type === "flat"
+          ) {
+            values.price_adjustment_value =
+              Math.abs(values.price_adjustment_value) * -1;
+          }
 
           initialPlanVersion["price_adjustment"] = {
             price_adjustment_type: values.price_adjustment_type,
