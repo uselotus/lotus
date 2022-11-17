@@ -310,13 +310,13 @@ class APIKeyCreate(APIView):
             name="new_api_key", organization=organization
         )
         try:
-            user = self.request.user
+            username = self.request.user.username
         except:
-            user = None
+            username = None
         posthog.capture(
             POSTHOG_PERSON
             if POSTHOG_PERSON
-            else (user.username if user else organization.company_name + " (Unknown)"),
+            else (username if username else organization.company_name + " (Unknown)"),
             event="create_api_key",
             properties={"organization": organization.company_name},
         )
@@ -495,13 +495,13 @@ class DraftInvoiceView(APIView):
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)
         try:
-            user = self.request.user
+            username = self.request.user.username
         except:
-            user = None
+            username = None
         posthog.capture(
             POSTHOG_PERSON
             if POSTHOG_PERSON
-            else (user.username if user else organization.company_name + " (Unknown)"),
+            else (username if username else organization.company_name + " (Unknown)"),
             event="draft_invoice",
             properties={"organization": organization.company_name},
         )
@@ -546,13 +546,13 @@ class GetCustomerAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
         try:
-            user = self.request.user
+            username = self.request.user.username
         except:
-            user = None
+            username = None
         posthog.capture(
             POSTHOG_PERSON
             if POSTHOG_PERSON
-            else (user.username if user else organization.company_name + " (Unknown)"),
+            else (username if username else organization.company_name + " (Unknown)"),
             event="get_access",
             properties={"organization": organization.company_name},
         )
@@ -980,29 +980,41 @@ class CustomerBatchCreateView(APIView):
     )
     def post(self, request, format=None):
         organization = parse_organization(request)
-        serializer = CustomerSerializer(data=request.data["customers"])
+        serializer = CustomerSerializer(
+            data=request.data["customers"],
+            many=True,
+            context={"organization": organization},
+        )
         serializer.is_valid(raise_exception=True)
         failed_customers = {}
         behavior = request.data.get("behavior_on_existing", "merge")
         for customer in serializer.validated_data:
-            match = Customer.objects.filter(
-                Q(email=customer["email"]) | Q(customer_id=customer["customer_id"])
-            )
-            if match.exists():
-                match = match.first()
-                if behavior == "ignore":
-                    pass
+            try:
+                match = Customer.objects.filter(
+                    Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
+                    organization=organization,
+                )
+                if match.exists():
+                    match = match.first()
+                    if behavior == "ignore":
+                        pass
+                    else:
+                        if "customer_id" in customer:
+                            non_unique_id = Customer.objects.filter(
+                                ~Q(pk=match.pk), customer_id=customer["customer_id"]
+                            ).exists()
+                            if non_unique_id:
+                                failed_customers[
+                                    customer["customer_id"]
+                                ] = "customer_id already exists"
+                                continue
+                        CustomerSerializer().update(match, customer, behavior=behavior)
                 else:
-                    if "customer_id" in customer:
-                        non_unique_id = Customer.objects.filter(
-                            ~Q(pk=match.pk), customer_id=customer["customer_id"]
-                        ).exists()
-                        if non_unique_id:
-                            failed_customers[
-                                customer["customer_id"]
-                            ] = "customer_id already exists"
-                            continue
-                    CustomerSerializer().update(match, customer, behavior=behavior)
+                    customer["organization"] = organization
+                    CustomerSerializer().create(customer)
+            except Exception as e:
+                identifier = customer.get("customer_id", customer.get("email"))
+                failed_customers[identifier] = str(e)
 
         if len(failed_customers) == 0 or len(failed_customers) < len(
             serializer.validated_data

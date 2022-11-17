@@ -242,15 +242,15 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_customer",
                 properties={"organization": organization.company_name},
@@ -281,15 +281,15 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_metric",
                 properties={"organization": organization.company_name},
@@ -342,15 +342,15 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_feature",
                 properties={"organization": organization.company_name},
@@ -405,15 +405,15 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan_version",
                 properties={"organization": organization.company_name},
@@ -503,15 +503,15 @@ class PlanViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan",
                 properties={"organization": organization.company_name},
@@ -616,15 +616,15 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_subscription",
                 properties={"organization": organization.company_name},
@@ -698,15 +698,15 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_invoice",
                 properties={"organization": organization.company_name},
@@ -734,15 +734,15 @@ class AlertViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_alert",
                 properties={"organization": organization.company_name},
@@ -792,15 +792,15 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_backtest",
                 properties={"organization": organization.company_name},
@@ -835,15 +835,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_product",
                 properties={"organization": organization.company_name},
@@ -911,15 +911,15 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_external_plan_link",
                 properties={"organization": organization.company_name},
