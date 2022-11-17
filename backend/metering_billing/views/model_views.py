@@ -13,13 +13,16 @@ from metering_billing.models import (
     Backtest,
     BillableMetric,
     Customer,
+    CustomerBalanceAdjustment,
     Event,
     ExternalPlanLink,
     Feature,
     Invoice,
     OrganizationSetting,
     Plan,
+    PlanComponent,
     PlanVersion,
+    PriceTier,
     Product,
     Subscription,
     User,
@@ -34,6 +37,7 @@ from metering_billing.serializers.model_serializers import (
     ActionSerializer,
     AlertSerializer,
     BillableMetricSerializer,
+    CustomerDetailSerializer,
     CustomerSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
@@ -47,6 +51,7 @@ from metering_billing.serializers.model_serializers import (
     PlanVersionSerializer,
     PlanVersionUpdateSerializer,
     ProductSerializer,
+    SubscriptionDetailSerializer,
     SubscriptionSerializer,
     SubscriptionUpdateSerializer,
     UserSerializer,
@@ -224,7 +229,27 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return Customer.objects.filter(organization=organization)
+        qs = Customer.objects.filter(organization=organization)
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "customer_subscriptions",
+                    queryset=Subscription.objects.filter(
+                        organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+                    ),
+                ),
+                Prefetch(
+                    "customer_subscriptions__billing_plan",
+                    queryset=PlanVersion.objects.filter(organization=organization),
+                    to_attr="billing_plans",
+                ),
+            )
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return CustomerDetailSerializer
+        return CustomerSerializer
 
     def perform_create(self, serializer):
         try:
@@ -236,6 +261,23 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         context = super(CustomerViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
         context.update({"organization": organization})
+        if self.action == "retrieve":
+            customer = self.get_object()
+            total_amount_due = customer.get_outstanding_revenue()
+            invoices = Invoice.objects.filter(
+                organization=organization,
+                customer=customer,
+            )
+            balance_adjustments = CustomerBalanceAdjustment.objects.filter(
+                customer=customer,
+            )
+            context.update(
+                {
+                    "total_amount_due": total_amount_due,
+                    "invoices": invoices,
+                    "balance_adjustments": balance_adjustments,
+                }
+            )
         return context
 
     def dispatch(self, request, *args, **kwargs):
@@ -460,7 +502,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
 
 
-class PlanViewSet(viewsets.ModelViewSet):
+class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Products.
     """
@@ -589,7 +631,26 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return Subscription.objects.filter(organization=organization)
+        qs = (
+            Subscription.objects.filter(
+                organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+            )
+            .select_related("customer")
+            .select_related("billing_plan")
+        )
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "billing_plan__plan_components",
+                    queryset=PlanComponent.objects.all(),
+                )
+            ).prefetch_related(
+                Prefetch(
+                    "billing_plan__plan_components__tiers",
+                    queryset=PriceTier.objects.all(),
+                )
+            )
+        return qs
 
     def perform_create(self, serializer):
         if serializer.validated_data["start_date"] <= now_utc():
@@ -609,6 +670,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "partial_update":
             return SubscriptionUpdateSerializer
+        elif self.action == "retrieve":
+            return SubscriptionDetailSerializer
         else:
             return SubscriptionSerializer
 

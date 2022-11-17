@@ -363,77 +363,77 @@ class CustomersSummaryView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CustomerDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+# class CustomerDetailView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        parameters=[
-            inline_serializer(
-                name="CustomerDetailRequestSerializer",
-                fields={"customer_id": serializers.CharField()},
-            ),
-        ],
-        responses={
-            200: CustomerDetailSerializer,
-            400: inline_serializer(
-                name="CustomerDetailErrorResponseSerializer",
-                fields={"error_detail": serializers.CharField()},
-            ),
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Get the current settings for the organization.
-        """
-        organization = parse_organization(request)
-        customer_id = request.query_params.get("customer_id")
-        try:
-            customer = (
-                Customer.objects.filter(
-                    organization=organization, customer_id=customer_id
-                )
-                .prefetch_related(
-                    Prefetch(
-                        "customer_subscriptions",
-                        queryset=Subscription.objects.filter(organization=organization),
-                        to_attr="subscriptions",
-                    ),
-                    Prefetch(
-                        "subscriptions__billing_plan",
-                        queryset=PlanVersion.objects.filter(organization=organization),
-                        to_attr="billing_plans",
-                    ),
-                )
-                .get()
-            )
-        except Customer.DoesNotExist:
-            return Response(
-                {
-                    "error_detail": "Customer with customer_id {} does not exist".format(
-                        customer_id
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+#     @extend_schema(
+#         parameters=[
+#             inline_serializer(
+#                 name="CustomerDetailRequestSerializer",
+#                 fields={"customer_id": serializers.CharField()},
+#             ),
+#         ],
+#         responses={
+#             200: CustomerDetailSerializer,
+#             400: inline_serializer(
+#                 name="CustomerDetailErrorResponseSerializer",
+#                 fields={"error_detail": serializers.CharField()},
+#             ),
+#         },
+#     )
+#     def get(self, request, format=None):
+#         """
+#         Get the current settings for the organization.
+#         """
+#         organization = parse_organization(request)
+#         customer_id = request.query_params.get("customer_id")
+#         try:
+#             customer = (
+#                 Customer.objects.filter(
+#                     organization=organization, customer_id=customer_id
+#                 )
+#                 .prefetch_related(
+#                     Prefetch(
+#                         "customer_subscriptions",
+#                         queryset=Subscription.objects.filter(organization=organization),
+#                         to_attr="subscriptions",
+#                     ),
+#                     Prefetch(
+#                         "subscriptions__billing_plan",
+#                         queryset=PlanVersion.objects.filter(organization=organization),
+#                         to_attr="billing_plans",
+#                     ),
+#                 )
+#                 .get()
+#             )
+#         except Customer.DoesNotExist:
+#             return Response(
+#                 {
+#                     "error_detail": "Customer with customer_id {} does not exist".format(
+#                         customer_id
+#                     )
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
 
-        total_amount_due = customer.get_outstanding_revenue()
-        invoices = Invoice.objects.filter(
-            organization=organization,
-            customer=customer,
-        )
+#         total_amount_due = customer.get_outstanding_revenue()
+#         invoices = Invoice.objects.filter(
+#             organization=organization,
+#             customer=customer,
+#         )
 
-        balance_adjustments = CustomerBalanceAdjustment.objects.filter(
-            customer=customer,
-        )
-        serializer = CustomerDetailSerializer(
-            customer,
-            context={
-                "total_amount_due": total_amount_due,
-                "invoices": invoices,
-                "balance_adjustments": balance_adjustments,
-            },
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#         balance_adjustments = CustomerBalanceAdjustment.objects.filter(
+#             customer=customer,
+#         )
+#         serializer = CustomerDetailSerializer(
+#             customer,
+#             context={
+#                 "total_amount_due": total_amount_due,
+#                 "invoices": invoices,
+#                 "balance_adjustments": balance_adjustments,
+#             },
+#         )
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomersWithRevenueView(APIView):
