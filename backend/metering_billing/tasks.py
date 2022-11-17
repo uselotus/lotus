@@ -161,7 +161,8 @@ def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events)
         POSTHOG_PERSON
         if POSTHOG_PERSON
         else org.company_name + " (API Key)" "track_event",
-        {
+        event="track_event",
+        properties={
             "sent_events": len_sent_events,
             "ingested_events": len_ingested_events,
             "organization": org.company_name,

@@ -946,3 +946,78 @@ class CustomerBalanceAdjustmentView(APIView):
             )
         serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CustomerBatchCreateView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="CustomerBatchCreateRequest",
+            fields={
+                "customers": CustomerSerializer(many=True),
+                "behavior_on_existing": serializers.ChoiceField(
+                    choices=["merge", "ignore", "overwrite"]
+                ),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="CustomerBatchCreateSuccess",
+                fields={
+                    "success": serializers.ChoiceField(choices=["all", "some"]),
+                    "failed_customers": serializers.DictField(required=False),
+                },
+            ),
+            400: inline_serializer(
+                name="CustomerBatchCreateFailure",
+                fields={
+                    "success": serializers.ChoiceField(choices=["none"]),
+                    "failed_customers": serializers.DictField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        serializer = CustomerSerializer(data=request.data["customers"])
+        serializer.is_valid(raise_exception=True)
+        failed_customers = {}
+        behavior = request.data.get("behavior_on_existing", "merge")
+        for customer in serializer.validated_data:
+            match = Customer.objects.filter(
+                Q(email=customer["email"]) | Q(customer_id=customer["customer_id"])
+            )
+            if match.exists():
+                match = match.first()
+                if behavior == "ignore":
+                    pass
+                else:
+                    if "customer_id" in customer:
+                        non_unique_id = Customer.objects.filter(
+                            ~Q(pk=match.pk), customer_id=customer["customer_id"]
+                        ).exists()
+                        if non_unique_id:
+                            failed_customers[
+                                customer["customer_id"]
+                            ] = "customer_id already exists"
+                            continue
+                    CustomerSerializer().update(match, customer, behavior=behavior)
+
+        if len(failed_customers) == 0 or len(failed_customers) < len(
+            serializer.validated_data
+        ):
+            return Response(
+                {
+                    "success": "all" if len(failed_customers) == 0 else "some",
+                    "failed_customers": failed_customers,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(
+            {
+                "success": "none",
+                "failed_customers": failed_customers,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )

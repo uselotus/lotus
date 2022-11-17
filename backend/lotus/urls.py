@@ -40,8 +40,9 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
-    CustomerDetailView,
     CustomerBalanceAdjustmentView,
+    CustomerBatchCreateView,
+    CustomerDetailView,
     CustomersSummaryView,
     CustomersWithRevenueView,
     DraftInvoiceView,
@@ -125,7 +126,7 @@ urlpatterns = [
     path(
         "api/period_subscriptions/",
         PeriodSubscriptionsView.as_view(),
-        name="pexwriod_subscriptions",
+        name="period_subscriptions",
     ),
     path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
     path("api/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
@@ -133,6 +134,11 @@ urlpatterns = [
         "api/customer_access/",
         GetCustomerAccessView.as_view(),
         name="customer_access",
+    ),
+    path(
+        "api/batch_create_customers/",
+        CustomerBatchCreateView.as_view(),
+        name="batch_create_customers",
     ),
     path(
         "api/import_customers/",
