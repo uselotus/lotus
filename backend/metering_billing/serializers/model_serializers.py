@@ -227,16 +227,16 @@ class CustomerSerializer(serializers.ModelSerializer):
         payment_provider = data.get("payment_provider", None)
         payment_provider_id = data.get("payment_provider_id", None)
         if payment_provider or payment_provider_id:
-            if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
-                self.context["organization"]
-            ):
-                raise serializers.ValidationError(
-                    "Specified payment provider not connected to organization"
-                )
-            if payment_provider and not payment_provider_id:
-                raise serializers.ValidationError(
-                    "Payment provider ID required when payment provider is specified"
-                )
+            # if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
+            #     self.context["organization"]
+            # ):
+            #     raise serializers.ValidationError(
+            #         "Specified payment provider not connected to organization"
+            #     )
+            # if payment_provider and not payment_provider_id:
+            #     raise serializers.ValidationError(
+            #         "Payment provider ID required when payment provider is specified"
+            #     )
             if payment_provider_id and not payment_provider:
                 raise serializers.ValidationError(
                     "Payment provider required when payment provider ID is specified"
@@ -282,9 +282,9 @@ class CustomerSerializer(serializers.ModelSerializer):
         if "payment_provider_id" in validated_data:
             if not (instance.payment_provider in instance.integrations):
                 instance.integrations[instance.payment_provider] = {}
-            instance.integrations[instance.payment_provider]["id"] = validated_data[
+            instance.integrations[instance.payment_provider]["id"] = validated_data.get(
                 "payment_provider_id"
-            ]
+            )
         return instance
 
 

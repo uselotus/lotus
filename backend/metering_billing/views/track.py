@@ -105,7 +105,10 @@ def track_event(request):
             else (expiry_date - now_utc()).total_seconds()
         )
         cache.set(prefix, organization_pk, timeout)
-    event_list = load_event(request)
+    try:
+        event_list = load_event(request)
+    except Exception as e:
+        return HttpResponseBadRequest(f"Invalid event data: {e}")
     if not event_list:
         return HttpResponseBadRequest("No data provided")
     if type(event_list) != list:
@@ -135,10 +138,13 @@ def track_event(request):
         if idempotency_id in events_to_insert:
             bad_events[idempotency_id] = "Duplicate event idempotency in request"
             continue
-
-        events_to_insert[idempotency_id] = ingest_event(
-            data, customer_id, organization_pk
-        )
+        try:
+            events_to_insert[idempotency_id] = ingest_event(
+                data, customer_id, organization_pk
+            )
+        except Exception as e:
+            bad_events[idempotency_id] = str(e)
+            continue
 
     # get the events currently in cache
     cache_tup = cache.get("events_to_insert")
