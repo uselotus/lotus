@@ -437,12 +437,18 @@ class PriceTier(models.Model):
         null=True,
     )
 
-    def calculate_revenue(self, usage_dict: dict):
+    def calculate_revenue(self, usage_dict: dict, prev_tier_end = False):
         dict_len = len(usage_dict)
         revenue = 0
+        discontinuous_range = prev_tier_end != self.range_start and prev_tier_end is not None
         for usage in usage_dict.values():
             usage = convert_to_decimal(usage)
-            if self.range_start < usage:
+            usage_in_range = (
+                self.range_start <= usage
+                if discontinuous_range
+                else self.range_start < usage or self.range_start == 0
+            )
+            if usage_in_range:
                 if self.type == PRICE_TIER_TYPE.FLAT:
                     revenue += self.cost_per_batch / dict_len
                 elif self.type == PRICE_TIER_TYPE.PER_UNIT:
@@ -452,6 +458,8 @@ class PriceTier(models.Model):
                         )
                     else:
                         billable_units = usage - self.range_start
+                    if discontinuous_range:
+                        billable_units += 1
                     billable_batches = billable_units / self.metric_units_per_batch
                     if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
                         billable_batches = math.ceil(billable_batches)
@@ -525,8 +533,13 @@ class PlanComponent(models.Model):
                 usage_qty = sum(usage.values())
                 usage_qty = convert_to_decimal(usage_qty)
                 revenue = 0
-                for tier in self.tiers.all():
-                    tier_revenue = tier.calculate_revenue(usage)
+                tiers = self.tiers.all()
+                for i, tier in enumerate(tiers):
+                    if i>0:
+                        prev_tier_end = tiers[i-1].range_end
+                        tier_revenue = tier.calculate_revenue(usage, prev_tier_end=prev_tier_end)
+                    else:
+                        tier_revenue = tier.calculate_revenue(usage)
                     revenue += tier_revenue
                 revenue = convert_to_decimal(revenue)
             else:
