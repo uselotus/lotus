@@ -971,7 +971,9 @@ class PlanDetailSerializer(PlanSerializer):
     versions = serializers.SerializerMethodField()
 
     def get_versions(self, obj) -> PlanVersionSerializer(many=True):
-        return PlanVersionSerializer(obj.versions.all(), many=True).data
+        return PlanVersionSerializer(
+            obj.versions.all().order_by("version"), many=True
+        ).data
 
 
 ## SUBSCRIPTION

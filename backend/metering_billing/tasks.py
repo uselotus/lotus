@@ -212,6 +212,9 @@ def run_backtest(backtest_id):
         all_results = {
             "substitution_results": [],
         }
+        print(
+            "Running backtest for {} substitutions".format(len(backtest_substitutions))
+        )
         for subst in backtest_substitutions:
             outer_results = {
                 "substitution_name": f"{str(subst.original_plan)} --> {str(subst.new_plan)}",
@@ -305,7 +308,7 @@ def run_backtest(backtest_id):
                             "original_plan_revenue": Decimal(0),
                         }
                     inner_results["revenue_by_metric"][metric_name][
-                        "original_plan_revenue"
+                        "new_plan_revenue"
                     ] += component_dict["revenue"]
                 inner_results["revenue_by_metric"]["flat_fees"][
                     "new_plan_revenue"

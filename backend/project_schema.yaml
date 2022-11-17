@@ -2520,6 +2520,29 @@ components:
     InitialPlanVersion:
       type: object
       properties:
+        transition_to:
+          type: string
+          nullable: true
+          readOnly: true
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        version_id:
+          type: string
+          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -2527,59 +2550,36 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        version:
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        active_subscriptions:
           type: integer
           readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
-        created_by:
-          type: string
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         usage_billing_frequency:
           nullable: true
           oneOf:
           - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        created_on:
-          type: string
-          format: date-time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
-        active_subscriptions:
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
+        version:
           type: integer
           readOnly: true
       required:
@@ -3164,29 +3164,40 @@ components:
     PlanDetail:
       type: object
       properties:
-        product_id:
-          type: string
-          nullable: true
         created_by:
           type: string
           readOnly: true
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExternalPlanLink'
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
-          readOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
+        product_id:
+          type: string
+          nullable: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        num_versions:
+          type: integer
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
         plan_duration:
           $ref: '#/components/schemas/PlanDurationEnum'
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
         initial_external_links:
           type: array
           items:
@@ -3195,23 +3206,12 @@ components:
         plan_id:
           type: string
           maxLength: 100
-        num_versions:
-          type: integer
-          readOnly: true
-        versions:
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
+        external_links:
           type: array
           items:
-            $ref: '#/components/schemas/PlanVersion'
-          readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        active_subscriptions:
-          type: integer
+            $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
       required:
       - active_subscriptions

@@ -29,8 +29,12 @@ const validateTiers = (tiers: Tier[]) => {
   const response: {} = {};
   var currentStart = 0;
   var currentEnd: number | undefined;
-  tiers.forEach((tier, index) => {
+  const arr2: boolean[] = tiers.map((tier, index) => {
     if (index === 0) {
+      if (tier.range_end !== undefined && tier.range_start >= tier.range_end) {
+        return false;
+      }
+
       currentStart = tier.range_start;
       currentEnd = tier.range_end;
 
@@ -54,7 +58,8 @@ const validateTiers = (tiers: Tier[]) => {
       if (
         currentEnd === undefined ||
         tier.range_start < currentEnd ||
-        tier.range_start > currentEnd + 1
+        tier.range_start > currentEnd + 1 ||
+        (tier.range_end !== undefined && tier.range_start >= tier.range_end)
       ) {
         return false;
       } else {
@@ -77,8 +82,10 @@ const validateTiers = (tiers: Tier[]) => {
         }
       }
     }
+    return true;
   });
-  return response;
+  console.log(arr2);
+  return arr2.every((val) => val === true);
 };
 
 interface Item {
@@ -154,7 +161,6 @@ const EditableCell: React.FC<EditableCellProps> = ({
   const save = async () => {
     try {
       const values = await form.validateFields();
-
       toggleEdit();
       handleSave({ ...record, ...values });
     } catch (errInfo) {
@@ -188,12 +194,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
             <Option value="flat">Flat</Option>
           </Select>
         ) : (
-          <Input
-            ref={inputRef}
-            type="number"
-            onPressEnter={save}
-            onBlur={save}
-          />
+          <InputNumber ref={inputRef} onPressEnter={save} onBlur={save} />
         )}
       </Form.Item>
     ) : (
@@ -245,7 +246,9 @@ function UsageComponentForm({
   const [currentTiers, setCurrentTiers] = useState<Tier[]>(
     editComponentItem?.tiers ?? initialTier
   );
-  const [rangeEnd, setRangeEnd] = useState<number>();
+  const [rangeEnd, setRangeEnd] = useState<number>(
+    editComponentItem?.tiers[0]?.range_end ?? 0
+  );
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -264,6 +267,7 @@ function UsageComponentForm({
 
   const handleAdd = () => {
     //if range_end isn't null
+    console.log(rangeEnd);
     if (rangeEnd !== undefined) {
       const newTierDefault: Tier = {
         range_start: rangeEnd,
@@ -272,7 +276,7 @@ function UsageComponentForm({
       };
       setCurrentTiers([...currentTiers, newTierDefault]);
       console.log(currentTiers);
-      setRangeEnd(rangeEnd);
+      setRangeEnd(undefined);
       setErrorMessage("");
     } else {
       setErrorMessage("Please enter a range end");
@@ -281,6 +285,7 @@ function UsageComponentForm({
 
   const handleSave = (row: Tier) => {
     const newData = [...currentTiers];
+    console.log(newData);
     const index = newData.findIndex(
       (item) => row.range_start === item.range_start
     );
@@ -303,6 +308,7 @@ function UsageComponentForm({
       (item) => item.range_start !== range_start
     );
     setCurrentTiers(newData);
+    setRangeEnd(newData[newData.length - 1].range_end);
   };
 
   const components = {
@@ -347,6 +353,13 @@ function UsageComponentForm({
       title: "Units",
       dataIndex: "metric_units_per_batch",
       editable: true,
+      render: (text: any, record: Tier) => {
+        if (record.type === "flat") {
+          return "-";
+        } else {
+          return record.metric_units_per_batch;
+        }
+      },
     },
 
     {
@@ -405,9 +418,7 @@ function UsageComponentForm({
         form
           .validateFields()
           .then((values) => {
-            console.log(values);
-
-            if (validateTiers(currentTiers)) {
+            if (validateTiers(currentTiers) === true) {
               handleComponentAdd({
                 metric: values.metric,
                 tiers: currentTiers,
