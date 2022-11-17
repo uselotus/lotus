@@ -123,6 +123,40 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/batch_create_customers/:
+    post:
+      operationId: batch_create_customers_create
+      tags:
+      - batch_create_customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerBatchCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomerBatchCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomerBatchCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBatchCreateSuccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerBatchCreateFailure'
+          description: ''
   /api/customer_access/:
     get:
       operationId: customer_access_retrieve
@@ -2012,6 +2046,12 @@ components:
       - round_nearest
       - no_rounding
       type: string
+    BehaviorOnExistingEnum:
+      enum:
+      - merge
+      - ignore
+      - overwrite
+      type: string
     BillableAggregationTypeEnum:
       enum:
       - count
@@ -2120,12 +2160,10 @@ components:
         properties:
           type: object
           additionalProperties: {}
-          readOnly: true
           nullable: true
       required:
       - customer_id
       - email
-      - properties
     CustomerBalanceAdjustment:
       type: object
       properties:
@@ -2158,6 +2196,39 @@ components:
       - amount
       - amount_currency
       - customer
+    CustomerBatchCreateFailure:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/Success5acEnum'
+        failed_customers:
+          type: object
+          additionalProperties: {}
+      required:
+      - failed_customers
+      - success
+    CustomerBatchCreateRequest:
+      type: object
+      properties:
+        customers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+        behavior_on_existing:
+          $ref: '#/components/schemas/BehaviorOnExistingEnum'
+      required:
+      - behavior_on_existing
+      - customers
+    CustomerBatchCreateSuccess:
+      type: object
+      properties:
+        success:
+          $ref: '#/components/schemas/SuccessFabEnum'
+        failed_customers:
+          type: object
+          additionalProperties: {}
+      required:
+      - success
     CustomerDetail:
       type: object
       properties:
@@ -2509,47 +2580,28 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
-        source:
-          $ref: '#/components/schemas/SourceEnum'
         external_plan_id:
           type: string
           maxLength: 100
+        source:
+          $ref: '#/components/schemas/SourceEnum'
       required:
       - external_plan_id
       - source
     InitialPlanVersion:
       type: object
       properties:
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
-        replace_with:
+        version:
           type: integer
-          nullable: true
           readOnly: true
         created_by:
           type: string
           readOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
         version_id:
           type: string
           readOnly: true
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         created_on:
           type: string
           format: date-time
@@ -2559,29 +2611,48 @@ components:
         active_subscriptions:
           type: integer
           readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
         usage_billing_frequency:
           nullable: true
           oneOf:
           - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        transition_to:
+          type: string
+          nullable: true
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
+          readOnly: true
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        version:
-          type: integer
-          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3164,55 +3235,55 @@ components:
     PlanDetail:
       type: object
       properties:
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
         created_by:
           type: string
           readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        product_id:
-          type: string
-          nullable: true
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
-          readOnly: true
-        num_versions:
-          type: integer
           readOnly: true
         created_on:
           type: string
           format: date-time
           readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        product_id:
+          type: string
+          nullable: true
+        num_versions:
+          type: integer
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
+        plan_name:
+          type: string
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/Status13eEnum'
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
-        active_subscriptions:
-          type: integer
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
           readOnly: true
         initial_external_links:
           type: array
           items:
             $ref: '#/components/schemas/InitialExternalPlanLink'
           writeOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
-        status:
-          $ref: '#/components/schemas/Status13eEnum'
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExternalPlanLink'
-          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3764,6 +3835,15 @@ components:
       enum:
       - ended
       type: string
+    Success5acEnum:
+      enum:
+      - none
+      type: string
+    SuccessFabEnum:
+      enum:
+      - all
+      - some
+      type: string
     TopCustomers:
       type: object
       properties:
@@ -3792,32 +3872,23 @@ components:
       type: object
       properties:
         success:
-          $ref: '#/components/schemas/TrackEventFailureSuccessEnum'
+          $ref: '#/components/schemas/Success5acEnum'
         failed_events:
           type: object
           additionalProperties: {}
       required:
       - failed_events
       - success
-    TrackEventFailureSuccessEnum:
-      enum:
-      - none
-      type: string
     TrackEventSuccess:
       type: object
       properties:
         success:
-          $ref: '#/components/schemas/TrackEventSuccessSuccessEnum'
+          $ref: '#/components/schemas/SuccessFabEnum'
         failed_events:
           type: object
           additionalProperties: {}
       required:
       - success
-    TrackEventSuccessSuccessEnum:
-      enum:
-      - all
-      - some
-      type: string
     TransferSubscriptionsFailure:
       type: object
       properties:

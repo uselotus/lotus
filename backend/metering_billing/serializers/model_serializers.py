@@ -212,7 +212,6 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider_id",
             "properties",
         )
-        read_only_fields = ("properties",)
         extra_kwargs = {
             "customer_id": {"required": True},
             "email": {"required": True},
@@ -260,6 +259,33 @@ class CustomerSerializer(serializers.ModelSerializer):
                     validated_data["payment_provider"]
                 ].create_customer(customer)
         return customer
+
+    def update(self, instance, validated_data, behavior="merge"):
+        instance.customer_id = validated_data.get(
+            "customer_id", instance.customer_id if behavior == "merge" else None
+        )
+        instance.customer_name = validated_data.get(
+            "customer_name", instance.customer_name if behavior == "merge" else None
+        )
+        instance.email = validated_data.get(
+            "email", instance.email if behavior == "merge" else None
+        )
+        instance.payment_provider = validated_data.get(
+            "payment_provider",
+            instance.payment_provider if behavior == "merge" else None,
+        )
+        instance.properties = (
+            {**instance.properties, **validated_data.get("properties", {})}
+            if behavior == "merge"
+            else validated_data.get("properties", {})
+        )
+        if "payment_provider_id" in validated_data:
+            if not (instance.payment_provider in instance.integrations):
+                instance.integrations[instance.payment_provider] = {}
+            instance.integrations[instance.payment_provider]["id"] = validated_data[
+                "payment_provider_id"
+            ]
+        return instance
 
 
 ## BILLABLE METRIC
@@ -477,8 +503,8 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             x["range_end"] for x in tiers_sorted[:-1]
         ), "All tiers must have an end, last one is the only one allowed to have open end"
         for i, tier in enumerate(tiers_sorted[:-1]):
-            assert (
-                tier["range_end"] == tiers_sorted[i + 1]["range_start"]
+            assert tiers_sorted[i + 1]["range_start"] - tier["range_end"] <= Decimal(
+                1
             ), "All tiers must be contiguous"
         return data
 
