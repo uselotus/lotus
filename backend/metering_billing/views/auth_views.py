@@ -1,6 +1,7 @@
 import json
 import time
 
+import lotus_python
 import posthog
 from django.conf import settings
 from django.contrib.auth import authenticate, login
@@ -24,6 +25,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+LOTUS_HOST = settings.LOTUS_HOST
+LOTUS_API_KEY = settings.LOTUS_API_KEY
+if LOTUS_HOST and LOTUS_API_KEY:
+    lotus_python.api_key = LOTUS_API_KEY
+    lotus_python.host = LOTUS_HOST
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -190,6 +196,11 @@ class RegisterView(LoginViewMixin, APIView):
                 company_name=reg_dict["company_name"],
             )
             token = None
+            if LOTUS_HOST and LOTUS_API_KEY:
+                lotus_python.create_customer(
+                    customer_id=org.company_name + str(org.pk),
+                    name=org.company_name,
+                )
 
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:

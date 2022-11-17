@@ -1,9 +1,16 @@
+from __future__ import absolute_import
+
 import datetime
+import os
+import sys
+import uuid
 from datetime import timezone
 from decimal import Decimal
 
+import lotus_python
 import posthog
 from django.conf import settings
+from django.db.models import Count, Q, Sum
 from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
@@ -16,10 +23,16 @@ from metering_billing.utils import (
     now_utc,
 )
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
-
-from .webhooks import invoice_created_webhook
+from metering_billing.webhooks import invoice_created_webhook
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+META = settings.META
+# LOTUS_HOST = settings.LOTUS_HOST
+# LOTUS_API_KEY = settings.LOTUS_API_KEY
+# if LOTUS_HOST and LOTUS_API_KEY:
+#     lotus_python.api_key = LOTUS_API_KEY
+#     lotus_python.host = LOTUS_HOST
+
 
 
 def generate_invoice(
@@ -32,7 +45,12 @@ def generate_invoice(
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import CustomerBalanceAdjustment, Invoice, PlanVersion
+    from metering_billing.models import (
+        CustomerBalanceAdjustment,
+        Invoice,
+        InvoiceLineItem,
+        PlanVersion,
+    )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
     assert flat_fee_behavior in ["refund", "full_amount", "prorate"]
@@ -45,22 +63,33 @@ def generate_invoice(
     plan_currency = billing_plan.flat_rate.currency
     customer_balance = customer.get_currency_balance(plan_currency)
 
-    summary_dict = {"line_items": []}
+    # create kwargs for invoice
+    invoice_kwargs = {
+        "issue_date": issue_date,
+        "organization": organization,
+        "customer": customer,
+        "subscription": subscription,
+        "payment_status": INVOICE_STATUS.DRAFT if draft else INVOICE_STATUS.UNPAID,
+    }
+    # Create the invoice
+    invoice = Invoice.objects.create(**invoice_kwargs)
+
     # usage calculation
     if include_usage:
-        if subscription.end_date < issue_date:
-            for plan_component in billing_plan.components.all():
-                usg_rev = plan_component.calculate_total_revenue(subscription)
-                line_item = {
-                    "name": plan_component.billable_metric.billable_metric_name,
-                    "start_date": subscription.start_date,
-                    "end_date": subscription.end_date,
-                    "quantity": usg_rev["usage_qty"],
-                    "subtotal": usg_rev["revenue"],
-                    "type": "In Arrears",
-                    "associated_version": billing_plan,
-                }
-                summary_dict["line_items"].append(line_item)
+        for plan_component in billing_plan.plan_components.all():
+            usg_rev = plan_component.calculate_total_revenue(subscription)
+            subperiods = usg_rev["subperiods"]
+            for subperiod in subperiods:
+                InvoiceLineItem.objects.create(
+                    name=plan_component.billable_metric.billable_metric_name,
+                    start_date=subperiod["start_date"],
+                    end_date=subperiod["end_date"],
+                    quantity=subperiod["usage_qty"],
+                    subtotal=subperiod["revenue"],
+                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                    invoice=invoice,
+                    associated_plan_version=subscription.billing_plan,
+                )
     # flat fee calculation for current plan
     if not flat_fee_behavior == "refund":
         flat_costs_dict_list = sorted(
@@ -97,113 +126,105 @@ def generate_invoice(
             )
             billing_plan_name = cur_bp.plan.plan_name
             billing_plan_version = cur_bp.version
-            summary_dict["line_items"].append(
-                {
-                    "name": f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                    "start_date": start,
-                    "end_date": end,
-                    "quantity": 1,
-                    "subtotal": amount,
-                    "type": "In Arrears",
-                    "associated_version": cur_bp,
-                }
+            InvoiceLineItem.objects.create(
+                name=f"{billing_plan_name} v{billing_plan_version} Flat Fee",
+                start_date=start,
+                end_date=end,
+                quantity=1,
+                subtotal=amount,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                invoice=invoice,
+                associated_plan_version=cur_bp,
             )
     # next plan flat fee calculation
     if charge_next_plan:
-        if billing_plan.replace_with:
+        if billing_plan.transition_to:
+            next_bp = billing_plan.transition_to.display_version
+        elif billing_plan.replace_with:
             next_bp = subscription.replace_with
         else:
             next_bp = billing_plan
         if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            summary_dict["line_items"].append(
-                {
-                    "name": f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee",
-                    "start_date": subscription.end_date,
-                    "end_date": calculate_end_date(
-                        next_bp.plan.plan_duration, subscription.end_date
-                    ),
-                    "quantity": 1,
-                    "subtotal": next_bp.flat_rate.amount,
-                    "type": "In Advance",
-                    "associated_version": next_bp,
-                }
+            InvoiceLineItem.objects.create(
+                name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee",
+                start_date=subscription.end_date,
+                end_date=calculate_end_date(
+                    next_bp.plan.plan_duration, subscription.end_date
+                ),
+                quantity=1,
+                subtotal=next_bp.flat_rate,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+                invoice=invoice,
+                associated_plan_version=next_bp,
             )
-    summary_dict["subtotal_by_plan"] = {}
 
-    for line_item in summary_dict["line_items"]:
-        associated_version = line_item.get("associated_version")
-        billing_plan_name = associated_version.plan.plan_name
-        billing_plan_version = associated_version.version
-        plan_name = f"{billing_plan_name} v{billing_plan_version}"
-        if associated_version not in summary_dict["subtotal_by_plan"]:
-            summary_dict["subtotal_by_plan"][plan_name] = {
-                "amount": 0,
-                "plan": associated_version,
-            }
-        summary_dict["subtotal_by_plan"][plan_name]["amount"] += line_item["subtotal"]
-        del line_item["associated_version"]
-        line_item["source"] = plan_name
-
-    summary_dict["subtotal_by_plan_after_adjustments"] = {}
-    for plan_name, plan_dict in summary_dict["subtotal_by_plan"].items():
-        subtotal_adjustment_dict = {}
-        plan_version = plan_dict["plan"]
-        plan_amount = convert_to_decimal(plan_dict["amount"])
+    for obj in (
+        invoice.inv_line_items.all().values("associated_plan_version").distinct()
+    ):
+        plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
         if plan_version.price_adjustment:
-            subtotal_adjustment_dict["price_adjustment"] = str(
-                billing_plan.price_adjustment
-            )
+            plan_amount = invoice.inv_line_items.filter(
+                associated_plan_version=plan_version
+            ).aggregate(tot=Sum("subtotal"))["tot"]
+            price_adj_name = str(plan_version.price_adjustment)
             new_amount_due = billing_plan.price_adjustment.apply(plan_amount)
-            subtotal_adjustment_dict["amount"] = max(new_amount_due, Decimal(0))
-        else:
-            subtotal_adjustment_dict["price_adjustment"] = "None"
-            subtotal_adjustment_dict["amount"] = plan_amount
-        summary_dict["subtotal_by_plan_after_adjustments"][
-            plan_name
-        ] = subtotal_adjustment_dict
+            new_amount_due = max(new_amount_due, Decimal(0))
+            difference = new_amount_due - plan_amount
+            InvoiceLineItem.objects.create(
+                name=f"{plan_version.plan.plan_name} v{plan_version.version} {price_adj_name}",
+                start_date=issue_date,
+                end_date=issue_date,
+                quantity=1,
+                subtotal=difference,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                invoice=invoice,
+                associated_plan_version=plan_version,
+            )
 
-    summary_dict["subtotal_by_plan"] = {
-        k: v["amount"] for k, v in summary_dict["subtotal_by_plan"].items()
-    }
-
-    summary_dict["total"] = convert_to_decimal(
-        sum(
-            x["amount"]
-            for x in summary_dict["subtotal_by_plan_after_adjustments"].values()
+    amt_invoiced = subscription.amount_already_invoiced()
+    if amt_invoiced > 0:
+        InvoiceLineItem.objects.create(
+            name=f"{subscription.subscription_id} Already Invoiced",
+            start_date=issue_date,
+            end_date=issue_date,
+            quantity=1,
+            subtotal=-amt_invoiced,
+            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+            invoice=invoice,
         )
-    )
 
-    summary_dict["already_invoiced"] = subscription.amount_already_invoiced()
-    summary_dict["customer_balance_adjustment"] = max(
-        customer_balance, -(summary_dict["total"] - summary_dict["already_invoiced"])
-    )
+    subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    if subtotal < 0:
+        CustomerBalanceAdjustment.objects.create(
+            customer=customer,
+            amount=Money(-subtotal, "usd"),
+            description=f"Balance increase from invoice {invoice.invoice_id} generated on {issue_date}",
+            created=issue_date,
+            effective_at=issue_date,
+        )
+    elif subtotal > 0:
+        balance_adjustment = min(subtotal, customer_balance)
+        if balance_adjustment > 0:
+            CustomerBalanceAdjustment.objects.create(
+                customer=customer,
+                amount=Money(-balance_adjustment, "usd"),
+                description=f"Balance decrease from invoice {invoice.invoice_id} generated on {issue_date}",
+                created=issue_date,
+                effective_at=issue_date,
+            )
+            InvoiceLineItem.objects.create(
+                name=f"{subscription.subscription_id} Customer Balance Adjustment",
+                start_date=issue_date,
+                end_date=issue_date,
+                quantity=1,
+                subtotal=-balance_adjustment,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                invoice=invoice,
+            )
 
-    summary_dict["total_amount_due"] = (
-        summary_dict["total"]
-        - summary_dict["already_invoiced"]
-        + summary_dict["customer_balance_adjustment"]
-    )
+    invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    invoice.save()
 
-    amount = summary_dict["total_amount_due"]
-    summary_dict = make_all_decimals_floats(summary_dict)
-    summary_dict = make_all_datetimes_dates(summary_dict)
-    summary_dict = make_all_dates_times_strings(summary_dict)
-
-    # create kwargs for invoice
-    invoice_kwargs = {
-        "cost_due": amount,
-        "issue_date": issue_date,
-        "organization": organization,
-        "customer": customer,
-        "subscription": subscription,
-        "payment_status": INVOICE_STATUS.DRAFT if draft else INVOICE_STATUS.UNPAID,
-        "external_payment_obj_id": None,
-        "external_payment_obj_type": None,
-        "line_items": summary_dict,
-    }
-
-    # Create the invoice
-    invoice = Invoice.objects.create(**invoice_kwargs)
     if not draft:
         for pp in customer.integrations.keys():
             if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
@@ -217,16 +238,18 @@ def generate_invoice(
                     invoice.external_payment_obj_type = pp
                     invoice.save()
                     break
-
-        if summary_dict["customer_balance_adjustment"] != 0:
-            CustomerBalanceAdjustment.objects.create(
-                customer=customer,
-                amount=Money(-summary_dict["customer_balance_adjustment"], "usd"),
-                description=f"Balance alteration from invoice {invoice.invoice_id} generated on {issue_date}",
-                created=issue_date,
-                effective_at=issue_date,
-            )
-
+        # if META:
+            # lotus_python.track_event(
+            #     customer_id=organization.company_name + str(organization.pk),
+            #     event_name='create_invoice',
+            #     properties={
+            #         'amount': float(invoice.cost_due.amount),
+            #         'currency': str(invoice.cost_due.currency),
+            #         'customer': customer.customer_id,
+            #         'subscription': subscription.subscription_id,
+            #         'external_type': invoice.external_payment_obj_type,
+            #         },
+            # )
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
 

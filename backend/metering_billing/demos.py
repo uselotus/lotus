@@ -18,6 +18,7 @@ from metering_billing.models import (
     Plan,
     PlanComponent,
     PlanVersion,
+    PriceTier,
     Subscription,
     User,
 )
@@ -35,6 +36,7 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
+    PRICE_TIER_TYPE,
     SUBSCRIPTION_STATUS,
 )
 from model_bakery import baker
@@ -130,15 +132,10 @@ def setup_demo_3(company_name, username, email, password):
         flat_rate=0,
         version_id=plan_version_uuid(),
     )
-    pc1 = PlanComponent.objects.create(
-        billable_metric=sum_words, max_metric_units=2_000
+    create_pc_and_tiers(
+        plan_version=free_bp, billable_metric=sum_words, free_units=2_000
     )
-    pc2 = PlanComponent.objects.create(
-        billable_metric=num_seats,
-        max_metric_units=1,
-    )
-    free_bp.components.add(pc1, pc2)
-    free_bp.save()
+    create_pc_and_tiers(plan_version=free_bp, billable_metric=num_seats, free_units=1)
     plan.display_version = free_bp
     plan.save()
     plan = Plan.objects.create(
@@ -157,16 +154,10 @@ def setup_demo_3(company_name, username, email, password):
         flat_rate=49,
         version_id=plan_version_uuid(),
     )
-    pc1 = PlanComponent.objects.create(
-        billable_metric=sum_words,
-        max_metric_units=10_000,
+    create_pc_and_tiers(
+        plan_version=bp_10_og, billable_metric=sum_words, free_units=10_000
     )
-    pc2 = PlanComponent.objects.create(
-        billable_metric=num_seats,
-        max_metric_units=5,
-    )
-    bp_10_og.components.add(pc1, pc2)
-    bp_10_og.save()
+    create_pc_and_tiers(plan_version=bp_10_og, billable_metric=num_seats, free_units=5)
     plan.display_version = bp_10_og
     plan.save()
     plan = Plan.objects.create(
@@ -185,15 +176,10 @@ def setup_demo_3(company_name, username, email, password):
         flat_rate=99,
         version_id=plan_version_uuid(),
     )
-    pc1 = PlanComponent.objects.create(
-        billable_metric=sum_words, max_metric_units=25_000
+    create_pc_and_tiers(
+        plan_version=bp_25_og, billable_metric=sum_words, free_units=25_000
     )
-    pc2 = PlanComponent.objects.create(
-        billable_metric=num_seats,
-        max_metric_units=5,
-    )
-    bp_25_og.components.add(pc1, pc2)
-    bp_25_og.save()
+    create_pc_and_tiers(plan_version=bp_25_og, billable_metric=num_seats, free_units=5)
     plan.display_version = bp_25_og
     plan.save()
     plan = Plan.objects.create(
@@ -212,15 +198,10 @@ def setup_demo_3(company_name, username, email, password):
         flat_rate=279,
         version_id=plan_version_uuid(),
     )
-    pc1 = PlanComponent.objects.create(
-        billable_metric=sum_words, max_metric_units=50_000
+    create_pc_and_tiers(
+        plan_version=bp_50_og, billable_metric=sum_words, free_units=50_000
     )
-    pc2 = PlanComponent.objects.create(
-        billable_metric=num_seats,
-        max_metric_units=5,
-    )
-    bp_50_og.components.add(pc1, pc2)
-    bp_50_og.save()
+    create_pc_and_tiers(plan_version=bp_50_og, billable_metric=num_seats, free_units=5)
     plan.display_version = bp_50_og
     plan.save()
     plan = Plan.objects.create(
@@ -239,23 +220,23 @@ def setup_demo_3(company_name, username, email, password):
         flat_rate=19,
         version_id=plan_version_uuid(),
     )
-    pc1 = PlanComponent.objects.create(
-        billable_metric=sum_words, max_metric_units=10_000
+    create_pc_and_tiers(
+        plan_version=bp_10_compute_seats, billable_metric=sum_words, free_units=10_000
     )
-    pc2 = PlanComponent.objects.create(
+    create_pc_and_tiers(
+        plan_version=bp_10_compute_seats,
         billable_metric=sum_compute,
+        free_units=75,
         cost_per_batch=0.33,
         metric_units_per_batch=10,
-        free_metric_units=75,
     )
-    pc3 = PlanComponent.objects.create(
+    create_pc_and_tiers(
+        plan_version=bp_10_compute_seats,
         billable_metric=num_seats,
+        free_units=None,
         cost_per_batch=10,
         metric_units_per_batch=1,
-        free_metric_units=0,
     )
-    bp_10_compute_seats.components.add(pc1, pc2, pc3)
-    bp_10_compute_seats.save()
     plan.display_version = bp_10_compute_seats
     plan.save()
     plan = Plan.objects.create(
@@ -274,23 +255,23 @@ def setup_demo_3(company_name, username, email, password):
         flat_rate=59,
         version_id=plan_version_uuid(),
     )
-    pc1 = PlanComponent.objects.create(
-        billable_metric=sum_words, max_metric_units=25_000
+    create_pc_and_tiers(
+        plan_version=bp_25_compute_seats, billable_metric=sum_words, free_units=25_000
     )
-    pc2 = PlanComponent.objects.create(
+    create_pc_and_tiers(
+        plan_version=bp_25_compute_seats,
         billable_metric=sum_compute,
+        free_units=100,
         cost_per_batch=0.47,
         metric_units_per_batch=10,
-        free_metric_units=100,
     )
-    pc3 = PlanComponent.objects.create(
+    create_pc_and_tiers(
+        plan_version=bp_25_compute_seats,
         billable_metric=num_seats,
+        free_units=None,
         cost_per_batch=12,
         metric_units_per_batch=1,
-        free_metric_units=0,
     )
-    bp_25_compute_seats.components.add(pc1, pc2, pc3)
-    bp_25_compute_seats.save()
     plan.display_version = bp_25_compute_seats
     plan.save()
     plan = Plan.objects.create(
@@ -309,20 +290,23 @@ def setup_demo_3(company_name, username, email, password):
         flat_rate=179,
         version_id=plan_version_uuid(),
     )
-    pc1 = PlanComponent.objects.create(
-        billable_metric=sum_words, max_metric_units=50_000
+    create_pc_and_tiers(
+        plan_version=bp_50_compute_seats, billable_metric=sum_words, free_units=50_000
     )
-    pc2 = PlanComponent.objects.create(
+    create_pc_and_tiers(
+        plan_version=bp_50_compute_seats,
         billable_metric=sum_compute,
+        free_units=200,
         cost_per_batch=0.67,
         metric_units_per_batch=10,
-        free_metric_units=200,
     )
-    pc3 = PlanComponent.objects.create(
-        billable_metric=num_seats, cost_per_batch=10, free_metric_units=0
+    create_pc_and_tiers(
+        plan_version=bp_50_compute_seats,
+        billable_metric=num_seats,
+        free_units=None,
+        cost_per_batch=10,
+        metric_units_per_batch=1,
     )
-    bp_50_compute_seats.components.add(pc1, pc2, pc3)
-    bp_50_compute_seats.save()
     plan.display_version = bp_10_compute_seats
     plan.save()
     six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
@@ -353,7 +337,12 @@ def setup_demo_3(company_name, username, email, password):
                 is_new=months == 0,
             )
             tot_word_limit = float(
-                plan.components.get(billable_metric=sum_words).max_metric_units
+                max(
+                    x.range_end
+                    for x in plan.plan_components.get(
+                        billable_metric=sum_words
+                    ).tiers.all()
+                )
             )
             word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
             word_count = 0
@@ -384,7 +373,12 @@ def setup_demo_3(company_name, username, email, password):
                 )
                 word_count += event_words
             max_users = float(
-                plan.components.get(billable_metric=num_seats).max_metric_units
+                max(
+                    x.range_end
+                    for x in plan.plan_components.get(
+                        billable_metric=num_seats
+                    ).tiers.all()
+                )
             )
             n = max(int(random.gauss(6, 1.5) // 1), 1)
             baker.make(
@@ -422,7 +416,12 @@ def setup_demo_3(company_name, username, email, password):
                 is_new=months == 0,
             )
             tot_word_limit = float(
-                plan.components.get(billable_metric=sum_words).max_metric_units
+                max(
+                    x.range_end
+                    for x in plan.plan_components.get(
+                        billable_metric=sum_words
+                    ).tiers.all()
+                )
             )
             word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
             word_count = 0
@@ -453,7 +452,12 @@ def setup_demo_3(company_name, username, email, password):
                 )
                 word_count += event_words
             max_users = float(
-                plan.components.get(billable_metric=num_seats).max_metric_units
+                max(
+                    x.range_end
+                    for x in plan.plan_components.get(
+                        billable_metric=num_seats
+                    ).tiers.all()
+                )
             )
             n = max(int(random.gauss(6, 1.5) // 1), 1)
             baker.make(
@@ -487,7 +491,12 @@ def setup_demo_3(company_name, username, email, password):
                 is_new=months == 0,
             )
             tot_word_limit = float(
-                plan.components.get(billable_metric=sum_words).max_metric_units
+                max(
+                    x.range_end
+                    for x in plan.plan_components.get(
+                        billable_metric=sum_words
+                    ).tiers.all()
+                )
             )
             word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
             word_count = 0
@@ -518,7 +527,12 @@ def setup_demo_3(company_name, username, email, password):
                 )
                 word_count += event_words
             max_users = float(
-                plan.components.get(billable_metric=num_seats).max_metric_units
+                max(
+                    x.range_end
+                    for x in plan.plan_components.get(
+                        billable_metric=num_seats
+                    ).tiers.all()
+                )
             )
             n = int(max(random.gauss(6, 1.5) // 1, 1))
             baker.make(
@@ -552,6 +566,38 @@ def setup_demo_3(company_name, username, email, password):
     )
     run_backtest(backtest.backtest_id)
     return user
+
+
+def create_pc_and_tiers(
+    plan_version,
+    billable_metric,
+    max_units=None,
+    free_units=None,
+    cost_per_batch=None,
+    metric_units_per_batch=None,
+):
+    pc = PlanComponent.objects.create(
+        plan_version=plan_version,
+        billable_metric=billable_metric,
+    )
+    range_start = 0
+    if free_units is not None:
+        PriceTier.objects.create(
+            plan_component=pc,
+            range_start=0,
+            range_end=free_units,
+            type=PRICE_TIER_TYPE.FREE,
+        )
+        range_start = free_units
+    if cost_per_batch is not None:
+        PriceTier.objects.create(
+            plan_component=pc,
+            range_start=range_start,
+            range_end=max_units,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            cost_per_batch=cost_per_batch,
+            metric_units_per_batch=metric_units_per_batch,
+        )
 
 
 def random_date(start, end, n):

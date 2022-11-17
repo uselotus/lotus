@@ -13,6 +13,7 @@ from metering_billing.models import (
     Event,
     PlanComponent,
     PlanVersion,
+    PriceTier,
     Subscription,
 )
 from metering_billing.utils import now_utc
@@ -21,6 +22,7 @@ from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
+    PRICE_TIER_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
 )
@@ -295,20 +297,29 @@ class TestCalculateBillableMetric:
             customer=customer,
             _quantity=19,
         )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            free_metric_units=3,
-            cost_per_batch=100,
-            metric_units_per_batch=1,
-        )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
             flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
-        billing_plan.components.add(plan_component)
-        billing_plan.save()
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
         now = now_utc()
         subscription = Subscription.objects.create(
             organization=setup_dict["org"],
@@ -359,20 +370,29 @@ class TestCalculateBillableMetric:
             customer=customer,
             _quantity=19,
         )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            free_metric_units=3,
-            cost_per_batch=100,
-            metric_units_per_batch=1,
-        )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
             flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
-        billing_plan.components.add(plan_component)
-        billing_plan.save()
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
         subscription = Subscription.objects.create(
             organization=setup_dict["org"],
             billing_plan=billing_plan,
@@ -382,8 +402,10 @@ class TestCalculateBillableMetric:
         )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
-        # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18
-        assert usage_revenue_dict["revenue"] == Decimal(1800)
+        # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
+        # user days, so should be between 18/28*100 and 18/31*100
+        assert usage_revenue_dict["revenue"] >= Decimal(100) * Decimal(18) / Decimal(31)
+        assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity(self, billable_metric_test_common_setup):
         num_billable_metrics = 0
@@ -446,21 +468,29 @@ class TestCalculateBillableMetric:
             customer=customer,
             _quantity=18,
         )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            free_metric_units=0,
-            cost_per_batch=1,
-            metric_units_per_batch=1,
-            max_metric_units=100,
-        )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
             flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
-        billing_plan.components.add(plan_component)
-        billing_plan.save()
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
         now = now_utc()
         subscription = Subscription.objects.create(
             organization=setup_dict["org"],
@@ -471,8 +501,8 @@ class TestCalculateBillableMetric:
         )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
-        # 1 dollar per for 64 rows
-        assert usage_revenue_dict["revenue"] == Decimal(64)
+        # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
+        assert usage_revenue_dict["revenue"] == Decimal(61)
 
     def test_stateful_daily_granularity_delta_event(
         self, billable_metric_test_common_setup
@@ -515,20 +545,29 @@ class TestCalculateBillableMetric:
             customer=customer,
             _quantity=11,
         )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            free_metric_units=3,
-            cost_per_batch=100,
-            metric_units_per_batch=1,
-        )
         billing_plan = PlanVersion.objects.create(
             organization=setup_dict["org"],
             flat_rate=0,
             version=1,
             plan=setup_dict["plan"],
         )
-        billing_plan.components.add(plan_component)
-        billing_plan.save()
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
         subscription = Subscription.objects.create(
             organization=setup_dict["org"],
             billing_plan=billing_plan,
@@ -538,5 +577,7 @@ class TestCalculateBillableMetric:
         )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
-        # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12
-        assert usage_revenue_dict["revenue"] == Decimal(1200)
+        # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
+        # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
+        assert Decimal(100) * Decimal(12) / Decimal(28) >= usage_revenue_dict["revenue"]
+        assert Decimal(100) * Decimal(12) / Decimal(31) <= usage_revenue_dict["revenue"]

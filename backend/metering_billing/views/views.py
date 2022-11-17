@@ -100,8 +100,8 @@ class PeriodMetricRevenueView(APIView):
                     )
                     .select_related("billing_plan")
                     .select_related("customer")
-                    .prefetch_related("billing_plan__components")
-                    .prefetch_related("billing_plan__components__billable_metric")
+                    .prefetch_related("billing_plan__plan_components")
+                    .prefetch_related("billing_plan__plan_components__billable_metric")
                 )
                 for sub in subs:
                     bp = sub.billing_plan
@@ -112,7 +112,7 @@ class PeriodMetricRevenueView(APIView):
                     )
                     if p_start <= flat_bill_date <= p_end:
                         total_period_rev += bp.flat_rate.amount
-                    for plan_component in bp.components.all():
+                    for plan_component in bp.plan_components.all():
                         billable_metric = plan_component.billable_metric
                         revenue_per_day = plan_component.calculate_total_revenue(sub)
                         metric_dict = return_dict[
@@ -576,22 +576,33 @@ class GetCustomerAccessView(APIView):
         )
         if event_name:
             subscriptions = subscriptions.prefetch_related(
-                "billing_plan__components", "billing_plan__components__billable_metric"
+                "billing_plan__plan_components",
+                "billing_plan__plan_components__billable_metric",
+                "billing_plan__plan_components__tiers",
             )
             metric_usages = {}
             for sub in subscriptions:
-                for component in sub.billing_plan.components.all():
+                for component in sub.billing_plan.plan_components.all():
                     if component.billable_metric.event_name == event_name:
                         metric = component.billable_metric
+                        tiers = sorted(
+                            component.tiers.all(), key=lambda x: x.range_start
+                        )
                         if event_limit_type == "free":
-                            metric_limit = component.free_metric_units
+                            metric_limit = (
+                                tiers[0].range_end
+                                if tiers[0].type == PRICE_TIER_TYPE.FREE
+                                else None
+                            )
                         elif event_limit_type == "total":
-                            metric_limit = component.max_metric_units
+                            metric_limit = tiers[-1].range_end
                         if not metric_limit:
                             metric_usages[metric.billable_metric_name] = {
                                 "metric_usage": None,
                                 "metric_limit": None,
-                                "access": True,
+                                "access": True
+                                if event_limit_type == "total"
+                                else False,
                             }
                             continue
                         metric_usage = metric.get_current_usage(sub)

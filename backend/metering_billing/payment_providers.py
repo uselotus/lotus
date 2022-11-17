@@ -333,15 +333,14 @@ class StripeConnector(PaymentProvider):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
-        for line_item in invoice.line_items["line_items"]:
-            name = line_item["name"]
-            amount = line_item["subtotal"]
+        for line_item in invoice.inv_line_items.all():
+            name = line_item.name
+            amount = line_item.subtotal.amount
             customer = stripe_customer_id
-            currency = invoice.cost_due.currency
-            description = line_item["name"]
+            currency = line_item.subtotal.currency
             period = {
-                "start": int(parser.parse(line_item["start_date"]).timestamp()),
-                "end": int(parser.parse(line_item["end_date"]).timestamp()),
+                "start": int(line_item.start_date.timestamp()),
+                "end": int(line_item.end_date.timestamp()),
             }
             tax_behavior = "exclusive"
             inv_dict = {
@@ -349,46 +348,10 @@ class StripeConnector(PaymentProvider):
                 "amount": int(amount * 100),
                 "customer": customer,
                 "currency": currency,
-                "description": description,
                 "period": period,
                 "tax_behavior": tax_behavior,
             }
             stripe.InvoiceItem.create(**inv_dict)
-        for plan_name, original_plan_amount in invoice.line_items[
-            "subtotal_by_plan"
-        ].items():
-            adjusted_plan_amount = invoice.line_items[
-                "subtotal_by_plan_after_adjustments"
-            ][plan_name]["amount"]
-            if adjusted_plan_amount != original_plan_amount:
-                stripe.InvoiceItem.create(
-                    customer=stripe_customer_id,
-                    currency=invoice.cost_due.currency,
-                    amount=int((adjusted_plan_amount - original_plan_amount) * 100),
-                    description="Adjustment for plan {}: {}".format(
-                        plan_name,
-                        invoice.line_items["subtotal_by_plan_after_adjustments"][
-                            plan_name
-                        ]["price_adjustment"],
-                    ),
-                    tax_behavior="exclusive",
-                )
-        if invoice.line_items["already_invoiced"] != 0:
-            stripe.InvoiceItem.create(
-                customer=stripe_customer_id,
-                currency=invoice.cost_due.currency,
-                amount=int(invoice.line_items["already_invoiced"] * 100),
-                description="Adjustment for already invoiced amount",
-                tax_behavior="exclusive",
-            )
-        if invoice.line_items["customer_balance_adjustment"] != 0:
-            stripe.InvoiceItem.create(
-                customer=stripe_customer_id,
-                currency=invoice.cost_due.currency,
-                amount=int(invoice.line_items["customer_balance_adjustment"] * 100),
-                description="Adjustment for customer balance",
-                tax_behavior="exclusive",
-            )
         stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
         return stripe_invoice.id
 
