@@ -62,6 +62,7 @@ from simple_history.models import HistoricalRecords
 
 META = settings.META
 
+
 class Organization(models.Model):
     company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
@@ -440,10 +441,12 @@ class PriceTier(models.Model):
         null=True,
     )
 
-    def calculate_revenue(self, usage_dict: dict, prev_tier_end = False):
+    def calculate_revenue(self, usage_dict: dict, prev_tier_end=False):
         dict_len = len(usage_dict)
         revenue = 0
-        discontinuous_range = prev_tier_end != self.range_start and prev_tier_end is not None
+        discontinuous_range = (
+            prev_tier_end != self.range_start and prev_tier_end is not None
+        )
         for usage in usage_dict.values():
             usage = convert_to_decimal(usage)
             usage_in_range = (
@@ -538,9 +541,11 @@ class PlanComponent(models.Model):
                 revenue = 0
                 tiers = self.tiers.all()
                 for i, tier in enumerate(tiers):
-                    if i>0:
-                        prev_tier_end = tiers[i-1].range_end
-                        tier_revenue = tier.calculate_revenue(usage, prev_tier_end=prev_tier_end)
+                    if i > 0:
+                        prev_tier_end = tiers[i - 1].range_end
+                        tier_revenue = tier.calculate_revenue(
+                            usage, prev_tier_end=prev_tier_end
+                        )
                     else:
                         tier_revenue = tier.calculate_revenue(usage)
                     revenue += tier_revenue
@@ -659,20 +664,24 @@ class Invoice(models.Model):
 
     def __str__(self):
         return str(self.invoice_id)
-    
+
     def save(self, *args, **kwargs):
-        if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due.amount > 0:
+        if (
+            self.payment_status != INVOICE_STATUS.DRAFT
+            and META
+            and self.cost_due.amount > 0
+        ):
             print("track event")
             lotus_python.track_event(
                 customer_id=self.organization.company_name + str(self.organization.pk),
-                event_name='create_invoice',
+                event_name="create_invoice",
                 properties={
-                    'amount': float(self.cost_due.amount),
-                    'currency': str(self.cost_due.currency),
-                    'customer': self.customer.customer_id,
-                    'subscription': self.subscription.subscription_id,
-                    'external_type': self.external_payment_obj_type,
-                    },
+                    "amount": float(self.cost_due.amount),
+                    "currency": str(self.cost_due.currency),
+                    "customer": self.customer.customer_id,
+                    "subscription": self.subscription.subscription_id,
+                    "external_type": self.external_payment_obj_type,
+                },
             )
         super().save(*args, **kwargs)
 

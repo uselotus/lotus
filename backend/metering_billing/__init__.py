@@ -7,14 +7,14 @@ import lotus
 current_lotus = lotus
 og_path = sys.path.copy()
 sp_path = [s for s in sys.path if "site-package" in s][0]
-sys.path.insert(0, sp_path) 
-del sys.modules["lotus"]   
+sys.path.insert(0, sp_path)
+del sys.modules["lotus"]
 import lotus
 
-sys.modules['lotus_python'] = lotus
+sys.modules["lotus_python"] = lotus
 import lotus_python
 
-# del sys.modules["lotus"]   
+# del sys.modules["lotus"]
 sys.modules["lotus"] = current_lotus
 sys.path = og_path
 

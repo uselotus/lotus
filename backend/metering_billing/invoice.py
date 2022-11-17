@@ -34,7 +34,6 @@ META = settings.META
 #     lotus_python.host = LOTUS_HOST
 
 
-
 def generate_invoice(
     subscription,
     draft=False,
@@ -239,17 +238,17 @@ def generate_invoice(
                     invoice.save()
                     break
         # if META:
-            # lotus_python.track_event(
-            #     customer_id=organization.company_name + str(organization.pk),
-            #     event_name='create_invoice',
-            #     properties={
-            #         'amount': float(invoice.cost_due.amount),
-            #         'currency': str(invoice.cost_due.currency),
-            #         'customer': customer.customer_id,
-            #         'subscription': subscription.subscription_id,
-            #         'external_type': invoice.external_payment_obj_type,
-            #         },
-            # )
+        # lotus_python.track_event(
+        #     customer_id=organization.company_name + str(organization.pk),
+        #     event_name='create_invoice',
+        #     properties={
+        #         'amount': float(invoice.cost_due.amount),
+        #         'currency': str(invoice.cost_due.currency),
+        #         'customer': customer.customer_id,
+        #         'subscription': subscription.subscription_id,
+        #         'external_type': invoice.external_payment_obj_type,
+        #         },
+        # )
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
 

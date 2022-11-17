@@ -74,6 +74,7 @@ from rest_framework.response import Response
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
+
 class CustomPagination(CursorPagination):
     def get_paginated_response(self, data):
         if self.get_next_link():
