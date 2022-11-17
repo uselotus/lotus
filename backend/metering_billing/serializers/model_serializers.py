@@ -183,8 +183,6 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + (
             "subscription_id",
             "start_date",
-            "end_date",
-            "auto_renew",
             "status",
         )
 
@@ -1010,7 +1008,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "customer_id",
             "customer",
             "plan_id",
-            "billing_plan",
             "start_date",
             "end_date",
             "scheduled_end_date",
@@ -1021,7 +1018,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "customer",
-            "billing_plan",
             "scheduled_end_date",
         )
 
@@ -1049,7 +1045,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     # READ ONLY
     customer = CustomerSerializer(read_only=True)
-    billing_plan = PlanVersionSerializer(read_only=True)
 
     def validate(self, data):
         # extract the plan version from the plan
@@ -1117,6 +1112,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                         break
             invoice.save()
         return sub
+
+
+class SubscriptionDetailSerializer(SubscriptionSerializer):
+    class Meta(SubscriptionSerializer.Meta):
+        model = Subscription
+        fields = tuple(
+            set(SubscriptionSerializer.Meta.fields).union(set(["billing_plan"]))
+        )
+
+    billing_plan = PlanVersionSerializer(read_only=True)
 
 
 class SubscriptionInvoiceSerializer(SubscriptionSerializer):
@@ -1490,10 +1495,16 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "subscriptions",
         )
 
-    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
+    subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
+
+    def get_subscriptions(self, obj) -> SubscriptionCustomerDetailSerializer(many=True):
+        return SubscriptionCustomerDetailSerializer(
+            obj.customer_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE),
+            many=True,
+        ).data
 
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")
