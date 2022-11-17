@@ -63,7 +63,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ balanceAdjustments }) => {
 
   return (
     <div>
-      <h2 className="mb-5">Balance Adjustments</h2>
+      <h2 className="mb-5">Credit Balance</h2>
       {!!balanceAdjustments?.length ? (
         <Table
           columns={columns}
@@ -71,7 +71,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ balanceAdjustments }) => {
           pagination={{ pageSize: 10 }}
         />
       ) : (
-        <p>No Balance Adjustments found</p>
+        <p>No Credit Items Found</p>
       )}
     </div>
   );

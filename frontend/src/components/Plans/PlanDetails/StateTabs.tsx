@@ -127,7 +127,7 @@ const StateTabs: FC<StateTabsProps> = ({
           </div>
           <div className="separator mb-5" />
 
-          <h3 className="mb-8">New Active Version: v{version}</h3>
+          <h3 className="mb-8 font-bold">New Active Version: v{version}</h3>
           <div className="grid grid-cols-3">
             <h3>{activeTab}</h3>
             <h3>to</h3>
@@ -135,7 +135,9 @@ const StateTabs: FC<StateTabsProps> = ({
           </div>
           {activeVersion && (
             <Fragment>
-              <h3 className="mb-8">Current Active Version: v{activeVersion}</h3>
+              <h3 className="mb-8 font-bold">
+                Current Active Version: v{activeVersion}
+              </h3>
               <div className="grid grid-cols-3">
                 <h3>Active</h3>
                 <h3>to</h3>

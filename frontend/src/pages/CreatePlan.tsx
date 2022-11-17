@@ -45,10 +45,11 @@ const CreatePlan = () => {
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
   const navigate = useNavigate();
-  const [componentsData, setComponentsData] = useState<any>([]);
+  const [componentsData, setComponentsData] = useState<CreateComponent[]>([]);
   const [form] = Form.useForm();
   const [planFeatures, setPlanFeatures] = useState<FeatureType[]>([]);
-  const [editComponentItem, setEditComponentsItem] = useState<any>();
+  const [editComponentItem, setEditComponentsItem] =
+    useState<CreateComponent>();
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([
@@ -131,6 +132,7 @@ const CreatePlan = () => {
           id: Math.floor(Math.random() * 1000),
         },
       ];
+      console.log(newComponentsData);
       setComponentsData(newComponentsData);
     }
     setEditComponentsItem(undefined);
@@ -145,6 +147,7 @@ const CreatePlan = () => {
   };
 
   const deleteComponent = (id: number) => {
+    console.log(id);
     setComponentsData(componentsData.filter((item) => item.id !== id));
   };
   const hideFeatureModal = () => {
@@ -169,14 +172,12 @@ const CreatePlan = () => {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components: any = Object.values(componentsData);
+        console.log(components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
-              cost_per_batch: components[i].cost_per_batch,
-              metric_units_per_batch: components[i].metric_units_per_batch,
-              free_metric_units: components[i].free_metric_units,
-              max_metric_units: components[i].max_metric_units,
+              tiers: components[i].tiers,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -194,6 +195,14 @@ const CreatePlan = () => {
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
         ) {
+          if (
+            values.price_adjustment_type === "percentage" ||
+            values.price_adjustment_type === "flat"
+          ) {
+            values.price_adjustment_value =
+              Math.abs(values.price_adjustment_value) * -1;
+          }
+
           initialPlanVersion["price_adjustment"] = {
             price_adjustment_type: values.price_adjustment_type,
             price_adjustment_amount: values.price_adjustment_amount,
@@ -420,7 +429,7 @@ const CreatePlan = () => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Price Adjustment/Discount">
+              <Card className="w-6/12 mb-20" title="Discount">
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}
@@ -437,9 +446,9 @@ const CreatePlan = () => {
                         Overwrite Price
                       </Select.Option>
                       <Select.Option value="percentage">
-                        Percentage
+                        Percentage Off
                       </Select.Option>
-                      <Select.Option value="fixed">Fixed Amount</Select.Option>
+                      <Select.Option value="fixed">Flat Discount</Select.Option>
                     </Select>
                   </Form.Item>
 

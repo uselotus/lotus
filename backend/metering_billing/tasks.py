@@ -52,29 +52,36 @@ def calculate_invoice():
     now_minus_30 = now_utc() + relativedelta(
         minutes=-30
     )  # grace period of 30 minutes for sending events
-    ending_subscriptions = list(
+    subs_to_bill = list(
         Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE, scheduled_end_date__lt=now_minus_30
+            Q(scheduled_end_date__lt=now_minus_30)
+            | Q(next_billing_date__lt=now_minus_30),
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
     )
 
     # now generate invoices and new subs
-    for old_subscription in ending_subscriptions:
+    for old_subscription in subs_to_bill:
         # Generate the invoice
         try:
             generate_invoice(
                 old_subscription, charge_next_plan=old_subscription.auto_renew
             )
+            now = now_utc()
         except Exception as e:
             print(e)
             print(
                 "Error generating invoice for subscription {}".format(old_subscription)
             )
             continue
+        if old_subscription.scheduled_end_date > now:
+            # if the subscription is not ending, then we just need to update the next billing date
+            old_subscription.next_billing_date = None  # this will auto calculate it
+            old_subscription.save()
+            continue
         # End the old subscription and delete draft invoices
         old_subscription.status = SUBSCRIPTION_STATUS.ENDED
         old_subscription.save()
-        now = now_utc()
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=INVOICE_STATUS.DRAFT,
@@ -200,11 +207,14 @@ def run_backtest(backtest_id):
                 organization=backtest.organization,
             )
             .prefetch_related("billing_plan")
-            .prefetch_related("billing_plan__components")
+            .prefetch_related("billing_plan__plan_components")
         )
         all_results = {
             "substitution_results": [],
         }
+        print(
+            "Running backtest for {} substitutions".format(len(backtest_substitutions))
+        )
         for subst in backtest_substitutions:
             outer_results = {
                 "substitution_name": f"{str(subst.original_plan)} --> {str(subst.new_plan)}",
@@ -298,7 +308,7 @@ def run_backtest(backtest_id):
                             "original_plan_revenue": Decimal(0),
                         }
                     inner_results["revenue_by_metric"][metric_name][
-                        "original_plan_revenue"
+                        "new_plan_revenue"
                     ] += component_dict["revenue"]
                 inner_results["revenue_by_metric"]["flat_fees"][
                     "new_plan_revenue"

@@ -89,10 +89,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
       (component) => {
         return {
           metric: component.billable_metric.billable_metric_name,
-          cost_per_batch: component.cost_per_batch,
-          metric_units_per_batch: component.metric_units_per_batch,
-          free_metric_units: component.free_metric_units,
-          max_metric_units: component.max_metric_units,
+          tiers: component.tiers,
+          id: component.billable_metric.billable_metric_name,
         };
       }
     );
@@ -267,10 +265,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
-              cost_per_batch: components[i].cost_per_batch,
-              metric_units_per_batch: components[i].metric_units_per_batch,
-              free_metric_units: components[i].free_metric_units,
-              max_metric_units: components[i].max_metric_units,
+              tiers: components[i].tiers,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -289,6 +284,13 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
         ) {
+          if (
+            values.price_adjustment_type === "percentage" ||
+            values.price_adjustment_type === "flat"
+          ) {
+            values.price_adjustment_value =
+              Math.abs(values.price_adjustment_value) * -1;
+          }
           initialPlanVersion["price_adjustment"] = {
             price_adjustment_type: values.price_adjustment_type,
             price_adjustment_amount: values.price_adjustment_amount,
@@ -570,7 +572,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Price Adjustment/Discount">
+              <Card className="w-6/12 mb-20" title="Discount">
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}
@@ -587,9 +589,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         Overwrite Price
                       </Select.Option>
                       <Select.Option value="percentage">
-                        Percentage
+                        Percentage Off
                       </Select.Option>
-                      <Select.Option value="fixed">Flat Amount</Select.Option>
+                      <Select.Option value="fixed">Flat Discount</Select.Option>
                     </Select>
                   </Form.Item>
 

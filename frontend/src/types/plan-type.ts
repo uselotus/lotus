@@ -42,7 +42,7 @@ export interface CreatePlanVersionType {
 }
 
 export interface CreatePlanExternalLinkType extends InitialExternalLinks {
-    plan_id: string,
+  plan_id: string;
 }
 
 export interface PriceAdjustment {
@@ -85,8 +85,8 @@ export interface CreatePlanType {
 }
 
 export interface InitialExternalLinks {
-    source: string;
-    external_plan_id: string;
+  source: string;
+  external_plan_id: string;
 }
 
 export interface CreateInitialVersionType extends CreatePlanVersionType {
@@ -107,18 +107,27 @@ export interface CreateVersionType {
   replace_immediately_type?: string;
 }
 
-export interface CreateComponent
-  extends Omit<Component, "id" | "billable_metric"> {
+export interface CreateComponent extends Omit<Component, "billable_metric"> {
   billable_metric_name: string;
 }
 
 export interface Component {
   billable_metric: MetricType;
-  free_metric_units: number;
-  cost_per_batch: number;
-  metric_units_per_batch: number;
-  max_metric_units: number;
+  tiers: Tier[];
   id?: number;
+}
+
+export interface Tier {
+  type: "flat" | "free" | "per_unit";
+  cost_per_batch?: number;
+  metric_units_per_batch?: number;
+  batch_rounding_type?:
+    | "round_up"
+    | "round_down"
+    | "round_nearest"
+    | "no_rounding";
+  range_start: number;
+  range_end?: number;
 }
 export interface PlanDisplay {
   name: string;

@@ -84,7 +84,6 @@ if SENTRY_DSN != "":
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 API_KEY_CUSTOM_HEADER = "X-API-KEY"
 
 posthog.project_api_key = config(
@@ -141,15 +140,13 @@ ANYMAIL = {
     "MAILGUN_SMTP_SERVER": os.environ.get("MAILGUN_SMTP_SERVER"),
 }
 
-if DEBUG:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    APP_URL = "http://localhost:8000"
-elif SELF_HOSTED:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    APP_URL = "http://localhost"
-else:
+if ON_HEROKU:
     EMAIL_BACKEND = "anymail.backends.mailgun.EmailBackend"
     APP_URL = "https://app.uselotus.io"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    APP_URL = "http://localhost:8000"
+
 
 EMAIL_DOMAIN = os.environ.get("MAILGUN_DOMAIN")
 EMAIL_USERNAME = "noreply"
@@ -267,8 +264,8 @@ else:
     REDIS_URL = f"redis://localhost:6379"
 
 # Celery Settings
-CELERY_BROKER_URL = f"{REDIS_URL}/1"
-CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
+CELERY_BROKER_URL = f"{REDIS_URL}/0"
+CELERY_RESULT_BACKEND = f"{REDIS_URL}/0"
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -278,7 +275,7 @@ if ON_HEROKU:
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": f"{REDIS_URL}/3",
+            "LOCATION": f"{REDIS_URL}/0",
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "REDIS_CLIENT_KWARGS": {"ssl_cert_reqs": ssl.CERT_NONE},
@@ -373,7 +370,6 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
     ],
-    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.CursorPagination',
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
@@ -441,9 +437,6 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_TRUSTED_ORIGINS = ["https://*.uselotus.io"]
 
 
-# Heroku
-django_heroku.settings(locals())
-
 # Vite generates files with 8 hash digits
 # http://whitenoise.evans.io/en/stable/django.html#WHITENOISE_IMMUTABLE_FILE_TEST
 
@@ -455,3 +448,9 @@ def immutable_file_test(path, url):
 
 
 WHITENOISE_IMMUTABLE_FILE_TEST = immutable_file_test
+
+LOTUS_HOST = config("LOTUS_HOST", default=None)
+LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
+META = LOTUS_API_KEY and LOTUS_HOST
+# Heroku
+django_heroku.settings(locals())
