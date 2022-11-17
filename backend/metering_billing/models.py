@@ -5,7 +5,9 @@ from decimal import Decimal
 from random import choices
 from typing import TypedDict
 
+import lotus_python
 from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -58,6 +60,7 @@ from metering_billing.utils.enums import (
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 
+META = settings.META
 
 class Organization(models.Model):
     company_name = models.CharField(max_length=100, blank=False, null=False)
@@ -656,6 +659,22 @@ class Invoice(models.Model):
 
     def __str__(self):
         return str(self.invoice_id)
+    
+    def save(self, *args, **kwargs):
+        if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due.amount > 0:
+            print("track event")
+            lotus_python.track_event(
+                customer_id=self.organization.company_name + str(self.organization.pk),
+                event_name='create_invoice',
+                properties={
+                    'amount': float(self.cost_due.amount),
+                    'currency': str(self.cost_due.currency),
+                    'customer': self.customer.customer_id,
+                    'subscription': self.subscription.subscription_id,
+                    'external_type': self.external_payment_obj_type,
+                    },
+            )
+        super().save(*args, **kwargs)
 
 
 class InvoiceLineItem(models.Model):

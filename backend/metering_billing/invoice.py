@@ -1,7 +1,13 @@
+from __future__ import absolute_import
+
 import datetime
+import os
+import sys
+import uuid
 from datetime import timezone
 from decimal import Decimal
 
+import lotus_python
 import posthog
 from django.conf import settings
 from django.db.models import Count, Q, Sum
@@ -17,10 +23,16 @@ from metering_billing.utils import (
     now_utc,
 )
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
-
-from .webhooks import invoice_created_webhook
+from metering_billing.webhooks import invoice_created_webhook
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+META = settings.META
+# LOTUS_HOST = settings.LOTUS_HOST
+# LOTUS_API_KEY = settings.LOTUS_API_KEY
+# if LOTUS_HOST and LOTUS_API_KEY:
+#     lotus_python.api_key = LOTUS_API_KEY
+#     lotus_python.host = LOTUS_HOST
+
 
 
 def generate_invoice(
@@ -226,7 +238,18 @@ def generate_invoice(
                     invoice.external_payment_obj_type = pp
                     invoice.save()
                     break
-
+        # if META:
+            # lotus_python.track_event(
+            #     customer_id=organization.company_name + str(organization.pk),
+            #     event_name='create_invoice',
+            #     properties={
+            #         'amount': float(invoice.cost_due.amount),
+            #         'currency': str(invoice.cost_due.currency),
+            #         'customer': customer.customer_id,
+            #         'subscription': subscription.subscription_id,
+            #         'external_type': invoice.external_payment_obj_type,
+            #         },
+            # )
         invoice_data = InvoiceSerializer(invoice).data
         invoice_created_webhook(invoice_data, organization)
 

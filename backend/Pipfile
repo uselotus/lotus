@@ -44,6 +44,7 @@ numpy = "*"
 pytz = "*"
 django-activity-stream = "*"
 dj-stripe = "*"
+lotus-python = ">=0.1.1"
 
 [dev-packages]
 platformdirs = "*"
