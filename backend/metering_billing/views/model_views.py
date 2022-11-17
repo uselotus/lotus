@@ -620,7 +620,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
         "create": [IsAuthenticated | HasUserAPIKey],
-        "partial_update": [IsAuthenticated],
+        "partial_update": [IsAuthenticated | HasUserAPIKey],
     }
 
     def get_serializer_context(self):
