@@ -20,8 +20,10 @@ const { Sider } = Layout;
 
 const getSettingsTab = (component) => {
     // @ts-ignore
-    return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
+    // return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
+    return component
 }
+
 
 const AppRoutes: FC = () => {
   const [collapse, setCollapse] = useState(false);
