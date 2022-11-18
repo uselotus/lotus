@@ -1,3 +1,4 @@
+// @ts-ignore
 import React, { useState } from "react";
 import { Form, Tabs, Modal, Select } from "antd";
 import { PlanType } from "../../types/plan-type";
@@ -16,13 +17,13 @@ import {
   useQuery,
   UseQueryResult,
 } from "react-query";
-import dayjs from "dayjs";
 import {
   CustomerDetailType,
   CustomerDetailSubscription,
 } from "../../types/customer-type";
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
+import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
 
 const { Option } = Select;
 
@@ -191,7 +192,10 @@ function CustomerDetail(props: {
               </Tabs.TabPane>
               <Tabs.TabPane tab="Invoices" key="invoices">
                 <CustomerInvoiceView invoices={data?.invoices} />
-              </Tabs.TabPane>{" "}
+              </Tabs.TabPane>
+              <Tabs.TabPane tab="Credits" key="credits">
+                    <CustomerBalancedAdjustments balanceAdjustments={data?.balance_adjustments} />
+                </Tabs.TabPane>{" "}
             </Tabs>
           </div>
         </div>

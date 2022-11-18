@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 class INVOICE_STATUS(models.TextChoices):
     DRAFT = ("draft", _("Draft"))
+    VOIDED = ("voided", _("Voided"))
     PAID = ("paid", _("Paid"))
     UNPAID = ("unpaid", _("Unpaid"))
 
@@ -12,6 +13,19 @@ class PAYMENT_PLANS(models.TextChoices):
     SELF_HOSTED_FREE = ("self_hosted_free", _("Self-Hosted Free"))
     CLOUD = ("cloud", _("Cloud"))
     SELF_HOSTED_ENTERPRISE = ("self_hosted_enterprise", _("Self-Hosted Enterprise"))
+
+
+class PRICE_TIER_TYPE(models.TextChoices):
+    FLAT = ("flat", _("Flat"))
+    PER_UNIT = ("per_unit", _("Per Unit"))
+    FREE = ("free", _("Free"))
+
+
+class BATCH_ROUNDING_TYPE(models.TextChoices):
+    ROUND_UP = ("round_up", _("Round Up"))
+    ROUND_DOWN = ("round_down", _("Round Down"))
+    ROUND_NEAREST = ("round_nearest", _("Round Nearest"))
+    NO_ROUNDING = ("no_rounding", _("No Rounding"))
 
 
 class METRIC_AGGREGATION(models.TextChoices):
@@ -61,9 +75,17 @@ class PLAN_DURATION(models.TextChoices):
 
 
 class USAGE_BILLING_FREQUENCY(models.TextChoices):
+    WEEKLY = ("weekly", _("Weekly"))
     MONTHLY = ("monthly", _("Monthly"))
     QUARTERLY = ("quarterly", _("Quarterly"))
-    YEARLY = ("yearly", _("Yearly"))
+    END_OF_PERIOD = ("end_of_period", _("End of Period"))
+
+
+class COMPONENT_RESET_FREQUENCY(models.TextChoices):
+    WEEKLY = ("weekly", _("Weekly"))
+    MONTHLY = ("monthly", _("Monthly"))
+    QUARTERLY = ("quarterly", _("Quarterly"))
+    NONE = ("none", _("None"))
 
 
 class FLAT_FEE_BILLING_TYPE(models.TextChoices):

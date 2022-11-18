@@ -7,12 +7,17 @@ from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import APIToken, BillableMetric, Customer, Subscription, CustomerBalanceAdjustment
+from metering_billing.models import (
+    APIToken,
+    BillableMetric,
+    Customer,
+    CustomerBalanceAdjustment,
+    Subscription,
+)
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.backtest_serializers import *
-from metering_billing.serializers.internal_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.request_serializers import *
 from metering_billing.serializers.response_serializers import *
@@ -101,8 +106,8 @@ class PeriodMetricRevenueView(APIView):
                     )
                     .select_related("billing_plan")
                     .select_related("customer")
-                    .prefetch_related("billing_plan__components")
-                    .prefetch_related("billing_plan__components__billable_metric")
+                    .prefetch_related("billing_plan__plan_components")
+                    .prefetch_related("billing_plan__plan_components__billable_metric")
                 )
                 for sub in subs:
                     bp = sub.billing_plan
@@ -113,7 +118,7 @@ class PeriodMetricRevenueView(APIView):
                     )
                     if p_start <= flat_bill_date <= p_end:
                         total_period_rev += bp.flat_rate.amount
-                    for plan_component in bp.components.all():
+                    for plan_component in bp.plan_components.all():
                         billable_metric = plan_component.billable_metric
                         revenue_per_day = plan_component.calculate_total_revenue(sub)
                         metric_dict = return_dict[
@@ -311,13 +316,13 @@ class APIKeyCreate(APIView):
             name="new_api_key", organization=organization
         )
         try:
-            user = self.request.user
+            username = self.request.user.username
         except:
-            user = None
+            username = None
         posthog.capture(
             POSTHOG_PERSON
             if POSTHOG_PERSON
-            else (user.username if user else organization.company_name + " (Unknown)"),
+            else (username if username else organization.company_name + " (Unknown)"),
             event="create_api_key",
             properties={"organization": organization.company_name},
         )
@@ -364,72 +369,77 @@ class CustomersSummaryView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CustomerDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+# class CustomerDetailView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        parameters=[
-            inline_serializer(
-                name="CustomerDetailRequestSerializer",
-                fields={"customer_id": serializers.CharField()},
-            ),
-        ],
-        responses={
-            200: CustomerDetailSerializer,
-            400: inline_serializer(
-                name="CustomerDetailErrorResponseSerializer",
-                fields={"error_detail": serializers.CharField()},
-            ),
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Get the current settings for the organization.
-        """
-        organization = parse_organization(request)
-        customer_id = request.query_params.get("customer_id")
-        try:
-            customer = (
-                Customer.objects.filter(
-                    organization=organization, customer_id=customer_id
-                )
-                .prefetch_related(
-                    Prefetch(
-                        "customer_subscriptions",
-                        queryset=Subscription.objects.filter(organization=organization),
-                        to_attr="subscriptions",
-                    ),
-                    Prefetch(
-                        "subscriptions__billing_plan",
-                        queryset=PlanVersion.objects.filter(organization=organization),
-                        to_attr="billing_plans",
-                    ),
-                )
-                .get()
-            )
-        except Customer.DoesNotExist:
-            return Response(
-                {
-                    "error_detail": "Customer with customer_id {} does not exist".format(
-                        customer_id
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+#     @extend_schema(
+#         parameters=[
+#             inline_serializer(
+#                 name="CustomerDetailRequestSerializer",
+#                 fields={"customer_id": serializers.CharField()},
+#             ),
+#         ],
+#         responses={
+#             200: CustomerDetailSerializer,
+#             400: inline_serializer(
+#                 name="CustomerDetailErrorResponseSerializer",
+#                 fields={"error_detail": serializers.CharField()},
+#             ),
+#         },
+#     )
+#     def get(self, request, format=None):
+#         """
+#         Get the current settings for the organization.
+#         """
+#         organization = parse_organization(request)
+#         customer_id = request.query_params.get("customer_id")
+#         try:
+#             customer = (
+#                 Customer.objects.filter(
+#                     organization=organization, customer_id=customer_id
+#                 )
+#                 .prefetch_related(
+#                     Prefetch(
+#                         "customer_subscriptions",
+#                         queryset=Subscription.objects.filter(organization=organization),
+#                         to_attr="subscriptions",
+#                     ),
+#                     Prefetch(
+#                         "subscriptions__billing_plan",
+#                         queryset=PlanVersion.objects.filter(organization=organization),
+#                         to_attr="billing_plans",
+#                     ),
+#                 )
+#                 .get()
+#             )
+#         except Customer.DoesNotExist:
+#             return Response(
+#                 {
+#                     "error_detail": "Customer with customer_id {} does not exist".format(
+#                         customer_id
+#                     )
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
 
-        total_amount_due = customer.get_outstanding_revenue()
-        invoices = Invoice.objects.filter(
-            organization=organization,
-            customer=customer,
-        )
-        serializer = CustomerDetailSerializer(
-            customer,
-            context={
-                "total_amount_due": total_amount_due,
-                "invoices": invoices,
-            },
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#         total_amount_due = customer.get_outstanding_revenue()
+#         invoices = Invoice.objects.filter(
+#             organization=organization,
+#             customer=customer,
+#         )
+
+#         balance_adjustments = CustomerBalanceAdjustment.objects.filter(
+#             customer=customer,
+#         )
+#         serializer = CustomerDetailSerializer(
+#             customer,
+#             context={
+#                 "total_amount_due": total_amount_due,
+#                 "invoices": invoices,
+#                 "balance_adjustments": balance_adjustments,
+#             },
+#         )
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomersWithRevenueView(APIView):
@@ -491,13 +501,13 @@ class DraftInvoiceView(APIView):
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)
         try:
-            user = self.request.user
+            username = self.request.user.username
         except:
-            user = None
+            username = None
         posthog.capture(
             POSTHOG_PERSON
             if POSTHOG_PERSON
-            else (user.username if user else organization.company_name + " (Unknown)"),
+            else (username if username else organization.company_name + " (Unknown)"),
             event="draft_invoice",
             properties={"organization": organization.company_name},
         )
@@ -542,13 +552,13 @@ class GetCustomerAccessView(APIView):
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
         try:
-            user = self.request.user
+            username = self.request.user.username
         except:
-            user = None
+            username = None
         posthog.capture(
             POSTHOG_PERSON
             if POSTHOG_PERSON
-            else (user.username if user else organization.company_name + " (Unknown)"),
+            else (username if username else organization.company_name + " (Unknown)"),
             event="get_access",
             properties={"organization": organization.company_name},
         )
@@ -572,22 +582,33 @@ class GetCustomerAccessView(APIView):
         )
         if event_name:
             subscriptions = subscriptions.prefetch_related(
-                "billing_plan__components", "billing_plan__components__billable_metric"
+                "billing_plan__plan_components",
+                "billing_plan__plan_components__billable_metric",
+                "billing_plan__plan_components__tiers",
             )
             metric_usages = {}
             for sub in subscriptions:
-                for component in sub.billing_plan.components.all():
+                for component in sub.billing_plan.plan_components.all():
                     if component.billable_metric.event_name == event_name:
                         metric = component.billable_metric
+                        tiers = sorted(
+                            component.tiers.all(), key=lambda x: x.range_start
+                        )
                         if event_limit_type == "free":
-                            metric_limit = component.free_metric_units
+                            metric_limit = (
+                                tiers[0].range_end
+                                if tiers[0].type == PRICE_TIER_TYPE.FREE
+                                else None
+                            )
                         elif event_limit_type == "total":
-                            metric_limit = component.max_metric_units
+                            metric_limit = tiers[-1].range_end
                         if not metric_limit:
                             metric_usages[metric.billable_metric_name] = {
                                 "metric_usage": None,
                                 "metric_limit": None,
-                                "access": True,
+                                "access": True
+                                if event_limit_type == "total"
+                                else False,
                             }
                             continue
                         metric_usage = metric.get_current_usage(sub)
@@ -886,15 +907,16 @@ class PlansByNumCustomersView(APIView):
             status=status.HTTP_200_OK,
         )
 
-class BalancedAdjustmentView(APIView):
+
+class CustomerBalanceAdjustmentView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         request=inline_serializer(
             name="CreateBalanceAdjustmentRequest",
             fields={
-                "amount":  serializers.IntegerField(required=True),
-                "customer_id":  serializers.CharField(required=True),
+                "amount": serializers.IntegerField(required=True),
+                "customer_id": serializers.CharField(required=True),
                 "amount_currency": serializers.CharField(required=True),
                 "description": serializers.CharField(),
             },
@@ -916,43 +938,116 @@ class BalancedAdjustmentView(APIView):
             ),
         },
     )
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        organization = parse_organization(request)
+        customer_id = request.query_params.get("customer_id")
+        customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
+            customer_id=customer_id
+        ).prefetch_related(
+            Prefetch(
+                "customer",
+                queryset=Customer.objects.filter(organization=organization),
+                to_attr="customers",
+            ),
+        )
+        if len(customer_balances_adjustment) == 0:
+            return Response(
+                {
+                    "error_detail": "CustomerBalanceAdjustmentView with customer_id {} does not exist".format(
+                        customer_id
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CustomerBatchCreateView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="CustomerBatchCreateRequest",
+            fields={
+                "customers": CustomerSerializer(many=True),
+                "behavior_on_existing": serializers.ChoiceField(
+                    choices=["merge", "ignore", "overwrite"]
+                ),
+            },
+        ),
+        responses={
+            201: inline_serializer(
+                name="CustomerBatchCreateSuccess",
+                fields={
+                    "success": serializers.ChoiceField(choices=["all", "some"]),
+                    "failed_customers": serializers.DictField(required=False),
+                },
+            ),
+            400: inline_serializer(
+                name="CustomerBatchCreateFailure",
+                fields={
+                    "success": serializers.ChoiceField(choices=["none"]),
+                    "failed_customers": serializers.DictField(),
+                },
+            ),
+        },
+    )
     def post(self, request, format=None):
         organization = parse_organization(request)
-        customer_id = request.data.get("customer_id", None)
-        amount_currency = request.data.get("amount_currency", "USD")
-        amount = request.data.get("amount", 0)
-        description = request.data.get("description", 0)
-        try:
-            customer = Customer.objects.get(organization=organization, customer_id=customer_id)
-        except Customer.DoesNotExist:
-            return Response(
-                {
-                    "status": "error",
-                    "error_detail": "Customer with customer_id {} does not exist".format(customer_id)
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            CustomerBalanceAdjustment.objects.create(
-                    customer=customer,
-                    description=description,
-                    amount=amount,
-                    amount_currency=amount_currency
+        serializer = CustomerSerializer(
+            data=request.data["customers"],
+            many=True,
+            context={"organization": organization},
+        )
+        serializer.is_valid(raise_exception=True)
+        failed_customers = {}
+        behavior = request.data.get("behavior_on_existing", "merge")
+        for customer in serializer.validated_data:
+            try:
+                match = Customer.objects.filter(
+                    Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
+                    organization=organization,
                 )
-        except Exception as e:
+                if match.exists():
+                    match = match.first()
+                    if behavior == "ignore":
+                        pass
+                    else:
+                        if "customer_id" in customer:
+                            non_unique_id = Customer.objects.filter(
+                                ~Q(pk=match.pk), customer_id=customer["customer_id"]
+                            ).exists()
+                            if non_unique_id:
+                                failed_customers[
+                                    customer["customer_id"]
+                                ] = "customer_id already exists"
+                                continue
+                        CustomerSerializer().update(match, customer, behavior=behavior)
+                else:
+                    customer["organization"] = organization
+                    CustomerSerializer().create(customer)
+            except Exception as e:
+                identifier = customer.get("customer_id", customer.get("email"))
+                failed_customers[identifier] = str(e)
+
+        if len(failed_customers) == 0 or len(failed_customers) < len(
+            serializer.validated_data
+        ):
             return Response(
                 {
-                   "status": "error",
-                   "detail": f"Error in creating balance adjustment: {e}",
+                    "success": "all" if len(failed_customers) == 0 else "some",
+                    "failed_customers": failed_customers,
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_201_CREATED,
             )
-
         return Response(
             {
-                "status": "success",
-                "detail": "Successfully created  balance adjustment",
+                "success": "none",
+                "failed_customers": failed_customers,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_400_BAD_REQUEST,
         )

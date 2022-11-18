@@ -67,6 +67,7 @@ axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
   "Token"
 )}`;
 
+// @ts-ignore
 const API_HOST = import.meta.env.VITE_API_URL;
 
 axios.defaults.baseURL = API_HOST;
@@ -93,14 +94,14 @@ const requests = {
 export const Customer = {
   getCustomers: (): Promise<CustomerPlus[]> =>
     requests.get("api/customer_summary/"),
-  getACustomer: (customer_id: string): Promise<CustomerType> =>
-    requests.get(`api/customers/${customer_id}`),
+  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
+    requests.get(`api/customers/${customer_id}/`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
     requests.post("api/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
-    requests.get(`api/customer_detail/`, { params: { customer_id } }),
+  // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
+  //   requests.get(`api/customer_detail/`, { params: { customer_id } }),
   //Subscription handling
   createSubscription: (
     post: CreateSubscriptionType
@@ -342,7 +343,7 @@ export const PaymentProcessorIntegration = {
 };
 
 export const Invoices = {
-  markStatusAsPaid: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
+  changeStatus: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
     return requests.patch(`api/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     });

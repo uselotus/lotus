@@ -138,7 +138,7 @@ class TestStripeIntegration:
         assert invoice.payment_status == INVOICE_STATUS.UNPAID
         assert invoice.external_payment_obj_type == PAYMENT_PROVIDERS.STRIPE
         try:
-            stripe_pi = stripe.PaymentIntent.retrieve(invoice.external_payment_obj_id)
+            stripe_pi = stripe.Invoice.retrieve(invoice.external_payment_obj_id)
         except Exception as e:
             assert False, "Payment intent not found for reason: {}".format(e)
 
@@ -148,9 +148,9 @@ class TestStripeIntegration:
         )
         assert new_status == INVOICE_STATUS.UNPAID
         # now add payment method
-        stripe.PaymentIntent.confirm(
+        stripe.Invoice.pay(
             invoice.external_payment_obj_id,
-            payment_method="pm_card_visa",
+            paid_out_of_band=True,
         )
         new_status = stripe_connector.update_payment_object_status(
             invoice.external_payment_obj_id
@@ -163,10 +163,15 @@ class TestStripeIntegration:
             .exclude(external_payment_obj_id__exact="")
             .count()
         )
-        stripe_pi2 = stripe.PaymentIntent.create(
-            amount=5000,
+        bogus_invoice_item = stripe.InvoiceItem.create(
+            customer=new_cust.integrations["stripe"]["id"],
+            amount=1000,
             currency="usd",
-            payment_method="pm_card_visa",
+            description="Bogus Invoice Item",
+        )
+        bogus_invoice = stripe.Invoice.create(
+            currency="usd",
+            # payment_method="pm_card_visa",
             customer=new_cust.integrations["stripe"]["id"],
         )
         stripe_connector.import_payment_objects(setup_dict["org"])
@@ -240,93 +245,3 @@ class TestStripeIntegration:
 
         # delete everything that we created
         stripe.Customer.delete(stripe_customer.id)
-
-
-# @pytest.mark.django_db
-# class TestUpdateInvoiceStatusStripe:
-#     def test_update_invoice_status_stripe(self, integration_test_common_setup):
-#         setup_dict = integration_test_common_setup()
-
-#         c_id = setup_dict["customer"].payment_providers["stripe"]["id"]
-#         payment_intent = stripe.PaymentIntent.create(
-#             amount=5000,
-#             currency="usd",
-#             payment_method_types=["card"],
-#             payment_method="pm_card_visa",
-#             confirm=True,
-#             customer=c_id,
-#             off_session=True,
-#         )
-
-#         # Create the invoice
-#         invoice = baker.make(
-#             Invoice,
-#             issue_date=setup_dict["subscription"].end_date,
-#             payment_status=INVOICE_STATUS.UNPAID,
-#             external_payment_obj_id=payment_intent.id,
-#             organization={"company_name": "bogus"},
-#         )
-
-#         assert invoice.payment_status != INVOICE_STATUS.PAID
-
-#         update_invoice_status()
-
-#         invoice = Invoice.objects.filter(id=invoice.id).first()
-#         assert invoice.payment_status == INVOICE_STATUS.PAID
-
-
-# @pytest.mark.django_db(transaction=True)
-# class TestSyncCustomersStripe:
-#     def test_add_customers_update_existing(self, integration_test_common_setup):
-#         setup_dict = integration_test_common_setup()
-#         setup_dict["customer"].payment_providers["stripe"] = {"id": "bogus"}
-#         setup_dict["customer"].save()
-#         customers_before = Customer.objects.all().count()
-
-#         payload = {}
-#         response = setup_dict["client"].post(
-#             reverse("sync_customers"),
-#             data=json.dumps(payload, cls=DjangoJSONEncoder),
-#             content_type="application/json",
-#         )
-
-#         customers_after = Customer.objects.all().count()
-#         assert response.status_code == 201
-#         assert customers_after == customers_before
-#         customer = Customer.objects.get(organization=setup_dict["org"])
-#         cust_d = customer.integrations["stripe"]
-#         assert "id" in cust_d
-#         assert cust_d["id"] != "bogus"
-#         assert "email" in cust_d
-#         assert "metadata" in cust_d
-#         assert "name" in cust_d
-#         assert "currency" in cust_d
-#         sources = customer.sources
-#         assert "stripe" in sources
-#         assert "lotus" in sources
-
-#     def test_add_customers_create_new(self, integration_test_common_setup):
-#         setup_dict = integration_test_common_setup()
-#         setup_dict["customer"].delete()
-#         customers_before = Customer.objects.all().count()
-
-#         payload = {}
-#         response = setup_dict["client"].post(
-#             reverse("sync_customers"),
-#             data=json.dumps(payload, cls=DjangoJSONEncoder),
-#             content_type="application/json",
-#         )
-
-#         customers_after = Customer.objects.all().count()
-#         assert response.status_code == 201
-#         assert customers_after == customers_before + 1
-#         customer = Customer.objects.get(organization=setup_dict["org"])
-#         cust_d = customer.integrations["stripe"]
-#         assert "id" in cust_d
-#         assert "email" in cust_d
-#         assert "metadata" in cust_d
-#         assert "name" in cust_d
-#         assert "currency" in cust_d
-#         sources = customer.sources
-#         assert "stripe" in sources
-#         assert "lotus" not in sources

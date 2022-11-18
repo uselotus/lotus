@@ -1,11 +1,13 @@
+// @ts-ignore
 import React, { FC, useState, useEffect } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Collapse } from "antd";
 import { EventPages } from "../types/event-type";
 import { Events } from "../api/api";
 import LoadingSpinner from "./LoadingSpinner";
+// @ts-ignore
 import dayjs from "dayjs";
-import "./EventPreview.css"
+import "./EventPreview.css";
 import CustomPagination from "./CustomPagination/CustomPagination";
 
 const { Panel } = Collapse;
@@ -53,40 +55,39 @@ const EventPreview: FC = () => {
     );
   }
 
-  const handleMovements = (direction:"LEFT" | "RIGHT" | "START") => {
-      switch (direction){
-          case "LEFT":
-              setCursor(previous);
-              setCurrentPage(currentPage - 1)
-              queryClient.invalidateQueries(["preview_events", cursor]);
-              return
-          case "RIGHT":
-              setCursor(next);
-              setCurrentPage(currentPage + 1)
-              queryClient.invalidateQueries(["preview_events", cursor]);
-              return;
-          case "START":
-              setCursor(null);
-              setCurrentPage(1)
-              queryClient.invalidateQueries(["preview_events", null]);
-              return;
-      }
-
-  }
+  const handleMovements = (direction: "LEFT" | "RIGHT" | "START") => {
+    switch (direction) {
+      case "LEFT":
+        setCursor(previous);
+        setCurrentPage(currentPage - 1);
+        queryClient.invalidateQueries(["preview_events", cursor]);
+        return;
+      case "RIGHT":
+        setCursor(next);
+        setCurrentPage(currentPage + 1);
+        queryClient.invalidateQueries(["preview_events", cursor]);
+        return;
+      case "START":
+        setCursor(null);
+        setCurrentPage(1);
+        queryClient.invalidateQueries(["preview_events", null]);
+        return;
+    }
+  };
 
   return (
     <div className="w-full rounded">
       <Collapse expandIconPosition="end" bordered={false}>
-          {(!data && !!cursor) && (
-              <div className="loadMoreSpinner">
-                  <LoadingSpinner />.
-              </div>
-          )}
+        {!data && !!cursor && (
+          <div className="loadMoreSpinner">
+            <LoadingSpinner />.
+          </div>
+        )}
 
         {data?.results.map((event) => (
           <Panel
             header={
-              <div className="grid grid-cols-2">
+              <div className="grid grid-cols-2 my-2">
                 <p className="text-left	">event_name: {event.event_name}</p>
                 <p className="text-left	">customer_id: {event.customer}</p>
               </div>
@@ -101,7 +102,7 @@ const EventPreview: FC = () => {
               <div className="grid grid-cols-2">
                 <p className="text-left	">
                   time_created:{" "}
-                  {dayjs(event.time_created).format("YYYY/MM/DD HH:mm")}
+                  {dayjs(event.time_created).format("YYYY/MM/DD HH:mm:ss")}
                 </p>
                 <div className="text-left flex-col flex">
                   {event.properties &&
@@ -122,12 +123,13 @@ const EventPreview: FC = () => {
       </Collapse>
       <div className="separator mb-5 mt-5" />
 
-      <CustomPagination cursor={cursor}
-                        previous={previous}
-                        next={next}
-                        currentPage={currentPage}
-                        handleMovements={handleMovements}
-                        />
+      <CustomPagination
+        cursor={cursor}
+        previous={previous}
+        next={next}
+        currentPage={currentPage}
+        handleMovements={handleMovements}
+      />
     </div>
   );
 };

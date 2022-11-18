@@ -1,6 +1,6 @@
 // @ts-ignore
 import React, { FC } from "react";
-import { CaretRightOutlined, CaretLeftOutlined, DoubleLeftOutlined } from '@ant-design/icons';
+import { RightOutlined, LeftOutlined, DoubleLeftOutlined } from '@ant-design/icons';
 import "./CustomPagination.css"
 
 interface CustomPaginationProps {
@@ -26,14 +26,14 @@ const CustomPagination: FC<CustomPaginationProps> = ({ cursor, currentPage, hand
             disabled={ previous === "null"}
             onClick={() => handleMovements("LEFT")}
         >
-            <CaretLeftOutlined />
+            <LeftOutlined />
         </button>
         <div className="currentPageNumber"> {currentPage} </div>
         <button
             className="movementButton"
             disabled={next === "null"}
             onClick={() => handleMovements("RIGHT")}
-        ><CaretRightOutlined />
+        ><RightOutlined />
         </button>
     </div>
     );

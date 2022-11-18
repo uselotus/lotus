@@ -1,10 +1,13 @@
 import datetime
+import math
 import uuid
 from decimal import Decimal
 from random import choices
 from typing import TypedDict
 
-from dateutil import parser
+import lotus_python
+from dateutil.relativedelta import relativedelta
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -30,7 +33,9 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
+    BATCH_ROUNDING_TYPE,
     CATEGORICAL_FILTER_OPERATORS,
+    COMPONENT_RESET_FREQUENCY,
     EVENT_TYPE,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
@@ -45,6 +50,7 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_ADJUSTMENT_TYPE,
+    PRICE_TIER_TYPE,
     PRODUCT_STATUS,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
@@ -53,6 +59,8 @@ from metering_billing.utils.enums import (
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
+
+META = settings.META
 
 
 class Organization(models.Model):
@@ -167,6 +175,9 @@ class Customer(models.Model):
             if id is None:
                 raise ValueError(f"Payment provider {k} id was not provided")
         super(Customer, self).save(*args, **kwargs)
+        Event.objects.filter(
+            organization=self.organization, cust_id=self.customer_id
+        ).update(customer=self)
 
     def get_billing_plan_names(self) -> str:
         subscription_set = Subscription.objects.filter(
@@ -183,16 +194,17 @@ class Customer(models.Model):
                 status=SUBSCRIPTION_STATUS.ACTIVE,
                 organization=self.organization,
             )
-            .prefetch_related("billing_plan__components")
-            .prefetch_related("billing_plan__components__billable_metric")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
             .select_related("billing_plan")
         )
-        subscription_usages = {"subscriptions": []}
+        subscription_usages = {"subscriptions": [], "sub_objects": []}
         for subscription in customer_subscriptions:
             sub_dict = subscription.get_usage_and_revenue()
             del sub_dict["components"]
             sub_dict["billing_plan_name"] = subscription.billing_plan.plan.plan_name
             subscription_usages["subscriptions"].append(sub_dict)
+            subscription_usages["sub_objects"].append(subscription)
 
         return subscription_usages
 
@@ -206,11 +218,13 @@ class Customer(models.Model):
         return balance
 
     def get_outstanding_revenue(self):
+        usg_rev = self.get_usage_and_revenue()
         active_sub_amount_due = sum(
-            x["total_amount_due"] for x in self.get_usage_and_revenue()["subscriptions"]
+            x["total_amount_due"] for x in usg_rev["subscriptions"]
         )
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
+            .exclude(subscription__in=usg_rev["sub_objects"])
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
@@ -262,11 +276,12 @@ class Event(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="+"
+        Organization, on_delete=models.CASCADE, related_name="+"
     )
     customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=False, related_name="+"
+        Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
+    cust_id = models.CharField(max_length=50, null=True, blank=True)
     event_name = models.CharField(max_length=200, null=False)
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
@@ -318,7 +333,6 @@ class BillableMetric(models.Model):
         null=True,
         blank=True,
     )
-
     # metric type specific
     usage_aggregation_type = models.CharField(
         max_length=10,
@@ -400,21 +414,90 @@ class UsageRevenueSummary(TypedDict):
     usage_qty: Decimal
 
 
-class PlanComponent(models.Model):
-    billable_metric = models.ForeignKey(
-        BillableMetric, on_delete=models.CASCADE, related_name="+"
+class PriceTier(models.Model):
+    plan_component = models.ForeignKey(
+        "PlanComponent",
+        on_delete=models.CASCADE,
+        related_name="tiers",
+        null=True,
+        blank=True,
     )
-    free_metric_units = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
+    type = models.CharField(choices=PRICE_TIER_TYPE.choices, max_length=10)
+    range_start = models.DecimalField(max_digits=20, decimal_places=10)
+    range_end = models.DecimalField(
+        max_digits=20, decimal_places=10, null=True, blank=True
     )
     cost_per_batch = models.DecimalField(
         decimal_places=10, max_digits=20, blank=True, null=True
     )
     metric_units_per_batch = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
+        decimal_places=10, max_digits=20, blank=True, null=True, default=1.0
     )
-    max_metric_units = models.DecimalField(
-        decimal_places=10, max_digits=20, blank=True, null=True
+    batch_rounding_type = models.CharField(
+        choices=BATCH_ROUNDING_TYPE.choices,
+        max_length=20,
+        default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
+        blank=True,
+        null=True,
+    )
+
+    def calculate_revenue(self, usage_dict: dict, prev_tier_end=False):
+        dict_len = len(usage_dict)
+        revenue = 0
+        discontinuous_range = (
+            prev_tier_end != self.range_start and prev_tier_end is not None
+        )
+        for usage in usage_dict.values():
+            usage = convert_to_decimal(usage)
+            usage_in_range = (
+                self.range_start <= usage
+                if discontinuous_range
+                else self.range_start < usage or self.range_start == 0
+            )
+            if usage_in_range:
+                if self.type == PRICE_TIER_TYPE.FLAT:
+                    revenue += self.cost_per_batch / dict_len
+                elif self.type == PRICE_TIER_TYPE.PER_UNIT:
+                    if self.range_end is not None:
+                        billable_units = min(
+                            usage - self.range_start, self.range_end - self.range_start
+                        )
+                    else:
+                        billable_units = usage - self.range_start
+                    if discontinuous_range:
+                        billable_units += 1
+                    billable_batches = billable_units / self.metric_units_per_batch
+                    if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
+                        billable_batches = math.ceil(billable_batches)
+                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
+                        billable_batches = math.floor(billable_batches)
+                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
+                        billable_batches = round(billable_batches)
+                    revenue += (self.cost_per_batch * billable_batches) / dict_len
+        return revenue
+
+
+class PlanComponent(models.Model):
+    billable_metric = models.ForeignKey(
+        BillableMetric,
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
+    plan_version = models.ForeignKey(
+        "PlanVersion",
+        on_delete=models.CASCADE,
+        related_name="plan_components",
+        null=True,
+        blank=True,
+    )
+    reset_frequency = models.CharField(
+        choices=COMPONENT_RESET_FREQUENCY.choices,
+        max_length=10,
+        null=True,
+        blank=True,
+        default=COMPONENT_RESET_FREQUENCY.NONE,
     )
 
     def __str__(self):
@@ -423,50 +506,62 @@ class PlanComponent(models.Model):
     def calculate_total_revenue(
         self, subscription
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
-        billable_metric = self.billable_metric
-        usage = billable_metric.get_usage(
-            granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            start_date=subscription.start_date,
-            end_date=subscription.end_date,
-            customer=subscription.customer,
-        )
-        # extract usage
-        usage = usage.get(subscription.customer.customer_name, {})
-        if len(usage) > 1:  # this means it's a stateful metric
-            usage_qty = sum(usage.values())
-            revenue = 0
-            for usage in usage.values():
-                billable_units = max(usage - self.free_metric_units, 0)
-                billable_batches = billable_units // self.metric_units_per_batch
-                usage_revenue = billable_batches * self.cost_per_batch
-                revenue += convert_to_decimal(usage_revenue)
-        elif len(usage) == 1:
-            _, usage_qty = list(usage.items())[0]
-            usage_qty = convert_to_decimal(usage_qty)
-            if (
-                self.cost_per_batch == 0
-                or self.cost_per_batch is None
-                or self.metric_units_per_batch == 0
-                or self.metric_units_per_batch is None
-            ):
-                revenue = Decimal(0)
+        periods = []
+        start_date = subscription.start_date
+        end_date = start_date
+        now = now_utc()
+        while end_date < subscription.end_date:
+            if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
+                end_date = start_date + relativedelta(weeks=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
+                end_date = start_date + relativedelta(months=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
+                end_date = start_date + relativedelta(months=3)
             else:
-                free_units = self.free_metric_units or Decimal(0)
-                billable_units = max(usage_qty - free_units, 0)
-                billable_batches = billable_units // self.metric_units_per_batch
-                usage_revenue = billable_batches * self.cost_per_batch
-                revenue = convert_to_decimal(usage_revenue)
-        else:
-            usage_qty = Decimal(0)
-            revenue = Decimal(0)
-
-        # calculate revenue
-
-        # wrap up and return
-        revenue_dict = {
-            "revenue": revenue,
-            "usage_qty": convert_to_decimal(usage_qty),
-        }
+                end_date = subscription.end_date
+            end_date = min(subscription.end_date, end_date)
+            periods.append((start_date, end_date))
+            start_date = end_date
+            if start_date > now:
+                break
+        billable_metric = self.billable_metric
+        revenue_dict = {"revenue": Decimal(0), "subperiods": []}
+        for period_start, period_end in periods:
+            usage = billable_metric.get_usage(
+                granularity=USAGE_CALC_GRANULARITY.TOTAL,
+                start_date=period_start,
+                end_date=period_end,
+                customer=subscription.customer,
+            )
+            # extract usage
+            usage = usage.get(subscription.customer.customer_name, {})
+            if len(usage) >= 1:
+                usage_qty = sum(usage.values())
+                usage_qty = convert_to_decimal(usage_qty)
+                revenue = 0
+                tiers = self.tiers.all()
+                for i, tier in enumerate(tiers):
+                    if i > 0:
+                        prev_tier_end = tiers[i - 1].range_end
+                        tier_revenue = tier.calculate_revenue(
+                            usage, prev_tier_end=prev_tier_end
+                        )
+                    else:
+                        tier_revenue = tier.calculate_revenue(usage)
+                    revenue += tier_revenue
+                revenue = convert_to_decimal(revenue)
+            else:
+                usage_qty = Decimal(0)
+                revenue = Decimal(0)
+            revenue_dict["revenue"] += revenue
+            revenue_dict["subperiods"].append(
+                {
+                    "start_date": period_start,
+                    "end_date": period_end,
+                    "usage_qty": usage_qty,
+                    "revenue": revenue,
+                }
+            )
 
         return revenue_dict
 
@@ -555,7 +650,7 @@ class Invoice(models.Model):
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
-    line_items = models.JSONField()
+    line_items = models.JSONField(null=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
@@ -569,6 +664,45 @@ class Invoice(models.Model):
 
     def __str__(self):
         return str(self.invoice_id)
+
+    def save(self, *args, **kwargs):
+        if (
+            self.payment_status != INVOICE_STATUS.DRAFT
+            and META
+            and self.cost_due.amount > 0
+        ):
+            print("track event")
+            lotus_python.track_event(
+                customer_id=self.organization.company_name + str(self.organization.pk),
+                event_name="create_invoice",
+                properties={
+                    "amount": float(self.cost_due.amount),
+                    "currency": str(self.cost_due.currency),
+                    "customer": self.customer.customer_id,
+                    "subscription": self.subscription.subscription_id,
+                    "external_type": self.external_payment_obj_type,
+                },
+            )
+        super().save(*args, **kwargs)
+
+
+class InvoiceLineItem(models.Model):
+    name = models.CharField(max_length=200)
+    start_date = models.DateTimeField(max_length=100, default=now_utc)
+    end_date = models.DateTimeField(max_length=100, default=now_utc)
+    quantity = models.DecimalField(decimal_places=10, max_digits=20, default=1.0)
+    subtotal = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
+    )
+    billing_type = models.CharField(
+        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
+    )
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, null=True, related_name="inv_line_items"
+    )
+    associated_plan_version = models.ForeignKey(
+        "PlanVersion", on_delete=models.CASCADE, null=True, related_name="+"
+    )
 
 
 class APIToken(AbstractAPIKey):
@@ -617,10 +751,16 @@ class PlanVersion(models.Model):
     plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
     status = models.CharField(max_length=40, choices=PLAN_VERSION_STATUS.choices)
     replace_with = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+    )
+    transition_to = models.ForeignKey(
+        "Plan",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="transition_from",
     )
     flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
-    components = models.ManyToManyField(PlanComponent, blank=True)
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
         "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
@@ -785,9 +925,23 @@ class Plan(models.Model):
                 == MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
             ):
                 replace_with_lst.append(PLAN_VERSION_STATUS.ACTIVE)
-            self.versions.all().filter(
-                ~Q(pk=new_version.pk), status__in=replace_with_lst
-            ).update(replace_with=new_version, status=PLAN_VERSION_STATUS.RETIRING)
+            versions_to_replace = (
+                self.versions.all()
+                .filter(~Q(pk=new_version.pk), status__in=replace_with_lst)
+                .annotate(
+                    active_subscriptions=Count(
+                        "bp_subscription",
+                        filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
+                        output_field=models.IntegerField(),
+                    )
+                )
+            )
+            inactive = versions_to_replace.filter(active_subscriptions=0)
+            retiring = versions_to_replace.filter(active_subscriptions__gt=0)
+            inactive.query.annotations.clear()
+            retiring.query.annotations.clear()
+            inactive.filter().update(status=PLAN_VERSION_STATUS.INACTIVE)
+            retiring.filter().update(status=PLAN_VERSION_STATUS.RETIRING)
             # 2b
             if make_active_type == MAKE_PLAN_VERSION_ACTIVE_TYPE.GRANDFATHER_ACTIVE:
                 prev_active = self.versions.all().get(
@@ -822,10 +976,10 @@ class Plan(models.Model):
                     ):
                         sub.switch_subscription_bp(billing_plan=new_version)
                     else:
-                        sub.end_subscription_now(
-                            bill=replace_immediately_type
-                            == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
+                        bill_usage = (
+                            REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
                         )
+                        sub.end_subscription_now(bill_usage=bill_usage, prorate=True)
                         Subscription.objects.create(
                             billing_plan=new_version,
                             organization=self.organization,
@@ -886,6 +1040,7 @@ class Subscription(models.Model):
         related_query_name="bp_subscription",
     )
     start_date = models.DateTimeField()
+    next_billing_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField()
     scheduled_end_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
@@ -911,12 +1066,39 @@ class Subscription(models.Model):
         return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
+        now = now_utc()
         if not self.end_date:
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration, self.start_date
             )
         if not self.scheduled_end_date:
             self.scheduled_end_date = self.end_date
+        if not self.next_billing_date or self.next_billing_date < now:
+            start_date = self.start_date
+            next_billing_date = self.start_date
+            while next_billing_date < self.end_date:
+                if (
+                    self.billing_plan.usage_billing_frequency
+                    == USAGE_BILLING_FREQUENCY.WEEKLY
+                ):
+                    next_billing_date = start_date + relativedelta(weeks=1)
+                elif (
+                    self.billing_plan.usage_billing_frequency
+                    == USAGE_BILLING_FREQUENCY.MONTHLY
+                ):
+                    next_billing_date = start_date + relativedelta(months=1)
+                elif (
+                    self.billing_plan.usage_billing_frequency
+                    == USAGE_BILLING_FREQUENCY.QUARTERLY
+                ):
+                    next_billing_date = start_date + relativedelta(months=3)
+                else:
+                    next_billing_date = self.end_date
+                next_billing_date = min(self.end_date, next_billing_date)
+                start_date = next_billing_date
+                if start_date > now:
+                    break
+            self.next_billing_date = next_billing_date
         if self.status == SUBSCRIPTION_STATUS.ACTIVE or not self.pk:
             flat_fee_dictionary = self.prorated_flat_costs_dict
             today = now_utc().date()
@@ -934,6 +1116,15 @@ class Subscription(models.Model):
                     }
         super(Subscription, self).save(*args, **kwargs)
 
+    def amount_already_invoiced(self):
+        flat_fee_prev_invoices = self.flat_fee_already_billed or 0
+        billed_invoices = self.invoices.filter(
+            ~Q(payment_status=INVOICE_STATUS.VOIDED)
+            & ~Q(payment_status=INVOICE_STATUS.DRAFT)
+        ).aggregate(tot=Sum("cost_due"))["tot"]
+
+        return flat_fee_prev_invoices + (billed_invoices or 0)
+
     def get_usage_and_revenue(self):
         sub_dict = {}
         sub_dict["components"] = []
@@ -944,7 +1135,7 @@ class Subscription(models.Model):
         plan_end_date = self.end_date
         # extract other objects that we need when calculating usage
         customer = self.customer
-        plan_components_qs = plan.components.all()
+        plan_components_qs = plan.plan_components.all()
         # For each component of the plan, calculate usage/revenue
         for plan_component in plan_components_qs:
             plan_component_summary = plan_component.calculate_total_revenue(self)
@@ -958,7 +1149,7 @@ class Subscription(models.Model):
         )
         return sub_dict
 
-    def end_subscription_now(self, bill=True):
+    def end_subscription_now(self, bill_usage=True, prorate=True):
         if self.status != SUBSCRIPTION_STATUS.ACTIVE:
             raise Exception(
                 "Subscription needs to be active to end it. Subscription status is {}".format(
@@ -967,8 +1158,11 @@ class Subscription(models.Model):
             )
         self.auto_renew = False
         self.end_date = now_utc()
-        if bill:
-            generate_invoice(self)
+        generate_invoice(
+            self,
+            flat_fee_behavior="prorate" if prorate else "full_amount",
+            include_usage=bill_usage,
+        )
         self.status = SUBSCRIPTION_STATUS.ENDED
         self.save()
 
@@ -983,8 +1177,7 @@ class Subscription(models.Model):
         )
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            invoice = generate_invoice(self)
-            self.flat_fee_already_billed += Decimal(invoice.cost_due)
+            generate_invoice(self, include_usage=False, flat_fee_behavior="full_amount")
 
 
 class Backtest(models.Model):

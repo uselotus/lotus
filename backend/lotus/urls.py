@@ -40,7 +40,8 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
-    CustomerDetailView,
+    CustomerBalanceAdjustmentsView,
+    CustomerBatchCreateView,
     CustomersSummaryView,
     CustomersWithRevenueView,
     DraftInvoiceView,
@@ -53,7 +54,6 @@ from metering_billing.views.views import (  # MergeCustomersView,
     PeriodSubscriptionsView,
     PlansByNumCustomersView,
     TransferSubscriptionsView,
-    BalancedAdjustmentView
 )
 from rest_framework import routers
 
@@ -97,11 +97,11 @@ urlpatterns = [
         CustomersSummaryView.as_view(),
         name="customer_summary",
     ),
-    path(
-        "api/customer_detail/",
-        CustomerDetailView.as_view(),
-        name="customer_detail",
-    ),
+    # path(
+    #     "api/customer_detail/",
+    #     CustomerDetailView.as_view(),
+    #     name="customer_detail",
+    # ),
     path(
         "api/customer_totals/",
         CustomersWithRevenueView.as_view(),
@@ -125,7 +125,7 @@ urlpatterns = [
     path(
         "api/period_subscriptions/",
         PeriodSubscriptionsView.as_view(),
-        name="pexwriod_subscriptions",
+        name="period_subscriptions",
     ),
     path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
     path("api/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
@@ -133,6 +133,11 @@ urlpatterns = [
         "api/customer_access/",
         GetCustomerAccessView.as_view(),
         name="customer_access",
+    ),
+    path(
+        "api/batch_create_customers/",
+        CustomerBatchCreateView.as_view(),
+        name="batch_create_customers",
     ),
     path(
         "api/import_customers/",
@@ -185,9 +190,10 @@ urlpatterns = [
     ),
     path(
         "api/create_balance_adjustment/",
-        BalancedAdjustmentView.as_view(),
+        CustomerBalanceAdjustmentsView.as_view(),
         name="create_balance_adjustment",
     ),
+    path("stripe/", include("djstripe.urls", namespace="djstripe")),
 ]
 
 if PROFILER_ENABLED:

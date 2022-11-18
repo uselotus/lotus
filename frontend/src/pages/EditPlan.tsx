@@ -28,6 +28,7 @@ import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
+// @ts-ignore
 import React from "react";
 import { PageLayout } from "../components/base/PageLayout";
 import ComponentDisplay from "../components/Plans/ComponentDisplay";
@@ -60,6 +61,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   const { setReplacementPlan } = usePlanUpdater();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
   const [targetCustomerId, setTargetCustomerId] = useState<string>(); // target customer id
+  const [allPlans, setAllPlans] =  useState<PlanType[]>([])
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([
@@ -77,14 +79,18 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   );
 
   useEffect(() => {
+      if(!allPlans?.length) {
+          Plan.getPlans().then(data => setAllPlans(data))
+      }
+  }, [])
+
+  useEffect(() => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
       (component) => {
         return {
           metric: component.billable_metric.billable_metric_name,
-          cost_per_batch: component.cost_per_batch,
-          metric_units_per_batch: component.metric_units_per_batch,
-          free_metric_units: component.free_metric_units,
-          max_metric_units: component.max_metric_units,
+          tiers: component.tiers,
+          id: component.billable_metric.billable_metric_name,
         };
       }
     );
@@ -205,7 +211,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   };
 
   const deleteComponent = (name: string) => {
-    setComponentsData(componentsData.filter((item) => item.id !== name));
+    setComponentsData(componentsData.filter((item) => item.metric !== name));
   };
   const hideFeatureModal = () => {
     setFeatureVisible(false);
@@ -259,10 +265,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
-              cost_per_batch: components[i].cost_per_batch,
-              metric_units_per_batch: components[i].metric_units_per_batch,
-              free_metric_units: components[i].free_metric_units,
-              max_metric_units: components[i].max_metric_units,
+              tiers: components[i].tiers,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -271,6 +274,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
           flat_fee_billing_type: values.flat_fee_billing_type,
+          transition_to_plan_id: values.transition_to_plan_id,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
@@ -280,6 +284,13 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
         ) {
+          if (
+            values.price_adjustment_type === "percentage" ||
+            values.price_adjustment_type === "flat"
+          ) {
+            values.price_adjustment_value =
+              Math.abs(values.price_adjustment_value) * -1;
+          }
           initialPlanVersion["price_adjustment"] = {
             price_adjustment_type: values.price_adjustment_type,
             price_adjustment_amount: values.price_adjustment_amount,
@@ -299,6 +310,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             plan_id: plan.plan_id,
             description: values.description,
             flat_fee_billing_type: values.flat_fee_billing_type,
+            transition_to_plan_id: values.transition_to_plan_id,
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: planFeatures,
@@ -465,6 +477,20 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
+                     <Form.Item
+                          name="transition_to_plan_id"
+                          label="Plan on next cycle"
+                     >
+                          <Select>
+                              {
+                                  allPlans.map(plan => (
+                                      <Select.Option value={plan.plan_id}>
+                                          {plan.plan_name}
+                                      </Select.Option>
+                                  ))
+                              }
+                          </Select>
+                      </Form.Item>
                   </Card>
                 </Col>
               </Row>
@@ -546,7 +572,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Price Adjustment/Discount">
+              <Card className="w-6/12 mb-20" title="Discount">
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}
@@ -563,9 +589,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         Overwrite Price
                       </Select.Option>
                       <Select.Option value="percentage">
-                        Percentage
+                        Percentage Off
                       </Select.Option>
-                      <Select.Option value="fixed">Flat Amount</Select.Option>
+                      <Select.Option value="fixed">Flat Discount</Select.Option>
                     </Select>
                   </Form.Item>
 
