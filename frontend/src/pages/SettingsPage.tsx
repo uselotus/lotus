@@ -1,12 +1,14 @@
-import React, { FC } from "react";
-import { Card, Col, Row, Tabs } from "antd";
+// @ts-ignore
+import React, {FC, useEffect} from "react";
+import { Tabs } from "antd";
 import IntegrationsTab from "../components/Settings/settings/tabs/IntegrationsTab";
 import { DeveloperTab } from "../components/Settings/settings/tabs/DeveloperTab";
 import TeamTab from "../components/Settings/settings/tabs/TeamTab";
 import { PageLayout } from "../components/base/PageLayout";
 import ActivityStream from "../components/Settings/settings/tabs/ActivityTab";
-import { Typography } from "antd";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import {useParams} from "react-router-dom";
+import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
 
 const tabItems = [
   {
@@ -35,25 +37,46 @@ const tabItems = [
   // },
 ];
 
+type SettingTabParams = {
+    tab: string;
+};
+
 const SettingsPage: FC = () => {
   const navigate = useNavigate();
+  const { tab } = useParams<SettingTabParams>();
 
   const changeRoute = (key: string) => {
     navigate(`/settings/${key}`);
   };
 
+  const getCurrentTab = (currentTab) => {
+      switch (currentTab) {
+          case "General":
+              return <GeneralTab/>
+          case "Integrations":
+              return <IntegrationsTab/>
+          case "Team":
+              return <TeamTab/>
+          case "Activity":
+              return <ActivityStream/>
+          case "Developer Settings":
+              return <DeveloperTab/>
+          default:
+              return <GeneralTab/>
+      }
+  }
+
   return (
     <PageLayout title="Settings">
       <Tabs
         size="large"
-        onChange={(key) => {
-          changeRoute(key);
-        }}
+        onChange={(key) => changeRoute(key)}
+        activeKey={tab ? tab : "general"}
         defaultActiveKey="general"
       >
         {tabItems.map((item) => (
           <Tabs.TabPane tab={item.tab} key={item.key}>
-            <Outlet />
+              {getCurrentTab(item.tab)}
           </Tabs.TabPane>
         ))}
       </Tabs>
