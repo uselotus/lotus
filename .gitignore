@@ -181,5 +181,7 @@ pgdata/
 pgdata*
 pgdata_dev/
 
+load_testing/
+
 !env/.env.dev.example
 !env/.env.prod.example

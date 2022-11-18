@@ -15,7 +15,11 @@ from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
 from metering_billing.utils import now_utc
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
 from rest_framework.response import Response
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
@@ -81,9 +85,11 @@ def ingest_event(data: dict, customer_id: str, organization_pk: int) -> None:
     },
 )
 @api_view(http_method_names=["POST"])
+@authentication_classes([])
+@permission_classes([])
 def track_event(request):
     try:
-        key = request.META.get("HTTP_X_API_KEY")
+        key = request.META["HTTP_X_API_KEY"]
     except KeyError:
         meta_dict = {k.lower(): v for k, v in request.META}
         if "http_x_api_key".lower() in meta_dict:
