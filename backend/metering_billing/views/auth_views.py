@@ -25,11 +25,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
-LOTUS_HOST = settings.LOTUS_HOST
-LOTUS_API_KEY = settings.LOTUS_API_KEY
-if LOTUS_HOST and LOTUS_API_KEY:
-    lotus_python.api_key = LOTUS_API_KEY
-    lotus_python.host = LOTUS_HOST
+META = settings.META
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -42,16 +38,41 @@ class LogoutViewMixin(KnoxLogoutView):
 
 
 class LoginView(LoginViewMixin, APIView):
+    @extend_schema(
+        request=inline_serializer(
+            name="LoginRequest",
+            fields={
+                "username": serializers.CharField(),
+                "password": serializers.CharField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="LoginSuccess",
+                fields={
+                    "detail": serializers.CharField(),
+                    "token": serializers.CharField(),
+                    "user": UserSerializer(),
+                },
+            ),
+            400: inline_serializer(
+                name="LoginFailure",
+                fields={
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request, format=None):
         try:
             data = json.loads(request.body)
         except json.JSONDecodeError:
-            return JsonResponse(
+            return Response(
                 {"detail": "Invalid JSON."}, status=status.HTTP_400_BAD_REQUEST
             )
 
         if data is None:
-            return JsonResponse(
+            return Response(
                 {"detail": "No data provided."}, status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -59,7 +80,7 @@ class LoginView(LoginViewMixin, APIView):
         password = data.get("password")
 
         if username is None or password is None:
-            return JsonResponse(
+            return Response(
                 {"detail": "Please provide username and password."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -146,9 +167,20 @@ class SessionView(APIView):
 @extend_schema(
     request=RegistrationSerializer,
     responses={
-        201: inline_serializer(
-            "RegistrationResponse", fields={"detail": serializers.CharField()}
-        )
+        200: inline_serializer(
+            name="RegistrationSuccess",
+            fields={
+                "detail": serializers.CharField(),
+                "token": serializers.CharField(),
+                "user": UserSerializer(),
+            },
+        ),
+        400: inline_serializer(
+            name="RegistrationFailure",
+            fields={
+                "detail": serializers.CharField(),
+            },
+        ),
     },
 )
 class RegisterView(LoginViewMixin, APIView):
@@ -196,9 +228,9 @@ class RegisterView(LoginViewMixin, APIView):
                 company_name=reg_dict["company_name"],
             )
             token = None
-            if LOTUS_HOST and LOTUS_API_KEY:
+            if META:
                 lotus_python.create_customer(
-                    customer_id=org.company_name + str(org.pk),
+                    customer_id=org.organization_id,
                     name=org.company_name,
                 )
 
@@ -228,6 +260,7 @@ class RegisterView(LoginViewMixin, APIView):
             {
                 "detail": "Successfully registered.",
                 "token": AuthToken.objects.create(user)[1],
+                "user": UserSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -236,9 +269,20 @@ class RegisterView(LoginViewMixin, APIView):
 @extend_schema(
     request=DemoRegistrationSerializer,
     responses={
-        201: inline_serializer(
-            "DemoRegistrationResponse", fields={"detail": serializers.CharField()}
-        )
+        200: inline_serializer(
+            name="DemoRegistrationSuccess",
+            fields={
+                "detail": serializers.CharField(),
+                "token": serializers.CharField(),
+                "user": UserSerializer(),
+            },
+        ),
+        400: inline_serializer(
+            name="DemoRegistrationFailure",
+            fields={
+                "detail": serializers.CharField(),
+            },
+        ),
     },
 )
 class DemoRegisterView(LoginViewMixin, APIView):
@@ -276,6 +320,7 @@ class DemoRegisterView(LoginViewMixin, APIView):
             {
                 "detail": "Successfully registered.",
                 "token": AuthToken.objects.create(user)[1],
+                "user": UserSerializer(user).data,
             },
             status=status.HTTP_201_CREATED,
         )
