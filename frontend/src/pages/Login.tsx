@@ -1,5 +1,5 @@
 import React, { FC, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, createPath } from "react-router-dom";
 import { Authentication } from "../api/api";
 import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
+import posthog from "posthog-js";
 
 const cookies = new Cookies();
 
@@ -47,7 +48,16 @@ const Login: FC = () => {
     {
       onSuccess: (response) => {
         setIsAuthenticated(true);
-        const { token, detail } = response;
+        const { token, detail, user } = response;
+        posthog.group("company", user.organization_id, {
+          company_name: user.company_name,
+        });
+        posthog.identify(
+          user.email, // distinct_id, required
+          { organization_id: user.organization_id }, // $set, optional
+          { username: user.username } // $set_once, optional
+        );
+
         cookies.set("Token", token);
         instance.defaults.headers.common["Authorization"] = `Token ${token}`;
         queryClient.refetchQueries("session");

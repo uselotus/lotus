@@ -103,6 +103,7 @@ class LoginView(LoginViewMixin, APIView):
             {
                 "detail": "Successfully logged in.",
                 "token": token[1],
+                "user": UserSerializer(user).data,
             }
         )
 
