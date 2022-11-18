@@ -25,6 +25,7 @@ from metering_billing.utils import (
     metric_uuid,
     now_plus_day,
     now_utc,
+    organization_uuid,
     periods_bwn_twodates,
     plan_uuid,
     plan_version_uuid,
@@ -64,6 +65,7 @@ META = settings.META
 
 
 class Organization(models.Model):
+    organization_id = models.CharField(default=organization_uuid, max_length=100)
     company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
@@ -671,9 +673,8 @@ class Invoice(models.Model):
             and META
             and self.cost_due.amount > 0
         ):
-            print("track event")
             lotus_python.track_event(
-                customer_id=self.organization.company_name + str(self.organization.pk),
+                customer_id=self.organization.organization_id,
                 event_name="create_invoice",
                 properties={
                     "amount": float(self.cost_due.amount),

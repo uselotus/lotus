@@ -145,7 +145,10 @@ class AlertSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "password")
+        fields = ("username", "email", "company_name", "organization_id")
+
+    organization_id = serializers.CharField(source="organization.id")
+    company_name = serializers.CharField(source="organization.company_name")
 
 
 ## CUSTOMER
