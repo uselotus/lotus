@@ -109,10 +109,11 @@ def track_event(request):
             event_list = event_list["batch"]
         else:
             event_list = [event_list]
+
     bad_events = {}
     events_to_insert = set()
-
     events_by_customer = {}
+    
     for data in event_list:
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id", None)
@@ -122,6 +123,7 @@ def track_event(request):
             else:
                 bad_events[idempotency_id] = "No customer_id provided"
             continue
+
 
         if idempotency_id in events_to_insert:
             bad_events[idempotency_id] = "Duplicate event idempotency in request"
