@@ -22,7 +22,7 @@ import posthog
 import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
-from kafka import KafkaProducer
+from kafka import KafkaConsumer, KafkaProducer
 from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -262,12 +262,12 @@ if SELF_HOSTED:
     KAFKA_HOST = os.environ.get("KAFKA_HOST", "localhost")
 
     PRODUCER = KafkaProducer(
-        bootstrap_servers=KAFKA_HOST,
+        bootstrap_servers=[KAFKA_HOST],
     )
 
     CONSUMER = KafkaConsumer(
         EVENTS_TOPIC,
-        bootstrap_servers=KAFKA_HOST,
+        bootstrap_servers=[KAFKA_HOST],
         auto_offset_reset="earliest",
     )
 

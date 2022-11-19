@@ -4,6 +4,7 @@ A basic example of a Redpanda consumer
 import os
 from dataclasses import dataclass
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from kafka import KafkaConsumer
 from metering_billing.demos import setup_demo_3
@@ -11,6 +12,7 @@ from metering_billing.demos import setup_demo_3
 KAFKA_HOST = os.environ.get("KAFKA_HOST", "localhost")
 EVENTS_TOPIC = os.environ.get("EVENTS_TOPIC", "events_topic")
 
+CONSUMER = settings.CONSUMER
 
 @dataclass
 class ConsumerConfig:
@@ -21,12 +23,7 @@ class ConsumerConfig:
 
 class Consumer:
     def __init__(self, config: ConsumerConfig):
-        self.client = KafkaConsumer(
-            config.topic,
-            bootstrap_servers=config.bootstrap_servers,
-            auto_offset_reset=config.auto_offset_reset,
-            # add more configs here if you'd like
-        )
+        self.client = CONSUMER
         self.topic = config.topic
 
     def consume(self):
