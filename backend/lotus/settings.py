@@ -24,6 +24,7 @@ from decouple import config
 from dotenv import load_dotenv
 from kafka import KafkaConsumer, KafkaProducer
 from sentry_sdk.integrations.django import DjangoIntegration
+from json import loads
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -269,6 +270,8 @@ if SELF_HOSTED:
         EVENTS_TOPIC,
         bootstrap_servers=[KAFKA_HOST],
         auto_offset_reset="earliest",
+        value_deserializer=lambda x: loads(x.decode("utf-8")),
+        key_deserializer=lambda x: loads(x.decode("utf-8")),
     )
 
 else:
@@ -293,6 +296,8 @@ else:
         ssl_certfile=KAFKA_CERTIFICATE,
         ssl_keyfile=KAFKA_KEY,
         auto_offset_reset="earliest",
+        value_deserializer=lambda x: loads(x.decode("utf-8")),
+        key_deserializer=lambda x: loads(x.decode("utf-8")),
     )
 
 # redis settings

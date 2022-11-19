@@ -61,7 +61,7 @@ def ingest_event(data: dict, customer_id: str, organization_pk: int) -> None:
         "event_name": data["event_name"],
         "idempotency_id": data["idempotency_id"],
         "time_created": data["time_created"],
-        "properties": {}
+        "properties": {},
     }
     if "properties" in data:
         event_kwargs["properties"] = data["properties"]
@@ -99,7 +99,7 @@ def track_event(request):
         return result
     else:
         organization_pk = result
-    
+
     try:
         event_list = load_event(request)
     except Exception as e:
@@ -119,6 +119,7 @@ def track_event(request):
         idempotency_id__in=idem_ids,
     ).exists()
 
+    events_by_customer = {}
     for data in event_list:
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id", None)
@@ -141,20 +142,28 @@ def track_event(request):
             bad_events[idempotency_id] = "Duplicate event idempotency in request"
             continue
         try:
-            events_to_insert[idempotency_id] = ingest_event(
-                data, customer_id, organization_pk
-            )
-
-            ## Sent to Redpanda Topic
-            PRODUCER.send(
-                topic=EVENTS_TOPIC,
-                key=customer_id.encode("utf-8"),
-                value=json.dumps(events_to_insert[idempotency_id]).encode("utf-8"),
-            )
-
+            transformed_event = ingest_event(data, customer_id, organization_pk)
+            events_to_insert[idempotency_id] = transformed_event
+            if customer_id not in events_by_customer:
+                events_by_customer[customer_id] = [
+                    {"idempotency_id": transformed_event}
+                ]
+            else:
+                events_by_customer[customer_id].append(
+                    {"idempotency_id": transformed_event}
+                )
         except Exception as e:
             bad_events[idempotency_id] = str(e)
             continue
+
+    ## Sent to Redpanda Topic
+    for customer_id, events in events_by_customer.items():
+        stream_events = {"events": events, "organization_id": organization_pk}
+        PRODUCER.send(
+            topic=EVENTS_TOPIC,
+            key=customer_id.encode("utf-8"),
+            value=json.dumps(stream_events).encode("utf-8"),
+        )
 
     # get the events currently in cache
     cache_tup = cache.get("events_to_insert")
