@@ -7,7 +7,11 @@ import TeamTab from "../components/Settings/settings/tabs/TeamTab";
 import { PageLayout } from "../components/base/PageLayout";
 import ActivityStream from "../components/Settings/settings/tabs/ActivityTab";
 import { useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import {useParams} from "react-router";
+=======
+import {useParams} from "react-router-dom";
+>>>>>>> 76370693dfab7a587397589016fe050c4a679cd5
 import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
 
 const tabItems = [

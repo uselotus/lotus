@@ -1,4 +1,6 @@
+from django.core.cache import cache
 from django.db.models import Q
+from django.http import HttpResponseBadRequest
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from metering_billing.exceptions import (
@@ -8,6 +10,7 @@ from metering_billing.exceptions import (
 )
 from metering_billing.models import APIToken
 from metering_billing.permissions import HasUserAPIKey
+from metering_billing.utils import now_utc
 
 
 # AUTH METHODS
@@ -54,3 +57,31 @@ class KnoxTokenScheme(OpenApiAuthenticationExtension):
             "description": _('Token-based authentication with required prefix "%s"')
             % "Token",
         }
+
+def fast_api_key_validation_and_cache(request):
+    try:
+        key = request.META["HTTP_X_API_KEY"]
+    except KeyError:
+        meta_dict = {k.lower(): v for k, v in request.META}
+        if "http_x_api_key".lower() in meta_dict:
+            key = meta_dict["http_x_api_key"]
+        else:
+            return HttpResponseBadRequest("No API key found in request"), False
+    prefix, _, _ = key.partition(".")
+    organization_pk = cache.get(prefix)
+    if not organization_pk:
+        api_key = HasUserAPIKey().get_key(request)
+        try:
+            api_key = APIToken.objects.get_from_key(key)
+        except:
+            return HttpResponseBadRequest("Invalid API key"), False
+        organization_pk = api_key.organization.pk
+        assert type(organization_pk) == int
+        expiry_date = api_key.expiry_date
+        timeout = (
+            60 * 60 * 24 * 7
+            if expiry_date is None
+            else (expiry_date - now_utc()).total_seconds()
+        )
+        cache.set(prefix, organization_pk, timeout)
+    return organization_pk, True

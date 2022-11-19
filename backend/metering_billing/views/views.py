@@ -3,9 +3,11 @@ from decimal import Decimal
 import posthog
 from dateutil import parser
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
+from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -509,7 +511,8 @@ class DraftInvoiceView(APIView):
 
 
 class GetCustomerAccessView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = []
+    authentication_classes = []
 
     @extend_schema(
         parameters=[GetCustomerAccessRequestSerializer],
@@ -542,6 +545,11 @@ class GetCustomerAccessView(APIView):
         },
     )
     def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
         serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
@@ -559,7 +567,7 @@ class GetCustomerAccessView(APIView):
         customer_id = serializer.validated_data["customer_id"]
         try:
             customer = Customer.objects.get(
-                organization=organization, customer_id=customer_id
+                organization_id=organization_pk, customer_id=customer_id
             )
         except Customer.DoesNotExist:
             return Response(
@@ -596,20 +604,15 @@ class GetCustomerAccessView(APIView):
                             )
                         elif event_limit_type == "total":
                             metric_limit = tiers[-1].range_end
-                        if not metric_limit:
-                            metric_usages[metric.billable_metric_name] = {
-                                "metric_usage": None,
-                                "metric_limit": None,
-                                "access": True
-                                if event_limit_type == "total"
-                                else False,
-                            }
-                            continue
                         metric_usage = metric.get_current_usage(sub)
+                        if not metric_limit:
+                            access = True if event_limit_type == "total" else False
+                        else:
+                            access = metric_usage < metric_limit
                         metric_usages[metric.billable_metric_name] = {
                             "metric_usage": metric_usage,
                             "metric_limit": metric_limit,
-                            "access": metric_usage < metric_limit,
+                            "access": access,
                         }
             if all(v["access"] for k, v in metric_usages.items()):
                 return Response(
