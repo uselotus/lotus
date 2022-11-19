@@ -260,7 +260,7 @@ EVENTS_TOPIC = os.environ.get("EVENTS_TOPIC", "events_topic")
 
 
 if SELF_HOSTED:
-    KAFKA_HOST = os.environ.get("KAFKA_HOST", "localhost")
+    KAFKA_HOST = os.environ.get("KAFKA_URL", "redpanda:29092")
 
     PRODUCER = KafkaProducer(
         bootstrap_servers=[KAFKA_HOST],
@@ -275,7 +275,7 @@ if SELF_HOSTED:
     )
 
 else:
-    KAFKA_HOST = os.environ.get("KAFKA_URL", "localhost")
+    KAFKA_HOST = os.environ.get("KAFKA_URL", "redpanda:29092")
 
     KAFKA_CERTIFICATE = os.environ.get("KAFKA_CLIENT_CERT")
     KAFKA_KEY = os.environ.get("KAFKA_CLIENT_CERT_KEY")
