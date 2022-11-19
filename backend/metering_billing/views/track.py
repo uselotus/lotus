@@ -20,6 +20,9 @@ from rest_framework.response import Response
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 
+PRODUCER = settings.PRODUCER
+EVENTS_TOPIC = settings.EVENTS_TOPIC
+
 logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
 
 
@@ -118,6 +121,7 @@ def track_event(request):
             event_list = [event_list]
     bad_events = {}
     events_to_insert = {}
+
     for data in event_list:
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id", None)
@@ -142,6 +146,14 @@ def track_event(request):
             events_to_insert[idempotency_id] = ingest_event(
                 data, customer_id, organization_pk
             )
+
+            ## Sent to Redpanda Topic
+            PRODUCER.send(
+                topic=EVENTS_TOPIC,
+                key=customer_id.encode("utf-8"),
+                value=json.dumps(events_to_insert[idempotency_id]).encode("utf-8"),
+            )
+
         except Exception as e:
             bad_events[idempotency_id] = str(e)
             continue

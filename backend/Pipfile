@@ -45,6 +45,7 @@ pytz = "*"
 django-activity-stream = "*"
 dj-stripe = "*"
 lotus-python = ">=0.1.1"
+kafka-python = "*"
 
 [dev-packages]
 platformdirs = "*"

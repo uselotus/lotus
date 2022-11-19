@@ -22,6 +22,7 @@ import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
+from kafka import KafkaProducer
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -250,6 +251,16 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+# Kafka Settings
+
+KAFKA_HOST = os.environ.get("KAFKA_HOST", "localhost")
+EVENTS_TOPIC = os.environ.get("EVENTS_TOPIC", "events_topic")
+
+PRODUCER = KafkaProducer(
+    bootstrap_servers=[KAFKA_HOST],
+    # value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+)
 
 # redis settings
 if os.environ.get("REDIS_URL"):
