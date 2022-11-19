@@ -1,0 +1,2 @@
+redpanda start --smp 1 --overprovisioned --node-id 0 --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092 --pandaproxy-addr 0.0.0.0:8082 --advertise-pandaproxy-addr localhost:8082
+rpk topic create events_topic --partitions 2 --replicas 1

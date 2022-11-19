@@ -11,15 +11,7 @@ services:
 
   redpanda:
     image: docker.redpanda.com/vectorized/redpanda:v22.2.2
-    command:
-      - redpanda start
-      - --smp 1
-      - --overprovisioned
-      - --node-id 0
-      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
-      - --pandaproxy-addr 0.0.0.0:8082
-      - --advertise-pandaproxy-addr localhost:8082
+    command: sh -c "./scripts/start_redpanda.sh"
     ports:
       - 8081:8081
       - 8082:8082
@@ -27,7 +19,7 @@ services:
       - 9644:9644
       - 29092:29092
 
-  backend:
+  backend: &backend
     env_file:
       - ./env/.env.dev
     build:
@@ -44,6 +36,12 @@ services:
       - db
       - redis
       - redpanda
+
+  event_consumer:
+    <<: *backend
+    ports:
+      - 7999:7999
+    command: sh -c "./scripts/start_consumer.dev.sh"
 
   frontend:
     restart: always

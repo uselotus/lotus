@@ -11,10 +11,10 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
 import re
-from signal import SIG_DFL
 import ssl
 from datetime import timedelta
 from pathlib import Path
+from signal import SIG_DFL
 
 import dj_database_url
 import django_heroku
@@ -22,8 +22,8 @@ import posthog
 import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
+from kafka import KafkaProducer
 from sentry_sdk.integrations.django import DjangoIntegration
-from kafka import KafkaProducer, KafkaConsumer
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

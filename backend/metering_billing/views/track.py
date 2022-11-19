@@ -61,6 +61,7 @@ def ingest_event(data: dict, customer_id: str, organization_pk: int) -> None:
         "event_name": data["event_name"],
         "idempotency_id": data["idempotency_id"],
         "time_created": data["time_created"],
+        "properties": {}
     }
     if "properties" in data:
         event_kwargs["properties"] = data["properties"]
@@ -98,6 +99,7 @@ def track_event(request):
         return result
     else:
         organization_pk = result
+    
     try:
         event_list = load_event(request)
     except Exception as e:
@@ -105,7 +107,7 @@ def track_event(request):
     if not event_list:
         return HttpResponseBadRequest("No data provided")
     if type(event_list) != list:
-        if type(event_list) == dict and "batch" in event_list:
+        if "batch" in event_list:
             event_list = event_list["batch"]
         else:
             event_list = [event_list]
@@ -116,6 +118,7 @@ def track_event(request):
     repeat_idem = Event.objects.filter(
         idempotency_id__in=idem_ids,
     ).exists()
+
     for data in event_list:
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id", None)

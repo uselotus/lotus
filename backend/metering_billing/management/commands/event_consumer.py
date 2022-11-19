@@ -4,7 +4,9 @@ A basic example of a Redpanda consumer
 import os
 from dataclasses import dataclass
 
+from django.core.management.base import BaseCommand
 from kafka import KafkaConsumer
+from metering_billing.demos import setup_demo_3
 
 KAFKA_HOST = os.environ.get("KAFKA_HOST", "localhost")
 EVENTS_TOPIC = os.environ.get("EVENTS_TOPIC", "events_topic")
@@ -37,6 +39,12 @@ class Consumer:
             raise
 
 
-config = ConsumerConfig()
-redpanda_consumer = Consumer(config)
-redpanda_consumer.consume()
+class Command(BaseCommand):
+    "Django command to pause execution until the database is available"
+
+    def handle(self, *args, **options):
+        config = ConsumerConfig()
+        redpanda_consumer = Consumer(config)
+        while True:
+            redpanda_consumer.consume()
+
