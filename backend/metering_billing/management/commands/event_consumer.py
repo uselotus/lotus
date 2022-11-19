@@ -37,7 +37,7 @@ def write_batch_events_to_db(events_list):
     ).first()
 
     for event in event_obj_list:
-        event.customer = customer_id_mappings[event.cust_id]
+        event.customer = customer_pk
 
     events = Event.objects.bulk_create(event_obj_list)
     event_org_map = {}
