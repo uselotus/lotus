@@ -258,12 +258,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Kafka/Redpanda Settings
 
-KAFKA_HOST = config("KAFKA_URL", default=None)
-if KAFKA_HOST:
-    KAFKA_HOST = KAFKA_HOST.split(",")
 KAFKA_EVENTS_TOPIC = config("EVENTS_TOPIC", default="test-topic")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
+KAFKA_HOST = config("KAFKA_URL", default=None)
+if KAFKA_HOST:
+    KAFKA_HOST = KAFKA_HOST.split(",")[:KAFKA_REPLICATION_FACTOR]
+    print(f"Kafka Host: {KAFKA_HOST}")
 
 if KAFKA_HOST:
     producer_config = {
