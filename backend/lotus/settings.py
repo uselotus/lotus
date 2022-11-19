@@ -265,10 +265,10 @@ KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 
 if KAFKA_HOST:
     producer_config = {
-        "bootstrap_servers": [KAFKA_HOST],
+        "bootstrap_servers": KAFKA_HOST,
     }
     consumer_config = {
-        "bootstrap_servers": [KAFKA_HOST],
+        "bootstrap_servers": KAFKA_HOST,
         "auto_offset_reset": "earliest",
         "value_deserializer": lambda x: loads(x.decode("utf-8")),
         "key_deserializer": lambda x: x.decode("utf-8"),
@@ -288,7 +288,7 @@ if KAFKA_HOST:
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
 
     admin_client = KafkaAdminClient(
-        bootstrap_servers=[KAFKA_HOST], client_id="events-client"
+        bootstrap_servers=KAFKA_HOST, client_id="events-client"
     )
     existing_topics = admin_client.list_topics()
     if KAFKA_EVENTS_TOPIC not in existing_topics:
