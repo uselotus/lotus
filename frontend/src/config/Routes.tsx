@@ -19,11 +19,10 @@ import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
 const { Sider } = Layout;
 
 const getSettingsTab = (component) => {
-    // @ts-ignore
-    // return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
-    return component
-}
-
+  // @ts-ignore
+  // return import.meta.env.VITE_IS_DEMO ? <Navigate replace to={"/"} /> :component
+  return component;
+};
 
 const AppRoutes: FC = () => {
   const [collapse, setCollapse] = useState(false);
@@ -67,14 +66,17 @@ const AppRoutes: FC = () => {
               path="backtest-plan/:planId"
               element={<EditPlanLoader type="backtest" />}
             />
-            <Route path="/plan"/>
+            <Route path="/plan" />
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
-            <Route path="/settings/:tab" element={getSettingsTab( <SettingsPage />)}/>
+            <Route
+              path="/settings/:tab"
+              element={getSettingsTab(<SettingsPage />)}
+            />
             <Route
               path="settings/integrations/stripe"
-              element={getSettingsTab( <StripeIntegrationView />)}
+              element={getSettingsTab(<StripeIntegrationView />)}
             />
             <Route path="/redirectstripe" element={<StripeRedirect />} />
             <Route path="/experiments" element={<ViewExperiments />} />

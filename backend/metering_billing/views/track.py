@@ -10,12 +10,18 @@ from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import extend_schema, inline_serializer
+from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.models import APIToken, Customer, Event
+from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.model_serializers import *
-from metering_billing.tasks import posthog_capture_track, write_batch_events_to_db
+from metering_billing.tasks import write_batch_events_to_db
 from metering_billing.utils import now_utc
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
 from rest_framework.response import Response
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
@@ -81,30 +87,14 @@ def ingest_event(data: dict, customer_id: str, organization_pk: int) -> None:
     },
 )
 @api_view(http_method_names=["POST"])
+@authentication_classes([])
+@permission_classes([])
 def track_event(request):
-    try:
-        key = request.META.get("HTTP_X_API_KEY")
-    except KeyError:
-        meta_dict = {k.lower(): v for k, v in request.META}
-        if "http_x_api_key".lower() in meta_dict:
-            key = meta_dict["http_x_api_key"]
-        else:
-            raise KeyError("No API key found in request")
-    prefix, _, _ = key.partition(".")
-    organization_pk = cache.get(prefix)
-    if not organization_pk:
-        api_token = APIToken.objects.filter(prefix=prefix)
-        if not api_token.exists():
-            return HttpResponseBadRequest("Invalid API key")
-        api_token = api_token.values_list("organization", "expiry_date")
-        organization_pk = api_token[0][0]
-        expiry_date = api_token[0][1]
-        timeout = (
-            60 * 60 * 24 * 7
-            if expiry_date is None
-            else (expiry_date - now_utc()).total_seconds()
-        )
-        cache.set(prefix, organization_pk, timeout)
+    result, success = fast_api_key_validation_and_cache(request)
+    if not success:
+        return result
+    else:
+        organization_pk = result
     try:
         event_list = load_event(request)
     except Exception as e:
@@ -118,6 +108,10 @@ def track_event(request):
             event_list = [event_list]
     bad_events = {}
     events_to_insert = {}
+    idem_ids = list(x.get("idempotency_id") for x in event_list)
+    repeat_idem = Event.objects.filter(
+            idempotency_id__in=idem_ids,
+        ).exists()
     for data in event_list:
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id", None)
@@ -127,13 +121,14 @@ def track_event(request):
             else:
                 bad_events[idempotency_id] = "No customer_id provided"
             continue
-
-        event_idem_exists = Event.objects.filter(
-            idempotency_id=idempotency_id,
-        ).exists()
-        if event_idem_exists:
-            bad_events[idempotency_id] = "Event idempotency already exists"
-            continue
+        
+        if repeat_idem:
+            event_idem_exists = Event.objects.filter(
+                idempotency_id=idempotency_id,
+            ).exists()
+            if event_idem_exists:
+                bad_events[idempotency_id] = "Event idempotency already exists"
+                continue
 
         if idempotency_id in events_to_insert:
             bad_events[idempotency_id] = "Duplicate event idempotency in request"
@@ -160,7 +155,6 @@ def track_event(request):
     # add to insert events
     cached_events.extend(events_to_insert.values())
     cached_idems.update(events_to_insert.keys())
-    posthog_capture_track.delay(organization_pk, len(event_list), len(events_to_insert))
     # check if its necessary to flush
     if len(cached_events) >= EVENT_CACHE_FLUSH_COUNT:
         write_batch_events_to_db.delay(cached_events)
