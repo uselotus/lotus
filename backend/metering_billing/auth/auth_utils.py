@@ -58,6 +58,7 @@ class KnoxTokenScheme(OpenApiAuthenticationExtension):
             % "Token",
         }
 
+
 def fast_api_key_validation_and_cache(request):
     try:
         key = request.META["HTTP_X_API_KEY"]

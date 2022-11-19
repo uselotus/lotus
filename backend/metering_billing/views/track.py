@@ -110,8 +110,8 @@ def track_event(request):
     events_to_insert = {}
     idem_ids = list(x.get("idempotency_id") for x in event_list)
     repeat_idem = Event.objects.filter(
-            idempotency_id__in=idem_ids,
-        ).exists()
+        idempotency_id__in=idem_ids,
+    ).exists()
     for data in event_list:
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id", None)
@@ -121,7 +121,7 @@ def track_event(request):
             else:
                 bad_events[idempotency_id] = "No customer_id provided"
             continue
-        
+
         if repeat_idem:
             event_idem_exists = Event.objects.filter(
                 idempotency_id=idempotency_id,

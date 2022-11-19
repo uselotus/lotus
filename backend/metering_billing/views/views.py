@@ -590,37 +590,51 @@ class GetCustomerAccessView(APIView):
             )
             metric_usages = {}
             for sub in subscriptions:
+                cache_key = f"customer_id:{customer_id}__event_name:{event_name}"
                 for component in sub.billing_plan.plan_components.all():
                     if component.billable_metric.event_name == event_name:
                         metric = component.billable_metric
-                        tiers = sorted(
-                            component.tiers.all(), key=lambda x: x.range_start
-                        )
-                        if event_limit_type == "free":
-                            metric_limit = (
-                                tiers[0].range_end
-                                if tiers[0].type == PRICE_TIER_TYPE.FREE
-                                else None
-                            )
-                        elif event_limit_type == "total":
-                            metric_limit = tiers[-1].range_end
-                        metric_usage = metric.get_current_usage(sub)
-                        if not metric_limit:
-                            access = True if event_limit_type == "total" else False
+                        metric_name = metric.billable_metric_name
+                        event_limit_dict = cache.get(cache_key, {})
+                        if (component.pk, event_limit_type) in event_limit_dict:
+                            metric_usages[metric_name] = event_limit_dict[
+                                (component.pk, event_limit_type)
+                            ]
                         else:
-                            access = metric_usage < metric_limit
-                        metric_usages[metric.billable_metric_name] = {
-                            "metric_usage": metric_usage,
-                            "metric_limit": metric_limit,
-                            "access": access,
-                        }
+                            tiers = sorted(
+                                component.tiers.all(), key=lambda x: x.range_start
+                            )
+                            if event_limit_type == "free":
+                                metric_limit = (
+                                    tiers[0].range_end
+                                    if tiers[0].type == PRICE_TIER_TYPE.FREE
+                                    else None
+                                )
+                            elif event_limit_type == "total":
+                                metric_limit = tiers[-1].range_end
+                            metric_usage = metric.get_current_usage(sub)
+                            if not metric_limit:
+                                access = True if event_limit_type == "total" else False
+                            else:
+                                access = metric_usage < metric_limit
+                            metric_usages[metric_name] = {
+                                "metric_usage": metric_usage,
+                                "metric_limit": metric_limit,
+                                "access": access,
+                            }
+                            event_limit_dict = {
+                                **event_limit_dict,
+                                (component.pk, event_limit_type): metric_usages[
+                                    metric_name
+                                ],
+                            }
+                            cache.set(cache_key, event_limit_dict, None)
             if all(v["access"] for k, v in metric_usages.items()):
                 return Response(
                     {
                         "access": True,
                         "usages": [
-                            v.update({"metric_name": k})
-                            for k, v in metric_usages.items()
+                            {**v, "metric_name": k} for k, v in metric_usages.items()
                         ],
                     },
                     status=status.HTTP_200_OK,
@@ -630,8 +644,7 @@ class GetCustomerAccessView(APIView):
                     {
                         "access": False,
                         "usages": [
-                            v.update({"metric_name": k})
-                            for k, v in metric_usages.items()
+                            {**v, "metric_name": k} for k, v in metric_usages.items()
                         ],
                     },
                     status=status.HTTP_200_OK,
