@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
 import re
+from signal import SIG_DFL
 import ssl
 from datetime import timedelta
 from pathlib import Path
@@ -22,7 +23,7 @@ import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
 from sentry_sdk.integrations.django import DjangoIntegration
-from kafka import KafkaProducer
+from kafka import KafkaProducer, KafkaConsumer
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -252,15 +253,47 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Kafka Settings
+# Kafka/Redpanda Settings
 
-KAFKA_HOST = os.environ.get("KAFKA_HOST", "localhost")
 EVENTS_TOPIC = os.environ.get("EVENTS_TOPIC", "events_topic")
 
-PRODUCER = KafkaProducer(
-    bootstrap_servers=[KAFKA_HOST],
-    # value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-)
+
+if SELF_HOSTED:
+    KAFKA_HOST = os.environ.get("KAFKA_HOST", "localhost")
+
+    PRODUCER = KafkaProducer(
+        bootstrap_servers=KAFKA_HOST,
+    )
+
+    CONSUMER = KafkaConsumer(
+        EVENTS_TOPIC,
+        bootstrap_servers=KAFKA_HOST,
+        auto_offset_reset="earliest",
+    )
+
+else:
+    KAFKA_HOST = os.environ.get("KAFKA_URL", "localhost")
+
+    KAFKA_CERTIFICATE = os.environ.get("KAFKA_CLIENT_CERT")
+    KAFKA_KEY = os.environ.get("KAFKA_CLIENT_CERT_KEY")
+    KAFKA_CA = os.environ.get("KAFKA_TRUSTED_CERT")
+    PRODUCER = KafkaProducer(
+        bootstrap_servers=KAFKA_HOST,
+        security_protocol="SSL",
+        ssl_cafile=KAFKA_CA,
+        ssl_certfile=KAFKA_CERTIFICATE,
+        ssl_keyfile=KAFKA_KEY,
+    )
+
+    CONSUMER = KafkaConsumer(
+        EVENTS_TOPIC,
+        bootstrap_servers=KAFKA_HOST,
+        security_protocol="SSL",
+        ssl_cafile=KAFKA_CA,
+        ssl_certfile=KAFKA_CERTIFICATE,
+        ssl_keyfile=KAFKA_KEY,
+        auto_offset_reset="earliest",
+    )
 
 # redis settings
 if os.environ.get("REDIS_URL"):
