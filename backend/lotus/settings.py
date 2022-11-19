@@ -264,7 +264,7 @@ KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default=None)
 if KAFKA_HOST:
     KAFKA_HOST = KAFKA_HOST.split(",")[:KAFKA_REPLICATION_FACTOR]
-    print(f"Kafka Host: {KAFKA_HOST}")
+    print(f"Kafka Hosts: {KAFKA_HOST}")
 
 if KAFKA_HOST:
     producer_config = {
