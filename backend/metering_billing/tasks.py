@@ -188,7 +188,6 @@ def check_event_cache_flushed():
     )
     time_since_last_flush = (now - last_flush_dt).total_seconds()
     if time_since_last_flush >= EVENT_CACHE_FLUSH_SECONDS and len(cached_events) > 0:
-        write_batch_events_to_db.delay(cached_events)
         cached_events = []
         cached_idems = set()
         cache.set("events_to_insert", (cached_events, cached_idems, now), None)
