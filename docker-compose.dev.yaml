@@ -49,7 +49,7 @@ services:
     <<: *backend
     ports:
       - 7999:7999
-    command: sh -c "./scripts/start_consumer.dev.sh"
+    command: sh -c "./scripts/start_consumer.sh"
 
   frontend:
     restart: always
