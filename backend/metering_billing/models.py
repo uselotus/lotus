@@ -287,7 +287,7 @@ class Event(models.Model):
     event_name = models.CharField(max_length=200, null=False)
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id = models.CharField(max_length=255, unique=True)
+    idempotency_id = models.CharField(max_length=255)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]

@@ -13,6 +13,7 @@ import os
 import re
 import ssl
 from datetime import timedelta
+from json import loads
 from pathlib import Path
 from signal import SIG_DFL
 
@@ -23,8 +24,9 @@ import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
 from kafka import KafkaConsumer, KafkaProducer
+from kafka.admin import KafkaAdminClient, NewTopic
+from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
-from json import loads
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -256,49 +258,56 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Kafka/Redpanda Settings
 
-EVENTS_TOPIC = os.environ.get("EVENTS_TOPIC", "events_topic")
+KAFKA_HOST = config("KAFKA_URL", default=None)
+KAFKA_EVENTS_TOPIC = config("EVENTS_TOPIC", default="test-topic")
+KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
+KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 
+if KAFKA_HOST:
+    producer_config = {
+        "bootstrap_servers": [KAFKA_HOST],
+    }
+    consumer_config = {
+        "bootstrap_servers": [KAFKA_HOST],
+        "auto_offset_reset": "earliest",
+        "value_deserializer": lambda x: loads(x.decode("utf-8")),
+        "key_deserializer": lambda x: x.decode("utf-8"),
+    }
 
-if SELF_HOSTED:
-    KAFKA_HOST = os.environ.get("KAFKA_URL", "redpanda:29092")
+    KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
+    KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
+    KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
+    if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
+        for cfg in [producer_config, consumer_config]:
+            cfg["security_protocol"] = "SSL"
+            cfg["ssl_cafile"] = KAFKA_CA
+            cfg["ssl_certfile"] = KAFKA_CERTIFICATE
+            cfg["ssl_keyfile"] = KAFKA_KEY
 
-    PRODUCER = KafkaProducer(
-        bootstrap_servers=[KAFKA_HOST],
+    PRODUCER = KafkaProducer(**producer_config)
+    CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
+
+    admin_client = KafkaAdminClient(
+        bootstrap_servers=[KAFKA_HOST], client_id="events-client"
     )
-
-    CONSUMER = KafkaConsumer(
-        EVENTS_TOPIC,
-        bootstrap_servers=[KAFKA_HOST],
-        auto_offset_reset="earliest",
-        value_deserializer=lambda x: loads(x.decode("utf-8")),
-        key_deserializer=lambda x: loads(x.decode("utf-8")),
-    )
-
+    existing_topics = admin_client.list_topics()
+    if KAFKA_EVENTS_TOPIC not in existing_topics:
+        try:
+            admin_client.create_topics(
+                new_topics=[
+                    NewTopic(
+                        name=KAFKA_EVENTS_TOPIC,
+                        num_partitions=KAFKA_NUM_PARTITIONS,
+                        replication_factor=KAFKA_REPLICATION_FACTOR,
+                    )
+                ]
+            )
+        except TopicAlreadyExistsError:
+            print("Topic already exists")
+            pass
 else:
-    KAFKA_HOST = os.environ.get("KAFKA_URL", "redpanda:29092")
-
-    KAFKA_CERTIFICATE = os.environ.get("KAFKA_CLIENT_CERT")
-    KAFKA_KEY = os.environ.get("KAFKA_CLIENT_CERT_KEY")
-    KAFKA_CA = os.environ.get("KAFKA_TRUSTED_CERT")
-    PRODUCER = KafkaProducer(
-        bootstrap_servers=KAFKA_HOST,
-        security_protocol="SSL",
-        ssl_cafile=KAFKA_CA,
-        ssl_certfile=KAFKA_CERTIFICATE,
-        ssl_keyfile=KAFKA_KEY,
-    )
-
-    CONSUMER = KafkaConsumer(
-        EVENTS_TOPIC,
-        bootstrap_servers=KAFKA_HOST,
-        security_protocol="SSL",
-        ssl_cafile=KAFKA_CA,
-        ssl_certfile=KAFKA_CERTIFICATE,
-        ssl_keyfile=KAFKA_KEY,
-        auto_offset_reset="earliest",
-        value_deserializer=lambda x: loads(x.decode("utf-8")),
-        key_deserializer=lambda x: loads(x.decode("utf-8")),
-    )
+    PRODUCER = None
+    CONSUMER = None
 
 # redis settings
 if os.environ.get("REDIS_URL"):

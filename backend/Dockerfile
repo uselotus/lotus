@@ -19,13 +19,15 @@ COPY ./manage.py ./
 FROM build AS development
 COPY ./pytest.ini ./.coveragerc ./
 COPY ./scripts/start_backend.dev.sh ./scripts/start_backend.dev.sh
-COPY ./scripts/start_consumer.dev.sh ./scripts/start_consumer.dev.sh
+COPY ./scripts/start_consumer.sh ./scripts/start_consumer.sh
 RUN chmod +x ./scripts/start_backend.dev.sh
-RUN chmod +x ./scripts/start_consumer.dev.sh
+RUN chmod +x ./scripts/start_consumer.sh
 
 # ---------------------------------------
 # Production
 # ---------------------------------------
 FROM build AS production 
 COPY ./scripts/start_backend.prod.sh ./scripts/start_backend.prod.sh
+COPY ./scripts/start_consumer.sh ./scripts/start_consumer.sh
 RUN chmod +x ./scripts/start_backend.prod.sh
+RUN chmod +x ./scripts/start_consumer.sh
