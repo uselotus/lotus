@@ -84,7 +84,6 @@ const validateTiers = (tiers: Tier[]) => {
     }
     return true;
   });
-  console.log(arr2);
   return arr2.every((val) => val === true);
 };
 
@@ -174,6 +173,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
     childNode = editing ? (
       <Form.Item
         style={{ margin: 0 }}
+        className="w-full"
         name={dataIndex}
         // rules={[
         //   {
@@ -194,7 +194,12 @@ const EditableCell: React.FC<EditableCellProps> = ({
             <Option value="flat">Flat</Option>
           </Select>
         ) : (
-          <InputNumber ref={inputRef} onPressEnter={save} onBlur={save} />
+          <InputNumber
+            ref={inputRef}
+            onPressEnter={save}
+            onBlur={save}
+            min={0}
+          />
         )}
       </Form.Item>
     ) : (
@@ -246,7 +251,7 @@ function UsageComponentForm({
   const [currentTiers, setCurrentTiers] = useState<Tier[]>(
     editComponentItem?.tiers ?? initialTier
   );
-  const [rangeEnd, setRangeEnd] = useState<number>(
+  const [rangeEnd, setRangeEnd] = useState<number | undefined>(
     editComponentItem?.tiers[0]?.range_end ?? 0
   );
 
@@ -267,7 +272,6 @@ function UsageComponentForm({
 
   const handleAdd = () => {
     //if range_end isn't null
-    console.log(rangeEnd);
     if (rangeEnd !== undefined) {
       const newTierDefault: Tier = {
         range_start: rangeEnd,
@@ -275,7 +279,6 @@ function UsageComponentForm({
         cost_per_batch: 0,
       };
       setCurrentTiers([...currentTiers, newTierDefault]);
-      console.log(currentTiers);
       setRangeEnd(undefined);
       setErrorMessage("");
     } else {
@@ -285,7 +288,6 @@ function UsageComponentForm({
 
   const handleSave = (row: Tier) => {
     const newData = [...currentTiers];
-    console.log(newData);
     const index = newData.findIndex(
       (item) => row.range_start === item.range_start
     );
@@ -325,11 +327,16 @@ function UsageComponentForm({
     {
       title: "First Unit",
       dataIndex: "range_start",
+      width: "20%",
+      align: "center",
       editable: true,
     },
     {
       title: "Last Unit",
       dataIndex: "range_end",
+      width: "20%",
+      align: "center",
+
       editable: true,
       render: (text: any, record: Tier) => {
         if (record.range_end === undefined || record.range_end === "") {
@@ -343,18 +350,24 @@ function UsageComponentForm({
       title: "Charge Type",
       dataIndex: "type",
       editable: true,
+      width: "20%",
+      align: "center",
     },
     {
       title: "Amount ($)",
       dataIndex: "cost_per_batch",
       editable: true,
+      align: "center",
+      width: "15%",
     },
     {
       title: "Units",
       dataIndex: "metric_units_per_batch",
+      width: "15%",
+      align: "center",
       editable: true,
       render: (text: any, record: Tier) => {
-        if (record.type === "flat") {
+        if (record.type === "flat" || record.type === "free") {
           return "-";
         } else {
           return record.metric_units_per_batch;
@@ -365,6 +378,8 @@ function UsageComponentForm({
     {
       title: "Delete",
       dataIndex: "delete",
+      width: "10%",
+      align: "center",
       render: (_, record) =>
         currentTiers.length > 1 &&
         record.range_start != 0 && (
