@@ -11,7 +11,7 @@ import {
   ExperimentOutlined,
 } from "@ant-design/icons";
 
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Authentication } from "../api/api";
 
 const imgUrl = new URL("./Head.png", import.meta.url).href;
@@ -104,7 +104,6 @@ const SideBar: FC = () => {
     {
       key: "/metrics",
       icon: <LineChartOutlined />,
-
       label: "Metrics",
       onClick: () => navigate("/metrics"),
     },
@@ -129,8 +128,8 @@ const SideBar: FC = () => {
     },
   ];
 
-  const menuItems =
-    import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
+  // @ts-ignore
+    const menuItems = import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
 
   return (
     <div

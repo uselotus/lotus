@@ -49,14 +49,16 @@ const Login: FC = () => {
       onSuccess: (response) => {
         setIsAuthenticated(true);
         const { token, detail, user } = response;
-        posthog.group("company", user.organization_id, {
-          company_name: user.company_name,
-        });
-        posthog.identify(
-          user.email, // distinct_id, required
-          { organization_id: user.organization_id }, // $set, optional
-          { username: user.username } // $set_once, optional
-        );
+        if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
+          posthog.group("company", user.organization_id, {
+            company_name: user.company_name,
+          });
+          posthog.identify(
+            user.email, // distinct_id, required
+            { organization_id: user.organization_id }, // $set, optional
+            { username: user.username } // $set_once, optional
+          );
+        }
 
         cookies.set("Token", token);
         instance.defaults.headers.common["Authorization"] = `Token ${token}`;
