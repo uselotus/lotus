@@ -30,6 +30,7 @@ EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
 kafka_producer = Producer()
 
+
 def load_event(request: HttpRequest) -> Union[None, Dict]:
     """
     Loads an event from the request body.
