@@ -71,7 +71,7 @@ DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 
 
-if SENTRY_DSN != "":
+if False:#SENTRY_DSN != "":
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
