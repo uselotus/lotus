@@ -258,8 +258,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Kafka/Redpanda Settings
-
-KAFKA_EVENTS_TOPIC = config("EVENTS_TOPIC", default="test-topic")
+KAFKA_PREFIX = config("KAFKA_PREFIX", default="") +"."
+KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
 if type(KAFKA_EVENTS_TOPIC) == bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode('utf-8')
 print(f"KAFKA_EVENTS_TOPIC: {KAFKA_EVENTS_TOPIC}")
