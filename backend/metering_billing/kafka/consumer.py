@@ -36,7 +36,11 @@ class Consumer(metaclass=Singleton):
         """Consume messages from a Redpanda topic"""
         try:
             for msg in self.__connection:
-                if msg is None:
+                print("HELLOOOOOOO")
+                print(msg)
+                print(msg.key)
+                print(msg.value)
+                if msg is None or msg.value is None or msg.key is None:
                     continue
                 print(f"Consumed record. key={msg.key}, value={msg.value}")
                 write_batch_events_to_db(
