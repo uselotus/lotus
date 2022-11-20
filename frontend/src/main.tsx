@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
-import ReactDOM from "react-dom/client";
+// @ts-ignore
+import React  from "react";
+import * as ReactDOM from 'react-dom/client';
 import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import "vite/modulepreload-polyfill";
