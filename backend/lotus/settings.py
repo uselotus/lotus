@@ -283,15 +283,16 @@ KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default=None)
 if KAFKA_HOST:
-    KAFKA_HOST = [
-        "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
-        for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
-    ]
 
-    producer_config = {
-        "bootstrap_servers": KAFKA_HOST,
-        "api_version": (2, 8, 1)
-    }
+    if "," not in KAFKA_HOST:
+        KAFKA_HOST = KAFKA_HOST
+    else:
+        KAFKA_HOST = [
+            "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
+            for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
+        ]
+
+    producer_config = {"bootstrap_servers": KAFKA_HOST, "api_version": (2, 8, 1)}
     consumer_config = {
         "bootstrap_servers": KAFKA_HOST,
         "auto_offset_reset": "earliest",

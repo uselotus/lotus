@@ -51,6 +51,14 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
     navigate("/plans/" + plan.plan_id);
   };
 
+  const customerNameOrID = (target_customer: any | undefined) => {
+    if (target_customer.customer_name) {
+      return target_customer.customer_name;
+    } else {
+      return target_customer.customer_id;
+    }
+  };
+
   return (
     <div className="planCard pointer" onClick={gotoPlanDetail}>
       <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
@@ -62,7 +70,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
       </div>
       <Typography.Title className="pt-4" level={2}>
         {plan.target_customer !== null
-          ? plan.plan_name + ": " + plan.target_customer?.name
+          ? plan.plan_name + ": " + customerNameOrID(plan.target_customer)
           : plan.plan_name}
       </Typography.Title>
 
