@@ -7,6 +7,7 @@ import { Authentication } from "../api/api";
 import { useMutation, useQueryClient } from "react-query";
 import { CreateOrgAccountType } from "../types/account-type";
 import SignUp from "../components/Registration/SignUp";
+import {LotusFilledButton} from "../components/base/Button";
 // import sjcl from "sjcl";
 
 const { Step } = Steps;
@@ -101,13 +102,7 @@ const Register: React.FC = () => {
         )}
 
         <div className="steps-action">
-          <Button
-            type="primary"
-            className="ml-auto bg-info"
-            onClick={() => navigate("/login")}
-          >
-            Log In Instead
-          </Button>
+           <LotusFilledButton text="Log In Instead" className="ml-auto bg-info" onClick={() => navigate("/login")}/>
         </div>
       </div>
     </div>

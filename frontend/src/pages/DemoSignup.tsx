@@ -8,6 +8,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
+import {LotusFilledButton} from "../components/base/Button";
 
 const cookies = new Cookies();
 
@@ -157,13 +158,11 @@ const DemoSignup: React.FC = () => {
           </div>
 
           <div className="">
-            <Button
-              type="primary"
+            <LotusFilledButton
+              text="Login to Your Demo Instead"
               className="w-full"
               onClick={() => navigate("/login")}
-            >
-              Login to Your Demo Instead
-            </Button>
+            />
           </div>
         </div>
       )}

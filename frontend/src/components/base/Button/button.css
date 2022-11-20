@@ -1,4 +1,45 @@
-.lotus-button:hover {
-    background: #000000c7;
-    transform:scale(1.01);
+.lotus-button {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 32px;
+    border-radius: 6px;
+}
+
+.lotus-filled-button {
+    background: #1D1D1F !important;
+    color: white;
+}
+
+.lotus-filled-button:hover {
+    background: #36363A !important;
+    box-shadow: 0 159px 63px rgba(174, 173, 173, 0.01), 0 89px 54px rgba(174, 173, 173, 0.02), 0px 40px 40px rgba(174, 173, 173, 0.03), 0px 10px 22px rgba(174, 173, 173, 0.03), 0px 0px 0px rgba(174, 173, 173, 0.03);
+}
+
+.lotus-filled-button:focus {
+    background: #C3986B !important;
+    box-shadow: inset 0px 4px 16px rgba(30, 30, 30, 0.08);
+}
+
+.lotus-outlined-button {
+    text-align: center;
+    letter-spacing: -0.01em;
+    color: #1D1D1F;
+    border: 1px solid #1D1D1F;
+    background: white !important;
+}
+
+.lotus-outlined-button:hover {
+    background: #F7F8FD !important;
+    border: 1px solid #36363A;
+    box-shadow: 0px 159px 63px rgba(174, 173, 173, 0.01), 0px 89px 54px rgba(174, 173, 173, 0.02), 0px 40px 40px rgba(174, 173, 173, 0.03), 0px 10px 22px rgba(174, 173, 173, 0.03), 0px 0px 0px rgba(174, 173, 173, 0.03);
+    border-radius: 6px;
+}
+
+.lotus-outlined-button:focus {
+    background: #FFFFFF !important;
+    border: 1px solid #C3986B;
+    color:#C3986B;
+    box-shadow: inset 0px 4px 16px rgba(30, 30, 30, 0.08);
 }

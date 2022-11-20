@@ -29,6 +29,7 @@ import LinkExternalIds from "../components/Plans/LinkExternalIds";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
+import {LotusFilledButton} from "../components/base/Button";
 
 interface ComponentDisplay {
   metric: string;
@@ -232,14 +233,10 @@ const CreatePlan = () => {
       title="Create Plan"
       onBack={goBackPage}
       extra={[
-        <Button
-          key="create"
+        <LotusFilledButton
           onClick={() => form.submit()}
-          size="large"
-          type="primary"
-        >
-          Create new plan
-        </Button>,
+          text="Create new plan"
+        />,
       ]}
     >
       <Form.Provider>

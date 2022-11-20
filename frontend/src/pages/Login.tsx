@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
+import {LotusFilledButton} from "../components/base/Button";
 
 const cookies = new Cookies();
 
@@ -115,13 +116,7 @@ const Login: FC = () => {
               </Form>
             </Card>
             <div>
-              <Button
-                type="primary"
-                className="w-full"
-                onClick={() => navigate("/register")}
-              >
-                Sign Up
-              </Button>
+                <LotusFilledButton text="Sign Up" onClick={() => navigate("/register")} className="w-full" />
             </div>
           </div>
           {mutation.isLoading && <LoadingSpinner />}

@@ -10,6 +10,7 @@ import { Backtests } from "../api/api";
 import { toast } from "react-toastify";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import dayjs from "dayjs";
+import {LotusFilledButton} from "../components/base/Button";
 interface PlanRepType {
   plan_id: string;
   plan_name: string;
@@ -418,18 +419,13 @@ const CreateBacktest: FC = () => {
           <Button key="back" onClick={closeplanNewModal}>
             Cancel
           </Button>,
-          <Button
-            key="submit"
-            type="primary"
+          <LotusFilledButton
+            text="Edit"
             onClick={() => {
               navigate("/backtest-plan/" + replacementPlan?.plan_id);
             }}
-          >
-            Edit
-          </Button>,
-          <Button key="link" type="primary" onClick={closeplanNewModal}>
-            Use
-          </Button>,
+          />,
+          <LotusFilledButton text="Use" onClick={closeplanNewModal}/>
         ]}
         closeIcon={<div></div>}
       >

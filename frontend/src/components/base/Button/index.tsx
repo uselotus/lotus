@@ -7,13 +7,26 @@ interface LotusButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
     children?: React.ReactNode;
 }
 
-export const LotusButton : React.FunctionComponent<LotusButtonProps> = ({ className, onClick, children, ...rest}) => {
+export const LotusFilledButton : React.FunctionComponent<LotusButtonProps> = ({ className, onClick, children, ...rest}) => {
   return (
       <button
           {...rest}
           type="button"
           onClick={onClick}
-          className={`lotus-button py-2.5 px-5 mr-2 mb-2 bg-black text-white rounded-lg ${className}`}
+          className={`lotus-button lotus-filled-button ${className}`}
+          >
+          {!!children ? children: rest.text }
+      </button>
+      )
+}
+
+export const LotusOutlinedButton : React.FunctionComponent<LotusButtonProps> = ({ className, onClick, children, ...rest}) => {
+  return (
+      <button
+          {...rest}
+          type="button"
+          onClick={onClick}
+          className={`lotus-button lotus-outlined-button ${className}`}
           >
           {!!children ? children: rest.text }
       </button>

@@ -14,6 +14,7 @@ import {
 import { PageLayout } from "../components/base/PageLayout";
 import { FeatureType } from "../types/feature-type";
 import PlanCard from "../components/Plans/PlanCard/PlanCard";
+import {LotusFilledButton} from "../components/base/Button";
 
 const ViewPlans: FC = () => {
   const navigate = useNavigate();
@@ -84,17 +85,15 @@ const ViewPlans: FC = () => {
       <PageLayout
         title="Plans"
         extra={[
-          <Button
+          <LotusFilledButton
             onClick={navigateCreatePlan}
-            type="primary"
-            size="large"
-            key="create-plan"
+            text="Create new Plan"
           >
             <div className="flex items-center justify-between text-white">
               <div>Create new Plan</div>
               <ArrowRightOutlined className="pl-2" />
             </div>
-          </Button>,
+          </LotusFilledButton>,
         ]}
       >
         <Tabs defaultActiveKey="1" size="large">

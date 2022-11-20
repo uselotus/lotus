@@ -8,7 +8,7 @@ import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { PageLayout } from "../components/base/PageLayout";
 import { BacktestType } from "../types/experiment-type";
 import { useNavigate } from "react-router-dom";
-import {LotusButton} from "../components/base/Button";
+import {LotusFilledButton} from "../components/base/Button";
 
 const ViewExperiments: FC = () => {
   const queryClient = useQueryClient();
@@ -35,7 +35,7 @@ const ViewExperiments: FC = () => {
   return (
     <PageLayout
       title="Experiments"
-      extra={[<LotusButton text="Create Experiment" onClick={navigateCreatePlan}/>]}
+      extra={[<LotusFilledButton text="Create Experiment" onClick={navigateCreatePlan}/>]}
     >
       <div>
         {isLoading || data === undefined ? (

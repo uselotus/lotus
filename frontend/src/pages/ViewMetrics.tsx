@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 import EventPreview from "../components/EventPreview";
 import "./ViewMetrics.css";
 import { PageLayout } from "../components/base/PageLayout";
+import {LotusFilledButton} from "../components/base/Button";
 
 const defaultMetricState: CreateMetricState = {
   title: "Create a new Metric",
@@ -98,14 +99,10 @@ const ViewMetrics: FC = () => {
     <PageLayout
       title="Metrics"
       extra={[
-        <Button
-          type="primary"
-          size="large"
-          key={"create-plan"}
+        <LotusFilledButton
+          text="Create Metric"
           onClick={createMetricButton}
-        >
-          Create Metric
-        </Button>,
+        />,
       ]}
     >
       <div className="flex flex-col space-y-4 bg-background">
