@@ -451,7 +451,10 @@ class PriceTierSerializer(serializers.ModelSerializer):
         data = super().validate(data)
         rs = data.get("range_start", None)
         assert rs is not None and rs >= Decimal(0), "range_start must be >= 0"
-        assert data.get("range_end", float("inf")) > data.get("range_start")
+        re = data.get("range_end", None)
+        if not re:
+            re = Decimal("Infinity")
+        assert re > rs
         if data.get("type") == PRICE_TIER_TYPE.FLAT:
             assert data.get("cost_per_batch")
             data["metric_units_per_batch"] = None
