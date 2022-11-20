@@ -725,7 +725,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
                 else PLAN_VERSION_STATUS.INACTIVE
             )
         if transition_to_plan:
-           validated_data.pop("transition_to_plan_id")
+            validated_data.pop("transition_to_plan_id")
         billing_plan = PlanVersion.objects.create(**validated_data)
         if transition_to_plan:
             billing_plan.transition_to = transition_to_plan
