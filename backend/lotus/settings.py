@@ -260,6 +260,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Kafka/Redpanda Settings
 
 KAFKA_EVENTS_TOPIC = config("EVENTS_TOPIC", default="test-topic")
+if type(KAFKA_EVENTS_TOPIC) == bytes:
+    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode('utf-8')
+print(f"KAFKA_EVENTS_TOPIC: {KAFKA_EVENTS_TOPIC}")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default=None)
