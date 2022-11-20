@@ -13,14 +13,20 @@ import os
 import re
 import ssl
 from datetime import timedelta
+from json import loads
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 import django_heroku
+import kafka_helper
 import posthog
 import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
+from kafka import KafkaConsumer, KafkaProducer
+from kafka.admin import KafkaAdminClient, NewTopic
+from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -65,7 +71,7 @@ DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 
 
-if SENTRY_DSN != "":
+if False:  # SENTRY_DSN != "":
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
@@ -250,6 +256,83 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+def value_deserializer(value):
+    try:
+        return loads(value.decode("utf-8"))
+    except Exception as e:
+        print(e)
+        return None
+
+def key_deserializer(key):
+    try:
+        return key.decode("utf-8")
+    except Exception as e:
+        print(e)
+        return None
+
+# Kafka/Redpanda Settings
+KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
+KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
+if type(KAFKA_EVENTS_TOPIC) == bytes:
+    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
+print("KAFKA_EVENTS_TOPIC", KAFKA_EVENTS_TOPIC)
+KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
+KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
+KAFKA_HOST = config("KAFKA_URL", default=None)
+if KAFKA_HOST:
+    KAFKA_HOST = [
+        "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
+        for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
+    ]
+
+    producer_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "ssl_check_hostname": False,
+        "api_version": (2, 8, 1)
+    }
+    consumer_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "auto_offset_reset": "earliest",
+        "value_deserializer": value_deserializer,
+        "key_deserializer": key_deserializer,
+    }
+    admin_client_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "client_id": "events-client",
+    }
+
+    KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
+    KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
+    KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
+    if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
+        ssl_context = kafka_helper.get_kafka_ssl_context()
+        print("Kafka SSL Context", ssl_context.__dict__)
+        for cfg in [producer_config, consumer_config, admin_client_config]:
+            cfg["security_protocol"] = "SSL"
+            cfg["ssl_context"] = ssl_context
+            print("Kafka ssl_context", ssl_context)
+
+    PRODUCER = KafkaProducer(**producer_config)
+    CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
+    ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
+
+    existing_topics = ADMIN_CLIENT.list_topics()
+    if KAFKA_EVENTS_TOPIC not in existing_topics and SELF_HOSTED:
+        try:
+            ADMIN_CLIENT.create_topics(
+                new_topics=[
+                    NewTopic(
+                        name=KAFKA_EVENTS_TOPIC,
+                        num_partitions=KAFKA_NUM_PARTITIONS,
+                        replication_factor=KAFKA_REPLICATION_FACTOR,
+                    )
+                ]
+            )
+        except TopicAlreadyExistsError:
+            pass
+else:
+    PRODUCER = None
+    CONSUMER = None
 
 # redis settings
 if os.environ.get("REDIS_URL"):
