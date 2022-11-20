@@ -2,13 +2,14 @@
 import React, { FC, useEffect, useState, version } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { PlanVersionType } from "../../../types/plan-type";
 import PlanComponents from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
 import StateTabs from "./StateTabs";
 import { Dropdown, Menu, Button } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
+// @ts-ignore
 import dayjs from "dayjs";
 import { DeleteOutlined } from "@ant-design/icons";
 import { Plan } from "../../../api/api";
@@ -41,7 +42,8 @@ function capitalize(word: string) {
 }
 
 const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
-  const [selectedVersion, setSelectedVersion] = useState(versions[0]);
+  const activePlanVersion = versions.find((x) => x.status === "active");
+  const [selectedVersion, setSelectedVersion] = useState(activePlanVersion);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
 
@@ -173,7 +175,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             </div>
             <div className="flex items-center planInfo py-2 mt-2">
               <div className="pr-2 infoLabel">Plan on next cycle:</div>
-              <div className="infoValue"> self</div>
+              <div className="infoValue">self</div>
             </div>
           </div>
 
