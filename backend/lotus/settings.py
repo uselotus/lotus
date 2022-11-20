@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 
 import dj_database_url
 import django_heroku
+import kafka_helper
 import posthog
 import sentry_sdk
 from decouple import config
@@ -267,7 +268,6 @@ if KAFKA_HOST:
         "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
         for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
     ]
-    print(f"Kafka Hosts: {KAFKA_HOST}")
 
 if KAFKA_HOST:
     producer_config = {
@@ -284,11 +284,10 @@ if KAFKA_HOST:
     KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
     KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
     if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
+        ssl_context = kafka_helper.get_kafka_ssl_context()
         for cfg in [producer_config, consumer_config]:
             cfg["security_protocol"] = "SSL"
-            cfg["ssl_cafile"] = KAFKA_CA
-            cfg["ssl_certfile"] = KAFKA_CERTIFICATE
-            cfg["ssl_keyfile"] = KAFKA_KEY
+            cfg["ssl_context"] = ssl_context
 
     PRODUCER = KafkaProducer(**producer_config)
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
