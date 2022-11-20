@@ -25,11 +25,7 @@ export default defineConfig({
   resolve: {
     alias: [{ find: /^~/, replacement: "" }],
   },
-  plugins: [
-    react(),
-    splitVendorChunkPlugin(),
-    // tsconfigPaths(),
-  ],
+  plugins: [react(), splitVendorChunkPlugin(), tsconfigPaths()],
   server: {
     host: true,
     hmr: {

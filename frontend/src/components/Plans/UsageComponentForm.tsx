@@ -451,13 +451,13 @@ function UsageComponentForm({
     >
       <Form
         form={form}
-        layout="vertical"
+        layout="horizontal"
         name="component_form"
         initialValues={initalData}
       >
         <div className="grid grid-cols-12 space-x-4 mt-4 mb-8">
-          <p className="col-span-1 pt-1">Metric:</p>
           <Form.Item
+            label="Metric"
             className="col-span-11"
             name="metric"
             rules={[
@@ -473,6 +473,25 @@ function UsageComponentForm({
               ))}
             </Select>
           </Form.Item>
+
+          {/* TODO
+          <Form.Item
+            label="Reset Frequency"
+            className="col-span-11"
+            name="metric"
+            rules={[
+              {
+                required: true,
+                message: "Please select a metric",
+              },
+            ]}
+          >
+            <Select>
+              {metrics?.map((metric_name) => (
+                <Option value={metric_name}>{metric_name}</Option>
+              ))}
+            </Select>
+          </Form.Item> */}
         </div>
 
         <Table

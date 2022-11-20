@@ -175,7 +175,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             </div>
             <div className="flex items-center planInfo py-2 mt-2">
               <div className="pr-2 infoLabel">Plan on next cycle:</div>
-              <div className="infoValue">self</div>
+              <div className="infoValue">
+                {selectedVersion?.transition_to
+                  ? selectedVersion.transition_to
+                  : "self"}
+              </div>
             </div>
           </div>
 
@@ -219,14 +223,12 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           </div>
         </div>
 
-          <div className="px-4 flex justify-start align-middle ">
-              <div className="pb-5 font-main font-bold">
-                  Transition To:
-              </div>
-              <div className="mb-5 px-4 font-main font-bold self-center">
-                  { selectedVersion.transition_to || "------"}
-              </div>
+        <div className="px-4 flex justify-start align-middle ">
+          <div className="pb-5 font-main font-bold">Transition To:</div>
+          <div className="mb-5 px-4 font-main font-bold self-center">
+            {selectedVersion.transition_to || "------"}
           </div>
+        </div>
 
         {/* <div className="px-4 py-4 flex items-center justify-between">
           <div className="pb-5 pt-3 font-main font-bold text-[20px]">
