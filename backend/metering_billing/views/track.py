@@ -28,7 +28,7 @@ from rest_framework.response import Response
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 
 logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
-
+kafka_producer = Producer()
 
 def load_event(request: HttpRequest) -> Union[None, Dict]:
     """
@@ -141,7 +141,6 @@ def track_event(request):
     ## Sent to Redpanda Topic
     for customer_id, events in events_by_customer.items():
         stream_events = {"events": events, "organization_id": organization_pk}
-        kafka_producer = Producer()
         kafka_producer.produce(customer_id, stream_events)
 
     if len(bad_events) == len(event_list):
