@@ -217,6 +217,15 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           </div>
         </div>
 
+          <div className="px-4 flex justify-start align-middle ">
+              <div className="pb-5 font-main font-bold">
+                  Transition To:
+              </div>
+              <div className="mb-5 px-4 font-main font-bold self-center">
+                  { selectedVersion.transition_to || "------"}
+              </div>
+          </div>
+
         {/* <div className="px-4 py-4 flex items-center justify-between">
           <div className="pb-5 pt-3 font-main font-bold text-[20px]">
             Localisation:
