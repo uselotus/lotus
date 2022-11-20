@@ -272,7 +272,6 @@ if KAFKA_HOST:
         for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
     ]
 
-if KAFKA_HOST:
     producer_config = {
         "bootstrap_servers": KAFKA_HOST,
     }
@@ -298,12 +297,12 @@ if KAFKA_HOST:
 
     PRODUCER = KafkaProducer(**producer_config)
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
-    admin_client = KafkaAdminClient(**admin_client_config)
+    ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
-    existing_topics = admin_client.list_topics()
+    existing_topics = ADMIN_CLIENT.list_topics()
     if KAFKA_EVENTS_TOPIC not in existing_topics and SELF_HOSTED:
         try:
-            admin_client.create_topics(
+            ADMIN_CLIENT.create_topics(
                 new_topics=[
                     NewTopic(
                         name=KAFKA_EVENTS_TOPIC,
