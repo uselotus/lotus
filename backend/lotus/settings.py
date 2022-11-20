@@ -298,7 +298,7 @@ if KAFKA_HOST:
     admin_client = KafkaAdminClient(**admin_client_config)
 
     existing_topics = admin_client.list_topics()
-    if KAFKA_EVENTS_TOPIC not in existing_topics and not SELF_HOSTED:
+    if KAFKA_EVENTS_TOPIC not in existing_topics and SELF_HOSTED:
         try:
             admin_client.create_topics(
                 new_topics=[
