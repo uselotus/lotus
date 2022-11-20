@@ -15,7 +15,7 @@ import ssl
 from datetime import timedelta
 from json import loads
 from pathlib import Path
-from signal import SIG_DFL
+from urllib.parse import urlparse
 
 import dj_database_url
 import django_heroku
@@ -263,7 +263,10 @@ KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default=None)
 if KAFKA_HOST:
-    KAFKA_HOST = KAFKA_HOST.split(",")[:KAFKA_REPLICATION_FACTOR]
+    KAFKA_HOST = [
+        "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
+        for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
+    ]
     print(f"Kafka Hosts: {KAFKA_HOST}")
 
 if KAFKA_HOST:
