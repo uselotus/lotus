@@ -310,7 +310,6 @@ if KAFKA_HOST:
                 ]
             )
         except TopicAlreadyExistsError:
-            print("Topic already exists")
             pass
 else:
     PRODUCER = None
