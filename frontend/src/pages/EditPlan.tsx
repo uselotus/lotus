@@ -483,9 +483,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                      >
                           <Select>
                               {
-                                  allPlans.map(plan => (
-                                      <Select.Option value={plan.plan_id}>
-                                          {plan.plan_name}
+                                  allPlans.map(item => (
+                                      <Select.Option key={item.plan_id} value={item.plan_id}>
+                                          { plan.plan_id === item.plan_id ? "Self" :  item.plan_name}
                                       </Select.Option>
                                   ))
                               }

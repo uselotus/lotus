@@ -10,17 +10,17 @@ import {
   Select,
 } from "antd";
 // @ts-ignore
-import React, { useState } from "react";
+import React, {useEffect, useState} from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 
 import {
-  CreateComponent,
-  CreateInitialVersionType,
-  CreatePlanType,
-  InitialExternalLinks,
+    CreateComponent,
+    CreateInitialVersionType,
+    CreatePlanType,
+    InitialExternalLinks, PlanType,
 } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
@@ -41,6 +41,7 @@ interface ComponentDisplay {
 
 const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
+  const [allPlans, setAllPlans] =  useState<PlanType[]>([])
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
@@ -58,6 +59,11 @@ const CreatePlan = () => {
     { label: "Yearly", name: "yearly" },
   ]);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+        if(!allPlans?.length) {
+            Plan.getPlans().then(data => setAllPlans(data))
+   }}, [])
 
   const mutation = useMutation(
     (post: CreatePlanType) => Plan.createPlan(post),
@@ -186,6 +192,7 @@ const CreatePlan = () => {
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
           flat_fee_billing_type: values.flat_fee_billing_type,
+          transition_to_plan_id: values.transition_to_plan_id,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
@@ -337,6 +344,20 @@ const CreatePlan = () => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
+                    <Form.Item
+                          name="transition_to_plan_id"
+                          label="Plan on next cycle"
+                      >
+                          <Select>
+                              {
+                                  allPlans.map(plan => (
+                                      <Select.Option key={plan.plan_id} value={plan.plan_id}>
+                                          {plan.plan_name}
+                                      </Select.Option>
+                                  ))
+                              }
+                          </Select>
+                     </Form.Item>
 
                     <Form.Item
                       name="initial_external_links"

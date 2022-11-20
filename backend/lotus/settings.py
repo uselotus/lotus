@@ -256,6 +256,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
 def value_deserializer(value):
     try:
         return loads(value.decode("utf-8"))
@@ -263,12 +264,14 @@ def value_deserializer(value):
         print(e)
         return None
 
+
 def key_deserializer(key):
     try:
         return key.decode("utf-8")
     except Exception as e:
         print(e)
         return None
+
 
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
