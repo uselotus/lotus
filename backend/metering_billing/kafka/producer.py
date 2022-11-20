@@ -18,6 +18,7 @@ class Producer(metaclass=Singleton):
         self.__connection = PRODUCER
 
     def produce(self, customer_id, stream_events):
+        print("about to send to kafka", KAFKA_EVENTS_TOPIC)
         self.__connection.send(
             topic=KAFKA_EVENTS_TOPIC,
             key=customer_id.encode("utf-8"),
