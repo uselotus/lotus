@@ -24,5 +24,6 @@ class Producer(metaclass=Singleton):
             key=customer_id.encode("utf-8"),
             value=json.dumps(stream_events).encode("utf-8"),
         )
+        print(KAFKA_EVENTS_TOPIC, self.__connection.__dict__)
         self.__connection.flush()
         print("finished sending message")
