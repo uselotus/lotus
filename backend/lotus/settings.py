@@ -71,7 +71,7 @@ DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 
 
-if False:#SENTRY_DSN != "":
+if False:  # SENTRY_DSN != "":
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
@@ -261,7 +261,7 @@ AUTH_PASSWORD_VALIDATORS = [
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
 if type(KAFKA_EVENTS_TOPIC) == bytes:
-    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode('utf-8')
+    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default=None)
