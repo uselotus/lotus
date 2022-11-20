@@ -1,6 +1,6 @@
 // @ts-ignore
 import React, { FC } from "react";
-import { Menu, Dropdown, Button, Typography } from "antd";
+import { Menu, Dropdown, Button, Typography, Tag } from "antd";
 import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
@@ -75,6 +75,10 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
       </Typography.Title>
 
       <div>
+        {plan.parent_plan !== null ? (
+          <Tag color="#C3986B">{plan.parent_plan?.plan_name}</Tag>
+        ) : null}
+
         <div className="flex activeSubscriptions">
           <div className="pr-1">
             Total Active Subscriptions: {plan.active_subscriptions}
