@@ -304,9 +304,11 @@ if KAFKA_HOST:
     KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
     if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
         ssl_context = kafka_helper.get_kafka_ssl_context()
+        print("Kafka SSL Context", ssl_context)
         for cfg in [producer_config, consumer_config, admin_client_config]:
             cfg["security_protocol"] = "SSL"
             cfg["ssl_context"] = ssl_context
+            print("Kafka ssl_context", ssl_context)
 
     PRODUCER = KafkaProducer(**producer_config)
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
