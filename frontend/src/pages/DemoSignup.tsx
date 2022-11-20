@@ -8,7 +8,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
-import {LotusFilledButton} from "../components/base/Button";
+import {LotusFilledButton, LotusOutlinedButton} from "../components/base/Button";
 
 const cookies = new Cookies();
 
@@ -150,7 +150,7 @@ const DemoSignup: React.FC = () => {
                   </Form.Item>
 
                   <Form.Item className="justify-self-center	">
-                    <Button htmlType="submit">Continue to Demo</Button>
+                    <LotusOutlinedButton text="Continue to Demo" htmlType="submit"/>
                   </Form.Item>
                 </Form>
               </Card>

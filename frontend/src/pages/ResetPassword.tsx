@@ -6,7 +6,7 @@ import "./Login.css";
 import { useMutation } from "react-query";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
-import {LotusFilledButton} from "../components/base/Button";
+import {LotusFilledButton, LotusOutlinedButton} from "../components/base/Button";
 
 interface ResetPasswordForm extends HTMLFormControlsCollection {
   email: string;
@@ -67,7 +67,7 @@ const ResetPassword: FC = () => {
                 />
               </Form.Item>
               <Form.Item>
-                <Button htmlType="submit">Reset Password</Button>
+                <LotusOutlinedButton text="Reset Password" htmlType="submit"/>
               </Form.Item>
             </Form>
           </Card>

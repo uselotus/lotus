@@ -1,5 +1,6 @@
 import React, { FC, useEffect, useState } from "react";
 import { Card, Input, Button, Form, Select } from "antd";
+import {LotusOutlinedButton} from "../base/Button";
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;
@@ -79,7 +80,7 @@ const SignUp = (props: SignupProps) => {
           </Form.Item>
 
           <Form.Item>
-            <Button htmlType="submit">Register</Button>
+            <LotusOutlinedButton text="Register" htmlType="submit"/>
           </Form.Item>
         </Form>
       </Card>

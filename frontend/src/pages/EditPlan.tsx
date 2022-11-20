@@ -497,12 +497,11 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                 title="Added Components"
                 className="h-full"
                 extra={[
-                  <Button
+                  <LotusOutlinedButton
+                    text="Add Component"
                     htmlType="button"
                     onClick={() => showComponentModal()}
-                  >
-                    Add Component
-                  </Button>,
+                  />
                 ]}
               >
                 <Form.Item
@@ -548,9 +547,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                 className="w-full my-5"
                 title="Added Features"
                 extra={[
-                  <Button htmlType="button" onClick={showFeatureModal}>
-                    Add Feature
-                  </Button>,
+                  <LotusOutlinedButton text='Add Feature' htmlType="button" onClick={showFeatureModal}/>,
                 ]}
               >
                 <Form.Item

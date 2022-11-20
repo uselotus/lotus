@@ -1,14 +1,12 @@
-import React, { FC, Fragment, useEffect, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import { PlanType } from "../../types/plan-type";
 import {
   Card,
   List,
   Form,
   Select,
-  Button,
   Dropdown,
   Menu,
-  Statistic,
   Cascader,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
@@ -18,11 +16,10 @@ import {
   ChangeSubscriptionPlanType,
   CancelSubscriptionType,
 } from "../../types/subscription-type";
-//import the Customer type from the api.ts file
-import { Customer, Plan } from "../../api/api";
 import dayjs from "dayjs";
 
 import { CustomerDetailSubscription } from "../../types/customer-type";
+import {LotusOutlinedButton} from "../base/Button";
 
 interface Props {
   customer_id: string;
@@ -233,10 +230,7 @@ const SubscriptionView: FC<Props> = ({
               </Select>
             </Form.Item>
             <Form.Item>
-              <Button htmlType="submit">
-                {" "}
-                Attach Plan and Start Subscription
-              </Button>
+              <LotusOutlinedButton text="Attach Plan and Start Subscription" htmlType="submit"/>
             </Form.Item>
           </Form>
         </div>
@@ -282,10 +276,10 @@ const SubscriptionView: FC<Props> = ({
         </List>
         <div className="grid grid-cols-2 w-full space-x-5 my-6">
           <Dropdown overlay={switchMenu} trigger={["click"]}>
-            <Button>Switch Plan</Button>
+            <LotusOutlinedButton text="Switch Plan"/>
           </Dropdown>
           <Dropdown overlay={cancelMenu} trigger={["click"]}>
-            <Button>Cancel Subscription</Button>
+              <LotusOutlinedButton text="Cancel Subscription"/>
           </Dropdown>
         </div>
       </div>

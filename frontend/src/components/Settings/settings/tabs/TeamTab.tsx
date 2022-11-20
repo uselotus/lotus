@@ -5,6 +5,7 @@ import { Divider, Typography, Row, Col, Input, Button, Form, Tag } from "antd";
 import { Organization } from "../../../../api/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../../components/LoadingSpinner";
+import {LotusOutlinedButton} from "../../../base/Button";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -148,7 +149,7 @@ const TeamTab: FC = () => {
                 />
               </Form.Item>
               <Form.Item>
-                <Button htmlType="submit">Send Invite</Button>
+                <LotusOutlinedButton text="Send Invite" htmlType="submit"/>
               </Form.Item>
             </Form>
           </div>

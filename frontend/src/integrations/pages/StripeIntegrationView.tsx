@@ -14,6 +14,7 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../../types/stripe-type";
+import {LotusOutlinedButton} from "../../components/base/Button";
 
 const TOAST_POSITION = toast.POSITION.TOP_CENTER;
 
@@ -131,9 +132,9 @@ const StripeIntegrationView: FC = () => {
         </h2>
         <div className="grid grid-cols-2 justify-start items-center gap-6 border-2 border-solid rounded border-[#EAEAEB] px-5 py-10">
           <h3>Import Stripe Customers:</h3>
-          <Button
-            size="large"
+          <LotusOutlinedButton
             className="w-4/12"
+            text="Import"
             onClick={() => {
               const promise = importCustomersMutation.mutateAsync({
                 source: "stripe",
@@ -142,13 +143,11 @@ const StripeIntegrationView: FC = () => {
                 pending: "Importing Customers From Stripe",
               });
             }}
-          >
-            Import
-          </Button>
+          />
           <h3 className="mx-0">Import Stripe Payments:</h3>
-          <Button
-            size="large"
+          <LotusOutlinedButton
             className="w-4/12"
+            text="Import"
             onClick={() => {
               const promise = importPaymentsMutation.mutateAsync({
                 source: "stripe",
@@ -157,13 +156,11 @@ const StripeIntegrationView: FC = () => {
                 pending: "Importing Past Payments From Stripe",
               });
             }}
-          >
-            Import
-          </Button>
+          />
           <h3>Transfer Subscriptions:</h3>
-          <Button
-            size="large"
+          <LotusOutlinedButton
             className="w-4/12"
+            text="Transfer"
             onClick={() => {
               const promise = transferSubscriptionsMutation.mutateAsync({
                 source: "stripe",
@@ -173,9 +170,7 @@ const StripeIntegrationView: FC = () => {
                 pending: "Transfering Subscriptions From Stripe",
               });
             }}
-          >
-            Transfer
-          </Button>
+          />
           <h3>Create Lotus Customers In Stripe:</h3>
           <div className="flex h-5 items-center">
             <input

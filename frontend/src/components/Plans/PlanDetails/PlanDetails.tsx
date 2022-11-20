@@ -11,7 +11,7 @@ import {CreatePlanExternalLinkType, InitialExternalLinks, PlanDetailType} from "
 import LoadingSpinner from "../../LoadingSpinner";
 import LinkExternalIds from "../LinkExternalIds";
 import {toast} from "react-toastify";
-import {LotusFilledButton} from "../../base/Button";
+import {LotusFilledButton, LotusOutlinedButton} from "../../base/Button";
 
 type PlanDetailParams = {
   planId: string;
@@ -114,16 +114,14 @@ const PlanDetails: FC = () => {
             backIcon
             extra={
               plan.target_customer === null && [
-                <Button
+                <LotusOutlinedButton
+                  text="Create Custom Plan"
                   onClick={navigateCreateCustomPlan}
-                  type="primary"
-                  size="large"
-                  key="create-custom-plan"
                 >
                   <div className="flex items-center justify-between text-white">
                     <div>Create Custom Plan</div>
                   </div>
-                </Button>,
+                </LotusOutlinedButton>,
               ]
             }
           ></PageLayout>

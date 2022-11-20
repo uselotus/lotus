@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
-import {LotusFilledButton} from "../components/base/Button";
+import {LotusFilledButton, LotusOutlinedButton} from "../components/base/Button";
 
 const cookies = new Cookies();
 
@@ -105,7 +105,7 @@ const Login: FC = () => {
                   </div>
                 </Form.Item>
                 <Form.Item>
-                  <Button htmlType="submit">Login</Button>
+                  <LotusOutlinedButton text="Login" htmlType="submit"/>
                 </Form.Item>
                 <Link
                   to="/reset-password"
