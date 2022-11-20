@@ -279,22 +279,24 @@ if KAFKA_HOST:
         "value_deserializer": lambda x: loads(x.decode("utf-8")),
         "key_deserializer": lambda x: x.decode("utf-8"),
     }
+    admin_client_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "client_id": "events-client",
+    }
 
     KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
     KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
     KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
     if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
         ssl_context = kafka_helper.get_kafka_ssl_context()
-        for cfg in [producer_config, consumer_config]:
+        for cfg in [producer_config, consumer_config, admin_client_config]:
             cfg["security_protocol"] = "SSL"
             cfg["ssl_context"] = ssl_context
 
     PRODUCER = KafkaProducer(**producer_config)
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
+    admin_client = KafkaAdminClient(**admin_client_config)
 
-    admin_client = KafkaAdminClient(
-        bootstrap_servers=KAFKA_HOST, client_id="events-client"
-    )
     existing_topics = admin_client.list_topics()
     if KAFKA_EVENTS_TOPIC not in existing_topics:
         try:
