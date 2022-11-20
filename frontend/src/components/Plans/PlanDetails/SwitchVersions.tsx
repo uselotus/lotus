@@ -190,7 +190,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
                 {selectedVersion.flat_fee_billing_type}
               </div>
             </div>
-            {/* <div className="flex items-center planInfo py-2 mt-2">
+            <div className="flex items-center planInfo py-2 mt-2">
               <div className="pr-2 infoLabel">
                 Components Billing Frequency:
               </div>
@@ -198,7 +198,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
                 {" "}
                 {selectedVersion.usage_billing_frequency}
               </div>
-            </div> */}
+            </div>
           </div>
         </div>
 
