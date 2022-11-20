@@ -19,7 +19,10 @@ class Producer(metaclass=Singleton):
     def produce(self, customer_id, stream_events):
         print(f"Producing record. key={customer_id}, value={stream_events}")
         print(KAFKA_EVENTS_TOPIC, self.__connection.__dict__)
-        print("try som", self.__connection._sender.start())
+        try:
+            print("try som", self.__connection._sender.start())
+        except Exception as e:
+            print("try som", e)
         self.__connection.send(
             topic=KAFKA_EVENTS_TOPIC,
             key=customer_id.encode("utf-8"),
