@@ -292,7 +292,7 @@ if KAFKA_HOST:
         ]
     producer_config = {
         "bootstrap_servers": KAFKA_HOST,
-        "api_version": (2, 5, 0),
+        "api_version": (0, 1, 2),
     }
     consumer_config = {
         "bootstrap_servers": KAFKA_HOST,
