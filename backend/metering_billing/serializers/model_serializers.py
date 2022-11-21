@@ -456,7 +456,7 @@ class PriceTierSerializer(serializers.ModelSerializer):
             re = Decimal("Infinity")
         assert re > rs
         if data.get("type") == PRICE_TIER_TYPE.FLAT:
-            assert data.get("cost_per_batch")
+            assert data.get("cost_per_batch") is not None
             data["metric_units_per_batch"] = None
             data["batch_rounding_type"] = None
         elif data.get("type") == PRICE_TIER_TYPE.FREE:
@@ -465,9 +465,10 @@ class PriceTierSerializer(serializers.ModelSerializer):
             data["batch_rounding_type"] = None
         elif data.get("type") == PRICE_TIER_TYPE.PER_UNIT:
             assert data.get("metric_units_per_batch")
-            assert data.get("cost_per_batch")
-            data["batch_rounding_type"] = BATCH_ROUNDING_TYPE.NO_ROUNDING
-            assert data.get("batch_rounding_type")
+            assert data.get("cost_per_batch") is not None
+            data["batch_rounding_type"] = data.get(
+                "batch_rounding_type", BATCH_ROUNDING_TYPE.NO_ROUNDING
+            )
         else:
             raise serializers.ValidationError("Invalid price tier type")
         return data
