@@ -212,6 +212,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider",
             "payment_provider_id",
             "properties",
+            "integrations",
         )
         extra_kwargs = {
             "customer_id": {"required": True},
@@ -1499,6 +1500,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "invoices",
             "total_amount_due",
             "subscriptions",
+            "integrations",
         )
 
     subscriptions = serializers.SerializerMethodField()

@@ -165,6 +165,13 @@ a {
     cursor: pointer;
 }
 
+.customer-detail-card {
+    background: #d3d3d33d;
+    padding: 10px 20px;
+    border-radius: 10px;
+    width:500px;
+}
+
 /**
  * @license
  *

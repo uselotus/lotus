@@ -1,7 +1,7 @@
-// @ts-ignore
 import React, { useState } from "react";
-import { Form, Tabs, Modal, Select } from "antd";
+import { Form, Tabs, Modal } from "antd";
 import { PlanType } from "../../types/plan-type";
+import { Card, Col, Row } from 'antd';
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -24,8 +24,6 @@ import {
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
-
-const { Option } = Select;
 
 function CustomerDetail(props: {
   visible: boolean;
@@ -163,14 +161,15 @@ function CustomerDetail(props: {
             <Tabs defaultActiveKey="subscriptions" centered className="w-full">
               <Tabs.TabPane tab="Detail" key="detail">
                 {data !== undefined ? (
-                  <div className="grid grid-cols-2">
-                    <div className=" space-y-3">
-                      <h2 className="mb-2">Info</h2>
-                      <p>Email: {data.email}</p>
-                      <p>Billing Address: {data.billing_address}</p>
+                    <div className="flex flex-col items-center justify-center">
+                      <div><h2 className="mb-2 pb-4 pt-4 font-bold text-main">Customer Details</h2></div>
+                        <div className="customer-detail-card">
+                            <p><b>Customer Name:</b> {data.customer_name}</p>
+                            <p><b>Customer ID:</b> {data.customer_id}</p>
+                            <p><b>Email:</b> {data.email}</p>
+                            <p><b>Billing Address:</b> {data.billing_address}</p>
+                        </div>
                     </div>
-                    <div className="space-y-3">{/* <h2>Timeline</h2> */}</div>
-                  </div>
                 ) : (
                   <h2> No Data </h2>
                 )}
