@@ -2,6 +2,7 @@ import json
 from dataclasses import dataclass
 
 from django.conf import settings
+from kafka import KafkaProducer
 
 from .singleton import Singleton
 
