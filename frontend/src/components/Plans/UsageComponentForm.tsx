@@ -282,7 +282,7 @@ function UsageComponentForm({
       setRangeEnd(undefined);
       setErrorMessage("");
     } else {
-      setErrorMessage("Please enter a range end");
+      setErrorMessage("Please enter a non-infinite range end");
     }
   };
 
