@@ -103,7 +103,7 @@ const ViewPlans: FC = () => {
           </Button>,
         ]}
       >
-        <Tabs defaultActiveKey="1" size="large">
+        <Tabs defaultActiveKey="0" size="large">
           <Tabs.TabPane tab="All" key="0">
             <div className=" flex flex-col space-y-6 ">
               <Row gutter={[24, 32]}>
