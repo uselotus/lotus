@@ -283,6 +283,11 @@ KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default=None)
 if KAFKA_HOST:
+    import logging
+    import sys
+    logger = logging.getLogger('kafka')
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger.setLevel(logging.INFO)
     if "," not in KAFKA_HOST:
         KAFKA_HOST = KAFKA_HOST
     else:
