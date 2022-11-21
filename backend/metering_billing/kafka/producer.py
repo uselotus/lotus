@@ -24,5 +24,7 @@ class Producer(metaclass=Singleton):
             key=customer_id.encode("utf-8"),
             value=json.dumps(stream_events).encode("utf-8"),
         )
+        print(self.__connection.__dict__["_sender"].__dict__)
+        print("PRODUCER PRODUCER")
         self.__connection.flush()
         print(f"Produced record to topic {KAFKA_EVENTS_TOPIC}")
