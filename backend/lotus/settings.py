@@ -322,6 +322,7 @@ if KAFKA_HOST:
 
     PRODUCER = KafkaProducer(**producer_config)
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
+    print(PRODUCER.__dict__["_sender"].__dict__)
     ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
     existing_topics = ADMIN_CLIENT.list_topics()
