@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+import logging
 import os
 import re
 import ssl
@@ -278,7 +279,6 @@ KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
 if type(KAFKA_EVENTS_TOPIC) == bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
-print("KAFKA_EVENTS_TOPIC", KAFKA_EVENTS_TOPIC)
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
 KAFKA_HOST = config("KAFKA_URL", default=None)
@@ -290,13 +290,16 @@ if KAFKA_HOST:
             "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
             for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
         ]
-    producer_config = {"bootstrap_servers": KAFKA_HOST, "api_version": (0, 10, 2)}
+    producer_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "api_version": (2, 5, 0),
+    }
     consumer_config = {
         "bootstrap_servers": KAFKA_HOST,
         "auto_offset_reset": "earliest",
         "value_deserializer": value_deserializer,
         "key_deserializer": key_deserializer,
-        "api_version": (0, 10, 2)
+        "api_version": (2, 5, 0),
     }
     admin_client_config = {
         "bootstrap_servers": KAFKA_HOST,
@@ -536,4 +539,4 @@ LOTUS_HOST = config("LOTUS_HOST", default=None)
 LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
 META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
-django_heroku.settings(locals())
+django_heroku.settings(locals(), logging=False)

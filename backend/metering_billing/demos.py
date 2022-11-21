@@ -45,8 +45,9 @@ from model_bakery import baker
 def setup_demo_3(company_name, username, email, password):
     try:
         Organization.objects.get(company_name=company_name).delete()
+        print("Deleted existing organization, replacing")
     except Organization.DoesNotExist:
-        print("organization doesn't exist")
+        print("creating from scratch")
     try:
         user = User.objects.get(username=username, email=email)
     except:
