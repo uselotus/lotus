@@ -1,14 +1,8 @@
-import datetime
-import operator
-import uuid
-from unicodedata import name
-
 import lotus_python
 import posthog
 from actstream import action
 from actstream.models import Action
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -19,13 +13,16 @@ from metering_billing.models import (
     Backtest,
     BillableMetric,
     Customer,
+    CustomerBalanceAdjustment,
     Event,
     ExternalPlanLink,
     Feature,
     Invoice,
     OrganizationSetting,
     Plan,
+    PlanComponent,
     PlanVersion,
+    PriceTier,
     Product,
     Subscription,
     User,
@@ -40,6 +37,7 @@ from metering_billing.serializers.model_serializers import (
     ActionSerializer,
     AlertSerializer,
     BillableMetricSerializer,
+    CustomerDetailSerializer,
     CustomerSerializer,
     EventSerializer,
     ExternalPlanLinkSerializer,
@@ -53,6 +51,7 @@ from metering_billing.serializers.model_serializers import (
     PlanVersionSerializer,
     PlanVersionUpdateSerializer,
     ProductSerializer,
+    SubscriptionDetailSerializer,
     SubscriptionSerializer,
     SubscriptionUpdateSerializer,
     UserSerializer,
@@ -230,7 +229,27 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return Customer.objects.filter(organization=organization)
+        qs = Customer.objects.filter(organization=organization)
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "customer_subscriptions",
+                    queryset=Subscription.objects.filter(
+                        organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+                    ),
+                ),
+                Prefetch(
+                    "customer_subscriptions__billing_plan",
+                    queryset=PlanVersion.objects.filter(organization=organization),
+                    to_attr="billing_plans",
+                ),
+            )
+        return qs
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return CustomerDetailSerializer
+        return CustomerSerializer
 
     def perform_create(self, serializer):
         try:
@@ -242,21 +261,38 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         context = super(CustomerViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
         context.update({"organization": organization})
+        if self.action == "retrieve":
+            customer = self.get_object()
+            total_amount_due = customer.get_outstanding_revenue()
+            invoices = Invoice.objects.filter(
+                organization=organization,
+                customer=customer,
+            )
+            balance_adjustments = CustomerBalanceAdjustment.objects.filter(
+                customer=customer,
+            )
+            context.update(
+                {
+                    "total_amount_due": total_amount_due,
+                    "invoices": invoices,
+                    "balance_adjustments": balance_adjustments,
+                }
+            )
         return context
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_customer",
                 properties={"organization": organization.company_name},
@@ -287,15 +323,15 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_metric",
                 properties={"organization": organization.company_name},
@@ -348,15 +384,15 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_feature",
                 properties={"organization": organization.company_name},
@@ -411,15 +447,15 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan_version",
                 properties={"organization": organization.company_name},
@@ -466,7 +502,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
 
 
-class PlanViewSet(viewsets.ModelViewSet):
+class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Products.
     """
@@ -509,15 +545,15 @@ class PlanViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan",
                 properties={"organization": organization.company_name},
@@ -584,7 +620,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
         "create": [IsAuthenticated | HasUserAPIKey],
-        "partial_update": [IsAuthenticated],
+        "partial_update": [IsAuthenticated | HasUserAPIKey],
     }
 
     def get_serializer_context(self):
@@ -595,7 +631,26 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return Subscription.objects.filter(organization=organization)
+        qs = (
+            Subscription.objects.filter(
+                organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+            )
+            .select_related("customer")
+            .select_related("billing_plan")
+        )
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(
+                Prefetch(
+                    "billing_plan__plan_components",
+                    queryset=PlanComponent.objects.all(),
+                )
+            ).prefetch_related(
+                Prefetch(
+                    "billing_plan__plan_components__tiers",
+                    queryset=PriceTier.objects.all(),
+                )
+            )
+        return qs
 
     def perform_create(self, serializer):
         if serializer.validated_data["start_date"] <= now_utc():
@@ -615,6 +670,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "partial_update":
             return SubscriptionUpdateSerializer
+        elif self.action == "retrieve":
+            return SubscriptionDetailSerializer
         else:
             return SubscriptionSerializer
 
@@ -622,15 +679,15 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_subscription",
                 properties={"organization": organization.company_name},
@@ -704,15 +761,15 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_invoice",
                 properties={"organization": organization.company_name},
@@ -740,15 +797,15 @@ class AlertViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_alert",
                 properties={"organization": organization.company_name},
@@ -798,15 +855,15 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_backtest",
                 properties={"organization": organization.company_name},
@@ -841,15 +898,15 @@ class ProductViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_product",
                 properties={"organization": organization.company_name},
@@ -917,15 +974,15 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         response = super().dispatch(request, *args, **kwargs)
         if status.is_success(response.status_code):
             try:
-                user = self.request.user
+                username = self.request.user.username
             except:
-                user = None
+                username = None
             organization = parse_organization(self.request)
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    user.username if user else organization.company_name + " (API Key)"
+                    username if username else organization.company_name + " (API Key)"
                 ),
                 event=f"{self.action}_external_plan_link",
                 properties={"organization": organization.company_name},

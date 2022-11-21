@@ -1,6 +1,6 @@
 // create react FC component called EditPlanLoader
 import React, { FC, Fragment, useEffect } from "react";
-import { useParams } from "react-router";
+import { useParams } from "react-router-dom";
 import { PageLayout } from "../components/base/PageLayout";
 import { useQuery } from "react-query";
 import { Plan } from "../api/api";

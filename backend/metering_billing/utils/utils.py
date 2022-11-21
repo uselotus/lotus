@@ -199,6 +199,10 @@ def invoice_uuid():
     return "inv_" + str(uuid.uuid4())
 
 
+def organization_uuid():
+    return "org_" + str(uuid.uuid4())
+
+
 def date_as_min_dt(date):
     return datetime.datetime.combine(date, datetime.time.min, tzinfo=pytz.UTC)
 

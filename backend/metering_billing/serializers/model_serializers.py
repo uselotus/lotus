@@ -115,16 +115,16 @@ class EventSerializer(serializers.ModelSerializer):
             "properties",
             "time_created",
             "idempotency_id",
-            # "customer_id",
+            "customer_id",
             "customer",
         )
 
-    # customer_id = SlugRelatedFieldWithOrganization(
-    #     slug_field="customer_id",
-    #     queryset=Customer.objects.all(),
-    #     write_only=True,
-    #     source="customer",
-    # )
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        write_only=True,
+        source="customer",
+    )
     customer = serializers.SerializerMethodField()
 
     def get_customer(self, obj) -> str:
@@ -145,7 +145,10 @@ class AlertSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "password")
+        fields = ("username", "email", "company_name", "organization_id")
+
+    organization_id = serializers.CharField(source="organization.id")
+    company_name = serializers.CharField(source="organization.company_name")
 
 
 ## CUSTOMER
@@ -183,8 +186,6 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + (
             "subscription_id",
             "start_date",
-            "end_date",
-            "auto_renew",
             "status",
         )
 
@@ -212,7 +213,6 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider_id",
             "properties",
         )
-        read_only_fields = ("properties",)
         extra_kwargs = {
             "customer_id": {"required": True},
             "email": {"required": True},
@@ -228,16 +228,16 @@ class CustomerSerializer(serializers.ModelSerializer):
         payment_provider = data.get("payment_provider", None)
         payment_provider_id = data.get("payment_provider_id", None)
         if payment_provider or payment_provider_id:
-            if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
-                self.context["organization"]
-            ):
-                raise serializers.ValidationError(
-                    "Specified payment provider not connected to organization"
-                )
-            if payment_provider and not payment_provider_id:
-                raise serializers.ValidationError(
-                    "Payment provider ID required when payment provider is specified"
-                )
+            # if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
+            #     self.context["organization"]
+            # ):
+            #     raise serializers.ValidationError(
+            #         "Specified payment provider not connected to organization"
+            #     )
+            # if payment_provider and not payment_provider_id:
+            #     raise serializers.ValidationError(
+            #         "Payment provider ID required when payment provider is specified"
+            #     )
             if payment_provider_id and not payment_provider:
                 raise serializers.ValidationError(
                     "Payment provider required when payment provider ID is specified"
@@ -260,6 +260,33 @@ class CustomerSerializer(serializers.ModelSerializer):
                     validated_data["payment_provider"]
                 ].create_customer(customer)
         return customer
+
+    def update(self, instance, validated_data, behavior="merge"):
+        instance.customer_id = validated_data.get(
+            "customer_id", instance.customer_id if behavior == "merge" else None
+        )
+        instance.customer_name = validated_data.get(
+            "customer_name", instance.customer_name if behavior == "merge" else None
+        )
+        instance.email = validated_data.get(
+            "email", instance.email if behavior == "merge" else None
+        )
+        instance.payment_provider = validated_data.get(
+            "payment_provider",
+            instance.payment_provider if behavior == "merge" else None,
+        )
+        instance.properties = (
+            {**instance.properties, **validated_data.get("properties", {})}
+            if behavior == "merge"
+            else validated_data.get("properties", {})
+        )
+        if "payment_provider_id" in validated_data:
+            if not (instance.payment_provider in instance.integrations):
+                instance.integrations[instance.payment_provider] = {}
+            instance.integrations[instance.payment_provider]["id"] = validated_data.get(
+                "payment_provider_id"
+            )
+        return instance
 
 
 ## BILLABLE METRIC
@@ -424,7 +451,10 @@ class PriceTierSerializer(serializers.ModelSerializer):
         data = super().validate(data)
         rs = data.get("range_start", None)
         assert rs is not None and rs >= Decimal(0), "range_start must be >= 0"
-        assert data.get("range_end", float("inf")) > data.get("range_start")
+        re = data.get("range_end", None)
+        if not re:
+            re = Decimal("Infinity")
+        assert re > rs
         if data.get("type") == PRICE_TIER_TYPE.FLAT:
             assert data.get("cost_per_batch")
             data["metric_units_per_batch"] = None
@@ -477,8 +507,8 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             x["range_end"] for x in tiers_sorted[:-1]
         ), "All tiers must have an end, last one is the only one allowed to have open end"
         for i, tier in enumerate(tiers_sorted[:-1]):
-            assert (
-                tier["range_end"] == tiers_sorted[i + 1]["range_start"]
+            assert tiers_sorted[i + 1]["range_start"] - tier["range_end"] <= Decimal(
+                1
             ), "All tiers must be contiguous"
         return data
 
@@ -984,7 +1014,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "customer_id",
             "customer",
             "plan_id",
-            "billing_plan",
             "start_date",
             "end_date",
             "scheduled_end_date",
@@ -995,7 +1024,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "customer",
-            "billing_plan",
             "scheduled_end_date",
         )
 
@@ -1023,7 +1051,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     # READ ONLY
     customer = CustomerSerializer(read_only=True)
-    billing_plan = PlanVersionSerializer(read_only=True)
 
     def validate(self, data):
         # extract the plan version from the plan
@@ -1091,6 +1118,16 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                         break
             invoice.save()
         return sub
+
+
+class SubscriptionDetailSerializer(SubscriptionSerializer):
+    class Meta(SubscriptionSerializer.Meta):
+        model = Subscription
+        fields = tuple(
+            set(SubscriptionSerializer.Meta.fields).union(set(["billing_plan"]))
+        )
+
+    billing_plan = PlanVersionSerializer(read_only=True)
 
 
 class SubscriptionInvoiceSerializer(SubscriptionSerializer):
@@ -1464,10 +1501,16 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "subscriptions",
         )
 
-    subscriptions = SubscriptionCustomerDetailSerializer(read_only=True, many=True)
+    subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
+
+    def get_subscriptions(self, obj) -> SubscriptionCustomerDetailSerializer(many=True):
+        return SubscriptionCustomerDetailSerializer(
+            obj.customer_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE),
+            many=True,
+        ).data
 
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")

@@ -93,14 +93,14 @@ const requests = {
 export const Customer = {
   getCustomers: (): Promise<CustomerPlus[]> =>
     requests.get("api/customer_summary/"),
-  getACustomer: (customer_id: string): Promise<CustomerType> =>
-    requests.get(`api/customers/${customer_id}`),
+  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
+    requests.get(`api/customers/${customer_id}/`),
   createCustomer: (post: CustomerType): Promise<CustomerType> =>
     requests.post("api/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
-    requests.get(`api/customer_detail/`, { params: { customer_id } }),
+  // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
+  //   requests.get(`api/customer_detail/`, { params: { customer_id } }),
   //Subscription handling
   createSubscription: (
     post: CreateSubscriptionType
@@ -192,17 +192,44 @@ export const Authentication = {
   login: (
     username: string,
     password: string
-  ): Promise<{ detail: any; token: string }> =>
-    requests.post("api/login/", { username, password }),
+  ): Promise<{
+    detail: any;
+    token: string;
+    user: {
+      username: string;
+      email: string;
+      organization_id: string;
+      company_name: string;
+    };
+  }> => requests.post("api/login/", { username, password }),
   logout: (): Promise<{}> => requests.post("api/logout/", {}),
   registerCreate: (
     register: CreateOrgAccountType
-  ): Promise<{ username: string; password: string }> =>
+  ): Promise<{
+    detail: any;
+    token: string;
+    user: {
+      username: string;
+      email: string;
+      organization_id: string;
+      company_name: string;
+    };
+  }> =>
     requests.post("api/register/", {
       register,
     }),
-  registerDemo: (register: DemoSignupProps) =>
-    requests.post("api/demo_register/", { register }),
+  registerDemo: (
+    register: DemoSignupProps
+  ): Promise<{
+    detail: any;
+    token: string;
+    user: {
+      username: string;
+      email: string;
+      organization_id: string;
+      company_name: string;
+    };
+  }> => requests.post("api/demo_register/", { register }),
 
   resetPassword: (email: string): Promise<{ email: string }> =>
     requests.post("api/user/password/reset/init/", { email }),
