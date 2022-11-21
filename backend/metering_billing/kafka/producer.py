@@ -26,5 +26,4 @@ class Producer(metaclass=Singleton):
         )
         print(self.__connection.__dict__["_sender"].__dict__)
         print("PRODUCER PRODUCER")
-        self.__connection.flush()
         print(f"Produced record to topic {KAFKA_EVENTS_TOPIC}")
