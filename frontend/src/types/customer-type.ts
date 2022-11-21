@@ -17,8 +17,9 @@ export interface CustomerDetailType extends CustomerType {
   total_amount_due: number;
   subscriptions: CustomerDetailSubscription[];
   billing_address: string;
+  integrations: any ;
   invoices: InvoiceType[];
-    balance_adjustments: BalanceAdjustments[];
+  balance_adjustments: BalanceAdjustments[];
 }
 
 export interface CustomerPlus extends CustomerType {
