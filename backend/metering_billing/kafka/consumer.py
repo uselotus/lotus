@@ -43,9 +43,12 @@ class Consumer(metaclass=Singleton):
                 if msg is None or msg.value is None or msg.key is None:
                     continue
                 print(f"Consumed record. key={msg.key}, value={msg.value}")
-                write_batch_events_to_db(
-                    msg.value["events"], msg.value["organization_id"]
-                )
+                try:
+                    write_batch_events_to_db(
+                        msg.value["events"], msg.value["organization_id"]
+                    )
+                except:
+                    continue
         except:
             print(f"Could not consume from topic: {self.topic}")
             raise

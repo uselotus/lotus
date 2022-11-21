@@ -8,5 +8,4 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         consumer = Consumer()
-        print("about to consume")
         consumer.consume()
