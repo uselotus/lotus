@@ -6,6 +6,7 @@ import "./Login.css";
 import { useMutation } from "react-query";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
+import {LotusFilledButton, LotusOutlinedButton} from "../components/base/Button";
 
 interface ResetPasswordForm extends HTMLFormControlsCollection {
   email: string;
@@ -66,14 +67,12 @@ const ResetPassword: FC = () => {
                 />
               </Form.Item>
               <Form.Item>
-                <Button htmlType="submit">Reset Password</Button>
+                <LotusOutlinedButton text="Reset Password" htmlType="submit"/>
               </Form.Item>
             </Form>
           </Card>
           <div>
-            <Button type="primary" onClick={() => navigate("/login")}>
-              Login
-            </Button>
+            <LotusFilledButton text="Login" onClick={() => navigate("/login")}/>
           </div>
         </div>
       ) : (
@@ -83,9 +82,7 @@ const ResetPassword: FC = () => {
             instructions.
           </p>
           <div>
-            <Button type="primary" onClick={() => navigate("/login")}>
-              Back to Login
-            </Button>
+              <LotusFilledButton text="Back to Login" onClick={() => navigate("/login")}/>
           </div>
         </div>
       )}

@@ -1,12 +1,34 @@
-import { Button as BTN } from 'antd'
+// @ts-ignore
 import React from 'react'
+import './button.css'
 
-import './button.less'
-
-type Props = {
-  level?: 1 | 2 | 3 | 4
-  children: any
+interface LotusButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+    text: string;
+    children?: React.ReactNode;
 }
-export const Button = ({ level = 1, children }: Props) => {
-  return BTN
+
+export const LotusFilledButton : React.FunctionComponent<LotusButtonProps> = ({ className, onClick, children, ...rest}) => {
+  return (
+      <button
+          {...rest}
+          type="button"
+          onClick={onClick}
+          className={`lotus-button lotus-filled-button ${className}`}
+          >
+          {!!children ? children: rest.text }
+      </button>
+      )
+}
+
+export const LotusOutlinedButton : React.FunctionComponent<LotusButtonProps> = ({ className, onClick, children, ...rest}) => {
+  return (
+      <button
+          {...rest}
+          type="button"
+          onClick={onClick}
+          className={`lotus-button lotus-outlined-button ${className}`}
+          >
+          {!!children ? children: rest.text }
+      </button>
+      )
 }

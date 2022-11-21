@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { FeatureType } from "../../types/feature-type";
-import { Button, Divider, Modal, Select, Input, message } from "antd";
+import {  Divider, Modal, Select, Input, message } from "antd";
 import { Features } from "../../api/api";
 import { UseQueryResult, useQuery } from "react-query";
-
-const { Option } = Select;
+import {LotusOutlinedButton} from "../base/Button";
 
 const FeatureForm = (props: {
   visible: boolean;
@@ -19,7 +18,6 @@ const FeatureForm = (props: {
   const {
     data: features,
     isLoading,
-    isError,
   }: UseQueryResult<FeatureType[]> = useQuery<FeatureType[]>(
     ["feature_list"],
     () =>
@@ -104,7 +102,7 @@ const FeatureForm = (props: {
             onChange={(e) => setCreatedFeatureDescription(e.target.value)}
           ></Input>
 
-          <Button onClick={addnewFeatureToList}> Create</Button>
+          <LotusOutlinedButton text="Create" onClick={addnewFeatureToList}/>
         </div>
       </div>
     </Modal>

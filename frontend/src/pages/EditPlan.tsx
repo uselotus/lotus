@@ -35,6 +35,7 @@ import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
+import {LotusFilledButton, LotusOutlinedButton} from "../components/base/Button";
 
 interface CustomizedState {
   plan: PlanType;
@@ -364,24 +365,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     <PageLayout
       title={returnPageTitle()}
       extra={[
-        <Button
-          key={"back"}
+        <LotusOutlinedButton
           onClick={goBackPage}
-          icon={<ArrowLeftOutlined />}
-          type="default"
-          size="large"
+          text="Back"
         >
-          Back
-        </Button>,
-        <Button
-          key="create"
-          onClick={() => onFinish()}
-          className="bg-black text-white justify-self-end"
-          size="large"
-          type="primary"
-        >
-          {returnSubmitButtonText()}
-        </Button>,
+          <div className="flex items-center">
+              <ArrowLeftOutlined />
+              <div className="ml-2">Back</div>
+          </div>
+        </LotusOutlinedButton>,
+        <LotusFilledButton
+            text={returnSubmitButtonText()}
+            onClick={() => onFinish()}
+            className="justify-self-end ml-2"/>
       ]}
     >
       <Form.Provider>
@@ -501,12 +497,11 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                 title="Added Components"
                 className="h-full"
                 extra={[
-                  <Button
+                  <LotusOutlinedButton
+                    text="Add Component"
                     htmlType="button"
                     onClick={() => showComponentModal()}
-                  >
-                    Add Component
-                  </Button>,
+                  />
                 ]}
               >
                 <Form.Item
@@ -552,9 +547,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                 className="w-full my-5"
                 title="Added Features"
                 extra={[
-                  <Button htmlType="button" onClick={showFeatureModal}>
-                    Add Feature
-                  </Button>,
+                  <LotusOutlinedButton text='Add Feature' htmlType="button" onClick={showFeatureModal}/>,
                 ]}
               >
                 <Form.Item

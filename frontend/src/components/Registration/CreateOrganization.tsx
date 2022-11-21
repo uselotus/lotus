@@ -2,6 +2,7 @@ import React, { FC, useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Card, Input, Button, Form, Select } from "antd";
 import { useQueryClient } from "react-query";
+import {LotusOutlinedButton} from "../base/Button";
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;
@@ -84,7 +85,7 @@ const CreateOrganization = (props: { onSave: (org: Organizaton) => void }) => {
             <Select onSelect={handleIndustrySelect} options={industries} />
           </Form.Item>
           <Form.Item>
-            <Button htmlType="submit">Next</Button>
+            <LotusOutlinedButton text="Next" htmlType="submit"/>
           </Form.Item>
         </Form>
       </Card>

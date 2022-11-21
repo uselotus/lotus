@@ -18,6 +18,7 @@ import { MetricNameType, MetricType } from "../../types/metric-type";
 import type { InputRef } from "antd";
 import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
+import {LotusFilledButton} from "../base/Button";
 
 const { Option } = Select;
 const EditableContext = React.createContext<FormInstance<any> | null>(null);
@@ -468,13 +469,11 @@ function UsageComponentForm({
           pagination={false}
         />
         <div className="flex justify-center w-full mt-4">
-          <Button
+          <LotusFilledButton
             onClick={handleAdd}
-            type="primary"
-            style={{ marginBottom: 16 }}
-          >
-            Add Tier
-          </Button>
+            className="mb-2"
+            text="Add Tier"
+          />
         </div>
         {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>

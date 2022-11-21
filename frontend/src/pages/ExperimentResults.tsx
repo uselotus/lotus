@@ -10,6 +10,7 @@ import { BacktestResultType, SpecificResults } from "../types/experiment-type";
 import { PageLayout } from "../components/base/PageLayout";
 import BacktestSubstitution from "../components/Experiments/BacktestSubsitution";
 import dayjs from "dayjs";
+import {LotusOutlinedButton} from "../components/base/Button";
 
 const arrowURL = new URL("../components/arrow.svg", import.meta.url).href;
 
@@ -73,15 +74,15 @@ const ExperimentResults: FC = () => {
     <PageLayout
       title="Results"
       extra={[
-        <Button
-          key={"back"}
+        <LotusOutlinedButton
+          text="Back"
           onClick={goBackPage}
-          icon={<ArrowLeftOutlined />}
-          type="default"
-          size="large"
         >
-          Back
-        </Button>,
+         <div className="flex items-center">
+              <ArrowLeftOutlined />
+              <div className="ml-2">Back</div>
+          </div>
+        </LotusOutlinedButton>,
       ]}
     >
       {isError || experiment === undefined ? (

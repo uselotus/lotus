@@ -18,7 +18,7 @@ export const PageLayout = ({ children, ...props }: PageHeaderProps) => {
           ) : (
             <h1>{props.title}</h1>
           )}
-          <div>{props.extra}</div>
+          <div className="flex">{props.extra}</div>
         </div>
         <Layout.Content className="min-h-[calc(100vh-210px)]">
           {children}

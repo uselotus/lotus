@@ -10,6 +10,7 @@ import { Backtests } from "../api/api";
 import { toast } from "react-toastify";
 import { usePlanState, usePlanUpdater } from "../context/PlanContext";
 import dayjs from "dayjs";
+import {LotusFilledButton, LotusOutlinedButton} from "../components/base/Button";
 interface PlanRepType {
   plan_id: string;
   plan_name: string;
@@ -207,16 +208,11 @@ const CreateBacktest: FC = () => {
     <PageLayout
       title="New Experiment"
       extra={[
-        <Button
-          onClick={() => {
-            form.submit();
-          }}
+        <LotusOutlinedButton
+          text="Run Experiment"
+          onClick={() => form.submit()}
           className="bg-black text-white justify-self-end"
-          size="large"
-          key={"update-plan"}
-        >
-          Run Experiment
-        </Button>,
+        />
       ]}
     >
       <div className="space-y-8 divide-y divide-gray-200 w-md">
@@ -338,9 +334,7 @@ const CreateBacktest: FC = () => {
               </div>
 
               <div className="col-span-1">
-                <Button onClick={openplanNewModal}>
-                  Create Experiment Plan
-                </Button>
+                <LotusOutlinedButton text="Create Experiment Plan" onClick={openplanNewModal}/>
                 <div>
                   {substitutions.map((substitution, index) => {
                     return (
@@ -370,9 +364,7 @@ const CreateBacktest: FC = () => {
                 </div>
               </div>
             </div>
-            <div className="grid justify-items-center">
-              {/* <Button className=" max-w-md">+</Button> */}
-            </div>
+            <div className="grid justify-items-center"/>
           </div>
         </Form>
       </div>
@@ -415,21 +407,14 @@ const CreateBacktest: FC = () => {
           navigate("/backtest-plan");
         }}
         footer={[
-          <Button key="back" onClick={closeplanNewModal}>
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
+          <LotusOutlinedButton text="Cancel" key="back" onClick={closeplanNewModal}/>,
+          <LotusFilledButton
+            text="Edit"
             onClick={() => {
               navigate("/backtest-plan/" + replacementPlan?.plan_id);
             }}
-          >
-            Edit
-          </Button>,
-          <Button key="link" type="primary" onClick={closeplanNewModal}>
-            Use
-          </Button>,
+          />,
+          <LotusFilledButton text="Use" onClick={closeplanNewModal}/>
         ]}
         closeIcon={<div></div>}
       >

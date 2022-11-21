@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "antd";
 import EditPlan from "./EditPlan";
 import { ArrowRightOutlined } from "@ant-design/icons";
+import {LotusFilledButton} from "../components/base/Button";
 
 type PlanDetailParams = {
   planId: string;
@@ -63,9 +64,7 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
       {isError && (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="mb-5">Could Not Load Plan</h2>
-          <Button type="primary" onClick={() => navigate(-1)}>
-            Go Back
-          </Button>
+          <LotusFilledButton text="Go Back" onClick={() => navigate(-1)}/>
         </div>
       )}
       {plan !== undefined && versionIndex !== undefined && (

@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
+import {LotusFilledButton, LotusOutlinedButton} from "../components/base/Button";
 import posthog from "posthog-js";
 
 const cookies = new Cookies();
@@ -116,7 +117,7 @@ const Login: FC = () => {
                   </div>
                 </Form.Item>
                 <Form.Item>
-                  <Button htmlType="submit">Login</Button>
+                  <LotusOutlinedButton text="Login" htmlType="submit"/>
                 </Form.Item>
                 <Link
                   to="/reset-password"
@@ -127,13 +128,7 @@ const Login: FC = () => {
               </Form>
             </Card>
             <div>
-              <Button
-                type="primary"
-                className="w-full"
-                onClick={() => navigate("/register")}
-              >
-                Sign Up
-              </Button>
+                <LotusFilledButton text="Sign Up" onClick={() => navigate("/register")} className="w-full" />
             </div>
           </div>
           {mutation.isLoading && <LoadingSpinner />}

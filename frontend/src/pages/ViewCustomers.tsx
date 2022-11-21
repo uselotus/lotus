@@ -20,6 +20,7 @@ import CreateCustomerForm, {
   CreateCustomerState,
 } from "../components/Customers/CreateCustomerForm";
 import { toast } from "react-toastify";
+import {LotusFilledButton} from "../components/base/Button";
 
 const ViewCustomers: FC = () => {
   const queryClient = useQueryClient();
@@ -83,9 +84,7 @@ const ViewCustomers: FC = () => {
     <PageLayout
       title="Customers"
       extra={[
-        <Button type="primary" size="large" onClick={openCustomerModal}>
-          Create Customer
-        </Button>,
+        <LotusFilledButton text="Create Customer" onClick={openCustomerModal}/>,
       ]}
     >
       <div>

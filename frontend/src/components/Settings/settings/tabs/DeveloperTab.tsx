@@ -11,6 +11,7 @@ import React, { useState } from "react";
 import { useQuery } from "react-query";
 import { Alerts, APIToken } from "../../../../api/api";
 import { DeleteOutlined } from "@ant-design/icons";
+import {LotusFilledButton} from "../../../base/Button";
 
 export const DeveloperTab = () => {
   const [visible, setVisible] = useState<boolean>(false);
@@ -73,7 +74,7 @@ export const DeveloperTab = () => {
           onConfirm={getKey}
           okText="Yes"
         >
-          <Button type="primary">Revoke API Key</Button>
+          <LotusFilledButton text="Revoke API Key"/>
         </Popconfirm>
       </div>
       <Divider />
@@ -125,9 +126,7 @@ export const DeveloperTab = () => {
         title="New API Key"
         onCancel={closeModal}
         footer={
-          <Button key="Okay" onClick={closeModal} type="primary">
-            Okay
-          </Button>
+          <LotusFilledButton text="Okay" onClick={closeModal}/>
         }
       >
         <div className="flex flex-col">
