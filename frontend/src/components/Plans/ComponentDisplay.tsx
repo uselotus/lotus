@@ -82,6 +82,7 @@ export const ComponentDisplay: FC<{
               style={{ backgroundColor: "FAFAFA" }}
               size="middle"
               rowClassName="bg-[#FAFAFA]"
+              className="noborderTable"
               columns={[
                 {
                   title: "Range",

@@ -4,7 +4,7 @@
   width: 100%;
 }
 
-.ant-table-tbody > tr > td {
+.noborderTable .ant-table-tbody > tr > td {
   border: none;
 }
 
