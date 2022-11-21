@@ -290,12 +290,13 @@ if KAFKA_HOST:
             "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
             for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
         ]
-    producer_config = {"bootstrap_servers": KAFKA_HOST, "api_version": (2, 8, 1)}
+    producer_config = {"bootstrap_servers": KAFKA_HOST, "api_version": (0, 10, 2)}
     consumer_config = {
         "bootstrap_servers": KAFKA_HOST,
         "auto_offset_reset": "earliest",
         "value_deserializer": value_deserializer,
         "key_deserializer": key_deserializer,
+        "api_version": (0, 10, 2)
     }
     admin_client_config = {
         "bootstrap_servers": KAFKA_HOST,
