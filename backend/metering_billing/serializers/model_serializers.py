@@ -5,10 +5,9 @@ from typing import Union
 from actstream.models import Action
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateBillableMetric
+from metering_billing.exceptions import DuplicateMetric
 from metering_billing.models import (
     Alert,
-    BillableMetric,
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -17,6 +16,7 @@ from metering_billing.models import (
     Feature,
     Invoice,
     InvoiceLineItem,
+    Metric,
     NumericFilter,
     Organization,
     OrganizationInviteToken,
@@ -212,6 +212,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider",
             "payment_provider_id",
             "properties",
+            "integrations",
         )
         extra_kwargs = {
             "customer_id": {"required": True},
@@ -302,9 +303,9 @@ class NumericFilterSerializer(serializers.ModelSerializer):
         fields = ("property_name", "operator", "comparison_value")
 
 
-class BillableMetricSerializer(serializers.ModelSerializer):
+class MetricSerializer(serializers.ModelSerializer):
     class Meta:
-        model = BillableMetric
+        model = Metric
         fields = (
             "event_name",
             "property_name",
@@ -314,9 +315,10 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_type",
             "metric_type",
             "billable_metric_name",
-            "numeric_filters",
-            "categorical_filters",
+            # "numeric_filters",
+            # "categorical_filters",
             "properties",
+            "is_cost_metric",
         )
         extra_kwargs = {
             "metric_type": {"required": True},
@@ -324,12 +326,12 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name": {"required": True},
         }
 
-    numeric_filters = NumericFilterSerializer(
-        many=True, allow_null=True, required=False
-    )
-    categorical_filters = CategoricalFilterSerializer(
-        many=True, allow_null=True, required=False
-    )
+    # numeric_filters = NumericFilterSerializer(
+    #     many=True, allow_null=True, required=False
+    # )
+    # categorical_filters = CategoricalFilterSerializer(
+    #     many=True, allow_null=True, required=False
+    # )
     granularity = serializers.ChoiceField(
         choices=METRIC_GRANULARITY.choices,
         required=False,
@@ -363,9 +365,9 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
-        bm, created = BillableMetric.objects.get_or_create(**validated_data)
+        bm, created = Metric.objects.get_or_create(**validated_data)
         if not created:
-            raise DuplicateBillableMetric
+            raise DuplicateMetric
 
         # get filters
         for num_filter in num_filter_data:
@@ -484,14 +486,14 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         read_only_fields = ["billable_metric"]
 
     # READ-ONLY
-    billable_metric = BillableMetricSerializer(read_only=True)
+    billable_metric = MetricSerializer(read_only=True)
 
     # WRITE-ONLY
     billable_metric_name = SlugRelatedFieldWithOrganization(
         slug_field="billable_metric_name",
         write_only=True,
         source="billable_metric",
-        queryset=BillableMetric.objects.all(),
+        queryset=Metric.objects.all(),
     )
 
     # both
@@ -1290,10 +1292,10 @@ class PlanActionSerializer(PlanSerializer):
         return "Plan"
 
 
-class BillableMetricActionSerializer(BillableMetricSerializer):
-    class Meta(BillableMetricSerializer.Meta):
-        model = BillableMetric
-        fields = BillableMetricSerializer.Meta.fields + ("string_repr", "object_type")
+class MetricActionSerializer(MetricSerializer):
+    class Meta(MetricSerializer.Meta):
+        model = Metric
+        fields = MetricSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
     object_type = serializers.SerializerMethodField()
@@ -1325,7 +1327,7 @@ GFK_MODEL_SERIALIZER_MAPPING = {
     PlanVersion: PlanVersionActionSerializer,
     Plan: PlanActionSerializer,
     Subscription: SubscriptionActionSerializer,
-    BillableMetric: BillableMetricActionSerializer,
+    Metric: MetricActionSerializer,
     Customer: CustomerActionSerializer,
 }
 
@@ -1499,6 +1501,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "invoices",
             "total_amount_due",
             "subscriptions",
+            "integrations",
         )
 
     subscriptions = serializers.SerializerMethodField()

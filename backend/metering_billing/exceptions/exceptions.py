@@ -33,10 +33,10 @@ class DuplicateCustomerID(APIException):
     default_code = "Customer ID already exists"
 
 
-class DuplicateBillableMetric(APIException):
+class DuplicateMetric(APIException):
     status_code = 409
-    default_detail = "Billable metric already exists"
-    default_code = "Billable metric already exists"
+    default_detail = "Metric already exists"
+    default_code = "Metric already exists"
 
 
 class OverlappingSubscription(APIException):
