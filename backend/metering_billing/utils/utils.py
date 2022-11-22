@@ -21,12 +21,12 @@ def convert_to_decimal(value):
 
 
 def convert_to_date(value):
-    if isinstance(value, datetime.date):
-        return value
-    elif isinstance(value, datetime.datetime):
+    if isinstance(value, datetime.datetime):
         return value.date()
     elif isinstance(value, str):
         return convert_to_date(parser.parse(value))
+    elif isinstance(value, datetime.date):
+        return value
     else:
         raise Exception(f"can't convert type {type(value)} into date")
 

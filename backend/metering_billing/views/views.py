@@ -145,7 +145,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class CostAnalysisView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[CostAnalysisRequestSerializer],
@@ -171,13 +171,12 @@ class CostAnalysisView(APIView):
                 {"error": "Customer not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-        return_dict = {}
+        per_day_dict = {}
         for period in periods_bwn_twodates(
             USAGE_CALC_GRANULARITY.DAILY, start_date, end_date
         ):
             period = convert_to_date(period)
-            return_dict[period] = {
+            per_day_dict[period] = {
                 "date": period,
                 "cost_data": [],
                 "revenue": Decimal(0),
@@ -194,7 +193,7 @@ class CostAnalysisView(APIView):
             )
             for date, usage in usage.items():
                 date = convert_to_date(date)
-                return_dict[date]["cost_data"].append(
+                per_day_dict[date]["cost_data"].append(
                     {
                         "metric": metric,
                         "cost": usage,
@@ -218,9 +217,25 @@ class CostAnalysisView(APIView):
             earned_revenue = subscription.calculate_earned_revenue_per_day()
             for date, earned_revenue in earned_revenue.items():
                 date = convert_to_date(date)
-                if date in return_dict:
-                    return_dict[date]["revenue"] += earned_revenue
-        serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
+                if date in per_day_dict:
+                    per_day_dict[date]["revenue"] += earned_revenue
+        return_dict = {
+            "per_day": [v for k,v in per_day_dict.items()],
+        }
+        total_cost = Decimal(0)
+        for day in per_day_dict.values():
+            for cost_data in day["cost_data"]:
+                total_cost += cost_data["cost"]
+        total_revenue = Decimal(0)
+        for day in per_day_dict.values():
+            total_revenue += day["revenue"]
+        return_dict["total_cost"] = total_cost
+        return_dict["total_revenue"] = total_revenue
+        if total_cost == 0:
+            return_dict["margin"] = 0
+        else:
+            return_dict["margin"] = total_revenue/total_cost - 1
+        serializer = CostAnalysisSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         ret = make_all_decimals_floats(ret)
