@@ -601,7 +601,6 @@ class PlanComponent(models.Model):
             start_date = end_date
             if start_date > now:
                 break
-
         for period_start, period_end in periods:
             usage = billable_metric.get_earned_usage_per_day(
                 start_date=period_start,
@@ -612,6 +611,7 @@ class PlanComponent(models.Model):
                 running_total_revenue = Decimal(0)
                 running_total_usage = Decimal(0)
                 for date, usage_qty in usage.items():
+                    date = convert_to_date(date)
                     usage_qty = convert_to_decimal(usage_qty)
                     if billable_metric.metric_type == METRIC_TYPE.COUNTER:
                         running_total_usage += usage_qty
@@ -1206,11 +1206,8 @@ class Subscription(models.Model):
             period = convert_to_date(period)
             return_dict[period] += convert_to_decimal(d["amount"])
         for component in self.billing_plan.plan_components.all():
-            if component.billable_metric.metric_type != METRIC_TYPE.STATEFUL:
-                continue
-            for period, amount in component.calculate_earned_revenue_per_day(
-                self
-            ).items():
+            rev_per_day = component.calculate_earned_revenue_per_day(self)
+            for period, amount in rev_per_day.items():
                 period = convert_to_date(period)
                 return_dict[period] += amount
         return return_dict
