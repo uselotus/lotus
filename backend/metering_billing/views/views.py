@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 
 import posthog
@@ -9,7 +10,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import APIToken, BillableMetric, Customer, Subscription
+from metering_billing.models import APIToken, Customer, Metric, Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
@@ -18,6 +19,7 @@ from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.request_serializers import *
 from metering_billing.serializers.response_serializers import *
 from metering_billing.utils import (
+    convert_to_date,
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
@@ -64,9 +66,7 @@ class PeriodMetricRevenueView(APIView):
         ]
         p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
         p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
-        all_org_billable_metrics = BillableMetric.objects.filter(
-            organization=organization
-        )
+        all_org_billable_metrics = Metric.objects.filter(organization=organization)
 
         return_dict = {
             "daily_usage_revenue_period_1": {},
@@ -136,6 +136,88 @@ class PeriodMetricRevenueView(APIView):
                     {"date": str(k.date()), "metric_revenue": v}
                     for k, v in dic["data"].items()
                 ]
+        serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
+        ret = make_all_decimals_floats(ret)
+        ret = make_all_dates_times_strings(ret)
+        return Response(ret, status=status.HTTP_200_OK)
+
+
+class CostAnalysisView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[CostAnalysisRequestSerializer],
+        responses={200: CostAnalysisSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Returns the revenue for an organization in a given time period.
+        """
+        organization = parse_organization(request)
+        serializer = CostAnalysisRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        start_date, end_date, customer_id = [
+            serializer.validated_data.get(key, None)
+            for key in ["start_date", "end_date", "customer_id"]
+        ]
+        try:
+            customer = Customer.objects.get(organization=organization, customer_id=customer_id)
+        except Customer.DoesNotExist:
+            return Response(
+                {"error": "Customer not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return_dict = {}
+        for period in periods_bwn_twodates(
+            USAGE_CALC_GRANULARITY.DAILY, start_date, end_date
+        ):
+            period = convert_to_date(period)
+            return_dict[period] = {
+                "date": period,
+                "cost_data": [],
+                "revenue": Decimal(0),
+            }
+        cost_metrics = Metric.objects.filter(
+            organization=organization, is_cost_metric=True
+        )
+        for metric in cost_metrics:
+            usage = metric.get_usage(
+                start_date,
+                end_date,
+                grnaularity=USAGE_CALC_GRANULARITY.DAILY,
+                customer=customer,
+            )
+            for date, usage in usage.items():
+                date = convert_to_date(date)
+                return_dict[date]["cost_data"].append(
+                    {
+                        "metric": metric,
+                        "cost": usage,
+                    }
+                )
+        subscriptions = (
+            Subscription.objects.filter(
+                Q(start_date__range=[start_date, end_date])
+                | Q(end_date__range=[start_date, end_date])
+                | (Q(start_date__lte=start_date) & Q(end_date__gte=end_date)),
+                organization=organization,
+                customer=customer,
+            )
+            .select_related("billing_plan")
+            .select_related("customer")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .prefetch_related("billing_plan__plan_components__tiers")
+        )
+        for subscription in subscriptions:
+            earned_revenue = subscription.calculate_earned_revenue_per_day()
+            for date, earned_revenue in earned_revenue.items():
+                date = convert_to_date(date)
+                if date in return_dict:
+                    return_dict[date]["revenue"] += earned_revenue
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
@@ -219,7 +301,7 @@ class PeriodMetricUsageView(APIView):
         q_start = date_as_min_dt(q_start)
         q_end = date_as_max_dt(q_end)
 
-        metrics = BillableMetric.objects.filter(organization=organization)
+        metrics = Metric.objects.filter(organization=organization)
         return_dict = {}
         for metric in metrics:
             usage_summary = metric.get_usage(
@@ -363,79 +445,6 @@ class CustomersSummaryView(APIView):
         )
         serializer = CustomerSummarySerializer(customers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# class CustomerDetailView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     @extend_schema(
-#         parameters=[
-#             inline_serializer(
-#                 name="CustomerDetailRequestSerializer",
-#                 fields={"customer_id": serializers.CharField()},
-#             ),
-#         ],
-#         responses={
-#             200: CustomerDetailSerializer,
-#             400: inline_serializer(
-#                 name="CustomerDetailErrorResponseSerializer",
-#                 fields={"error_detail": serializers.CharField()},
-#             ),
-#         },
-#     )
-#     def get(self, request, format=None):
-#         """
-#         Get the current settings for the organization.
-#         """
-#         organization = parse_organization(request)
-#         customer_id = request.query_params.get("customer_id")
-#         try:
-#             customer = (
-#                 Customer.objects.filter(
-#                     organization=organization, customer_id=customer_id
-#                 )
-#                 .prefetch_related(
-#                     Prefetch(
-#                         "customer_subscriptions",
-#                         queryset=Subscription.objects.filter(organization=organization),
-#                         to_attr="subscriptions",
-#                     ),
-#                     Prefetch(
-#                         "subscriptions__billing_plan",
-#                         queryset=PlanVersion.objects.filter(organization=organization),
-#                         to_attr="billing_plans",
-#                     ),
-#                 )
-#                 .get()
-#             )
-#         except Customer.DoesNotExist:
-#             return Response(
-#                 {
-#                     "error_detail": "Customer with customer_id {} does not exist".format(
-#                         customer_id
-#                     )
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         total_amount_due = customer.get_outstanding_revenue()
-#         invoices = Invoice.objects.filter(
-#             organization=organization,
-#             customer=customer,
-#         )
-
-#         balance_adjustments = CustomerBalanceAdjustment.objects.filter(
-#             customer=customer,
-#         )
-#         serializer = CustomerDetailSerializer(
-#             customer,
-#             context={
-#                 "total_amount_due": total_amount_due,
-#                 "invoices": invoices,
-#                 "balance_adjustments": balance_adjustments,
-#             },
-#         )
-#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomersWithRevenueView(APIView):

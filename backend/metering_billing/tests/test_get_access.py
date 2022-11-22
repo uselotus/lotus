@@ -4,9 +4,9 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
 from metering_billing.models import (
-    BillableMetric,
     Event,
     Feature,
+    Metric,
     PlanComponent,
     PlanVersion,
     PriceTier,
@@ -68,7 +68,7 @@ def get_access_test_common_setup(
             _quantity=5,
         )
         deny_limit_metric_set = baker.make(
-            BillableMetric,
+            Metric,
             organization=org,
             event_name="email_sent",
             property_name=itertools.cycle([""]),
@@ -85,7 +85,7 @@ def get_access_test_common_setup(
             _quantity=5,
         )
         allow_limit_metric_set = baker.make(
-            BillableMetric,
+            Metric,
             organization=org,
             event_name="api_call",
             property_name=itertools.cycle([""]),
@@ -94,7 +94,7 @@ def get_access_test_common_setup(
         )
         setup_dict["allow_limit_metrics"] = allow_limit_metric_set
         allow_free_metric_set = baker.make(
-            BillableMetric,
+            Metric,
             organization=org,
             event_name="bogus_event",
             property_name=itertools.cycle([""]),
@@ -251,7 +251,7 @@ class TestGetAccess:
             plan=plan,
             flat_rate=30.0,
         )
-        metric = BillableMetric.objects.create(
+        metric = Metric.objects.create(
             organization=setup_dict["org"],
             event_name="log_num_users",
             property_name="num_users",

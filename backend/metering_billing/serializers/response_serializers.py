@@ -1,5 +1,8 @@
 from rest_framework import serializers
 
+from .model_serializers import (MetricSerializer,
+                                SubscriptionCustomerSummarySerializer)
+
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
     period_1_total_subscriptions = serializers.IntegerField()
@@ -57,3 +60,21 @@ class SubscriptionUsageResponseSerializer(serializers.Serializer):
     usage_amount_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     flat_amount_due = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_amount_due = serializers.DecimalField(decimal_places=10, max_digits=20)
+
+
+class SingleMetricCostSerializer(serializers.Serializer):
+    metric = MetricSerializer()
+    cost = serializers.DecimalField(decimal_places=10, max_digits=20)
+
+
+class SingleDayCostAnalysisSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    cost_data = serializers.ListField(child=SingleMetricCostSerializer())
+    revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
+
+
+class CostAnalysisSerializer(serializers.Serializer):
+    per_day = serializers.ListField(child=SingleDayCostAnalysisSerializer())
+    total_cost = serializers.DecimalField(decimal_places=10, max_digits=20)
+    total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
+    margin = serializers.DecimalField(decimal_places=10, max_digits=20)

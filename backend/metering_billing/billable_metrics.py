@@ -32,9 +32,7 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 
-BillableMetric = apps.get_app_config("metering_billing").get_model(
-    model_name="BillableMetric"
-)
+Metric = apps.get_app_config("metering_billing").get_model(model_name="Metric")
 Customer = apps.get_app_config("metering_billing").get_model(model_name="Customer")
 Event = apps.get_app_config("metering_billing").get_model(model_name="Event")
 Subscription = apps.get_app_config("metering_billing").get_model(
@@ -42,9 +40,9 @@ Subscription = apps.get_app_config("metering_billing").get_model(
 )
 
 
-class BillableMetricHandler(abc.ABC):
+class MetricHandler(abc.ABC):
     @abc.abstractmethod
-    def __init__(self, billable_metric: BillableMetric):
+    def __init__(self, billable_metric: Metric):
         """This method will be called whenever we need to work with a billable metric, whether that's determining usage, or calculating revenue, or generating a bill. You might want to extract the fields you want to work with in the metric and make them instance variables. Additionally, you should double-check that some thinsg you expect are true, for example that the metric type matches the handler, and that the aggregation is supported by the handler. If not, raise an exception."""
         pass
 
@@ -89,8 +87,8 @@ class BillableMetricHandler(abc.ABC):
         pass
 
 
-class CounterHandler(BillableMetricHandler):
-    def __init__(self, billable_metric: BillableMetric):
+class CounterHandler(MetricHandler):
+    def __init__(self, billable_metric: Metric):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
         assert (
@@ -320,7 +318,7 @@ class CounterHandler(BillableMetricHandler):
 
     @staticmethod
     def validate_data(data: dict) -> dict:
-        # has been top-level validated by the BillableMetricSerializer, so we can assume
+        # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed
         # unpack stuff first
         usg_agg_type = data.get("usage_aggregation_type", None)
@@ -367,14 +365,14 @@ class CounterHandler(BillableMetricHandler):
         return data
 
 
-class StatefulHandler(BillableMetricHandler):
+class StatefulHandler(MetricHandler):
     """
     The key difference between a stateful handler and an aggregation handler is that the stateful handler has state across time periods. Even when given a blocked off time period, it'll look for previous values of the event/property in question and use those as a starting point. A common example of a metric that woudl fit under the Stateful pattern would be the number of seats a product has available. When we go into a new billing period, the number of seats doesn't magically disappear... we have to keep track of it. We currently support two types of events: quantity_logging and delta_logging. Quantity logging would look like sending events to the API that say we have x users at the moment. Delta logging would be like sending events that say we added x users or removed x users. The stateful handler will look at the previous value of the metric and add/subtract the delta to get the new value.
 
     An interesting thing to note is the definition of "usage".
     """
 
-    def __init__(self, billable_metric: BillableMetric):
+    def __init__(self, billable_metric: Metric):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
         assert (
@@ -397,7 +395,7 @@ class StatefulHandler(BillableMetricHandler):
 
     @staticmethod
     def validate_data(data: dict) -> dict:
-        # has been top-level validated by the BillableMetricSerializer, so we can assume
+        # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed
 
         # unpack stuff first
@@ -859,12 +857,12 @@ class StatefulHandler(BillableMetricHandler):
         ]
 
 
-class RateHandler(BillableMetricHandler):
+class RateHandler(MetricHandler):
     """
     A rate handler can be thought of as the exact opposite of a Stateful Handler. A StatefulHandler keeps an underlying state that persists across billing periods. A RateHandler resets it's state in intervals shorter than the billing period. For example, a RateHandler could be used to charge for the number of API calls made in a day, or to limit the number of database insertions per hour. If a StatefulHandler is teh "integral" of a CounterHandler, then a RateHandler is the "derivative" of a CounterHandler.
     """
 
-    def __init__(self, billable_metric: BillableMetric):
+    def __init__(self, billable_metric: Metric):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
         assert (
@@ -891,7 +889,7 @@ class RateHandler(BillableMetricHandler):
 
     @staticmethod
     def validate_data(data: dict) -> dict:
-        # has been top-level validated by the BillableMetricSerializer, so we can assume
+        # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed
 
         # unpack stuff first
@@ -1104,7 +1102,6 @@ class RateHandler(BillableMetricHandler):
     def _allowed_billable_aggregation_types():
         return [
             METRIC_AGGREGATION.MAX,
-            METRIC_AGGREGATION.SUM,
         ]
 
 

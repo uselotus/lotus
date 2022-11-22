@@ -56,6 +56,10 @@ class PeriodRequestSerializer(serializers.Serializer):
     end_date = serializers.DateField()
 
 
+class CostAnalysisRequestSerializer(PeriodRequestSerializer):
+    customer_id = serializers.CharField()
+
+
 # PERIOD METRIC USAGE SERIALIZERS GO HERE
 class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
     top_n_customers = serializers.IntegerField(required=False)

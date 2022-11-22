@@ -7,17 +7,17 @@ from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
-from metering_billing.exceptions import DuplicateBillableMetric, DuplicateCustomerID
+from metering_billing.exceptions import DuplicateCustomerID, DuplicateMetric
 from metering_billing.models import (
     Alert,
     Backtest,
-    BillableMetric,
     Customer,
     CustomerBalanceAdjustment,
     Event,
     ExternalPlanLink,
     Feature,
     Invoice,
+    Metric,
     OrganizationSetting,
     Plan,
     PlanComponent,
@@ -36,7 +36,6 @@ from metering_billing.serializers.backtest_serializers import (
 from metering_billing.serializers.model_serializers import (
     ActionSerializer,
     AlertSerializer,
-    BillableMetricSerializer,
     CustomerDetailSerializer,
     CustomerSerializer,
     EventSerializer,
@@ -44,6 +43,7 @@ from metering_billing.serializers.model_serializers import (
     FeatureSerializer,
     InvoiceSerializer,
     InvoiceUpdateSerializer,
+    MetricSerializer,
     OrganizationSettingSerializer,
     PlanDetailSerializer,
     PlanSerializer,
@@ -265,6 +265,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             customer = self.get_object()
             total_amount_due = customer.get_outstanding_revenue()
             invoices = Invoice.objects.filter(
+                ~Q(status=INVOICE_STATUS.DRAFT),
                 organization=organization,
                 customer=customer,
             )
@@ -300,21 +301,21 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
 
-class BillableMetricViewSet(viewsets.ModelViewSet):
+class MetricViewSet(viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Billable Metrics.
     """
 
-    serializer_class = BillableMetricSerializer
+    serializer_class = MetricSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "head", "delete"]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return BillableMetric.objects.filter(organization=organization)
+        return Metric.objects.filter(organization=organization)
 
     def get_serializer_context(self):
-        context = super(BillableMetricViewSet, self).get_serializer_context()
+        context = super(MetricViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context
@@ -342,7 +343,7 @@ class BillableMetricViewSet(viewsets.ModelViewSet):
         try:
             instance = serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
-            raise DuplicateBillableMetric
+            raise DuplicateMetric
         try:
             user = self.request.user
         except:

@@ -18,6 +18,7 @@ from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
     calculate_end_date,
+    convert_to_date,
     convert_to_decimal,
     customer_uuid,
     dates_bwn_two_dts,
@@ -310,7 +311,7 @@ class CategoricalFilter(models.Model):
     comparison_value = models.JSONField()
 
 
-class BillableMetric(models.Model):
+class Metric(models.Model):
     # meta
     organization = models.ForeignKey(
         Organization,
@@ -356,6 +357,7 @@ class BillableMetric(models.Model):
         null=True,
         blank=True,
     )
+    is_cost_metric = models.BooleanField(default=False)
 
     # filters
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
@@ -481,7 +483,7 @@ class PriceTier(models.Model):
 
 class PlanComponent(models.Model):
     billable_metric = models.ForeignKey(
-        BillableMetric,
+        Metric,
         on_delete=models.CASCADE,
         related_name="+",
         null=True,
@@ -585,40 +587,6 @@ class PlanComponent(models.Model):
         }
         free_units_usage_left = self.free_metric_units
         remainder_billable_units = 0
-        for period in period_revenue_dict:
-            period_usage = usage.get(period, 0)
-            qty = convert_to_decimal(period_usage)
-            period_revenue_dict[period] = {"usage_qty": qty, "revenue": 0}
-            if (
-                self.cost_per_batch == 0
-                or self.cost_per_batch is None
-                or self.metric_units_per_batch == 0
-                or self.metric_units_per_batch is None
-            ):
-                continue
-            else:
-                billable_units = max(
-                    qty - free_units_usage_left + remainder_billable_units, 0
-                )
-                billable_batches = billable_units // self.metric_units_per_batch
-                remainder_billable_units = (
-                    billable_units - billable_batches * self.metric_units_per_batch
-                )
-                free_units_usage_left = max(0, free_units_usage_left - qty)
-                if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-                    usage_revenue = (
-                        billable_batches
-                        * self.cost_per_batch
-                        / len(period_revenue_dict)
-                    )
-                else:
-                    usage_revenue = billable_batches * self.cost_per_batch
-                period_revenue_dict[period]["revenue"] = convert_to_decimal(
-                    usage_revenue
-                )
-                if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-                    free_units_usage_left = self.free_metric_units
-                    remainder_billable_units = 0
         return period_revenue_dict
 
 
@@ -1179,6 +1147,23 @@ class Subscription(models.Model):
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             generate_invoice(self, include_usage=False, flat_fee_behavior="full_amount")
+    
+    def calculate_earned_revenue_per_day(self):
+        return_dict = {}
+        for period in periods_bwn_twodates(
+            USAGE_CALC_GRANULARITY.DAILY, self.start_date, self.end_date
+        ):
+            period = convert_to_date(period)
+            return_dict[period] = Decimal(0)
+        for component in self.billing_plan.plan_components.all():
+            for period, amount in component.calculate_earned_revenue_per_day(self).items():
+                period = convert_to_date(period)
+                return_dict[period] += amount
+        for period, d in self.prorated_flat_costs_dict.items():
+            period = convert_to_date(period)
+            return_dict[period] += d["amount"]
+        return return_dict
+
 
 
 class Backtest(models.Model):

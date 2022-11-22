@@ -11,9 +11,9 @@ from faker import Faker
 from metering_billing.models import (
     Backtest,
     BacktestSubstitution,
-    BillableMetric,
     Customer,
     Event,
+    Metric,
     Organization,
     Plan,
     PlanComponent,
@@ -80,7 +80,7 @@ def setup_demo_3(company_name, username, email, password):
         )
         small_customers.append(customer)
     calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
-        BillableMetric,
+        Metric,
         organization=organization,
         event_name="generate_text",
         property_name=itertools.cycle(
@@ -102,7 +102,7 @@ def setup_demo_3(company_name, username, email, password):
         _quantity=5,
     )
     (num_seats,) = baker.make(
-        BillableMetric,
+        Metric,
         organization=organization,
         event_name="log_num_seats",
         property_name=itertools.cycle(
