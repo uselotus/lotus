@@ -265,7 +265,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             customer = self.get_object()
             total_amount_due = customer.get_outstanding_revenue()
             invoices = Invoice.objects.filter(
-                ~Q(status=INVOICE_STATUS.DRAFT),
+                ~Q(payment_status=INVOICE_STATUS.DRAFT),
                 organization=organization,
                 customer=customer,
             )

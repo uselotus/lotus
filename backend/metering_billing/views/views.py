@@ -220,7 +220,7 @@ class CostAnalysisView(APIView):
                 if date in per_day_dict:
                     per_day_dict[date]["revenue"] += earned_revenue
         return_dict = {
-            "per_day": [v for k,v in per_day_dict.items()],
+            "per_day": [v for k, v in per_day_dict.items()],
         }
         total_cost = Decimal(0)
         for day in per_day_dict.values():
@@ -234,7 +234,7 @@ class CostAnalysisView(APIView):
         if total_cost == 0:
             return_dict["margin"] = 0
         else:
-            return_dict["margin"] = total_revenue/total_cost - 1
+            return_dict["margin"] = total_revenue / total_cost - 1
         serializer = CostAnalysisSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data

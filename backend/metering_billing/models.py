@@ -622,7 +622,6 @@ class PlanComponent(models.Model):
                     for i, tier in enumerate(tiers):
                         calc_rev_dict = {
                             "usage_dict": {date: running_total_usage},
-                            
                         }
                         if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
                             calc_rev_dict["division_factor"] = len(usage)
