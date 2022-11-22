@@ -426,7 +426,7 @@ def setup_demo_3(company_name, username, email, password):
             word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
             word_count = 0
             while word_count < word_limit:
-                event_words = random.gauss(325, 60)
+                event_words = random.gauss(325, 60) // 1
                 if word_count + event_words > word_limit:
                     break
                 compute_time = event_words * random.gauss(0.1, 0.02)

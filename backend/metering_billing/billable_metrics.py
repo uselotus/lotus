@@ -72,8 +72,7 @@ class MetricHandler(abc.ABC):
 
     @abc.abstractmethod
     def get_earned_usage_per_day(
-        self,
-        subscription: Subscription,
+        self, start_date: datetime.date, end_date: datetime.date, customer: Customer
     ) -> dict[datetime.datetime, float]:
         """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
 
@@ -212,21 +211,15 @@ class CounterHandler(MetricHandler):
         _, customer_usage_val = list(customer_usage.items())[0]
         return customer_usage_val
 
-    def get_earned_usage_per_day(
-        self, subscription: Subscription
-    ) -> dict[datetime.datetime, float]:
+    def get_earned_usage_per_day(self, start_date, end_date, customer):
         now = now_utc()
-        if type(start_date) == str:
-            start_date = parser.parse(start_date)
-        if type(end_date) == str:
-            end_date = parser.parse(end_date)
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
             "time_created__lt": now,
-            "time_created__gte": subscription.start_date,
-            "time_created__lte": subscription.end_date,
-            "customer": subscription.customer,
+            "time_created__gte": start_date,
+            "time_created__lte": end_date,
+            "customer": customer,
         }
         pre_groupby_annotation_kwargs = {}
         groupby_kwargs = {"customer_name": F("customer__customer_name")}
@@ -298,13 +291,15 @@ class CounterHandler(MetricHandler):
             total_average = total_usage_qty / total_num_events
             for row in q_post_gb_ann:
                 tc_trunc = row["time_created_truncated"]
-                usage_qty = total_average * (row["usage_qty"]*row["n_events"]/total_usage_qty)
+                usage_qty = total_average * (
+                    row["usage_qty"] * row["n_events"] / total_usage_qty
+                )
                 return_dict[tc_trunc] = usage_qty
         else:
             return_dict = {}
             for row in q_post_gb_ann:
                 tc_trunc = row["time_created_truncated"]
-                usage_qty = row["usage_qty"] 
+                usage_qty = row["usage_qty"]
                 return_dict[tc_trunc] = usage_qty
         return return_dict
 
@@ -830,15 +825,15 @@ class StatefulHandler(MetricHandler):
             )
             return last_usage.first().tot_qty
 
-    def get_earned_usage_per_day(self, subscription):
+    def get_earned_usage_per_day(self, start_date, end_date, customer):
         per_customer = self.get_usage(
-            start_date=subscription.start_date,
-            end_date=subscription.end_date,
-            granularity=USAGE_CALC_GRANULARITY.DAILY,
-            customer=subscription.customer,
+            start_date=start_date,
+            end_date=end_date,
+            results_granularity=USAGE_CALC_GRANULARITY.DAILY,
+            customer=customer,
         )
-        assert subscription.customer.customer_name in per_customer
-        customer_usage = per_customer[subscription.customer.customer_name]
+        assert customer.customer_name in per_customer
+        customer_usage = per_customer[customer.customer_name]
         return customer_usage
 
     @staticmethod
@@ -1046,10 +1041,6 @@ class RateHandler(MetricHandler):
             subquery = subquery.annotate(
                 usage_qty=Window(Max(Cast(F("property_value"), FloatField())))
             )
-        # elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-        #     subquery = subquery.annotate(
-        #         usage_qty=Window(Count(F("property_value"), distinct=True))
-        #     )
 
         rate_per_event = q_pre_gb_ann.annotate(
             usage_qty=Subquery(
@@ -1070,16 +1061,21 @@ class RateHandler(MetricHandler):
             period_usages[cust][tc_trunc] = usage_qty
         return period_usages
 
-    # def get_earned_usage_per_day(self, subscription):
-    #     per_customer = self.get_usage(
-    #         start_date=subscription.start_date,
-    #         end_date=subscription.end_date,
-    #         granularity=USAGE_CALC_GRANULARITY.DAILY,
-    #         customer=subscription.customer,
-    #     )
-    #     assert subscription.customer.customer_name in per_customer
-    #     customer_usage = per_customer[subscription.customer.customer_name]
-    #     return customer_usage
+    def get_earned_usage_per_day(self, start_date, end_date, customer):
+        per_customer = self.get_usage(
+            start_date=start_date,
+            end_date=end_date,
+            granularity=USAGE_CALC_GRANULARITY.DAILY,
+            customer=customer,
+        )
+        customer_usage = per_customer[customer.customer_name]
+        if len(customer_usage) == 0:
+            return {}
+        else:
+            max_usage = sorted(
+                customer_usage.items(), key=lambda x: x[1], reverse=True
+            )[:1]
+            return {max_usage[0][0]: max_usage[0][1]}
 
     @staticmethod
     def _allowed_usage_aggregation_types():

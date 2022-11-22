@@ -403,12 +403,11 @@ class Metric(models.Model):
 
         return usage
 
-    def get_earned_usage_per_day(self, subscription):
+    def get_earned_usage_per_day(self, start_date, end_date, customer):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-
-        usage = handler.get_earned_usage_per_day(subscription)
+        usage = handler.get_earned_usage_per_day(start_date, end_date, customer)
 
         return usage
 
@@ -445,8 +444,11 @@ class PriceTier(models.Model):
         null=True,
     )
 
-    def calculate_revenue(self, usage_dict: dict, prev_tier_end=False):
-        dict_len = len(usage_dict)
+    def calculate_revenue(
+        self, usage_dict: dict, prev_tier_end=False, division_factor=None
+    ):
+        if division_factor is None:
+            division_factor = len(usage_dict)
         revenue = 0
         discontinuous_range = (
             prev_tier_end != self.range_start and prev_tier_end is not None
@@ -460,7 +462,7 @@ class PriceTier(models.Model):
             )
             if usage_in_range:
                 if self.type == PRICE_TIER_TYPE.FLAT:
-                    revenue += self.cost_per_batch / dict_len
+                    revenue += self.cost_per_batch / division_factor
                 elif self.type == PRICE_TIER_TYPE.PER_UNIT:
                     if self.range_end is not None:
                         billable_units = min(
@@ -477,7 +479,9 @@ class PriceTier(models.Model):
                         billable_batches = math.floor(billable_batches)
                     elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
                         billable_batches = round(billable_batches)
-                    revenue += (self.cost_per_batch * billable_batches) / dict_len
+                    revenue += (
+                        self.cost_per_batch * billable_batches
+                    ) / division_factor
         return revenue
 
 
@@ -573,21 +577,65 @@ class PlanComponent(models.Model):
         self, subscription
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
         billable_metric = self.billable_metric
-        usage = billable_metric.get_earned_usage_per_day(subscription)
+        periods = []
+        start_date = subscription.start_date
+        end_date = start_date
+        results = {}
+        for period in periods_bwn_twodates(
+            USAGE_CALC_GRANULARITY.DAILY, subscription.start_date, subscription.end_date
+        ):
+            period = convert_to_date(period)
+            results[period] = Decimal(0)
+        now = now_utc()
+        while end_date < subscription.end_date:
+            if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
+                end_date = start_date + relativedelta(weeks=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
+                end_date = start_date + relativedelta(months=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
+                end_date = start_date + relativedelta(months=3)
+            else:
+                end_date = subscription.end_date
+            end_date = min(subscription.end_date, end_date)
+            periods.append((start_date, end_date))
+            start_date = end_date
+            if start_date > now:
+                break
 
-        usage = usage.get(subscription.customer.customer_name, {})
-
-        period_revenue_dict = {
-            period: {}
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY,
-                subscription.start_date,
-                subscription.end_date,
+        for period_start, period_end in periods:
+            usage = billable_metric.get_earned_usage_per_day(
+                start_date=period_start,
+                end_date=period_end,
+                customer=subscription.customer,
             )
-        }
-        free_units_usage_left = self.free_metric_units
-        remainder_billable_units = 0
-        return period_revenue_dict
+            if len(usage) >= 1:
+                running_total_revenue = Decimal(0)
+                running_total_usage = Decimal(0)
+                for date, usage_qty in usage.items():
+                    usage_qty = convert_to_decimal(usage_qty)
+                    if billable_metric.metric_type == METRIC_TYPE.COUNTER:
+                        running_total_usage += usage_qty
+                    else:
+                        running_total_usage = usage_qty
+                    revenue = Decimal(0)
+                    tiers = self.tiers.all()
+                    for i, tier in enumerate(tiers):
+                        calc_rev_dict = {
+                            "usage_dict": {date: running_total_usage},
+                            
+                        }
+                        if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+                            calc_rev_dict["division_factor"] = len(usage)
+                        if i > 0:
+                            prev_tier_end = tiers[i - 1].range_end
+                            calc_rev_dict["prev_tier_end"] = prev_tier_end
+                        tier_revenue = tier.calculate_revenue(**calc_rev_dict)
+                        revenue += convert_to_decimal(tier_revenue)
+                    date_revenue = revenue - running_total_revenue
+                    running_total_revenue += date_revenue
+                    if date in results:
+                        results[date] += date_revenue
+        return results
 
 
 class Feature(models.Model):
@@ -1155,15 +1203,17 @@ class Subscription(models.Model):
         ):
             period = convert_to_date(period)
             return_dict[period] = Decimal(0)
+        for period, d in self.prorated_flat_costs_dict.items():
+            period = convert_to_date(period)
+            return_dict[period] += convert_to_decimal(d["amount"])
         for component in self.billing_plan.plan_components.all():
+            if component.billable_metric.metric_type != METRIC_TYPE.STATEFUL:
+                continue
             for period, amount in component.calculate_earned_revenue_per_day(
                 self
             ).items():
                 period = convert_to_date(period)
                 return_dict[period] += amount
-        for period, d in self.prorated_flat_costs_dict.items():
-            period = convert_to_date(period)
-            return_dict[period] += d["amount"]
         return return_dict
 
 
