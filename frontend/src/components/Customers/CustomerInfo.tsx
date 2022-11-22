@@ -1,7 +1,9 @@
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
+import { Select } from "antd";
+import dayjs from "dayjs";
 
-const CustomerInfoView: FC<any> = ({ data, graph }) => {
+const CustomerInfoView: FC<any> = ({ data, graph, onSelect }) => {
   const transformedGraphData = graph.per_day.map((day: any) => {
     var result_list = day.metric.map((metric: any) => {
       return {
@@ -11,6 +13,26 @@ const CustomerInfoView: FC<any> = ({ data, graph }) => {
         type: metric.type,
       };
     });
+
+    const onSwitch = (key: string) => {
+      var start_date;
+      var end_date = dayjs().format("YYYY-MM-DD");
+
+      switch (key) {
+        case "1":
+          start_date = dayjs().subtract(1, "month").format("YYYY-MM-DD");
+          break;
+        case "2":
+          start_date = dayjs().subtract(3, "month").format("YYYY-MM-DD");
+          break;
+        case "3":
+          start_date = dayjs().startOf("month");
+        case "4":
+          start_date = dayjs().startOf("year");
+      }
+
+      onSelect(start_date, end_date);
+    };
 
     result_list.push({
       date: day.date,
@@ -53,7 +75,16 @@ const CustomerInfoView: FC<any> = ({ data, graph }) => {
           </p>
         </div>
       </div>
-      <div>
+      <div className="space-y-4">
+        <div>
+          Date Range:
+          <Select defaultValue={"1"}>
+            <Select.Option value="1">Last 30 Days</Select.Option>
+            <Select.Option value="2">Last 60 Days</Select.Option>
+            <Select.Option value="3">This Month</Select.Option>
+            <Select.Option value="4">Year to date</Select.Option>
+          </Select>
+        </div>
         <Column {...config} />
       </div>
     </div>

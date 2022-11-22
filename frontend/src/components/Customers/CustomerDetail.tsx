@@ -27,6 +27,7 @@ import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
 import { CustomerIntegrations } from "./CustomerIntegrations";
 import { CustomerCostType } from "../../types/revenue-type";
 import CustomerInfoView from "./CustomerInfo";
+import dayjs from "dayjs";
 
 const { Option } = Select;
 
@@ -54,6 +55,10 @@ function CustomerDetail(props: {
 }) {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
+  const [startDate, setStartDate] = useState<string>(
+    dayjs().subtract(1, "month").format("YYYY-MM-DD")
+  );
+  const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
 
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
     CustomerDetailSubscription[]
@@ -75,7 +80,7 @@ function CustomerDetail(props: {
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
     useQuery<CustomerCostType>(
       ["customer_cost_analysis", props.customer_id],
-      () => Customer.getCost(props.customer_id, "2021-01-01", "2021-12-31"),
+      () => Customer.getCost(props.customer_id, startDate, endDate),
       {
         enabled: props.visible,
       }
@@ -156,6 +161,15 @@ function CustomerDetail(props: {
     });
   };
 
+  const refetchGraphData = (start_date: string, end_date: string) => {
+    setStartDate(start_date);
+    setEndDate(end_date);
+    queryClient.invalidateQueries([
+      "customer_cost_analysis",
+      props.customer_id,
+    ]);
+  };
+
   const createSubscription = (props: CreateSubscriptionType) => {
     createSubscriptionMutation.mutate(props);
   };
@@ -190,7 +204,11 @@ function CustomerDetail(props: {
             <Tabs defaultActiveKey="subscriptions" centered className="w-full">
               <Tabs.TabPane tab="Detail" key="detail">
                 {data !== undefined ? (
-                  <CustomerInfoView date={data} cost_date={cost_analysis} />
+                  <CustomerInfoView
+                    date={data}
+                    cost_date={cost_analysis}
+                    onDateChange={refetchGraphData}
+                  />
                 ) : (
                   <h2> No Data </h2>
                 )}
