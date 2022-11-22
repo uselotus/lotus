@@ -193,7 +193,7 @@ def generate_invoice(
         )
 
     subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
-    if subtotal < 0:
+    if subtotal < 0 and not draft:
         CustomerBalanceAdjustment.objects.create(
             customer=customer,
             amount=Money(-subtotal, "usd"),
@@ -203,7 +203,7 @@ def generate_invoice(
         )
     elif subtotal > 0:
         balance_adjustment = min(subtotal, customer_balance)
-        if balance_adjustment > 0:
+        if balance_adjustment > 0 and not draft:
             CustomerBalanceAdjustment.objects.create(
                 customer=customer,
                 amount=Money(-balance_adjustment, "usd"),

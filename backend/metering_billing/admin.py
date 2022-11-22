@@ -8,12 +8,13 @@ from .models import (
     Alert,
     APIToken,
     Backtest,
-    BillableMetric,
+    BacktestSubstitution,
     CategoricalFilter,
     Customer,
     Event,
     Feature,
     Invoice,
+    Metric,
     NumericFilter,
     Organization,
     OrganizationInviteToken,
@@ -22,7 +23,6 @@ from .models import (
     PlanVersion,
     Subscription,
     User,
-    BacktestSubstitution,
 )
 
 
@@ -38,7 +38,7 @@ admin.site.register(Customer, SimpleHistoryAdmin)
 admin.site.register(Event)
 admin.site.register(Plan, SimpleHistoryAdmin)
 admin.site.register(Backtest)
-admin.site.register(BillableMetric, SimpleHistoryAdmin)
+admin.site.register(Metric, SimpleHistoryAdmin)
 admin.site.register(PlanComponent)
 admin.site.register(Feature, SimpleHistoryAdmin)
 admin.site.register(PlanVersion, SimpleHistoryAdmin)

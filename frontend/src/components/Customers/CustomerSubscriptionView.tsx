@@ -8,7 +8,7 @@ import {
   Button,
   Dropdown,
   Menu,
-  Statistic,
+  Tag,
   Cascader,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
@@ -213,7 +213,7 @@ const SubscriptionView: FC<Props> = ({
   if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
-        <h2 className="m-3">No Subscription</h2>
+        <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
         <p className="font-bold">Please attach a Plan</p>
         <div className=" h-3/6">
           <Form
@@ -245,7 +245,7 @@ const SubscriptionView: FC<Props> = ({
   }
   return (
     <div className="mt-auto">
-      <h2 className="text-left mb-2">Active Plan</h2>
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plan</h2>
       <div className="flex flex-col justify-center">
         <List>
           {subscriptions.map((subscription) => (
@@ -272,7 +272,12 @@ const SubscriptionView: FC<Props> = ({
                       UTC
                     </p>
                     <p>
-                      <b>Renews:</b> {subscription.auto_renew ? "Yes" : "No"}
+                      <b>Renews:</b>{" "}
+                      {subscription.auto_renew ? (
+                        <Tag color="green">Yes</Tag>
+                      ) : (
+                        <Tag color="red">No</Tag>
+                      )}
                     </p>
                   </div>
                 </div>

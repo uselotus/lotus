@@ -13,4 +13,4 @@ class MeteringBillingConfig(AppConfig):
         registry.register(self.get_model("Customer"))
         registry.register(self.get_model("Plan"))
         registry.register(self.get_model("Subscription"))
-        registry.register(self.get_model("BillableMetric"))
+        registry.register(self.get_model("Metric"))
