@@ -679,7 +679,6 @@ class StatefulHandler(MetricHandler):
             if cust not in period_usages:
                 period_usages[cust] = {}
             period_usages[cust][tc_trunc] = usage_qty
-
         # grab latest value from previous period per customer
         # needed in case there's gaps from data , you would take the "latest" value not the
         # usage value from aprevious period
@@ -832,8 +831,7 @@ class StatefulHandler(MetricHandler):
             results_granularity=USAGE_CALC_GRANULARITY.DAILY,
             customer=customer,
         )
-        assert customer.customer_name in per_customer
-        customer_usage = per_customer[customer.customer_name]
+        customer_usage = per_customer.get(customer.customer_name, {})
         return customer_usage
 
     @staticmethod

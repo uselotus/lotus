@@ -37,22 +37,11 @@ class CustomerRevenueSummaryResponseSerializer(serializers.Serializer):
     customers = CustomerRevenueSerializer(many=True)
 
 
-class DayMetricRevenueSerializer(serializers.Serializer):
-    date = serializers.DateField()
-    metric_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
-
-
-class PeriodSingleMetricRevenueSerializer(serializers.Serializer):
-    metric = serializers.CharField()
-    data = DayMetricRevenueSerializer(many=True)
-    total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
-
-
 class PeriodMetricRevenueResponseSerializer(serializers.Serializer):
-    daily_usage_revenue_period_1 = PeriodSingleMetricRevenueSerializer(many=True)
     total_revenue_period_1 = serializers.DecimalField(decimal_places=10, max_digits=20)
-    daily_usage_revenue_period_2 = PeriodSingleMetricRevenueSerializer(many=True)
     total_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
+    earned_revenue_period_1 = serializers.DecimalField(decimal_places=10, max_digits=20)
+    earned_revenue_period_2 = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
 class SubscriptionUsageResponseSerializer(serializers.Serializer):

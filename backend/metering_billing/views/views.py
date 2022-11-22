@@ -42,7 +42,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -66,76 +66,56 @@ class PeriodMetricRevenueView(APIView):
         ]
         p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
         p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
-        all_org_billable_metrics = Metric.objects.filter(organization=organization)
-
-        return_dict = {
-            "daily_usage_revenue_period_1": {},
-            "total_revenue_period_1": Decimal(0),
-            "daily_usage_revenue_period_2": {},
-            "total_revenue_period_2": Decimal(0),
-        }
-        if all_org_billable_metrics.count() > 0:
-            for billable_metric in all_org_billable_metrics:
-                for p_start, p_end, p_num in [
-                    (p1_start, p1_end, 1),
-                    (p2_start, p2_end, 2),
-                ]:
-                    return_dict[f"daily_usage_revenue_period_{p_num}"][
-                        billable_metric.id
-                    ] = {
-                        "metric": str(billable_metric),
-                        "data": {
-                            x: Decimal(0)
-                            for x in periods_bwn_twodates(
-                                USAGE_CALC_GRANULARITY.DAILY, p_start, p_end
-                            )
-                        },
-                        "total_revenue": Decimal(0),
-                    }
-            for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-                total_period_rev = Decimal(0)
-                subs = (
-                    Subscription.objects.filter(
-                        Q(start_date__range=[p_start, p_end])
-                        | Q(end_date__range=[p_start, p_end]),
-                        organization=organization,
-                    )
-                    .select_related("billing_plan")
-                    .select_related("customer")
-                    .prefetch_related("billing_plan__plan_components")
-                    .prefetch_related("billing_plan__plan_components__billable_metric")
+        return_dict = {}
+        # collected
+        p1_collected = Invoice.objects.filter(
+            organization=organization,
+            issue_date__gte=p1_start,
+            issue_date__lte=p1_end,
+            payment_status=INVOICE_STATUS.PAID,
+        ).aggregate(tot=Sum("cost_due"))["tot"]
+        p2_collected = Invoice.objects.filter(
+            organization=organization,
+            issue_date__gte=p2_start,
+            issue_date__lte=p2_end,
+            payment_status=INVOICE_STATUS.PAID,
+        ).aggregate(tot=Sum("cost_due"))["tot"]
+        return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
+        return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
+        # earned
+        for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+            subs = (
+                Subscription.objects.filter(
+                    Q(start_date__range=(start, end))
+                    | Q(end_date__range=(start, end))
+                    | Q(start_date__lte=start, end_date__gte=end),
+                    organization=organization,
                 )
-                for sub in subs:
-                    bp = sub.billing_plan
-                    flat_bill_date = (
-                        sub.start_date
-                        if bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
-                        else sub.end_date
-                    )
-                    if p_start <= flat_bill_date <= p_end:
-                        total_period_rev += bp.flat_rate.amount
-                    for plan_component in bp.plan_components.all():
-                        billable_metric = plan_component.billable_metric
-                        revenue_per_day = plan_component.calculate_total_revenue(sub)
-                        metric_dict = return_dict[
-                            f"daily_usage_revenue_period_{p_num}"
-                        ][billable_metric.id]
-                        for date, d in revenue_per_day.items():
-                            if date in metric_dict["data"]:
-                                usage_cost = Decimal(d["revenue"])
-                                metric_dict["data"][date] += usage_cost
-                                metric_dict["total_revenue"] += usage_cost
-                                total_period_rev += usage_cost
-                return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
-        for p_num in [1, 2]:
-            dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
-            dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
-            return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
-            for dic in dailies:
-                dic["data"] = [
-                    {"date": str(k.date()), "metric_revenue": v}
-                    for k, v in dic["data"].items()
-                ]
+                .select_related("billing_plan")
+                .select_related("customer")
+                .prefetch_related("billing_plan__plan_components")
+                .prefetch_related("billing_plan__plan_components__billable_metric")
+                .prefetch_related("billing_plan__plan_components__tiers")
+            )
+            per_day_dict = {}
+            for period in periods_bwn_twodates(
+                USAGE_CALC_GRANULARITY.DAILY, start, end
+            ):
+                period = convert_to_date(period)
+                per_day_dict[period] = {
+                    "date": period,
+                    "revenue": Decimal(0),
+                }
+            for subscription in subs:
+                earned_revenue = subscription.calculate_earned_revenue_per_day()
+                for date, earned_revenue in earned_revenue.items():
+                    date = convert_to_date(date)
+                    if date in per_day_dict:
+                        per_day_dict[date]["revenue"] += earned_revenue
+            return_dict[f"earned_revenue_period_{num}"] = sum(
+                [x["revenue"] for x in per_day_dict.values()]
+            )
+
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
@@ -145,7 +125,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class CostAnalysisView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[CostAnalysisRequestSerializer],
