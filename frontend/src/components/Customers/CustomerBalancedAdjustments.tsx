@@ -63,7 +63,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ balanceAdjustments }) => {
 
   return (
     <div>
-      <h2 className="mb-5">Credit Balance</h2>
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Credit Balance</h2>
       {!!balanceAdjustments?.length ? (
         <Table
           columns={columns}

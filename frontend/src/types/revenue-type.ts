@@ -22,7 +22,7 @@ export interface CustomerCostType {
     date: string;
     cost_date: CostType[];
     revenue: number;
-  };
+  }[];
   total_cost: number;
   total_revenue: number;
   margin: number;

@@ -28,6 +28,7 @@ import { CustomerIntegrations } from "./CustomerIntegrations";
 import { CustomerCostType } from "../../types/revenue-type";
 import CustomerInfoView from "./CustomerInfo";
 import dayjs from "dayjs";
+import { toast } from "react-toastify";
 
 const { Option } = Select;
 
@@ -79,10 +80,16 @@ function CustomerDetail(props: {
 
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
     useQuery<CustomerCostType>(
-      ["customer_cost_analysis", props.customer_id],
+      ["customer_cost_analysis", props.customer_id, startDate, endDate],
       () => Customer.getCost(props.customer_id, startDate, endDate),
       {
         enabled: props.visible,
+        placeholderData: {
+          per_day: [],
+          total_revenue: 0,
+          total_cost: 0,
+          margin: 0,
+        },
       }
     );
 
@@ -92,6 +99,7 @@ function CustomerDetail(props: {
       onSettled: () => {
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        toast.success("Subscription created successfully");
       },
     }
   );
@@ -103,6 +111,7 @@ function CustomerDetail(props: {
       onSettled: () => {
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        toast.success("Subscription cancelled successfully");
       },
     }
   );
@@ -114,6 +123,7 @@ function CustomerDetail(props: {
       onSettled: () => {
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        toast.success("Subscription switched successfully");
       },
     }
   );
@@ -191,22 +201,22 @@ function CustomerDetail(props: {
       ) : (
         <div className="flex justify-between flex-col max-w mx-3">
           <div className="text-left	">
-            <h1 className="mb-3">{data?.customer_name}</h1>
+            <h1 className="mb-4">{data?.customer_name}</h1>
             <div className="flex flex-row">
               <div className="plansDetailLabel">ID:&nbsp; </div>
               <div className="plansDetailValue">{props.customer_id}</div>
             </div>
           </div>
           <div
-            className="flex items-center flex-col"
+            className="flex items-center flex-col mt-6"
             onClick={(e) => e.stopPropagation()}
           >
             <Tabs defaultActiveKey="subscriptions" centered className="w-full">
               <Tabs.TabPane tab="Detail" key="detail">
-                {data !== undefined ? (
+                {data !== undefined && cost_analysis !== undefined ? (
                   <CustomerInfoView
-                    date={data}
-                    cost_date={cost_analysis}
+                    data={data}
+                    cost_data={cost_analysis}
                     onDateChange={refetchGraphData}
                   />
                 ) : (
