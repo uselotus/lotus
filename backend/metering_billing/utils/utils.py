@@ -19,6 +19,7 @@ from numpy import isin
 def convert_to_decimal(value):
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
 
+
 def convert_to_date(value):
     if isinstance(value, datetime.date):
         return value
@@ -28,6 +29,7 @@ def convert_to_date(value):
         return convert_to_date(parser.parse(value))
     else:
         raise Exception(f"can't convert type {type(value)} into date")
+
 
 def make_all_decimals_floats(data):
     if isinstance(data, list):

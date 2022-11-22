@@ -163,7 +163,9 @@ class CostAnalysisView(APIView):
             for key in ["start_date", "end_date", "customer_id"]
         ]
         try:
-            customer = Customer.objects.get(organization=organization, customer_id=customer_id)
+            customer = Customer.objects.get(
+                organization=organization, customer_id=customer_id
+            )
         except Customer.DoesNotExist:
             return Response(
                 {"error": "Customer not found"},

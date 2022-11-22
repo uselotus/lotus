@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
-from .model_serializers import (MetricSerializer,
-                                SubscriptionCustomerSummarySerializer)
+from .model_serializers import MetricSerializer, SubscriptionCustomerSummarySerializer
 
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):

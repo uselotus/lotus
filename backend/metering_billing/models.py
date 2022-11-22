@@ -1147,7 +1147,7 @@ class Subscription(models.Model):
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             generate_invoice(self, include_usage=False, flat_fee_behavior="full_amount")
-    
+
     def calculate_earned_revenue_per_day(self):
         return_dict = {}
         for period in periods_bwn_twodates(
@@ -1156,14 +1156,15 @@ class Subscription(models.Model):
             period = convert_to_date(period)
             return_dict[period] = Decimal(0)
         for component in self.billing_plan.plan_components.all():
-            for period, amount in component.calculate_earned_revenue_per_day(self).items():
+            for period, amount in component.calculate_earned_revenue_per_day(
+                self
+            ).items():
                 period = convert_to_date(period)
                 return_dict[period] += amount
         for period, d in self.prorated_flat_costs_dict.items():
             period = convert_to_date(period)
             return_dict[period] += d["amount"]
         return return_dict
-
 
 
 class Backtest(models.Model):

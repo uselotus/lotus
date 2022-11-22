@@ -70,15 +70,15 @@ class MetricHandler(abc.ABC):
         """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Stateful with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
         pass
 
-    # @abc.abstractmethod
-    # def get_earned_usage_per_day(
-    #     self,
-    #     subscription: Subscription,
-    # ) -> dict[datetime.datetime, float]:
-    #     """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue ois "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
+    @abc.abstractmethod
+    def get_earned_usage_per_day(
+        self,
+        subscription: Subscription,
+    ) -> dict[datetime.datetime, float]:
+        """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
 
-    #     Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day."""
-    #     pass
+        Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day."""
+        pass
 
     @staticmethod
     @abc.abstractmethod
@@ -115,7 +115,6 @@ class CounterHandler(MetricHandler):
             METRIC_AGGREGATION.COUNT,
             METRIC_AGGREGATION.AVERAGE,
             METRIC_AGGREGATION.MAX,
-            METRIC_AGGREGATION.LATEST,
         ]
 
     def get_usage(
@@ -213,108 +212,101 @@ class CounterHandler(MetricHandler):
         _, customer_usage_val = list(customer_usage.items())[0]
         return customer_usage_val
 
-    # def get_earned_usage_per_day(
-    #     self, subscription: Subscription
-    # ) -> dict[datetime.datetime, float]:
-    #     now = now_utc()
-    #     if type(start_date) == str:
-    #         start_date = parser.parse(start_date)
-    #     if type(end_date) == str:
-    #         end_date = parser.parse(end_date)
-    #     filter_kwargs = {
-    #         "organization": self.organization,
-    #         "event_name": self.event_name,
-    #         "time_created__lt": now,
-    #         "time_created__gte": subscription.start_date,
-    #         "time_created__lte": subscription.end_date,
-    #         "customer": subscription.customer,
-    #     }
-    #     pre_groupby_annotation_kwargs = {}
-    #     groupby_kwargs = {"customer_name": F("customer__customer_name")}
-    #     post_groupby_annotation_kwargs = {}
-    #     if self.property_name is not None:
-    #         filter_kwargs["properties__has_key"] = self.property_name
-    #         pre_groupby_annotation_kwargs["property_value"] = F(
-    #             f"properties__{self.property_name}"
-    #         )
-    #     groupby_kwargs["time_created_truncated"] = Trunc(
-    #         expression=F("time_created"),
-    #         kind=USAGE_CALC_GRANULARITY.DAILY,
-    #         output_field=DateTimeField(),
-    #     )
+    def get_earned_usage_per_day(
+        self, subscription: Subscription
+    ) -> dict[datetime.datetime, float]:
+        now = now_utc()
+        if type(start_date) == str:
+            start_date = parser.parse(start_date)
+        if type(end_date) == str:
+            end_date = parser.parse(end_date)
+        filter_kwargs = {
+            "organization": self.organization,
+            "event_name": self.event_name,
+            "time_created__lt": now,
+            "time_created__gte": subscription.start_date,
+            "time_created__lte": subscription.end_date,
+            "customer": subscription.customer,
+        }
+        pre_groupby_annotation_kwargs = {}
+        groupby_kwargs = {"customer_name": F("customer__customer_name")}
+        post_groupby_annotation_kwargs = {}
+        if self.property_name is not None:
+            filter_kwargs["properties__has_key"] = self.property_name
+            pre_groupby_annotation_kwargs["property_value"] = F(
+                f"properties__{self.property_name}"
+            )
+        groupby_kwargs["time_created_truncated"] = Trunc(
+            expression=F("time_created"),
+            kind=USAGE_CALC_GRANULARITY.DAILY,
+            output_field=DateTimeField(),
+        )
 
-    #     if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
-    #         post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.SUM:
-    #         post_groupby_annotation_kwargs["usage_qty"] = Sum(
-    #             Cast(F("property_value"), FloatField())
-    #         )
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-    #         post_groupby_annotation_kwargs["usage_qty"] = Avg(
-    #             Cast(F("property_value"), FloatField())
-    #         )
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.MIN:
-    #         # we need to find the min event over the whole
-    #         # time period, and then use that as the earned usage... if we aggregate using
-    #         # min, then we'll get the min event for each period in granularity, which is not
-    #         # what we want... lets remove the groupby, and simply annotate
-    #         post_groupby_annotation_kwargs = groupby_kwargs
-    #         groupby_kwargs = {}
-    #         post_groupby_annotation_kwargs["usage_qty"] = Cast(
-    #             F("property_value"), FloatField()
-    #         )
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
-    #         post_groupby_annotation_kwargs = groupby_kwargs
-    #         groupby_kwargs = {}
-    #         post_groupby_annotation_kwargs["usage_qty"] = Cast(
-    #             F("property_value"), FloatField()
-    #         )
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-    #         # for unique, we need to find the first time we saw each unique property value. If
-    #         # we just aggregate using count unique, then we'll get the unique per period of
-    #         # granularity, which is not what we want.
-    #         post_groupby_annotation_kwargs = groupby_kwargs
-    #         groupby_kwargs = {}
-    #         post_groupby_annotation_kwargs["usage_qty"] = Count(
-    #             F("property_value"), distinct=True
-    #         )
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
-    #         post_groupby_annotation_kwargs = groupby_kwargs
-    #         groupby_kwargs = {}
-    #         post_groupby_annotation_kwargs["usage_qty"] = Cast(
-    #             F("property_value"), FloatField()
-    #         )
+        if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
+            post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.SUM:
+            post_groupby_annotation_kwargs["usage_qty"] = Sum(
+                Cast(F("property_value"), FloatField())
+            )
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+            post_groupby_annotation_kwargs["usage_qty"] = Avg(
+                Cast(F("property_value"), FloatField())
+            )
+            post_groupby_annotation_kwargs["n_events"] = Count("pk")
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
+            post_groupby_annotation_kwargs = groupby_kwargs
+            groupby_kwargs = {}
+            post_groupby_annotation_kwargs["usage_qty"] = Cast(
+                F("property_value"), FloatField()
+            )
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+            # for unique, we need to find the first time we saw each unique property value. If
+            # we just aggregate using count unique, then we'll get the unique per period of
+            # granularity, which is not what we want.
+            post_groupby_annotation_kwargs = groupby_kwargs
+            groupby_kwargs = {}
+            post_groupby_annotation_kwargs["usage_qty"] = Count(
+                F("property_value"), distinct=True
+            )
 
-    #     q_filt = Event.objects.filter(**filter_kwargs)
-    #     q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
-    #     q_gb = q_pre_gb_ann.values(**groupby_kwargs)
-    #     q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
+        q_filt = Event.objects.filter(**filter_kwargs)
+        q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
+        q_gb = q_pre_gb_ann.values(**groupby_kwargs)
+        q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
-    #     if self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
-    #         q_post_gb_ann = q_post_gb_ann.order_by("-time_created").first()
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
-    #         q_post_gb_ann = q_post_gb_ann.order_by("-usage_qty").first()
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.MIN:
-    #         q_post_gb_ann = q_post_gb_ann.order_by("usage_qty")
-    #     elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-    #         q_post_gb_ann = q_post_gb_ann.filter(
-    #             ~Exists(
-    #                 q_post_gb_ann.filter(
-    #                     time_created__lt=OuterRef("time_created"),
-    #                     property_value=OuterRef("property_value"),
-    #                 )
-    #             )
-    #         )
-    #         q_post_gb_ann = q_post_gb_ann.values(
-    #             "time_created_truncated",
-    #         ).annotate(usage_qty=Count("pk"))
+        if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
+            q_post_gb_ann = q_post_gb_ann.order_by("-usage_qty").first()
+        elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+            q_post_gb_ann = q_post_gb_ann.filter(
+                ~Exists(
+                    q_post_gb_ann.filter(
+                        time_created__lt=OuterRef("time_created"),
+                        property_value=OuterRef("property_value"),
+                    )
+                )
+            )
+            q_post_gb_ann = q_post_gb_ann.values(
+                "time_created_truncated",
+            ).annotate(usage_qty=Count("pk"))
 
-    #     return_dict = {}
-    #     for row in q_post_gb_ann:
-    #         tc_trunc = row["time_created_truncated"]
-    #         usage_qty = row["usage_qty"]
-    #         return_dict[tc_trunc] = usage_qty
-    #     return return_dict
+        if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+            return_dict = {}
+            total_usage_qty = sum(
+                [row["usage_qty"] * row["n_events"] for row in q_post_gb_ann]
+            )
+            total_num_events = sum([row["n_events"] for row in q_post_gb_ann])
+            total_average = total_usage_qty / total_num_events
+            for row in q_post_gb_ann:
+                tc_trunc = row["time_created_truncated"]
+                usage_qty = total_average * (row["usage_qty"]*row["n_events"]/total_usage_qty)
+                return_dict[tc_trunc] = usage_qty
+        else:
+            return_dict = {}
+            for row in q_post_gb_ann:
+                tc_trunc = row["time_created_truncated"]
+                usage_qty = row["usage_qty"] 
+                return_dict[tc_trunc] = usage_qty
+        return return_dict
 
     @staticmethod
     def validate_data(data: dict) -> dict:
@@ -838,16 +830,16 @@ class StatefulHandler(MetricHandler):
             )
             return last_usage.first().tot_qty
 
-    # def get_earned_usage_per_day(self, subscription):
-    #     per_customer = self.get_usage(
-    #         start_date=subscription.start_date,
-    #         end_date=subscription.end_date,
-    #         granularity=USAGE_CALC_GRANULARITY.DAILY,
-    #         customer=subscription.customer,
-    #     )
-    #     assert subscription.customer.customer_name in per_customer
-    #     customer_usage = per_customer[subscription.customer.customer_name]
-    #     return customer_usage
+    def get_earned_usage_per_day(self, subscription):
+        per_customer = self.get_usage(
+            start_date=subscription.start_date,
+            end_date=subscription.end_date,
+            granularity=USAGE_CALC_GRANULARITY.DAILY,
+            customer=subscription.customer,
+        )
+        assert subscription.customer.customer_name in per_customer
+        customer_usage = per_customer[subscription.customer.customer_name]
+        return customer_usage
 
     @staticmethod
     def _allowed_usage_aggregation_types():
