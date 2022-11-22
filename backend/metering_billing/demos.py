@@ -11,9 +11,9 @@ from faker import Faker
 from metering_billing.models import (
     Backtest,
     BacktestSubstitution,
-    BillableMetric,
     Customer,
     Event,
+    Metric,
     Organization,
     Plan,
     PlanComponent,
@@ -80,7 +80,7 @@ def setup_demo_3(company_name, username, email, password):
         )
         small_customers.append(customer)
     calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
-        BillableMetric,
+        Metric,
         organization=organization,
         event_name="generate_text",
         property_name=itertools.cycle(
@@ -102,7 +102,7 @@ def setup_demo_3(company_name, username, email, password):
         _quantity=5,
     )
     (num_seats,) = baker.make(
-        BillableMetric,
+        Metric,
         organization=organization,
         event_name="log_num_seats",
         property_name=itertools.cycle(
@@ -114,6 +114,15 @@ def setup_demo_3(company_name, username, email, password):
         metric_type=METRIC_TYPE.STATEFUL,
         billable_metric_name="User Seats",
         _quantity=1,
+    )
+    compute_cost = Metric.objects.create(
+        organization=organization,
+        event_name="computation",
+        property_name="cost",
+        billable_metric_name="Compute Cost",
+        metric_type=METRIC_TYPE.COUNTER,
+        usage_aggregation_type="sum",
+        is_cost_metric=True,
     )
     # SET THE BILLING PLANS
     plan = Plan.objects.create(
@@ -316,7 +325,11 @@ def setup_demo_3(company_name, username, email, password):
         beginning = beginning + relativedelta(days=offset)
         for months in range(6):
             sub_start = beginning + relativedelta(months=months)
-            plan = bp_10_og if months == 0 else (bp_25_og if months == 1 else bp_50_og)
+            plan = (
+                bp_10_compute_seats
+                if months == 0
+                else (bp_25_compute_seats if months == 1 else bp_50_compute_seats)
+            )
             languages = [
                 "en",
                 "es",
@@ -371,14 +384,20 @@ def setup_demo_3(company_name, username, email, password):
                         "words": event_words,
                     },
                 )
-                word_count += event_words
-            max_users = float(
-                max(
-                    x.range_end
-                    for x in plan.plan_components.get(
-                        billable_metric=num_seats
-                    ).tiers.all()
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="computation",
+                    time_created=tc,
+                    idempotency_id=uuid.uuid4(),
+                    properties={
+                        "cost": abs(compute_time * random.gauss(0.1, 0.015)),
+                    },
                 )
+                word_count += event_words
+            max_users = max(
+                x.range_end
+                for x in plan.plan_components.get(billable_metric=num_seats).tiers.all()
             )
             n = max(int(random.gauss(6, 1.5) // 1), 1)
             baker.make(
@@ -397,7 +416,7 @@ def setup_demo_3(company_name, username, email, password):
         beginning = beginning + relativedelta(days=offset)
         for months in range(6):
             sub_start = beginning + relativedelta(months=months)
-            plan = bp_10_og if months in [0, 1] else bp_25_og
+            plan = bp_10_compute_seats if months in [0, 1] else bp_25_compute_seats
             languages = [
                 "en",
                 "es",
@@ -406,7 +425,11 @@ def setup_demo_3(company_name, username, email, password):
                 "it",
             ]
             users_mean, users_sd = 3, 1
-            scale = 1.2 if plan == bp_10_og else (1 if plan == bp_25_og else 0.85)
+            scale = (
+                1.2
+                if plan == bp_10_compute_seats
+                else (1 if plan == bp_25_compute_seats else 0.85)
+            )
             sub = Subscription.objects.create(
                 organization=organization,
                 customer=customer,
@@ -426,7 +449,7 @@ def setup_demo_3(company_name, username, email, password):
             word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
             word_count = 0
             while word_count < word_limit:
-                event_words = random.gauss(325, 60)
+                event_words = random.gauss(325, 60) // 1
                 if word_count + event_words > word_limit:
                     break
                 compute_time = event_words * random.gauss(0.1, 0.02)
@@ -451,14 +474,22 @@ def setup_demo_3(company_name, username, email, password):
                     },
                 )
                 word_count += event_words
-            max_users = float(
-                max(
-                    x.range_end
-                    for x in plan.plan_components.get(
-                        billable_metric=num_seats
-                    ).tiers.all()
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="computation",
+                    time_created=tc,
+                    idempotency_id=uuid.uuid4(),
+                    properties={
+                        "cost": abs(compute_time * random.gauss(0.12, 0.015)),
+                    },
                 )
+                word_count += event_words
+            max_users = max(
+                x.range_end
+                for x in plan.plan_components.get(billable_metric=num_seats).tiers.all()
             )
+
             n = max(int(random.gauss(6, 1.5) // 1), 1)
             baker.make(
                 Event,
@@ -476,12 +507,16 @@ def setup_demo_3(company_name, username, email, password):
         beginning = beginning + relativedelta(days=offset)
         for months in range(6):
             sub_start = beginning + relativedelta(months=months)
-            plan = free_bp if months in [0, 1] else bp_10_og
+            plan = free_bp if months in [0, 1] else bp_10_compute_seats
             languages = [
                 "en",
             ]
             users_mean, users_sd = 2, 0.75
-            scale = 1.4 if plan == bp_10_og else (1.1 if plan == bp_25_og else 0.95)
+            scale = (
+                1.4
+                if plan == bp_10_compute_seats
+                else (1.1 if plan == bp_25_compute_seats else 0.95)
+            )
             sub = Subscription.objects.create(
                 organization=organization,
                 customer=customer,
@@ -526,13 +561,19 @@ def setup_demo_3(company_name, username, email, password):
                     },
                 )
                 word_count += event_words
-            max_users = float(
-                max(
-                    x.range_end
-                    for x in plan.plan_components.get(
-                        billable_metric=num_seats
-                    ).tiers.all()
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="computation",
+                    time_created=tc,
+                    idempotency_id=uuid.uuid4(),
+                    properties={
+                        "cost": abs(compute_time * random.gauss(0.15, 0.015)),
+                    },
                 )
+            max_users = max(
+                x.range_end
+                for x in plan.plan_components.get(billable_metric=num_seats).tiers.all()
             )
             n = int(max(random.gauss(6, 1.5) // 1, 1))
             baker.make(
@@ -561,8 +602,8 @@ def setup_demo_3(company_name, username, email, password):
     )
     BacktestSubstitution.objects.create(
         backtest=backtest,
-        original_plan=bp_10_og,
-        new_plan=bp_10_compute_seats,
+        original_plan=bp_10_compute_seats,
+        new_plan=bp_10_og,
     )
     run_backtest(backtest.backtest_id)
     return user
@@ -628,7 +669,7 @@ def gaussian_users(n, mean=3, sd=1, mx=None):
     "Generate `n` latencies with a gaussian distribution"
     for _ in range(n):
         qty = round(random.gauss(mean, sd), 0)
-        if max is not None:
+        if mx is not None:
             qty = min(qty, mx)
         yield {
             "qty": int(max(qty, 1)),

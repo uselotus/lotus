@@ -9,7 +9,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Count, Q
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
@@ -151,23 +151,51 @@ def write_batch_events_to_db(events_list):
                 organization=event.organization, customer_id=event.cust_id
             ).first()
         event.customer = customer_id_mappings[event.cust_id]
-    Event.objects.bulk_create(event_obj_list)
-
-
-@shared_task
-def posthog_capture_track(organization_pk, len_sent_events, len_ingested_events):
-    org = Organization.objects.get(pk=organization_pk)
-    posthog.capture(
-        POSTHOG_PERSON
-        if POSTHOG_PERSON
-        else org.company_name + " (API Key)" "track_event",
-        event="track_event",
-        properties={
-            "sent_events": len_sent_events,
-            "ingested_events": len_ingested_events,
-            "organization": org.company_name,
-        },
-    )
+    now = now_utc()
+    now_minus_45_days = now - relativedelta(days=45)
+    idem_ids = list(x.idempotency_id for x in event_obj_list)
+    repeat_idem = Event.objects.filter(
+        idempotency_id__in=idem_ids,
+        time_created__gte=now_minus_45_days,
+    ).exists()
+    if repeat_idem:
+        # if we have a repeat idempotency, filter thru the events and remove repeats
+        for event in event_obj_list:
+            event_idem_exists = Event.objects.filter(
+                organization=event.organization,
+                idempotency_id=event.idempotency_id,
+                time_created__gte=now_minus_45_days,
+            ).exists()
+            if not event_idem_exists:
+                events_to_insert.append(event)
+    else:
+        events_to_insert = event_obj_list
+    events = Event.objects.bulk_create(event_obj_list, ignore_conflicts=True)
+    event_org_map = {}
+    customer_event_name_map = {}
+    for event in events:
+        if event.organization not in event_org_map:
+            event_org_map[event.organization] = 0
+        if event.customer.customer_id not in customer_event_name_map:
+            customer_event_name_map[event.customer] = set()
+        event_org_map[event.organization] += 1
+        customer_event_name_map[event.customer].add(event.event_name)
+    for customer_id, to_invalidate in customer_event_name_map.items():
+        cache_keys_to_invalidate = []
+        for event_name in to_invalidate:
+            cache_keys_to_invalidate.append(
+                f"customer_id:{customer_id}__event_name:{event_name}"
+            )
+        cache.delete_many(cache_keys_to_invalidate)
+    for org, num_events in event_org_map.items():
+        posthog.capture(
+            POSTHOG_PERSON if POSTHOG_PERSON else org.company_name + " (API Key)",
+            event="track_event",
+            properties={
+                "ingested_events": num_events,
+                "organization": org.company_name,
+            },
+        )
 
 
 @shared_task
@@ -178,10 +206,7 @@ def check_event_cache_flushed():
         cache_tup if cache_tup else ([], set(), now)
     )
     time_since_last_flush = (now - last_flush_dt).total_seconds()
-    if (
-        len(cached_events) >= EVENT_CACHE_FLUSH_COUNT
-        or time_since_last_flush >= EVENT_CACHE_FLUSH_SECONDS
-    ):
+    if time_since_last_flush >= EVENT_CACHE_FLUSH_SECONDS and len(cached_events) > 0:
         write_batch_events_to_db.delay(cached_events)
         cached_events = []
         cached_idems = set()

@@ -5,6 +5,7 @@ from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import pytz
+from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
 from metering_billing.utils.enums import (
@@ -17,6 +18,17 @@ from numpy import isin
 
 def convert_to_decimal(value):
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
+
+
+def convert_to_date(value):
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    elif isinstance(value, str):
+        return convert_to_date(parser.parse(value))
+    elif isinstance(value, datetime.date):
+        return value
+    else:
+        raise Exception(f"can't convert type {type(value)} into date")
 
 
 def make_all_decimals_floats(data):
@@ -197,6 +209,10 @@ def backtest_uuid():
 
 def invoice_uuid():
     return "inv_" + str(uuid.uuid4())
+
+
+def organization_uuid():
+    return "org_" + str(uuid.uuid4())
 
 
 def date_as_min_dt(date):

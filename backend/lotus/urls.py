@@ -23,12 +23,12 @@ from metering_billing.views import auth_views, organization_views, track
 from metering_billing.views.model_views import (
     ActionViewSet,
     BacktestViewSet,
-    BillableMetricViewSet,
     CustomerViewSet,
     EventViewSet,
     ExternalPlanLinkViewSet,
     FeatureViewSet,
     InvoiceViewSet,
+    MetricViewSet,
     OrganizationSettingViewSet,
     PlanVersionViewSet,
     PlanViewSet,
@@ -40,7 +40,8 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
-    CustomerBalanceAdjustmentsView,
+    CostAnalysisView,
+    CustomerBalanceAdjustmentView,
     CustomerBatchCreateView,
     CustomersSummaryView,
     CustomersWithRevenueView,
@@ -64,7 +65,7 @@ PROFILER_ENABLED = settings.PROFILER_ENABLED
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
 router.register(r"customers", CustomerViewSet, basename="customer")
-router.register(r"metrics", BillableMetricViewSet, basename="metric")
+router.register(r"metrics", MetricViewSet, basename="metric")
 router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
 router.register(r"features", FeatureViewSet, basename="feature")
@@ -97,11 +98,11 @@ urlpatterns = [
         CustomersSummaryView.as_view(),
         name="customer_summary",
     ),
-    # path(
-    #     "api/customer_detail/",
-    #     CustomerDetailView.as_view(),
-    #     name="customer_detail",
-    # ),
+    path(
+        "api/cost_analysis/",
+        CostAnalysisView.as_view(),
+        name="cost_analysis",
+    ),
     path(
         "api/customer_totals/",
         CustomersWithRevenueView.as_view(),

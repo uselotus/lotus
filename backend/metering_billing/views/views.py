@@ -1,19 +1,16 @@
+import datetime
 from decimal import Decimal
 
 import posthog
 from dateutil import parser
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
+from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
-    APIToken,
-    BillableMetric,
-    Customer,
-    CustomerBalanceAdjustment,
-    Subscription,
-)
+from metering_billing.models import APIToken, Customer, Metric, Subscription
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
@@ -22,6 +19,7 @@ from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.request_serializers import *
 from metering_billing.serializers.response_serializers import *
 from metering_billing.utils import (
+    convert_to_date,
     convert_to_decimal,
     date_as_max_dt,
     date_as_min_dt,
@@ -44,7 +42,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -68,79 +66,157 @@ class PeriodMetricRevenueView(APIView):
         ]
         p1_start, p2_start = date_as_min_dt(p1_start), date_as_min_dt(p2_start)
         p1_end, p2_end = date_as_max_dt(p1_end), date_as_max_dt(p2_end)
-        all_org_billable_metrics = BillableMetric.objects.filter(
-            organization=organization
-        )
-
-        return_dict = {
-            "daily_usage_revenue_period_1": {},
-            "total_revenue_period_1": Decimal(0),
-            "daily_usage_revenue_period_2": {},
-            "total_revenue_period_2": Decimal(0),
-        }
-        if all_org_billable_metrics.count() > 0:
-            for billable_metric in all_org_billable_metrics:
-                for p_start, p_end, p_num in [
-                    (p1_start, p1_end, 1),
-                    (p2_start, p2_end, 2),
-                ]:
-                    return_dict[f"daily_usage_revenue_period_{p_num}"][
-                        billable_metric.id
-                    ] = {
-                        "metric": str(billable_metric),
-                        "data": {
-                            x: Decimal(0)
-                            for x in periods_bwn_twodates(
-                                USAGE_CALC_GRANULARITY.DAILY, p_start, p_end
-                            )
-                        },
-                        "total_revenue": Decimal(0),
-                    }
-            for p_start, p_end, p_num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
-                total_period_rev = Decimal(0)
-                subs = (
-                    Subscription.objects.filter(
-                        Q(start_date__range=[p_start, p_end])
-                        | Q(end_date__range=[p_start, p_end]),
-                        organization=organization,
-                    )
-                    .select_related("billing_plan")
-                    .select_related("customer")
-                    .prefetch_related("billing_plan__plan_components")
-                    .prefetch_related("billing_plan__plan_components__billable_metric")
+        return_dict = {}
+        # collected
+        p1_collected = Invoice.objects.filter(
+            organization=organization,
+            issue_date__gte=p1_start,
+            issue_date__lte=p1_end,
+            payment_status=INVOICE_STATUS.PAID,
+        ).aggregate(tot=Sum("cost_due"))["tot"]
+        p2_collected = Invoice.objects.filter(
+            organization=organization,
+            issue_date__gte=p2_start,
+            issue_date__lte=p2_end,
+            payment_status=INVOICE_STATUS.PAID,
+        ).aggregate(tot=Sum("cost_due"))["tot"]
+        return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
+        return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
+        # earned
+        for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
+            subs = (
+                Subscription.objects.filter(
+                    Q(start_date__range=(start, end))
+                    | Q(end_date__range=(start, end))
+                    | Q(start_date__lte=start, end_date__gte=end),
+                    organization=organization,
                 )
-                for sub in subs:
-                    bp = sub.billing_plan
-                    flat_bill_date = (
-                        sub.start_date
-                        if bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
-                        else sub.end_date
-                    )
-                    if p_start <= flat_bill_date <= p_end:
-                        total_period_rev += bp.flat_rate.amount
-                    for plan_component in bp.plan_components.all():
-                        billable_metric = plan_component.billable_metric
-                        revenue_per_day = plan_component.calculate_total_revenue(sub)
-                        metric_dict = return_dict[
-                            f"daily_usage_revenue_period_{p_num}"
-                        ][billable_metric.id]
-                        for date, d in revenue_per_day.items():
-                            if date in metric_dict["data"]:
-                                usage_cost = Decimal(d["revenue"])
-                                metric_dict["data"][date] += usage_cost
-                                metric_dict["total_revenue"] += usage_cost
-                                total_period_rev += usage_cost
-                return_dict[f"total_revenue_period_{p_num}"] = total_period_rev
-        for p_num in [1, 2]:
-            dailies = return_dict[f"daily_usage_revenue_period_{p_num}"]
-            dailies = [daily_dict for metric_id, daily_dict in dailies.items()]
-            return_dict[f"daily_usage_revenue_period_{p_num}"] = dailies
-            for dic in dailies:
-                dic["data"] = [
-                    {"date": str(k.date()), "metric_revenue": v}
-                    for k, v in dic["data"].items()
-                ]
+                .select_related("billing_plan")
+                .select_related("customer")
+                .prefetch_related("billing_plan__plan_components")
+                .prefetch_related("billing_plan__plan_components__billable_metric")
+                .prefetch_related("billing_plan__plan_components__tiers")
+            )
+            per_day_dict = {}
+            for period in periods_bwn_twodates(
+                USAGE_CALC_GRANULARITY.DAILY, start, end
+            ):
+                period = convert_to_date(period)
+                per_day_dict[period] = {
+                    "date": period,
+                    "revenue": Decimal(0),
+                }
+            for subscription in subs:
+                earned_revenue = subscription.calculate_earned_revenue_per_day()
+                for date, earned_revenue in earned_revenue.items():
+                    date = convert_to_date(date)
+                    if date in per_day_dict:
+                        per_day_dict[date]["revenue"] += earned_revenue
+            return_dict[f"earned_revenue_period_{num}"] = sum(
+                [x["revenue"] for x in per_day_dict.values()]
+            )
+
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
+        serializer.is_valid(raise_exception=True)
+        ret = serializer.validated_data
+        ret = make_all_decimals_floats(ret)
+        ret = make_all_dates_times_strings(ret)
+        return Response(ret, status=status.HTTP_200_OK)
+
+
+class CostAnalysisView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[CostAnalysisRequestSerializer],
+        responses={200: CostAnalysisSerializer},
+    )
+    def get(self, request, format=None):
+        """
+        Returns the revenue for an organization in a given time period.
+        """
+        organization = parse_organization(request)
+        serializer = CostAnalysisRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        start_date, end_date, customer_id = [
+            serializer.validated_data.get(key, None)
+            for key in ["start_date", "end_date", "customer_id"]
+        ]
+        try:
+            customer = Customer.objects.get(
+                organization=organization, customer_id=customer_id
+            )
+        except Customer.DoesNotExist:
+            return Response(
+                {"error": "Customer not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        per_day_dict = {}
+        for period in periods_bwn_twodates(
+            USAGE_CALC_GRANULARITY.DAILY, start_date, end_date
+        ):
+            period = convert_to_date(period)
+            per_day_dict[period] = {
+                "date": period,
+                "cost_data": [],
+                "revenue": Decimal(0),
+            }
+        cost_metrics = Metric.objects.filter(
+            organization=organization, is_cost_metric=True
+        )
+        for metric in cost_metrics:
+            usage = metric.get_usage(
+                start_date,
+                end_date,
+                granularity=USAGE_CALC_GRANULARITY.DAILY,
+                customer=customer,
+            )[customer.customer_name]
+            for date, usage in usage.items():
+                date = convert_to_date(date)
+                usage = convert_to_decimal(usage)
+                per_day_dict[date]["cost_data"].append(
+                    {
+                        "metric": MetricSerializer(metric).data,
+                        "cost": usage,
+                    }
+                )
+        subscriptions = (
+            Subscription.objects.filter(
+                Q(start_date__range=[start_date, end_date])
+                | Q(end_date__range=[start_date, end_date])
+                | (Q(start_date__lte=start_date) & Q(end_date__gte=end_date)),
+                organization=organization,
+                customer=customer,
+            )
+            .select_related("billing_plan")
+            .select_related("customer")
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .prefetch_related("billing_plan__plan_components__tiers")
+        )
+        for subscription in subscriptions:
+            earned_revenue = subscription.calculate_earned_revenue_per_day()
+            for date, earned_revenue in earned_revenue.items():
+                date = convert_to_date(date)
+                if date in per_day_dict:
+                    per_day_dict[date]["revenue"] += earned_revenue
+        return_dict = {
+            "per_day": [v for k, v in per_day_dict.items()],
+        }
+        total_cost = Decimal(0)
+        for day in per_day_dict.values():
+            for cost_data in day["cost_data"]:
+                total_cost += convert_to_decimal(cost_data["cost"])
+        total_revenue = Decimal(0)
+        for day in per_day_dict.values():
+            total_revenue += day["revenue"]
+        return_dict["total_cost"] = total_cost
+        return_dict["total_revenue"] = total_revenue
+        if total_cost == 0:
+            return_dict["margin"] = 0
+        else:
+            return_dict["margin"] = convert_to_decimal(total_revenue / total_cost - 1)
+        serializer = CostAnalysisSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         ret = make_all_decimals_floats(ret)
@@ -223,7 +299,7 @@ class PeriodMetricUsageView(APIView):
         q_start = date_as_min_dt(q_start)
         q_end = date_as_max_dt(q_end)
 
-        metrics = BillableMetric.objects.filter(organization=organization)
+        metrics = Metric.objects.filter(organization=organization)
         return_dict = {}
         for metric in metrics:
             usage_summary = metric.get_usage(
@@ -369,79 +445,6 @@ class CustomersSummaryView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# class CustomerDetailView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     @extend_schema(
-#         parameters=[
-#             inline_serializer(
-#                 name="CustomerDetailRequestSerializer",
-#                 fields={"customer_id": serializers.CharField()},
-#             ),
-#         ],
-#         responses={
-#             200: CustomerDetailSerializer,
-#             400: inline_serializer(
-#                 name="CustomerDetailErrorResponseSerializer",
-#                 fields={"error_detail": serializers.CharField()},
-#             ),
-#         },
-#     )
-#     def get(self, request, format=None):
-#         """
-#         Get the current settings for the organization.
-#         """
-#         organization = parse_organization(request)
-#         customer_id = request.query_params.get("customer_id")
-#         try:
-#             customer = (
-#                 Customer.objects.filter(
-#                     organization=organization, customer_id=customer_id
-#                 )
-#                 .prefetch_related(
-#                     Prefetch(
-#                         "customer_subscriptions",
-#                         queryset=Subscription.objects.filter(organization=organization),
-#                         to_attr="subscriptions",
-#                     ),
-#                     Prefetch(
-#                         "subscriptions__billing_plan",
-#                         queryset=PlanVersion.objects.filter(organization=organization),
-#                         to_attr="billing_plans",
-#                     ),
-#                 )
-#                 .get()
-#             )
-#         except Customer.DoesNotExist:
-#             return Response(
-#                 {
-#                     "error_detail": "Customer with customer_id {} does not exist".format(
-#                         customer_id
-#                     )
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-
-#         total_amount_due = customer.get_outstanding_revenue()
-#         invoices = Invoice.objects.filter(
-#             organization=organization,
-#             customer=customer,
-#         )
-
-#         balance_adjustments = CustomerBalanceAdjustment.objects.filter(
-#             customer=customer,
-#         )
-#         serializer = CustomerDetailSerializer(
-#             customer,
-#             context={
-#                 "total_amount_due": total_amount_due,
-#                 "invoices": invoices,
-#                 "balance_adjustments": balance_adjustments,
-#             },
-#         )
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 class CustomersWithRevenueView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -515,7 +518,8 @@ class DraftInvoiceView(APIView):
 
 
 class GetCustomerAccessView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = []
+    authentication_classes = []
 
     @extend_schema(
         parameters=[GetCustomerAccessRequestSerializer],
@@ -548,6 +552,11 @@ class GetCustomerAccessView(APIView):
         },
     )
     def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
         serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(request)
@@ -565,7 +574,7 @@ class GetCustomerAccessView(APIView):
         customer_id = serializer.validated_data["customer_id"]
         try:
             customer = Customer.objects.get(
-                organization=organization, customer_id=customer_id
+                organization_id=organization_pk, customer_id=customer_id
             )
         except Customer.DoesNotExist:
             return Response(
@@ -588,42 +597,51 @@ class GetCustomerAccessView(APIView):
             )
             metric_usages = {}
             for sub in subscriptions:
+                cache_key = f"customer_id:{customer_id}__event_name:{event_name}"
                 for component in sub.billing_plan.plan_components.all():
                     if component.billable_metric.event_name == event_name:
                         metric = component.billable_metric
-                        tiers = sorted(
-                            component.tiers.all(), key=lambda x: x.range_start
-                        )
-                        if event_limit_type == "free":
-                            metric_limit = (
-                                tiers[0].range_end
-                                if tiers[0].type == PRICE_TIER_TYPE.FREE
-                                else None
+                        metric_name = metric.billable_metric_name
+                        event_limit_dict = cache.get(cache_key, {})
+                        if (component.pk, event_limit_type) in event_limit_dict:
+                            metric_usages[metric_name] = event_limit_dict[
+                                (component.pk, event_limit_type)
+                            ]
+                        else:
+                            tiers = sorted(
+                                component.tiers.all(), key=lambda x: x.range_start
                             )
-                        elif event_limit_type == "total":
-                            metric_limit = tiers[-1].range_end
-                        if not metric_limit:
-                            metric_usages[metric.billable_metric_name] = {
-                                "metric_usage": None,
-                                "metric_limit": None,
-                                "access": True
-                                if event_limit_type == "total"
-                                else False,
+                            if event_limit_type == "free":
+                                metric_limit = (
+                                    tiers[0].range_end
+                                    if tiers[0].type == PRICE_TIER_TYPE.FREE
+                                    else None
+                                )
+                            elif event_limit_type == "total":
+                                metric_limit = tiers[-1].range_end
+                            metric_usage = metric.get_current_usage(sub)
+                            if not metric_limit:
+                                access = True if event_limit_type == "total" else False
+                            else:
+                                access = metric_usage < metric_limit
+                            metric_usages[metric_name] = {
+                                "metric_usage": metric_usage,
+                                "metric_limit": metric_limit,
+                                "access": access,
                             }
-                            continue
-                        metric_usage = metric.get_current_usage(sub)
-                        metric_usages[metric.billable_metric_name] = {
-                            "metric_usage": metric_usage,
-                            "metric_limit": metric_limit,
-                            "access": metric_usage < metric_limit,
-                        }
+                            event_limit_dict = {
+                                **event_limit_dict,
+                                (component.pk, event_limit_type): metric_usages[
+                                    metric_name
+                                ],
+                            }
+                            cache.set(cache_key, event_limit_dict, None)
             if all(v["access"] for k, v in metric_usages.items()):
                 return Response(
                     {
                         "access": True,
                         "usages": [
-                            v.update({"metric_name": k})
-                            for k, v in metric_usages.items()
+                            {**v, "metric_name": k} for k, v in metric_usages.items()
                         ],
                     },
                     status=status.HTTP_200_OK,
@@ -633,8 +651,7 @@ class GetCustomerAccessView(APIView):
                     {
                         "access": False,
                         "usages": [
-                            v.update({"metric_name": k})
-                            for k, v in metric_usages.items()
+                            {**v, "metric_name": k} for k, v in metric_usages.items()
                         ],
                     },
                     status=status.HTTP_200_OK,

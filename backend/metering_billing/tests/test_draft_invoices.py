@@ -5,9 +5,9 @@ from decimal import Decimal
 import pytest
 from django.urls import reverse
 from metering_billing.models import (
-    BillableMetric,
     Event,
     Invoice,
+    Metric,
     PlanComponent,
     PlanVersion,
     PriceAdjustment,
@@ -77,7 +77,7 @@ def draft_invoice_test_common_setup(
             _quantity=3,
         )
         metric_set = baker.make(
-            BillableMetric,
+            Metric,
             organization=org,
             event_name="email_sent",
             property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),
