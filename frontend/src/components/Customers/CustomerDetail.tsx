@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Form, Tabs, Modal } from "antd";
 import { PlanType } from "../../types/plan-type";
-import { Card, Col, Row } from 'antd';
+import { Card, Col, Row, Select } from "antd";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -24,30 +24,27 @@ import {
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
-import {CustomerIntegrations} from "./CustomerIntegrations";
+import { CustomerIntegrations } from "./CustomerIntegrations";
+import { CustomerCostType } from "../../types/revenue-type";
+import CustomerInfoView from "./CustomerInfo";
 
-<<<<<<< Updated upstream
-=======
 const { Option } = Select;
 
-
 const dummyData = {
-    "stripe": {
-        "key": "stripe_dummy_key",
-        "account_type": "stripe_dummy_account",
-        "name": "dummy name",
-        "email": "abc@dummy.com"
-    },
-    "paypal": {
-        "key": "stripe_dummy_key",
-        "account_type": "stripe_dummy_account",
-        "name": "dummy name",
-        "email": "abc@dummy.com"
-    },
-}
+  stripe: {
+    key: "stripe_dummy_key",
+    account_type: "stripe_dummy_account",
+    name: "dummy name",
+    email: "abc@dummy.com",
+  },
+  paypal: {
+    key: "stripe_dummy_key",
+    account_type: "stripe_dummy_account",
+    name: "dummy name",
+    email: "abc@dummy.com",
+  },
+};
 
-
->>>>>>> Stashed changes
 function CustomerDetail(props: {
   visible: boolean;
   onCancel: () => void;
@@ -70,6 +67,15 @@ function CustomerDetail(props: {
           setCustomerSubscriptions(res.subscriptions);
           return res;
         }),
+      {
+        enabled: props.visible,
+      }
+    );
+
+  const { data: cost_analysis, isLoading: cost_analysis_loading } =
+    useQuery<CustomerCostType>(
+      ["customer_cost_analysis", props.customer_id],
+      () => Customer.getCost(props.customer_id, "2021-01-01", "2021-12-31"),
       {
         enabled: props.visible,
       }
@@ -184,24 +190,9 @@ function CustomerDetail(props: {
             <Tabs defaultActiveKey="subscriptions" centered className="w-full">
               <Tabs.TabPane tab="Detail" key="detail">
                 {data !== undefined ? (
-                    <div className="flex flex-col items-center justify-center">
-                      <div><h2 className="mb-2 pb-4 pt-4 font-bold text-main">Customer Details</h2></div>
-                        <div className="customer-detail-card">
-                            <p><b>Customer Name:</b> {data.customer_name}</p>
-                            <p><b>Customer ID:</b> {data.customer_id}</p>
-                            <p><b>Email:</b> {data.email}</p>
-                            <p><b>Billing Address:</b> {data.billing_address}</p>
-                        </div>
-                    </div>
+                  <CustomerInfoView date={data} cost_date={cost_analysis} />
                 ) : (
                   <h2> No Data </h2>
-                )}
-              </Tabs.TabPane>
-              <Tabs.TabPane tab="Integrations" key="integrations">
-                {data?.integrations ? (
-                    <CustomerIntegrations integrations={data?.integrations} />
-                ) : (
-                  <h2> No Integrations </h2>
                 )}
               </Tabs.TabPane>
               <Tabs.TabPane tab="Subscriptions" key="subscriptions">
@@ -223,8 +214,17 @@ function CustomerDetail(props: {
                 <CustomerInvoiceView invoices={data?.invoices} />
               </Tabs.TabPane>
               <Tabs.TabPane tab="Credits" key="credits">
-                    <CustomerBalancedAdjustments balanceAdjustments={data?.balance_adjustments} />
-                </Tabs.TabPane>{" "}
+                <CustomerBalancedAdjustments
+                  balanceAdjustments={data?.balance_adjustments}
+                />
+              </Tabs.TabPane>
+              <Tabs.TabPane tab="Integrations" key="integrations">
+                {data?.integrations ? (
+                  <CustomerIntegrations integrations={data?.integrations} />
+                ) : (
+                  <h2> No Integrations </h2>
+                )}
+              </Tabs.TabPane>{" "}
             </Tabs>
           </div>
         </div>
