@@ -188,14 +188,15 @@ class CostAnalysisView(APIView):
             usage = metric.get_usage(
                 start_date,
                 end_date,
-                grnaularity=USAGE_CALC_GRANULARITY.DAILY,
+                granularity=USAGE_CALC_GRANULARITY.DAILY,
                 customer=customer,
-            )
+            )[customer.customer_name]
             for date, usage in usage.items():
                 date = convert_to_date(date)
+                usage = convert_to_decimal(usage)
                 per_day_dict[date]["cost_data"].append(
                     {
-                        "metric": metric,
+                        "metric": MetricSerializer(metric).data,
                         "cost": usage,
                     }
                 )
@@ -225,7 +226,7 @@ class CostAnalysisView(APIView):
         total_cost = Decimal(0)
         for day in per_day_dict.values():
             for cost_data in day["cost_data"]:
-                total_cost += cost_data["cost"]
+                total_cost += convert_to_decimal(cost_data["cost"])
         total_revenue = Decimal(0)
         for day in per_day_dict.values():
             total_revenue += day["revenue"]
@@ -234,7 +235,7 @@ class CostAnalysisView(APIView):
         if total_cost == 0:
             return_dict["margin"] = 0
         else:
-            return_dict["margin"] = total_revenue / total_cost - 1
+            return_dict["margin"] = convert_to_decimal(total_revenue / total_cost - 1)
         serializer = CostAnalysisSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
