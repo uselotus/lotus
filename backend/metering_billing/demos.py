@@ -602,8 +602,8 @@ def setup_demo_3(company_name, username, email, password):
     )
     BacktestSubstitution.objects.create(
         backtest=backtest,
-        original_plan=bp_10_og,
-        new_plan=bp_10_compute_seats,
+        original_plan=bp_10_compute_seats,
+        new_plan=bp_10_og,
     )
     run_backtest(backtest.backtest_id)
     return user
