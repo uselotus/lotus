@@ -211,6 +211,25 @@ class Customer(models.Model):
 
         return subscription_usages
 
+    def get_active_sub_drafts_revenue(self):
+        customer_subscriptions = (
+            Subscription.objects.filter(
+                customer=self,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+                organization=self.organization,
+            )
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .select_related("billing_plan")
+        )
+        total = 0
+        for subscription in customer_subscriptions:
+            inv = generate_invoice(
+                subscription, draft=True, flat_fee_behavior="full_amount"
+            )
+            total += inv.cost_due
+        return total
+
     def get_currency_balance(self, currency):
         now = now_utc()
         balance = self.customer_balance_adjustments.filter(
@@ -221,17 +240,13 @@ class Customer(models.Model):
         return balance
 
     def get_outstanding_revenue(self):
-        usg_rev = self.get_usage_and_revenue()
-        active_sub_amount_due = sum(
-            x["total_amount_due"] for x in usg_rev["subscriptions"]
-        )
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
-            .exclude(subscription__in=usg_rev["sub_objects"])
+            .exclude(subscription__status=SUBSCRIPTION_STATUS.ACTIVE)
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
-        total_amount_due = active_sub_amount_due + (unpaid_invoice_amount_due or 0)
+        total_amount_due = unpaid_invoice_amount_due or 0
         return total_amount_due
 
 

@@ -197,13 +197,18 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("customer_id", "total_amount_due")
+        fields = ("customer_id", "total_amount_due", "next_amount_due")
 
     total_amount_due = serializers.SerializerMethodField()
+    next_amount_due = serializers.SerializerMethodField()
 
     def get_total_amount_due(self, obj) -> float:
         total_amount_due = float(self.context.get("total_amount_due"))
         return total_amount_due
+
+    def get_next_amount_due(self, obj) -> float:
+        next_amount_due = float(self.context.get("next_amount_due"))
+        return next_amount_due
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -472,8 +477,9 @@ class PriceTierSerializer(serializers.ModelSerializer):
         elif data.get("type") == PRICE_TIER_TYPE.PER_UNIT:
             assert data.get("metric_units_per_batch")
             assert data.get("cost_per_batch")
-            data["batch_rounding_type"] = BATCH_ROUNDING_TYPE.NO_ROUNDING
-            assert data.get("batch_rounding_type")
+            data["batch_rounding_type"] = data.get(
+                "batch_rounding_type", BATCH_ROUNDING_TYPE.NO_ROUNDING
+            )
         else:
             raise serializers.ValidationError("Invalid price tier type")
         return data
