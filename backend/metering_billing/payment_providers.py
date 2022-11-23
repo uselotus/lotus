@@ -335,7 +335,7 @@ class StripeConnector(PaymentProvider):
 
         for line_item in invoice.inv_line_items.all():
             name = line_item.name
-            amount = line_item.subtotal.amount
+            amount = line_item.subtotal
             customer = stripe_customer_id
             currency = line_item.subtotal.currency
             period = {

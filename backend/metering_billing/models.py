@@ -13,13 +13,13 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Count, Q, Sum
 from django.db.models.constraints import UniqueConstraint
-from djmoney.models.fields import MoneyField
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
     calculate_end_date,
     convert_to_date,
     convert_to_decimal,
+    customer_balance_adjustment_uuid,
     customer_uuid,
     dates_bwn_two_dts,
     invoice_uuid,
@@ -75,6 +75,9 @@ class Organization(models.Model):
         choices=PAYMENT_PLANS.choices,
         default=PAYMENT_PLANS.SELF_HOSTED_FREE,
     )
+    default_currency = models.ForeignKey(
+        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
     history = HistoricalRecords()
 
     def __str__(self):
@@ -87,6 +90,9 @@ class Organization(models.Model):
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         super(Organization, self).save(*args, **kwargs)
+        if not self.default_currency:
+            self.default_currency = PricingUnit.objects.filter(code="USD").first()
+            self.save()
 
     @property
     def users(self):
@@ -160,6 +166,9 @@ class Customer(models.Model):
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
     properties = models.JSONField(default=dict, blank=True, null=True)
+    default_currency = models.ForeignKey(
+        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
     history = HistoricalRecords()
 
     class Meta:
@@ -181,6 +190,9 @@ class Customer(models.Model):
         Event.objects.filter(
             organization=self.organization, cust_id=self.customer_id
         ).update(customer=self)
+        if not self.default_currency:
+            self.default_currency = self.organization.default_currency
+            self.save()
 
     def get_billing_plan_names(self) -> str:
         subscription_set = Subscription.objects.filter(
@@ -240,33 +252,68 @@ class CustomerBalanceAdjustment(models.Model):
     This model is used to store the customer balance adjustments.
     """
 
+    adjustment_id = models.CharField(
+        max_length=100, default=customer_balance_adjustment_uuid
+    )
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="+"
+    )
     customer = models.ForeignKey(
         Customer, on_delete=models.CASCADE, related_name="customer_balance_adjustments"
     )
-    amount = MoneyField(decimal_places=10, max_digits=20)
+    amount = models.DecimalField(decimal_places=10, max_digits=20)
+    pricing_unit = models.ForeignKey(
+        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
     description = models.TextField(null=True, blank=True)
     created = models.DateTimeField(default=now_utc)
     effective_at = models.DateTimeField(default=now_utc)
     expires_at = models.DateTimeField(null=True, blank=True)
+    parent_adjustment = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="drawdowns",
+    )
 
     def __str__(self):
         return f"{self.customer.customer_name} {self.amount} {self.created}"
 
     class Meta:
         ordering = ["-created"]
-
-    class Meta:
         unique_together = ("customer", "created")
-
-    def __str__(self):
-        return f"{self.customer} {self.amount} {self.created}"
 
     def save(self, *args, **kwargs):
         if self.pk:
             raise ValidationError(
                 "you may not edit an existing %s" % self._meta.model_name
             )
+        if self.amount < 0:
+            assert (
+                self.parent_adjustment is not None
+            ), "If credit is negative, parent adjustment must be provided"
+        if self.parent_adjustment:
+            assert (
+                self.parent_adjustment.amount > 0
+            ), "Parent adjustment must be a credit adjustment"
+            assert (
+                self.parent_adjustment.customer == self.customer
+            ), "Parent adjustment must be for the same customer"
+            assert self.amount < 0, "Child adjustment must be a debit adjustment"
+            assert (
+                self.pricing_unit == self.parent_adjustment.pricing_unit
+            ), "Child adjustment must be in the same currency as parent adjustment"
+            assert self.parent_adjustment.get_remaining_balance() - self.amount >= 0, (
+                "Child adjustment must be less than or equal to the remaining balance of "
+                "the parent adjustment"
+            )
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
+
+    def get_remaining_balance(self):
+        return self.amount - self.drawdowns.aggregate(drawdowns=Sum("amount"))[
+            "drawdowns"
+        ] or Decimal(0)
 
 
 class Event(models.Model):
@@ -507,6 +554,13 @@ class PlanComponent(models.Model):
         blank=True,
         default=COMPONENT_RESET_FREQUENCY.NONE,
     )
+    pricing_unit = models.ForeignKey(
+        "PricingUnit",
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return str(self.billable_metric)
@@ -652,8 +706,11 @@ class Feature(models.Model):
 
 
 class Invoice(models.Model):
-    cost_due = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
+    cost_due = models.DecimalField(
+        decimal_places=10, max_digits=20, default=Decimal(0.0)
+    )
+    pricing_unit = models.ForeignKey(
+        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
@@ -683,16 +740,12 @@ class Invoice(models.Model):
         return str(self.invoice_id)
 
     def save(self, *args, **kwargs):
-        if (
-            self.payment_status != INVOICE_STATUS.DRAFT
-            and META
-            and self.cost_due.amount > 0
-        ):
+        if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due > 0:
             lotus_python.track_event(
                 customer_id=self.organization.organization_id,
                 event_name="create_invoice",
                 properties={
-                    "amount": float(self.cost_due.amount),
+                    "amount": float(self.cost_due),
                     "currency": str(self.cost_due.currency),
                     "customer": self.customer.customer_id,
                     "subscription": self.subscription.subscription_id,
@@ -707,8 +760,11 @@ class InvoiceLineItem(models.Model):
     start_date = models.DateTimeField(max_length=100, default=now_utc)
     end_date = models.DateTimeField(max_length=100, default=now_utc)
     quantity = models.DecimalField(decimal_places=10, max_digits=20, default=1.0)
-    subtotal = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
+    subtotal = models.DecimalField(
+        decimal_places=10, max_digits=20, default=Decimal(0.0)
+    )
+    pricing_unit = models.ForeignKey(
+        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
@@ -776,7 +832,9 @@ class PlanVersion(models.Model):
         blank=True,
         related_name="transition_from",
     )
-    flat_rate = MoneyField(decimal_places=10, max_digits=20, default_currency="USD")
+    flat_rate = models.DecimalField(
+        decimal_places=10, max_digits=20, default=Decimal(0)
+    )
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
         "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
@@ -790,6 +848,9 @@ class PlanVersion(models.Model):
         blank=True,
     )
     version_id = models.CharField(max_length=250, default=plan_version_uuid)
+    pricing_unit = models.ForeignKey(
+        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
     history = HistoricalRecords()
 
     class Meta:
@@ -1127,8 +1188,7 @@ class Subscription(models.Model):
                 if day >= today or not self.pk:
                     flat_fee_dictionary[str(day)] = {
                         "plan_version_id": self.billing_plan.version_id,
-                        "amount": float(self.billing_plan.flat_rate.amount)
-                        / len(dates_bwn),
+                        "amount": float(self.billing_plan.flat_rate) / len(dates_bwn),
                     }
         super(Subscription, self).save(*args, **kwargs)
 
@@ -1159,7 +1219,7 @@ class Subscription(models.Model):
         sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
             sub_dict["usage_amount_due"] += component_dict["revenue"]
-        sub_dict["flat_amount_due"] = plan.flat_rate.amount
+        sub_dict["flat_amount_due"] = plan.flat_rate
         sub_dict["total_amount_due"] = (
             sub_dict["flat_amount_due"] + sub_dict["usage_amount_due"]
         )
@@ -1305,3 +1365,37 @@ class OrganizationSetting(models.Model):
                 name="unique_without_group",
             ),
         ]
+
+
+class PricingUnit(models.Model):
+    """
+    This model is used to store pricing units for a plan.
+    """
+
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True
+    )
+    code = models.CharField(max_length=10, null=False, blank=False)
+    name = models.CharField(max_length=100, null=False, blank=False)
+    symbol = models.CharField(max_length=10, null=False, blank=False)
+
+    def __str__(self):
+        ret = f"{self.code}"
+        if self.symbol:
+            ret += f"({self.symbol})"
+        return ret
+
+    class Meta:
+        unique_together = ("organization", "code")
+
+
+class CustomPricingUnitConversion(models.Model):
+    plan_version = models.ForeignKey(
+        PlanVersion, on_delete=models.CASCADE, related_name="pricing_unit_conversions"
+    )
+    from_unit = models.ForeignKey(
+        PricingUnit, on_delete=models.CASCADE, related_name="+"
+    )
+    from_qty = models.DecimalField(max_digits=20, decimal_places=10)
+    to_unit = models.ForeignKey(PricingUnit, on_delete=models.CASCADE, related_name="+")
+    to_qty = models.DecimalField(max_digits=20, decimal_places=10)

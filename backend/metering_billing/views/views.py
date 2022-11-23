@@ -927,62 +927,62 @@ class PlansByNumCustomersView(APIView):
         )
 
 
-class CustomerBalanceAdjustmentView(APIView):
-    permission_classes = [IsAuthenticated]
+# class CustomerBalanceAdjustmentView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        request=inline_serializer(
-            name="CreateBalanceAdjustmentRequest",
-            fields={
-                "amount": serializers.IntegerField(required=True),
-                "customer_id": serializers.CharField(required=True),
-                "amount_currency": serializers.CharField(required=True),
-                "description": serializers.CharField(),
-            },
-        ),
-        responses={
-            200: inline_serializer(
-                name="CreateBalanceAdjustmentSuccess",
-                fields={
-                    "status": serializers.ChoiceField(choices=["success"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-            400: inline_serializer(
-                name="CreateBalanceAdjustmentFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Get the current settings for the organization.
-        """
-        organization = parse_organization(request)
-        customer_id = request.query_params.get("customer_id")
-        customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
-            customer_id=customer_id
-        ).prefetch_related(
-            Prefetch(
-                "customer",
-                queryset=Customer.objects.filter(organization=organization),
-                to_attr="customers",
-            ),
-        )
-        if len(customer_balances_adjustment) == 0:
-            return Response(
-                {
-                    "error_detail": "CustomerBalanceAdjustmentView with customer_id {} does not exist".format(
-                        customer_id
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     @extend_schema(
+#         request=inline_serializer(
+#             name="CreateBalanceAdjustmentRequest",
+#             fields={
+#                 "amount": serializers.IntegerField(required=True),
+#                 "customer_id": serializers.CharField(required=True),
+#                 "amount_currency": serializers.CharField(required=True),
+#                 "description": serializers.CharField(),
+#             },
+#         ),
+#         responses={
+#             200: inline_serializer(
+#                 name="CreateBalanceAdjustmentSuccess",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["success"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#             400: inline_serializer(
+#                 name="CreateBalanceAdjustmentFailure",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["error"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#         },
+#     )
+#     def get(self, request, format=None):
+#         """
+#         Get the current settings for the organization.
+#         """
+#         organization = parse_organization(request)
+#         customer_id = request.query_params.get("customer_id")
+#         customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
+#             customer_id=customer_id
+#         ).prefetch_related(
+#             Prefetch(
+#                 "customer",
+#                 queryset=Customer.objects.filter(organization=organization),
+#                 to_attr="customers",
+#             ),
+#         )
+#         if len(customer_balances_adjustment) == 0:
+#             return Response(
+#                 {
+#                     "error_detail": "CustomerBalanceAdjustmentView with customer_id {} does not exist".format(
+#                         customer_id
+#                     )
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomerBatchCreateView(APIView):

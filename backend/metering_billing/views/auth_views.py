@@ -238,10 +238,12 @@ class RegisterView(LoginViewMixin, APIView):
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
             msg = f"User with username already exists"
+            org.delete()
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
         existing_user_num = User.objects.filter(email=email).count()
         if existing_user_num > 0:
             msg = f"User with email already exists"
+            org.delete()
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.create_user(

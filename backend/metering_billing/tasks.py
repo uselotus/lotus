@@ -106,7 +106,7 @@ def calculate_invoice():
             }
             sub = Subscription.objects.create(**subscription_kwargs)
             if new_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-                sub.flat_fee_already_billed = Decimal(new_bp.flat_rate.amount)
+                sub.flat_fee_already_billed = Decimal(new_bp.flat_rate)
             if sub.start_date <= now <= sub.end_date:
                 sub.status = SUBSCRIPTION_STATUS.ACTIVE
             else:

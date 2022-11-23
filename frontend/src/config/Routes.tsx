@@ -15,6 +15,7 @@ import ExperimentResults from "../pages/ExperimentResults";
 import PlanDetails from "../components/Plans/PlanDetails/PlanDetails";
 import EditPlanLoader from "../pages/EditPlanLoader";
 import StripeIntegrationView from "../integrations/pages/StripeIntegrationView";
+import CreateCredit from "../pages/CreateBalanceAdjustment";
 
 const { Sider } = Layout;
 

@@ -386,7 +386,7 @@ class TestUpdateSub:
         assert len(after_active_subscriptions) == len(active_subscriptions)
         assert len(after_canceled_subscriptions) == 1
         assert new_invoices_len == prev_invoices_len + 1
-        assert Invoice.objects.all()[0].cost_due.amount - Decimal(30) < 0.0000001
+        assert Invoice.objects.all()[0].cost_due - Decimal(30) < 0.0000001
 
     def test_replace_bp_halfway_through_and_prorate(
         self, subscription_test_common_setup, add_plan_to_product
