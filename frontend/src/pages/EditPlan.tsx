@@ -585,9 +585,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       }}
                     >
                       <Select.Option value="none">None</Select.Option>
-                      <Select.Option value="price_override">
+                      {/* <Select.Option value="price_override">
                         Overwrite Price
-                      </Select.Option>
+                      </Select.Option> */}
                       <Select.Option value="percentage">
                         Percentage Off
                       </Select.Option>
