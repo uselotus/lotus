@@ -228,6 +228,10 @@ class Customer(models.Model):
                 subscription, draft=True, flat_fee_behavior="full_amount"
             )
             total += inv.cost_due
+        try:
+            total = total.amount
+        except:
+            pass
         return total
 
     def get_currency_balance(self, currency):
