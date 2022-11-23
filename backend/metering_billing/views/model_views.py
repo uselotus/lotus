@@ -418,7 +418,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "patch",
     ]
     permission_classes_per_method = {
-        "create": [IsAuthenticated],
+        "create": [IsAuthenticated | HasUserAPIKey],
         "partial_update": [IsAuthenticated],
     }
 

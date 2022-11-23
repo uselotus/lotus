@@ -5,12 +5,16 @@ import { PageLayout } from "../../base/PageLayout";
 import { Button } from "antd";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import SwitchVersions from "./SwitchVersions";
-import {useMutation, useQuery} from "react-query";
+import { useMutation, useQuery } from "react-query";
 import { Plan } from "../../../api/api";
-import {CreatePlanExternalLinkType, InitialExternalLinks, PlanDetailType} from "../../../types/plan-type";
+import {
+  CreatePlanExternalLinkType,
+  InitialExternalLinks,
+  PlanDetailType,
+} from "../../../types/plan-type";
 import LoadingSpinner from "../../LoadingSpinner";
 import LinkExternalIds from "../LinkExternalIds";
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 
 type PlanDetailParams = {
   planId: string;
@@ -21,60 +25,60 @@ const PlanDetails: FC = () => {
   const navigate = useNavigate();
   const { planId } = useParams<PlanDetailParams>();
 
-    const createExternalLinkMutation = useMutation(
-        (post: CreatePlanExternalLinkType) => Plan.createExternalLinks(post),
-        {
-            onSuccess: () => {
-                toast.success("Successfully created Plan external links", {
-                    position: toast.POSITION.TOP_CENTER,
-                });
-            },
-            onError: () => {
-                toast.error("Failed to create Plan external links", {
-                    position: toast.POSITION.TOP_CENTER,
-                });
-            },
-        }
-    );
-
-    const deleteExternalLinkMutation = useMutation(
-        (post: InitialExternalLinks) => Plan.deleteExternalLinks(post),
-        {
-            onSuccess: () => {
-                toast.success("Successfully deleted Plan external links", {
-                    position: toast.POSITION.TOP_CENTER,
-                });
-            },
-            onError: () => {
-                toast.error("Failed to delete Plan external links", {
-                    position: toast.POSITION.TOP_CENTER,
-                });
-            },
-        }
-    );
-
-    const createPlanExternalLink = (link: string) => {
-        if(plan.external_links.find(links => links.external_plan_id === link)) {
-            toast.error(`Duplicate  external link for ${plan.plan_name}`, {
-                position: toast.POSITION.TOP_CENTER,
-            });
-            return
-        }
-        const data :CreatePlanExternalLinkType = {
-            plan_id:plan.plan_id,
-            source:"stripe",
-            external_plan_id:link
-        }
-        createExternalLinkMutation.mutate(data);
+  const createExternalLinkMutation = useMutation(
+    (post: CreatePlanExternalLinkType) => Plan.createExternalLinks(post),
+    {
+      onSuccess: () => {
+        toast.success("Successfully created Plan external links", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+      onError: () => {
+        toast.error("Failed to create Plan external links", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
     }
+  );
 
-    const deletePlanExternalLink = (link: string) => {
-        const data :InitialExternalLinks = {
-            source:"stripe",
-            external_plan_id:link
-        }
-        deleteExternalLinkMutation.mutate(data);
+  const deleteExternalLinkMutation = useMutation(
+    (post: InitialExternalLinks) => Plan.deleteExternalLinks(post),
+    {
+      onSuccess: () => {
+        toast.success("Successfully deleted Plan external links", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+      onError: () => {
+        toast.error("Failed to delete Plan external links", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
     }
+  );
+
+  const createPlanExternalLink = (link: string) => {
+    if (plan.external_links.find((links) => links.external_plan_id === link)) {
+      toast.error(`Duplicate  external link for ${plan.plan_name}`, {
+        position: toast.POSITION.TOP_CENTER,
+      });
+      return;
+    }
+    const data: CreatePlanExternalLinkType = {
+      plan_id: plan.plan_id,
+      source: "stripe",
+      external_plan_id: link,
+    };
+    createExternalLinkMutation.mutate(data);
+  };
+
+  const deletePlanExternalLink = (link: string) => {
+    const data: InitialExternalLinks = {
+      source: "stripe",
+      external_plan_id: link,
+    };
+    deleteExternalLinkMutation.mutate(data);
+  };
 
   const {
     data: plan,
@@ -109,7 +113,10 @@ const PlanDetails: FC = () => {
           <PageLayout
             title={
               plan.target_customer !== null
-                ? plan.plan_name + ": " + plan.target_customer?.name
+                ? plan.plan_name +
+                  ": " +
+                  (plan.target_customer?.name ??
+                    plan.target_customer?.customer_id.substring(0, 8))
                 : plan.plan_name
             }
             backIcon
@@ -137,15 +144,18 @@ const PlanDetails: FC = () => {
               <div className="pr-1 planDetailsLabel">Plan Duration:</div>
               <div className="planDetailsValue"> {plan.plan_duration}</div>
             </div>
-              <div className="planDetails">
-                  <div className="pr-1 planDetailsLabel">Linked External Ids:</div>
-                  <div className="pl-2 mb-2">
-                      <LinkExternalIds
-                          createExternalLink={createPlanExternalLink}
-                          deleteExternalLink={deletePlanExternalLink}
-                          externalIds={plan.external_links.map(l => l.external_plan_id)}/>
-                  </div>
+            <div className="planDetails">
+              <div className="pr-1 planDetailsLabel">Linked External Ids:</div>
+              <div className="pl-2 mb-2">
+                <LinkExternalIds
+                  createExternalLink={createPlanExternalLink}
+                  deleteExternalLink={deletePlanExternalLink}
+                  externalIds={plan.external_links.map(
+                    (l) => l.external_plan_id
+                  )}
+                />
               </div>
+            </div>
           </div>
           <div className="separator mt-4" />
 

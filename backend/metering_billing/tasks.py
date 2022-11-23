@@ -176,10 +176,16 @@ def write_batch_events_to_db(events_list):
     for event in events:
         if event.organization not in event_org_map:
             event_org_map[event.organization] = 0
-        if event.customer.customer_id not in customer_event_name_map:
-            customer_event_name_map[event.customer] = set()
+        try:
+            cust_id = event.customer.customer_id
+            if event.customer.customer_id not in customer_event_name_map:
+                customer_event_name_map[event.customer] = set()
+            customer_event_name_map[event.customer].add(event.event_name)
+        except Exception as e:
+            print(e)
+            print("Error processing event {}".format(event))
+            continue
         event_org_map[event.organization] += 1
-        customer_event_name_map[event.customer].add(event.event_name)
     for customer_id, to_invalidate in customer_event_name_map.items():
         cache_keys_to_invalidate = []
         for event_name in to_invalidate:

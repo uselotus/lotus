@@ -6,6 +6,7 @@ from actstream.models import Action
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Alert,
     CategoricalFilter,
@@ -196,13 +197,18 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("customer_id", "total_amount_due")
+        fields = ("customer_id", "total_amount_due", "next_amount_due")
 
     total_amount_due = serializers.SerializerMethodField()
+    next_amount_due = serializers.SerializerMethodField()
 
     def get_total_amount_due(self, obj) -> float:
         total_amount_due = float(self.context.get("total_amount_due"))
         return total_amount_due
+
+    def get_next_amount_due(self, obj) -> float:
+        next_amount_due = float(self.context.get("next_amount_due"))
+        return next_amount_due
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -471,8 +477,9 @@ class PriceTierSerializer(serializers.ModelSerializer):
         elif data.get("type") == PRICE_TIER_TYPE.PER_UNIT:
             assert data.get("metric_units_per_batch")
             assert data.get("cost_per_batch")
-            data["batch_rounding_type"] = BATCH_ROUNDING_TYPE.NO_ROUNDING
-            assert data.get("batch_rounding_type")
+            data["batch_rounding_type"] = data.get(
+                "batch_rounding_type", BATCH_ROUNDING_TYPE.NO_ROUNDING
+            )
         else:
             raise serializers.ValidationError("Invalid price tier type")
         return data
@@ -1084,44 +1091,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         sub = super().create(validated_data)
         # new subscription means we need to create an invoice if its pay in advance
-        billing_plan_name = sub.billing_plan.plan.plan_name
-        billing_plan_version = sub.billing_plan.version
         if sub.billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            invoice = Invoice.objects.create(
-                cost_due=sub.billing_plan.flat_rate,
-                issue_date=now_utc(),
-                payment_status=INVOICE_STATUS.UNPAID,
-                line_items=[
-                    {
-                        "name": f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                        "start_date": str(sub.start_date),
-                        "end_date": str(sub.end_date),
-                        "quantity": 1,
-                        "subtotal": float(sub.billing_plan.flat_rate.amount),
-                        "type": "In Advance",
-                    }
-                ],
-                organization=sub.organization,
-                customer=sub.customer,
-                subscription=sub,
-            )
-            invoice.cust_connected_to_payment_provider = False
-            invoice.org_connected_to_cust_payment_provider = False
-            for pp in sub.customer.integrations.keys():
-                if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-                    pp_connector = PAYMENT_PROVIDER_MAP[pp]
-                    customer_conn = pp_connector.customer_connected(sub.customer)
-                    org_conn = pp_connector.organization_connected(sub.organization)
-                    if customer_conn:
-                        invoice.cust_connected_to_payment_provider = True
-                    if customer_conn and org_conn:
-                        invoice.external_payment_obj_id = (
-                            pp_connector.create_payment_object(invoice)
-                        )
-                        invoice.external_payment_obj_type = pp
-                        invoice.org_connected_to_cust_payment_provider = True
-                        break
-            invoice.save()
+            generate_invoice(sub, flat_fee_behavior="full_amount", include_usage=False)
         return sub
 
 

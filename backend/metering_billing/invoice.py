@@ -201,9 +201,10 @@ def generate_invoice(
             created=issue_date,
             effective_at=issue_date,
         )
-    elif subtotal > 0:
+    elif subtotal > 0 and not draft:
         balance_adjustment = min(subtotal, customer_balance)
-        if balance_adjustment > 0 and not draft:
+        if balance_adjustment > 0:
+            subscription.flat_fee_already_billed += balance_adjustment
             CustomerBalanceAdjustment.objects.create(
                 customer=customer,
                 amount=Money(-balance_adjustment, "usd"),
@@ -222,6 +223,8 @@ def generate_invoice(
             )
 
     invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    if abs(invoice.cost_due.amount) < 0.01:
+        invoice.payment_status = INVOICE_STATUS.PAID
     invoice.save()
 
     if not draft:

@@ -62,7 +62,10 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
       </div>
       <Typography.Title className="pt-4" level={2}>
         {plan.target_customer !== null
-          ? plan.plan_name + ": " + plan.target_customer?.name
+          ? plan.plan_name +
+            ": " +
+            (plan.target_customer?.name ??
+              plan.target_customer?.customer_id.substring(0, 8))
           : plan.plan_name}
       </Typography.Title>
 

@@ -387,9 +387,10 @@ class APIKeyCreate(APIView):
         Revokes the current API key and returns a new one.
         """
         organization = parse_organization(request)
-        tk = APIToken.objects.filter(organization=organization)
-        cache.delete(tk.prefix)
-        tk.delete()
+        tk = APIToken.objects.filter(organization=organization).first()
+        if tk:
+            cache.delete(tk.prefix)
+            tk.delete()
         api_key, key = APIToken.objects.create_key(
             name="new_api_key", organization=organization
         )
@@ -463,10 +464,12 @@ class CustomersWithRevenueView(APIView):
         cust = []
         for customer in customers:
             total_amount_due = customer.get_outstanding_revenue()
+            next_amount_due = customer.get_active_sub_drafts_revenue()
             serializer = CustomerWithRevenueSerializer(
                 customer,
                 context={
                     "total_amount_due": total_amount_due,
+                    "next_amount_due": next_amount_due,
                 },
             )
             cust.append(serializer.data)
