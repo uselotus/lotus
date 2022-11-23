@@ -120,7 +120,7 @@ class EventSerializer(serializers.ModelSerializer):
         )
 
     customer_id = SlugRelatedFieldWithOrganization(
-        slug_field="customer__customer_id",
+        slug_field="customer_id",
         queryset=Customer.objects.all(),
         write_only=True,
         source="customer",
@@ -128,7 +128,7 @@ class EventSerializer(serializers.ModelSerializer):
     customer = serializers.SerializerMethodField()
 
     def get_customer(self, obj) -> str:
-        return obj.customer_id
+        return obj.cust_id
 
 
 class AlertSerializer(serializers.ModelSerializer):
