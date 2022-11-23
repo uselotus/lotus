@@ -174,12 +174,13 @@ class CostAnalysisView(APIView):
             for date, usage in usage.items():
                 date = convert_to_date(date)
                 usage = convert_to_decimal(usage)
-                per_day_dict[date]["cost_data"].append(
-                    {
-                        "metric": MetricSerializer(metric).data,
-                        "cost": usage,
-                    }
-                )
+                if date in per_day_dict:
+                    per_day_dict[date]["cost_data"].append(
+                        {
+                            "metric": MetricSerializer(metric).data,
+                            "cost": usage,
+                        }
+                    )
         subscriptions = (
             Subscription.objects.filter(
                 Q(start_date__range=[start_date, end_date])

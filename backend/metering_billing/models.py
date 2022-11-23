@@ -589,7 +589,6 @@ class PlanComponent(models.Model):
                     "revenue": revenue,
                 }
             )
-
         return revenue_dict
 
     def calculate_earned_revenue_per_day(

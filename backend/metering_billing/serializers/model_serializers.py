@@ -476,7 +476,7 @@ class PriceTierSerializer(serializers.ModelSerializer):
             data["batch_rounding_type"] = None
         elif data.get("type") == PRICE_TIER_TYPE.PER_UNIT:
             assert data.get("metric_units_per_batch")
-            assert data.get("cost_per_batch")
+            assert data.get("cost_per_batch") is not None
             data["batch_rounding_type"] = data.get(
                 "batch_rounding_type", BATCH_ROUNDING_TYPE.NO_ROUNDING
             )

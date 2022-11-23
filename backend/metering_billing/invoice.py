@@ -40,6 +40,7 @@ def generate_invoice(
     charge_next_plan=False,
     flat_fee_behavior="prorate",
     include_usage=True,
+    issue_date=None,
 ):
     """
     Generate an invoice for a subscription.
@@ -54,7 +55,8 @@ def generate_invoice(
 
     assert flat_fee_behavior in ["refund", "full_amount", "prorate"]
 
-    issue_date = now_utc()
+    if not issue_date:
+        issue_date = now_utc()
 
     customer = subscription.customer
     organization = subscription.organization
@@ -140,7 +142,7 @@ def generate_invoice(
         if billing_plan.transition_to:
             next_bp = billing_plan.transition_to.display_version
         elif billing_plan.replace_with:
-            next_bp = subscription.replace_with
+            next_bp = billing_plan.replace_with
         else:
             next_bp = billing_plan
         if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
