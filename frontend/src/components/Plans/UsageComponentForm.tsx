@@ -84,7 +84,6 @@ const validateTiers = (tiers: Tier[]) => {
     }
     return true;
   });
-  console.log(arr2);
   return arr2.every((val) => val === true);
 };
 
@@ -267,7 +266,6 @@ function UsageComponentForm({
 
   const handleAdd = () => {
     //if range_end isn't null
-    console.log(rangeEnd);
     if (rangeEnd !== undefined) {
       const newTierDefault: Tier = {
         range_start: rangeEnd,
@@ -275,7 +273,6 @@ function UsageComponentForm({
         cost_per_batch: 0,
       };
       setCurrentTiers([...currentTiers, newTierDefault]);
-      console.log(currentTiers);
       setRangeEnd(undefined);
       setErrorMessage("");
     } else {
@@ -285,7 +282,6 @@ function UsageComponentForm({
 
   const handleSave = (row: Tier) => {
     const newData = [...currentTiers];
-    console.log(newData);
     const index = newData.findIndex(
       (item) => row.range_start === item.range_start
     );
@@ -303,7 +299,6 @@ function UsageComponentForm({
   };
 
   const handleDelete = (range_start: React.Key) => {
-    console.log(range_start);
     const newData = currentTiers.filter(
       (item) => item.range_start !== range_start
     );
@@ -374,7 +369,6 @@ function UsageComponentForm({
             icon={<DeleteOutlined />}
             danger
             onClick={() => {
-              console.log(record);
               handleDelete(record.range_start);
             }}
           />

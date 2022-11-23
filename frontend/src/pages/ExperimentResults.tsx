@@ -10,6 +10,7 @@ import { BacktestResultType, SpecificResults } from "../types/experiment-type";
 import { PageLayout } from "../components/base/PageLayout";
 import BacktestSubstitution from "../components/Experiments/BacktestSubsitution";
 import dayjs from "dayjs";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const arrowURL = new URL("../components/arrow.svg", import.meta.url).href;
 
@@ -69,6 +70,11 @@ const ExperimentResults: FC = () => {
   };
 
   const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <PageLayout
       title="Results"
@@ -84,6 +90,11 @@ const ExperimentResults: FC = () => {
         </Button>,
       ]}
     >
+      {isLoading && (
+        <div>
+          <LoadingSpinner />
+        </div>
+      )}
       {isError || experiment === undefined ? (
         <div>Something went wrong</div>
       ) : (

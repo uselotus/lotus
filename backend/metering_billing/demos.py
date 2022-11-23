@@ -8,6 +8,7 @@ import pytz
 from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
     BacktestSubstitution,
@@ -391,7 +392,7 @@ def setup_demo_3(company_name, username, email, password):
                     time_created=tc,
                     idempotency_id=uuid.uuid4(),
                     properties={
-                        "cost": abs(compute_time * random.gauss(0.1, 0.015)),
+                        "cost": abs(compute_time * random.gauss(0.05, 0.01)),
                     },
                 )
                 word_count += event_words
@@ -410,6 +411,25 @@ def setup_demo_3(company_name, username, email, password):
                 idempotency_id=uuid.uuid4,
                 _quantity=n,
             )
+            if months == 0:
+                generate_invoice(
+                    sub, issue_date=sub.start_date, flat_fee_behavior="full_amount"
+                )
+            if months != 5:
+                next_plan = (
+                    bp_10_compute_seats
+                    if months + 1 == 0
+                    else (
+                        bp_25_compute_seats if months + 1 == 1 else bp_50_compute_seats
+                    )
+                )
+                cur_replace_with = sub.billing_plan.replace_with
+                sub.billing_plan.replace_with = next_plan
+                sub.save()
+                generate_invoice(sub, issue_date=sub.end_date, charge_next_plan=True)
+                sub.billing_plan.replace_with = cur_replace_with
+                sub.save()
+
     for i, customer in enumerate(medium_customers):
         beginning = six_months_ago
         offset = np.random.randint(0, 30)
@@ -481,7 +501,7 @@ def setup_demo_3(company_name, username, email, password):
                     time_created=tc,
                     idempotency_id=uuid.uuid4(),
                     properties={
-                        "cost": abs(compute_time * random.gauss(0.12, 0.015)),
+                        "cost": abs(compute_time * random.gauss(0.075, 0.01)),
                     },
                 )
                 word_count += event_words
@@ -501,6 +521,20 @@ def setup_demo_3(company_name, username, email, password):
                 idempotency_id=uuid.uuid4,
                 _quantity=n,
             )
+            if months == 0:
+                generate_invoice(
+                    sub, issue_date=sub.start_date, flat_fee_behavior="full_amount"
+                )
+            if months != 5:
+                plan = (
+                    bp_10_compute_seats if months + 1 in [0, 1] else bp_25_compute_seats
+                )
+                cur_replace_with = sub.billing_plan.replace_with
+                sub.billing_plan.replace_with = next_plan
+                sub.save()
+                generate_invoice(sub, issue_date=sub.end_date, charge_next_plan=True)
+                sub.billing_plan.replace_with = cur_replace_with
+                sub.save()
     for i, customer in enumerate(small_customers):
         beginning = six_months_ago
         offset = np.random.randint(0, 30)  # random.gauss(0, 15)//1
@@ -568,7 +602,7 @@ def setup_demo_3(company_name, username, email, password):
                     time_created=tc,
                     idempotency_id=uuid.uuid4(),
                     properties={
-                        "cost": abs(compute_time * random.gauss(0.15, 0.015)),
+                        "cost": abs(compute_time * random.gauss(0.065, 0.01)),
                     },
                 )
             max_users = max(
@@ -586,6 +620,18 @@ def setup_demo_3(company_name, username, email, password):
                 idempotency_id=uuid.uuid4,
                 _quantity=n,
             )
+            if months == 0:
+                generate_invoice(
+                    sub, issue_date=sub.start_date, flat_fee_behavior="full_amount"
+                )
+            if months != 5:
+                plan = free_bp if months + 1 in [0, 1] else bp_10_compute_seats
+                cur_replace_with = sub.billing_plan.replace_with
+                sub.billing_plan.replace_with = next_plan
+                sub.save()
+                generate_invoice(sub, issue_date=sub.end_date, charge_next_plan=True)
+                sub.billing_plan.replace_with = cur_replace_with
+                sub.save()
     now = now_utc()
     Subscription.objects.filter(
         organization=organization,
