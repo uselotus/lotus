@@ -61,7 +61,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   const { setReplacementPlan } = usePlanUpdater();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
   const [targetCustomerId, setTargetCustomerId] = useState<string>(); // target customer id
-  const [allPlans, setAllPlans] =  useState<PlanType[]>([])
+  const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([
@@ -69,8 +69,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     { label: "Quarterly", name: "quarterly" },
     { label: "Yearly", name: "yearly" },
   ]);
-  const [priceAdjustmentType, setPriceAdjustmentType] =
-    useState<string>("none");
+  const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>(
+    plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
+      "none"
+  );
 
   const queryClient = useQueryClient();
 
@@ -79,10 +81,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   );
 
   useEffect(() => {
-      if(!allPlans?.length) {
-          Plan.getPlans().then(data => setAllPlans(data))
-      }
-  }, [])
+    if (!allPlans?.length) {
+      Plan.getPlans().then((data) => setAllPlans(data));
+    }
+  }, []);
 
   useEffect(() => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
@@ -286,10 +288,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         ) {
           if (
             values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "flat"
+            values.price_adjustment_type === "fixed"
           ) {
-            values.price_adjustment_value =
-              Math.abs(values.price_adjustment_value) * -1;
+            values.price_adjustment_amount =
+              Math.abs(values.price_adjustment_amount) * -1;
           }
           initialPlanVersion["price_adjustment"] = {
             price_adjustment_type: values.price_adjustment_type,
@@ -477,20 +479,18 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
-                     <Form.Item
-                          name="transition_to_plan_id"
-                          label="Plan on next cycle"
-                     >
-                          <Select>
-                              {
-                                  allPlans.map(plan => (
-                                      <Select.Option value={plan.plan_id}>
-                                          {plan.plan_name}
-                                      </Select.Option>
-                                  ))
-                              }
-                          </Select>
-                      </Form.Item>
+                    <Form.Item
+                      name="transition_to_plan_id"
+                      label="Plan on next cycle"
+                    >
+                      <Select>
+                        {allPlans.map((plan) => (
+                          <Select.Option value={plan.plan_id}>
+                            {plan.plan_name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
                   </Card>
                 </Col>
               </Row>

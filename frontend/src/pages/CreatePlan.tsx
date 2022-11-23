@@ -191,16 +191,18 @@ const CreatePlan = () => {
           features: planFeatures,
           // usage_billing_frequency: values.usage_billing_frequency,
         };
+        console.log(values.price_adjustment_type);
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
         ) {
           if (
             values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "flat"
+            values.price_adjustment_type === "fixed"
           ) {
-            values.price_adjustment_value =
-              Math.abs(values.price_adjustment_value) * -1;
+            values.price_adjustment_amount =
+              Math.abs(values.price_adjustment_amount) * -1;
+            console.log(values.price_adjustment_amount);
           }
 
           initialPlanVersion["price_adjustment"] = {
@@ -208,6 +210,7 @@ const CreatePlan = () => {
             price_adjustment_amount: values.price_adjustment_amount,
           };
         }
+        console.log(values.price_adjustment_amount, "adsfas");
 
         const plan: CreatePlanType = {
           plan_name: values.name,
