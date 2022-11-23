@@ -371,7 +371,7 @@ REST_FRAMEWORK = {
         "knox.auth.TokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "EXCEPTION_HANDLER": "lotus.metering_billing.custom_exception_handler.custom_exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
 SPECTACULAR_SETTINGS = {
