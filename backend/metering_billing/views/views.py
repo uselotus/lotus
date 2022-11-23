@@ -387,7 +387,9 @@ class APIKeyCreate(APIView):
         Revokes the current API key and returns a new one.
         """
         organization = parse_organization(request)
-        APIToken.objects.filter(organization=organization).delete()
+        tk = APIToken.objects.filter(organization=organization)
+        cache.delete(tk.prefix)
+        tk.delete()
         api_key, key = APIToken.objects.create_key(
             name="new_api_key", organization=organization
         )
