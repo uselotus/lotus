@@ -11,7 +11,7 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.db.models.constraints import UniqueConstraint
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
@@ -38,6 +38,7 @@ from metering_billing.utils.enums import (
     BATCH_ROUNDING_TYPE,
     CATEGORICAL_FILTER_OPERATORS,
     COMPONENT_RESET_FREQUENCY,
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     EVENT_TYPE,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
@@ -89,10 +90,9 @@ class Organization(models.Model):
                 raise ValueError(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
-        super(Organization, self).save(*args, **kwargs)
         if not self.default_currency:
             self.default_currency = PricingUnit.objects.filter(code="USD").first()
-            self.save()
+        super(Organization, self).save(*args, **kwargs)
 
     @property
     def users(self):
@@ -186,13 +186,12 @@ class Customer(models.Model):
             id = v.get("id")
             if id is None:
                 raise ValueError(f"Payment provider {k} id was not provided")
+        if not self.default_currency:
+            self.default_currency = self.organization.default_currency
         super(Customer, self).save(*args, **kwargs)
         Event.objects.filter(
             organization=self.organization, cust_id=self.customer_id
         ).update(customer=self)
-        if not self.default_currency:
-            self.default_currency = self.organization.default_currency
-            self.save()
 
     def get_billing_plan_names(self) -> str:
         subscription_set = Subscription.objects.filter(
@@ -256,7 +255,7 @@ class CustomerBalanceAdjustment(models.Model):
         max_length=100, default=customer_balance_adjustment_uuid
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="+"
+        Organization, on_delete=models.CASCADE, related_name="+", null=True
     )
     customer = models.ForeignKey(
         Customer, on_delete=models.CASCADE, related_name="customer_balance_adjustments"
@@ -275,6 +274,11 @@ class CustomerBalanceAdjustment(models.Model):
         null=True,
         blank=True,
         related_name="drawdowns",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.choices,
+        default=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
     )
 
     def __str__(self):
@@ -308,12 +312,87 @@ class CustomerBalanceAdjustment(models.Model):
                 "Child adjustment must be less than or equal to the remaining balance of "
                 "the parent adjustment"
             )
+        if not self.pricing_unit:
+            self.pricing_unit = self.customer.organization.default_currency
+        if not self.organization:
+            self.organization = self.customer.organization
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
         return self.amount - self.drawdowns.aggregate(drawdowns=Sum("amount"))[
             "drawdowns"
         ] or Decimal(0)
+
+    def zero_out(self, reason=None):
+        if reason == "expired":
+            description = f"Expiring remaining credit on {self.expires_at}"
+        else:
+            description = f"Zeroing out remaining credit"
+        remaining_balance = self.get_remaining_balance()
+        if remaining_balance > 0:
+            CustomerBalanceAdjustment.objects.create(
+                organization=self.customer.organization,
+                customer=self.customer,
+                amount=-remaining_balance,
+                pricing_unit=self.pricing_unit,
+                parent_adjustment=self,
+                description=description,
+            )
+        self.status = CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE
+        self.save()
+
+    @staticmethod
+    def draw_down_amount(customer, amount, description="", pricing_unit=None):
+        if not pricing_unit:
+            pricing_unit = customer.organization.default_currency
+        now = now_utc()
+        adjs = CustomerBalanceAdjustment.objects.filter(
+            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            customer=customer,
+            pricing_unit=pricing_unit,
+            amount__gt=0,
+            status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+        ).order_by(F("expires_at").desc(nulls_last=True))
+        am = amount
+        for adj in adjs:
+            remaining_balance = adj.get_remaining_balance()
+            if remaining_balance <= 0:
+                adj.status = CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE
+                adj.save()
+                continue
+            drawdown_amount = min(am, remaining_balance)
+            CustomerBalanceAdjustment.objects.create(
+                organization=customer.organization,
+                customer=customer,
+                amount=-drawdown_amount,
+                pricing_unit=adj.pricing_unit,
+                parent_adjustment=adj,
+                description=description,
+            )
+            if drawdown_amount == remaining_balance:
+                adj.status = CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE
+                adj.save()
+            am -= drawdown_amount
+            if am == 0:
+                break
+        return am
+
+    @staticmethod
+    def get_pricing_unit_balance(customer, pricing_unit=None):
+        if not pricing_unit:
+            pricing_unit = customer.organization.default_currency
+        now = now_utc()
+        adjs = CustomerBalanceAdjustment.objects.filter(
+            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            customer=customer,
+            pricing_unit=pricing_unit,
+            amount__gt=0,
+        )
+        total_balance = 0
+        for adj in adjs:
+            remaining_balance = adj.get_remaining_balance()
+            total_balance += remaining_balance
+        return total_balance
 
 
 class Event(models.Model):
@@ -746,12 +825,14 @@ class Invoice(models.Model):
                 event_name="create_invoice",
                 properties={
                     "amount": float(self.cost_due),
-                    "currency": str(self.cost_due.currency),
+                    "currency": self.pricing_unit.code,
                     "customer": self.customer.customer_id,
                     "subscription": self.subscription.subscription_id,
                     "external_type": self.external_payment_obj_type,
                 },
             )
+        if not self.pricing_unit:
+            self.pricing_unit = self.organization.default_currency
         super().save(*args, **kwargs)
 
 
@@ -775,6 +856,11 @@ class InvoiceLineItem(models.Model):
     associated_plan_version = models.ForeignKey(
         "PlanVersion", on_delete=models.CASCADE, null=True, related_name="+"
     )
+
+    def save(self, *args, **kwargs):
+        if not self.pricing_unit:
+            self.pricing_unit = self.invoice.organization.default_currency
+        super().save(*args, **kwargs)
 
 
 class APIToken(AbstractAPIKey):

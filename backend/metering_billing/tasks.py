@@ -14,6 +14,7 @@ from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
     Customer,
+    CustomerBalanceAdjustment,
     Event,
     Invoice,
     Organization,
@@ -35,6 +36,7 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
     SUBSCRIPTION_STATUS,
@@ -112,6 +114,18 @@ def calculate_invoice():
             else:
                 sub.status = SUBSCRIPTION_STATUS.ENDED
             sub.save()
+
+
+@shared_task
+def zero_out_expired_balance_adjustments():
+    now = now_utc()
+    expired_balance_adjustments = CustomerBalanceAdjustment.objects.filter(
+        expiration_date__lt=now,
+        amount__gt=0,
+        status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+    )
+    for ba in expired_balance_adjustments:
+        ba.zero_out(reason="expired")
 
 
 @shared_task

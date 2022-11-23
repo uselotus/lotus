@@ -22,7 +22,11 @@ from metering_billing.utils import (
     make_all_decimals_floats,
     now_utc,
 )
-from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
+from metering_billing.utils.enums import (
+    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    FLAT_FEE_BILLING_TYPE,
+    INVOICE_STATUS,
+)
 from metering_billing.webhooks import invoice_created_webhook
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -59,8 +63,7 @@ def generate_invoice(
     customer = subscription.customer
     organization = subscription.organization
     billing_plan = subscription.billing_plan
-    plan_currency = billing_plan.flat_rate.currency
-    customer_balance = customer.get_currency_balance(plan_currency)
+    pricing_unit = billing_plan.pricing_unit
 
     # create kwargs for invoice
     invoice_kwargs = {
@@ -195,28 +198,29 @@ def generate_invoice(
     subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
     if subtotal < 0 and not draft:
         CustomerBalanceAdjustment.objects.create(
+            organization=organization,
             customer=customer,
-            amount=Money(-subtotal, "usd"),
+            amount=-subtotal,
             description=f"Balance increase from invoice {invoice.invoice_id} generated on {issue_date}",
             created=issue_date,
             effective_at=issue_date,
+            status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
         )
     elif subtotal > 0:
+        customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(customer)
         balance_adjustment = min(subtotal, customer_balance)
         if balance_adjustment > 0 and not draft:
-            CustomerBalanceAdjustment.objects.create(
-                customer=customer,
-                amount=Money(-balance_adjustment, "usd"),
+            leftover = CustomerBalanceAdjustment.draw_down_amount(
+                customer,
+                balance_adjustment,
                 description=f"Balance decrease from invoice {invoice.invoice_id} generated on {issue_date}",
-                created=issue_date,
-                effective_at=issue_date,
             )
             InvoiceLineItem.objects.create(
                 name=f"{subscription.subscription_id} Customer Balance Adjustment",
                 start_date=issue_date,
                 end_date=issue_date,
                 quantity=1,
-                subtotal=-balance_adjustment,
+                subtotal=-balance_adjustment + leftover,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
                 invoice=invoice,
             )

@@ -112,7 +112,11 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     queryset = Alert.objects.filter(type="webhook")
     serializer_class = AlertSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head",]
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -807,7 +811,11 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
     lookup_field = "backtest_id"
-    http_method_names = ["get", "post", "head",]
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
@@ -866,7 +874,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = "product_id"
-    http_method_names = ["get", "post", "head",]
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -1041,7 +1053,12 @@ class PricingUnitViewSet(
         return context
 
 
-class OrganizationViewSet(PermissionPolicyMixin, mixins.ListModelMixin, mixins.UpdateModelMixin, viewsets.GenericViewSet):
+class OrganizationViewSet(
+    PermissionPolicyMixin,
+    mixins.ListModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
     """
     A simple ViewSet for viewing and editing OrganizationSettings.
     """
@@ -1075,7 +1092,11 @@ class OrganizationViewSet(PermissionPolicyMixin, mixins.ListModelMixin, mixins.U
         return context
 
 
-class CustomerBalanceAdjustmentViewSet(PermissionPolicyMixin, mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
+class CustomerBalanceAdjustmentViewSet(
+    PermissionPolicyMixin,
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
 ):
     """
     A simple ViewSet meant only for creating CustomerBalanceAdjustments.
