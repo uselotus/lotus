@@ -1210,7 +1210,8 @@ class Subscription(models.Model):
             rev_per_day = component.calculate_earned_revenue_per_day(self)
             for period, amount in rev_per_day.items():
                 period = convert_to_date(period)
-                return_dict[period] += amount
+                if period in return_dict:
+                    return_dict[period] += amount
         return return_dict
 
 
