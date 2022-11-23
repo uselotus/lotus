@@ -157,6 +157,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerBatchCreateFailure'
           description: ''
+  /api/cost_analysis/:
+    get:
+      operationId: cost_analysis_retrieve
+      description: Returns the revenue for an organization in a given time period.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        required: true
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        required: true
+      tags:
+      - cost_analysis
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CostAnalysis'
+          description: ''
   /api/customer_access/:
     get:
       operationId: customer_access_retrieve
@@ -188,7 +224,6 @@ paths:
       tags:
       - customer_access
       security:
-      - knoxTokenAuth: []
       - OrganizationApiKeyAuth: []
         TokenAuth: []
       responses:
@@ -808,7 +843,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/BillableMetric'
+                  $ref: '#/components/schemas/Metric'
           description: ''
     post:
       operationId: metrics_create
@@ -819,13 +854,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BillableMetric'
+              $ref: '#/components/schemas/Metric'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/BillableMetric'
+              $ref: '#/components/schemas/Metric'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/BillableMetric'
+              $ref: '#/components/schemas/Metric'
         required: true
       security:
       - knoxTokenAuth: []
@@ -836,7 +871,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BillableMetric'
+                $ref: '#/components/schemas/Metric'
           description: ''
   /api/metrics/{id}/:
     get:
@@ -847,7 +882,7 @@ paths:
         name: id
         schema:
           type: integer
-        description: A unique integer value identifying this billable metric.
+        description: A unique integer value identifying this metric.
         required: true
       tags:
       - metrics
@@ -860,7 +895,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BillableMetric'
+                $ref: '#/components/schemas/Metric'
           description: ''
     delete:
       operationId: metrics_destroy
@@ -870,7 +905,7 @@ paths:
         name: id
         schema:
           type: integer
-        description: A unique integer value identifying this billable metric.
+        description: A unique integer value identifying this metric.
         required: true
       tags:
       - metrics
@@ -1616,7 +1651,6 @@ paths:
               $ref: '#/components/schemas/BatchEvent'
         required: true
       security:
-      - knoxTokenAuth: []
       - OrganizationApiKeyAuth: []
         TokenAuth: []
       responses:
@@ -2065,51 +2099,6 @@ components:
       - latest
       - average
       type: string
-    BillableMetric:
-      type: object
-      properties:
-        event_name:
-          type: string
-          maxLength: 200
-        property_name:
-          type: string
-          nullable: true
-          maxLength: 200
-        usage_aggregation_type:
-          $ref: '#/components/schemas/UsageAggregationTypeEnum'
-        billable_aggregation_type:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/BillableAggregationTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
-        granularity:
-          $ref: '#/components/schemas/GranularityEnum'
-        event_type:
-          $ref: '#/components/schemas/EventTypeEnum'
-        metric_type:
-          $ref: '#/components/schemas/MetricTypeEnum'
-        billable_metric_name:
-          type: string
-          maxLength: 200
-        numeric_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/NumericFilter'
-          nullable: true
-        categorical_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/CategoricalFilter'
-          nullable: true
-        properties:
-          type: object
-          additionalProperties: {}
-          nullable: true
-      required:
-      - event_name
-      - metric_type
-      - usage_aggregation_type
     BillingTypeEnum:
       enum:
       - in_arrears
@@ -2118,26 +2107,39 @@ components:
     BlankEnum:
       enum:
       - ''
-    CategoricalFilter:
+    CostAnalysis:
       type: object
       properties:
-        property_name:
-          type: string
-          maxLength: 100
-        operator:
-          $ref: '#/components/schemas/CategoricalFilterOperatorEnum'
-        comparison_value:
-          type: object
-          additionalProperties: {}
+        per_day:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleDayCostAnalysis'
+        total_cost:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        total_revenue:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        margin:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
-      - comparison_value
-      - operator
-      - property_name
-    CategoricalFilterOperatorEnum:
-      enum:
-      - isin
-      - isnotin
-      type: string
+      - margin
+      - per_day
+      - total_cost
+      - total_revenue
     Customer:
       type: object
       properties:
@@ -2162,6 +2164,10 @@ components:
           writeOnly: true
           nullable: true
         properties:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        integrations:
           type: object
           additionalProperties: {}
           nullable: true
@@ -2267,6 +2273,10 @@ components:
           items:
             $ref: '#/components/schemas/SubscriptionCustomerDetail'
           readOnly: true
+        integrations:
+          type: object
+          additionalProperties: {}
+          nullable: true
       required:
       - balance_adjustments
       - invoices
@@ -2311,22 +2321,6 @@ components:
           readOnly: true
       required:
       - total_amount_due
-    DayMetricRevenue:
-      type: object
-      properties:
-        date:
-          type: string
-          format: date
-        metric_revenue:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-      required:
-      - date
-      - metric_revenue
     DayMetricUsage:
       type: object
       properties:
@@ -2605,10 +2599,28 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        version_id:
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        created_on:
           type: string
+          format: date-time
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEe1Enum'
           readOnly: true
         flat_rate:
           type: number
@@ -2617,56 +2629,38 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/StatusEe1Enum'
-          readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
-        created_by:
-          type: string
-          readOnly: true
         description:
           type: string
           nullable: true
           maxLength: 200
+        created_by:
+          type: string
+          readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         usage_billing_frequency:
           nullable: true
           oneOf:
           - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
-        transition_to_plan_id:
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        transition_to:
           type: string
-          writeOnly: true
+          nullable: true
+          readOnly: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        version_id:
+          type: string
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -2830,6 +2824,43 @@ components:
       - replace_on_active_version_renewal
       - grandfather_active
       type: string
+    Metric:
+      type: object
+      properties:
+        event_name:
+          type: string
+          maxLength: 200
+        property_name:
+          type: string
+          nullable: true
+          maxLength: 200
+        usage_aggregation_type:
+          $ref: '#/components/schemas/UsageAggregationTypeEnum'
+        billable_aggregation_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/BillableAggregationTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        granularity:
+          $ref: '#/components/schemas/GranularityEnum'
+        event_type:
+          $ref: '#/components/schemas/EventTypeEnum'
+        metric_type:
+          $ref: '#/components/schemas/MetricTypeEnum'
+        billable_metric_name:
+          type: string
+          maxLength: 200
+        properties:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        is_cost_metric:
+          type: boolean
+      required:
+      - event_name
+      - metric_type
+      - usage_aggregation_type
     MetricRevenue:
       type: object
       properties:
@@ -2872,29 +2903,6 @@ components:
     NullEnum:
       enum:
       - null
-    NumericFilter:
-      type: object
-      properties:
-        property_name:
-          type: string
-          maxLength: 100
-        operator:
-          $ref: '#/components/schemas/NumericFilterOperatorEnum'
-        comparison_value:
-          type: number
-          format: double
-      required:
-      - comparison_value
-      - operator
-      - property_name
-    NumericFilterOperatorEnum:
-      enum:
-      - gte
-      - gt
-      - eq
-      - lt
-      - lte
-      type: string
     Organization:
       type: object
       properties:
@@ -3096,10 +3104,6 @@ components:
     PeriodMetricRevenueResponse:
       type: object
       properties:
-        daily_usage_revenue_period_1:
-          type: array
-          items:
-            $ref: '#/components/schemas/PeriodSingleMetricRevenue'
         total_revenue_period_1:
           type: number
           format: double
@@ -3107,10 +3111,6 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        daily_usage_revenue_period_2:
-          type: array
-          items:
-            $ref: '#/components/schemas/PeriodSingleMetricRevenue'
         total_revenue_period_2:
           type: number
           format: double
@@ -3118,9 +3118,23 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        earned_revenue_period_1:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        earned_revenue_period_2:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
-      - daily_usage_revenue_period_1
-      - daily_usage_revenue_period_2
+      - earned_revenue_period_1
+      - earned_revenue_period_2
       - total_revenue_period_1
       - total_revenue_period_2
     PeriodMetricUsageResponse:
@@ -3132,26 +3146,6 @@ components:
             $ref: '#/components/schemas/PeriodSingleMetricUsage'
       required:
       - metrics
-    PeriodSingleMetricRevenue:
-      type: object
-      properties:
-        metric:
-          type: string
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/DayMetricRevenue'
-        total_revenue:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-      required:
-      - data
-      - metric
-      - total_revenue
     PeriodSingleMetricUsage:
       type: object
       properties:
@@ -3266,7 +3260,7 @@ components:
           writeOnly: true
         billable_metric:
           allOf:
-          - $ref: '#/components/schemas/BillableMetric'
+          - $ref: '#/components/schemas/Metric'
           readOnly: true
         tiers:
           type: array
@@ -3279,6 +3273,17 @@ components:
     PlanDetail:
       type: object
       properties:
+        plan_id:
+          type: string
+          maxLength: 100
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/CustomerNameAndID'
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
         versions:
           type: array
           items:
@@ -3289,45 +3294,34 @@ components:
           items:
             $ref: '#/components/schemas/InitialExternalPlanLink'
           writeOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
-        num_versions:
+        active_subscriptions:
           type: integer
           readOnly: true
-        product_id:
-          type: string
-          nullable: true
-        plan_id:
-          type: string
-          maxLength: 100
-        active_subscriptions:
+        num_versions:
           type: integer
           readOnly: true
         status:
           $ref: '#/components/schemas/Status13eEnum'
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
-          readOnly: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
+        created_by:
+          type: string
+          readOnly: true
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
-        created_by:
+        plan_name:
           type: string
-          readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
-        created_on:
+          maxLength: 100
+        product_id:
           type: string
-          format: date-time
-          readOnly: true
+          nullable: true
       required:
       - active_subscriptions
       - created_by
@@ -3679,6 +3673,42 @@ components:
       - customer_id
       - customer_name
       - value
+    SingleDayCostAnalysis:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        cost_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleMetricCost'
+        revenue:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - cost_data
+      - date
+      - revenue
+    SingleMetricCost:
+      type: object
+      properties:
+        metric:
+          $ref: '#/components/schemas/Metric'
+        cost:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - cost
+      - metric
     SinglePaymentProvider:
       type: object
       properties:
@@ -3870,22 +3900,7 @@ components:
     SubscriptionDetail:
       type: object
       properties:
-        auto_renew:
-          type: boolean
-        plan_id:
-          type: string
-          writeOnly: true
-        subscription_id:
-          type: string
-        status:
-          $ref: '#/components/schemas/Status2b4Enum'
-        customer_id:
-          type: string
-          writeOnly: true
         end_date:
-          type: string
-          format: date-time
-        start_date:
           type: string
           format: date-time
         scheduled_end_date:
@@ -3893,8 +3908,13 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        customer_id:
+          type: string
+          writeOnly: true
         is_new:
           type: boolean
+        status:
+          $ref: '#/components/schemas/Status2b4Enum'
         customer:
           allOf:
           - $ref: '#/components/schemas/Customer'
@@ -3903,6 +3923,16 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlanVersion'
           readOnly: true
+        subscription_id:
+          type: string
+        start_date:
+          type: string
+          format: date-time
+        plan_id:
+          type: string
+          writeOnly: true
+        auto_renew:
+          type: boolean
       required:
       - billing_plan
       - customer

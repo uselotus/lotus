@@ -25,7 +25,7 @@ import {
   PaymentProcessorStatusType,
   PaymentProcessorConnectionRequestType,
 } from "../types/payment-processor-type";
-import { RevenueType } from "../types/revenue-type";
+import { CustomerCostType, RevenueType } from "../types/revenue-type";
 import {
   SubscriptionTotals,
   CreateSubscriptionType,
@@ -102,6 +102,15 @@ export const Customer = {
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`api/customer_detail/`, { params: { customer_id } }),
   //Subscription handling
+  getCost(
+    customer_id: string,
+    start_date: string,
+    end_date: string
+  ): Promise<CustomerCostType> {
+    return requests.get(`api/cost_analysis/`, {
+      params: { customer_id, start_date, end_date },
+    });
+  },
   createSubscription: (
     post: CreateSubscriptionType
   ): Promise<SubscriptionType> => requests.post("api/subscriptions/", post),
