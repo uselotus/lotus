@@ -275,7 +275,7 @@ class TestCalculateMetric:
             metric_type=METRIC_TYPE.STATEFUL,
         )
         time_created = now_utc() - relativedelta(days=21)
-        customer = baker.make(Customer, organization=setup_dict["org"])
+        customer = baker.make(Customer, organization=setup_dict["org"], customer_name="foo")
         event_times = [time_created] + [
             time_created + relativedelta(days=i) for i in range(19)
         ]

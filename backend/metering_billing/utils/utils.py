@@ -122,24 +122,25 @@ def periods_bwn_twodates(granularity, start_date, end_date):
         granularity == USAGE_CALC_GRANULARITY.TOTAL
         or granularity == METRIC_GRANULARITY.TOTAL
     ):
-        return start_date
-    elif granularity == METRIC_GRANULARITY.HOUR:
-        rd = relativedelta(hours=+1)
-    elif (
-        granularity == USAGE_CALC_GRANULARITY.DAILY
-        or granularity == METRIC_GRANULARITY.DAY
-    ):
-        rd = relativedelta(days=+1)
-    elif granularity == METRIC_GRANULARITY.WEEK:
-        rd = relativedelta(weeks=+1)
-    elif granularity == METRIC_GRANULARITY.MONTH:
-        rd = relativedelta(months=+1)
-    k = 0
-    ret = start_time
-    while ret <= end_time:
-        yield ret
-        ret = start_time + k * rd
-        k += 1
+        yield start_time
+    else:
+        if granularity == METRIC_GRANULARITY.HOUR:
+            rd = relativedelta(hours=+1)
+        elif (
+            granularity == USAGE_CALC_GRANULARITY.DAILY
+            or granularity == METRIC_GRANULARITY.DAY
+        ):
+            rd = relativedelta(days=+1)
+        elif granularity == METRIC_GRANULARITY.WEEK:
+            rd = relativedelta(weeks=+1)
+        elif granularity == METRIC_GRANULARITY.MONTH:
+            rd = relativedelta(months=+1)
+        k = 0
+        ret = start_time
+        while ret <= end_time:
+            yield ret
+            ret = start_time + k * rd
+            k += 1
 
 
 def now_plus_day():
