@@ -139,11 +139,11 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
               <LoadingSpinner />
             ) : cost_data.margin < 0 ? (
               <span className="text-3xl font-bold text-danger">
-                {displayMetric(cost_data.margin).toFixed(2)}%
+                {displayMetric(cost_data.margin * 100).toFixed(2)}%
               </span>
             ) : (
               <span className="text-3xl font-bold text-success">
-                {displayMetric(cost_data.margin).toFixed(2)}%
+                {displayMetric(cost_data.margin * 100).toFixed(2)}%
               </span>
             )}
           </div>
