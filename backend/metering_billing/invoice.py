@@ -223,6 +223,8 @@ def generate_invoice(
             )
 
     invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    if abs(invoice.cost_due) < 0.01:
+        invoice.payment_status = INVOICE_STATUS.PAID
     invoice.save()
 
     if not draft:
