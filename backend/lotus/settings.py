@@ -65,6 +65,9 @@ DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 
 
+# Optional Observalility Services
+CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
+
 if SENTRY_DSN != "":
     sentry_sdk.init(
         dsn=SENTRY_DSN,
