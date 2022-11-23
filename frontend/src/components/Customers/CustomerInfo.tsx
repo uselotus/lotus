@@ -56,7 +56,6 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
         start_date = dayjs().startOf("year").format("YYYY-MM-DD");
         break;
     }
-    console.log(start_date);
 
     onDateChange(start_date, end_date);
   };

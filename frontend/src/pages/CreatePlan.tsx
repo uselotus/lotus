@@ -132,7 +132,6 @@ const CreatePlan = () => {
           id: Math.floor(Math.random() * 1000),
         },
       ];
-      console.log(newComponentsData);
       setComponentsData(newComponentsData);
     }
     setEditComponentsItem(undefined);
@@ -147,7 +146,6 @@ const CreatePlan = () => {
   };
 
   const deleteComponent = (id: number) => {
-    console.log(id);
     setComponentsData(componentsData.filter((item) => item.id !== id));
   };
   const hideFeatureModal = () => {
@@ -172,7 +170,6 @@ const CreatePlan = () => {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components: any = Object.values(componentsData);
-        console.log(components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -191,7 +188,6 @@ const CreatePlan = () => {
           features: planFeatures,
           // usage_billing_frequency: values.usage_billing_frequency,
         };
-        console.log(values.price_adjustment_type);
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
@@ -202,7 +198,6 @@ const CreatePlan = () => {
           ) {
             values.price_adjustment_amount =
               Math.abs(values.price_adjustment_amount) * -1;
-            console.log(values.price_adjustment_amount);
           }
 
           initialPlanVersion["price_adjustment"] = {
@@ -210,7 +205,6 @@ const CreatePlan = () => {
             price_adjustment_amount: values.price_adjustment_amount,
           };
         }
-        console.log(values.price_adjustment_amount, "adsfas");
 
         const plan: CreatePlanType = {
           plan_name: values.name,
