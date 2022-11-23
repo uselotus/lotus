@@ -128,7 +128,10 @@ class EventSerializer(serializers.ModelSerializer):
     customer = serializers.SerializerMethodField()
 
     def get_customer(self, obj) -> str:
-        return obj.cust_id
+        try:
+            return obj.customer.customer_id
+        except:
+            return obj.cust_id
 
 
 class AlertSerializer(serializers.ModelSerializer):
