@@ -1,7 +1,20 @@
-import { Modal, Form, Input, Select, Radio, Tooltip, Switch } from "antd";
+import {
+  Modal,
+  Form,
+  Input,
+  Select,
+  Radio,
+  Tooltip,
+  Switch,
+  Collapse,
+  Button,
+  InputNumber,
+} from "antd";
 import { MetricType } from "../../types/metric-type";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import React, { Fragment, useEffect, useState } from "react";
 const { Option } = Select;
+const { Panel } = Collapse;
 
 export interface CreateMetricState extends MetricType {
   title: string;
@@ -20,6 +33,7 @@ const CreateMetricForm = (props: {
   const [eventType, setEventType] = useState("counter");
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
+  const [filters, setFilters] = useState();
 
   // useEffect(() => {
   //   if (props.visible === false) {
@@ -82,7 +96,7 @@ const CreateMetricForm = (props: {
       visible={props.visible}
       title={props.state.title}
       okText="Create"
-      okType="default"
+      okType="primary"
       cancelText="Cancel"
       width={800}
       onCancel={props.onCancel}
@@ -368,6 +382,88 @@ const CreateMetricForm = (props: {
             </Fragment>
           )}
         </Form.Item>
+
+        <Collapse>
+          <Panel header="Filters" key="1">
+            <Form.List
+              name="names"
+              rules={[
+                {
+                  validator: async (_, names) => {
+                    if (!names || names.length < 2) {
+                      return Promise.reject(new Error("At least 2 passengers"));
+                    }
+                  },
+                },
+              ]}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
+                    <Form.Item
+                      required={false}
+                      key={field.key}
+                      label={index === 0 ? "" : "and"}
+                      className="mt-4"
+                    >
+                      <Form.Item
+                        {...field}
+                        validateTrigger={["onChange", "onBlur"]}
+                        rules={[
+                          {
+                            required: true,
+                            whitespace: true,
+                            message:
+                              "Please input passenger's name or delete this field.",
+                          },
+                        ]}
+                        noStyle
+                      >
+                        <Input
+                          placeholder="passenger name"
+                          style={{ width: "30%" }}
+                        />
+                      </Form.Item>
+                      <Form.Item>
+                        <Select>
+                          <Option value="matches">contains</Option>
+                          <Option value="equals">equals</Option>
+                          <Option value="is_between">is between</Option>
+                          <Option value="greater_than">greater than</Option>
+                          <Option value="less_than">greater than</Option>
+                        </Select>
+                      </Form.Item>
+
+                      <div>
+                        <Form.Item>
+                          <InputNumber />
+                        </Form.Item>
+                      </div>
+
+                      {fields.length > 1 ? (
+                        <MinusCircleOutlined
+                          className="dynamic-delete-button"
+                          onClick={() => remove(field.name)}
+                        />
+                      ) : null}
+                    </Form.Item>
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "60%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Add field
+                    </Button>
+                    <Form.ErrorList errors={errors} />
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </Panel>
+        </Collapse>
       </Form>
     </Modal>
   );
