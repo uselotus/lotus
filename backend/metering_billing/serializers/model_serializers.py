@@ -305,6 +305,8 @@ class CategoricalFilterSerializer(serializers.ModelSerializer):
         model = CategoricalFilter
         fields = ("property_name", "operator", "comparison_value")
 
+    comparison_value = serializers.ListField(child=serializers.CharField())
+
 
 class NumericFilterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -324,8 +326,8 @@ class MetricSerializer(serializers.ModelSerializer):
             "event_type",
             "metric_type",
             "billable_metric_name",
-            # "numeric_filters",
-            # "categorical_filters",
+            "numeric_filters",
+            "categorical_filters",
             "properties",
             "is_cost_metric",
         )
@@ -335,12 +337,12 @@ class MetricSerializer(serializers.ModelSerializer):
             "event_name": {"required": True},
         }
 
-    # numeric_filters = NumericFilterSerializer(
-    #     many=True, allow_null=True, required=False
-    # )
-    # categorical_filters = CategoricalFilterSerializer(
-    #     many=True, allow_null=True, required=False
-    # )
+    numeric_filters = NumericFilterSerializer(
+        many=True, allow_null=True, required=False
+    )
+    categorical_filters = CategoricalFilterSerializer(
+        many=True, allow_null=True, required=False
+    )
     granularity = serializers.ChoiceField(
         choices=METRIC_GRANULARITY.choices,
         required=False,

@@ -23,7 +23,12 @@ from django.db.models import (
     Window,
 )
 from django.db.models.functions import Cast, Trunc
-from metering_billing.utils import date_as_min_dt, now_utc, periods_bwn_twodates
+from metering_billing.utils import (
+    convert_to_date,
+    date_as_min_dt,
+    now_utc,
+    periods_bwn_twodates,
+)
 from metering_billing.utils.enums import (
     EVENT_TYPE,
     METRIC_AGGREGATION,
@@ -50,9 +55,10 @@ class MetricHandler(abc.ABC):
     def get_usage(
         self,
         results_granularity: USAGE_CALC_GRANULARITY,
-        start_date: datetime.date,
-        end_date: datetime.date,
+        start: datetime.date,
+        end: datetime.date,
         customer: Optional[Customer],
+        group_by: Optional[list[str]],
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         """This method will be used to calculate the usage at the given results_granularity. This is purely how much has been used and will typically be used in dahsboarding to show usage of the metric. You should be able to handle any aggregation type returned in the allowed_usage_aggregation_types method.
 
@@ -72,7 +78,7 @@ class MetricHandler(abc.ABC):
 
     @abc.abstractmethod
     def get_earned_usage_per_day(
-        self, start_date: datetime.date, end_date: datetime.date, customer: Customer
+        self, start: datetime.date, end: datetime.date, customer: Customer
     ) -> dict[datetime.datetime, float]:
         """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
 
@@ -119,24 +125,28 @@ class CounterHandler(MetricHandler):
     def get_usage(
         self,
         results_granularity,
-        start_date,
-        end_date,
+        start,
+        end,
         customer=None,
+        group_by=[],
     ):
         now = now_utc()
-        if type(start_date) == str:
-            start_date = parser.parse(start_date)
-        if type(end_date) == str:
-            end_date = parser.parse(end_date)
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
             "time_created__lt": now,
-            "time_created__gte": start_date,
-            "time_created__lte": end_date,
+            "time_created__gte": start,
+            "time_created__lte": end,
         }
         pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {"customer_name": F("customer__customer_name")}
+        groupby_kwargs = {}
+        for group_by_property in group_by:
+            filter_kwargs["properties__has_key"] = group_by_property
+            pre_groupby_annotation_kwargs[group_by_property] = F(
+                f"properties__{group_by_property}"
+            )
+            groupby_kwargs[group_by_property] = F(group_by_property)
+        groupby_kwargs["customer_name"] = F("customer__customer_name")
         post_groupby_annotation_kwargs = {}
         if customer:
             filter_kwargs["customer"] = customer
@@ -152,7 +162,7 @@ class CounterHandler(MetricHandler):
                 output_field=DateTimeField(),
             )
         else:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start_date))
+            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
 
         if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
             post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
@@ -172,12 +182,6 @@ class CounterHandler(MetricHandler):
             post_groupby_annotation_kwargs["usage_qty"] = Count(
                 F("property_value"), distinct=True
             )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
-            post_groupby_annotation_kwargs = groupby_kwargs
-            groupby_kwargs = {}
-            post_groupby_annotation_kwargs["usage_qty"] = Cast(
-                F("property_value"), FloatField()
-            )
 
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
@@ -185,19 +189,23 @@ class CounterHandler(MetricHandler):
         q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
         return_dict = {}
+        unique_groupby_props = ["customer_name"] + group_by
         for row in q_post_gb_ann:
             cust_name = row["customer_name"]
             tc_trunc = row["time_created_truncated"]
+            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
             usage_qty = row["usage_qty"]
             if cust_name not in return_dict:
                 return_dict[cust_name] = {}
-            return_dict[cust_name][tc_trunc] = usage_qty
+            if unique_tup not in return_dict[cust_name]:
+                return_dict[cust_name][unique_tup] = {}
+            return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
         return return_dict
 
     def get_current_usage(self, subscription):
         per_customer = self.get_usage(
-            start_date=subscription.start_date,
-            end_date=subscription.end_date,
+            start=subscription.start,
+            end=subscription.end,
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
             customer=subscription.customer,
         )
@@ -211,18 +219,25 @@ class CounterHandler(MetricHandler):
         _, customer_usage_val = list(customer_usage.items())[0]
         return customer_usage_val
 
-    def get_earned_usage_per_day(self, start_date, end_date, customer):
+    def get_earned_usage_per_day(self, start, end, customer, group_by=[]):
         now = now_utc()
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
             "time_created__lt": now,
-            "time_created__gte": start_date,
-            "time_created__lte": end_date,
+            "time_created__gte": start,
+            "time_created__lte": end,
             "customer": customer,
         }
         pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {"customer_name": F("customer__customer_name")}
+        groupby_kwargs = {}
+        for group_by_property in group_by:
+            filter_kwargs["properties__has_key"] = group_by_property
+            pre_groupby_annotation_kwargs[group_by_property] = F(
+                f"properties__{group_by_property}"
+            )
+            groupby_kwargs[group_by_property] = F(group_by_property)
+        groupby_kwargs["customer_name"] = F("customer__customer_name")
         post_groupby_annotation_kwargs = {}
         if self.property_name is not None:
             filter_kwargs["properties__has_key"] = self.property_name
@@ -419,230 +434,50 @@ class StatefulHandler(MetricHandler):
     def get_usage(
         self,
         results_granularity,
-        start_date,
-        end_date,
+        start,
+        end,
         customer=None,
+        group_by=[],
     ):
-        if self.event_type == EVENT_TYPE.TOTAL:
-            return self._get_usage_total(
-                results_granularity, start_date, end_date, customer
-            )
-        elif self.event_type == EVENT_TYPE.DELTA:
-            return self._get_usage_delta(
-                results_granularity, start_date, end_date, customer
-            )
+        return self._get_usage(
+            results_granularity,
+            start,
+            end,
+            customer,
+            group_by,
+            event_type=self.event_type,
+        )
 
-    def _get_usage_delta(
+    def _get_usage(
         self,
         results_granularity,
-        start_date,
-        end_date,
+        start,
+        end,
         customer=None,
+        group_by=[],
+        event_type=EVENT_TYPE.TOTAL,
     ):
         now = now_utc()
-        if type(start_date) == str:
-            start_date = parser.parse(start_date)
-        if type(end_date) == str:
-            end_date = parser.parse(end_date)
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
             "time_created__lt": now,
-            "time_created__gte": start_date,
-            "time_created__lte": end_date,
+            "time_created__gte": start,
+            "time_created__lte": end,
             "properties__has_key": self.property_name,
         }
         pre_groupby_annotation_kwargs = {
             "property_value": F(f"properties__{self.property_name}"),
             "customer_name": F("customer__customer_name"),
         }
-        groupby_kwargs = {"customer_name": F("customer_name")}
-        if customer:
-            filter_kwargs["customer"] = customer
-        if self.granularity != METRIC_GRANULARITY.TOTAL:
-            groupby_kwargs["time_created_truncated"] = Trunc(
-                expression=F("time_created"),
-                kind=self.granularity,
-                output_field=DateTimeField(),
+        groupby_kwargs = {}
+        for group_by_property in group_by:
+            filter_kwargs["properties__has_key"] = group_by_property
+            pre_groupby_annotation_kwargs[group_by_property] = F(
+                f"properties__{group_by_property}"
             )
-        else:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start_date))
-
-        q_filt = Event.objects.filter(**filter_kwargs)
-        q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
-
-        subquery = (
-            q_pre_gb_ann.filter(
-                time_created__gte=start_date,
-                time_created__lte=OuterRef("time_created"),
-                customer=OuterRef("customer"),
-            )
-            .values("customer_name")
-            .annotate(cum_sum=Window(Sum(Cast(F("property_value"), FloatField()))))
-        )
-
-        cumulative_per_event = q_pre_gb_ann.annotate(
-            usage_qty=Subquery(
-                subquery.values("cum_sum")[:1], output_field=FloatField()
-            )
-        )
-
-        if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
-            q_post_gb_ann = cumulative_per_event.values(**groupby_kwargs).annotate(
-                usage_qty=Max("usage_qty")
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
-            q_post_gb_ann = cumulative_per_event.order_by(
-                "customer_name", "-time_created"
-            ).distinct("customer_name")
-
-        period_usages = {}
-        for x in q_post_gb_ann:
-            cust = x["customer_name"]
-            tc_trunc = x["time_created_truncated"]
-            usage_qty = x["usage_qty"]
-            if cust not in period_usages:
-                period_usages[cust] = {}
-            period_usages[cust][tc_trunc] = usage_qty
-        # grab latest value from previous period per customer
-        # needed in case there's gaps from data , you would take the "latest" value not the
-        # usage value from aprevious period
-        latest_filt = {
-            "customer_name": OuterRef("customer_name"),
-            "time_created_truncated": OuterRef("time_created_truncated"),
-        }
-        latest = q_post_gb_ann.filter(**latest_filt).order_by("-time_created")
-        latest_per_period = q_post_gb_ann.annotate(
-            latest_pk=Subquery(latest.values("pk")[:1])
-        ).filter(pk=F("latest_pk"))
-        latest_in_period_usages = {}
-        for x in latest_per_period:
-            cust = x["customer_name"]
-            tc_trunc = x["time_created_truncated"]
-            usage_qty = x["usage_qty"]
-            if cust not in latest_in_period_usages:
-                latest_in_period_usages[cust] = {}
-            latest_in_period_usages[cust][tc_trunc] = usage_qty
-
-        # grab pre-query initial values
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": start_date,
-            "properties__has_key": self.property_name,
-        }
-        if customer:
-            filter_kwargs["customer"] = customer
-        last_usage = (
-            Event.objects.filter(**filter_kwargs)
-            .annotate(customer_name=F("customer__customer_name"))
-            .annotate(property_value=F(f"properties__{self.property_name}"))
-            .annotate(usage_qty=Cast(F("property_value"), FloatField()))
-            .values("customer_name")
-            .annotate(initial_usage_qty=Sum("usage_qty"))
-        )
-        initial_usages = {}
-        for x in last_usage:
-            cust = x.customer_name
-            usage_qty = x.initial_usage_qty
-            initial_usages[cust] = usage_qty
-
-        # quantize first according to the stateful period
-        plan_periods = list(
-            periods_bwn_twodates(self.granularity, start_date, end_date)
-        )
-        # for each period, get the events and calculate the usage
-        usage_dict = {}
-        for customer_name, cust_usages in period_usages.items():
-            initial_usage = initial_usages.get(customer_name, 0)
-            last_usage = initial_usage
-            customer_latest_in_period_usages = latest_in_period_usages.get(
-                customer_name, {}
-            )
-            usage_dict[customer_name] = {}
-            for period in plan_periods:
-                # check the usage for that period
-                period_usage = cust_usages.get(period, None)
-                # if its none, then we'll use the last usage
-                if not period_usage:
-                    period_usage = last_usage
-                # add revenue and usage to the dict
-                usage_dict[customer_name][period] = initial_usage + period_usage
-                # redefine what the "last" one is
-                latest_in_period = customer_latest_in_period_usages.get(period, None)
-                if latest_in_period:
-                    last_usage = latest_in_period
-                else:
-                    last_usage = period_usage
-        # ok we got here, but now we have a problem. Usage dicts is indexed in time periods of
-        # self.granularity. However, we need to have it in units of results_granularity. We
-        # have two cases: 1) results_granularity is coarser than self.granularity (eg want
-        # total usage, but we have self.granularity in days. Let's just pass up the dictionary
-        # and let whoever called this function handled that, don't assume. 2) self.
-        # granularity is coarser than results_granularity. eg, we are charging for user-months,
-        # but we want to get daily usage. In this case, since we aren't billing on this, we can
-        # probably just extend that same valeu for the other days
-        if self.granularity == results_granularity:  # day = day, total = total
-            return usage_dict
-        elif (
-            results_granularity == USAGE_CALC_GRANULARITY.TOTAL
-            and self.granularity != METRIC_GRANULARITY.TOTAL
-        ):
-            return usage_dict
-        else:
-            # this means that the metric granularity is coarser than the results_granularity
-            new_usage_dict = {}
-            for customer_name, cust_usages in usage_dict.items():
-                new_usage_dict[customer_name] = {}
-                coarse_periods = sorted(cust_usages.items(), key=lambda x: x[0])
-                fine_periods = list(
-                    periods_bwn_twodates(results_granularity, start_date, end_date)
-                )  # daily
-                i = 0
-                j = 0
-                last_amt = 0
-                while i < len(fine_periods):
-                    try:
-                        cur_coarse, coarse_usage = coarse_periods[j]
-                    except IndexError:
-                        cur_coarse = None
-                    cur_fine = fine_periods[i]
-                    cc_none = cur_coarse is None
-                    cf_less_cc = cur_fine < cur_coarse if not cc_none else False
-                    if cc_none or cf_less_cc:
-                        new_usage_dict[customer_name][cur_fine] = last_amt
-                    else:
-                        new_usage_dict[customer_name][cur_fine] = coarse_usage
-                        last_amt = coarse_usage
-                        j += 1
-                    i += 1
-            usage_dict = new_usage_dict
-        return usage_dict
-
-    def _get_usage_total(
-        self,
-        results_granularity,
-        start_date,
-        end_date,
-        customer=None,
-    ):
-        now = now_utc()
-        if type(start_date) == str:
-            start_date = parser.parse(start_date)
-        if type(end_date) == str:
-            end_date = parser.parse(end_date)
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": now,
-            "time_created__gte": start_date,
-            "time_created__lte": end_date,
-            "properties__has_key": self.property_name,
-        }
-        pre_groupby_annotation_kwargs = {
-            "property_value": F(f"properties__{self.property_name}")
-        }
-        groupby_kwargs = {"customer_name": F("customer__customer_name")}
+            groupby_kwargs[group_by_property] = F(group_by_property)
+        groupby_kwargs["customer_name"] = F("customer__customer_name")
         post_groupby_annotation_kwargs = {}
         if customer:
             filter_kwargs["customer"] = customer
@@ -653,32 +488,68 @@ class StatefulHandler(MetricHandler):
                 output_field=DateTimeField(),
             )
         else:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start_date))
-
-        if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
-            post_groupby_annotation_kwargs["usage_qty"] = Max(
-                Cast(F("property_value"), FloatField())
-            )
-        if self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
-            post_groupby_annotation_kwargs = groupby_kwargs
-            groupby_kwargs = {}
-            post_groupby_annotation_kwargs["usage_qty"] = Cast(
-                F("property_value"), FloatField()
-            )
+            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
 
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
-        q_gb = q_pre_gb_ann.values(**groupby_kwargs)
-        q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
+
+        if event_type == EVENT_TYPE.TOTAL:
+            if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
+                post_groupby_annotation_kwargs["usage_qty"] = Max(
+                    Cast(F("property_value"), FloatField())
+                )
+            if self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
+                post_groupby_annotation_kwargs = groupby_kwargs
+                groupby_kwargs = {}
+                post_groupby_annotation_kwargs["usage_qty"] = Cast(
+                    F("property_value"), FloatField()
+                )
+
+            q_gb = q_pre_gb_ann.values(**groupby_kwargs)
+            q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
+
+        elif event_type == EVENT_TYPE.DELTA:
+            subquery_dict = {
+                "time_created__gte": start,
+                "time_created__lte": OuterRef("time_created"),
+                "customer": OuterRef("customer"),
+            }
+            for group_by_property in group_by:
+                subquery_dict[group_by_property] = OuterRef(group_by_property)
+            subquery = (
+                q_pre_gb_ann.filter(**subquery_dict)
+                .values(*(["customer_name"] + group_by))
+                .annotate(cum_sum=Window(Sum(Cast(F("property_value"), FloatField()))))
+            )
+
+            cumulative_per_event = q_pre_gb_ann.annotate(
+                usage_qty=Subquery(
+                    subquery.values("cum_sum")[:1], output_field=FloatField()
+                )
+            )
+
+            if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
+                q_post_gb_ann = cumulative_per_event.values(**groupby_kwargs).annotate(
+                    usage_qty=Max("usage_qty")
+                )
+            elif self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
+                q_post_gb_ann = cumulative_per_event.order_by(
+                    *(["customer_name"] + group_by), "-time_created"
+                ).distinct(*(["customer_name"] + group_by))
 
         period_usages = {}
-        for x in q_post_gb_ann:
-            cust = x["customer_name"]
-            tc_trunc = x["time_created_truncated"]
-            usage_qty = x["usage_qty"]
-            if cust not in period_usages:
-                period_usages[cust] = {}
-            period_usages[cust][tc_trunc] = usage_qty
+        unique_groupby_props = ["customer_name"] + group_by
+        for row in q_post_gb_ann:
+            cust_name = row["customer_name"]
+            tc_trunc = row["time_created_truncated"]
+            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+            usage_qty = row["usage_qty"]
+            if cust_name not in period_usages:
+                period_usages[cust_name] = {}
+            if unique_tup not in period_usages[cust_name]:
+                period_usages[cust_name][unique_tup] = {}
+            period_usages[cust_name][unique_tup][tc_trunc] = usage_qty
+
         # grab latest value from previous period per customer
         # needed in case there's gaps from data , you would take the "latest" value not the
         # usage value from aprevious period
@@ -686,68 +557,95 @@ class StatefulHandler(MetricHandler):
             "customer_name": OuterRef("customer_name"),
             "time_created_truncated": OuterRef("time_created_truncated"),
         }
+        for prop in group_by:
+            latest_filt[prop] = OuterRef(prop)
         latest = q_post_gb_ann.filter(**latest_filt).order_by("-time_created")
         latest_per_period = q_post_gb_ann.annotate(
             latest_pk=Subquery(latest.values("pk")[:1])
         ).filter(pk=F("latest_pk"))
         latest_in_period_usages = {}
-        for x in latest_per_period:
-            cust = x["customer_name"]
-            tc_trunc = x["time_created_truncated"]
-            usage_qty = x["usage_qty"]
-            if cust not in latest_in_period_usages:
-                latest_in_period_usages[cust] = {}
-            latest_in_period_usages[cust][tc_trunc] = usage_qty
-
+        for row in latest_per_period:
+            cust_name = row["customer_name"]
+            tc_trunc = row["time_created_truncated"]
+            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+            usage_qty = row["usage_qty"]
+            if cust_name not in latest_in_period_usages:
+                latest_in_period_usages[cust_name] = {}
+            if unique_tup not in latest_in_period_usages[cust_name]:
+                latest_in_period_usages[cust_name][unique_tup] = {}
+            latest_in_period_usages[cust_name][unique_tup][tc_trunc] = usage_qty
         # grab pre-query initial values
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
-            "time_created__lt": start_date,
+            "time_created__lt": start,
             "properties__has_key": self.property_name,
         }
-        if customer:
-            filter_kwargs["customer"] = customer
-        last_usage = (
-            Event.objects.filter(**filter_kwargs)
-            .annotate(customer_name=F("customer__customer_name"))
-            .order_by("customer_name", "-time_created")
-            .distinct("customer_name")
-            .annotate(property_value=F(f"properties__{self.property_name}"))
-            .annotate(usage_qty=Cast(F("property_value"), FloatField()))
+        annotate_kwargs = {
+            "property_value": F(f"properties__{self.property_name}"),
+            "customer_name": F("customer__customer_name"),
+        }
+        for group_by_property in group_by:
+            filter_kwargs["properties__has_key"] = group_by_property
+            annotate_kwargs[group_by_property] = F(f"properties__{group_by_property}")
+        pre_query_all_events = Event.objects.filter(**filter_kwargs).annotate(
+            **annotate_kwargs
         )
+        grouping_filter = {
+            "customer_name": OuterRef("customer_name"),
+        }
+        for prop in group_by:
+            latest_filt[prop] = OuterRef(prop)
+        last_pre_query_grouped = pre_query_all_events.filter(
+            **grouping_filter
+        ).order_by("-time_created")
+        last_pre_query_actual_events = pre_query_all_events.annotate(
+            latest_pk=Subquery(last_pre_query_grouped.values("pk")[:1])
+        ).filter(pk=F("latest_pk"))
         last_usages = {}
-        for x in last_usage:
-            cust = x.customer_name
-            usage_qty = x.usage_qty
-            last_usages[cust] = usage_qty
+        for row in last_pre_query_actual_events:
+            cust_name = row["customer_name"]
+            tc_trunc = row["time_created_truncated"]
+            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+            usage_qty = row["usage_qty"]
+            if cust_name not in last_usages:
+                last_usages[cust_name] = {}
+            if unique_tup not in last_usages[cust_name]:
+                last_usages[cust_name][unique_tup] = {}
+            last_usages[cust_name][unique_tup][tc_trunc] = usage_qty
 
         # quantize first according to the stateful period
-        plan_periods = list(
-            periods_bwn_twodates(self.granularity, start_date, end_date)
-        )
+        plan_periods = list(periods_bwn_twodates(self.granularity, start, end))
         # for each period, get the events and calculate the usage
         usage_dict = {}
         for customer_name, cust_usages in period_usages.items():
-            last_usage = last_usages.get(customer_name, 0)
+            usage_dict[customer_name] = {}
+            last_usage_cust = last_usages.get(customer_name, {})
             customer_latest_in_period_usages = latest_in_period_usages.get(
                 customer_name, {}
             )
-            usage_dict[customer_name] = {}
-            for period in plan_periods:
-                # check the usage for that period
-                period_usage = cust_usages.get(period, None)
-                # if its none, then we'll use the last usage
-                if not period_usage:
-                    period_usage = last_usage
-                # add revenue and usage to the dict
-                usage_dict[customer_name][period] = period_usage
-                # redefine what the "last" one is
-                latest_in_period = customer_latest_in_period_usages.get(period, None)
-                if latest_in_period:
-                    last_usage = latest_in_period
-                else:
-                    last_usage = period_usage
+            for unique_customer_tuple, unique_usage in cust_usages.items():
+                last_usage_unique = last_usage_cust.get(unique_customer_tuple, 0)
+                latest_in_period_usages = customer_latest_in_period_usages.get(
+                    unique_customer_tuple, {}
+                )
+                usage_dict[customer_name][unique_customer_tuple] = {}
+                for period in plan_periods:
+                    # check the usage for that period
+                    period_usage = unique_usage.get(period, None)
+                    # if its none, then we'll use the last usage
+                    if not period_usage:
+                        period_usage = last_usage_unique
+                    # add revenue and usage to the dict
+                    usage_dict[customer_name][unique_customer_tuple][
+                        period
+                    ] = period_usage
+                    # redefine what the "last" one is
+                    latest_in_period = latest_in_period_usages.get(period, None)
+                    if latest_in_period:
+                        last_usage_unique = latest_in_period
+                    else:
+                        last_usage_unique = period_usage
         # ok we got here, but now we have a problem. Usage dicts is indexed in time periods of
         # self.granularity. However, we need to have it in units of results_granularity. We
         # have two cases: 1) results_granularity is coarser than self.granularity (eg want
@@ -763,7 +661,7 @@ class StatefulHandler(MetricHandler):
             and self.granularity != METRIC_GRANULARITY.TOTAL
         ):
             return usage_dict
-            # sd = date_as_min_dt(start_date)
+            # sd = date_as_min_dt(start)
             # new_usage_dict = {}
             # for customer_name, cust_usages in usage_dict.items():
             #     new_usage_dict[customer_name] = {sd: sum(cust_usages.values())}
@@ -775,7 +673,7 @@ class StatefulHandler(MetricHandler):
                 new_usage_dict[customer_name] = {}
                 coarse_periods = sorted(cust_usages.items(), key=lambda x: x[0])
                 fine_periods = list(
-                    periods_bwn_twodates(results_granularity, start_date, end_date)
+                    periods_bwn_twodates(results_granularity, start, end)
                 )  # daily
                 i = 0
                 j = 0
@@ -824,10 +722,10 @@ class StatefulHandler(MetricHandler):
             )
             return last_usage.first().tot_qty
 
-    def get_earned_usage_per_day(self, start_date, end_date, customer):
+    def get_earned_usage_per_day(self, start, end, customer):
         per_customer = self.get_usage(
-            start_date=start_date,
-            end_date=end_date,
+            start=start,
+            end=end,
             results_granularity=USAGE_CALC_GRANULARITY.DAILY,
             customer=customer,
         )
@@ -924,17 +822,17 @@ class RateHandler(MetricHandler):
 
     def _get_current_query_start_end(self):
         now = now_utc()
-        end_date = now
-        start_date = now - relativedelta(**{self.granularity: 1})
-        return start_date, end_date
+        end = now
+        start = now - relativedelta(**{self.granularity: 1})
+        return start, end
 
-    def get_current_usage(self, subscription):
-        start_date, end_date = self._get_current_query_start_end(subscription)
+    def get_current_usage(self, subscription, group_by=[]):
+        start, end = self._get_current_query_start_end(subscription)
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
-            "time_created__lte": end_date,
-            "time_created__gte": start_date,
+            "time_created__lte": end,
+            "time_created__gte": start,
             "customer": subscription.customer,
         }
         if self.property_name is not None:
@@ -944,7 +842,14 @@ class RateHandler(MetricHandler):
             )
 
         pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {"customer_name": F("customer__customer_name")}
+        groupby_kwargs = {}
+        for group_by_property in group_by:
+            filter_kwargs["properties__has_key"] = group_by_property
+            pre_groupby_annotation_kwargs[group_by_property] = F(
+                f"properties__{group_by_property}"
+            )
+            groupby_kwargs[group_by_property] = F(group_by_property)
+        groupby_kwargs["customer_name"] = F("customer__customer_name")
         post_groupby_annotation_kwargs = {}
         if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
             post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
@@ -978,26 +883,32 @@ class RateHandler(MetricHandler):
     def get_usage(
         self,
         results_granularity,
-        start_date,
-        end_date,
+        start,
+        end,
         customer=None,
+        group_by=[],
     ):
         now = now_utc()
-        if type(start_date) == str:
-            start_date = parser.parse(start_date)
-        if type(end_date) == str:
-            end_date = parser.parse(end_date)
         filter_kwargs = {
             "organization": self.organization,
             "event_name": self.event_name,
             "time_created__lt": now,
-            "time_created__gte": start_date,
-            "time_created__lte": end_date,
+            "time_created__gte": start,
+            "time_created__lte": end,
         }
-        pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {
+        pre_groupby_annotation_kwargs = {
+            "property_value": F(f"properties__{self.property_name}"),
             "customer_name": F("customer__customer_name"),
         }
+        groupby_kwargs = {}
+        for group_by_property in group_by:
+            filter_kwargs["properties__has_key"] = group_by_property
+            # filter_kwargs[f"properties__{group_by_property}__isnull"] = False 
+            pre_groupby_annotation_kwargs[group_by_property] = F(
+                f"properties__{group_by_property}"
+            )
+            groupby_kwargs[group_by_property] = F(group_by_property)
+        groupby_kwargs["customer_name"] = F("customer__customer_name")
 
         if results_granularity != USAGE_CALC_GRANULARITY.TOTAL:
             groupby_kwargs["time_created_truncated"] = Trunc(
@@ -1006,7 +917,7 @@ class RateHandler(MetricHandler):
                 output_field=DateTimeField(),
             )
         else:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start_date))
+            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
 
         if customer:
             filter_kwargs["customer"] = customer
@@ -1019,12 +930,18 @@ class RateHandler(MetricHandler):
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
 
-        subquery = q_pre_gb_ann.filter(
-            time_created__gte=OuterRef("time_created")
+        subquery_dict = {
+            "time_created__gte": OuterRef("time_created")
             - timedelta(**{self.granularity: 1}),
-            time_created__lte=OuterRef("time_created"),
-            customer=OuterRef("customer"),
-        ).values("customer")
+            "time_created__lte": OuterRef("time_created"),
+            "customer": OuterRef("customer"),
+        }
+        for group_by_property in group_by:
+            subquery_dict[group_by_property] = OuterRef(group_by_property)
+        subquery = q_pre_gb_ann.filter(**subquery_dict).values(
+            *(["customer"] + group_by)
+        )
+
         if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
             subquery = subquery.annotate(usage_qty=Window(Count("pk")))
         elif self.usage_aggregation_type == METRIC_AGGREGATION.SUM:
@@ -1049,20 +966,25 @@ class RateHandler(MetricHandler):
         q_gb = rate_per_event.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(new_usage_qty=Max("usage_qty"))
 
-        period_usages = {}
-        for x in q_post_gb_ann:
-            cust = x["customer_name"]
-            tc_trunc = x["time_created_truncated"]
-            usage_qty = x["new_usage_qty"]
-            if cust not in period_usages:
-                period_usages[cust] = {}
-            period_usages[cust][tc_trunc] = usage_qty
-        return period_usages
+        return_dict = {}
+        unique_groupby_props = ["customer_name"] + group_by
+        for row in q_post_gb_ann:
+            cust_name = row["customer_name"]
+            tc_trunc = row["time_created_truncated"]
+            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+            usage_qty = row["new_usage_qty"]
+            if cust_name not in return_dict:
+                return_dict[cust_name] = {}
+            if unique_tup not in return_dict[cust_name]:
+                return_dict[cust_name][unique_tup] = {}
+            return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
 
-    def get_earned_usage_per_day(self, start_date, end_date, customer):
+        return return_dict
+
+    def get_earned_usage_per_day(self, start, end, customer):
         per_customer = self.get_usage(
-            start_date=start_date,
-            end_date=end_date,
+            start=start,
+            end=end,
             granularity=USAGE_CALC_GRANULARITY.DAILY,
             customer=customer,
         )

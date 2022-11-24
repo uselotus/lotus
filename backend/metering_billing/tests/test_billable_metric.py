@@ -583,3 +583,570 @@ class TestCalculateMetric:
         # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
         assert Decimal(100) * Decimal(12) / Decimal(28) >= usage_revenue_dict["revenue"]
         assert Decimal(100) * Decimal(12) / Decimal(31) <= usage_revenue_dict["revenue"]
+
+    def test_stateful_daily_granularity_with_group_by(
+        self, billable_metric_test_common_setup
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="number_of_users",
+            property_name="number",
+            usage_aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.STATEFUL,
+            granularity=METRIC_GRANULARITY.DAY,
+        )
+        time_created = now_utc() - relativedelta(days=21)
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test"
+        )
+        event_times = [time_created] + [
+            time_created + relativedelta(days=i) for i in range(1, 19)
+        ]
+        for groupby_dim_1 in ["foo", "bar"]:
+            for groupby_dimension_2 in ["baz", "qux"]:
+                for groupby_dimension_3 in ["quux", "quuz"]:
+                    properties = (
+                        3
+                        * [
+                            {
+                                "number": 1,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "number": 2,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "number": 3,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "number": 4,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "number": 5,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "number": 6,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + [
+                            {
+                                "number": 3,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                    )
+                    baker.make(
+                        Event,
+                        event_name="number_of_users",
+                        properties=iter(properties),
+                        organization=setup_dict["org"],
+                        time_created=iter(event_times),
+                        customer=customer,
+                        _quantity=19,
+                    )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        subscription = Subscription.objects.create(
+            organization=setup_dict["org"],
+            billing_plan=billing_plan,
+            customer=customer,
+            start_date=time_created,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        )
+
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
+        # user days, so should be between 18/28*100 and 18/31*100
+        # if we multiply this by the 8 different combinations we're suppsoed to have, we
+        # should get the expected number
+        assert usage_revenue_dict["revenue"] >= 8 * Decimal(100) * Decimal(
+            18
+        ) / Decimal(31)
+        assert usage_revenue_dict["revenue"] <= 8 * Decimal(100) * Decimal(
+            18
+        ) / Decimal(28)
+
+    def test_stateful_daily_granularity_delta_event_with_groupby(
+        self, billable_metric_test_common_setup
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="number_of_users",
+            property_name="number",
+            usage_aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.STATEFUL,
+            granularity=METRIC_GRANULARITY.DAY,
+            event_type=EVENT_TYPE.DELTA,
+        )
+        time_created = now_utc() - relativedelta(days=21)
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test"
+        )
+        event_times = [time_created] + [
+            time_created + relativedelta(days=i) for i in range(1, 11)
+        ]
+        for groupby_dim_1 in ["foo", "bar"]:
+            for groupby_dimension_2 in ["baz", "qux"]:
+                for groupby_dimension_3 in ["quux", "quuz"]:
+                    properties = (
+                        3
+                        * [
+                            {
+                                "number": 1,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "number": 1,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 1
+                        * [
+                            {
+                                "number": 0,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "number": -1,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 2
+                        * [
+                            {
+                                "number": -1,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                    )
+                    baker.make(
+                        Event,
+                        event_name="number_of_users",
+                        properties=iter(properties),
+                        organization=setup_dict["org"],
+                        time_created=iter(event_times),
+                        customer=customer,
+                        _quantity=11,
+                    )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        subscription = Subscription.objects.create(
+            organization=setup_dict["org"],
+            billing_plan=billing_plan,
+            customer=customer,
+            start_date=time_created,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        )
+
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
+        # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
+        # if we multiply this by the 8 different combinations we're suppsoed to have, we
+        assert (
+            8 * Decimal(100) * Decimal(12) / Decimal(28)
+            >= usage_revenue_dict["revenue"]
+        )
+        assert (
+            8 * Decimal(100) * Decimal(12) / Decimal(31)
+            <= usage_revenue_dict["revenue"]
+        )
+
+    def test_rate_hourly_granularity_with_groupby(
+        self, billable_metric_test_common_setup
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="rows_inserted",
+            property_name="num_rows",
+            usage_aggregation_type=METRIC_AGGREGATION.SUM,
+            billable_aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.RATE,
+            granularity=METRIC_GRANULARITY.DAY,
+        )
+        time_created = now_utc() - relativedelta(days=14, hour=0)
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test"
+        )
+        # 64 in an hour, 14 days ago
+        event_times = [time_created] + [
+            time_created + relativedelta(minutes=i) for i in range(1, 19)
+        ]
+        for groupby_dim_1 in ["foo", "bar"]:
+            for groupby_dimension_2 in ["baz", "qux"]:
+                for groupby_dimension_3 in ["quux", "quuz"]:
+                    properties = (
+                        4
+                        * [
+                            {
+                                "num_rows": 1,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 2,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 3,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 4,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 5,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 6,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                    )  # = 64
+                    baker.make(
+                        Event,
+                        event_name="rows_inserted",
+                        properties=iter(properties),
+                        organization=setup_dict["org"],
+                        time_created=iter(event_times),
+                        customer=customer,
+                        _quantity=19,
+                    )
+        # 60 in an hour, 5 days ago
+        time_created = now_utc() - relativedelta(days=5, hour=0)
+        event_times = [time_created] + [
+            time_created + relativedelta(minutes=i) for i in range(1, 19)
+        ]
+        for groupby_dim_1 in ["foo", "bar"]:
+            for groupby_dimension_2 in ["baz", "qux"]:
+                for groupby_dimension_3 in ["quux", "quuz"]:
+                    properties = (
+                        4
+                        * [
+                            {
+                                "num_rows": 1,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 2,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 3,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 2
+                        * [
+                            {
+                                "num_rows": 4,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 5,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                        + 3
+                        * [
+                            {
+                                "num_rows": 6,
+                                "groupby_dim_1": groupby_dim_1,
+                                "groupby_dim_2": groupby_dimension_2,
+                                "groupby_dim_3": groupby_dimension_3,
+                            }
+                        ]
+                    )  # = 64
+                    baker.make(
+                        Event,
+                        event_name="rows_inserted",
+                        properties=list(properties),
+                        organization=setup_dict["org"],
+                        time_created=iter(event_times),
+                        customer=customer,
+                        _quantity=19,
+                    )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=1,
+            metric_units_per_batch=1,
+        )
+        now = now_utc()
+        subscription = Subscription.objects.create(
+            organization=setup_dict["org"],
+            billing_plan=billing_plan,
+            customer=customer,
+            start_date=now - relativedelta(days=21),
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        )
+
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
+        assert usage_revenue_dict["revenue"] == 8 * Decimal(61)
+
+    def test_count_unique_with_groupby(self, billable_metric_test_common_setup):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="test_event",
+            property_name="test_property",
+            usage_aggregation_type=METRIC_AGGREGATION.UNIQUE,
+            metric_type=METRIC_TYPE.COUNTER,
+        )
+        time_created = now_utc() - relativedelta(days=14, hour=0)
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test"
+        )
+        event_times = [time_created] + [
+            time_created + relativedelta(minutes=i) for i in range(1, 2)
+        ]
+
+        customer = baker.make(Customer, organization=setup_dict["org"])
+        for groupby_dim_1 in ["foo", "bar"]:
+            for groupby_dimension_2 in ["baz", "qux"]:
+                for groupby_dimension_3 in ["quux", "quuz"]:
+                    baker.make(
+                        Event,
+                        event_name="test_event",
+                        properties={
+                            "test_property": "foo",
+                            "groupby_dim_1": groupby_dim_1,
+                            "groupby_dim_2": groupby_dimension_2,
+                            "groupby_dim_3": groupby_dimension_3,
+                        },
+                        organization=setup_dict["org"],
+                        time_created=event_times[0],
+                        customer=customer,
+                        _quantity=5,
+                    )
+                    baker.make(
+                        Event,
+                        event_name="test_event",
+                        properties={
+                            "test_property": "bar",
+                            "groupby_dim_1": groupby_dim_1,
+                            "groupby_dim_2": groupby_dimension_2,
+                            "groupby_dim_3": groupby_dimension_3,
+                        },
+                        organization=setup_dict["org"],
+                        time_created=event_times[1],
+                        customer=customer,
+                        _quantity=5,
+                    )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=1,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=1,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        subscription = Subscription.objects.create(
+            organization=setup_dict["org"],
+            billing_plan=billing_plan,
+            customer=customer,
+            start_date=time_created,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        )
+
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        # 2 (-1 free) unique + 8 combinations gives 800
+        assert 8 * Decimal(100) == usage_revenue_dict["revenue"]
