@@ -85,6 +85,61 @@ class MetricHandler(abc.ABC):
         Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day."""
         pass
 
+    @abc.abstractmethod
+    def _build_filter_kwargs(self, start, end, customer, group_by=[]):
+        """This method will be used to build the filter args for the get_usage and get_earned_usage_per_day methods. You should build the filter args for the Event model, and return them as a dictionary. You should also handle the case where customer is None, which means that you should return the usage for all customers."""
+        now = now_utc()
+        filter_kwargs = {
+            "organization": self.organization,
+            "event_name": self.event_name,
+            "time_created__lt": now,
+            "time_created__gte": start,
+            "time_created__lte": end,
+        }
+        if self.property_name is not None:
+            filter_kwargs["properties__has_key"] = self.property_name
+            filter_kwargs[f"properties__{self.property_name}__isnull"] = False
+        for group in group_by:
+            filter_kwargs["properties__has_key"] = group
+            filter_kwargs[f"properties__{group}__isnull"] = False
+        if customer is not None:
+            filter_kwargs["customer"] = customer
+        return filter_kwargs
+
+    @abc.abstractmethod
+    def _build_pre_groupby_annotation_kwargs(self, group_by=[]):
+        pre_groupby_annotation_kwargs = {
+            "customer_name": F("customer__customer_name"),
+        }
+        if self.property_name is not None:
+            pre_groupby_annotation_kwargs["property_value"] = (
+                F(f"properties__{self.property_name}"),
+            )
+        for group_by_property in group_by:
+            pre_groupby_annotation_kwargs[group_by_property] = F(
+                f"properties__{group_by_property}"
+            )
+        return pre_groupby_annotation_kwargs
+
+    @abc.abstractmethod
+    def _build_groupby_kwargs(self, customer, results_granularity, start, group_by=[]):
+        groupby_kwargs = {}
+        for group_by_property in group_by:
+            groupby_kwargs[group_by_property] = F(group_by_property)
+        if customer is not None:
+            groupby_kwargs["customer_name"] = F("customer__customer_name")
+
+        if results_granularity != USAGE_CALC_GRANULARITY.TOTAL:
+            groupby_kwargs["time_created_truncated"] = Trunc(
+                expression=F("time_created"),
+                kind=results_granularity,
+                output_field=DateTimeField(),
+            )
+        elif results_granularity != None:
+            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
+
+        return groupby_kwargs
+
     @staticmethod
     @abc.abstractmethod
     def validate_data(data) -> dict:
@@ -122,6 +177,17 @@ class CounterHandler(MetricHandler):
             METRIC_AGGREGATION.MAX,
         ]
 
+    def _build_filter_kwargs(self, start, end, customer, group_by=[]):
+        return super()._build_filter_kwargs(start, end, customer, group_by)
+
+    def _build_pre_groupby_annotation_kwargs(self, group_by=[]):
+        return super()._build_pre_groupby_annotation_kwargs(group_by)
+
+    def _build_groupby_kwargs(self, customer, results_granularity, start, group_by=[]):
+        return super()._build_groupby_kwargs(
+            customer, results_granularity, start, group_by
+        )
+
     def get_usage(
         self,
         results_granularity,
@@ -130,39 +196,14 @@ class CounterHandler(MetricHandler):
         customer=None,
         group_by=[],
     ):
-        now = now_utc()
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": now,
-            "time_created__gte": start,
-            "time_created__lte": end,
-        }
-        pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {}
-        for group_by_property in group_by:
-            filter_kwargs["properties__has_key"] = group_by_property
-            pre_groupby_annotation_kwargs[group_by_property] = F(
-                f"properties__{group_by_property}"
-            )
-            groupby_kwargs[group_by_property] = F(group_by_property)
-        groupby_kwargs["customer_name"] = F("customer__customer_name")
+        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
+            group_by
+        )
+        groupby_kwargs = self._build_groupby_kwargs(
+            customer, results_granularity, start, group_by
+        )
         post_groupby_annotation_kwargs = {}
-        if customer:
-            filter_kwargs["customer"] = customer
-        if self.property_name is not None:
-            filter_kwargs["properties__has_key"] = self.property_name
-            pre_groupby_annotation_kwargs["property_value"] = F(
-                f"properties__{self.property_name}"
-            )
-        if results_granularity != USAGE_CALC_GRANULARITY.TOTAL:
-            groupby_kwargs["time_created_truncated"] = Trunc(
-                expression=F("time_created"),
-                kind=results_granularity,
-                output_field=DateTimeField(),
-            )
-        else:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
 
         if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
             post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
@@ -221,34 +262,17 @@ class CounterHandler(MetricHandler):
 
     def get_earned_usage_per_day(self, start, end, customer, group_by=[]):
         now = now_utc()
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": now,
-            "time_created__gte": start,
-            "time_created__lte": end,
-            "customer": customer,
-        }
-        pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {}
-        for group_by_property in group_by:
-            filter_kwargs["properties__has_key"] = group_by_property
-            pre_groupby_annotation_kwargs[group_by_property] = F(
-                f"properties__{group_by_property}"
-            )
-            groupby_kwargs[group_by_property] = F(group_by_property)
-        groupby_kwargs["customer_name"] = F("customer__customer_name")
-        post_groupby_annotation_kwargs = {}
-        if self.property_name is not None:
-            filter_kwargs["properties__has_key"] = self.property_name
-            pre_groupby_annotation_kwargs["property_value"] = F(
-                f"properties__{self.property_name}"
-            )
-        groupby_kwargs["time_created_truncated"] = Trunc(
-            expression=F("time_created"),
-            kind=USAGE_CALC_GRANULARITY.DAILY,
-            output_field=DateTimeField(),
+        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
+            group_by
         )
+        groupby_kwargs = self._build_groupby_kwargs(
+            customer,
+            results_granularity=USAGE_CALC_GRANULARITY.DAILY,
+            start=start,
+            group_by=group_by,
+        )
+        post_groupby_annotation_kwargs = {}
 
         if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
             post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
@@ -431,6 +455,17 @@ class StatefulHandler(MetricHandler):
         assert property_name, "[METRIC TYPE: STATEFUL] Must specify property name."
         return data
 
+    def _build_filter_kwargs(self, start, end, customer, group_by=[]):
+        return super()._build_filter_kwargs(start, end, customer, group_by)
+
+    def _build_pre_groupby_annotation_kwargs(self, group_by=[]):
+        return super()._build_pre_groupby_annotation_kwargs(group_by)
+
+    def _build_groupby_kwargs(self, customer, results_granularity, start, group_by=[]):
+        return super()._build_groupby_kwargs(
+            customer, results_granularity, start, group_by
+        )
+
     def get_usage(
         self,
         results_granularity,
@@ -439,61 +474,20 @@ class StatefulHandler(MetricHandler):
         customer=None,
         group_by=[],
     ):
-        return self._get_usage(
-            results_granularity,
-            start,
-            end,
-            customer,
-            group_by,
-            event_type=self.event_type,
-        )
-
-    def _get_usage(
-        self,
-        results_granularity,
-        start,
-        end,
-        customer=None,
-        group_by=[],
-        event_type=EVENT_TYPE.TOTAL,
-    ):
         now = now_utc()
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": now,
-            "time_created__gte": start,
-            "time_created__lte": end,
-            "properties__has_key": self.property_name,
-        }
-        pre_groupby_annotation_kwargs = {
-            "property_value": F(f"properties__{self.property_name}"),
-            "customer_name": F("customer__customer_name"),
-        }
-        groupby_kwargs = {}
-        for group_by_property in group_by:
-            filter_kwargs["properties__has_key"] = group_by_property
-            pre_groupby_annotation_kwargs[group_by_property] = F(
-                f"properties__{group_by_property}"
-            )
-            groupby_kwargs[group_by_property] = F(group_by_property)
-        groupby_kwargs["customer_name"] = F("customer__customer_name")
+        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
+            group_by
+        )
+        groupby_kwargs = self._build_groupby_kwargs(
+            customer, results_granularity, start, group_by
+        )
         post_groupby_annotation_kwargs = {}
-        if customer:
-            filter_kwargs["customer"] = customer
-        if self.granularity != METRIC_GRANULARITY.TOTAL:
-            groupby_kwargs["time_created_truncated"] = Trunc(
-                expression=F("time_created"),
-                kind=self.granularity,
-                output_field=DateTimeField(),
-            )
-        else:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
 
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
 
-        if event_type == EVENT_TYPE.TOTAL:
+        if self.event_type == EVENT_TYPE.TOTAL:
             if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
                 post_groupby_annotation_kwargs["usage_qty"] = Max(
                     Cast(F("property_value"), FloatField())
@@ -508,7 +502,7 @@ class StatefulHandler(MetricHandler):
             q_gb = q_pre_gb_ann.values(**groupby_kwargs)
             q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
-        elif event_type == EVENT_TYPE.DELTA:
+        elif self.event_type == EVENT_TYPE.DELTA:
             subquery_dict = {
                 "time_created__gte": start,
                 "time_created__lte": OuterRef("time_created"),
@@ -575,18 +569,13 @@ class StatefulHandler(MetricHandler):
                 latest_in_period_usages[cust_name][unique_tup] = {}
             latest_in_period_usages[cust_name][unique_tup][tc_trunc] = usage_qty
         # grab pre-query initial values
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": start,
-            "properties__has_key": self.property_name,
-        }
+        filter_kwargs["time_created__lt"] = start
+        del filter_kwargs["time_created__gte"]
         annotate_kwargs = {
             "property_value": F(f"properties__{self.property_name}"),
             "customer_name": F("customer__customer_name"),
         }
         for group_by_property in group_by:
-            filter_kwargs["properties__has_key"] = group_by_property
             annotate_kwargs[group_by_property] = F(f"properties__{group_by_property}")
         pre_query_all_events = Event.objects.filter(**filter_kwargs).annotate(
             **annotate_kwargs
@@ -698,13 +687,10 @@ class StatefulHandler(MetricHandler):
 
     def get_current_usage(self, subscription):
         now = now_utc()
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": now,
-            "properties__has_key": self.property_name,
-            "customer": subscription.customer,
-        }
+        filter_kwargs = self._build_filter_kwargs(
+            start=now, end=now, customer=subscription.customer, group_by=[]
+        )
+        del filter_kwargs["time_created__gte"]
         if self.event_type == EVENT_TYPE.TOTAL:
             last_usage = (
                 Event.objects.filter(**filter_kwargs)
@@ -826,30 +812,31 @@ class RateHandler(MetricHandler):
         start = now - relativedelta(**{self.granularity: 1})
         return start, end
 
+    def _build_filter_kwargs(self, start, end, customer, group_by=[]):
+        return super()._build_filter_kwargs(start, end, customer, group_by)
+
+    def _build_pre_groupby_annotation_kwargs(self, group_by=[]):
+        return super()._build_pre_groupby_annotation_kwargs(group_by)
+
+    def _build_groupby_kwargs(self, customer, results_granularity, start, group_by=[]):
+        return super()._build_groupby_kwargs(
+            customer, results_granularity, start, group_by
+        )
+
     def get_current_usage(self, subscription, group_by=[]):
         start, end = self._get_current_query_start_end(subscription)
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lte": end,
-            "time_created__gte": start,
-            "customer": subscription.customer,
-        }
-        if self.property_name is not None:
-            filter_kwargs["properties__has_key"] = self.property_name
-            pre_groupby_annotation_kwargs["property_value"] = F(
-                f"properties__{self.property_name}"
-            )
-
-        pre_groupby_annotation_kwargs = {}
-        groupby_kwargs = {}
-        for group_by_property in group_by:
-            filter_kwargs["properties__has_key"] = group_by_property
-            pre_groupby_annotation_kwargs[group_by_property] = F(
-                f"properties__{group_by_property}"
-            )
-            groupby_kwargs[group_by_property] = F(group_by_property)
-        groupby_kwargs["customer_name"] = F("customer__customer_name")
+        filter_kwargs = self._build_filter_kwargs(
+            start, end, subscription.customer, group_by
+        )
+        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
+            group_by
+        )
+        groupby_kwargs = self._build_groupby_kwargs(
+            subscription.customer,
+            results_granularity=None,
+            start=start,
+            group_by=group_by,
+        )
         post_groupby_annotation_kwargs = {}
         if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
             post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
@@ -889,43 +876,13 @@ class RateHandler(MetricHandler):
         group_by=[],
     ):
         now = now_utc()
-        filter_kwargs = {
-            "organization": self.organization,
-            "event_name": self.event_name,
-            "time_created__lt": now,
-            "time_created__gte": start,
-            "time_created__lte": end,
-        }
-        pre_groupby_annotation_kwargs = {
-            "property_value": F(f"properties__{self.property_name}"),
-            "customer_name": F("customer__customer_name"),
-        }
-        groupby_kwargs = {}
-        for group_by_property in group_by:
-            filter_kwargs["properties__has_key"] = group_by_property
-            # filter_kwargs[f"properties__{group_by_property}__isnull"] = False 
-            pre_groupby_annotation_kwargs[group_by_property] = F(
-                f"properties__{group_by_property}"
-            )
-            groupby_kwargs[group_by_property] = F(group_by_property)
-        groupby_kwargs["customer_name"] = F("customer__customer_name")
-
-        if results_granularity != USAGE_CALC_GRANULARITY.TOTAL:
-            groupby_kwargs["time_created_truncated"] = Trunc(
-                expression=F("time_created"),
-                kind=results_granularity,
-                output_field=DateTimeField(),
-            )
-        else:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
-
-        if customer:
-            filter_kwargs["customer"] = customer
-        if self.property_name is not None:
-            filter_kwargs["properties__has_key"] = self.property_name
-            pre_groupby_annotation_kwargs["property_value"] = F(
-                f"properties__{self.property_name}"
-            )
+        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
+            group_by
+        )
+        groupby_kwargs = self._build_groupby_kwargs(
+            customer, results_granularity, start, group_by
+        )
 
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
