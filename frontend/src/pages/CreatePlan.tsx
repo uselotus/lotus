@@ -133,6 +133,7 @@ const CreatePlan = () => {
         },
       ];
       setComponentsData(newComponentsData);
+      console.log(newComponentsData);
     }
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
