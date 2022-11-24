@@ -469,7 +469,7 @@ class PriceTierSerializer(serializers.ModelSerializer):
             re = Decimal("Infinity")
         assert re > rs
         if data.get("type") == PRICE_TIER_TYPE.FLAT:
-            assert data.get("cost_per_batch")
+            assert data.get("cost_per_batch") is not None
             data["metric_units_per_batch"] = None
             data["batch_rounding_type"] = None
         elif data.get("type") == PRICE_TIER_TYPE.FREE:
@@ -513,18 +513,21 @@ class PlanComponentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
-        tiers = data.get("tiers")
-        assert len(tiers) > 0, "Must have at least one price tier"
-        tiers_sorted = sorted(tiers, key=lambda x: x["range_start"])
-        assert tiers_sorted[0]["range_start"] == 0, "First tier must start at 0"
-        assert all(
-            x["range_end"] for x in tiers_sorted[:-1]
-        ), "All tiers must have an end, last one is the only one allowed to have open end"
-        for i, tier in enumerate(tiers_sorted[:-1]):
-            assert tiers_sorted[i + 1]["range_start"] - tier["range_end"] <= Decimal(
-                1
-            ), "All tiers must be contiguous"
-        return data
+        try:
+            tiers = data.get("tiers")
+            assert len(tiers) > 0, "Must have at least one price tier"
+            tiers_sorted = sorted(tiers, key=lambda x: x["range_start"])
+            assert tiers_sorted[0]["range_start"] == 0, "First tier must start at 0"
+            assert all(
+                x["range_end"] for x in tiers_sorted[:-1]
+            ), "All tiers must have an end, last one is the only one allowed to have open end"
+            for i, tier in enumerate(tiers_sorted[:-1]):
+                assert tiers_sorted[i + 1]["range_start"] - tier[
+                    "range_end"
+                ] <= Decimal(1), "All tiers must be contiguous"
+            return data
+        except AssertionError as e:
+            raise serializers.ValidationError(str(e))
 
     def create(self, validated_data):
         tiers = validated_data.pop("tiers")
