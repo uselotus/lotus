@@ -21,6 +21,11 @@ export interface CreateMetricState extends MetricType {
   usage_aggregation_type_2: string;
   property_name_2: string;
   granularity_2?: string;
+  filters?: {
+    property_name: string;
+    operator: string;
+    comparison_value: string;
+  }[];
 }
 
 const CreateMetricForm = (props: {
@@ -107,6 +112,7 @@ const CreateMetricForm = (props: {
             if (rate) {
               values.metric_type = "rate";
             }
+            console.log("values", values);
             props.onSave(values);
             form.resetFields();
             setRate(false);
@@ -385,18 +391,7 @@ const CreateMetricForm = (props: {
 
         <Collapse>
           <Panel header="Filters" key="1">
-            <Form.List
-              name="names"
-              rules={[
-                {
-                  validator: async (_, names) => {
-                    if (!names || names.length < 2) {
-                      return Promise.reject(new Error("At least 2 passengers"));
-                    }
-                  },
-                },
-              ]}
-            >
+            <Form.List name="filters">
               {(fields, { add, remove }, { errors }) => (
                 <>
                   {fields.map((field, index) => (
@@ -406,46 +401,60 @@ const CreateMetricForm = (props: {
                       label={index === 0 ? "" : "and"}
                       className="mt-4"
                     >
-                      <Form.Item
-                        {...field}
-                        validateTrigger={["onChange", "onBlur"]}
-                        rules={[
-                          {
-                            required: true,
-                            whitespace: true,
-                            message:
-                              "Please input passenger's name or delete this field.",
-                          },
-                        ]}
-                        noStyle
-                      >
-                        <Input
-                          placeholder="passenger name"
-                          style={{ width: "30%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item>
-                        <Select>
-                          <Option value="matches">contains</Option>
-                          <Option value="equals">equals</Option>
-                          <Option value="is_between">is between</Option>
-                          <Option value="greater_than">greater than</Option>
-                          <Option value="less_than">greater than</Option>
-                        </Select>
-                      </Form.Item>
-
-                      <div>
-                        <Form.Item>
-                          <InputNumber />
+                      <div className="flex flex-col space-y-4">
+                        <Form.Item
+                          {...field}
+                          name={[field.name, "property_name"]}
+                          validateTrigger={["onChange", "onBlur"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              message:
+                                "Please input a property name name or delete this filter.",
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <Input
+                            placeholder="property name"
+                            style={{ width: "30%" }}
+                          />
                         </Form.Item>
-                      </div>
+                        <Form.Item
+                          name={[field.name, "operator"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              message:
+                                "Please input a property name name or delete this filter.",
+                            },
+                          ]}
+                        >
+                          <Select style={{ width: "50%" }}>
+                            <Option value="isin">is (string)</Option>
+                            <Option value="isnotin">is not (string)</Option>
+                            <Option value="eq">= (number)</Option>
+                            <Option value="gte">&#8805;</Option>
+                            <Option value="gt"> &#62; </Option>
+                            <Option value="lt"> &#60;</Option>
+                            <Option value="lte">&#8804;</Option>
+                          </Select>
+                        </Form.Item>
 
-                      {fields.length > 1 ? (
-                        <MinusCircleOutlined
-                          className="dynamic-delete-button"
-                          onClick={() => remove(field.name)}
-                        />
-                      ) : null}
+                        <div className="grid grid-cols-2 w-6/12">
+                          <Form.Item name={[field.name, "comparison_value"]}>
+                            <Input />
+                          </Form.Item>
+                          {fields.length > 0 ? (
+                            <MinusCircleOutlined
+                              className="dynamic-delete-button"
+                              onClick={() => remove(field.name)}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
                     </Form.Item>
                   ))}
                   <Form.Item>
