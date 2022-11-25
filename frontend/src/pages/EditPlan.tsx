@@ -92,6 +92,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         return {
           metric: component.billable_metric.billable_metric_name,
           tiers: component.tiers,
+          separate_by: component.separate_by,
           id: component.billable_metric.billable_metric_name,
         };
       }
@@ -268,6 +269,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
             };
             usagecomponentslist.push(usagecomponent);
           }

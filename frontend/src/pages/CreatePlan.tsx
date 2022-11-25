@@ -176,6 +176,7 @@ const CreatePlan = () => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
             };
             usagecomponentslist.push(usagecomponent);
           }
