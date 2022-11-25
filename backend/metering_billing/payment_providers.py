@@ -253,7 +253,6 @@ class StripeConnector(PaymentProvider):
                 "external_payment_obj_type": PAYMENT_PROVIDERS.STRIPE,
                 "organization": customer.organization,
                 "subscription": None,
-                "line_items": {},
             }
             lotus_invoice = Invoice.objects.create(**invoice_kwargs)
             lotus_invoices.append(lotus_invoice)

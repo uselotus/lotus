@@ -494,9 +494,10 @@ class PriceTierSerializer(serializers.ModelSerializer):
 class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
-        fields = ("billable_metric_name", "billable_metric", "tiers")
+        fields = ("billable_metric_name", "billable_metric", "tiers", "separate_by")
         read_only_fields = ["billable_metric"]
 
+    separate_by = serializers.ListField(child=serializers.CharField(), required=False)
     # READ-ONLY
     billable_metric = MetricSerializer(read_only=True)
 

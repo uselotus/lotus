@@ -112,8 +112,8 @@ class MetricHandler(abc.ABC):
             "customer_name": F("customer__customer_name"),
         }
         if self.property_name is not None:
-            pre_groupby_annotation_kwargs["property_value"] = (
-                F(f"properties__{self.property_name}"),
+            pre_groupby_annotation_kwargs["property_value"] = F(
+                f"properties__{self.property_name}"
             )
         for group_by_property in group_by:
             pre_groupby_annotation_kwargs[group_by_property] = F(
@@ -223,7 +223,6 @@ class CounterHandler(MetricHandler):
             post_groupby_annotation_kwargs["usage_qty"] = Count(
                 F("property_value"), distinct=True
             )
-
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
         q_gb = q_pre_gb_ann.values(**groupby_kwargs)
@@ -245,8 +244,8 @@ class CounterHandler(MetricHandler):
 
     def get_current_usage(self, subscription):
         per_customer = self.get_usage(
-            start=subscription.start,
-            end=subscription.end,
+            start=subscription.start_date,
+            end=subscription.end_date,
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
             customer=subscription.customer,
         )

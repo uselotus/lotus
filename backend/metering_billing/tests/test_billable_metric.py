@@ -230,7 +230,9 @@ class TestCalculateMetric:
             usage_aggregation_type="unique",
         )
         time_created = parser.parse("2021-01-01T06:00:00Z")
-        customer = baker.make(Customer, organization=setup_dict["org"])
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test_customer"
+        )
         baker.make(
             Event,
             event_name="test_event",
@@ -256,8 +258,10 @@ class TestCalculateMetric:
             customer=customer,
         )
         metric_usage = metric_usage[customer.customer_name]
-        metric_usage = list(metric_usage.values())[0]
-
+        assert len(metric_usage) == 1  # no groupbys
+        unique_tup, dd = list(metric_usage.items())[0]
+        assert len(dd) == 1
+        metric_usage = list(dd.values())[0]
         assert metric_usage == 2
 
     def test_stateful_total_granularity(self, billable_metric_test_common_setup):

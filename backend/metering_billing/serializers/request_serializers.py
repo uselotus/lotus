@@ -5,9 +5,6 @@ class GetCustomerAccessRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=True)
     event_name = serializers.CharField(required=False)
     feature_name = serializers.CharField(required=False)
-    event_limit_type = serializers.ChoiceField(
-        choices=["free", "total"], required=False
-    )
 
     def validate(self, data):
         if not data.get("event_name") and not data.get("feature_name"):

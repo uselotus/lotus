@@ -59,6 +59,18 @@ def get_access_test_common_setup(
         setup_dict["client"] = client
         (customer,) = add_customers_to_org(org, n=1)
         setup_dict["customer"] = customer
+        for agg_dim_1 in ["agg_dim_1_val_1", "agg_dim_1_val_2"]:
+            event_set = baker.make(
+                Event,
+                organization=org,
+                customer=customer,
+                event_name="email_sent",
+                time_created=now_utc() - relativedelta(days=1),
+                properties={
+                    "agg_dim_1": agg_dim_1,
+                },
+                _quantity=5,
+            )
         event_set = baker.make(
             Event,
             organization=org,
@@ -114,6 +126,31 @@ def get_access_test_common_setup(
         metric_set = (
             deny_limit_metric_set + allow_limit_metric_set + allow_free_metric_set
         )
+        # THIS IS FOR NO SEPARATE_BY
+        for i, (fmu, cpb, mupb, range_end) in enumerate(
+            zip([1, 1, 20], [10, 10, 10], [1, 1, 1], [3, 6, 20])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=metric_set[i],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PRICE_TIER_TYPE.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PRICE_TIER_TYPE.PER_UNIT,
+                range_start=start,
+                range_end=range_end,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
         for i, (fmu, cpb, mupb, range_end) in enumerate(
             zip([1, 1, 20], [10, 10, 10], [1, 1, 1], [3, 6, 20])
         ):
@@ -156,6 +193,77 @@ def get_access_test_common_setup(
             start_date=now_utc() - relativedelta(days=3),
             status="active",
         )
+        setup_dict["subscription"] = subscription
+        # THIS IS FOR YES SEPARATE_BY
+        for i, (fmu, cpb, mupb, range_end) in enumerate(
+            zip([1, 1, 20], [10, 10, 10], [1, 1, 1], [3, 6, 20])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=metric_set[i],
+                separate_by=["agg_dim_1"],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PRICE_TIER_TYPE.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PRICE_TIER_TYPE.PER_UNIT,
+                range_start=start,
+                range_end=range_end,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
+        for i, (fmu, cpb, mupb, range_end) in enumerate(
+            zip([1, 1, 20], [10, 10, 10], [1, 1, 1], [3, 6, 20])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=metric_set[i],
+                separate_by=["agg_dim_1"],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PRICE_TIER_TYPE.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PRICE_TIER_TYPE.PER_UNIT,
+                range_start=start,
+                range_end=range_end,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
+        feature_set = baker.make(
+            Feature,
+            organization=org,
+            feature_name=itertools.cycle(["feature1", "feature2"]),
+            _quantity=2,
+        )
+        setup_dict["features"] = feature_set
+        billing_plan.features.add(*feature_set[:1])
+        billing_plan.save()
+        setup_dict["billing_plan"] = billing_plan
+        subscription = baker.make(
+            Subscription,
+            organization=org,
+            customer=customer,
+            billing_plan=billing_plan,
+            start_date=now_utc() - relativedelta(days=3),
+            status="active",
+        )
+
         setup_dict["subscription"] = subscription
         return setup_dict
 

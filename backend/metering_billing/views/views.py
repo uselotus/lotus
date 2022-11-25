@@ -533,15 +533,29 @@ class GetCustomerAccessView(APIView):
             200: inline_serializer(
                 name="GetCustomerAccessSuccess",
                 fields={
-                    "access": serializers.BooleanField(),
-                    "usages": serializers.ListField(
+                    "metrics": serializers.ListField(
                         child=inline_serializer(
                             name="MetricUsageSerializer",
                             fields={
+                                "separate_by_properties": serializers.DictField(
+                                    child=serializers.CharField()
+                                ),
+                                "event_name": serializers.CharField(),
                                 "metric_name": serializers.CharField(),
                                 "metric_usage": serializers.FloatField(),
-                                "metric_limit": serializers.FloatField(),
-                                "access": serializers.BooleanField(),
+                                "metric_free_limit": serializers.FloatField(),
+                                "metric_total_limit": serializers.FloatField(),
+                                "subscription_id": serializers.CharField(),
+                            },
+                        ),
+                        required=False,
+                    ),
+                    "features": serializers.ListField(
+                        child=inline_serializer(
+                            name="FeatureUsageSerializer",
+                            fields={
+                                "feature_name": serializers.CharField(),
+                                "subscription_id": serializers.CharField(),
                             },
                         ),
                         required=False,
@@ -589,91 +603,70 @@ class GetCustomerAccessView(APIView):
             )
         event_name = serializer.validated_data.get("event_name")
         feature_name = serializer.validated_data.get("feature_name")
-        event_limit_type = serializer.validated_data.get("event_limit_type")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization=organization,
             status=SUBSCRIPTION_STATUS.ACTIVE,
             customer=customer,
         )
+        metrics = []
+        features = []
         if event_name:
             subscriptions = subscriptions.prefetch_related(
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
             )
-            metric_usages = {}
+
             for sub in subscriptions:
                 cache_key = f"customer_id:{customer_id}__event_name:{event_name}"
                 for component in sub.billing_plan.plan_components.all():
-                    if component.billable_metric.event_name == event_name:
-                        metric = component.billable_metric
+                    metric = component.billable_metric
+                    if metric.event_name == event_name:
                         metric_name = metric.billable_metric_name
-                        event_limit_dict = cache.get(cache_key, {})
-                        if (component.pk, event_limit_type) in event_limit_dict:
-                            metric_usages[metric_name] = event_limit_dict[
-                                (component.pk, event_limit_type)
-                            ]
-                        else:
-                            tiers = sorted(
-                                component.tiers.all(), key=lambda x: x.range_start
-                            )
-                            if event_limit_type == "free":
-                                metric_limit = (
-                                    tiers[0].range_end
-                                    if tiers[0].type == PRICE_TIER_TYPE.FREE
-                                    else None
+                        tiers = sorted(
+                            component.tiers.all(), key=lambda x: x.range_start
+                        )
+                        free_limit = (
+                            tiers[0].range_end
+                            if tiers[0].type == PRICE_TIER_TYPE.FREE
+                            else None
+                        )
+                        total_limit = tiers[-1].range_end
+                        subscription_id = sub.subscription_id
+                        metric_usage = metric.get_current_usage(sub)
+                        custom_metric_usage = metric_usage[customer.customer_name]
+                        for unique_tup, d in custom_metric_usage.items():
+                            i = iter(unique_tup)
+                            _ = next(i)  # i.next() in older versions
+                            groupby_vals = list(i)
+                            usage = list(d.values())[0]
+                            unique_tup_dict = {
+                                "event_name": event_name,
+                                "metric_name": metric_name,
+                                "metric_usage": usage,
+                                "metric_free_limit": free_limit,
+                                "metric_total_limit": total_limit,
+                                "subscription_id": subscription_id,
+                                "separate_by_properties": {},
+                            }
+                            if len(groupby_vals) > 0:
+                                unique_tup_dict["separate_by_properties"] = dict(
+                                    zip(component.separate_by, groupby_vals)
                                 )
-                            elif event_limit_type == "total":
-                                metric_limit = tiers[-1].range_end
-                            metric_usage = metric.get_current_usage(sub)
-                            if not metric_limit:
-                                access = True if event_limit_type == "total" else False
-                            else:
-                                access = metric_usage < metric_limit
-                            metric_usages[metric_name] = {
-                                "metric_usage": metric_usage,
-                                "metric_limit": metric_limit,
-                                "access": access,
-                            }
-                            event_limit_dict = {
-                                **event_limit_dict,
-                                (component.pk, event_limit_type): metric_usages[
-                                    metric_name
-                                ],
-                            }
-                            cache.set(cache_key, event_limit_dict, None)
-            if all(v["access"] for k, v in metric_usages.items()):
-                return Response(
-                    {
-                        "access": True,
-                        "usages": [
-                            {**v, "metric_name": k} for k, v in metric_usages.items()
-                        ],
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(
-                    {
-                        "access": False,
-                        "usages": [
-                            {**v, "metric_name": k} for k, v in metric_usages.items()
-                        ],
-                    },
-                    status=status.HTTP_200_OK,
-                )
+                            metrics.append(unique_tup_dict)
         elif feature_name:
             subscriptions = subscriptions.prefetch_related("billing_plan__features")
             for sub in subscriptions:
                 for feature in sub.billing_plan.features.all():
                     if feature.feature_name == feature_name:
-                        return Response(
-                            {"access": True},
-                            status=status.HTTP_200_OK,
+                        features.append(
+                            {
+                                "feature_name": feature_name,
+                                "subscription_id": sub.subscription_id,
+                            }
                         )
-
         return Response(
-            {"access": False},
+            {"metrics": metrics, "features": features},
             status=status.HTTP_200_OK,
         )
 
