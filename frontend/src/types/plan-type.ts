@@ -109,11 +109,13 @@ export interface CreateVersionType {
 
 export interface CreateComponent extends Omit<Component, "billable_metric"> {
   billable_metric_name: string;
+  separate_by: string[];
 }
 
 export interface Component {
   billable_metric: MetricType;
   tiers: Tier[];
+  separate_by: string[];
   id?: number;
 }
 

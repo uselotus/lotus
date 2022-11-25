@@ -133,6 +133,7 @@ const CreatePlan = () => {
         },
       ];
       setComponentsData(newComponentsData);
+      console.log(newComponentsData);
     }
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
@@ -175,6 +176,7 @@ const CreatePlan = () => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -256,103 +258,109 @@ const CreatePlan = () => {
           labelAlign="left"
         >
           <Row gutter={[24, 24]}>
-            <Col span={12}>
-              <Row gutter={[24, 24]}>
-                <Col span="24">
-                  <Card title="Plan Information">
-                    <Form.Item
-                      label="Plan Name"
-                      name="name"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please Name Your Plan",
-                        },
-                      ]}
-                    >
-                      <Input placeholder="Ex: Starter Plan" />
-                    </Form.Item>
-                    <Form.Item label="Description" name="description">
-                      <Input
-                        type="textarea"
-                        placeholder="Ex: Cheapest plan for small scale businesses"
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      label="Plan Duration"
-                      name="plan_duration"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select a duration",
-                        },
-                      ]}
-                    >
-                      <Radio.Group
-                        onChange={(e) => {
-                          if (e.target.value === "monthly") {
-                            setAvailableBillingTypes([
-                              { label: "Monthly", name: "monthly" },
-                            ]);
-                          } else if (e.target.value === "quarterly") {
-                            setAvailableBillingTypes([
-                              { label: "Monthly", name: "monthly" },
-                              { label: "Quarterly", name: "quarterly" },
-                            ]);
-                          } else {
-                            setAvailableBillingTypes([
-                              { label: "Monthly", name: "monthly" },
-                              { label: "Quarterly", name: "quarterly" },
-                              { label: "Yearly", name: "yearly" },
-                            ]);
-                          }
-                        }}
-                      >
-                        <Radio value="monthly">Monthly</Radio>
-                        <Radio value="quarterly">Quarterly</Radio>
-                        <Radio value="yearly">Yearly</Radio>
-                      </Radio.Group>
-                    </Form.Item>
+            <Col span={10}>
+              <Card
+                title="Plan Information"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
+              >
+                <Form.Item
+                  label="Plan Name"
+                  name="name"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please Name Your Plan",
+                    },
+                  ]}
+                >
+                  <Input placeholder="Ex: Starter Plan" />
+                </Form.Item>
+                <Form.Item label="Description" name="description">
+                  <Input
+                    type="textarea"
+                    placeholder="Ex: Cheapest plan for small scale businesses"
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="Plan Duration"
+                  name="plan_duration"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please select a duration",
+                    },
+                  ]}
+                >
+                  <Radio.Group
+                    onChange={(e) => {
+                      if (e.target.value === "monthly") {
+                        setAvailableBillingTypes([
+                          { label: "Monthly", name: "monthly" },
+                        ]);
+                      } else if (e.target.value === "quarterly") {
+                        setAvailableBillingTypes([
+                          { label: "Monthly", name: "monthly" },
+                          { label: "Quarterly", name: "quarterly" },
+                        ]);
+                      } else {
+                        setAvailableBillingTypes([
+                          { label: "Monthly", name: "monthly" },
+                          { label: "Quarterly", name: "quarterly" },
+                          { label: "Yearly", name: "yearly" },
+                        ]);
+                      }
+                    }}
+                  >
+                    <Radio value="monthly">Monthly</Radio>
+                    <Radio value="quarterly">Quarterly</Radio>
+                    <Radio value="yearly">Yearly</Radio>
+                  </Radio.Group>
+                </Form.Item>
 
-                    <Form.Item name="flat_rate" label="Base Cost">
-                      <InputNumber
-                        addonBefore="$"
-                        defaultValue={0}
-                        precision={2}
-                      />
-                    </Form.Item>
-                    <Form.Item
-                      name="flat_fee_billing_type"
-                      label="Recurring Billing Type"
-                    >
-                      <Select>
-                        <Select.Option value="in_advance">
-                          Pay in advance
-                        </Select.Option>
-                        <Select.Option value="in_arrears">
-                          Pay in arrears
-                        </Select.Option>
-                      </Select>
-                    </Form.Item>
+                <Form.Item name="flat_rate" label="Base Cost">
+                  <InputNumber addonBefore="$" defaultValue={0} precision={2} />
+                </Form.Item>
+                <Form.Item
+                  name="flat_fee_billing_type"
+                  label="Recurring Billing Type"
+                >
+                  <Select>
+                    <Select.Option value="in_advance">
+                      Pay in advance
+                    </Select.Option>
+                    <Select.Option value="in_arrears">
+                      Pay in arrears
+                    </Select.Option>
+                  </Select>
+                </Form.Item>
 
-                    <Form.Item
-                      name="initial_external_links"
-                      label="Link External ids"
-                    >
-                      <LinkExternalIds
-                        externalIds={[]}
-                        setExternalLinks={setExternalLinks}
-                      />
-                    </Form.Item>
-                  </Card>
-                </Col>
-              </Row>
+                <Form.Item
+                  name="initial_external_links"
+                  label="Link External ids"
+                >
+                  <LinkExternalIds
+                    externalIds={[]}
+                    setExternalLinks={setExternalLinks}
+                  />
+                </Form.Item>
+              </Card>
             </Col>
 
-            <Col span={12}>
+            <Col span={14}>
               <Card
                 title="Added Components"
                 className="h-full"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button
                     htmlType="button"
@@ -405,6 +413,12 @@ const CreatePlan = () => {
               <Card
                 className="w-full my-5"
                 title="Added Features"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button htmlType="button" onClick={showFeatureModal}>
                     Add Feature
@@ -426,7 +440,16 @@ const CreatePlan = () => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Discount">
+              <Card
+                className="w-6/12 mb-20"
+                title="Discount"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
+              >
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}
