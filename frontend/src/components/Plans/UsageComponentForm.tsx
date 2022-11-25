@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
   Checkbox,
+  Collapse,
   Form,
   Input,
   InputNumber,
@@ -20,13 +21,14 @@ import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
 
 const { Option } = Select;
+const { Panel } = Collapse;
+
 const EditableContext = React.createContext<FormInstance<any> | null>(null);
 type EditableTableProps = Parameters<typeof Table>[0];
 
 type ColumnTypes = Exclude<EditableTableProps["columns"], undefined>;
 
 const validateTiers = (tiers: Tier[]) => {
-  const response: {} = {};
   var currentStart = 0;
   var currentEnd: number | undefined;
   const arr2: boolean[] = tiers.map((tier, index) => {
@@ -227,12 +229,10 @@ function UsageComponentForm({
 }: Props) {
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
-  const [isCharge, setIsCharge] = useState(
-    editComponentItem?.free_metric_units !== undefined ? true : false
+  const [separateByProperties, setSeparateByProperties] = useState<string[]>(
+    editComponentItem?.separate_by ?? []
   );
-  const [isLimit, setIsLimit] = useState(
-    editComponentItem?.max_metric_units ? true : false
-  );
+
   const initalData = editComponentItem ?? null;
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -415,6 +415,7 @@ function UsageComponentForm({
             if (validateTiers(currentTiers) === true) {
               handleComponentAdd({
                 metric: values.metric,
+                separate_by: separateByProperties,
                 tiers: currentTiers,
               });
 
@@ -452,6 +453,25 @@ function UsageComponentForm({
               ))}
             </Select>
           </Form.Item>
+        </div>
+
+        <div className="mt-4 mb-12">
+          <Collapse className="col-span-full bg-white py-8 rounded">
+            <Panel header="Advanced Settings" key="1">
+              <div className="mb-8">
+                (Optional) Separate Component For Each Distinct Property Value
+              </div>
+              <div className="grid grid-flow-col items-center">
+                <p>Property:</p>
+                <Input
+                  onChange={(e) => {
+                    setSeparateByProperties([e.target.value]);
+                  }}
+                  value={separateByProperties[0]}
+                ></Input>
+              </div>
+            </Panel>
+          </Collapse>
         </div>
 
         <Table
