@@ -852,6 +852,7 @@ class TestCalculateMetric:
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
         # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
         # if we multiply this by the 8 different combinations we're suppsoed to have, we
+        print("usage_rev_dict", usage_revenue_dict)
         assert (
             8 * Decimal(100) * Decimal(12) / Decimal(28)
             >= usage_revenue_dict["revenue"]

@@ -72,6 +72,7 @@ class MetricHandler(abc.ABC):
     def get_current_usage(
         self,
         subscription: Subscription,
+        group_by: list[str] = [],
     ) -> float:
         """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Stateful with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
         pass
@@ -99,9 +100,11 @@ class MetricHandler(abc.ABC):
         if self.property_name is not None:
             filter_kwargs["properties__has_key"] = self.property_name
             filter_kwargs[f"properties__{self.property_name}__isnull"] = False
-        for group in group_by:
-            filter_kwargs["properties__has_key"] = group
-            filter_kwargs[f"properties__{group}__isnull"] = False
+        if len(group_by) > 0:
+            filter_kwargs["properties__has_keys"] = []
+            for group in group_by:
+                filter_kwargs["properties__has_keys"].append(group)
+                filter_kwargs[f"properties__{group}__isnull"] = False
         if customer is not None:
             filter_kwargs["customer"] = customer
         return filter_kwargs
@@ -129,14 +132,24 @@ class MetricHandler(abc.ABC):
         if customer is not None:
             groupby_kwargs["customer_name"] = F("customer__customer_name")
 
-        if results_granularity != USAGE_CALC_GRANULARITY.TOTAL:
-            groupby_kwargs["time_created_truncated"] = Trunc(
-                expression=F("time_created"),
-                kind=results_granularity,
-                output_field=DateTimeField(),
-            )
-        elif results_granularity != None:
-            groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
+        if self.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+            if self.granularity != METRIC_GRANULARITY.TOTAL:
+                groupby_kwargs["time_created_truncated"] = Trunc(
+                    expression=F("time_created"),
+                    kind=self.granularity,
+                    output_field=DateTimeField(),
+                )
+            else:
+                groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
+        else:
+            if results_granularity != USAGE_CALC_GRANULARITY.TOTAL:
+                groupby_kwargs["time_created_truncated"] = Trunc(
+                    expression=F("time_created"),
+                    kind=results_granularity,
+                    output_field=DateTimeField(),
+                )
+            elif results_granularity != None:
+                groupby_kwargs["time_created_truncated"] = Value(date_as_min_dt(start))
 
         return groupby_kwargs
 
@@ -151,6 +164,7 @@ class CounterHandler(MetricHandler):
     def __init__(self, billable_metric: Metric):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
+        self.billable_metric = billable_metric
         assert (
             billable_metric.metric_type == METRIC_TYPE.COUNTER
         ), f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
@@ -242,22 +256,19 @@ class CounterHandler(MetricHandler):
             return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
         return return_dict
 
-    def get_current_usage(self, subscription):
+    def get_current_usage(self, subscription, group_by=[]):
         per_customer = self.get_usage(
             start=subscription.start_date,
             end=subscription.end_date,
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
             customer=subscription.customer,
+            group_by=group_by,
         )
         assert (
             subscription.customer.customer_name in per_customer
             or len(per_customer) == 0
         )
-        if len(per_customer) == 0:
-            return 0
-        customer_usage = per_customer[subscription.customer.customer_name]
-        _, customer_usage_val = list(customer_usage.items())[0]
-        return customer_usage_val
+        return per_customer
 
     def get_earned_usage_per_day(self, start, end, customer, group_by=[]):
         now = now_utc()
@@ -400,6 +411,7 @@ class StatefulHandler(MetricHandler):
     def __init__(self, billable_metric: Metric):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
+        self.billable_metric = billable_metric
         assert (
             billable_metric.metric_type == METRIC_TYPE.STATEFUL
         ), f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
@@ -473,7 +485,6 @@ class StatefulHandler(MetricHandler):
         customer=None,
         group_by=[],
     ):
-        now = now_utc()
         filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -481,13 +492,16 @@ class StatefulHandler(MetricHandler):
         groupby_kwargs = self._build_groupby_kwargs(
             customer, results_granularity, start, group_by
         )
+        print("filter_kwargs", filter_kwargs)
+        print("pre_groupby_annotation_kwargs", pre_groupby_annotation_kwargs)
+        print("groupby_kwargs", groupby_kwargs)
         post_groupby_annotation_kwargs = {}
-
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
 
         if self.event_type == EVENT_TYPE.TOTAL:
             if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
+                print("yeah we got in here")
                 post_groupby_annotation_kwargs["usage_qty"] = Max(
                     Cast(F("property_value"), FloatField())
                 )
@@ -509,6 +523,7 @@ class StatefulHandler(MetricHandler):
             }
             for group_by_property in group_by:
                 subquery_dict[group_by_property] = OuterRef(group_by_property)
+
             subquery = (
                 q_pre_gb_ann.filter(**subquery_dict)
                 .values(*(["customer_name"] + group_by))
@@ -684,28 +699,19 @@ class StatefulHandler(MetricHandler):
             usage_dict = new_usage_dict
         return usage_dict
 
-    def get_current_usage(self, subscription):
-        now = now_utc()
-        filter_kwargs = self._build_filter_kwargs(
-            start=now, end=now, customer=subscription.customer, group_by=[]
+    def get_current_usage(self, subscription, group_by=[]):
+        cur_usg_agg = self.usage_aggregation_type
+        self.usage_aggregation_type = METRIC_AGGREGATION.LATEST
+        usg = self.get_usage(
+            results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
+            start=subscription.start_date,
+            end=subscription.end_date,
+            customer=subscription.customer,
+            group_by=group_by,
         )
-        del filter_kwargs["time_created__gte"]
-        if self.event_type == EVENT_TYPE.TOTAL:
-            last_usage = (
-                Event.objects.filter(**filter_kwargs)
-                .order_by("-time_created")
-                .annotate(property_value=F(f"properties__{self.property_name}"))
-                .annotate(usage_qty=Cast(F("property_value"), FloatField()))
-            )
-            return last_usage.first().usage_qty
-        else:
-            last_usage = (
-                Event.objects.filter(**filter_kwargs)
-                .annotate(property_value=F(f"properties__{self.property_name}"))
-                .annotate(usage_qty=Cast(F("property_value"), FloatField()))
-                .aggregate(tot_qty=Sum("usage_qty"))
-            )
-            return last_usage.first().tot_qty
+        self.usage_aggregation_type = cur_usg_agg
+
+        return usg
 
     def get_earned_usage_per_day(self, start, end, customer):
         per_customer = self.get_usage(
@@ -733,6 +739,7 @@ class RateHandler(MetricHandler):
     def __init__(self, billable_metric: Metric):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
+        self.billable_metric = billable_metric
         assert (
             billable_metric.metric_type == METRIC_TYPE.RATE
         ), f"Billable metric of type {billable_metric.metric_type} can't be handled by a RateHandler."
@@ -861,6 +868,9 @@ class RateHandler(MetricHandler):
         q_gb = q_pre_gb_ann.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
+        print(q_post_gb_ann)
+        raise Exception("still need to verify for rate")
+        return q_post_gb_ann
         event = q_post_gb_ann.first()
         if event:
             return event["usage_qty"]

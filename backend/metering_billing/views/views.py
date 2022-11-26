@@ -579,18 +579,17 @@ class GetCustomerAccessView(APIView):
             organization_pk = result
         serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
-        organization = parse_organization(request)
-        try:
-            username = self.request.user.username
-        except:
-            username = None
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (username if username else organization.company_name + " (Unknown)"),
-            event="get_access",
-            properties={"organization": organization.company_name},
-        )
+        # try:
+        #     username = self.request.user.username
+        # except:
+        #     username = None
+        # posthog.capture(
+        #     POSTHOG_PERSON
+        #     if POSTHOG_PERSON
+        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     event="get_access",
+        #     properties={"organization": organization.company_name},
+        # )
         customer_id = serializer.validated_data["customer_id"]
         try:
             customer = Customer.objects.get(
@@ -604,7 +603,7 @@ class GetCustomerAccessView(APIView):
         event_name = serializer.validated_data.get("event_name")
         feature_name = serializer.validated_data.get("feature_name")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
-            organization=organization,
+            organization_id=organization_pk,
             status=SUBSCRIPTION_STATUS.ACTIVE,
             customer=customer,
         )
@@ -634,6 +633,20 @@ class GetCustomerAccessView(APIView):
                         total_limit = tiers[-1].range_end
                         subscription_id = sub.subscription_id
                         metric_usage = metric.get_current_usage(sub)
+                        if metric_usage is None:
+                            continue
+                        elif metric_usage == {}:
+                            unique_tup_dict = {
+                                "event_name": event_name,
+                                "metric_name": metric_name,
+                                "metric_usage": 0,
+                                "metric_free_limit": free_limit,
+                                "metric_total_limit": total_limit,
+                                "subscription_id": subscription_id,
+                                "separate_by_properties": {},
+                            }
+                            metrics.append(unique_tup_dict)
+                            continue
                         custom_metric_usage = metric_usage[customer.customer_name]
                         for unique_tup, d in custom_metric_usage.items():
                             i = iter(unique_tup)

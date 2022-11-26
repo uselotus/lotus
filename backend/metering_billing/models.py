@@ -414,8 +414,14 @@ class Metric(models.Model):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-
-        usage = handler.get_current_usage(subscription)
+        all_components = subscription.billing_plan.plan_components.all()
+        group_by = []
+        usage = None
+        for component in all_components:
+            if component.billable_metric == self:
+                group_by = component.separate_by
+                usage = handler.get_current_usage(subscription, group_by=group_by)
+                break
 
         return usage
 
@@ -567,7 +573,9 @@ class PlanComponent(models.Model):
             )
             # extract usage
             separated_usage = all_usage.get(subscription.customer.customer_name, {})
-            for unique_identifier, usage_by_period in separated_usage.items():
+            for i, (unique_identifier, usage_by_period) in enumerate(
+                separated_usage.items()
+            ):
                 if len(usage_by_period) >= 1:
                     usage_qty = sum(usage_by_period.values())
                     usage_qty = convert_to_decimal(usage_qty)
