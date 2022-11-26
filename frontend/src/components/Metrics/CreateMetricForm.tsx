@@ -17,6 +17,7 @@ const CreateMetricForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
+  const statefulGranularity = Form.useWatch("granularity_2", form);
   const [eventType, setEventType] = useState("counter");
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
@@ -44,7 +45,7 @@ const CreateMetricForm = (props: {
           event_name: "seats",
           metric_type: "stateful",
           property_name_2: "seat_count",
-          granularity_2: "days",
+          granularity_2: "total",
           billable_metric_name: "Seats",
           event_type: "total",
         });
@@ -115,7 +116,7 @@ const CreateMetricForm = (props: {
           }}
         >
           <Radio value="none">No Template</Radio>
-          <Radio value="seats">Seats (prorated per day)</Radio>
+          <Radio value="seats">Seats</Radio>
           <Radio value="calls">API Calls</Radio>
           <Radio value="rate">Insert Rate</Radio>
         </Radio.Group>
@@ -360,6 +361,13 @@ const CreateMetricForm = (props: {
                   <Option value="total">none</Option>
                 </Select>
               </Form.Item>
+
+              {statefulGranularity && statefulGranularity !== "total" && (
+                <p className=" text-darkgold mb-4">
+                  When inputting the price for this metric, you will be inputing
+                  the price per {statefulGranularity.slice(0, -1)}
+                </p>
+              )}
             </Fragment>
           )}
         </Form.Item>

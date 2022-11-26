@@ -307,6 +307,10 @@ function UsageComponentForm({
           if (typeof data[i].billable_metric_name !== undefined) {
             metricList.push(data[i].billable_metric_name as unknown as string);
           }
+
+          if (editComponentItem?.metric === data[i].billable_metric_name) {
+            setMetricStateful(data[i].metric_type === "stateful");
+          }
         }
         setMetrics(metricList);
         setMetricObjects(data);
