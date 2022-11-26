@@ -461,7 +461,8 @@ function UsageComponentForm({
               <div className="mb-8">
                 (Optional) Separate Component For Each Distinct Property Value
               </div>
-              <div className="grid grid-flow-col items-center">
+
+              <div className="grid grid-flow-col items-center mb-4">
                 <p>Property:</p>
                 <Input
                   onChange={(e) => {
@@ -470,6 +471,14 @@ function UsageComponentForm({
                   value={separateByProperties[0]}
                 ></Input>
               </div>
+              {separateByProperties &&
+                separateByProperties[0] !== "" &&
+                separateByProperties[0] !== undefined && (
+                  <p className=" text-darkgold mb-4">
+                    Important: Only events that contain the property with name{" "}
+                    {separateByProperties} will be counted under this metric.
+                  </p>
+                )}
             </Panel>
           </Collapse>
         </div>
