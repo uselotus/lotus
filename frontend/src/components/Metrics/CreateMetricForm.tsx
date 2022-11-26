@@ -435,7 +435,7 @@ const CreateMetricForm = (props: {
                           <Select style={{ width: "50%" }}>
                             <Option value="isin">is (string)</Option>
                             <Option value="isnotin">is not (string)</Option>
-                            <Option value="eq">= (number)</Option>
+                            <Option value="eq">= </Option>
                             <Option value="gte">&#8805;</Option>
                             <Option value="gt"> &#62; </Option>
                             <Option value="lt"> &#60;</Option>
@@ -464,7 +464,7 @@ const CreateMetricForm = (props: {
                       style={{ width: "60%" }}
                       icon={<PlusOutlined />}
                     >
-                      Add field
+                      Add filter
                     </Button>
                     <Form.ErrorList errors={errors} />
                   </Form.Item>
