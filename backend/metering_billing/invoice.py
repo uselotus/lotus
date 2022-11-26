@@ -81,7 +81,7 @@ def generate_invoice(
             usg_rev = plan_component.calculate_total_revenue(subscription)
             subperiods = usg_rev["subperiods"]
             for subperiod in subperiods:
-                InvoiceLineItem.objects.create(
+                ili = InvoiceLineItem.objects.create(
                     name=plan_component.billable_metric.billable_metric_name,
                     start_date=subperiod["start_date"],
                     end_date=subperiod["end_date"],
@@ -91,6 +91,9 @@ def generate_invoice(
                     invoice=invoice,
                     associated_plan_version=subscription.billing_plan,
                 )
+                if "unique_identifier" in subperiod:
+                    ili.metadata = subperiod["unique_identifier"]
+                    ili.save()
     # flat fee calculation for current plan
     if not flat_fee_behavior == "refund":
         flat_costs_dict_list = sorted(

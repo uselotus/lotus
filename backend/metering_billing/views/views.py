@@ -125,7 +125,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class CostAnalysisView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[CostAnalysisRequestSerializer],
@@ -158,29 +158,39 @@ class CostAnalysisView(APIView):
             period = convert_to_date(period)
             per_day_dict[period] = {
                 "date": period,
-                "cost_data": [],
+                "cost_data": {},
                 "revenue": Decimal(0),
             }
         cost_metrics = Metric.objects.filter(
             organization=organization, is_cost_metric=True
         )
         for metric in cost_metrics:
-            usage = metric.get_usage(
+            usage_ret = metric.get_usage(
                 start_date,
                 end_date,
                 granularity=USAGE_CALC_GRANULARITY.DAILY,
                 customer=customer,
             )[customer.customer_name]
-            for date, usage in usage.items():
-                date = convert_to_date(date)
-                usage = convert_to_decimal(usage)
-                if date in per_day_dict:
-                    per_day_dict[date]["cost_data"].append(
-                        {
-                            "metric": MetricSerializer(metric).data,
-                            "cost": usage,
-                        }
-                    )
+            for unique_tup, unique_usage in usage_ret.items():
+                for date, usage in unique_usage.items():
+                    date = convert_to_date(date)
+                    usage = convert_to_decimal(usage)
+                    if date in per_day_dict:
+                        if (
+                            metric.billable_metric_name
+                            not in per_day_dict[date]["cost_data"]
+                        ):
+                            per_day_dict[date]["cost_data"][
+                                metric.billable_metric_name
+                            ] = {
+                                "metric": MetricSerializer(metric).data,
+                                "cost": Decimal(0),
+                            }
+                        per_day_dict[date]["cost_data"][metric.billable_metric_name][
+                            "cost"
+                        ] += usage
+        for date, items in per_day_dict.items():
+            items["cost_data"] = [v for k, v in items["cost_data"].items()]
         subscriptions = (
             Subscription.objects.filter(
                 Q(start_date__range=[start_date, end_date])
@@ -276,7 +286,7 @@ class PeriodSubscriptionsView(APIView):
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -314,21 +324,26 @@ class PeriodMetricUsageView(APIView):
                 "top_n_customers": {},
             }
             metric_dict = return_dict[metric.billable_metric_name]
-            for customer_name, period_dict in usage_summary.items():
-                for datetime, qty in period_dict.items():
-                    qty = convert_to_decimal(qty)
-                    if datetime not in metric_dict["data"]:
-                        metric_dict["data"][datetime] = {
-                            "total_usage": Decimal(0),
-                            "customer_usages": {},
-                        }
-                    date_dict = metric_dict["data"][datetime]
-                    date_dict["total_usage"] += qty
-                    date_dict["customer_usages"][customer_name] = qty
-                    metric_dict["total_usage"] += qty
-                    if customer_name not in metric_dict["top_n_customers"]:
-                        metric_dict["top_n_customers"][customer_name] = 0
-                    metric_dict["top_n_customers"][customer_name] += qty
+            for customer_name, unique_dict in usage_summary.items():
+                for unique_tuple, period_dict in unique_dict.items():
+                    for datetime, qty in period_dict.items():
+                        qty = convert_to_decimal(qty)
+                        customer_identifier = customer_name
+                        if len(unique_tuple) > 1:
+                            for unique in unique_tuple[1:]:
+                                customer_identifier += f"__{unique}"
+                        if datetime not in metric_dict["data"]:
+                            metric_dict["data"][datetime] = {
+                                "total_usage": Decimal(0),
+                                "customer_usages": {},
+                            }
+                        date_dict = metric_dict["data"][datetime]
+                        date_dict["total_usage"] += qty
+                        date_dict["customer_usages"][customer_name] = qty
+                        metric_dict["total_usage"] += qty
+                        if customer_name not in metric_dict["top_n_customers"]:
+                            metric_dict["top_n_customers"][customer_name] = 0
+                        metric_dict["top_n_customers"][customer_name] += qty
             if top_n:
                 top_n_customers = sorted(
                     metric_dict["top_n_customers"].items(),

@@ -595,15 +595,17 @@ class PlanComponent(models.Model):
                     usage_qty = Decimal(0)
                     revenue = Decimal(0)
                 revenue_dict["revenue"] += revenue
-                revenue_dict["subperiods"].append(
-                    {
-                        "start_date": period_start,
-                        "end_date": period_end,
-                        "usage_qty": usage_qty,
-                        "revenue": revenue,
-                        "unique_identifier": unique_identifier,
-                    }
-                )
+                subp = {
+                    "start_date": period_start,
+                    "end_date": period_end,
+                    "usage_qty": usage_qty,
+                    "revenue": revenue,
+                }
+                if len(unique_identifier) > 1:
+                    subp["unique_identifier"] = dict(
+                        zip(self.separate_by, unique_identifier[1:])
+                    )
+                revenue_dict["subperiods"].append(subp)
         return revenue_dict
 
     def calculate_earned_revenue_per_day(
@@ -635,39 +637,46 @@ class PlanComponent(models.Model):
             if start_date > now:
                 break
         for period_start, period_end in periods:
-            usage = billable_metric.get_earned_usage_per_day(
+            all_usage = billable_metric.get_usage(
+                granularity=USAGE_CALC_GRANULARITY.DAILY,
                 start_date=period_start,
                 end_date=period_end,
                 customer=subscription.customer,
                 group_by=self.separate_by,
             )
-            if len(usage) >= 1:
-                running_total_revenue = Decimal(0)
-                running_total_usage = Decimal(0)
-                for date, usage_qty in usage.items():
-                    date = convert_to_date(date)
-                    usage_qty = convert_to_decimal(usage_qty)
-                    if billable_metric.metric_type == METRIC_TYPE.COUNTER:
-                        running_total_usage += usage_qty
-                    else:
-                        running_total_usage = usage_qty
-                    revenue = Decimal(0)
-                    tiers = self.tiers.all()
-                    for i, tier in enumerate(tiers):
-                        calc_rev_dict = {
-                            "usage_dict": {date: running_total_usage},
-                        }
-                        if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-                            calc_rev_dict["division_factor"] = len(usage)
-                        if i > 0:
-                            prev_tier_end = tiers[i - 1].range_end
-                            calc_rev_dict["prev_tier_end"] = prev_tier_end
-                        tier_revenue = tier.calculate_revenue(**calc_rev_dict)
-                        revenue += convert_to_decimal(tier_revenue)
-                    date_revenue = revenue - running_total_revenue
-                    running_total_revenue += date_revenue
-                    if date in results:
-                        results[date] += date_revenue
+            # extract usage
+            separated_usage = all_usage.get(subscription.customer.customer_name, {})
+            for i, (unique_identifier, usage_by_period) in enumerate(
+                separated_usage.items()
+            ):
+                if len(usage_by_period) >= 1:
+                    running_total_revenue = Decimal(0)
+                    running_total_usage = Decimal(0)
+                    for date, usage_qty in usage_by_period.items():
+                        date = convert_to_date(date)
+                        usage_qty = convert_to_decimal(usage_qty)
+                        if billable_metric.metric_type == METRIC_TYPE.COUNTER:
+                            running_total_usage += usage_qty
+                        else:
+                            running_total_usage = usage_qty
+                        revenue = Decimal(0)
+                        tiers = self.tiers.all()
+                        for i, tier in enumerate(tiers):
+                            calc_rev_dict = {
+                                "usage_dict": {date: running_total_usage},
+                            }
+                            if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+                                calc_rev_dict["division_factor"] = len(usage_by_period)
+                            if i > 0:
+                                prev_tier_end = tiers[i - 1].range_end
+                                calc_rev_dict["prev_tier_end"] = prev_tier_end
+                            tier_revenue = tier.calculate_revenue(**calc_rev_dict)
+                            revenue += convert_to_decimal(tier_revenue)
+                        date_revenue = revenue - running_total_revenue
+                        running_total_revenue += date_revenue
+                        if date in results:
+                            results[date] += date_revenue
+
         return results
 
 
@@ -752,6 +761,7 @@ class InvoiceLineItem(models.Model):
     associated_plan_version = models.ForeignKey(
         "PlanVersion", on_delete=models.CASCADE, null=True, related_name="+"
     )
+    metadata = models.JSONField(default=dict, blank=True, null=True)
 
 
 class APIToken(AbstractAPIKey):

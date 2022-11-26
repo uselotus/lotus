@@ -129,8 +129,7 @@ class MetricHandler(abc.ABC):
         groupby_kwargs = {}
         for group_by_property in group_by:
             groupby_kwargs[group_by_property] = F(group_by_property)
-        if customer is not None:
-            groupby_kwargs["customer_name"] = F("customer__customer_name")
+        groupby_kwargs["customer_name"] = F("customer__customer_name")
 
         if self.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
             if self.granularity != METRIC_GRANULARITY.TOTAL:
@@ -492,16 +491,12 @@ class StatefulHandler(MetricHandler):
         groupby_kwargs = self._build_groupby_kwargs(
             customer, results_granularity, start, group_by
         )
-        print("filter_kwargs", filter_kwargs)
-        print("pre_groupby_annotation_kwargs", pre_groupby_annotation_kwargs)
-        print("groupby_kwargs", groupby_kwargs)
         post_groupby_annotation_kwargs = {}
         q_filt = Event.objects.filter(**filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
 
         if self.event_type == EVENT_TYPE.TOTAL:
             if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
-                print("yeah we got in here")
                 post_groupby_annotation_kwargs["usage_qty"] = Max(
                     Cast(F("property_value"), FloatField())
                 )
@@ -598,24 +593,39 @@ class StatefulHandler(MetricHandler):
             "customer_name": OuterRef("customer_name"),
         }
         for prop in group_by:
-            latest_filt[prop] = OuterRef(prop)
-        last_pre_query_grouped = pre_query_all_events.filter(
-            **grouping_filter
-        ).order_by("-time_created")
-        last_pre_query_actual_events = pre_query_all_events.annotate(
-            latest_pk=Subquery(last_pre_query_grouped.values("pk")[:1])
-        ).filter(pk=F("latest_pk"))
+            grouping_filter[prop] = OuterRef(prop)
+        if self.event_type == EVENT_TYPE.TOTAL:
+            last_pre_query_grouped = pre_query_all_events.filter(
+                **grouping_filter
+            ).order_by("-time_created")
+            last_pre_query_actual_events = (
+                pre_query_all_events.annotate(
+                    latest_pk=Subquery(last_pre_query_grouped.values("pk")[:1])
+                )
+                .filter(pk=F("latest_pk"))
+                .annotate(property_value=F(f"properties__{self.property_name}"))
+                .annotate(usage_qty=Cast(F("property_value"), FloatField()))
+            )
+        elif self.event_type == EVENT_TYPE.DELTA:
+            last_pre_query_grouped = (
+                pre_query_all_events.filter(**grouping_filter)
+                .values(*[x for x in grouping_filter.keys()])
+                .annotate(last_qty=Sum(Cast(F("property_value"), FloatField())))
+            )
+            last_pre_query_actual_events = pre_query_all_events.annotate(
+                usage_qty=Subquery(last_pre_query_grouped.values("last_qty")[:1])
+            )
+
         last_usages = {}
         for row in last_pre_query_actual_events:
-            cust_name = row["customer_name"]
-            tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
-            usage_qty = row["usage_qty"]
+            cust_name = row.customer_name
+            unique_tup = tuple(getattr(row, prop) for prop in unique_groupby_props)
+            usage_qty = row.usage_qty
             if cust_name not in last_usages:
                 last_usages[cust_name] = {}
             if unique_tup not in last_usages[cust_name]:
                 last_usages[cust_name][unique_tup] = {}
-            last_usages[cust_name][unique_tup][tc_trunc] = usage_qty
+            last_usages[cust_name][unique_tup] = usage_qty
 
         # quantize first according to the stateful period
         plan_periods = list(periods_bwn_twodates(self.granularity, start, end))
@@ -673,29 +683,32 @@ class StatefulHandler(MetricHandler):
             # this means that the metric granularity is coarser than the results_granularity
             new_usage_dict = {}
             for customer_name, cust_usages in usage_dict.items():
-                new_usage_dict[customer_name] = {}
-                coarse_periods = sorted(cust_usages.items(), key=lambda x: x[0])
-                fine_periods = list(
-                    periods_bwn_twodates(results_granularity, start, end)
-                )  # daily
-                i = 0
-                j = 0
-                last_amt = 0
-                while i < len(fine_periods):
-                    try:
-                        cur_coarse, coarse_usage = coarse_periods[j]
-                    except IndexError:
-                        cur_coarse = None
-                    cur_fine = fine_periods[i]
-                    cc_none = cur_coarse is None
-                    cf_less_cc = cur_fine < cur_coarse if not cc_none else False
-                    if cc_none or cf_less_cc:
-                        new_usage_dict[customer_name][cur_fine] = last_amt
-                    else:
-                        new_usage_dict[customer_name][cur_fine] = coarse_usage
-                        last_amt = coarse_usage
-                        j += 1
-                    i += 1
+                cust_dict = {}
+                for unique_customer_tuple, unique_usage in cust_usages.items():
+                    cust_dict[unique_customer_tuple] = {}
+                    coarse_periods = sorted(unique_usage.items(), key=lambda x: x[0])
+                    fine_periods = list(
+                        periods_bwn_twodates(results_granularity, start, end)
+                    )  # daily
+                    i = 0
+                    j = 0
+                    last_amt = 0
+                    while i < len(fine_periods):
+                        try:
+                            cur_coarse, coarse_usage = coarse_periods[j]
+                        except IndexError:
+                            cur_coarse = None
+                        cur_fine = fine_periods[i]
+                        cc_none = cur_coarse is None
+                        cf_less_cc = cur_fine < cur_coarse if not cc_none else False
+                        if cc_none or cf_less_cc:
+                            cust_dict[unique_customer_tuple][cur_fine] = last_amt
+                        else:
+                            cust_dict[unique_customer_tuple][cur_fine] = coarse_usage
+                            last_amt = coarse_usage
+                            j += 1
+                        i += 1
+                new_usage_dict[customer_name] = cust_dict
             usage_dict = new_usage_dict
         return usage_dict
 
@@ -713,12 +726,13 @@ class StatefulHandler(MetricHandler):
 
         return usg
 
-    def get_earned_usage_per_day(self, start, end, customer):
+    def get_earned_usage_per_day(self, start, end, customer, group_by=[]):
         per_customer = self.get_usage(
             start=start,
             end=end,
             results_granularity=USAGE_CALC_GRANULARITY.DAILY,
             customer=customer,
+            group_by=group_by,
         )
         customer_usage = per_customer.get(customer.customer_name, {})
         return customer_usage
@@ -947,12 +961,13 @@ class RateHandler(MetricHandler):
 
         return return_dict
 
-    def get_earned_usage_per_day(self, start, end, customer):
+    def get_earned_usage_per_day(self, start, end, customer, group_by=[]):
         per_customer = self.get_usage(
             start=start,
             end=end,
             granularity=USAGE_CALC_GRANULARITY.DAILY,
             customer=customer,
+            group_by=group_by,
         )
         customer_usage = per_customer[customer.customer_name]
         if len(customer_usage) == 0:
