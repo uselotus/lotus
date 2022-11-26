@@ -117,8 +117,10 @@ const ViewMetrics: FC = () => {
           <MetricTable metricArray={data} />
         )}
         {isError && <div className=" text-danger">Something went wrong</div>}
-        <Card className="flex flex-row justify-center h-full  bg-grey1">
-          <h1 className="text-2xl font-main mb-5">Event Stream</h1>
+        <Card className="flex flex-row justify-center h-full">
+          <h1 className="text-2xl font-main mb-5">
+            Event Stream (recent events first)
+          </h1>
           <Divider />
           <div>
             <EventPreview />

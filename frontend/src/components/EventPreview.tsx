@@ -76,8 +76,13 @@ const EventPreview: FC = () => {
   };
 
   return (
-    <div className="w-full rounded">
-      <Collapse expandIconPosition="end" bordered={false}>
+    <div className="w-full rounded border border-[#1d1d1f]">
+      <Collapse
+        expandIconPosition="end"
+        bordered={false}
+        className="hover:bg-background"
+        style={{ background: "#ffffff" }}
+      >
         {!data && !!cursor && (
           <div className="loadMoreSpinner">
             <LoadingSpinner />.
@@ -88,22 +93,36 @@ const EventPreview: FC = () => {
           <Panel
             header={
               <div className="grid grid-cols-2 my-2">
-                <p className="text-left	">event_name: {event.event_name}</p>
-                <p className="text-left	">customer_id: {event.customer}</p>
+                <div className="flex align-middle text-[16px] ">
+                  <p className="leading-[24px]">event_name: </p>
+                  <p className="infoValue"> {event.event_name}</p>
+                </div>
+                <div className="flex align-middle text-[16px]">
+                  <p className="leading-[24px]">customer_id: </p>
+                  <p className="infoValue"> {event.customer}</p>
+                </div>
               </div>
             }
+            className=" hover:bg-background"
             key={event.id}
           >
             <div className="grid grid-row-2">
               <div className="grid grid-cols-2">
-                <p>ID: {event.idempotency_id}</p>
-                <p>Properties: </p>
+                <div className="flex align-middle text-[16px] ">
+                  <p className="leading-[24px]">ID: </p>
+                  <p className="infoValue"> {event.idempotency_id}</p>
+                </div>
+
+                <p className="text-[16px]">Properties: </p>
               </div>
               <div className="grid grid-cols-2">
-                <p className="text-left	">
-                  time_created:{" "}
-                  {dayjs(event.time_created).format("YYYY/MM/DD HH:mm:ss")}
-                </p>
+                <div className="flex align-middle text-[16px] text-left">
+                  <p className="leading-[24px]">time_created: </p>
+                  <p className="infoValue">
+                    {" "}
+                    {dayjs(event.time_created).format("YYYY/MM/DD HH:mm:ss")}
+                  </p>
+                </div>
                 <div className="text-left flex-col flex">
                   {event.properties &&
                     Object.keys(event.properties).map((keyName, i) => (
