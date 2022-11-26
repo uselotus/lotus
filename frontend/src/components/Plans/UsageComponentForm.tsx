@@ -229,8 +229,13 @@ function UsageComponentForm({
 }: Props) {
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
+  const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
   const [separateByProperties, setSeparateByProperties] = useState<string[]>(
     editComponentItem?.separate_by ?? []
+  );
+
+  const [prorationGranularity, setProrationGranularity] = useState<string>(
+    editComponentItem?.proration_granularity ?? "none"
   );
 
   const initalData = editComponentItem ?? null;
@@ -245,9 +250,39 @@ function UsageComponentForm({
   const [currentTiers, setCurrentTiers] = useState<Tier[]>(
     editComponentItem?.tiers ?? initialTier
   );
-  const [rangeEnd, setRangeEnd] = useState<number>(
+  const [rangeEnd, setRangeEnd] = useState<number | undefined>(
     editComponentItem?.tiers[0]?.range_end ?? 0
   );
+
+  /// Ouput accepted proration grandularities for a given metric
+  /// with a given period
+  const generateValidProrationGranularity = () => {
+    const all_proration_granularity = [
+      "seconds",
+      "minutes",
+      "hours",
+      "days",
+      "months",
+    ];
+    const currentMetric = metricObjects.find(
+      (metric) =>
+        metric.billable_metric_name ===
+        form.getFieldValue("billable_metric_name")
+    );
+
+    var valid_granularities: string[] = [];
+    if (currentMetric) {
+      for (var i = 0; i < all_proration_granularity.length; i++) {
+        if (currentMetric.granularity === all_proration_granularity[i]) {
+          valid_granularities.push(all_proration_granularity[i]);
+          break;
+        } else {
+          valid_granularities.push(all_proration_granularity[i]);
+        }
+      }
+    }
+    return valid_granularities;
+  };
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -260,6 +295,7 @@ function UsageComponentForm({
           }
         }
         setMetrics(metricList);
+        setMetricObjects(data);
       }
     });
   }, []);
@@ -417,6 +453,7 @@ function UsageComponentForm({
                 metric: values.metric,
                 separate_by: separateByProperties,
                 tiers: currentTiers,
+                proration_granularity: prorationGranularity,
               });
 
               form.submit();
@@ -455,34 +492,6 @@ function UsageComponentForm({
           </Form.Item>
         </div>
 
-        <div className="mt-4 mb-12">
-          <Collapse className="col-span-full bg-white py-8 rounded">
-            <Panel header="Advanced Settings" key="1">
-              <div className="mb-8">
-                (Optional) Separate Component For Each Distinct Property Value
-              </div>
-
-              <div className="grid grid-flow-col items-center mb-4">
-                <p>Property:</p>
-                <Input
-                  onChange={(e) => {
-                    setSeparateByProperties([e.target.value]);
-                  }}
-                  value={separateByProperties[0]}
-                ></Input>
-              </div>
-              {separateByProperties &&
-                separateByProperties[0] !== "" &&
-                separateByProperties[0] !== undefined && (
-                  <p className=" text-darkgold mb-4">
-                    Important: Only events that contain the property with name{" "}
-                    {separateByProperties} will be counted under this metric.
-                  </p>
-                )}
-            </Panel>
-          </Collapse>
-        </div>
-
         <Table
           components={components}
           columns={columns}
@@ -502,6 +511,57 @@ function UsageComponentForm({
         {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
+        <div className="mt-4 mb-12">
+          <Collapse
+            className="col-span-full bg-white py-8 rounded"
+            defaultActiveKey={"1"}
+          >
+            <Panel header="Advanced Settings" key="1">
+              <div className="mb-8">
+                (Optional) Separate Component For Each Distinct Property Value
+              </div>
+
+              <div className="grid grid-flow-col items-center mb-8">
+                <p>Property:</p>
+                <Input
+                  onChange={(e) => {
+                    setSeparateByProperties([e.target.value]);
+                  }}
+                  value={separateByProperties[0]}
+                ></Input>
+              </div>
+              {separateByProperties &&
+                separateByProperties[0] !== "" &&
+                separateByProperties[0] !== undefined && (
+                  <p className=" text-darkgold mb-8">
+                    Important: Only events that contain the property with name{" "}
+                    {separateByProperties} will be counted under this metric.
+                  </p>
+                )}
+
+              <div className="separator mb-8"></div>
+              <div className="grid grid-flow-col items-center mb-4">
+                <p>Proration Granularity:</p>
+                <Select
+                  onChange={(value) => {
+                    setProrationGranularity(value);
+                  }}
+                  value={prorationGranularity}
+                >
+                  {generateValidProrationGranularity().map((granularity) => (
+                    <Option value={granularity}>{granularity}</Option>
+                  ))}
+                  <Option value="total">None</Option>
+                </Select>
+              </div>
+              {prorationGranularity === "total" && (
+                <p className=" text-darkgold mb-4">
+                  Proration will not be applied to this component.
+                </p>
+              )}
+            </Panel>
+          </Collapse>
+        </div>
       </Form>
     </Modal>
   );
