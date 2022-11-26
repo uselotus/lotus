@@ -444,12 +444,15 @@ const CreateMetricForm = (props: {
                         </Form.Item>
 
                         <div className="grid grid-cols-2 w-6/12">
-                          <Form.Item name={[field.name, "comparison_value"]}>
+                          <Form.Item
+                            name={[field.name, "comparison_value"]}
+                            style={{ alignSelf: "middle" }}
+                          >
                             <Input />
                           </Form.Item>
                           {fields.length > 0 ? (
                             <MinusCircleOutlined
-                              className="dynamic-delete-button"
+                              className="hover:bg-background place-self-center p-4"
                               onClick={() => remove(field.name)}
                             />
                           ) : null}
