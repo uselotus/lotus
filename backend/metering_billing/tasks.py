@@ -162,7 +162,7 @@ def write_batch_events_to_db(events_list):
         # if we have a repeat idempotency, filter thru the events and remove repeats
         for event in event_obj_list:
             event_idem_exists = Event.objects.filter(
-                organization=event.organization,
+                organization_id=event.organization,
                 idempotency_id=event.idempotency_id,
                 time_created__gte=now_minus_45_days,
             ).exists()
