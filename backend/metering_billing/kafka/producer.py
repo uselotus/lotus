@@ -7,7 +7,7 @@ from kafka import KafkaProducer
 from .singleton import Singleton
 
 KAFKA_EVENTS_TOPIC = settings.KAFKA_EVENTS_TOPIC
-PRODUCER = settings.PRODUCER
+producer_config = settings.PRODUCER_CONFIG
 
 
 class Producer(metaclass=Singleton):
@@ -15,7 +15,7 @@ class Producer(metaclass=Singleton):
     __connection = None
 
     def __init__(self):
-        self.__connection = PRODUCER
+        self.__connection = KafkaProducer(**producer_config)
 
     def produce(self, customer_id, stream_events):
         print(f"Producing record. key={customer_id}, value={stream_events}")

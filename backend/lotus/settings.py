@@ -315,10 +315,10 @@ if KAFKA_HOST:
             cfg["security_protocol"] = "SSL"
             cfg["ssl_context"] = ssl_context
 
-    PRODUCER = KafkaProducer(**producer_config)
+    PRODUCER_CONFIG = producer_config
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
-    print(PRODUCER.__dict__["_sender"].__dict__)
-    print("PRODUCER PRODUCER STARTUP")
+    # print(PRODUCER.__dict__["_sender"].__dict__)
+    # print("PRODUCER PRODUCER STARTUP")
     ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
     existing_topics = ADMIN_CLIENT.list_topics()
@@ -336,7 +336,7 @@ if KAFKA_HOST:
         except TopicAlreadyExistsError:
             pass
 else:
-    PRODUCER = None
+    PRODUCER_CONFIG = None
     CONSUMER = None
 
 # redis settings
