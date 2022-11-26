@@ -1,7 +1,7 @@
 // @ts-ignore
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect, Fragment } from "react";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
-import { Collapse } from "antd";
+import { Button, Collapse, Divider } from "antd";
 import { EventPages } from "../types/event-type";
 import { Events } from "../api/api";
 import LoadingSpinner from "./LoadingSpinner";
@@ -76,61 +76,97 @@ const EventPreview: FC = () => {
   };
 
   return (
-    <div className="w-full rounded">
-      <Collapse expandIconPosition="end" bordered={false}>
-        {!data && !!cursor && (
-          <div className="loadMoreSpinner">
-            <LoadingSpinner />.
-          </div>
-        )}
+    <Fragment>
+      <div className="flex justify-between mb-4">
+        <h1 className="text-2xl font-main mb-5">
+          Event Stream (recent events first)
+        </h1>
+        <Button
+          onClick={() => {
+            queryClient.invalidateQueries("preview events");
+          }}
+          loading={isLoading}
+        >
+          Refresh
+        </Button>
+      </div>
+      <Divider />
 
-        {data?.results.map((event) => (
-          <Panel
-            header={
-              <div className="grid grid-cols-2 my-2">
-                <p className="text-left	">event_name: {event.event_name}</p>
-                <p className="text-left	">customer_id: {event.customer}</p>
-              </div>
-            }
-            key={event.id}
-          >
-            <div className="grid grid-row-2">
-              <div className="grid grid-cols-2">
-                <p>ID: {event.idempotency_id}</p>
-                <p>Properties: </p>
-              </div>
-              <div className="grid grid-cols-2">
-                <p className="text-left	">
-                  time_created:{" "}
-                  {dayjs(event.time_created).format("YYYY/MM/DD HH:mm:ss")}
-                </p>
-                <div className="text-left flex-col flex">
-                  {event.properties &&
-                    Object.keys(event.properties).map((keyName, i) => (
-                      <li className="travelcompany-input" key={i}>
-                        {event.properties !== undefined && (
-                          <span className="input-label">
-                            {keyName} : {event.properties[keyName]}{" "}
-                          </span>
-                        )}
-                      </li>
-                    ))}
+      <div className="w-full rounded border border-[#1d1d1f]">
+        <Collapse
+          expandIconPosition="end"
+          bordered={false}
+          className="hover:bg-background"
+          style={{ background: "#ffffff" }}
+        >
+          {!data && !!cursor && (
+            <div className="loadMoreSpinner">
+              <LoadingSpinner />.
+            </div>
+          )}
+
+          {data?.results.map((event) => (
+            <Panel
+              header={
+                <div className="grid grid-cols-2 my-2">
+                  <div className="flex align-middle text-[16px] ">
+                    <p className="leading-[24px]">event_name: </p>
+                    <p className="infoValue"> {event.event_name}</p>
+                  </div>
+                  <div className="flex align-middle text-[16px]">
+                    <p className="leading-[24px]">customer_id: </p>
+                    <p className="infoValue"> {event.customer}</p>
+                  </div>
+                </div>
+              }
+              className=" hover:bg-background"
+              key={event.id}
+            >
+              <div className="grid grid-row-2">
+                <div classNafme="grid grid-cols-2">
+                  <div className="flex align-middle text-[16px] ">
+                    <p className="leading-[24px]">ID: </p>
+                    <p className="infoValue"> {event.idempotency_id}</p>
+                  </div>
+
+                  <p className="text-[16px]">Properties: </p>
+                </div>
+                <div className="grid grid-cols-2">
+                  <div className="flex align-middle text-[16px] text-left">
+                    <p className="leading-[24px]">time_created: </p>
+                    <p className="infoValue">
+                      {" "}
+                      {dayjs(event.time_created).format("YYYY/MM/DD HH:mm:ss")}
+                    </p>
+                  </div>
+                  <div className="text-left flex-col flex">
+                    {event.properties &&
+                      Object.keys(event.properties).map((keyName, i) => (
+                        <li className="travelcompany-input" key={i}>
+                          {event.properties !== undefined && (
+                            <span className="input-label">
+                              {keyName} : {event.properties[keyName]}{" "}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </Panel>
-        ))}
-      </Collapse>
-      <div className="separator mb-5 mt-5" />
+            </Panel>
+          ))}
+        </Collapse>
+        <div className="separator mb-5 mt-5" />
 
-      <CustomPagination
-        cursor={cursor}
-        previous={previous}
-        next={next}
-        currentPage={currentPage}
-        handleMovements={handleMovements}
-      />
-    </div>
+        <CustomPagination
+          cursor={cursor}
+          previous={previous}
+          next={next}
+          currentPage={currentPage}
+          handleMovements={handleMovements}
+        />
+      </div>
+    </Fragment>
   );
 };
 
