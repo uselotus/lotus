@@ -90,6 +90,7 @@ const ViewMetrics: FC = () => {
       billable_aggregation_type: state.billable_aggregation_type,
       //defaults for now
       event_type: state.metric_type === "stateful" ? state.event_type : "delta",
+      is_cost_metric: state.is_cost_metric,
     };
     mutation.mutate(metricInstance);
   };
