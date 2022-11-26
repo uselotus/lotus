@@ -349,20 +349,15 @@ const CreateMetricForm = (props: {
               >
                 <Input />
               </Form.Item>
-              <Form.Item
-                name="granularity_2"
-                label="Period"
-                rules={[
-                  {
-                    required: true,
-                    message: "Period is required",
-                  },
-                ]}
-              >
-                <Select defaultValue={"days"}>
-                  <Option value="days">day</Option>
+              <Form.Item name="granularity_2" label="Per Time Unit">
+                <Select>
+                  <Option value="minutes">minute</Option>
                   <Option value="hours">hour</Option>
-                  <Option value="weeks">week</Option>
+                  <Option value="days">day</Option>
+                  <Option value="months">month</Option>
+                  <Option value="quarters">quarter</Option>
+                  <Option value="years">year</Option>
+                  <Option value="total">none</Option>
                 </Select>
               </Form.Item>
             </Fragment>

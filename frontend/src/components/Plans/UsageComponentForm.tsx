@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  Fragment,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
   Checkbox,
@@ -233,6 +239,8 @@ function UsageComponentForm({
   const [separateByProperties, setSeparateByProperties] = useState<string[]>(
     editComponentItem?.separate_by ?? []
   );
+  const [metricStateful, setMetricStateful] = useState<boolean>(false);
+  const selectedMetricName = Form.useWatch("metric", form);
 
   const [prorationGranularity, setProrationGranularity] = useState<string>(
     editComponentItem?.proration_granularity ?? "none"
@@ -265,9 +273,7 @@ function UsageComponentForm({
       "months",
     ];
     const currentMetric = metricObjects.find(
-      (metric) =>
-        metric.billable_metric_name ===
-        form.getFieldValue("billable_metric_name")
+      (metric) => metric.billable_metric_name === form.getFieldValue("metric")
     );
 
     var valid_granularities: string[] = [];
@@ -283,6 +289,14 @@ function UsageComponentForm({
     }
     return valid_granularities;
   };
+
+  useEffect(() => {
+    setMetricStateful(
+      metricObjects.find(
+        (metric) => metric.billable_metric_name === selectedMetricName
+      )?.metric_type === "stateful"
+    );
+  }, [selectedMetricName]);
 
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
@@ -511,7 +525,7 @@ function UsageComponentForm({
         {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
-        <div className="mt-4 mb-12">
+        <div className="mt-8 mb-12">
           <Collapse
             className="col-span-full bg-white py-8 rounded"
             defaultActiveKey={"1"}
@@ -539,25 +553,31 @@ function UsageComponentForm({
                   </p>
                 )}
 
-              <div className="separator mb-8"></div>
-              <div className="grid grid-flow-col items-center mb-4">
-                <p>Proration Granularity:</p>
-                <Select
-                  onChange={(value) => {
-                    setProrationGranularity(value);
-                  }}
-                  value={prorationGranularity}
-                >
-                  {generateValidProrationGranularity().map((granularity) => (
-                    <Option value={granularity}>{granularity}</Option>
-                  ))}
-                  <Option value="total">None</Option>
-                </Select>
-              </div>
-              {prorationGranularity === "total" && (
-                <p className=" text-darkgold mb-4">
-                  Proration will not be applied to this component.
-                </p>
+              {metricStateful === true && (
+                <Fragment>
+                  <div className="separator mb-8"></div>
+                  <div className="grid grid-flow-col items-center mb-4">
+                    <p>Proration Granularity:</p>
+                    <Select
+                      onChange={(value) => {
+                        setProrationGranularity(value);
+                      }}
+                      value={prorationGranularity}
+                    >
+                      {generateValidProrationGranularity().map(
+                        (granularity) => (
+                          <Option value={granularity}>{granularity}</Option>
+                        )
+                      )}
+                      <Option value="total">none</Option>
+                    </Select>
+                  </div>
+                  {prorationGranularity === "total" && (
+                    <p className=" text-darkgold mb-4">
+                      Proration will not be applied to this component.
+                    </p>
+                  )}
+                </Fragment>
               )}
             </Panel>
           </Collapse>
