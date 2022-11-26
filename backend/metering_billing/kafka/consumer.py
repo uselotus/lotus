@@ -63,10 +63,10 @@ def write_batch_events_to_db(events_list, org_pk):
     ]
     ## check idempotency
     now = now_utc()
-    now_minus_45_days = now - relativedelta(days=45)
+    now_minus_45_days = now - relativedelta(days=7)
     idem_ids = list(x.idempotency_id for x in event_obj_list)
     repeat_idem = Event.objects.filter(
-        organization=organization,
+        organization_id=organization,
         idempotency_id__in=idem_ids,
         time_created__gte=now_minus_45_days,
     ).exists()
