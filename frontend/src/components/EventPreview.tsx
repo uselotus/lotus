@@ -123,7 +123,7 @@ const EventPreview: FC = () => {
               key={event.id}
             >
               <div className="grid grid-row-2">
-                <div classNafme="grid grid-cols-2">
+                <div className="grid grid-cols-2">
                   <div className="flex align-middle text-[16px] ">
                     <p className="leading-[24px]">ID: </p>
                     <p className="infoValue"> {event.idempotency_id}</p>

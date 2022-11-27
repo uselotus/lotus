@@ -92,6 +92,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         return {
           metric: component.billable_metric.billable_metric_name,
           tiers: component.tiers,
+          separate_by: component.separate_by,
+          proration_granularity: component.proration_granularity,
           id: component.billable_metric.billable_metric_name,
         };
       }
@@ -268,6 +270,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -512,10 +515,15 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                 </Col>
               </Row>
             </Col>
-
-            <Col span={12}>
+            <Col span={14}>
               <Card
                 title="Added Components"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 className="h-full"
                 extra={[
                   <Button
@@ -568,6 +576,12 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               <Card
                 className="w-full my-5"
                 title="Added Features"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button htmlType="button" onClick={showFeatureModal}>
                     Add Feature
@@ -589,7 +603,16 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Discount">
+              <Card
+                className="w-6/12 mb-20"
+                title="Discount"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
+              >
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}
