@@ -427,3 +427,9 @@ def run_backtest(backtest_id):
         backtest.status = BACKTEST_STATUS.FAILED
         backtest.save()
         raise e
+
+
+@shared_task
+def run_generate_invoice(subscription_pk, **kwargs):
+    subscription = Subscription.objects.get(pk=subscription_pk)
+    generate_invoice(subscription, **kwargs)
