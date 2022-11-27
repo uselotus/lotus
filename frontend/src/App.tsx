@@ -56,7 +56,13 @@ function App() {
   };
 
   if (isLoading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex h-screen">
+        <div className="m-auto">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
   } else {
     if (isAuthenticated) {
       return (
