@@ -4,7 +4,7 @@ import uuid
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from metering_billing.tasks import write_batch_events_to_db
+from metering_billing.kafka.consumer import write_batch_events_to_db
 from metering_billing.utils import now_utc
 from rest_framework import status
 
@@ -120,7 +120,7 @@ class TestTrackEvent:
                     "cust_id": setup_dict["customer"].customer_id,
                 }
             )
-        write_batch_events_to_db(events_list)
+        write_batch_events_to_db(events_list, setup_dict["org"].pk)
         customer_org_events = get_events_with_org_customer_id(
             setup_dict["org"], setup_dict["customer_id"]
         )
@@ -128,66 +128,6 @@ class TestTrackEvent:
         assert [
             getattr(event, "idempotency_id") for event in customer_org_events
         ].count(setup_dict["idempotency_id"]) == 1
-
-    # def test_request_invalid_if_customer_dont_exist(
-    #     self,
-    #     track_event_test_common_setup,
-    #     track_event_payload,
-    #     get_events_with_org_customer_id,
-    #     get_events_with_org,
-    # ):
-    #     # idempotency_already_created=false, customer_id_exists = true
-    #     setup_dict = track_event_test_common_setup(
-    #         idempotency_already_created=False, customer_id_exists=False
-    #     )
-    #     time_created = now_utc()
-
-    #     payload = track_event_payload(
-    #         setup_dict["idempotency_id"], time_created, setup_dict["customer_id"]
-    #     )
-    #     response = setup_dict["client"].post(
-    #         reverse("track_event"),
-    #         data=json.dumps(payload, cls=DjangoJSONEncoder),
-    #         content_type="application/json",
-    #     )
-
-    #     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    #     customer_org_events = get_events_with_org_customer_id(
-    #         setup_dict["org"], setup_dict["customer_id"]
-    #     )
-    #     assert len(customer_org_events) == 0
-    #     org_events = get_events_with_org(setup_dict["org"])
-    #     assert len(org_events) == setup_dict["num_events_in"]
-
-    # def test_request_invalid_if_idempotency_id_repeated(
-    #     self,
-    #     track_event_test_common_setup,
-    #     track_event_payload,
-    #     get_events_with_org_customer_id,
-    #     get_events_with_org,
-    # ):
-    #     # idempotency_already_created=false, customer_id_exists = true
-    #     setup_dict = track_event_test_common_setup(
-    #         idempotency_already_created=True, customer_id_exists=True
-    #     )
-    #     time_created = now_utc()
-
-    #     payload = track_event_payload(
-    #         setup_dict["idempotency_id"], time_created, setup_dict["customer_id"]
-    #     )
-    #     response = setup_dict["client"].post(
-    #         reverse("track_event"),
-    #         data=json.dumps(payload, cls=DjangoJSONEncoder),
-    #         content_type="application/json",
-    #     )
-    #     assert response.status_code == status.HTTP_400_BAD_REQUEST
-    #     customer_org_events = get_events_with_org_customer_id(
-    #         setup_dict["org"], setup_dict["customer_id"]
-    #     )
-    #     assert len(customer_org_events) == setup_dict["num_events_in"]
-    #     assert [
-    #         getattr(event, "idempotency_id") for event in customer_org_events
-    #     ].count(setup_dict["idempotency_id"]) == 1
 
     def test_batch_track_event_creates_event(
         self,
@@ -228,7 +168,7 @@ class TestTrackEvent:
                     "organization": setup_dict["org"],
                 }
             )
-        write_batch_events_to_db(events_list)
+        write_batch_events_to_db(events_list, setup_dict["org"].pk)
         customer_org_events = get_events_with_org_customer_id(
             setup_dict["org"], setup_dict["customer_id"]
         )

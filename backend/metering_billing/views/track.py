@@ -15,7 +15,6 @@ from metering_billing.kafka.producer import Producer
 from metering_billing.models import APIToken, Customer, Event
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.model_serializers import *
-from metering_billing.tasks import write_batch_events_to_db
 from metering_billing.utils import now_utc
 from rest_framework import status
 from rest_framework.decorators import (
