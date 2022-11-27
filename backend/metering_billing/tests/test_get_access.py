@@ -15,6 +15,7 @@ from metering_billing.models import (
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
+    METRIC_GRANULARITY,
     METRIC_TYPE,
     PRICE_TIER_TYPE,
 )
@@ -711,4 +712,88 @@ class TestGetAccessWithSeparateBy:
         for r in response:
             assert r["event_name"] == "log_num_users"
             assert r["metric_usage"] < r["metric_total_limit"]
+            assert len(r["separate_by_properties"]) == 2
+
+    def test_get_access_with_rate_some_allowed_some_not(
+        self,
+        get_access_test_common_setup_with_separate_by,
+        add_product_to_org,
+        add_plan_to_product,
+    ):
+        import uuid
+
+        setup_dict = get_access_test_common_setup_with_separate_by(
+            auth_method="api_key"
+        )
+        product = add_product_to_org(setup_dict["org"])
+        plan = add_plan_to_product(product)
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            description="test_plan for testing",
+            plan=plan,
+            flat_rate=30.0,
+        )
+        metric = Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="db_insert",
+            property_name="num_rows",
+            usage_aggregation_type=METRIC_AGGREGATION.SUM,
+            billable_aggregation_type=METRIC_AGGREGATION.MAX,
+            granularity=METRIC_GRANULARITY.HOUR,
+            metric_type=METRIC_TYPE.RATE,
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=metric,
+            plan_version=billing_plan,
+            separate_by=["groupby_dim_1", "groupby_dim_2"],
+        )
+        PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=0,
+            range_end=10,
+            cost_per_batch=5,
+            metric_units_per_batch=1,
+        )
+        subscription = Subscription.objects.create(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+            billing_plan=billing_plan,
+            start_date=now_utc() - relativedelta(days=3),
+            status="active",
+        )
+        # initial value, just 1 user
+        for groupby_dim_1 in ["dim_1", "dim_2"]:
+            for groupby_dim_2 in ["dim_1", "dim_2"]:
+                num = 8 if groupby_dim_1 == "dim_1" else 12
+                for x in range(num):
+                    event1 = Event.objects.create(
+                        organization=setup_dict["org"],
+                        customer=setup_dict["customer"],
+                        event_name="db_insert",
+                        time_created=now_utc() - relativedelta(minutes=2),
+                        idempotency_id=uuid.uuid4(),
+                        properties={
+                            "num_rows": 1,
+                            "groupby_dim_1": groupby_dim_1,
+                            "groupby_dim_2": groupby_dim_2,
+                        },
+                    )
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "event_name": metric.event_name,
+        }
+        response = setup_dict["client"].get(reverse("customer_access"), payload)
+
+        assert response.status_code == status.HTTP_200_OK
+        response = response.json()["metrics"]
+        assert len(response) == 4
+        for r in response:
+            assert r["event_name"] == "db_insert"
+            if r["separate_by_properties"]["groupby_dim_1"] == "dim_1":
+                assert r["metric_usage"] < r["metric_total_limit"]
+            else:
+                assert r["metric_usage"] > r["metric_total_limit"]
             assert len(r["separate_by_properties"]) == 2

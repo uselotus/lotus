@@ -243,7 +243,7 @@ function UsageComponentForm({
   const selectedMetricName = Form.useWatch("metric", form);
 
   const [prorationGranularity, setProrationGranularity] = useState<string>(
-    editComponentItem?.proration_granularity ?? "none"
+    editComponentItem?.proration_granularity ?? "total"
   );
 
   const initalData = editComponentItem ?? null;
@@ -536,7 +536,7 @@ function UsageComponentForm({
           >
             <Panel header="Advanced Settings" key="1">
               <div className="mb-8">
-                (Optional) Separate Component For Each Distinct Property Value
+                (Optional) Separate Reporting Based on Distinct Property Value
               </div>
 
               <div className="grid grid-flow-col items-center mb-8">

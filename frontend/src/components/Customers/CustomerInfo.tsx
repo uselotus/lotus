@@ -101,12 +101,12 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           </p>
           <p>
             <b>Amount Due On Next Invoice:</b> {"$"}
-            {data.total_amount_due.toFixed(2)}
+            {data.next_amount_due.toFixed(2)}
           </p>
         </div>
         <div className="grid grid-cols-2 justify-items-center mx-8 gap-8 py-4 w-full border-2 border-solid rounded border-[#EAEAEB]">
           <div>
-            <p className=" mb-4">Total Revenue</p>
+            <p className=" mb-4">Earned Revenue</p>
             {cost_data === undefined ? (
               <LoadingSpinner />
             ) : (
@@ -133,7 +133,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             )}
           </div>
           <div className=" ol-span-2">
-            <p className=" mb-4">Margin Percent</p>
+            <p className=" mb-4">Profit Margin</p>
             {cost_data.margin === undefined ? (
               <LoadingSpinner />
             ) : cost_data.margin < 0 ? (

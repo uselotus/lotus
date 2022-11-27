@@ -115,7 +115,7 @@ class PeriodMetricRevenueView(APIView):
             return_dict[f"earned_revenue_period_{num}"] = sum(
                 [x["revenue"] for x in per_day_dict.values()]
             )
-
+        print(return_dict)
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
@@ -170,7 +170,7 @@ class CostAnalysisView(APIView):
                 end_date,
                 granularity=USAGE_CALC_GRANULARITY.DAILY,
                 customer=customer,
-            )[customer.customer_name]
+            ).get(customer.customer_name, {})
             for unique_tup, unique_usage in usage_ret.items():
                 for date, usage in unique_usage.items():
                     date = convert_to_date(date)
@@ -223,10 +223,12 @@ class CostAnalysisView(APIView):
             total_revenue += day["revenue"]
         return_dict["total_cost"] = total_cost
         return_dict["total_revenue"] = total_revenue
-        if total_cost == 0:
+        if total_revenue == 0:
             return_dict["margin"] = 0
         else:
-            return_dict["margin"] = convert_to_decimal(total_revenue / total_cost - 1)
+            return_dict["margin"] = convert_to_decimal(
+                (total_revenue - total_cost) / total_revenue
+            )
         serializer = CostAnalysisSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data

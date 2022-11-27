@@ -337,10 +337,10 @@ class MetricSerializer(serializers.ModelSerializer):
         }
 
     numeric_filters = NumericFilterSerializer(
-        many=True, allow_null=True, required=False
+        many=True, allow_null=True, required=False, read_only=False
     )
     categorical_filters = CategoricalFilterSerializer(
-        many=True, allow_null=True, required=False
+        many=True, allow_null=True, required=False, read_only=False
     )
     granularity = serializers.ChoiceField(
         choices=METRIC_GRANULARITY.choices,
@@ -806,6 +806,16 @@ class PlanVersionSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
+        # make sure every plan component has a unique metric
+        if data.get("plan_components"):
+            component_metrics = []
+            for component in data.get("plan_components"):
+                if component.get("metric") in component_metrics:
+                    raise serializers.ValidationError(
+                        "Plan components must have unique metrics."
+                    )
+                else:
+                    component_metrics.append(component.get("metric"))
         if data.get("make_active") and not data.get("make_active_type"):
             raise serializers.ValidationError(
                 "make_active_type must be specified when make_active is True"
@@ -1558,6 +1568,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "balance_adjustments",
             "invoices",
             "total_amount_due",
+            "next_amount_due",
             "subscriptions",
             "integrations",
         )
@@ -1566,6 +1577,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     invoices = serializers.SerializerMethodField()
     balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
+    next_amount_due = serializers.SerializerMethodField()
 
     def get_subscriptions(self, obj) -> SubscriptionCustomerDetailSerializer(many=True):
         return SubscriptionCustomerDetailSerializer(
@@ -1588,3 +1600,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_total_amount_due(self, obj) -> float:
         total_amount_due = float(self.context.get("total_amount_due"))
         return total_amount_due
+
+    def get_next_amount_due(self, obj) -> float:
+        next_amount_due = float(self.context.get("next_amount_due"))
+        return next_amount_due

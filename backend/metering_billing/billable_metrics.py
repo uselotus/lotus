@@ -30,10 +30,12 @@ from metering_billing.utils import (
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
+    CATEGORICAL_FILTER_OPERATORS,
     EVENT_TYPE,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
+    NUMERIC_FILTER_OPERATORS,
     USAGE_CALC_GRANULARITY,
 )
 
@@ -85,6 +87,7 @@ class MetricHandler(abc.ABC):
         end: datetime.date,
         customer: Customer,
         group_by: list[str] = [],
+        proration: Optional[METRIC_GRANULARITY] = None,
     ) -> dict[datetime.datetime, float]:
         """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
 
@@ -114,8 +117,17 @@ class MetricHandler(abc.ABC):
             filter_kwargs["customer"] = customer
         filter_args = []
         for f in self.numeric_filters:
-            comparator_string = ""
-            filter = Q(f"properties__{f.property_name}{comparator_string}")
+            comparator_string = (
+                "" if f.operator == NUMERIC_FILTER_OPERATORS.EQ else f"__{f.operator}"
+            )
+            d = {
+                f"properties__{f.property_name}{comparator_string}": f.comparison_value
+            }
+            filter_args.append(Q(**d))
+        for f in self.categorical_filters:
+            d = {f"properties__{f.property_name}__in": f.comparison_value}
+            q = Q(**d) if f.operator == CATEGORICAL_FILTER_OPERATORS.ISIN else ~Q(**d)
+            filter_args.append(q)
         return filter_args, filter_kwargs
 
     @abc.abstractmethod
@@ -249,9 +261,11 @@ class CounterHandler(MetricHandler):
     def _build_pre_groupby_annotation_kwargs(self, group_by=[]):
         return super()._build_pre_groupby_annotation_kwargs(group_by)
 
-    def _build_groupby_kwargs(self, customer, results_granularity, start, group_by=[]):
+    def _build_groupby_kwargs(
+        self, customer, results_granularity, start, group_by=[], proration=None
+    ):
         return super()._build_groupby_kwargs(
-            customer, results_granularity, start, group_by
+            customer, results_granularity, start, group_by, proration
         )
 
     def get_usage(
@@ -263,7 +277,9 @@ class CounterHandler(MetricHandler):
         group_by=[],
         proration=None,
     ):
-        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+        filter_args, filter_kwargs = self._build_filter_kwargs(
+            start, end, customer, group_by
+        )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
@@ -290,7 +306,7 @@ class CounterHandler(MetricHandler):
             post_groupby_annotation_kwargs["usage_qty"] = Count(
                 F("property_value"), distinct=True
             )
-        q_filt = Event.objects.filter(**filter_kwargs)
+        q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
         q_gb = q_pre_gb_ann.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
@@ -323,9 +339,12 @@ class CounterHandler(MetricHandler):
         )
         return per_customer
 
-    def get_earned_usage_per_day(self, start, end, customer, group_by=[]):
-        now = now_utc()
-        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+    def get_earned_usage_per_day(
+        self, start, end, customer, group_by=[], proration=None
+    ):
+        filter_args, filter_kwargs = self._build_filter_kwargs(
+            start, end, customer, group_by
+        )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
@@ -334,6 +353,7 @@ class CounterHandler(MetricHandler):
             results_granularity=USAGE_CALC_GRANULARITY.DAILY,
             start=start,
             group_by=group_by,
+            proration=proration,
         )
         post_groupby_annotation_kwargs = {}
 
@@ -364,7 +384,7 @@ class CounterHandler(MetricHandler):
                 F("property_value"), distinct=True
             )
 
-        q_filt = Event.objects.filter(**filter_kwargs)
+        q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
         q_gb = q_pre_gb_ann.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
@@ -385,24 +405,43 @@ class CounterHandler(MetricHandler):
             ).annotate(usage_qty=Count("pk"))
 
         if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-            return_dict = {}
-            total_usage_qty = sum(
-                [row["usage_qty"] * row["n_events"] for row in q_post_gb_ann]
-            )
-            total_num_events = sum([row["n_events"] for row in q_post_gb_ann])
-            total_average = total_usage_qty / total_num_events
+            intermediate_dict = {}
+            unique_groupby_props = ["customer_name"] + group_by
             for row in q_post_gb_ann:
                 tc_trunc = row["time_created_truncated"]
-                usage_qty = total_average * (
-                    row["usage_qty"] * row["n_events"] / total_usage_qty
-                )
-                return_dict[tc_trunc] = usage_qty
+                unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+                usage_qty = row["usage_qty"]
+                if unique_tup not in intermediate_dict:
+                    intermediate_dict[unique_tup] = {}
+                if tc_trunc not in intermediate_dict[unique_tup]:
+                    intermediate_dict[unique_tup][tc_trunc] = {
+                        "usage_qty": usage_qty,
+                        "n_events": row["n_events"],
+                    }
+            return_dict = {}
+            for unique_tup, v in intermediate_dict.items():
+                return_dict[unique_tup] = {}
+                total_usage_qty = sum([row["usage_qty"] * row["n_events"] for row in v])
+                total_num_events = sum([row["n_events"] for row in v])
+                total_average = total_usage_qty / total_num_events
+                for row in v:
+                    tc_trunc = row["time_created_truncated"]
+                    usage_qty = total_average * (
+                        row["usage_qty"] * row["n_events"] / total_usage_qty
+                    )
+                    return_dict[unique_tup][tc_trunc] = usage_qty
         else:
             return_dict = {}
+            unique_groupby_props = ["customer_name"] + group_by
             for row in q_post_gb_ann:
                 tc_trunc = row["time_created_truncated"]
+                unique_tup = tuple(row[prop] for prop in unique_groupby_props)
                 usage_qty = row["usage_qty"]
-                return_dict[tc_trunc] = usage_qty
+                if unique_tup not in return_dict:
+                    return_dict[unique_tup] = {}
+                if tc_trunc not in return_dict[unique_tup]:
+                    return_dict[unique_tup][tc_trunc] = usage_qty
+            return return_dict
         return return_dict
 
     @staticmethod
@@ -442,10 +481,6 @@ class CounterHandler(MetricHandler):
         if event_type:
             print("[METRIC TYPE: COUNTER] Event type not allowed. Making null.")
             data.pop("event_type", None)
-        if numeric_filters or categorical_filters:
-            print("[METRIC TYPE: COUNTER] Filters not currently supported. Removing")
-            data.pop("numeric_filters", None)
-            data.pop("categorical_filters", None)
         if bill_agg_type:
             print(
                 "[METRIC TYPE: COUNTER] Billable aggregation type not allowed. Making null."
@@ -471,6 +506,8 @@ class StatefulHandler(MetricHandler):
         self.event_type = billable_metric.event_type
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
         self.granularity = billable_metric.granularity
+        self.numeric_filters = billable_metric.numeric_filters.all()
+        self.categorical_filters = billable_metric.categorical_filters.all()
         self.property_name = (
             None
             if billable_metric.property_name == " "
@@ -506,10 +543,6 @@ class StatefulHandler(MetricHandler):
             usg_agg_type
         )
         assert granularity, "[METRIC TYPE: STATEFUL] Must specify granularity"
-        if numeric_filters or categorical_filters:
-            print("[METRIC TYPE: STATEFUL] Filters not currently supported. Removing")
-            data.pop("numeric_filters", None)
-            data.pop("categorical_filters", None)
         if bill_agg_type:
             print(
                 "[METRIC TYPE: STATEFUL] Billable aggregation type not allowed. Making null."
@@ -541,7 +574,9 @@ class StatefulHandler(MetricHandler):
         group_by=[],
         proration=None,
     ):
-        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+        filter_args, filter_kwargs = self._build_filter_kwargs(
+            start, end, customer, group_by
+        )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
@@ -550,7 +585,7 @@ class StatefulHandler(MetricHandler):
         )
         smallest_granularity = groupby_kwargs.pop("granularity", None)
         post_groupby_annotation_kwargs = {}
-        q_filt = Event.objects.filter(**filter_kwargs)
+        q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
 
         if self.event_type == EVENT_TYPE.TOTAL:
@@ -643,9 +678,9 @@ class StatefulHandler(MetricHandler):
         }
         for group_by_property in group_by:
             annotate_kwargs[group_by_property] = F(f"properties__{group_by_property}")
-        pre_query_all_events = Event.objects.filter(**filter_kwargs).annotate(
-            **annotate_kwargs
-        )
+        pre_query_all_events = Event.objects.filter(
+            *filter_args, **filter_kwargs
+        ).annotate(**annotate_kwargs)
         grouping_filter = {
             "customer_name": OuterRef("customer_name"),
         }
@@ -653,7 +688,7 @@ class StatefulHandler(MetricHandler):
             grouping_filter[prop] = OuterRef(prop)
         if self.event_type == EVENT_TYPE.TOTAL:
             last_pre_query_grouped = pre_query_all_events.filter(
-                **grouping_filter
+                *filter_args, **grouping_filter
             ).order_by("-time_created")
             last_pre_query_actual_events = (
                 pre_query_all_events.annotate(
@@ -665,7 +700,7 @@ class StatefulHandler(MetricHandler):
             )
         elif self.event_type == EVENT_TYPE.DELTA:
             last_pre_query_grouped = (
-                pre_query_all_events.filter(**grouping_filter)
+                pre_query_all_events.filter(*filter_args, **grouping_filter)
                 .values(*[x for x in grouping_filter.keys()])
                 .annotate(last_qty=Sum(Cast(F("property_value"), FloatField())))
             )
@@ -901,6 +936,8 @@ class RateHandler(MetricHandler):
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
         self.billable_aggregation_type = billable_metric.billable_aggregation_type
         self.granularity = billable_metric.granularity
+        self.numeric_filters = billable_metric.numeric_filters.all()
+        self.categorical_filters = billable_metric.categorical_filters.all()
         self.property_name = (
             None
             if billable_metric.property_name == " "
@@ -955,10 +992,6 @@ class RateHandler(MetricHandler):
                 )
                 data.pop("property_name", None)
         assert granularity, "[METRIC TYPE: RATE] Must specify granularity"
-        if numeric_filters or categorical_filters:
-            print("[METRIC TYPE: RATE] Filters not currently supported. Removing")
-            data.pop("numeric_filters", None)
-            data.pop("categorical_filters", None)
         if event_type:
             print("[METRIC TYPE: RATE] Event type not allowed. Making null.")
             data.pop("event_type", None)
@@ -970,7 +1003,10 @@ class RateHandler(MetricHandler):
     def _get_current_query_start_end(self):
         now = now_utc()
         end = now
-        start = now - relativedelta(**{self.granularity: 1})
+        try:
+            start = now - relativedelta(**{self.granularity: 1})
+        except:
+            start = None
         return start, end
 
     def _build_filter_kwargs(self, start, end, customer, group_by=[]):
@@ -979,14 +1015,17 @@ class RateHandler(MetricHandler):
     def _build_pre_groupby_annotation_kwargs(self, group_by=[]):
         return super()._build_pre_groupby_annotation_kwargs(group_by)
 
-    def _build_groupby_kwargs(self, customer, results_granularity, start, group_by=[]):
+    def _build_groupby_kwargs(
+        self, customer, results_granularity, start, group_by=[], proration=None
+    ):
         return super()._build_groupby_kwargs(
-            customer, results_granularity, start, group_by
+            customer, results_granularity, start, group_by, proration
         )
 
     def get_current_usage(self, subscription, group_by=[]):
-        start, end = self._get_current_query_start_end(subscription)
-        filter_kwargs = self._build_filter_kwargs(
+        start, end = self._get_current_query_start_end()
+        start = start if start else subscription.start_date
+        filter_args, filter_kwargs = self._build_filter_kwargs(
             start, end, subscription.customer, group_by
         )
         filter_kwargs["time_created__gt"] = subscription.start_date
@@ -1019,18 +1058,25 @@ class RateHandler(MetricHandler):
                 F("property_value"), distinct=True
             )
 
-        q_filt = Event.objects.filter(**filter_kwargs)
+        q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
-        q_gb = q_pre_gb_ann.values(**groupby_kwargs)
+        q_gb = q_pre_gb_ann.values(*filter_args, **groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
-        print(q_post_gb_ann)
-        raise Exception("still need to verify for rate")
-        return q_post_gb_ann
-        event = q_post_gb_ann.first()
-        if event:
-            return event["usage_qty"]
-        return 0
+        return_dict = {}
+        unique_groupby_props = ["customer_name"] + group_by
+        for row in q_post_gb_ann:
+            cust_name = row["customer_name"]
+            tc_trunc = row["time_created_truncated"]
+            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+            usage_qty = row["usage_qty"]
+            if cust_name not in return_dict:
+                return_dict[cust_name] = {}
+            if unique_tup not in return_dict[cust_name]:
+                return_dict[cust_name][unique_tup] = {}
+            return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
+
+        return return_dict
 
     def get_usage(
         self,
@@ -1041,8 +1087,9 @@ class RateHandler(MetricHandler):
         group_by=[],
         proration=None,
     ):
-        now = now_utc()
-        filter_kwargs = self._build_filter_kwargs(start, end, customer, group_by)
+        filter_args, filter_kwargs = self._build_filter_kwargs(
+            start, end, customer, group_by
+        )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
@@ -1050,7 +1097,7 @@ class RateHandler(MetricHandler):
             customer, results_granularity, start, group_by
         )
 
-        q_filt = Event.objects.filter(**filter_kwargs)
+        q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
 
         subquery_dict = {
@@ -1104,22 +1151,30 @@ class RateHandler(MetricHandler):
 
         return return_dict
 
-    def get_earned_usage_per_day(self, start, end, customer, group_by=[]):
+    def get_earned_usage_per_day(
+        self, start, end, customer, group_by=[], proration=None
+    ):
         per_customer = self.get_usage(
             start=start,
             end=end,
             granularity=USAGE_CALC_GRANULARITY.DAILY,
             customer=customer,
             group_by=group_by,
+            proration=proration,
         )
-        customer_usage = per_customer[customer.customer_name]
-        if len(customer_usage) == 0:
-            return {}
-        else:
-            max_usage = sorted(
-                customer_usage.items(), key=lambda x: x[1], reverse=True
-            )[:1]
-            return {max_usage[0][0]: max_usage[0][1]}
+
+        return_dict = {}
+        unique_groupby_props = ["customer_name"] + group_by
+        for row in per_customer:
+            tc_trunc = row["time_created_truncated"]
+            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+            usage_qty = row["new_usage_qty"]
+            if unique_tup not in return_dict:
+                return_dict[unique_tup] = {}
+            if max(return_dict[unique_tup].values(), default=0) < usage_qty:
+                return_dict[unique_tup] = {tc_trunc: usage_qty}
+
+        return return_dict
 
     @staticmethod
     def _allowed_usage_aggregation_types():

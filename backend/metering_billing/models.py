@@ -584,7 +584,6 @@ class PlanComponent(models.Model):
                 group_by=self.separate_by,
                 proration=self.proration_granularity,
             )
-            print(all_usage)
             nperiods_metric_granularity = max(
                 len(
                     list(
@@ -611,8 +610,6 @@ class PlanComponent(models.Model):
                 )
             else:
                 usage_normalization_factor = 1
-            print("nperiods_metric_granularity", nperiods_metric_granularity)
-            print("nperiods_proration_granularity", nperiods_proration_granularity)
             # extract usage
             separated_usage = all_usage.get(subscription.customer.customer_name, {})
             for i, (unique_identifier, usage_by_period) in enumerate(
@@ -624,7 +621,6 @@ class PlanComponent(models.Model):
                         * usage_normalization_factor
                     )
                     usage_qty = convert_to_decimal(usage_qty)
-                    print("usage_qty", usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()
                     for i, tier in enumerate(tiers):
@@ -713,7 +709,6 @@ class PlanComponent(models.Model):
             usage_normalization_factor = convert_to_decimal(
                 nperiods_metric_granularity / nperiods_proration_granularity
             )
-            print("all_usage", all_usage)
             # extract usage
             for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
                 if len(usage_by_period) >= 1:
@@ -724,8 +719,6 @@ class PlanComponent(models.Model):
                         usage_qty = (
                             convert_to_decimal(usage_qty) * usage_normalization_factor
                         )
-                        print("usage_qty", usage_qty)
-                        print("running_total_usage", running_total_usage)
                         running_total_usage += usage_qty
                         revenue = Decimal(0)
                         tiers = self.tiers.all()
