@@ -1,0 +1,3 @@
+.noborderTable .ant-table-tbody > tr > td {
+  border: none;
+}

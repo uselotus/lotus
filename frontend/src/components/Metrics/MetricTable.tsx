@@ -54,6 +54,14 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       width: 100,
       dataIndex: "metric_type",
       align: "left",
+      render: (_, record) => {
+        {
+          if (record.metric_type === "stateful") {
+            return <p>continuous</p>;
+          }
+          return <p>counter</p>;
+        }
+      },
     },
     {
       title: "Event Name",

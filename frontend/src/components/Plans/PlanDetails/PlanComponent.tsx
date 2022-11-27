@@ -51,7 +51,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
                   showHeader={false}
                   bordered={false}
                   rowClassName="bg-[#FAFAFA]"
-                  className="bg-background"
+                  className="bg-background noborderTable"
                   style={{ color: "blue" }}
                   size="middle"
                   columns={[

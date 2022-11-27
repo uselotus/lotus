@@ -173,6 +173,7 @@ const EditableCell: React.FC<EditableCellProps> = ({
     childNode = editing ? (
       <Form.Item
         style={{ margin: 0 }}
+        className="w-full"
         name={dataIndex}
         // rules={[
         //   {
@@ -193,7 +194,12 @@ const EditableCell: React.FC<EditableCellProps> = ({
             <Option value="flat">Flat</Option>
           </Select>
         ) : (
-          <InputNumber ref={inputRef} onPressEnter={save} onBlur={save} />
+          <InputNumber
+            ref={inputRef}
+            onPressEnter={save}
+            onBlur={save}
+            min={0}
+          />
         )}
       </Form.Item>
     ) : (
@@ -245,7 +251,7 @@ function UsageComponentForm({
   const [currentTiers, setCurrentTiers] = useState<Tier[]>(
     editComponentItem?.tiers ?? initialTier
   );
-  const [rangeEnd, setRangeEnd] = useState<number>(
+  const [rangeEnd, setRangeEnd] = useState<number | undefined>(
     editComponentItem?.tiers[0]?.range_end ?? 0
   );
 
@@ -276,7 +282,7 @@ function UsageComponentForm({
       setRangeEnd(undefined);
       setErrorMessage("");
     } else {
-      setErrorMessage("Please enter a range end");
+      setErrorMessage("Please enter a non-infinite range end");
     }
   };
 
@@ -320,11 +326,16 @@ function UsageComponentForm({
     {
       title: "First Unit",
       dataIndex: "range_start",
+      width: "20%",
+      align: "center",
       editable: true,
     },
     {
       title: "Last Unit",
       dataIndex: "range_end",
+      width: "20%",
+      align: "center",
+
       editable: true,
       render: (text: any, record: Tier) => {
         if (record.range_end === undefined || record.range_end === "") {
@@ -338,18 +349,24 @@ function UsageComponentForm({
       title: "Charge Type",
       dataIndex: "type",
       editable: true,
+      width: "20%",
+      align: "center",
     },
     {
       title: "Amount ($)",
       dataIndex: "cost_per_batch",
       editable: true,
+      align: "center",
+      width: "15%",
     },
     {
       title: "Units",
       dataIndex: "metric_units_per_batch",
+      width: "15%",
+      align: "center",
       editable: true,
       render: (text: any, record: Tier) => {
-        if (record.type === "flat") {
+        if (record.type === "flat" || record.type === "free") {
           return "-";
         } else {
           return record.metric_units_per_batch;
@@ -360,6 +377,8 @@ function UsageComponentForm({
     {
       title: "Delete",
       dataIndex: "delete",
+      width: "10%",
+      align: "center",
       render: (_, record) =>
         currentTiers.length > 1 &&
         record.range_start != 0 && (
@@ -430,13 +449,13 @@ function UsageComponentForm({
     >
       <Form
         form={form}
-        layout="vertical"
+        layout="horizontal"
         name="component_form"
         initialValues={initalData}
       >
         <div className="grid grid-cols-12 space-x-4 mt-4 mb-8">
-          <p className="col-span-1 pt-1">Metric:</p>
           <Form.Item
+            label="Metric"
             className="col-span-11"
             name="metric"
             rules={[
@@ -452,6 +471,25 @@ function UsageComponentForm({
               ))}
             </Select>
           </Form.Item>
+
+          {/* TODO
+          <Form.Item
+            label="Reset Frequency"
+            className="col-span-11"
+            name="metric"
+            rules={[
+              {
+                required: true,
+                message: "Please select a metric",
+              },
+            ]}
+          >
+            <Select>
+              {metrics?.map((metric_name) => (
+                <Option value={metric_name}>{metric_name}</Option>
+              ))}
+            </Select>
+          </Form.Item> */}
         </div>
 
         <Table

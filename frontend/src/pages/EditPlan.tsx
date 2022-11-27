@@ -272,6 +272,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             usagecomponentslist.push(usagecomponent);
           }
         }
+        if (values.usage_billing_frequency === "yearly") {
+          values.usage_billing_frequency = "end_of_period";
+        }
 
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
@@ -280,7 +283,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
-          // usage_billing_frequency: values.usage_billing_frequency,
+          usage_billing_frequency: values.usage_billing_frequency,
         };
         if (
           values.price_adjustment_type !== undefined &&
@@ -316,7 +319,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: planFeatures,
-            // usage_billing_frequency: values.usage_billing_frequency,
+            usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
           };
@@ -395,7 +398,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             description: plan.versions[versionIndex].description,
             flat_rate: plan.versions[versionIndex].flat_rate,
             pay_in_advance: plan.versions[versionIndex].flat_fee_billing_type,
-            // usage_billing_frequency: plan.versions[versionIndex].usage_billing_frequency,
+            usage_billing_frequency:
+              plan.versions[versionIndex].usage_billing_frequency,
             plan_duration: plan.plan_duration,
             flat_fee_billing_type:
               plan.versions[versionIndex].flat_fee_billing_type,
@@ -439,11 +443,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                             ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "monthly"
+                            );
                           } else if (e.target.value === "quarterly") {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                               { label: "Quarterly", name: "quarterly" },
                             ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "quarterly"
+                            );
                           } else {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
@@ -484,9 +496,14 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       label="Plan on next cycle"
                     >
                       <Select>
-                        {allPlans.map((plan) => (
-                          <Select.Option value={plan.plan_id}>
-                            {plan.plan_name}
+                        {allPlans.map((item) => (
+                          <Select.Option
+                            key={item.plan_id}
+                            value={item.plan_id}
+                          >
+                            {plan.plan_id === item.plan_id
+                              ? "Self"
+                              : item.plan_name}
                           </Select.Option>
                         ))}
                       </Select>
@@ -521,7 +538,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                {/* <div className="absolute inset-x-0 bottom-0 justify-center">
+                <div className="absolute inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -544,7 +561,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div> */}
+                </div>
               </Card>
             </Col>
             <Col span="24">
