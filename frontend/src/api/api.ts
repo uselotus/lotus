@@ -370,11 +370,11 @@ export const Stripe = {
 export const PaymentProcessorIntegration = {
   getPaymentProcessorConnectionStatus: (): Promise<
     PaymentProcessorStatusType[]
-  > => requests.get("api/payment_providers/"),
+  > => requests.get("/api/payment_providers/"),
   connectPaymentProcessor: (
     pp_info: PaymentProcessorConnectionRequestType
   ): Promise<PaymentProcessorConnectionResponseType> =>
-    requests.post("api/payment_providers/", { pp_info }),
+    requests.post("/api/payment_providers/", { pp_info }),
 };
 
 export const Invoices = {

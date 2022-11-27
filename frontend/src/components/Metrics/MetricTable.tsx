@@ -20,6 +20,16 @@ const colorMap = new Map<string, string>([
   ["unique", "geekblue"],
 ]);
 
+const operatorDisplayMap = new Map<string, string>([
+  ["eq", "="],
+  ["isin", "is"],
+  ["gt", ">"],
+  ["gte", ">="],
+  ["lt", "<"],
+  ["lte", "<="],
+  ["isnotin", "is not"],
+]);
+
 interface Props {
   metricArray: MetricType[];
 }
@@ -34,15 +44,34 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     },
     {
       title: "Metric Name",
-      width: 150,
+      width: 100,
       dataIndex: "billable_metric_name",
       align: "left",
+    },
+    {
+      title: "Is Cost",
+      dataIndex: "billable_metric_name",
+      align: "left",
+      width: 30,
+      render: (_, record) => (
+        <div className="self-center">
+          {record.is_cost_metric === true && <Tag>Cost</Tag>}
+        </div>
+      ),
     },
     {
       title: "Type",
       width: 100,
       dataIndex: "metric_type",
       align: "left",
+      render: (_, record) => {
+        {
+          if (record.metric_type === "stateful") {
+            return "continuous";
+          }
+          return "counter";
+        }
+      },
     },
     {
       title: "Event Name",
@@ -65,6 +94,41 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       width: 120,
       dataIndex: "property_name",
       align: "left",
+    },
+    {
+      title: "Filters",
+      width: 150,
+      align: "left",
+      render: (_, record) => {
+        {
+          if (record.categorical_filters) {
+            return (
+              <div>
+                {record.categorical_filters.map((filter) => (
+                  <Tag color="cyan" key={filter.property_name}>
+                    {filter.property_name} :{" "}
+                    {operatorDisplayMap[filter.operator]} :{" "}
+                    {filter.comparison_value}
+                  </Tag>
+                ))}
+              </div>
+            );
+          }
+          if (record.numeric_filters) {
+            return (
+              <div>
+                {record.numeric_filters.map((filter) => (
+                  <Tag color="cyan" key={filter.property_name}>
+                    {filter.property_name} :{" "}
+                    {operatorDisplayMap[filter.operator]} :{" "}
+                    {filter.comparison_value}
+                  </Tag>
+                ))}
+              </div>
+            );
+          }
+        }
+      },
     },
   ];
 
