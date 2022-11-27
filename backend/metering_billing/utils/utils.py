@@ -31,6 +31,20 @@ def convert_to_date(value):
         raise Exception(f"can't convert type {type(value)} into date")
 
 
+def convert_to_datetime(value, date_behavior="min"):
+    if isinstance(value, datetime.datetime):
+        return value
+    elif isinstance(value, str):
+        return convert_to_datetime(parser.parse(value))
+    elif isinstance(value, datetime.date):
+        if date_behavior == "min":
+            return date_as_min_dt(value)
+        elif date_behavior == "max":
+            return date_as_max_dt(value)
+    else:
+        raise Exception(f"can't convert type {type(value)} into date")
+
+
 def make_all_decimals_floats(data):
     if isinstance(data, list):
         return [make_all_decimals_floats(x) for x in data]
@@ -114,30 +128,57 @@ def decimal_to_cents(amount):
     return int(amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100))
 
 
-def periods_bwn_twodates(granularity, start_date, end_date):
-    start_time = date_as_min_dt(start_date)
-    end_time = date_as_max_dt(end_date)
+def periods_bwn_twodates(
+    granularity, start_time, end_time, truncate_to_granularity=False
+):
+    start_time = convert_to_datetime(start_time, date_behavior="min")
+    end_time = convert_to_datetime(end_time, date_behavior="max")
     rd = relativedelta(start_time, end_time)
     if (
         granularity == USAGE_CALC_GRANULARITY.TOTAL
         or granularity == METRIC_GRANULARITY.TOTAL
+        or granularity is None
     ):
         yield start_time
     else:
-        if granularity == METRIC_GRANULARITY.HOUR:
+        if granularity == METRIC_GRANULARITY.SECOND:
+            rd = relativedelta(seconds=+1)
+            normalize_rd = relativedelta(microsecond=0)
+        elif granularity == METRIC_GRANULARITY.MINUTE:
+            normalize_rd = relativedelta(second=0, microsecond=0)
+            rd = relativedelta(minutes=+1)
+        elif granularity == METRIC_GRANULARITY.HOUR:
+            normalize_rd = relativedelta(minute=0, second=0, microsecond=0)
             rd = relativedelta(hours=+1)
         elif (
             granularity == USAGE_CALC_GRANULARITY.DAILY
             or granularity == METRIC_GRANULARITY.DAY
         ):
+            normalize_rd = relativedelta(hour=0, minute=0, second=0, microsecond=0)
             rd = relativedelta(days=+1)
-        elif granularity == METRIC_GRANULARITY.WEEK:
-            rd = relativedelta(weeks=+1)
         elif granularity == METRIC_GRANULARITY.MONTH:
+            normalize_rd = relativedelta(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
             rd = relativedelta(months=+1)
-        k = 0
+        elif granularity == METRIC_GRANULARITY.QUARTER:
+            cur_quarter = (start_time.month - 1) // 3
+            normalize_rd = relativedelta(
+                month=cur_quarter * 4, day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            rd = relativedelta(months=+3)
+        elif granularity == METRIC_GRANULARITY.YEAR:
+            normalize_rd = relativedelta(
+                month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            rd = relativedelta(years=+1)
+        k = 1
+        start_time = (
+            start_time + normalize_rd if truncate_to_granularity else start_time
+        )
+        end_time = end_time + normalize_rd if truncate_to_granularity else end_time
         ret = start_time
-        while ret <= end_time:
+        while ret < end_time:
             yield ret
             ret = start_time + k * rd
             k += 1
