@@ -127,9 +127,15 @@ jobs:
       STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
       WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
       DEBUG: False
+      KAFKA_URL: "localhost:9092"
 
     steps:
       - uses: actions/checkout@v3
+
+      - name: start redpanda
+        uses: redpanda-data/github-action@v0.1.3
+        with:
+          version: "latest"
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v3
