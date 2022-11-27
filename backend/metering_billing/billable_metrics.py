@@ -112,7 +112,11 @@ class MetricHandler(abc.ABC):
                 filter_kwargs[f"properties__{group}__isnull"] = False
         if customer is not None:
             filter_kwargs["customer"] = customer
-        return filter_kwargs
+        filter_args = []
+        for f in self.numeric_filters:
+            comparator_string = ""
+            filter = Q(f"properties__{f.property_name}{comparator_string}")
+        return filter_args, filter_kwargs
 
     @abc.abstractmethod
     def _build_pre_groupby_annotation_kwargs(self, group_by=[]):
@@ -215,6 +219,8 @@ class CounterHandler(MetricHandler):
             billable_metric.metric_type == METRIC_TYPE.COUNTER
         ), f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
+        self.numeric_filters = billable_metric.numeric_filters.all()
+        self.categorical_filters = billable_metric.categorical_filters.all()
         self.property_name = (
             None
             if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT
