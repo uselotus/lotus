@@ -6,20 +6,46 @@ import {
   Input,
   message,
   Popconfirm,
+  Table,
+  Menu,
+  Dropdown,
+  Checkbox,
 } from "antd";
 import React, { useState } from "react";
-import { useQuery } from "react-query";
+import { useQuery, useMutation, QueryClient } from "react-query";
 import { Alerts, APIToken } from "../../../../api/api";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
+import { Paper } from "../../../base/Paper";
+import { toast } from "react-toastify";
 
 export const DeveloperTab = () => {
   const [visible, setVisible] = useState<boolean>(false);
+  const [visibleWebhook, setVisibleWebhook] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>("");
+  const queryClient = new QueryClient();
   const [webhookUrl, setWebhookUrl] = useState<string>("");
   const closeModal = () => {
     setVisible(false);
     setApiKey("");
   };
+
+  const closeWebhookModal = () => {
+    setVisibleWebhook(false);
+  };
+  const webhookMenu = (
+    <Menu>
+      <Menu.Item key="1" onClick={() => setVisibleWebhook(true)}>
+        <div className="planMenuArchiveIcon">
+          <div>Edit</div>
+        </div>
+      </Menu.Item>
+      <Menu.Item key="1">
+        <div className="planMenuArchiveIcon">
+          <div className="archiveLabel">Archive</div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
 
   const {
     status: alertStatus,
@@ -40,13 +66,15 @@ export const DeveloperTab = () => {
       Alerts.addUrl(webhookUrl)
         .then((data) => {
           setWebhookUrl("");
-          message.success("Webhook URL added successfully");
+          toast.success("Webhook URL added successfully");
+          queryClient.invalidateQueries("urls");
+          setVisibleWebhook(false);
         })
         .catch((err) => {
-          message.error("Webhook URL already exists");
+          toast.error("Webhook URL already exists");
         });
     } else {
-      message.error("Please enter a valid URL");
+      toast.error("Please enter a valid URL starting with https://");
     }
   };
 
@@ -66,7 +94,8 @@ export const DeveloperTab = () => {
       <div>
         <Typography.Title level={2}>API Keys</Typography.Title>
         <Typography.Paragraph>
-          Getting a new API key will revoke your existing key!
+          Requesting a new API key will revoke your existing key! Store your key
+          safely.
         </Typography.Paragraph>
         <Popconfirm
           title="Are you sure to want to revoke your existing key?"
@@ -77,49 +106,72 @@ export const DeveloperTab = () => {
         </Popconfirm>
       </div>
       <Divider />
-      {/* <div className="mt-10 flex flex-row">
-        <Typography.Title level={2}>Webhook URLs</Typography.Title>
+      <div className="mt-10 flex flex-row justify-between w-6/12 mb-8">
+        <Typography.Title level={2}>Webhooks</Typography.Title>
+        <Button
+          type="primary"
+          onClick={() => {
+            setWebhookUrl("");
+            setVisibleWebhook(true);
+          }}
+        >
+          Add URL
+        </Button>
       </div>
-      <div>
-        <table className="table-auto">
-          <tr className="flex">
-            <td className="pr-4">Webhooks URL:</td>
-            <td className="w-[400px]">
-              <div>
-                <Input.Group compact className="mb-2">
-                  <Input
-                    style={{ width: "calc(100% - 90px)" }}
-                    onChange={(e) => setWebhookUrl(e.target.value)}
-                    placeholder="New Url"
-                    value={webhookUrl}
-                  />
-                  <Button type="primary" onClick={handleAddUrl}>
-                    Add URL
+
+      <div className="border-2 border-solid rounded border-[#EAEAEB] w-6/12">
+        <Table
+          dataSource={webhookData}
+          columns={[
+            {
+              title: "Webhook URL",
+              dataIndex: "webhook_url",
+              key: "webhook_url",
+            },
+            {
+              key: "action",
+              width: 100,
+              render: (text: any, record: any) => (
+                <Dropdown overlay={webhookMenu} trigger={["click"]}>
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <MoreOutlined />
                   </Button>
-                </Input.Group>
-                {webhookData.map((webhook, index) => (
-                  <div className="mb-2" key={index}>
-                    <Paper>
-                      <div className="flex flex-row justify-between align-middle">
-                        <Typography.Text>{webhook.webhook_url}</Typography.Text>
-                        <Button
-                          size="small"
-                          type="text"
-                          icon={<DeleteOutlined />}
-                          danger
-                          onClick={() => {
-                            handleDeleteUrl(webhook.id);
-                          }}
-                        />
-                      </div>
-                    </Paper>
-                  </div>
-                ))}
-              </div>
-            </td>
-          </tr>
-        </table>
-      </div> */}
+                </Dropdown>
+              ),
+            },
+          ]}
+        />
+      </div>
+
+      <Modal
+        visible={visibleWebhook}
+        title="Webhook URL"
+        onCancel={closeWebhookModal}
+        footer={
+          <Button key="Confirm URL" onClick={handleAddUrl} type="primary">
+            Confirm
+          </Button>
+        }
+      >
+        <div className="flex flex-col space-y-8">
+          <Input
+            value={webhookUrl}
+            onChange={(e) => setWebhookUrl(e.target.value)}
+          ></Input>
+
+          <p className="text-lg font-main">Events Subscribed To:</p>
+          <div className="grid grid-cols-auto">
+            <Checkbox checked={true}>
+              <p className="text-lg font-main">Invoice Generated</p>
+            </Checkbox>
+          </div>
+        </div>
+      </Modal>
+
       <Modal
         visible={visible}
         title="New API Key"
