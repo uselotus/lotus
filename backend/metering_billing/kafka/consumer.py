@@ -71,15 +71,6 @@ def write_batch_events_to_db(events_list, org_pk):
         time_created__gte=now_minus_45_days,
     ).exists()
     events_to_insert = []
-    print(idem_ids)
-    print(
-        Event.objects.filter(
-            organization_id=organization,
-            idempotency_id__in=idem_ids,
-            time_created__gte=now_minus_45_days,
-        ),
-        "repeat_idem",
-    )
     if repeat_idem:
         # if we have a repeat idempotency, filter thru the events and remove repeats
         for event in event_obj_list:
@@ -88,14 +79,13 @@ def write_batch_events_to_db(events_list, org_pk):
                 idempotency_id=event.idempotency_id,
                 time_created__gte=now_minus_45_days,
             ).exists()
-            print(event.idempotency_id)
             if not event_idem_exists:
                 events_to_insert.append(event)
     else:
         events_to_insert = event_obj_list
 
     ## now insert events
-    events = Event.objects.bulk_create(event_obj_list)
+    events = Event.objects.bulk_create(events_to_insert)
     ## posthog + cache invalidation
     event_org_map = {}
     customer_event_name_map = {}
