@@ -130,9 +130,10 @@ class EventSerializer(serializers.ModelSerializer):
 
     def get_customer(self, obj) -> str:
         try:
-            return obj.customer.customer_id
+            ret = obj.customer.customer_id
         except:
-            return obj.cust_id
+            ret = obj.cust_id
+        return ret
 
 
 class AlertSerializer(serializers.ModelSerializer):
