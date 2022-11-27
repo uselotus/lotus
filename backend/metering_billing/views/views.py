@@ -42,7 +42,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -115,7 +115,6 @@ class PeriodMetricRevenueView(APIView):
             return_dict[f"earned_revenue_period_{num}"] = sum(
                 [x["revenue"] for x in per_day_dict.values()]
             )
-        print(return_dict)
         serializer = PeriodMetricRevenueResponseSerializer(data=return_dict)
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
@@ -125,7 +124,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class CostAnalysisView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[CostAnalysisRequestSerializer],
@@ -288,7 +287,7 @@ class PeriodSubscriptionsView(APIView):
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],

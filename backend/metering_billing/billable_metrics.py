@@ -441,7 +441,6 @@ class CounterHandler(MetricHandler):
                     return_dict[unique_tup] = {}
                 if tc_trunc not in return_dict[unique_tup]:
                     return_dict[unique_tup][tc_trunc] = usage_qty
-            return return_dict
         return return_dict
 
     @staticmethod
@@ -888,11 +887,13 @@ class StatefulHandler(MetricHandler):
                         unique_usage.items(), key=lambda x: x[0]
                     )
                     for i, (period, usage) in enumerate(unique_usage_items):
+                        period = convert_to_date(period)
                         try:
-                            less_than = unique_usage_items[i + 1][0]
+                            less_than = convert_to_date(unique_usage_items[i + 1][0])
                         except:
                             less_than = None
                         for day, usage in daily_per_unique.items():
+                            day = convert_to_date(day)
                             if day < period:
                                 continue
                             if less_than:

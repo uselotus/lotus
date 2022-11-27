@@ -15,7 +15,9 @@ from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
+    convert_to_datetime,
     convert_to_decimal,
+    date_as_max_dt,
     date_as_min_dt,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
@@ -132,8 +134,8 @@ def generate_invoice(
             billing_plan_version = cur_bp.version
             InvoiceLineItem.objects.create(
                 name=f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                start_date=start,
-                end_date=end,
+                start_date=convert_to_datetime(start, date_behavior="min"),
+                end_date=convert_to_datetime(end, date_behavior="max"),
                 quantity=1,
                 subtotal=amount,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,

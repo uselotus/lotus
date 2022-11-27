@@ -373,16 +373,18 @@ const CreatePlan = () => {
                         ))}
                       </Select>
                     </Form.Item>
-                <Form.Item
-                  name="initial_external_links"
-                  label="Link External ids"
-                >
-                  <LinkExternalIds
-                    externalIds={[]}
-                    setExternalLinks={setExternalLinks}
-                  />
-                </Form.Item>
-              </Card>
+                    <Form.Item
+                      name="initial_external_links"
+                      label="Link External ids"
+                    >
+                      <LinkExternalIds
+                        externalIds={[]}
+                        setExternalLinks={setExternalLinks}
+                      />
+                    </Form.Item>
+                  </Card>
+                </Col>
+              </Row>
             </Col>
 
             <Col span={14}>

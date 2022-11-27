@@ -654,7 +654,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
         instance = serializer.save(organization=parse_organization(self.request))
 
-        if self.user.is_authenticated:
+        if self.request.user.is_authenticated:
             action.send(
                 self.request.user,
                 verb="subscribed",
@@ -725,17 +725,26 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "patch", "head"]
     lookup_field = "invoice_id"
     permission_classes_per_method = {
-        "list": [IsAuthenticated],
-        "retrieve": [IsAuthenticated],
+        "list": [IsAuthenticated | HasUserAPIKey],
+        "retrieve": [IsAuthenticated | HasUserAPIKey],
         "partial_update": [IsAuthenticated],
     }
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
-        return Invoice.objects.filter(
+        args = [
             ~Q(payment_status=INVOICE_STATUS.DRAFT),
-            organization=organization,
-        )
+            Q(organization=parse_organization(self.request)),
+        ]
+        customer_id = self.request.query_params.get("customer_id")
+        if customer_id:
+            args.append(Q(customer__customer_id=customer_id))
+        payment_status = self.request.query_params.get("payment_status")
+        if payment_status and payment_status in [
+            INVOICE_STATUS.PAID,
+            INVOICE_STATUS.UNPAID,
+        ]:
+            args.append(Q(payment_status=payment_status))
+        return Invoice.objects.filter(*args)
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -747,9 +756,6 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context
-
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -769,6 +775,23 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 properties={"organization": organization.company_name},
             )
         return response
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="InvoiceFilterSerializer",
+                fields={
+                    "customer_id": serializers.CharField(required=False),
+                    "payment_status": serializers.ChoiceField(
+                        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID],
+                        required=False,
+                    ),
+                },
+            ),
+        ],
+    )
+    def list(self, request):
+        return super().list(request)
 
 
 class AlertViewSet(viewsets.ModelViewSet):

@@ -33,7 +33,7 @@ def convert_to_date(value):
 
 def convert_to_datetime(value, date_behavior="min"):
     if isinstance(value, datetime.datetime):
-        return value
+        return value.replace(tzinfo=pytz.UTC)
     elif isinstance(value, str):
         return convert_to_datetime(parser.parse(value))
     elif isinstance(value, datetime.date):
