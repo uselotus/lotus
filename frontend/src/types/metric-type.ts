@@ -10,6 +10,8 @@ export interface MetricType {
   categorical_filters?: string[];
   granularity?: string;
   event_type?: "delta" | "total";
+  is_cost_metric?: boolean;
+  properties?: string[];
 }
 
 export interface MetricNameType {

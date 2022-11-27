@@ -9,6 +9,7 @@ import {
 import { useQuery, UseQueryResult } from "react-query";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import { Button } from "antd";
 
 const StripeRedirect: FC = () => {
   let [searchParams, setSearchParams] = useSearchParams();
@@ -46,9 +47,9 @@ const StripeRedirect: FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-full">
+    <div className="flex flex-col items-center justify-center h-full">
       <h1>Stripe Redirect: {connected} </h1>
-      <button onClick={returnToDashboard}>Go To Dashboard</button>
+      <Button onClick={returnToDashboard}>Go To Dashboard</Button>
     </div>
   );
 };

@@ -305,7 +305,6 @@ function UsageComponentForm({
   };
 
   const handleDelete = (range_start: React.Key) => {
-    console.log(range_start);
     const newData = currentTiers.filter(
       (item) => item.range_start !== range_start
     );
@@ -389,7 +388,6 @@ function UsageComponentForm({
             icon={<DeleteOutlined />}
             danger
             onClick={() => {
-              console.log(record);
               handleDelete(record.range_start);
             }}
           />

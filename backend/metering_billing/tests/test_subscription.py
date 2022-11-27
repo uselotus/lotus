@@ -8,8 +8,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from djmoney.money import Money
 from metering_billing.models import (
-    BillableMetric,
     Invoice,
+    Metric,
     PlanComponent,
     PlanVersion,
     PriceTier,
@@ -67,7 +67,7 @@ def subscription_test_common_setup(
         setup_dict["client"] = client
 
         metric_set = baker.make(
-            BillableMetric,
+            Metric,
             organization=org,
             event_name="email_sent",
             property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),

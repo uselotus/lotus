@@ -140,7 +140,6 @@ const CreatePlan = () => {
           id: Math.floor(Math.random() * 1000),
         },
       ];
-      console.log(newComponentsData);
       setComponentsData(newComponentsData);
     }
     setEditComponentsItem(undefined);
@@ -155,7 +154,6 @@ const CreatePlan = () => {
   };
 
   const deleteComponent = (id: number) => {
-    console.log(id);
     setComponentsData(componentsData.filter((item) => item.id !== id));
   };
   const hideFeatureModal = () => {
@@ -180,7 +178,6 @@ const CreatePlan = () => {
       .then((values) => {
         const usagecomponentslist: CreateComponent[] = [];
         const components: any = Object.values(componentsData);
-        console.log(components);
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
@@ -210,10 +207,10 @@ const CreatePlan = () => {
         ) {
           if (
             values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "flat"
+            values.price_adjustment_type === "fixed"
           ) {
-            values.price_adjustment_value =
-              Math.abs(values.price_adjustment_value) * -1;
+            values.price_adjustment_amount =
+              Math.abs(values.price_adjustment_amount) * -1;
           }
 
           initialPlanVersion["price_adjustment"] = {
@@ -478,9 +475,9 @@ const CreatePlan = () => {
                       }}
                     >
                       <Select.Option value="none">None</Select.Option>
-                      <Select.Option value="price_override">
+                      {/* <Select.Option value="price_override">
                         Overwrite Price
-                      </Select.Option>
+                      </Select.Option> */}
                       <Select.Option value="percentage">
                         Percentage Off
                       </Select.Option>

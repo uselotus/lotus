@@ -5,6 +5,7 @@ from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 
 import pytz
+from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
 from metering_billing.utils.enums import (
@@ -17,6 +18,17 @@ from numpy import isin
 
 def convert_to_decimal(value):
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
+
+
+def convert_to_date(value):
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    elif isinstance(value, str):
+        return convert_to_date(parser.parse(value))
+    elif isinstance(value, datetime.date):
+        return value
+    else:
+        raise Exception(f"can't convert type {type(value)} into date")
 
 
 def make_all_decimals_floats(data):
@@ -110,40 +122,25 @@ def periods_bwn_twodates(granularity, start_date, end_date):
         granularity == USAGE_CALC_GRANULARITY.TOTAL
         or granularity == METRIC_GRANULARITY.TOTAL
     ):
-        periods_btwn = 0
-    elif granularity == METRIC_GRANULARITY.HOUR:
-        periods_btwn = (
-            rd.years * 365 * 24 + rd.months * 30 * 24 + rd.days * 24 + rd.hours
-        )
-    elif (
-        granularity == USAGE_CALC_GRANULARITY.DAILY
-        or granularity == METRIC_GRANULARITY.DAY
-    ):
-        periods_btwn = rd.years * 365 + rd.months * 30 + rd.days
-    elif granularity == METRIC_GRANULARITY.WEEK:
-        periods_btwn = rd.years * 52 + rd.months * 4 + rd.weeks
-    elif granularity == METRIC_GRANULARITY.MONTH:
-        periods_btwn = rd.years * 12 + rd.months
-    periods_btwn = abs(periods_btwn)
-    for n in range(periods_btwn + 1):
-        if (
-            granularity == USAGE_CALC_GRANULARITY.TOTAL
-            or granularity == METRIC_GRANULARITY.TOTAL
-        ):
-            res = start_time
-        elif granularity == METRIC_GRANULARITY.HOUR:
-            res = start_time + relativedelta(hours=n)
+        yield start_time
+    else:
+        if granularity == METRIC_GRANULARITY.HOUR:
+            rd = relativedelta(hours=+1)
         elif (
             granularity == USAGE_CALC_GRANULARITY.DAILY
             or granularity == METRIC_GRANULARITY.DAY
         ):
-            res = start_time + relativedelta(days=n)
+            rd = relativedelta(days=+1)
         elif granularity == METRIC_GRANULARITY.WEEK:
-            res = start_time + relativedelta(weeks=n)
+            rd = relativedelta(weeks=+1)
         elif granularity == METRIC_GRANULARITY.MONTH:
-            res = start_time + relativedelta(months=n)
-        if res <= end_time:
-            yield res
+            rd = relativedelta(months=+1)
+        k = 0
+        ret = start_time
+        while ret <= end_time:
+            yield ret
+            ret = start_time + k * rd
+            k += 1
 
 
 def now_plus_day():

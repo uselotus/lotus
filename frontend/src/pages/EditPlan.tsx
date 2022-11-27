@@ -69,8 +69,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     { label: "Quarterly", name: "quarterly" },
     { label: "Yearly", name: "yearly" },
   ]);
-  const [priceAdjustmentType, setPriceAdjustmentType] =
-    useState<string>("none");
+  const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>(
+    plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
+      "none"
+  );
 
   const queryClient = useQueryClient();
 
@@ -289,10 +291,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         ) {
           if (
             values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "flat"
+            values.price_adjustment_type === "fixed"
           ) {
-            values.price_adjustment_value =
-              Math.abs(values.price_adjustment_value) * -1;
+            values.price_adjustment_amount =
+              Math.abs(values.price_adjustment_amount) * -1;
           }
           initialPlanVersion["price_adjustment"] = {
             price_adjustment_type: values.price_adjustment_type,
@@ -600,9 +602,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       }}
                     >
                       <Select.Option value="none">None</Select.Option>
-                      <Select.Option value="price_override">
+                      {/* <Select.Option value="price_override">
                         Overwrite Price
-                      </Select.Option>
+                      </Select.Option> */}
                       <Select.Option value="percentage">
                         Percentage Off
                       </Select.Option>

@@ -72,7 +72,10 @@ DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 
 
-if False:  # SENTRY_DSN != "":
+# Optional Observalility Services
+CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
+
+if SENTRY_DSN != "":
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         integrations=[
@@ -459,7 +462,7 @@ REST_FRAMEWORK = {
         "knox.auth.TokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "EXCEPTION_HANDLER": "metering_billing.custom_exception_handler.custom_exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
 SPECTACULAR_SETTINGS = {

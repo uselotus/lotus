@@ -18,6 +18,7 @@ from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
     calculate_end_date,
+    convert_to_date,
     convert_to_decimal,
     customer_uuid,
     dates_bwn_two_dts,
@@ -210,6 +211,29 @@ class Customer(models.Model):
 
         return subscription_usages
 
+    def get_active_sub_drafts_revenue(self):
+        customer_subscriptions = (
+            Subscription.objects.filter(
+                customer=self,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+                organization=self.organization,
+            )
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .select_related("billing_plan")
+        )
+        total = 0
+        for subscription in customer_subscriptions:
+            inv = generate_invoice(
+                subscription, draft=True, flat_fee_behavior="full_amount"
+            )
+            total += inv.cost_due
+        try:
+            total = total.amount
+        except:
+            pass
+        return total
+
     def get_currency_balance(self, currency):
         now = now_utc()
         balance = self.customer_balance_adjustments.filter(
@@ -220,17 +244,13 @@ class Customer(models.Model):
         return balance
 
     def get_outstanding_revenue(self):
-        usg_rev = self.get_usage_and_revenue()
-        active_sub_amount_due = sum(
-            x["total_amount_due"] for x in usg_rev["subscriptions"]
-        )
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
-            .exclude(subscription__in=usg_rev["sub_objects"])
+            .exclude(subscription__status=SUBSCRIPTION_STATUS.ACTIVE)
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
-        total_amount_due = active_sub_amount_due + (unpaid_invoice_amount_due or 0)
+        total_amount_due = unpaid_invoice_amount_due or 0
         return total_amount_due
 
 
@@ -310,7 +330,7 @@ class CategoricalFilter(models.Model):
     comparison_value = models.JSONField()
 
 
-class BillableMetric(models.Model):
+class Metric(models.Model):
     # meta
     organization = models.ForeignKey(
         Organization,
@@ -356,6 +376,7 @@ class BillableMetric(models.Model):
         null=True,
         blank=True,
     )
+    is_cost_metric = models.BooleanField(default=False)
 
     # filters
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
@@ -401,12 +422,11 @@ class BillableMetric(models.Model):
 
         return usage
 
-    def get_earned_usage_per_day(self, subscription):
+    def get_earned_usage_per_day(self, start_date, end_date, customer):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-
-        usage = handler.get_earned_usage_per_day(subscription)
+        usage = handler.get_earned_usage_per_day(start_date, end_date, customer)
 
         return usage
 
@@ -443,8 +463,11 @@ class PriceTier(models.Model):
         null=True,
     )
 
-    def calculate_revenue(self, usage_dict: dict, prev_tier_end=False):
-        dict_len = len(usage_dict)
+    def calculate_revenue(
+        self, usage_dict: dict, prev_tier_end=False, division_factor=None
+    ):
+        if division_factor is None:
+            division_factor = len(usage_dict)
         revenue = 0
         discontinuous_range = (
             prev_tier_end != self.range_start and prev_tier_end is not None
@@ -458,7 +481,7 @@ class PriceTier(models.Model):
             )
             if usage_in_range:
                 if self.type == PRICE_TIER_TYPE.FLAT:
-                    revenue += self.cost_per_batch / dict_len
+                    revenue += self.cost_per_batch / division_factor
                 elif self.type == PRICE_TIER_TYPE.PER_UNIT:
                     if self.range_end is not None:
                         billable_units = min(
@@ -475,13 +498,15 @@ class PriceTier(models.Model):
                         billable_batches = math.floor(billable_batches)
                     elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
                         billable_batches = round(billable_batches)
-                    revenue += (self.cost_per_batch * billable_batches) / dict_len
+                    revenue += (
+                        self.cost_per_batch * billable_batches
+                    ) / division_factor
         return revenue
 
 
 class PlanComponent(models.Model):
     billable_metric = models.ForeignKey(
-        BillableMetric,
+        Metric,
         on_delete=models.CASCADE,
         related_name="+",
         null=True,
@@ -564,62 +589,70 @@ class PlanComponent(models.Model):
                     "revenue": revenue,
                 }
             )
-
         return revenue_dict
 
     def calculate_earned_revenue_per_day(
         self, subscription
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
         billable_metric = self.billable_metric
-        usage = billable_metric.get_earned_usage_per_day(subscription)
-
-        usage = usage.get(subscription.customer.customer_name, {})
-
-        period_revenue_dict = {
-            period: {}
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY,
-                subscription.start_date,
-                subscription.end_date,
-            )
-        }
-        free_units_usage_left = self.free_metric_units
-        remainder_billable_units = 0
-        for period in period_revenue_dict:
-            period_usage = usage.get(period, 0)
-            qty = convert_to_decimal(period_usage)
-            period_revenue_dict[period] = {"usage_qty": qty, "revenue": 0}
-            if (
-                self.cost_per_batch == 0
-                or self.cost_per_batch is None
-                or self.metric_units_per_batch == 0
-                or self.metric_units_per_batch is None
-            ):
-                continue
+        periods = []
+        start_date = subscription.start_date
+        end_date = start_date
+        results = {}
+        for period in periods_bwn_twodates(
+            USAGE_CALC_GRANULARITY.DAILY, subscription.start_date, subscription.end_date
+        ):
+            period = convert_to_date(period)
+            results[period] = Decimal(0)
+        now = now_utc()
+        while end_date < subscription.end_date:
+            if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
+                end_date = start_date + relativedelta(weeks=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
+                end_date = start_date + relativedelta(months=1)
+            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
+                end_date = start_date + relativedelta(months=3)
             else:
-                billable_units = max(
-                    qty - free_units_usage_left + remainder_billable_units, 0
-                )
-                billable_batches = billable_units // self.metric_units_per_batch
-                remainder_billable_units = (
-                    billable_units - billable_batches * self.metric_units_per_batch
-                )
-                free_units_usage_left = max(0, free_units_usage_left - qty)
-                if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-                    usage_revenue = (
-                        billable_batches
-                        * self.cost_per_batch
-                        / len(period_revenue_dict)
-                    )
-                else:
-                    usage_revenue = billable_batches * self.cost_per_batch
-                period_revenue_dict[period]["revenue"] = convert_to_decimal(
-                    usage_revenue
-                )
-                if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-                    free_units_usage_left = self.free_metric_units
-                    remainder_billable_units = 0
-        return period_revenue_dict
+                end_date = subscription.end_date
+            end_date = min(subscription.end_date, end_date)
+            periods.append((start_date, end_date))
+            start_date = end_date
+            if start_date > now:
+                break
+        for period_start, period_end in periods:
+            usage = billable_metric.get_earned_usage_per_day(
+                start_date=period_start,
+                end_date=period_end,
+                customer=subscription.customer,
+            )
+            if len(usage) >= 1:
+                running_total_revenue = Decimal(0)
+                running_total_usage = Decimal(0)
+                for date, usage_qty in usage.items():
+                    date = convert_to_date(date)
+                    usage_qty = convert_to_decimal(usage_qty)
+                    if billable_metric.metric_type == METRIC_TYPE.COUNTER:
+                        running_total_usage += usage_qty
+                    else:
+                        running_total_usage = usage_qty
+                    revenue = Decimal(0)
+                    tiers = self.tiers.all()
+                    for i, tier in enumerate(tiers):
+                        calc_rev_dict = {
+                            "usage_dict": {date: running_total_usage},
+                        }
+                        if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+                            calc_rev_dict["division_factor"] = len(usage)
+                        if i > 0:
+                            prev_tier_end = tiers[i - 1].range_end
+                            calc_rev_dict["prev_tier_end"] = prev_tier_end
+                        tier_revenue = tier.calculate_revenue(**calc_rev_dict)
+                        revenue += convert_to_decimal(tier_revenue)
+                    date_revenue = revenue - running_total_revenue
+                    running_total_revenue += date_revenue
+                    if date in results:
+                        results[date] += date_revenue
+        return results
 
 
 class Feature(models.Model):
@@ -652,7 +685,6 @@ class Invoice(models.Model):
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
-    line_items = models.JSONField(null=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
@@ -1179,6 +1211,25 @@ class Subscription(models.Model):
         self.save()
         if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             generate_invoice(self, include_usage=False, flat_fee_behavior="full_amount")
+
+    def calculate_earned_revenue_per_day(self):
+        return_dict = {}
+        for period in periods_bwn_twodates(
+            USAGE_CALC_GRANULARITY.DAILY, self.start_date, self.end_date
+        ):
+            period = convert_to_date(period)
+            return_dict[period] = Decimal(0)
+        for period, d in self.prorated_flat_costs_dict.items():
+            period = convert_to_date(period)
+            if period in return_dict:
+                return_dict[period] += convert_to_decimal(d["amount"])
+        for component in self.billing_plan.plan_components.all():
+            rev_per_day = component.calculate_earned_revenue_per_day(self)
+            for period, amount in rev_per_day.items():
+                period = convert_to_date(period)
+                if period in return_dict:
+                    return_dict[period] += amount
+        return return_dict
 
 
 class Backtest(models.Model):

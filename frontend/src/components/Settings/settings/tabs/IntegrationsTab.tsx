@@ -11,17 +11,16 @@ import { AppCard } from "../components/AppCard";
 const IntegrationsTab: FC = () => {
   const navigate = useNavigate();
   const [connectedStatus, setConnectedStatus] = useState<boolean>(false);
-  const fetchPaymentProcessorConnect = async (): Promise<
-    PaymentProcessorStatusType[]
-  > =>
-    PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then(
-      (data) => {
-        return data;
-      }
-    );
-  const { status, error, data, isLoading } = useQuery<
-    PaymentProcessorStatusType[]
-  >(["PaymentProcessorIntegration"], fetchPaymentProcessorConnect);
+  const { data, isLoading } = useQuery<PaymentProcessorStatusType[]>(
+    ["PaymentProcessorIntegration"],
+    () =>
+      PaymentProcessorIntegration.getPaymentProcessorConnectionStatus().then(
+        (res) => {
+          return res;
+        }
+      )
+  );
+
   const handleConnectWithPaymentProcessorClick = (path: string) => {
     if (path !== "") {
       window.location.href = path;
@@ -32,6 +31,7 @@ const IntegrationsTab: FC = () => {
       <Typography.Title level={2}>Integrations</Typography.Title>
       <Row gutter={[24, 24]}>
         {data &&
+          data !== undefined &&
           data.map((item, index) => {
             return (
               <Col span={6} key={index}>

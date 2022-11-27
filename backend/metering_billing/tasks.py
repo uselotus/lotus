@@ -151,16 +151,41 @@ def write_batch_events_to_db(events_list):
                 organization=event.organization, customer_id=event.cust_id
             ).first()
         event.customer = customer_id_mappings[event.cust_id]
-    events = Event.objects.bulk_create(event_obj_list)
+    now = now_utc()
+    now_minus_45_days = now - relativedelta(days=45)
+    idem_ids = list(x.idempotency_id for x in event_obj_list)
+    repeat_idem = Event.objects.filter(
+        idempotency_id__in=idem_ids,
+        time_created__gte=now_minus_45_days,
+    ).exists()
+    if repeat_idem:
+        # if we have a repeat idempotency, filter thru the events and remove repeats
+        for event in event_obj_list:
+            event_idem_exists = Event.objects.filter(
+                organization_id=event.organization,
+                idempotency_id=event.idempotency_id,
+                time_created__gte=now_minus_45_days,
+            ).exists()
+            if not event_idem_exists:
+                events_to_insert.append(event)
+    else:
+        events_to_insert = event_obj_list
+    events = Event.objects.bulk_create(event_obj_list, ignore_conflicts=True)
     event_org_map = {}
     customer_event_name_map = {}
     for event in events:
         if event.organization not in event_org_map:
             event_org_map[event.organization] = 0
-        if event.customer.customer_id not in customer_event_name_map:
-            customer_event_name_map[event.customer] = set()
+        try:
+            cust_id = event.customer.customer_id
+            if event.customer.customer_id not in customer_event_name_map:
+                customer_event_name_map[event.customer] = set()
+            customer_event_name_map[event.customer].add(event.event_name)
+        except Exception as e:
+            print(e)
+            print("Error processing event {}".format(event))
+            continue
         event_org_map[event.organization] += 1
-        customer_event_name_map[event.customer].add(event.event_name)
     for customer_id, to_invalidate in customer_event_name_map.items():
         cache_keys_to_invalidate = []
         for event_name in to_invalidate:

@@ -5,10 +5,10 @@ from typing import Union
 from actstream.models import Action
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateBillableMetric
+from metering_billing.exceptions import DuplicateMetric
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Alert,
-    BillableMetric,
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -17,6 +17,7 @@ from metering_billing.models import (
     Feature,
     Invoice,
     InvoiceLineItem,
+    Metric,
     NumericFilter,
     Organization,
     OrganizationInviteToken,
@@ -128,7 +129,10 @@ class EventSerializer(serializers.ModelSerializer):
     customer = serializers.SerializerMethodField()
 
     def get_customer(self, obj) -> str:
-        return obj.customer_id
+        try:
+            return obj.customer.customer_id
+        except:
+            return obj.cust_id
 
 
 class AlertSerializer(serializers.ModelSerializer):
@@ -193,13 +197,18 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("customer_id", "total_amount_due")
+        fields = ("customer_id", "total_amount_due", "next_amount_due")
 
     total_amount_due = serializers.SerializerMethodField()
+    next_amount_due = serializers.SerializerMethodField()
 
     def get_total_amount_due(self, obj) -> float:
         total_amount_due = float(self.context.get("total_amount_due"))
         return total_amount_due
+
+    def get_next_amount_due(self, obj) -> float:
+        next_amount_due = float(self.context.get("next_amount_due"))
+        return next_amount_due
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -212,6 +221,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider",
             "payment_provider_id",
             "properties",
+            "integrations",
         )
         extra_kwargs = {
             "customer_id": {"required": True},
@@ -302,9 +312,9 @@ class NumericFilterSerializer(serializers.ModelSerializer):
         fields = ("property_name", "operator", "comparison_value")
 
 
-class BillableMetricSerializer(serializers.ModelSerializer):
+class MetricSerializer(serializers.ModelSerializer):
     class Meta:
-        model = BillableMetric
+        model = Metric
         fields = (
             "event_name",
             "property_name",
@@ -314,9 +324,10 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_type",
             "metric_type",
             "billable_metric_name",
-            "numeric_filters",
-            "categorical_filters",
+            # "numeric_filters",
+            # "categorical_filters",
             "properties",
+            "is_cost_metric",
         )
         extra_kwargs = {
             "metric_type": {"required": True},
@@ -324,12 +335,12 @@ class BillableMetricSerializer(serializers.ModelSerializer):
             "event_name": {"required": True},
         }
 
-    numeric_filters = NumericFilterSerializer(
-        many=True, allow_null=True, required=False
-    )
-    categorical_filters = CategoricalFilterSerializer(
-        many=True, allow_null=True, required=False
-    )
+    # numeric_filters = NumericFilterSerializer(
+    #     many=True, allow_null=True, required=False
+    # )
+    # categorical_filters = CategoricalFilterSerializer(
+    #     many=True, allow_null=True, required=False
+    # )
     granularity = serializers.ChoiceField(
         choices=METRIC_GRANULARITY.choices,
         required=False,
@@ -363,9 +374,9 @@ class BillableMetricSerializer(serializers.ModelSerializer):
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
-        bm, created = BillableMetric.objects.get_or_create(**validated_data)
+        bm, created = Metric.objects.get_or_create(**validated_data)
         if not created:
-            raise DuplicateBillableMetric
+            raise DuplicateMetric
 
         # get filters
         for num_filter in num_filter_data:
@@ -485,14 +496,14 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         read_only_fields = ["billable_metric"]
 
     # READ-ONLY
-    billable_metric = BillableMetricSerializer(read_only=True)
+    billable_metric = MetricSerializer(read_only=True)
 
     # WRITE-ONLY
     billable_metric_name = SlugRelatedFieldWithOrganization(
         slug_field="billable_metric_name",
         write_only=True,
         source="billable_metric",
-        queryset=BillableMetric.objects.all(),
+        queryset=Metric.objects.all(),
     )
 
     # both
@@ -500,18 +511,21 @@ class PlanComponentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
-        tiers = data.get("tiers")
-        assert len(tiers) > 0, "Must have at least one price tier"
-        tiers_sorted = sorted(tiers, key=lambda x: x["range_start"])
-        assert tiers_sorted[0]["range_start"] == 0, "First tier must start at 0"
-        assert all(
-            x["range_end"] for x in tiers_sorted[:-1]
-        ), "All tiers must have an end, last one is the only one allowed to have open end"
-        for i, tier in enumerate(tiers_sorted[:-1]):
-            assert tiers_sorted[i + 1]["range_start"] - tier["range_end"] <= Decimal(
-                1
-            ), "All tiers must be contiguous"
-        return data
+        try:
+            tiers = data.get("tiers")
+            assert len(tiers) > 0, "Must have at least one price tier"
+            tiers_sorted = sorted(tiers, key=lambda x: x["range_start"])
+            assert tiers_sorted[0]["range_start"] == 0, "First tier must start at 0"
+            assert all(
+                x["range_end"] for x in tiers_sorted[:-1]
+            ), "All tiers must have an end, last one is the only one allowed to have open end"
+            for i, tier in enumerate(tiers_sorted[:-1]):
+                assert tiers_sorted[i + 1]["range_start"] - tier[
+                    "range_end"
+                ] <= Decimal(1), "All tiers must be contiguous"
+            return data
+        except AssertionError as e:
+            raise serializers.ValidationError(str(e))
 
     def create(self, validated_data):
         tiers = validated_data.pop("tiers")
@@ -1085,44 +1099,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         sub = super().create(validated_data)
         # new subscription means we need to create an invoice if its pay in advance
-        billing_plan_name = sub.billing_plan.plan.plan_name
-        billing_plan_version = sub.billing_plan.version
         if sub.billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            invoice = Invoice.objects.create(
-                cost_due=sub.billing_plan.flat_rate,
-                issue_date=now_utc(),
-                payment_status=INVOICE_STATUS.UNPAID,
-                line_items=[
-                    {
-                        "name": f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                        "start_date": str(sub.start_date),
-                        "end_date": str(sub.end_date),
-                        "quantity": 1,
-                        "subtotal": float(sub.billing_plan.flat_rate.amount),
-                        "type": "In Advance",
-                    }
-                ],
-                organization=sub.organization,
-                customer=sub.customer,
-                subscription=sub,
-            )
-            invoice.cust_connected_to_payment_provider = False
-            invoice.org_connected_to_cust_payment_provider = False
-            for pp in sub.customer.integrations.keys():
-                if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
-                    pp_connector = PAYMENT_PROVIDER_MAP[pp]
-                    customer_conn = pp_connector.customer_connected(sub.customer)
-                    org_conn = pp_connector.organization_connected(sub.organization)
-                    if customer_conn:
-                        invoice.cust_connected_to_payment_provider = True
-                    if customer_conn and org_conn:
-                        invoice.external_payment_obj_id = (
-                            pp_connector.create_payment_object(invoice)
-                        )
-                        invoice.external_payment_obj_type = pp
-                        invoice.org_connected_to_cust_payment_provider = True
-                        break
-            invoice.save()
+            generate_invoice(sub, flat_fee_behavior="full_amount", include_usage=False)
         return sub
 
 
@@ -1296,10 +1274,10 @@ class PlanActionSerializer(PlanSerializer):
         return "Plan"
 
 
-class BillableMetricActionSerializer(BillableMetricSerializer):
-    class Meta(BillableMetricSerializer.Meta):
-        model = BillableMetric
-        fields = BillableMetricSerializer.Meta.fields + ("string_repr", "object_type")
+class MetricActionSerializer(MetricSerializer):
+    class Meta(MetricSerializer.Meta):
+        model = Metric
+        fields = MetricSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
     object_type = serializers.SerializerMethodField()
@@ -1331,7 +1309,7 @@ GFK_MODEL_SERIALIZER_MAPPING = {
     PlanVersion: PlanVersionActionSerializer,
     Plan: PlanActionSerializer,
     Subscription: SubscriptionActionSerializer,
-    BillableMetric: BillableMetricActionSerializer,
+    Metric: MetricActionSerializer,
     Customer: CustomerActionSerializer,
 }
 
@@ -1505,6 +1483,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "invoices",
             "total_amount_due",
             "subscriptions",
+            "integrations",
         )
 
     subscriptions = serializers.SerializerMethodField()

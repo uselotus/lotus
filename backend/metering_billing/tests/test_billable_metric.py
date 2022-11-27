@@ -8,9 +8,9 @@ from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.models import (
-    BillableMetric,
     Customer,
     Event,
+    Metric,
     PlanComponent,
     PlanVersion,
     PriceTier,
@@ -98,7 +98,7 @@ def insert_billable_metric_payload():
 
 
 @pytest.mark.django_db(transaction=True)
-class TestInsertBillableMetric:
+class TestInsertMetric:
     def test_api_key_can_create_billable_metric_empty_before(
         self,
         billable_metric_test_common_setup,
@@ -192,7 +192,7 @@ class TestInsertBillableMetric:
         )
 
         payload = insert_billable_metric_payload
-        BillableMetric.objects.create(
+        Metric.objects.create(
             **{
                 **payload,
                 "organization": setup_dict["org"],
@@ -215,7 +215,7 @@ class TestInsertBillableMetric:
 
 
 @pytest.mark.django_db(transaction=True)
-class TestCalculateBillableMetric:
+class TestCalculateMetric:
     def test_count_unique(self, billable_metric_test_common_setup):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -223,7 +223,7 @@ class TestCalculateBillableMetric:
             auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
-        billable_metric = BillableMetric.objects.create(
+        billable_metric = Metric.objects.create(
             organization=setup_dict["org"],
             property_name="test_property",
             event_name="test_event",
@@ -267,7 +267,7 @@ class TestCalculateBillableMetric:
             auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
-        billable_metric = BillableMetric.objects.create(
+        billable_metric = Metric.objects.create(
             organization=setup_dict["org"],
             event_name="number_of_users",
             property_name="number",
@@ -275,7 +275,9 @@ class TestCalculateBillableMetric:
             metric_type=METRIC_TYPE.STATEFUL,
         )
         time_created = now_utc() - relativedelta(days=21)
-        customer = baker.make(Customer, organization=setup_dict["org"])
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="foo"
+        )
         event_times = [time_created] + [
             time_created + relativedelta(days=i) for i in range(19)
         ]
@@ -339,7 +341,7 @@ class TestCalculateBillableMetric:
             auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
-        billable_metric = BillableMetric.objects.create(
+        billable_metric = Metric.objects.create(
             organization=setup_dict["org"],
             event_name="number_of_users",
             property_name="number",
@@ -414,7 +416,7 @@ class TestCalculateBillableMetric:
             auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
-        billable_metric = BillableMetric.objects.create(
+        billable_metric = Metric.objects.create(
             organization=setup_dict["org"],
             event_name="rows_inserted",
             property_name="num_rows",
@@ -513,7 +515,7 @@ class TestCalculateBillableMetric:
             auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
-        billable_metric = BillableMetric.objects.create(
+        billable_metric = Metric.objects.create(
             organization=setup_dict["org"],
             event_name="number_of_users",
             property_name="number",

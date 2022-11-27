@@ -40,6 +40,7 @@ def generate_invoice(
     charge_next_plan=False,
     flat_fee_behavior="prorate",
     include_usage=True,
+    issue_date=None,
 ):
     """
     Generate an invoice for a subscription.
@@ -54,7 +55,8 @@ def generate_invoice(
 
     assert flat_fee_behavior in ["refund", "full_amount", "prorate"]
 
-    issue_date = now_utc()
+    if not issue_date:
+        issue_date = now_utc()
 
     customer = subscription.customer
     organization = subscription.organization
@@ -140,7 +142,7 @@ def generate_invoice(
         if billing_plan.transition_to:
             next_bp = billing_plan.transition_to.display_version
         elif billing_plan.replace_with:
-            next_bp = subscription.replace_with
+            next_bp = billing_plan.replace_with
         else:
             next_bp = billing_plan
         if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
@@ -193,7 +195,7 @@ def generate_invoice(
         )
 
     subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
-    if subtotal < 0:
+    if subtotal < 0 and not draft:
         CustomerBalanceAdjustment.objects.create(
             customer=customer,
             amount=Money(-subtotal, "usd"),
@@ -201,9 +203,10 @@ def generate_invoice(
             created=issue_date,
             effective_at=issue_date,
         )
-    elif subtotal > 0:
+    elif subtotal > 0 and not draft:
         balance_adjustment = min(subtotal, customer_balance)
         if balance_adjustment > 0:
+            subscription.flat_fee_already_billed += balance_adjustment
             CustomerBalanceAdjustment.objects.create(
                 customer=customer,
                 amount=Money(-balance_adjustment, "usd"),
@@ -222,6 +225,8 @@ def generate_invoice(
             )
 
     invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    if abs(invoice.cost_due.amount) < 0.01 and not draft:
+        invoice.payment_status = INVOICE_STATUS.PAID
     invoice.save()
 
     if not draft:
