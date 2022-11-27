@@ -1,20 +1,28 @@
 import json
-
 import requests
+from svix.api import Svix, MessageIn
+from django.conf import settings
+from metering_billing.utils import (
+    now_utc,
+)
 
 
-def invoice_created_webhook(data, organization):
-    from .models import Alert
+SVIX_SECRET = settings.SVIX_SECRET
 
-    alert_list = Alert.objects.filter(organization=organization, type="webhook").values(
-        "webhook_url"
+
+def invoice_created_webhook(invoice, organization):
+
+    now = now_utc()
+    svix = Svix("AUTH_TOKEN")
+    svix.message.create(
+        organization.organization_id,
+        MessageIn(
+            event_type="invoice.created",
+            event_id=invoice.invoice_id,
+            payload={
+                "attempt": 2,
+                "created_at": now,
+                "properties": invoice,
+            },
+        ),
     )
-    data["webhook_name"] = "invoice.created"
-
-    for alert in alert_list:
-        webhook_url = alert["webhook_url"]
-        requests.post(
-            webhook_url,
-            data=json.dumps(data),
-            headers={"Content-Type": "application/json"},
-        )

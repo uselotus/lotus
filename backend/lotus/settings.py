@@ -18,6 +18,7 @@ from pathlib import Path
 import dj_database_url
 import django_heroku
 import posthog
+from svix.api import Svix, SvixAsync, ApplicationIn
 import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
@@ -104,6 +105,11 @@ else:
     ALLOWED_HOSTS = [
         "*uselotus.io",
     ]
+
+# Webhooks for Svix
+SVIX_SECRET = config("SVIX_SECRET", default="")
+SVIX = Svix(SVIX_SECRET)
+
 
 # Application definition
 

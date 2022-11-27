@@ -23,9 +23,12 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from svix.api import Svix, ApplicationIn
+
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
+SVIX_SECRET = settings.SVIX_SECRET
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -228,6 +231,13 @@ class RegisterView(LoginViewMixin, APIView):
             org = Organization.objects.create(
                 company_name=reg_dict["company_name"],
             )
+
+            # Create Svix app
+            svix = Svix(SVIX_SECRET)
+            svix_app = svix.application.create(
+                ApplicationIn(uid=org.organization_id, name=org.company_name)
+            )
+
             token = None
             if META:
                 lotus_python.create_customer(

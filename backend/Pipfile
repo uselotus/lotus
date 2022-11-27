@@ -46,6 +46,7 @@ django-activity-stream = "*"
 dj-stripe = "*"
 lotus-python = ">=0.1.1"
 cronitor = "*"
+svix = "*"
 
 [dev-packages]
 platformdirs = "*"
