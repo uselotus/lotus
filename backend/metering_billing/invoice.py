@@ -15,7 +15,9 @@ from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
+    convert_to_datetime,
     convert_to_decimal,
+    date_as_max_dt,
     date_as_min_dt,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
@@ -81,7 +83,7 @@ def generate_invoice(
             usg_rev = plan_component.calculate_total_revenue(subscription)
             subperiods = usg_rev["subperiods"]
             for subperiod in subperiods:
-                InvoiceLineItem.objects.create(
+                ili = InvoiceLineItem.objects.create(
                     name=plan_component.billable_metric.billable_metric_name,
                     start_date=subperiod["start_date"],
                     end_date=subperiod["end_date"],
@@ -91,6 +93,9 @@ def generate_invoice(
                     invoice=invoice,
                     associated_plan_version=subscription.billing_plan,
                 )
+                if "unique_identifier" in subperiod:
+                    ili.metadata = subperiod["unique_identifier"]
+                    ili.save()
     # flat fee calculation for current plan
     if not flat_fee_behavior == "refund":
         flat_costs_dict_list = sorted(
@@ -129,8 +134,8 @@ def generate_invoice(
             billing_plan_version = cur_bp.version
             InvoiceLineItem.objects.create(
                 name=f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                start_date=start,
-                end_date=end,
+                start_date=convert_to_datetime(start, date_behavior="min"),
+                end_date=convert_to_datetime(end, date_behavior="max"),
                 quantity=1,
                 subtotal=amount,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,

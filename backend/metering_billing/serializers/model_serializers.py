@@ -40,7 +40,8 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS,
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_GRANULARITY,
-    PAYMENT_PROVIDERS,
+    ORGANIZATION_STATUS,
+    PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
@@ -58,28 +59,23 @@ class OrganizationUserSerializer(serializers.ModelSerializer):
         fields = ("username", "email", "role", "status")
 
     role = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
+    status = serializers.ChoiceField(
+        choices=ORGANIZATION_STATUS.choices, default=ORGANIZATION_STATUS.ACTIVE
+    )
 
     def get_role(self, obj) -> str:
         return "Admin"
-
-    def get_status(self, obj) -> str:
-        return "Active"
 
 
 class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("email", "role", "status")
+        fields = ("email", "role")
 
     role = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
 
     def get_role(self, obj) -> str:
         return "Admin"
-
-    def get_status(self, obj) -> str:
-        return "Invited"
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -104,7 +100,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
         invited_users_data = OrganizationInvitedUserSerializer(
             invited_users, many=True
         ).data
-        invited_users_data = [{**x, "username": ""} for x in invited_users_data]
+        invited_users_data = [
+            {**x, "status": ORGANIZATION_STATUS.INVITED, "username": ""}
+            for x in invited_users_data
+        ]
         return users_data + invited_users_data
 
 
@@ -306,6 +305,8 @@ class CategoricalFilterSerializer(serializers.ModelSerializer):
         model = CategoricalFilter
         fields = ("property_name", "operator", "comparison_value")
 
+    comparison_value = serializers.ListField(child=serializers.CharField())
+
 
 class NumericFilterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -325,8 +326,8 @@ class MetricSerializer(serializers.ModelSerializer):
             "event_type",
             "metric_type",
             "billable_metric_name",
-            # "numeric_filters",
-            # "categorical_filters",
+            "numeric_filters",
+            "categorical_filters",
             "properties",
             "is_cost_metric",
         )
@@ -336,12 +337,12 @@ class MetricSerializer(serializers.ModelSerializer):
             "event_name": {"required": True},
         }
 
-    # numeric_filters = NumericFilterSerializer(
-    #     many=True, allow_null=True, required=False
-    # )
-    # categorical_filters = CategoricalFilterSerializer(
-    #     many=True, allow_null=True, required=False
-    # )
+    numeric_filters = NumericFilterSerializer(
+        many=True, allow_null=True, required=False, read_only=False
+    )
+    categorical_filters = CategoricalFilterSerializer(
+        many=True, allow_null=True, required=False, read_only=False
+    )
     granularity = serializers.ChoiceField(
         choices=METRIC_GRANULARITY.choices,
         required=False,
@@ -493,8 +494,21 @@ class PriceTierSerializer(serializers.ModelSerializer):
 class PlanComponentSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanComponent
-        fields = ("billable_metric_name", "billable_metric", "tiers")
+        fields = (
+            "billable_metric_name",
+            "billable_metric",
+            "tiers",
+            "separate_by",
+            "proration_granularity",
+        )
         read_only_fields = ["billable_metric"]
+
+    separate_by = serializers.ListField(child=serializers.CharField(), required=False)
+    proration_granularity = serializers.ChoiceField(
+        choices=METRIC_GRANULARITY.choices,
+        required=False,
+        default=METRIC_GRANULARITY.TOTAL,
+    )
 
     # READ-ONLY
     billable_metric = MetricSerializer(read_only=True)
@@ -524,9 +538,66 @@ class PlanComponentSerializer(serializers.ModelSerializer):
                 assert tiers_sorted[i + 1]["range_start"] - tier[
                     "range_end"
                 ] <= Decimal(1), "All tiers must be contiguous"
-            return data
+
+            pr_gran = data.get("proration_granularity")
+            metric_granularity = data.get("billable_metric").granularity
+            if pr_gran == METRIC_GRANULARITY.SECOND:
+                if metric_granularity == METRIC_GRANULARITY.SECOND:
+                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
+            elif pr_gran == METRIC_GRANULARITY.MINUTE:
+                assert metric_granularity not in [
+                    METRIC_GRANULARITY.SECOND,
+                ], "Metric granularity cannot be finer than proration granularity"
+                if metric_granularity == METRIC_GRANULARITY.MINUTE:
+                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
+            elif pr_gran == METRIC_GRANULARITY.HOUR:
+                assert metric_granularity not in [
+                    METRIC_GRANULARITY.SECOND,
+                    METRIC_GRANULARITY.MINUTE,
+                ], "Metric granularity cannot be finer than proration granularity"
+                if metric_granularity == METRIC_GRANULARITY.HOUR:
+                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
+            elif pr_gran == METRIC_GRANULARITY.DAY:
+                assert metric_granularity not in [
+                    METRIC_GRANULARITY.SECOND,
+                    METRIC_GRANULARITY.MINUTE,
+                    METRIC_GRANULARITY.HOUR,
+                ], "Metric granularity cannot be finer than proration granularity"
+                if metric_granularity == METRIC_GRANULARITY.DAY:
+                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
+            elif pr_gran == METRIC_GRANULARITY.MONTH:
+                assert metric_granularity not in [
+                    METRIC_GRANULARITY.SECOND,
+                    METRIC_GRANULARITY.MINUTE,
+                    METRIC_GRANULARITY.HOUR,
+                    METRIC_GRANULARITY.DAY,
+                ], "Metric granularity cannot be finer than proration granularity"
+                if metric_granularity == METRIC_GRANULARITY.MONTH:
+                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
+            elif pr_gran == METRIC_GRANULARITY.QUARTER:
+                assert metric_granularity not in [
+                    METRIC_GRANULARITY.SECOND,
+                    METRIC_GRANULARITY.MINUTE,
+                    METRIC_GRANULARITY.HOUR,
+                    METRIC_GRANULARITY.DAY,
+                    METRIC_GRANULARITY.MONTH,
+                ], "Metric granularity cannot be finer than proration granularity"
+                if metric_granularity == METRIC_GRANULARITY.QUARTER:
+                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
+            elif pr_gran == METRIC_GRANULARITY.YEAR:
+                assert metric_granularity not in [
+                    METRIC_GRANULARITY.SECOND,
+                    METRIC_GRANULARITY.MINUTE,
+                    METRIC_GRANULARITY.HOUR,
+                    METRIC_GRANULARITY.DAY,
+                    METRIC_GRANULARITY.MONTH,
+                    METRIC_GRANULARITY.QUARTER,
+                ], "Metric granularity cannot be finer than proration granularity"
+                if metric_granularity == METRIC_GRANULARITY.YEAR:
+                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
         except AssertionError as e:
             raise serializers.ValidationError(str(e))
+        return data
 
     def create(self, validated_data):
         tiers = validated_data.pop("tiers")
@@ -736,6 +807,16 @@ class PlanVersionSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
+        # make sure every plan component has a unique metric
+        if data.get("plan_components"):
+            component_metrics = []
+            for component in data.get("plan_components"):
+                if component.get("metric") in component_metrics:
+                    raise serializers.ValidationError(
+                        "Plan components must have unique metrics."
+                    )
+                else:
+                    component_metrics.append(component.get("metric"))
         if data.get("make_active") and not data.get("make_active_type"):
             raise serializers.ValidationError(
                 "make_active_type must be specified when make_active is True"
@@ -941,6 +1022,16 @@ class PlanSerializer(serializers.ModelSerializer):
                 "either both or none of target_customer and parent_plan must be set"
             )
         data["initial_version"] = plan_version
+        for component in plan_version.get("components", {}):
+            proration_granularity = component.proration_granularity
+            metric_granularity = component.metric.granularity
+            if plan_version.plan_duration == PLAN_DURATION.MONTHLY:
+                assert metric_granularity not in [
+                    METRIC_GRANULARITY.YEAR,
+                    METRIC_GRANULARITY.QUARTER,
+                ]
+            elif plan_version.plan_duration == PLAN_DURATION.QUARTERLY:
+                assert metric_granularity not in [METRIC_GRANULARITY.YEAR]
         if initial_external_links:
             data["initial_external_links"] = initial_external_links
         return data
@@ -1483,6 +1574,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "balance_adjustments",
             "invoices",
             "total_amount_due",
+            "next_amount_due",
             "subscriptions",
             "integrations",
         )
@@ -1491,6 +1583,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     invoices = serializers.SerializerMethodField()
     balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
+    next_amount_due = serializers.SerializerMethodField()
 
     def get_subscriptions(self, obj) -> SubscriptionCustomerDetailSerializer(many=True):
         return SubscriptionCustomerDetailSerializer(
@@ -1513,3 +1606,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_total_amount_due(self, obj) -> float:
         total_amount_due = float(self.context.get("total_amount_due"))
         return total_amount_due
+
+    def get_next_amount_due(self, obj) -> float:
+        next_amount_due = float(self.context.get("next_amount_due"))
+        return next_amount_due

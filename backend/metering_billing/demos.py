@@ -23,7 +23,7 @@ from metering_billing.models import (
     Subscription,
     User,
 )
-from metering_billing.tasks import run_backtest
+from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
     date_as_max_dt,
     date_as_min_dt,
@@ -68,14 +68,14 @@ def setup_demo_3(company_name, username, email, password):
         )
         big_customers.append(customer)
     medium_customers = []
-    for _ in range(3):
+    for _ in range(2):
         customer = Customer.objects.create(
             organization=organization,
             customer_name="MediumCompany " + str(uuid.uuid4())[:6],
         )
         medium_customers.append(customer)
     small_customers = []
-    for _ in range(10):
+    for _ in range(5):
         customer = Customer.objects.create(
             organization=organization,
             customer_name="SmallCompany " + str(uuid.uuid4())[:6],
@@ -413,8 +413,8 @@ def setup_demo_3(company_name, username, email, password):
                 _quantity=n,
             )
             if months == 0:
-                generate_invoice(
-                    sub, issue_date=sub.start_date, flat_fee_behavior="full_amount"
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
             if months != 5:
                 next_plan = (
@@ -427,7 +427,9 @@ def setup_demo_3(company_name, username, email, password):
                 cur_replace_with = sub.billing_plan.replace_with
                 sub.billing_plan.replace_with = next_plan
                 sub.save()
-                generate_invoice(sub, issue_date=sub.end_date, charge_next_plan=True)
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.end_date, charge_next_plan=True
+                )
                 sub.billing_plan.replace_with = cur_replace_with
                 sub.save()
 
@@ -523,8 +525,8 @@ def setup_demo_3(company_name, username, email, password):
                 _quantity=n,
             )
             if months == 0:
-                generate_invoice(
-                    sub, issue_date=sub.start_date, flat_fee_behavior="full_amount"
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
             if months != 5:
                 plan = (
@@ -533,7 +535,9 @@ def setup_demo_3(company_name, username, email, password):
                 cur_replace_with = sub.billing_plan.replace_with
                 sub.billing_plan.replace_with = next_plan
                 sub.save()
-                generate_invoice(sub, issue_date=sub.end_date, charge_next_plan=True)
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.end_date, charge_next_plan=True
+                )
                 sub.billing_plan.replace_with = cur_replace_with
                 sub.save()
     for i, customer in enumerate(small_customers):
@@ -622,15 +626,17 @@ def setup_demo_3(company_name, username, email, password):
                 _quantity=n,
             )
             if months == 0:
-                generate_invoice(
-                    sub, issue_date=sub.start_date, flat_fee_behavior="full_amount"
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
             if months != 5:
                 plan = free_bp if months + 1 in [0, 1] else bp_10_compute_seats
                 cur_replace_with = sub.billing_plan.replace_with
                 sub.billing_plan.replace_with = next_plan
                 sub.save()
-                generate_invoice(sub, issue_date=sub.end_date, charge_next_plan=True)
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.end_date, charge_next_plan=True
+                )
                 sub.billing_plan.replace_with = cur_replace_with
                 sub.save()
     now = now_utc()
@@ -652,7 +658,7 @@ def setup_demo_3(company_name, username, email, password):
         original_plan=bp_10_compute_seats,
         new_plan=bp_10_og,
     )
-    run_backtest(backtest.backtest_id)
+    run_backtest.delay(backtest.backtest_id)
     return user
 
 

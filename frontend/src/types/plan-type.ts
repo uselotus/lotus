@@ -115,6 +115,8 @@ export interface CreateComponent extends Omit<Component, "billable_metric"> {
 export interface Component {
   billable_metric: MetricType;
   tiers: Tier[];
+  separate_by: string[];
+  proration_granularity: string;
   id?: number;
 }
 

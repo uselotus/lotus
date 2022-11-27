@@ -2,7 +2,11 @@ import React, { FC, useEffect, useState } from "react";
 import { Card, Button, Divider } from "antd";
 import MetricTable from "../components/Metrics/MetricTable";
 import { Metrics } from "../api/api";
-import { MetricType } from "../types/metric-type";
+import {
+  CateogricalFilterType,
+  MetricType,
+  NumericFilterType,
+} from "../types/metric-type";
 import {
   useQuery,
   UseQueryResult,
@@ -92,6 +96,32 @@ const ViewMetrics: FC = () => {
       event_type: state.metric_type === "stateful" ? state.event_type : "delta",
       is_cost_metric: state.is_cost_metric,
     };
+
+    if (state.filters) {
+      const numericFilters: NumericFilterType[] = [];
+      const categoricalFilters: CateogricalFilterType[] = [];
+      for (let i = 0; i < state.filters.length; i++) {
+        if (
+          state.filters[i].operator === "isin" ||
+          state.filters[i].operator === "isnotin"
+        ) {
+          categoricalFilters.push({
+            property_name: state.filters[i].property_name,
+            operator: state.filters[i].operator,
+            comparison_value: [state.filters[i].comparison_value],
+          });
+        } else {
+          numericFilters.push({
+            property_name: state.filters[i].property_name,
+            operator: state.filters[i].operator,
+            comparison_value: parseFloat(state.filters[i].comparison_value),
+          });
+        }
+      }
+      metricInstance.numeric_filters = numericFilters;
+      metricInstance.categorical_filters = categoricalFilters;
+    }
+
     mutation.mutate(metricInstance);
   };
 

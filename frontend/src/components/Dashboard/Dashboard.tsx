@@ -71,6 +71,8 @@ const Dashboard: FC = () => {
               <RevenueDisplay
                 total_revenue_1={data?.total_revenue_period_1}
                 total_revenue_2={data?.total_revenue_period_2}
+                earned_revenue_1={data?.earned_revenue_period_1}
+                earned_revenue_2={data?.earned_revenue_period_2}
                 isLoading={isLoading}
               />
             </div>
