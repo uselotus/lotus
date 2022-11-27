@@ -129,9 +129,10 @@ class EventSerializer(serializers.ModelSerializer):
 
     def get_customer(self, obj) -> str:
         try:
-            return obj.customer.customer_id
+            ret = obj.customer.customer_id
         except:
-            return obj.cust_id
+            ret = obj.cust_id
+        return ret
 
 
 class AlertSerializer(serializers.ModelSerializer):
@@ -691,7 +692,7 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
             "transition_to_plan_version_id", None
         )
         if transition_to_plan:
-            instance.transition_to = transition_to_plan.display_version
+            instance.transition_to = transition_to_plan
         elif transition_to_plan_version:
             instance.transition_to = transition_to_plan_version
         instance.save()
@@ -850,9 +851,11 @@ class PlanVersionSerializer(serializers.ModelSerializer):
                 if make_active
                 else PLAN_VERSION_STATUS.INACTIVE
             )
+        if transition_to_plan:
+            validated_data.pop("transition_to_plan_id")
         billing_plan = PlanVersion.objects.create(**validated_data)
         if transition_to_plan:
-            billing_plan.transition_to = transition_to_plan.display_version
+            billing_plan.transition_to = transition_to_plan
         # elif transition_to_plan_version:
         #     billing_plan.transition_to = transition_to_plan_version
         org = billing_plan.organization
@@ -1036,8 +1039,11 @@ class PlanSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         display_version_data = validated_data.pop("initial_version")
         initial_external_links = validated_data.get("initial_external_links")
+        transition_to_plan_id = validated_data.get("transition_to_plan_id")
         if initial_external_links:
             validated_data.pop("initial_external_links")
+        if transition_to_plan_id:
+            display_version_data.pop("transition_to_plan_id")
         plan = Plan.objects.create(**validated_data)
         try:
             display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE

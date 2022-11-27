@@ -135,15 +135,18 @@ const Login: FC = () => {
                 </Link>
               </Form>
             </Card>
-            <div>
-              <Button
-                type="primary"
-                className="w-full"
-                onClick={() => navigate("/register")}
-              >
-                Sign Up
-              </Button>
-            </div>
+            {(import.meta.env.VITE_API_URL !== "https://api.uselotus.io/" ||
+              import.meta.env.IS_DEMO == "true") && (
+              <div>
+                <Button
+                  type="primary"
+                  className="w-full"
+                  onClick={() => navigate("/register")}
+                >
+                  Sign Up
+                </Button>
+              </div>
+            )}
           </div>
           {mutation.isLoading && <LoadingSpinner />}
         </div>

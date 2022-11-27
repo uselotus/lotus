@@ -23,7 +23,10 @@ interface Props {
 
 const BacktestSubstitution: FC<Props> = ({ substitution }) => {
   const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
+  const dataFormatterNumber = (number: number) =>
+    Math.round((number + Number.EPSILON) * 100) / 100;
   const [revenueLineGraph, setRevenueLineGraph] = React.useState<any>([]);
+  const [revenuePerMetric, setRevenuePerMetric] = React.useState<any>([]);
   const categories = [
     substitution.original_plan.plan_name,
     "[new]" + substitution.new_plan.plan_name,
@@ -116,6 +119,19 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
           newRevLineGraph[i]["new_plan_revenue"];
       }
       setRevenueLineGraph(newRevLineGraph);
+
+      const newRevPerMetric = substitution.results.revenue_by_metric;
+
+      for (let j = 0; j < newRevPerMetric.length; j++) {
+        newRevPerMetric[j]["original_plan_revenue"] = dataFormatterNumber(
+          newRevPerMetric[j]["original_plan_revenue"]
+        );
+        newRevPerMetric[j]["new_plan_revenue"] = dataFormatterNumber(
+          newRevPerMetric[j]["new_plan_revenue"]
+        );
+      }
+
+      setRevenuePerMetric(substitution.results.revenue_by_metric);
     }
   }, [substitution.results.cumulative_revenue]);
 

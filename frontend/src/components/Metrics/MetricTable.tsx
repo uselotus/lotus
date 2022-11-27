@@ -106,6 +106,17 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       ),
     },
     {
+      title: "Is Cost",
+      dataIndex: "billable_metric_name",
+      align: "left",
+      width: 30,
+      render: (_, record) => (
+        <div className="self-center">
+          {record.is_cost_metric === true && <Tag>Cost</Tag>}
+        </div>
+      ),
+    },
+    {
       title: "Type",
       width: 100,
       dataIndex: "metric_type",
@@ -113,9 +124,9 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       render: (_, record) => {
         {
           if (record.metric_type === "stateful") {
-            return "continuous";
+            return <p>continuous</p>;
           }
-          return "counter";
+          return <p>counter</p>;
         }
       },
     },

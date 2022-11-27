@@ -275,6 +275,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             usagecomponentslist.push(usagecomponent);
           }
         }
+        if (values.usage_billing_frequency === "yearly") {
+          values.usage_billing_frequency = "end_of_period";
+        }
 
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
@@ -283,7 +286,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
-          // usage_billing_frequency: values.usage_billing_frequency,
+          usage_billing_frequency: values.usage_billing_frequency,
         };
         if (
           values.price_adjustment_type !== undefined &&
@@ -319,7 +322,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: planFeatures,
-            // usage_billing_frequency: values.usage_billing_frequency,
+            usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
           };
@@ -398,7 +401,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             description: plan.versions[versionIndex].description,
             flat_rate: plan.versions[versionIndex].flat_rate,
             pay_in_advance: plan.versions[versionIndex].flat_fee_billing_type,
-            // usage_billing_frequency: plan.versions[versionIndex].usage_billing_frequency,
+            usage_billing_frequency:
+              plan.versions[versionIndex].usage_billing_frequency,
             plan_duration: plan.plan_duration,
             flat_fee_billing_type:
               plan.versions[versionIndex].flat_fee_billing_type,
@@ -417,88 +421,100 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           labelAlign="left"
         >
           <Row gutter={[24, 24]}>
-            <Col span={10}>
-              <Card
-                title="Plan Information"
-                style={{
-                  borderRadius: "0.5rem",
-                  borderWidth: "2px",
-                  borderColor: "#EAEAEB",
-                  borderStyle: "solid",
-                }}
-              >
-                <Form.Item label="Plan Name" name="name">
-                  <Input
-                    placeholder="Ex: Starter Plan"
-                    disabled={type === "version" ? true : false}
-                  />
-                </Form.Item>
-                <Form.Item label="Description" name="description">
-                  <Input
-                    disabled={type === "version" ? true : false}
-                    type="textarea"
-                    placeholder="Ex: Cheapest plan for small scale businesses"
-                  />
-                </Form.Item>
-                <Form.Item label="Plan Duration" name="plan_duration">
-                  <Radio.Group
-                    disabled={type === "version" ? true : false}
-                    onChange={(e) => {
-                      if (e.target.value === "monthly") {
-                        setAvailableBillingTypes([
-                          { label: "Monthly", name: "monthly" },
-                        ]);
-                      } else if (e.target.value === "quarterly") {
-                        setAvailableBillingTypes([
-                          { label: "Monthly", name: "monthly" },
-                          { label: "Quarterly", name: "quarterly" },
-                        ]);
-                      } else {
-                        setAvailableBillingTypes([
-                          { label: "Monthly", name: "monthly" },
-                          { label: "Quarterly", name: "quarterly" },
-                          { label: "Yearly", name: "yearly" },
-                        ]);
-                      }
-                    }}
-                  >
-                    <Radio value="monthly">Monthly</Radio>
-                    <Radio value="quarterly">Quarterly</Radio>
-                    <Radio value="yearly">Yearly</Radio>
-                  </Radio.Group>
-                </Form.Item>
+            <Col span={12}>
+              <Row gutter={[24, 24]}>
+                <Col span="24">
+                  <Card title="Plan Information">
+                    <Form.Item label="Plan Name" name="name">
+                      <Input
+                        placeholder="Ex: Starter Plan"
+                        disabled={type === "version" ? true : false}
+                      />
+                    </Form.Item>
+                    <Form.Item label="Description" name="description">
+                      <Input
+                        disabled={type === "version" ? true : false}
+                        type="textarea"
+                        placeholder="Ex: Cheapest plan for small scale businesses"
+                      />
+                    </Form.Item>
+                    <Form.Item label="Plan Duration" name="plan_duration">
+                      <Radio.Group
+                        disabled={type === "version" ? true : false}
+                        onChange={(e) => {
+                          if (e.target.value === "monthly") {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                            ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "monthly"
+                            );
+                          } else if (e.target.value === "quarterly") {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                            ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "quarterly"
+                            );
+                          } else {
+                            setAvailableBillingTypes([
+                              { label: "Monthly", name: "monthly" },
+                              { label: "Quarterly", name: "quarterly" },
+                              { label: "Yearly", name: "yearly" },
+                            ]);
+                          }
+                        }}
+                      >
+                        <Radio value="monthly">Monthly</Radio>
+                        <Radio value="quarterly">Quarterly</Radio>
+                        <Radio value="yearly">Yearly</Radio>
+                      </Radio.Group>
+                    </Form.Item>
 
-                <Form.Item name="flat_rate" label="Base Cost">
-                  <InputNumber addonBefore="$" defaultValue={0} precision={2} />
-                </Form.Item>
-                <Form.Item
-                  name="flat_fee_billing_type"
-                  label="Recurring Billing Type"
-                >
-                  <Select>
-                    <Select.Option value="in_advance">
-                      Pay in advance
-                    </Select.Option>
-                    <Select.Option value="in_arrears">
-                      Pay in arrears
-                    </Select.Option>
-                  </Select>
-                </Form.Item>
-                <Form.Item
-                  name="transition_to_plan_id"
-                  label="Plan on next cycle"
-                >
-                  <Select>
-                    {allPlans.map((plan) => (
-                      <Select.Option value={plan.plan_id}>
-                        {plan.plan_name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Card>
+                    <Form.Item name="flat_rate" label="Base Cost">
+                      <InputNumber
+                        addonBefore="$"
+                        defaultValue={0}
+                        precision={2}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="flat_fee_billing_type"
+                      label="Recurring Billing Type"
+                    >
+                      <Select>
+                        <Select.Option value="in_advance">
+                          Pay in advance
+                        </Select.Option>
+                        <Select.Option value="in_arrears">
+                          Pay in arrears
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      name="transition_to_plan_id"
+                      label="Plan on next cycle"
+                    >
+                      <Select>
+                        {allPlans.map((item) => (
+                          <Select.Option
+                            key={item.plan_id}
+                            value={item.plan_id}
+                          >
+                            {plan.plan_id === item.plan_id
+                              ? "Self"
+                              : item.plan_name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </Card>
+                </Col>
+              </Row>
             </Col>
-
             <Col span={14}>
               <Card
                 title="Added Components"
@@ -530,7 +546,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                {/* <div className="absolute inset-x-0 bottom-0 justify-center">
+                <div className="absolute inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -553,7 +569,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div> */}
+                </div>
               </Card>
             </Col>
             <Col span="24">
