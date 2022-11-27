@@ -46,6 +46,8 @@ const CreateMetricForm = (props: {
   //   }
   // }, [props.visible]);
 
+  const [costMetric, setCostMetric] = useState(false);
+
   const changeFormPreset = (preset: string) => {
     switch (preset) {
       case "none":
@@ -57,6 +59,7 @@ const CreateMetricForm = (props: {
       case "seats":
         setEventType("stateful");
         setRate(false);
+        setCostMetric(false);
 
         form.setFieldsValue({
           aggregation_type_2: "max",
@@ -71,6 +74,7 @@ const CreateMetricForm = (props: {
       case "calls":
         setEventType("counter");
         setRate(false);
+        setCostMetric(false);
 
         form.setFieldsValue({
           usage_aggregation_type: "count",
@@ -82,6 +86,7 @@ const CreateMetricForm = (props: {
       case "rate":
         setEventType("counter");
         setRate(true);
+        setCostMetric(false);
 
         form.setFieldsValue({
           usage_aggregation_type: "sum",
@@ -109,6 +114,7 @@ const CreateMetricForm = (props: {
         form
           .validateFields()
           .then((values) => {
+            values.is_cost_metric = costMetric;
             if (rate) {
               values.metric_type = "rate";
             }
@@ -185,33 +191,52 @@ const CreateMetricForm = (props: {
           </Form.Item>
         </div>
 
-        <Form.Item
-          name="metric_type"
-          className="justify-center"
-          label="Type"
-          rules={[
-            {
-              required: true,
-              message: "Metric type is required",
-            },
-          ]}
-        >
-          <Radio.Group
-            optionType="button"
-            buttonStyle="solid"
-            value={eventType}
-            defaultValue={eventType}
-            onChange={(e) => {
-              setEventType(e.target.value);
-              if (e.target.value === "counter") {
-                setRate(false);
-              }
-            }}
+        <div className="grid grid-cols-2 gap-4">
+          <Form.Item
+            name="metric_type"
+            className="justify-center"
+            label="Type"
+            rules={[
+              {
+                required: true,
+                message: "Metric type is required",
+              },
+            ]}
           >
-            <Radio value="counter">Counter</Radio>
-            <Radio value="stateful">Continuous</Radio>
-          </Radio.Group>
-        </Form.Item>
+            <Radio.Group
+              optionType="button"
+              buttonStyle="solid"
+              value={eventType}
+              defaultValue={eventType}
+              onChange={(e) => {
+                setEventType(e.target.value);
+                if (e.target.value === "counter") {
+                  setRate(false);
+                }
+              }}
+            >
+              <Radio value="counter">Counter</Radio>
+              <Radio value="stateful">Continuous</Radio>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item label="Does this metric represent a cost?">
+            <Switch
+              checked={costMetric}
+              onChange={() => {
+                setCostMetric(!costMetric);
+                if (!costMetric) {
+                  form.setFieldsValue({
+                    is_cost_metric: false,
+                  });
+                } else {
+                  form.setFieldsValue({
+                    is_cost_metric: true,
+                  });
+                }
+              }}
+            />
+          </Form.Item>
+        </div>
         <Form.Item
           noStyle
           shouldUpdate={(prevValues, currentValues) =>

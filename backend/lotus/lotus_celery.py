@@ -3,6 +3,8 @@ import ssl
 
 from celery import Celery
 from django.conf import settings
+import cronitor.celery
+
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "lotus.settings")
@@ -27,10 +29,11 @@ celery = Celery("lotus", **celery_kwargs)
 #   should have a `CELERY_` prefix.
 celery.config_from_object("django.conf:settings", namespace="CELERY")
 
+
+CRONITOR_API_KEY = settings.CRONITOR_API_KEY
+if CRONITOR_API_KEY and CRONITOR_API_KEY != "":
+    cronitor.celery.initialize(celery, api_key=os.environ.get("CRONITOR_API_KEY"))
+
+
 # Load task modules from all registered Django apps.
 celery.autodiscover_tasks()  # lambda: settings.INSTALLED_APPS)
-
-
-@celery.task(bind=True, ignore_result=True)
-def debug_task(self):
-    print(f"Request: {self.request!r}")

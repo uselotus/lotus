@@ -94,6 +94,7 @@ const ViewMetrics: FC = () => {
       billable_aggregation_type: state.billable_aggregation_type,
       //defaults for now
       event_type: state.metric_type === "stateful" ? state.event_type : "delta",
+      is_cost_metric: state.is_cost_metric,
     };
 
     if (state.filters) {
@@ -147,12 +148,8 @@ const ViewMetrics: FC = () => {
           <MetricTable metricArray={data} />
         )}
         {isError && <div className=" text-danger">Something went wrong</div>}
-        <Card className="flex flex-row justify-center h-full  bg-grey1">
-          <h1 className="text-2xl font-main mb-5">Event Stream</h1>
-          <Divider />
-          <div>
-            <EventPreview />
-          </div>
+        <Card className="flex flex-row justify-center h-full">
+          <EventPreview />
         </Card>
         <CreateMetricForm
           state={metricState}
