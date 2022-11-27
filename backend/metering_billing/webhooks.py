@@ -11,18 +11,18 @@ SVIX_SECRET = settings.SVIX_SECRET
 
 
 def invoice_created_webhook(invoice, organization):
-
-    now = now_utc()
-    svix = Svix("AUTH_TOKEN")
-    svix.message.create(
-        organization.organization_id,
-        MessageIn(
-            event_type="invoice.created",
-            event_id=invoice.invoice_id,
-            payload={
-                "attempt": 2,
-                "created_at": now,
-                "properties": invoice,
-            },
-        ),
-    )
+    if SVIX_SECRET != "":
+        now = now_utc()
+        svix = Svix("AUTH_TOKEN")
+        svix.message.create(
+            organization.organization_id,
+            MessageIn(
+                event_type="invoice.created",
+                event_id=invoice.invoice_id,
+                payload={
+                    "attempt": 2,
+                    "created_at": now,
+                    "properties": invoice,
+                },
+            ),
+        )

@@ -108,7 +108,6 @@ else:
 
 # Webhooks for Svix
 SVIX_SECRET = config("SVIX_SECRET", default="")
-SVIX = Svix(SVIX_SECRET)
 
 
 # Application definition

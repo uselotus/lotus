@@ -233,10 +233,12 @@ class RegisterView(LoginViewMixin, APIView):
             )
 
             # Create Svix app
-            svix = Svix(SVIX_SECRET)
-            svix_app = svix.application.create(
-                ApplicationIn(uid=org.organization_id, name=org.company_name)
-            )
+
+            if SVIX_SECRET != "":
+                svix = Svix(SVIX_SECRET)
+                svix_app = svix.application.create(
+                    ApplicationIn(uid=org.organization_id, name=org.company_name)
+                )
 
             token = None
             if META:
