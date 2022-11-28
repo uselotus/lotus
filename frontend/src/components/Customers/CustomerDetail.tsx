@@ -232,13 +232,13 @@ function CustomerDetail(props: {
                   balanceAdjustments={data?.balance_adjustments}
                 />
               </Tabs.TabPane>
-              <Tabs.TabPane tab="Integrations" key="integrations">
+              {/* <Tabs.TabPane tab="Integrations" key="integrations">
                 {data?.integrations ? (
                   <CustomerIntegrations integrations={data?.integrations} />
                 ) : (
                   <h2> No Integrations </h2>
                 )}
-              </Tabs.TabPane>{" "}
+              </Tabs.TabPane>{" "} */}
             </Tabs>
           </div>
         </div>
