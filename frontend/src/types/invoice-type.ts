@@ -9,6 +9,14 @@ export interface InvoiceType {
   external_payment_obj_type: string;
 }
 
+export interface DraftInvoiceType {
+  line_items: LineItem[];
+  cost_due: string;
+  cost_due_currency: string;
+  cust_connected_to_payment_provider: boolean;
+  org_connected_to_cust_payment_provider: boolean;
+}
+
 export interface BalanceAdjustments {
   amount: number;
   amount_currency: string;

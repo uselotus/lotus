@@ -10,6 +10,7 @@ import {
   Menu,
   Tag,
   Cascader,
+  Table,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
 import {
@@ -19,10 +20,12 @@ import {
   CancelSubscriptionType,
 } from "../../types/subscription-type";
 //import the Customer type from the api.ts file
-import { Customer, Plan } from "../../api/api";
+import { Customer, Plan, Invoices } from "../../api/api";
 import dayjs from "dayjs";
 
 import { CustomerDetailSubscription } from "../../types/customer-type";
+import { useQuery } from "react-query";
+import { DraftInvoiceType } from "../../types/invoice-type";
 
 interface Props {
   customer_id: string;
@@ -101,6 +104,15 @@ const SubscriptionView: FC<Props> = ({
       auto_renew: false,
     });
   };
+
+  const { data: invoiceData, isLoading: invoiceLoading } =
+    useQuery<DraftInvoiceType>(
+      ["draft_invoice", customer_id],
+      () => Invoices.getDraftInvoice(customer_id),
+      {
+        refetchInterval: 10000,
+      }
+    );
 
   useEffect(() => {
     if (plans !== undefined) {
@@ -251,11 +263,11 @@ const SubscriptionView: FC<Props> = ({
           {subscriptions.map((subscription) => (
             <List.Item>
               <Card className=" bg-grey3 w-full">
-                <div className="grid grid-cols-3 items-stretch">
+                <div className="grid grid-cols-2 items-stretch">
                   <h2 className="font-main font-bold">
                     {subscription.billing_plan_name}
                   </h2>
-                  <div className="flex flex-col justify-center space-y-3">
+                  <div className="grid grid-cols-2 justify-center space-y-3">
                     <p>
                       <b>Subscription ID: </b> {subscription.subscription_id}
                     </p>
@@ -264,13 +276,8 @@ const SubscriptionView: FC<Props> = ({
                       {dayjs(subscription.start_date).format(
                         "YYYY/MM/DD HH:mm"
                       )}{" "}
-                      UTC
                     </p>
-                    <p>
-                      <b>End Date:</b>{" "}
-                      {dayjs(subscription.end_date).format("YYYY/MM/DD HH:mm")}{" "}
-                      UTC
-                    </p>
+
                     <p>
                       <b>Renews:</b>{" "}
                       {subscription.auto_renew ? (
@@ -278,6 +285,10 @@ const SubscriptionView: FC<Props> = ({
                       ) : (
                         <Tag color="red">No</Tag>
                       )}
+                    </p>
+                    <p>
+                      <b>End Date:</b>{" "}
+                      {dayjs(subscription.end_date).format("YYYY/MM/DD HH:mm")}{" "}
                     </p>
                   </div>
                 </div>
@@ -292,6 +303,44 @@ const SubscriptionView: FC<Props> = ({
           <Dropdown overlay={cancelMenu} trigger={["click"]}>
             <Button>Cancel Subscription</Button>
           </Dropdown>
+        </div>
+        <div className="w-full space-y-8">
+          <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Draft Invoice</h2>
+          <div className="grid grid-cols-2">
+            <p>
+              <b>Invoice ID: </b> 23423
+            </p>
+            <p>
+              <b>Cost Due: </b> {invoiceData?.cost_due}
+            </p>
+            <p>
+              <b>Invoice Number: </b> {invoiceData?.cost_due}
+            </p>
+            <p>
+              <b>Currency: </b> {invoiceData?.cost_due_currency}
+            </p>
+          </div>
+          <Table
+            dataSource={invoiceData?.line_items}
+            columns={[
+              {
+                title: "Name",
+                dataIndex: "name",
+              },
+              {
+                title: "Quantity",
+                dataIndex: "quantity",
+              },
+              {
+                title: "Subtotal",
+                dataIndex: "subtotal",
+              },
+              {
+                title: "Billing Type",
+                dataIndex: "billing_type",
+              },
+            ]}
+          />
         </div>
       </div>
     </div>
