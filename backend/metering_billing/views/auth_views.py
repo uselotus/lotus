@@ -23,11 +23,10 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from svix.api import ApplicationIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
-SVIX_SECRET = settings.SVIX_SECRET
+SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -230,14 +229,6 @@ class RegisterView(LoginViewMixin, APIView):
             org = Organization.objects.create(
                 company_name=reg_dict["company_name"],
             )
-
-            # Create Svix app
-
-            if SVIX_SECRET != "":
-                svix = Svix(SVIX_SECRET)
-                svix_app = svix.application.create(
-                    ApplicationIn(uid=org.organization_id, name=org.company_name)
-                )
 
             token = None
             if META:

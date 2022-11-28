@@ -71,6 +71,8 @@ STRIPE_SECRET_KEY = (
 DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+# Webhooks for Svix
+SVIX_API_KEY = config("SVIX_API_KEY", default="")
 
 
 # Optional Observalility Services
@@ -113,8 +115,6 @@ else:
         "*uselotus.io",
     ]
 
-# Webhooks for Svix
-SVIX_SECRET = config("SVIX_SECRET", default="")
 
 
 # Application definition

@@ -61,8 +61,10 @@ from metering_billing.utils.enums import (
 )
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
+from svix.api import ApplicationIn, Svix
 
 META = settings.META
+SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class Organization(models.Model):
@@ -86,7 +88,15 @@ class Organization(models.Model):
                 raise ValueError(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
+        create_svix = False
+        if not self.pk:
+            create_svix = True
         super(Organization, self).save(*args, **kwargs)
+        if SVIX_API_KEY != "" and create_svix:
+                svix = Svix(SVIX_API_KEY)
+                svix_app = svix.application.create(
+                    ApplicationIn(uid=self.organization_id, name=self.company_name)
+                )
 
     @property
     def users(self):

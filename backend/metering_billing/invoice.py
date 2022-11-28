@@ -260,6 +260,8 @@ def generate_invoice(
         #         },
         # )
         invoice_data = InvoiceSerializer(invoice).data
+        invoice_data = make_all_decimals_floats(invoice_data)
+        invoice_data = make_all_dates_times_strings(invoice_data)
         invoice_created_webhook(invoice_data, organization)
 
     return invoice
