@@ -312,14 +312,10 @@ const SubscriptionView: FC<Props> = ({
             </h2>
             <div className="grid grid-cols-2">
               <p>
-                <b>Invoice ID: </b> 23423
+                <b>Currency: </b> {invoiceData[0].cost_due_currency}
               </p>
               <p>
                 <b>Cost Due: </b> {invoiceData[0].cost_due}
-              </p>
-              <p>{/* <b>Invoice Number: </b> {invoiceData?.cost_due} */}</p>
-              <p>
-                <b>Currency: </b> {invoiceData[0].cost_due_currency}
               </p>
             </div>
             <Table
