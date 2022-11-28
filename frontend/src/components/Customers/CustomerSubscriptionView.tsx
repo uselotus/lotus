@@ -305,7 +305,7 @@ const SubscriptionView: FC<Props> = ({
             <Button>Cancel Subscription</Button>
           </Dropdown>
         </div>
-        {invoiceData && (
+        {invoiceData && invoiceData.length > 0 && (
           <div className="w-full space-y-8">
             <h2 className="mb-2 pb-4 pt-4 font-bold text-main">
               Draft Invoice
