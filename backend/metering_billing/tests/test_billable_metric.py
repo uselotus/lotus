@@ -765,9 +765,7 @@ class TestCalculateMetric:
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test"
         )
-        event_times = [
-            time_created + relativedelta(days=i) for i in range(8)
-        ]
+        event_times = [time_created + relativedelta(days=i) for i in range(8)]
         print("event times", event_times)
         for groupby_dim_1 in ["foo", "bar"]:
             for groupby_dimension_2 in ["baz", "qux"]:
