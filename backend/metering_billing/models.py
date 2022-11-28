@@ -616,6 +616,7 @@ class PlanComponent(models.Model):
                 usage_normalization_factor = 1
             # extract usage
             separated_usage = all_usage.get(subscription.customer.customer_name, {})
+            print("separated_usage", separated_usage)
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
@@ -624,6 +625,8 @@ class PlanComponent(models.Model):
                         convert_to_decimal(sum(usage_by_period.values()))
                         * usage_normalization_factor
                     )
+                    print("length of usage_by_period", len(usage_by_period))
+                    print("usage by period", usage_by_period)
                     print("usage_qty", usage_qty)
                     print("period_start", period_start)
                     print("period_end", period_end)
@@ -632,9 +635,6 @@ class PlanComponent(models.Model):
                     )
                     print("nperiods_metric_granularity", nperiods_metric_granularity)
                     print("usage_normalization_factor", usage_normalization_factor)
-                    # print(
-                    #     "current_usage", billable_metric.get_current_usage(subscription)
-                    # )
                     usage_qty = convert_to_decimal(usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()
