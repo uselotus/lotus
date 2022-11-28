@@ -50,7 +50,9 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
         </p>
         <p>
           <b className="mr-2">Metric Type:</b>
-          <Tag>{metric.metric_type}</Tag>
+          {metric.metric_type === "stateful"
+            ? "continuous"
+            : metric.metric_type}
         </p>
         <p>
           <b className="mr-2">Per Time Unit:</b>{" "}
@@ -63,19 +65,23 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             {metric.usage_aggregation_type}
           </Tag>
         </p>
-        <p>
-          <b className="mr-2">Billable Aggregation Type:</b>
-          {!!metric.billable_aggregation_type ? (
-            <Tag>{metric.billable_aggregation_type}</Tag>
-          ) : (
-            "N/A"
-          )}
-        </p>
+        {metric.metric_type === "rate" && (
+          <p>
+            <b className="mr-2">Aggregation Type:</b>
+            {!!metric.billable_aggregation_type ? (
+              <Tag>{metric.billable_aggregation_type}</Tag>
+            ) : (
+              "N/A"
+            )}
+          </p>
+        )}
+        {metric.metric_type === "stateful" && (
+          <p>
+            <b className="mr-2">Event Type:</b>
+            {!!metric.event_type ? <Tag>{metric.event_type}</Tag> : "N/A"}
+          </p>
+        )}
 
-        <p>
-          <b className="mr-2">Event Type:</b>
-          {!!metric.event_type ? <Tag>{metric.event_type}</Tag> : "N/A"}
-        </p>
         <p>
           <b className="mr-2">Filters:</b>
         </p>
