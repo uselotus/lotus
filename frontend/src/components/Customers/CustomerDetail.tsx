@@ -32,21 +32,6 @@ import { toast } from "react-toastify";
 
 const { Option } = Select;
 
-const dummyData = {
-  stripe: {
-    key: "stripe_dummy_key",
-    account_type: "stripe_dummy_account",
-    name: "dummy name",
-    email: "abc@dummy.com",
-  },
-  paypal: {
-    key: "stripe_dummy_key",
-    account_type: "stripe_dummy_account",
-    name: "dummy name",
-    email: "abc@dummy.com",
-  },
-};
-
 function CustomerDetail(props: {
   visible: boolean;
   onCancel: () => void;
@@ -96,7 +81,7 @@ function CustomerDetail(props: {
   const createSubscriptionMutation = useMutation(
     (post: CreateSubscriptionType) => Customer.createSubscription(post),
     {
-      onSettled: () => {
+      onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription created successfully");
@@ -108,7 +93,7 @@ function CustomerDetail(props: {
     (obj: { subscription_id: string; post: CancelSubscriptionType }) =>
       Customer.cancelSubscription(obj.subscription_id, obj.post),
     {
-      onSettled: () => {
+      onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription cancelled successfully");
@@ -120,7 +105,7 @@ function CustomerDetail(props: {
     (obj: { subscription_id: string; post: ChangeSubscriptionPlanType }) =>
       Customer.changeSubscriptionPlan(obj.subscription_id, obj.post),
     {
-      onSettled: () => {
+      onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription switched successfully");
@@ -134,9 +119,10 @@ function CustomerDetail(props: {
       post: TurnSubscriptionAutoRenewOffType;
     }) => Customer.turnSubscriptionAutoRenewOff(obj.subscription_id, obj.post),
     {
-      onSettled: () => {
+      onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        toast.success("Subscription auto renew turned off");
       },
     }
   );
@@ -246,13 +232,13 @@ function CustomerDetail(props: {
                   balanceAdjustments={data?.balance_adjustments}
                 />
               </Tabs.TabPane>
-              <Tabs.TabPane tab="Integrations" key="integrations">
+              {/* <Tabs.TabPane tab="Integrations" key="integrations">
                 {data?.integrations ? (
                   <CustomerIntegrations integrations={data?.integrations} />
                 ) : (
                   <h2> No Integrations </h2>
                 )}
-              </Tabs.TabPane>{" "}
+              </Tabs.TabPane>{" "} */}
             </Tabs>
           </div>
         </div>

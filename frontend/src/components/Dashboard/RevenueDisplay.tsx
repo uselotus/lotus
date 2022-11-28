@@ -27,19 +27,21 @@ const displayMetric = (metric: number | undefined): number => {
 function RevenueDisplay(props: {
   total_revenue_1: number | undefined;
   total_revenue_2: number | undefined;
+  earned_revenue_1: number | undefined;
+  earned_revenue_2: number | undefined;
   isLoading: boolean;
 }) {
   const [percentageChange, setPercentageChange] = useState<number>(0);
   useEffect(() => {
     setPercentageChange(
-      computePercentageChange(props.total_revenue_1, props.total_revenue_2)
+      computePercentageChange(props.earned_revenue_1, props.earned_revenue_2)
     );
   }, [props.total_revenue_1, props.total_revenue_2]);
   return (
     <Paper color="white" border={true}>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">
         <div>
-          <p className="text-base font-normal mb-4">Total Revenue</p>
+          <p className="text-base font-normal mb-4">Earned Revenue</p>
           {props.isLoading ? (
             <LoadingSpinner />
           ) : (
@@ -47,7 +49,7 @@ function RevenueDisplay(props: {
               {new Intl.NumberFormat("en-US", {
                 style: "currency",
                 currency: "USD",
-              }).format(displayMetric(props.total_revenue_1))}
+              }).format(displayMetric(props.earned_revenue_1))}
             </span>
           )}
 

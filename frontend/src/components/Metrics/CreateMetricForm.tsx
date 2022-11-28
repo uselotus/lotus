@@ -1,13 +1,31 @@
-import { Modal, Form, Input, Select, Radio, Tooltip, Switch } from "antd";
+import {
+  Modal,
+  Form,
+  Input,
+  Select,
+  Radio,
+  Tooltip,
+  Switch,
+  Collapse,
+  Button,
+  InputNumber,
+} from "antd";
 import { MetricType } from "../../types/metric-type";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import React, { Fragment, useEffect, useState } from "react";
 const { Option } = Select;
+const { Panel } = Collapse;
 
 export interface CreateMetricState extends MetricType {
   title: string;
   usage_aggregation_type_2: string;
   property_name_2: string;
   granularity_2?: string;
+  filters?: {
+    property_name: string;
+    operator: string;
+    comparison_value: string;
+  }[];
 }
 
 const CreateMetricForm = (props: {
@@ -17,15 +35,19 @@ const CreateMetricForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
+  const statefulGranularity = Form.useWatch("granularity_2", form);
   const [eventType, setEventType] = useState("counter");
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
+  const [filters, setFilters] = useState();
 
   // useEffect(() => {
   //   if (props.visible === false) {
   //     form.resetFields();
   //   }
   // }, [props.visible]);
+
+  const [costMetric, setCostMetric] = useState(false);
 
   const changeFormPreset = (preset: string) => {
     switch (preset) {
@@ -38,13 +60,14 @@ const CreateMetricForm = (props: {
       case "seats":
         setEventType("stateful");
         setRate(false);
+        setCostMetric(false);
 
         form.setFieldsValue({
           aggregation_type_2: "max",
           event_name: "seats",
           metric_type: "stateful",
           property_name_2: "seat_count",
-          granularity_2: "days",
+          granularity_2: "total",
           billable_metric_name: "Seats",
           event_type: "total",
         });
@@ -52,6 +75,7 @@ const CreateMetricForm = (props: {
       case "calls":
         setEventType("counter");
         setRate(false);
+        setCostMetric(false);
 
         form.setFieldsValue({
           usage_aggregation_type: "count",
@@ -63,6 +87,7 @@ const CreateMetricForm = (props: {
       case "rate":
         setEventType("counter");
         setRate(true);
+        setCostMetric(false);
 
         form.setFieldsValue({
           usage_aggregation_type: "sum",
@@ -82,7 +107,7 @@ const CreateMetricForm = (props: {
       visible={props.visible}
       title={props.state.title}
       okText="Create"
-      okType="default"
+      okType="primary"
       cancelText="Cancel"
       width={800}
       onCancel={props.onCancel}
@@ -90,9 +115,11 @@ const CreateMetricForm = (props: {
         form
           .validateFields()
           .then((values) => {
+            values.is_cost_metric = costMetric;
             if (rate) {
               values.metric_type = "rate";
             }
+            console.log("values", values);
             props.onSave(values);
             form.resetFields();
             setRate(false);
@@ -115,7 +142,7 @@ const CreateMetricForm = (props: {
           }}
         >
           <Radio value="none">No Template</Radio>
-          <Radio value="seats">Seats (prorated per day)</Radio>
+          <Radio value="seats">Seats</Radio>
           <Radio value="calls">API Calls</Radio>
           <Radio value="rate">Insert Rate</Radio>
         </Radio.Group>
@@ -165,33 +192,52 @@ const CreateMetricForm = (props: {
           </Form.Item>
         </div>
 
-        <Form.Item
-          name="metric_type"
-          className="justify-center"
-          label="Type"
-          rules={[
-            {
-              required: true,
-              message: "Metric type is required",
-            },
-          ]}
-        >
-          <Radio.Group
-            optionType="button"
-            buttonStyle="solid"
-            value={eventType}
-            defaultValue={eventType}
-            onChange={(e) => {
-              setEventType(e.target.value);
-              if (e.target.value === "counter") {
-                setRate(false);
-              }
-            }}
+        <div className="grid grid-cols-2 gap-4">
+          <Form.Item
+            name="metric_type"
+            className="justify-center"
+            label="Type"
+            rules={[
+              {
+                required: true,
+                message: "Metric type is required",
+              },
+            ]}
           >
-            <Radio value="counter">Counter</Radio>
-            <Radio value="stateful">Continuous</Radio>
-          </Radio.Group>
-        </Form.Item>
+            <Radio.Group
+              optionType="button"
+              buttonStyle="solid"
+              value={eventType}
+              defaultValue={eventType}
+              onChange={(e) => {
+                setEventType(e.target.value);
+                if (e.target.value === "counter") {
+                  setRate(false);
+                }
+              }}
+            >
+              <Radio value="counter">Counter</Radio>
+              <Radio value="stateful">Continuous</Radio>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item label="Does this metric represent a cost?">
+            <Switch
+              checked={costMetric}
+              onChange={() => {
+                setCostMetric(!costMetric);
+                if (!costMetric) {
+                  form.setFieldsValue({
+                    is_cost_metric: false,
+                  });
+                } else {
+                  form.setFieldsValue({
+                    is_cost_metric: true,
+                  });
+                }
+              }}
+            />
+          </Form.Item>
+        </div>
         <Form.Item
           noStyle
           shouldUpdate={(prevValues, currentValues) =>
@@ -349,25 +395,115 @@ const CreateMetricForm = (props: {
               >
                 <Input />
               </Form.Item>
-              <Form.Item
-                name="granularity_2"
-                label="Period"
-                rules={[
-                  {
-                    required: true,
-                    message: "Period is required",
-                  },
-                ]}
-              >
-                <Select defaultValue={"days"}>
-                  <Option value="days">day</Option>
+              <Form.Item name="granularity_2" label="Per Time Unit">
+                <Select>
+                  <Option value="minutes">minute</Option>
                   <Option value="hours">hour</Option>
-                  <Option value="weeks">week</Option>
+                  <Option value="days">day</Option>
+                  <Option value="months">month</Option>
+                  <Option value="quarters">quarter</Option>
+                  <Option value="years">year</Option>
+                  <Option value="total">none</Option>
                 </Select>
               </Form.Item>
+
+              {statefulGranularity && statefulGranularity !== "total" && (
+                <p className=" text-darkgold mb-4">
+                  When inputting the price for this metric, you will be inputing
+                  the price per {statefulGranularity.slice(0, -1)}
+                </p>
+              )}
             </Fragment>
           )}
         </Form.Item>
+
+        <Collapse>
+          <Panel header="Filters" key="1">
+            <Form.List name="filters">
+              {(fields, { add, remove }, { errors }) => (
+                <>
+                  {fields.map((field, index) => (
+                    <Form.Item
+                      required={false}
+                      key={field.key}
+                      label={index === 0 ? "" : "and"}
+                      className="mt-4"
+                    >
+                      <div className="flex flex-col space-y-4">
+                        <Form.Item
+                          {...field}
+                          name={[field.name, "property_name"]}
+                          validateTrigger={["onChange", "onBlur"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              message:
+                                "Please input a property name name or delete this filter.",
+                            },
+                          ]}
+                          noStyle
+                        >
+                          <Input
+                            placeholder="property name"
+                            style={{ width: "30%" }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name={[field.name, "operator"]}
+                          rules={[
+                            {
+                              required: true,
+                              whitespace: true,
+                              message:
+                                "Please input a property name name or delete this filter.",
+                            },
+                          ]}
+                        >
+                          <Select style={{ width: "50%" }}>
+                            <Option value="isin">is (string)</Option>
+                            <Option value="isnotin">is not (string)</Option>
+                            <Option value="eq">= </Option>
+                            <Option value="gte">&#8805;</Option>
+                            <Option value="gt"> &#62; </Option>
+                            <Option value="lt"> &#60;</Option>
+                            <Option value="lte">&#8804;</Option>
+                          </Select>
+                        </Form.Item>
+
+                        <div className="grid grid-cols-2 w-6/12">
+                          <Form.Item
+                            name={[field.name, "comparison_value"]}
+                            style={{ alignSelf: "middle" }}
+                          >
+                            <Input />
+                          </Form.Item>
+                          {fields.length > 0 ? (
+                            <MinusCircleOutlined
+                              className="hover:bg-background place-self-center p-4"
+                              onClick={() => remove(field.name)}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    </Form.Item>
+                  ))}
+                  <Form.Item>
+                    <Button
+                      type="dashed"
+                      onClick={() => add()}
+                      style={{ width: "60%" }}
+                      icon={<PlusOutlined />}
+                    >
+                      Add filter
+                    </Button>
+                    <Form.ErrorList errors={errors} />
+                  </Form.Item>
+                </>
+              )}
+            </Form.List>
+          </Panel>
+        </Collapse>
       </Form>
     </Modal>
   );

@@ -58,7 +58,11 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
-import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
+import {
+  DraftInvoiceType,
+  InvoiceType,
+  MarkInvoiceStatusAsPaid,
+} from "../types/invoice-type";
 
 const cookies = new Cookies();
 
@@ -370,11 +374,11 @@ export const Stripe = {
 export const PaymentProcessorIntegration = {
   getPaymentProcessorConnectionStatus: (): Promise<
     PaymentProcessorStatusType[]
-  > => requests.get("api/payment_providers/"),
+  > => requests.get("/api/payment_providers/"),
   connectPaymentProcessor: (
     pp_info: PaymentProcessorConnectionRequestType
   ): Promise<PaymentProcessorConnectionResponseType> =>
-    requests.post("api/payment_providers/", { pp_info }),
+    requests.post("/api/payment_providers/", { pp_info }),
 };
 
 export const Invoices = {
@@ -382,5 +386,8 @@ export const Invoices = {
     return requests.patch(`api/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     });
+  },
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType[]> => {
+    return requests.get("api/draft_invoice/", { params: { customer_id } });
   },
 };

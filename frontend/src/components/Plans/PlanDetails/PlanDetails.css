@@ -4,6 +4,10 @@
   width: 100%;
 }
 
+.noborderTable .ant-table-tbody > tr > td {
+  border: none;
+}
+
 .planComponent {
   height: 135px;
   width: 330px;
@@ -45,7 +49,7 @@
 .infoValue {
   font-weight: 700;
   font-size: 16px;
-  line-height: 22px;
+  line-height: 24px;
   color: #1d1d1f;
 }
 

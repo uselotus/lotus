@@ -150,7 +150,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
         <Table
           columns={columns}
           dataSource={invoices}
-          pagination={{ pageSize: 10 }}
+          pagination={{ pageSize: 6 }}
         />
       ) : (
         <p>No invoices found</p>

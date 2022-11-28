@@ -15,7 +15,9 @@ from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
+    convert_to_datetime,
     convert_to_decimal,
+    date_as_max_dt,
     date_as_min_dt,
     make_all_dates_times_strings,
     make_all_datetimes_dates,
@@ -40,6 +42,7 @@ def generate_invoice(
     charge_next_plan=False,
     flat_fee_behavior="prorate",
     include_usage=True,
+    issue_date=None,
 ):
     """
     Generate an invoice for a subscription.
@@ -54,7 +57,8 @@ def generate_invoice(
 
     assert flat_fee_behavior in ["refund", "full_amount", "prorate"]
 
-    issue_date = now_utc()
+    if not issue_date:
+        issue_date = now_utc()
 
     customer = subscription.customer
     organization = subscription.organization
@@ -79,7 +83,7 @@ def generate_invoice(
             usg_rev = plan_component.calculate_total_revenue(subscription)
             subperiods = usg_rev["subperiods"]
             for subperiod in subperiods:
-                InvoiceLineItem.objects.create(
+                ili = InvoiceLineItem.objects.create(
                     name=plan_component.billable_metric.billable_metric_name,
                     start_date=subperiod["start_date"],
                     end_date=subperiod["end_date"],
@@ -89,6 +93,9 @@ def generate_invoice(
                     invoice=invoice,
                     associated_plan_version=subscription.billing_plan,
                 )
+                if "unique_identifier" in subperiod:
+                    ili.metadata = subperiod["unique_identifier"]
+                    ili.save()
     # flat fee calculation for current plan
     if not flat_fee_behavior == "refund":
         flat_costs_dict_list = sorted(
@@ -127,8 +134,8 @@ def generate_invoice(
             billing_plan_version = cur_bp.version
             InvoiceLineItem.objects.create(
                 name=f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                start_date=start,
-                end_date=end,
+                start_date=convert_to_datetime(start, date_behavior="min"),
+                end_date=convert_to_datetime(end, date_behavior="max"),
                 quantity=1,
                 subtotal=amount,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
@@ -140,7 +147,7 @@ def generate_invoice(
         if billing_plan.transition_to:
             next_bp = billing_plan.transition_to.display_version
         elif billing_plan.replace_with:
-            next_bp = subscription.replace_with
+            next_bp = billing_plan.replace_with
         else:
             next_bp = billing_plan
         if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
@@ -201,9 +208,10 @@ def generate_invoice(
             created=issue_date,
             effective_at=issue_date,
         )
-    elif subtotal > 0:
+    elif subtotal > 0 and not draft:
         balance_adjustment = min(subtotal, customer_balance)
-        if balance_adjustment > 0 and not draft:
+        if balance_adjustment > 0:
+            subscription.flat_fee_already_billed += balance_adjustment
             CustomerBalanceAdjustment.objects.create(
                 customer=customer,
                 amount=Money(-balance_adjustment, "usd"),
@@ -222,6 +230,8 @@ def generate_invoice(
             )
 
     invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    if abs(invoice.cost_due.amount) < 0.01 and not draft:
+        invoice.payment_status = INVOICE_STATUS.PAID
     invoice.save()
 
     if not draft:
