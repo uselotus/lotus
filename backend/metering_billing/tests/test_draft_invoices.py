@@ -155,7 +155,7 @@ class TestGenerateInvoice:
             payment_status=INVOICE_STATUS.DRAFT
         ).count()
 
-        assert new_invoices_len == prev_invoices_len + 1
+        assert new_invoices_len == prev_invoices_len  # don't generate from drafts
 
     def test_generate_invoice_with_price_adjustments(
         self, draft_invoice_test_common_setup

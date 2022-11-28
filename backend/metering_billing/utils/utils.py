@@ -198,11 +198,11 @@ def now_utc_ts():
 
 def calculate_end_date(interval, start_date):
     if interval == PLAN_DURATION.MONTHLY:
-        return start_date + relativedelta(months=+1) - relativedelta(days=+1)
+        return start_date + relativedelta(months=+1)
     elif interval == PLAN_DURATION.QUARTERLY:
-        return start_date + relativedelta(months=+3) - relativedelta(days=+1)
+        return start_date + relativedelta(months=+3)
     elif interval == PLAN_DURATION.YEARLY:
-        return start_date + relativedelta(years=+1) - relativedelta(days=+1)
+        return start_date + relativedelta(years=+1)
 
 
 def product_uuid():

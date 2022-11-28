@@ -126,22 +126,39 @@ def generate_invoice(
                     last_elem_start,
                     k,
                 )
-        for amount, plan_version_id, start, end in date_range_costs:
-            cur_bp = PlanVersion.objects.get(
-                organization=organization, version_id=plan_version_id
-            )
-            billing_plan_name = cur_bp.plan.plan_name
-            billing_plan_version = cur_bp.version
-            InvoiceLineItem.objects.create(
-                name=f"{billing_plan_name} v{billing_plan_version} Flat Fee",
-                start_date=convert_to_datetime(start, date_behavior="min"),
-                end_date=convert_to_datetime(end, date_behavior="max"),
-                quantity=1,
-                subtotal=amount,
-                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                invoice=invoice,
-                associated_plan_version=cur_bp,
-            )
+        amt_invoiced = subscription.amount_already_invoiced()
+        if (
+            len(date_range_costs) == 1
+            and abs(float(amt_invoiced) - date_range_costs[0][0]) < 0.01
+        ):
+            pass
+        else:
+            for amount, plan_version_id, start, end in date_range_costs:
+                cur_bp = PlanVersion.objects.get(
+                    organization=organization, version_id=plan_version_id
+                )
+                billing_plan_name = cur_bp.plan.plan_name
+                billing_plan_version = cur_bp.version
+                InvoiceLineItem.objects.create(
+                    name=f"{billing_plan_name} v{billing_plan_version} Flat Fee",
+                    start_date=convert_to_datetime(start, date_behavior="min"),
+                    end_date=convert_to_datetime(end, date_behavior="max"),
+                    quantity=None,
+                    subtotal=amount,
+                    billing_type=cur_bp.flat_fee_billing_type,
+                    invoice=invoice,
+                    associated_plan_version=cur_bp,
+                )
+            if amt_invoiced > 0:
+                InvoiceLineItem.objects.create(
+                    name=f"{subscription.subscription_id} Already Invoiced",
+                    start_date=issue_date,
+                    end_date=issue_date,
+                    quantity=None,
+                    subtotal=-amt_invoiced,
+                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+                    invoice=invoice,
+                )
     # next plan flat fee calculation
     if charge_next_plan:
         if billing_plan.transition_to:
@@ -152,12 +169,12 @@ def generate_invoice(
             next_bp = billing_plan
         if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             InvoiceLineItem.objects.create(
-                name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee",
+                name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
                 start_date=subscription.end_date,
                 end_date=calculate_end_date(
                     next_bp.plan.plan_duration, subscription.end_date
                 ),
-                quantity=1,
+                quantity=None,
                 subtotal=next_bp.flat_rate,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                 invoice=invoice,
@@ -169,9 +186,12 @@ def generate_invoice(
     ):
         plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
         if plan_version.price_adjustment:
-            plan_amount = invoice.inv_line_items.filter(
-                associated_plan_version=plan_version
-            ).aggregate(tot=Sum("subtotal"))["tot"]
+            plan_amount = (
+                invoice.inv_line_items.filter(
+                    associated_plan_version=plan_version
+                ).aggregate(tot=Sum("subtotal"))["tot"]
+                or 0
+            )
             price_adj_name = str(plan_version.price_adjustment)
             new_amount_due = billing_plan.price_adjustment.apply(plan_amount)
             new_amount_due = max(new_amount_due, Decimal(0))
@@ -180,26 +200,14 @@ def generate_invoice(
                 name=f"{plan_version.plan.plan_name} v{plan_version.version} {price_adj_name}",
                 start_date=issue_date,
                 end_date=issue_date,
-                quantity=1,
+                quantity=None,
                 subtotal=difference,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
                 invoice=invoice,
                 associated_plan_version=plan_version,
             )
 
-    amt_invoiced = subscription.amount_already_invoiced()
-    if amt_invoiced > 0:
-        InvoiceLineItem.objects.create(
-            name=f"{subscription.subscription_id} Already Invoiced",
-            start_date=issue_date,
-            end_date=issue_date,
-            quantity=1,
-            subtotal=-amt_invoiced,
-            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-            invoice=invoice,
-        )
-
-    subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0 and not draft:
         CustomerBalanceAdjustment.objects.create(
             customer=customer,
@@ -223,13 +231,13 @@ def generate_invoice(
                 name=f"{subscription.subscription_id} Customer Balance Adjustment",
                 start_date=issue_date,
                 end_date=issue_date,
-                quantity=1,
+                quantity=None,
                 subtotal=-balance_adjustment,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
                 invoice=invoice,
             )
 
-    invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"]
+    invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if abs(invoice.cost_due.amount) < 0.01 and not draft:
         invoice.payment_status = INVOICE_STATUS.PAID
     invoice.save()

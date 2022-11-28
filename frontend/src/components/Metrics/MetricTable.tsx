@@ -1,16 +1,15 @@
-import React, { FC, useState, useEffect, useRef } from "react";
+import React, { FC, useRef, useState } from "react";
 
 import {
   ProTable,
   ProFormInstance,
   ProColumns,
 } from "@ant-design/pro-components";
-import { Button, Tag, Tooltip } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Tag } from "antd";
 import { MetricType } from "../../types/metric-type";
-import { Metrics } from "../../api/api";
+import MetricDetails from "./MetricDetails";
 
-const colorMap = new Map<string, string>([
+export const colorMap = new Map<string, string>([
   ["count", "green"],
   ["sum", "blue"],
   ["max", "pink"],
@@ -35,8 +34,8 @@ interface Props {
 }
 
 const MetricTable: FC<Props> = ({ metricArray }) => {
-  const navigate = useNavigate();
   const formRef = useRef<ProFormInstance>();
+  const [currentMetric, setCurrentMetric] = useState<MetricType | null>();
   var filters: any[];
 
   const mergeFilters = (
@@ -175,6 +174,14 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       <ProTable<MetricType>
         columns={columns}
         dataSource={metricArray}
+        onRow={(record, rowIndex) => {
+          return {
+            onClick: (event) => {
+              console.log(event, "heree");
+              setCurrentMetric(record);
+            },
+          };
+        }}
         toolBarRender={false}
         rowKey="customer_id"
         formRef={formRef}
@@ -187,6 +194,12 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
         }}
         options={false}
       />
+      {!!currentMetric && (
+        <MetricDetails
+          metric={currentMetric}
+          onclose={() => setCurrentMetric(null)}
+        />
+      )}
     </div>
   );
 };

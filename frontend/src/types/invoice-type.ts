@@ -36,10 +36,14 @@ interface InvoiceOrganization {
 }
 
 interface LineItem {
-  components: object;
-  flat_amount_due: number;
-  total_amount_due: number;
-  usage_amount_due: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  quantity: number;
+  sutotal: string;
+  billing_type: string;
+  plan_version_id: string;
+  metadata: any;
 }
 
 export interface MarkInvoiceStatusAsPaid {

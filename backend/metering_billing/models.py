@@ -235,9 +235,13 @@ class Customer(models.Model):
         total = 0
         for subscription in customer_subscriptions:
             inv = generate_invoice(
-                subscription, draft=True, flat_fee_behavior="full_amount"
+                subscription,
+                draft=True,
+                flat_fee_behavior="full_amount",
+                charge_next_plan=True,
             )
             total += inv.cost_due
+            inv.delete()
         try:
             total = total.amount
         except:
@@ -622,6 +626,7 @@ class PlanComponent(models.Model):
                 usage_normalization_factor = 1
             # extract usage
             separated_usage = all_usage.get(subscription.customer.customer_name, {})
+            print("separated_usage", separated_usage)
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
@@ -630,6 +635,16 @@ class PlanComponent(models.Model):
                         convert_to_decimal(sum(usage_by_period.values()))
                         * usage_normalization_factor
                     )
+                    print("length of usage_by_period", len(usage_by_period))
+                    print("usage by period", usage_by_period)
+                    print("usage_qty", usage_qty)
+                    print("period_start", period_start)
+                    print("period_end", period_end)
+                    print(
+                        "nperiods_proration_granularity", nperiods_proration_granularity
+                    )
+                    print("nperiods_metric_granularity", nperiods_metric_granularity)
+                    print("usage_normalization_factor", usage_normalization_factor)
                     usage_qty = convert_to_decimal(usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()
@@ -818,7 +833,9 @@ class InvoiceLineItem(models.Model):
     name = models.CharField(max_length=200)
     start_date = models.DateTimeField(max_length=100, default=now_utc)
     end_date = models.DateTimeField(max_length=100, default=now_utc)
-    quantity = models.DecimalField(decimal_places=10, max_digits=20, default=1.0)
+    quantity = models.DecimalField(
+        decimal_places=10, max_digits=20, default=1.0, null=True, blank=True
+    )
     subtotal = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )
