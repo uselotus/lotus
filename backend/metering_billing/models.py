@@ -307,7 +307,7 @@ class Event(models.Model):
     event_name = models.CharField(max_length=200, null=False)
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id = models.CharField(max_length=255, unique=True)
+    idempotency_id = models.CharField(max_length=255)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]
@@ -400,15 +400,19 @@ class Metric(models.Model):
         end_date,
         granularity,
         customer=None,
+        group_by=[],
+        proration=None,
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_usage(
             results_granularity=granularity,
-            start_date=start_date,
-            end_date=end_date,
+            start=start_date,
+            end=end_date,
             customer=customer,
+            group_by=group_by,
+            proration=proration,
         )
 
         return usage
@@ -417,16 +421,26 @@ class Metric(models.Model):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-
-        usage = handler.get_current_usage(subscription)
+        all_components = subscription.billing_plan.plan_components.all()
+        group_by = []
+        usage = None
+        for component in all_components:
+            if component.billable_metric == self:
+                group_by = component.separate_by
+                usage = handler.get_current_usage(subscription, group_by=group_by)
+                break
 
         return usage
 
-    def get_earned_usage_per_day(self, start_date, end_date, customer):
+    def get_earned_usage_per_day(
+        self, start, end, customer, group_by=[], proration=None
+    ):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-        usage = handler.get_earned_usage_per_day(start_date, end_date, customer)
+        usage = handler.get_earned_usage_per_day(
+            start, end, customer, group_by, proration
+        )
 
         return usage
 
@@ -463,44 +477,40 @@ class PriceTier(models.Model):
         null=True,
     )
 
-    def calculate_revenue(
-        self, usage_dict: dict, prev_tier_end=False, division_factor=None
-    ):
-        if division_factor is None:
-            division_factor = len(usage_dict)
+    def calculate_revenue(self, usage: float, prev_tier_end=False):
+        # if division_factor is None:
+        #     division_factor = len(usage_dict)
         revenue = 0
         discontinuous_range = (
             prev_tier_end != self.range_start and prev_tier_end is not None
         )
-        for usage in usage_dict.values():
-            usage = convert_to_decimal(usage)
-            usage_in_range = (
-                self.range_start <= usage
-                if discontinuous_range
-                else self.range_start < usage or self.range_start == 0
-            )
-            if usage_in_range:
-                if self.type == PRICE_TIER_TYPE.FLAT:
-                    revenue += self.cost_per_batch / division_factor
-                elif self.type == PRICE_TIER_TYPE.PER_UNIT:
-                    if self.range_end is not None:
-                        billable_units = min(
-                            usage - self.range_start, self.range_end - self.range_start
-                        )
-                    else:
-                        billable_units = usage - self.range_start
-                    if discontinuous_range:
-                        billable_units += 1
-                    billable_batches = billable_units / self.metric_units_per_batch
-                    if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
-                        billable_batches = math.ceil(billable_batches)
-                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
-                        billable_batches = math.floor(billable_batches)
-                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
-                        billable_batches = round(billable_batches)
-                    revenue += (
-                        self.cost_per_batch * billable_batches
-                    ) / division_factor
+        # for usage in usage_dict.values():
+        usage = convert_to_decimal(usage)
+        usage_in_range = (
+            self.range_start <= usage
+            if discontinuous_range
+            else self.range_start < usage or self.range_start == 0
+        )
+        if usage_in_range:
+            if self.type == PRICE_TIER_TYPE.FLAT:
+                revenue += self.cost_per_batch
+            elif self.type == PRICE_TIER_TYPE.PER_UNIT:
+                if self.range_end is not None:
+                    billable_units = min(
+                        usage - self.range_start, self.range_end - self.range_start
+                    )
+                else:
+                    billable_units = usage - self.range_start
+                if discontinuous_range:
+                    billable_units += 1
+                billable_batches = billable_units / self.metric_units_per_batch
+                if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
+                    billable_batches = math.ceil(billable_batches)
+                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
+                    billable_batches = math.floor(billable_batches)
+                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
+                    billable_batches = round(billable_batches)
+                revenue += self.cost_per_batch * billable_batches
         return revenue
 
 
@@ -526,9 +536,21 @@ class PlanComponent(models.Model):
         blank=True,
         default=COMPONENT_RESET_FREQUENCY.NONE,
     )
+    separate_by = models.JSONField(default=list, blank=True, null=True)
+    proration_granularity = models.CharField(
+        choices=METRIC_GRANULARITY.choices,
+        max_length=10,
+        default=METRIC_GRANULARITY.TOTAL,
+    )
 
     def __str__(self):
         return str(self.billable_metric)
+
+    def save(self, *args, **kwargs):
+        if self.separate_by is None:
+            self.separate_by = []
+        assert isinstance(self.separate_by, list)
+        super().save(*args, **kwargs)
 
     def calculate_total_revenue(
         self, subscription
@@ -554,41 +576,78 @@ class PlanComponent(models.Model):
         billable_metric = self.billable_metric
         revenue_dict = {"revenue": Decimal(0), "subperiods": []}
         for period_start, period_end in periods:
-            usage = billable_metric.get_usage(
+            all_usage = billable_metric.get_usage(
                 granularity=USAGE_CALC_GRANULARITY.TOTAL,
                 start_date=period_start,
                 end_date=period_end,
                 customer=subscription.customer,
+                group_by=self.separate_by,
+                proration=self.proration_granularity,
             )
-            # extract usage
-            usage = usage.get(subscription.customer.customer_name, {})
-            if len(usage) >= 1:
-                usage_qty = sum(usage.values())
-                usage_qty = convert_to_decimal(usage_qty)
-                revenue = 0
-                tiers = self.tiers.all()
-                for i, tier in enumerate(tiers):
-                    if i > 0:
-                        prev_tier_end = tiers[i - 1].range_end
-                        tier_revenue = tier.calculate_revenue(
-                            usage, prev_tier_end=prev_tier_end
+            nperiods_metric_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            billable_metric.granularity, period_start, period_end
                         )
-                    else:
-                        tier_revenue = tier.calculate_revenue(usage)
-                    revenue += tier_revenue
-                revenue = convert_to_decimal(revenue)
+                    )
+                ),
+                1,
+            )
+            nperiods_proration_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            self.proration_granularity, period_start, period_end
+                        )
+                    )
+                ),
+                1,
+            )
+            if nperiods_proration_granularity > nperiods_metric_granularity:
+                usage_normalization_factor = convert_to_decimal(
+                    nperiods_metric_granularity / nperiods_proration_granularity
+                )
             else:
-                usage_qty = Decimal(0)
-                revenue = Decimal(0)
-            revenue_dict["revenue"] += revenue
-            revenue_dict["subperiods"].append(
-                {
+                usage_normalization_factor = 1
+            # extract usage
+            separated_usage = all_usage.get(subscription.customer.customer_name, {})
+            for i, (unique_identifier, usage_by_period) in enumerate(
+                separated_usage.items()
+            ):
+                if len(usage_by_period) >= 1:
+                    usage_qty = (
+                        convert_to_decimal(sum(usage_by_period.values()))
+                        * usage_normalization_factor
+                    )
+                    usage_qty = convert_to_decimal(usage_qty)
+                    revenue = 0
+                    tiers = self.tiers.all()
+                    for i, tier in enumerate(tiers):
+                        if i > 0:
+                            prev_tier_end = tiers[i - 1].range_end
+                            tier_revenue = tier.calculate_revenue(
+                                usage_qty, prev_tier_end=prev_tier_end
+                            )
+                        else:
+                            tier_revenue = tier.calculate_revenue(usage_qty)
+                        revenue += tier_revenue
+                    revenue = convert_to_decimal(revenue)
+                else:
+                    usage_qty = Decimal(0)
+                    revenue = Decimal(0)
+                revenue_dict["revenue"] += revenue
+                subp = {
                     "start_date": period_start,
                     "end_date": period_end,
                     "usage_qty": usage_qty,
                     "revenue": revenue,
                 }
-            )
+                if len(unique_identifier) > 1:
+                    subp["unique_identifier"] = dict(
+                        zip(self.separate_by, unique_identifier[1:])
+                    )
+                revenue_dict["subperiods"].append(subp)
         return revenue_dict
 
     def calculate_earned_revenue_per_day(
@@ -620,38 +679,64 @@ class PlanComponent(models.Model):
             if start_date > now:
                 break
         for period_start, period_end in periods:
-            usage = billable_metric.get_earned_usage_per_day(
-                start_date=period_start,
-                end_date=period_end,
+            all_usage = billable_metric.get_earned_usage_per_day(
+                start=period_start,
+                end=period_end,
                 customer=subscription.customer,
+                group_by=self.separate_by,
+                proration=self.proration_granularity,
             )
-            if len(usage) >= 1:
-                running_total_revenue = Decimal(0)
-                running_total_usage = Decimal(0)
-                for date, usage_qty in usage.items():
-                    date = convert_to_date(date)
-                    usage_qty = convert_to_decimal(usage_qty)
-                    if billable_metric.metric_type == METRIC_TYPE.COUNTER:
+            nperiods_metric_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            billable_metric.granularity, period_start, period_end
+                        )
+                    )
+                ),
+                1,
+            )
+            nperiods_proration_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            self.proration_granularity, period_start, period_end
+                        )
+                    )
+                ),
+                1,
+            )
+            usage_normalization_factor = convert_to_decimal(
+                nperiods_metric_granularity / nperiods_proration_granularity
+            )
+            # extract usage
+            for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
+                if len(usage_by_period) >= 1:
+                    running_total_revenue = Decimal(0)
+                    running_total_usage = Decimal(0)
+                    for date, usage_qty in usage_by_period.items():
+                        date = convert_to_date(date)
+                        usage_qty = (
+                            convert_to_decimal(usage_qty) * usage_normalization_factor
+                        )
                         running_total_usage += usage_qty
-                    else:
-                        running_total_usage = usage_qty
-                    revenue = Decimal(0)
-                    tiers = self.tiers.all()
-                    for i, tier in enumerate(tiers):
-                        calc_rev_dict = {
-                            "usage_dict": {date: running_total_usage},
-                        }
-                        if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-                            calc_rev_dict["division_factor"] = len(usage)
-                        if i > 0:
-                            prev_tier_end = tiers[i - 1].range_end
-                            calc_rev_dict["prev_tier_end"] = prev_tier_end
-                        tier_revenue = tier.calculate_revenue(**calc_rev_dict)
-                        revenue += convert_to_decimal(tier_revenue)
-                    date_revenue = revenue - running_total_revenue
-                    running_total_revenue += date_revenue
-                    if date in results:
-                        results[date] += date_revenue
+                        revenue = Decimal(0)
+                        tiers = self.tiers.all()
+                        for i, tier in enumerate(tiers):
+                            if i > 0:
+                                prev_tier_end = tiers[i - 1].range_end
+                                tier_revenue = tier.calculate_revenue(
+                                    running_total_usage, prev_tier_end=prev_tier_end
+                                )
+                            else:
+                                tier_revenue = tier.calculate_revenue(
+                                    running_total_usage
+                                )
+                            revenue += convert_to_decimal(tier_revenue)
+                        date_revenue = revenue - running_total_revenue
+                        running_total_revenue += date_revenue
+                        if date in results:
+                            results[date] += date_revenue
         return results
 
 
@@ -736,6 +821,7 @@ class InvoiceLineItem(models.Model):
     associated_plan_version = models.ForeignKey(
         "PlanVersion", on_delete=models.CASCADE, null=True, related_name="+"
     )
+    metadata = models.JSONField(default=dict, blank=True, null=True)
 
 
 class APIToken(AbstractAPIKey):

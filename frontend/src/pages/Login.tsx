@@ -88,7 +88,16 @@ const Login: FC = () => {
       <>
         <div className="grid h-screen place-items-center">
           <div className="space-y-4">
-            <Card title="Login" className="flex flex-col">
+            <Card
+              title="Login"
+              className="flex flex-col"
+              style={{
+                borderRadius: "0.5rem",
+                borderWidth: "2px",
+                borderColor: "#EAEAEB",
+                borderStyle: "solid",
+              }}
+            >
               {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
               <Form onFinish={handleLogin} name="normal_login">
                 <Form.Item>
@@ -126,15 +135,18 @@ const Login: FC = () => {
                 </Link>
               </Form>
             </Card>
-            <div>
-              <Button
-                type="primary"
-                className="w-full"
-                onClick={() => navigate("/register")}
-              >
-                Sign Up
-              </Button>
-            </div>
+            {(import.meta.env.VITE_API_URL !== "https://api.uselotus.io/" ||
+              import.meta.env.IS_DEMO == "true") && (
+              <div>
+                <Button
+                  type="primary"
+                  className="w-full"
+                  onClick={() => navigate("/register")}
+                >
+                  Sign Up
+                </Button>
+              </div>
+            )}
           </div>
           {mutation.isLoading && <LoadingSpinner />}
         </div>

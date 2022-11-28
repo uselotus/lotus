@@ -24,6 +24,8 @@ const ViewPlans: FC = () => {
   const [monthlyPlans, setMonthlyPlans] = useState<PlanType[]>([]);
   const [quarterlyPlans, setQuarterlyPlans] = useState<PlanType[]>([]);
   const [quarterlyCustom, setQuarterlyCustom] = useState<PlanType[]>([]);
+  const [allPlans, setAllPlans] = useState<PlanType[]>([]);
+  const [allCustom, setAllCustom] = useState<PlanType[]>([]);
 
   const navigateCreatePlan = () => {
     navigate("/create-plan");
@@ -48,7 +50,11 @@ const ViewPlans: FC = () => {
     const quarterlycustom = data.filter(
       (plan) => plan.plan_duration === "quarterly" && plan.parent_plan
     );
+    const allcustom = data.filter((plan) => plan.parent_plan);
+    const allplans = data.filter((plan) => !plan.parent_plan);
 
+    setAllCustom(allcustom);
+    setAllPlans(allplans);
     setYearlyPlans(yearlystandard);
     setMonthlyPlans(monthlystandard);
     setYearlyCustom(yearlycustom);
@@ -97,7 +103,28 @@ const ViewPlans: FC = () => {
           </Button>,
         ]}
       >
-        <Tabs defaultActiveKey="1" size="large">
+        <Tabs defaultActiveKey="0" size="large">
+          <Tabs.TabPane tab="All" key="0">
+            <div className=" flex flex-col space-y-6 ">
+              <Row gutter={[24, 32]}>
+                {allPlans?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+              {allCustom?.length > 0 && <h2>Custom Plans</h2>}
+
+              <Row gutter={[24, 32]}>
+                {allCustom?.map((item, key) => (
+                  <Col span={8} key={key}>
+                    <PlanCard plan={item} />
+                  </Col>
+                ))}
+              </Row>
+            </div>
+          </Tabs.TabPane>
+
           <Tabs.TabPane tab="Monthly" key="1">
             <div className=" flex flex-col space-y-6 ">
               <Row gutter={[24, 32]}>

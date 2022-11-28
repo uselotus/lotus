@@ -54,12 +54,13 @@ class METRIC_TYPE(models.TextChoices):
 
 
 class METRIC_GRANULARITY(models.TextChoices):
+    SECOND = ("seconds", _("Second"))
     MINUTE = ("minutes", _("Minute"))
     HOUR = ("hours", _("Hour"))
     DAY = ("days", _("Day"))
-    WEEK = ("weeks", _("Week"))
     MONTH = ("months", _("Month"))
     QUARTER = ("quarters", _("Quarter"))
+    YEAR = ("years", _("Year"))
     TOTAL = ("total", _("Total"))
 
 
@@ -168,3 +169,8 @@ class REPLACE_IMMEDIATELY_TYPE(models.TextChoices):
         "change_subscription_plan",
         _("Change Subscription Plan"),
     )
+
+
+class ORGANIZATION_STATUS(models.TextChoices):
+    ACTIVE = ("Active", _("Active"))
+    INVITED = ("Invited", _("Invited"))
