@@ -52,7 +52,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
   },
   {
     title: "Outstanding Revenue",
-    width: 120,
+    width: 20,
     sorter: (a, b) => a.total_amount_due - b.total_amount_due,
 
     render: (_, record) => (
