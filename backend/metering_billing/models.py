@@ -620,6 +620,12 @@ class PlanComponent(models.Model):
                         convert_to_decimal(sum(usage_by_period.values()))
                         * usage_normalization_factor
                     )
+                    print("usage_qty", usage_qty)
+                    print("period_start", period_start)
+                    print("period_end", period_end)
+                    print("nperiods_proration_granularity", nperiods_proration_granularity)
+                    print("nperiods_metric_granularity", nperiods_metric_granularity)
+                    print("usage_normalization_factor", usage_normalization_factor)
                     usage_qty = convert_to_decimal(usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()
