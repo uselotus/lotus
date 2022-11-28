@@ -169,7 +169,7 @@ def generate_invoice(
             next_bp = billing_plan
         if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
             InvoiceLineItem.objects.create(
-                name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee",
+                name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
                 start_date=subscription.end_date,
                 end_date=calculate_end_date(
                     next_bp.plan.plan_duration, subscription.end_date

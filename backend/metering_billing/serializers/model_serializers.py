@@ -811,7 +811,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         if data.get("plan_components"):
             component_metrics = []
             for component in data.get("plan_components"):
-                if component.get("metric") in component_metrics:
+                if component.get("billable_metric") in component_metrics:
                     raise serializers.ValidationError(
                         "Plan components must have unique metrics."
                     )
