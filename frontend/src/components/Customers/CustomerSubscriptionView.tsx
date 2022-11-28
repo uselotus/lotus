@@ -325,6 +325,20 @@ const SubscriptionView: FC<Props> = ({
                 {
                   title: "Name",
                   dataIndex: "name",
+                  render: (_, record) => (
+                    <div className="flex flex-col">
+                      <p>{record.name}</p>
+                      {record.metadata && (
+                        <p className="text-s text-grey2">
+                          {Object.keys(record.metadata).map((key) => (
+                            <span>
+                              {key}: {record.metadata[key]}
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                    </div>
+                  ),
                 },
                 {
                   title: "Quantity",

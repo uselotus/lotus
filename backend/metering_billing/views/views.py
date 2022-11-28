@@ -531,8 +531,13 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__tiers",
             )
         )
-        invoices = [generate_invoice(sub, draft=True) for sub in subs]
-        serializer = DraftInvoiceSerializer(invoices, many=True)
+        invoices = [
+            generate_invoice(
+                sub, draft=True, flat_fee_behavior="full_amount", charge_next_plan=True
+            )
+            for sub in subs
+        ]
+        serializer = DraftInvoiceSerializer(invoices, many=True).data
         try:
             username = self.request.user.username
         except:
@@ -544,7 +549,9 @@ class DraftInvoiceView(APIView):
             event="draft_invoice",
             properties={"organization": organization.company_name},
         )
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        for invoice in invoices:
+            invoice.delete()
+        return Response(serializer, status=status.HTTP_200_OK)
 
 
 class GetCustomerAccessView(APIView):
