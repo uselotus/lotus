@@ -1,5 +1,8 @@
 import { Modal, Tag, Button } from "antd";
 import { MetricType } from "../../types/metric-type";
+import { useMutation, useQueryClient } from "react-query";
+import { toast } from "react-toastify";
+import { Metrics } from "../../api/api";
 // @ts-ignore
 import React, { FC, Fragment } from "react";
 import { colorMap } from "./MetricTable";
@@ -19,6 +22,23 @@ const operatorDisplayMap = new Map<string, string>([
 ]);
 
 const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation(
+    (metric_id: string) => Metrics.archiveMetric(metric_id),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("metric_list");
+        toast.success("Metric archived");
+        onclose();
+      },
+
+      onError: (error) => {
+        console.log(error);
+        toast.error(error.response.data.non_field_errors[0]);
+      },
+    }
+  );
   return (
     <Modal
       visible
@@ -31,6 +51,15 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
         </b>
       }
       footer={[
+        <Button
+          key="submit"
+          type="default"
+          onClick={() => {
+            mutation.mutate(metric.metric_id);
+          }}
+        >
+          Archive
+        </Button>,
         <Button key="submit" type="default" onClick={onclose}>
           Close
         </Button>,
