@@ -169,6 +169,10 @@ a {
   border-color: #cca43b;
 }
 
+.mr-2 {
+    margin-right: 0.5rem;
+}
+
 .customer-detail-card {
   background: #d3d3d33d;
   padding: 10px 20px;

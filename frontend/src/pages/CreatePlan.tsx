@@ -272,7 +272,7 @@ const CreatePlan = () => {
           labelAlign="left"
         >
           <Row gutter={[24, 24]}>
-            <Col span={12}>
+            <Col span={10}>
               <Row gutter={[24, 24]}>
                 <Col span="24">
                   <Card title="Plan Information">

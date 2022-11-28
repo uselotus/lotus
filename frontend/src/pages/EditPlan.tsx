@@ -271,6 +271,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
               separate_by: components[i].separate_by,
+              proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -421,7 +422,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           labelAlign="left"
         >
           <Row gutter={[24, 24]}>
-            <Col span={12}>
+            <Col span={10}>
               <Row gutter={[24, 24]}>
                 <Col span="24">
                   <Card title="Plan Information">

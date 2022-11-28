@@ -67,7 +67,7 @@ STRIPE_SECRET_KEY = (
     STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
 )
 # Get it from the section in the Stripe dashboard where you added the webhook endpoint
-DJSTRIPE_WEBHOOK_SECRET = config("WEBHOOK_SECRET", default="whsec_")
+DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 

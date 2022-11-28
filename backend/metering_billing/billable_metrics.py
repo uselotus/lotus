@@ -586,7 +586,6 @@ class StatefulHandler(MetricHandler):
         post_groupby_annotation_kwargs = {}
         q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
-
         if self.event_type == EVENT_TYPE.TOTAL:
             if self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
                 post_groupby_annotation_kwargs["usage_qty"] = Max(
@@ -628,9 +627,16 @@ class StatefulHandler(MetricHandler):
                     usage_qty=Max("usage_qty")
                 )
             elif self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
-                q_post_gb_ann = cumulative_per_event.order_by(
-                    *(["customer_name"] + group_by), "-time_created"
-                ).distinct(*(["customer_name"] + group_by))
+                q_post_gb_ann = (
+                    cumulative_per_event.order_by(
+                        *(["customer_name"] + group_by), "-time_created"
+                    )
+                    .distinct(*(["customer_name"] + group_by))
+                    .values()
+                    .annotate(
+                        time_created_truncated=groupby_kwargs["time_created_truncated"]
+                    )
+                )
 
         period_usages = {}
         unique_groupby_props = ["customer_name"] + group_by
@@ -727,6 +733,8 @@ class StatefulHandler(MetricHandler):
                 truncate_to_granularity=truncate_to_granularity,
             )
         )
+        now = now_utc()
+        plan_periods = [x for x in plan_periods if x <= end and x <= now]
         # for each period, get the events and calculate the usage
         usage_dict = {}
         for customer_name, cust_usages in period_usages.items():
@@ -813,7 +821,9 @@ class StatefulHandler(MetricHandler):
 
     def get_current_usage(self, subscription, group_by=[]):
         cur_usg_agg = self.usage_aggregation_type
+        cur_granularity = self.granularity
         self.usage_aggregation_type = METRIC_AGGREGATION.LATEST
+        self.granularity = METRIC_GRANULARITY.TOTAL
         usg = self.get_usage(
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
             start=subscription.start_date,
@@ -822,6 +832,7 @@ class StatefulHandler(MetricHandler):
             group_by=group_by,
         )
         self.usage_aggregation_type = cur_usg_agg
+        self.granularity = cur_granularity
 
         return usg
 
