@@ -225,7 +225,7 @@ class Customer(models.Model):
         total = 0
         for subscription in customer_subscriptions:
             inv = generate_invoice(
-                subscription, draft=True, flat_fee_behavior="full_amount"
+                subscription, draft=True, flat_fee_behavior="full_amount", charge_next_plan=True
             )
             total += inv.cost_due
         try:
@@ -808,7 +808,9 @@ class InvoiceLineItem(models.Model):
     name = models.CharField(max_length=200)
     start_date = models.DateTimeField(max_length=100, default=now_utc)
     end_date = models.DateTimeField(max_length=100, default=now_utc)
-    quantity = models.DecimalField(decimal_places=10, max_digits=20, default=1.0)
+    quantity = models.DecimalField(
+        decimal_places=10, max_digits=20, default=1.0, null=True, blank=True
+    )
     subtotal = MoneyField(
         decimal_places=10, max_digits=20, default_currency="USD", default=0.0
     )

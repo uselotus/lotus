@@ -531,7 +531,10 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__tiers",
             )
         )
-        invoices = [generate_invoice(sub, draft=True) for sub in subs]
+        invoices = [
+            generate_invoice(sub, draft=True, flat_fee_behavior="full_amount", charge_next_plan=True)
+            for sub in subs
+        ]
         serializer = DraftInvoiceSerializer(invoices, many=True)
         try:
             username = self.request.user.username

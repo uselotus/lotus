@@ -416,14 +416,16 @@ def setup_demo_3(company_name, username, email, password):
                 run_generate_invoice.delay(
                     sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
-            if months != 5:
-                next_plan = (
+            next_plan = (
                     bp_10_compute_seats
                     if months + 1 == 0
                     else (
                         bp_25_compute_seats if months + 1 == 1 else bp_50_compute_seats
                     )
                 )
+            sub.flat_fee_already_billed = next_plan.flat_rate.amount
+            sub.save()
+            if months != 5:
                 cur_replace_with = sub.billing_plan.replace_with
                 sub.billing_plan.replace_with = next_plan
                 sub.save()
@@ -528,10 +530,12 @@ def setup_demo_3(company_name, username, email, password):
                 run_generate_invoice.delay(
                     sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
-            if months != 5:
-                plan = (
+            plan = (
                     bp_10_compute_seats if months + 1 in [0, 1] else bp_25_compute_seats
                 )
+            sub.flat_fee_already_billed = plan.flat_rate.amount
+            sub.save()
+            if months != 5:
                 cur_replace_with = sub.billing_plan.replace_with
                 sub.billing_plan.replace_with = next_plan
                 sub.save()
@@ -629,8 +633,11 @@ def setup_demo_3(company_name, username, email, password):
                 run_generate_invoice.delay(
                     sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
+            plan = free_bp if months + 1 in [0, 1] else bp_10_compute_seats
+            sub.flat_fee_already_billed = plan.flat_rate.amount
+            sub.save()
             if months != 5:
-                plan = free_bp if months + 1 in [0, 1] else bp_10_compute_seats
+                
                 cur_replace_with = sub.billing_plan.replace_with
                 sub.billing_plan.replace_with = next_plan
                 sub.save()
