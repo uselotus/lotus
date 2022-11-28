@@ -225,9 +225,13 @@ class Customer(models.Model):
         total = 0
         for subscription in customer_subscriptions:
             inv = generate_invoice(
-                subscription, draft=True, flat_fee_behavior="full_amount", charge_next_plan=True
+                subscription,
+                draft=True,
+                flat_fee_behavior="full_amount",
+                charge_next_plan=True,
             )
             total += inv.cost_due
+            inv.delete()
         try:
             total = total.amount
         except:
@@ -623,9 +627,14 @@ class PlanComponent(models.Model):
                     print("usage_qty", usage_qty)
                     print("period_start", period_start)
                     print("period_end", period_end)
-                    print("nperiods_proration_granularity", nperiods_proration_granularity)
+                    print(
+                        "nperiods_proration_granularity", nperiods_proration_granularity
+                    )
                     print("nperiods_metric_granularity", nperiods_metric_granularity)
                     print("usage_normalization_factor", usage_normalization_factor)
+                    # print(
+                    #     "current_usage", billable_metric.get_current_usage(subscription)
+                    # )
                     usage_qty = convert_to_decimal(usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()

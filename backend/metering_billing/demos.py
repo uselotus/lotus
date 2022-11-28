@@ -417,12 +417,10 @@ def setup_demo_3(company_name, username, email, password):
                     sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
             next_plan = (
-                    bp_10_compute_seats
-                    if months + 1 == 0
-                    else (
-                        bp_25_compute_seats if months + 1 == 1 else bp_50_compute_seats
-                    )
-                )
+                bp_10_compute_seats
+                if months + 1 == 0
+                else (bp_25_compute_seats if months + 1 == 1 else bp_50_compute_seats)
+            )
             sub.flat_fee_already_billed = next_plan.flat_rate.amount
             sub.save()
             if months != 5:
@@ -530,9 +528,7 @@ def setup_demo_3(company_name, username, email, password):
                 run_generate_invoice.delay(
                     sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
                 )
-            plan = (
-                    bp_10_compute_seats if months + 1 in [0, 1] else bp_25_compute_seats
-                )
+            plan = bp_10_compute_seats if months + 1 in [0, 1] else bp_25_compute_seats
             sub.flat_fee_already_billed = plan.flat_rate.amount
             sub.save()
             if months != 5:
@@ -637,7 +633,7 @@ def setup_demo_3(company_name, username, email, password):
             sub.flat_fee_already_billed = plan.flat_rate.amount
             sub.save()
             if months != 5:
-                
+
                 cur_replace_with = sub.billing_plan.replace_with
                 sub.billing_plan.replace_with = next_plan
                 sub.save()

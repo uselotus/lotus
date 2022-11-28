@@ -1495,7 +1495,7 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
             "subtotal",
             "billing_type",
             "plan_version_id",
-            "metadata"
+            "metadata",
         )
 
     plan_version_id = serializers.CharField(

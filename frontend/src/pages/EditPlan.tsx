@@ -271,6 +271,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
               separate_by: components[i].separate_by,
+              proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
           }
