@@ -105,14 +105,15 @@ const SubscriptionView: FC<Props> = ({
     });
   };
 
-  const { data: invoiceData, isLoading: invoiceLoading } =
-    useQuery<DraftInvoiceType>(
-      ["draft_invoice", customer_id],
-      () => Invoices.getDraftInvoice(customer_id),
-      {
-        refetchInterval: 10000,
-      }
-    );
+  const { data: invoiceData, isLoading: invoiceLoading } = useQuery<
+    DraftInvoiceType[]
+  >(
+    ["draft_invoice", customer_id],
+    () => Invoices.getDraftInvoice(customer_id),
+    {
+      refetchInterval: 10000,
+    }
+  );
 
   useEffect(() => {
     if (plans !== undefined) {
@@ -304,44 +305,47 @@ const SubscriptionView: FC<Props> = ({
             <Button>Cancel Subscription</Button>
           </Dropdown>
         </div>
-        <div className="w-full space-y-8">
-          <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Draft Invoice</h2>
-          <div className="grid grid-cols-2">
-            <p>
-              <b>Invoice ID: </b> 23423
-            </p>
-            <p>
-              <b>Cost Due: </b> {invoiceData?.cost_due}
-            </p>
-            <p>
-              <b>Invoice Number: </b> {invoiceData?.cost_due}
-            </p>
-            <p>
-              <b>Currency: </b> {invoiceData?.cost_due_currency}
-            </p>
+        {invoiceData && (
+          <div className="w-full space-y-8">
+            <h2 className="mb-2 pb-4 pt-4 font-bold text-main">
+              Draft Invoice
+            </h2>
+            <div className="grid grid-cols-2">
+              <p>
+                <b>Invoice ID: </b> 23423
+              </p>
+              <p>
+                <b>Cost Due: </b> {invoiceData[0].cost_due}
+              </p>
+              <p>{/* <b>Invoice Number: </b> {invoiceData?.cost_due} */}</p>
+              <p>
+                <b>Currency: </b> {invoiceData[0].cost_due_currency}
+              </p>
+            </div>
+            <Table
+              dataSource={invoiceData[0].line_items}
+              pagination={false}
+              columns={[
+                {
+                  title: "Name",
+                  dataIndex: "name",
+                },
+                {
+                  title: "Quantity",
+                  dataIndex: "quantity",
+                },
+                {
+                  title: "Subtotal",
+                  dataIndex: "subtotal",
+                },
+                {
+                  title: "Billing Type",
+                  dataIndex: "billing_type",
+                },
+              ]}
+            />
           </div>
-          <Table
-            dataSource={invoiceData?.line_items}
-            columns={[
-              {
-                title: "Name",
-                dataIndex: "name",
-              },
-              {
-                title: "Quantity",
-                dataIndex: "quantity",
-              },
-              {
-                title: "Subtotal",
-                dataIndex: "subtotal",
-              },
-              {
-                title: "Billing Type",
-                dataIndex: "billing_type",
-              },
-            ]}
-          />
-        </div>
+        )}
       </div>
     </div>
   );
