@@ -499,7 +499,7 @@ class DraftInvoiceView(APIView):
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
-        responses={200: DraftInvoiceSerializer},
+        responses={200: DraftInvoiceSerializer(many=True)},
     )
     def get(self, request, format=None):
         """
@@ -518,10 +518,18 @@ class DraftInvoiceView(APIView):
                 {"error": "Customer not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        subs = Subscription.objects.filter(
-            customer=customer,
-            organization=organization,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subs = (
+            Subscription.objects.filter(
+                customer=customer,
+                organization=organization,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+            )
+            .select_related("billing_plan")
+            .prefetch_related(
+                "billing_plan__plan_components",
+                "billing_plan__plan_components__billable_metric",
+                "billing_plan__plan_components__tiers",
+            )
         )
         invoices = [generate_invoice(sub, draft=True) for sub in subs]
         serializer = DraftInvoiceSerializer(invoices, many=True)

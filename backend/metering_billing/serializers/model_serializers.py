@@ -1494,11 +1494,9 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
             "quantity",
             "subtotal",
             "billing_type",
-            "invoice_id",
             "plan_version_id",
         )
 
-    invoice_id = serializers.CharField(source="invoice.invoice_id", read_only=True)
     plan_version_id = serializers.CharField(
         source="associated_plan_version.plan_version_id", read_only=True
     )
@@ -1533,6 +1531,26 @@ class InvoiceSerializer(serializers.ModelSerializer):
     )
 
 
+class DraftInvoiceSerializer(InvoiceSerializer):
+    class Meta(InvoiceSerializer.Meta):
+        model = Invoice
+        fields = tuple(
+            set(InvoiceSerializer.Meta.fields)
+            - set(
+                [
+                    "invoice_id",
+                    "issue_date",
+                    "external_payment_obj_id",
+                    "external_payment_obj_type",
+                ]
+            )
+        )
+
+    payment_status = serializers.ChoiceField(
+        choices=[INVOICE_STATUS.DRAFT], required=True
+    )
+
+
 class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerBalanceAdjustment
@@ -1545,23 +1563,6 @@ class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
             "effective_at",
             "expires_at",
         )
-
-
-class DraftInvoiceSerializer(InvoiceSerializer):
-    class Meta(InvoiceSerializer.Meta):
-        model = Invoice
-        fields = (
-            "cost_due",
-            "cost_due_currency",
-            "cust_connected_to_payment_provider",
-            "org_connected_to_cust_payment_provider",
-            "line_items",
-        )
-
-    cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
-    )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
