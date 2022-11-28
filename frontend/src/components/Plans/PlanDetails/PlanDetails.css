@@ -4,6 +4,10 @@
   width: 100%;
 }
 
+.noborderTable .ant-table-tbody > tr > td {
+  border: none;
+}
+
 .planComponent {
   height: 135px;
   width: 330px;

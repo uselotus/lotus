@@ -142,84 +142,6 @@ def update_invoice_status():
 
 
 @shared_task
-def write_batch_events_to_db(events_list):
-    event_obj_list = [Event(**dict(event)) for event in events_list]
-    customer_id_mappings = {}
-    for event in event_obj_list:
-        if event.cust_id not in customer_id_mappings:
-            customer_id_mappings[event.cust_id] = Customer.objects.filter(
-                organization=event.organization, customer_id=event.cust_id
-            ).first()
-        event.customer = customer_id_mappings[event.cust_id]
-    now = now_utc()
-    now_minus_45_days = now - relativedelta(days=45)
-    idem_ids = list(x.idempotency_id for x in event_obj_list)
-    repeat_idem = Event.objects.filter(
-        idempotency_id__in=idem_ids,
-        time_created__gte=now_minus_45_days,
-    ).exists()
-    if repeat_idem:
-        # if we have a repeat idempotency, filter thru the events and remove repeats
-        for event in event_obj_list:
-            event_idem_exists = Event.objects.filter(
-                organization_id=event.organization,
-                idempotency_id=event.idempotency_id,
-                time_created__gte=now_minus_45_days,
-            ).exists()
-            if not event_idem_exists:
-                events_to_insert.append(event)
-    else:
-        events_to_insert = event_obj_list
-    events = Event.objects.bulk_create(event_obj_list, ignore_conflicts=True)
-    event_org_map = {}
-    customer_event_name_map = {}
-    for event in events:
-        if event.organization not in event_org_map:
-            event_org_map[event.organization] = 0
-        try:
-            cust_id = event.customer.customer_id
-            if event.customer.customer_id not in customer_event_name_map:
-                customer_event_name_map[event.customer] = set()
-            customer_event_name_map[event.customer].add(event.event_name)
-        except Exception as e:
-            print(e)
-            print("Error processing event {}".format(event))
-            continue
-        event_org_map[event.organization] += 1
-    for customer_id, to_invalidate in customer_event_name_map.items():
-        cache_keys_to_invalidate = []
-        for event_name in to_invalidate:
-            cache_keys_to_invalidate.append(
-                f"customer_id:{customer_id}__event_name:{event_name}"
-            )
-        cache.delete_many(cache_keys_to_invalidate)
-    for org, num_events in event_org_map.items():
-        posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else org.company_name + " (API Key)",
-            event="track_event",
-            properties={
-                "ingested_events": num_events,
-                "organization": org.company_name,
-            },
-        )
-
-
-@shared_task
-def check_event_cache_flushed():
-    cache_tup = cache.get("events_to_insert")
-    now = now_utc()
-    cached_events, cached_idems, last_flush_dt = (
-        cache_tup if cache_tup else ([], set(), now)
-    )
-    time_since_last_flush = (now - last_flush_dt).total_seconds()
-    if time_since_last_flush >= EVENT_CACHE_FLUSH_SECONDS and len(cached_events) > 0:
-        write_batch_events_to_db.delay(cached_events)
-        cached_events = []
-        cached_idems = set()
-        cache.set("events_to_insert", (cached_events, cached_idems, now), None)
-
-
-@shared_task
 def run_backtest(backtest_id):
     try:
         backtest = Backtest.objects.get(backtest_id=backtest_id)
@@ -505,3 +427,9 @@ def run_backtest(backtest_id):
         backtest.status = BACKTEST_STATUS.FAILED
         backtest.save()
         raise e
+
+
+@shared_task
+def run_generate_invoice(subscription_pk, **kwargs):
+    subscription = Subscription.objects.get(pk=subscription_pk)
+    generate_invoice(subscription, **kwargs)
