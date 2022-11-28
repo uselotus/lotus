@@ -20,6 +20,16 @@ const colorMap = new Map<string, string>([
   ["unique", "geekblue"],
 ]);
 
+const operatorDisplayMap = new Map<string, string>([
+  ["eq", "="],
+  ["isin", "is"],
+  ["gt", ">"],
+  ["gte", ">="],
+  ["lt", "<"],
+  ["lte", "<="],
+  ["isnotin", "is not"],
+]);
+
 interface Props {
   metricArray: MetricType[];
 }
@@ -27,6 +37,52 @@ interface Props {
 const MetricTable: FC<Props> = ({ metricArray }) => {
   const navigate = useNavigate();
   const formRef = useRef<ProFormInstance>();
+  var filters: any[];
+
+  const mergeFilters = (
+    numeric_filters: any[] | undefined,
+    categorical_filters: any[] | undefined
+  ) => {
+    console.log(numeric_filters, categorical_filters);
+    if (numeric_filters !== undefined && categorical_filters === undefined) {
+      filters = numeric_filters.map((filter) => {
+        return {
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        };
+      });
+    } else if (
+      categorical_filters !== undefined &&
+      numeric_filters === undefined
+    ) {
+      filters = categorical_filters.map((filter) => {
+        return {
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        };
+      });
+    } else if (
+      numeric_filters !== undefined &&
+      categorical_filters !== undefined
+    ) {
+      filters = numeric_filters.map((filter) => {
+        return {
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        };
+      });
+      filters = filters.concat(
+        categorical_filters.map((filter) => {
+          return {
+            ...filter,
+            operator: operatorDisplayMap.get(filter.operator),
+          };
+        })
+      );
+    }
+
+    return filters;
+  };
 
   const columns: ProColumns<MetricType>[] = [
     {
@@ -34,7 +90,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     },
     {
       title: "Metric Name",
-      width: 150,
+      width: 100,
       dataIndex: "billable_metric_name",
       align: "left",
     },
@@ -54,6 +110,14 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       width: 100,
       dataIndex: "metric_type",
       align: "left",
+      render: (_, record) => {
+        {
+          if (record.metric_type === "stateful") {
+            return <p>continuous</p>;
+          }
+          return <p>counter</p>;
+        }
+      },
     },
     {
       title: "Event Name",
@@ -76,6 +140,33 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       width: 120,
       dataIndex: "property_name",
       align: "left",
+    },
+    {
+      title: "Filters",
+      width: 150,
+      align: "left",
+      render: (_, record) => {
+        {
+          const filters = mergeFilters(
+            record.numeric_filters,
+            record.categorical_filters
+          );
+
+          if (filters) {
+            return (
+              <div className="space-y-2">
+                {filters.map((filter) => (
+                  <Tag color="" key={filter.property_name}>
+                    {<b>{filter.property_name}</b>} {filter.operator} {'"'}
+                    {filter.comparison_value}
+                    {'"'}
+                  </Tag>
+                ))}
+              </div>
+            );
+          }
+        }
+      },
     },
   ];
 

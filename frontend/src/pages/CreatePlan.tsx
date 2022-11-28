@@ -10,7 +10,7 @@ import {
   Select,
 } from "antd";
 // @ts-ignore
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UsageComponentForm from "../components/Plans/UsageComponentForm";
 import { useMutation, useQueryClient } from "react-query";
@@ -21,6 +21,7 @@ import {
   CreateInitialVersionType,
   CreatePlanType,
   InitialExternalLinks,
+  PlanType,
 } from "../types/plan-type";
 import { Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
@@ -41,6 +42,7 @@ interface ComponentDisplay {
 
 const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
+  const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
@@ -58,6 +60,12 @@ const CreatePlan = () => {
     { label: "Yearly", name: "yearly" },
   ]);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!allPlans?.length) {
+      Plan.getPlans().then((data) => setAllPlans(data));
+    }
+  }, []);
 
   const mutation = useMutation(
     (post: CreatePlanType) => Plan.createPlan(post),
@@ -133,6 +141,7 @@ const CreatePlan = () => {
         },
       ];
       setComponentsData(newComponentsData);
+      console.log(newComponentsData);
     }
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
@@ -175,18 +184,25 @@ const CreatePlan = () => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
+              proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
           }
         }
 
+        if (values.usage_billing_frequency === "yearly") {
+          values.usage_billing_frequency = "end_of_period";
+        }
+
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
           flat_fee_billing_type: values.flat_fee_billing_type,
+          transition_to_plan_id: values.transition_to_plan_id,
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
-          // usage_billing_frequency: values.usage_billing_frequency,
+          usage_billing_frequency: values.usage_billing_frequency,
         };
         if (
           values.price_adjustment_type !== undefined &&
@@ -294,11 +310,19 @@ const CreatePlan = () => {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                             ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "monthly"
+                            );
                           } else if (e.target.value === "quarterly") {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                               { label: "Quarterly", name: "quarterly" },
                             ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "quarterly"
+                            );
                           } else {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
@@ -334,7 +358,21 @@ const CreatePlan = () => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
-
+                    <Form.Item
+                      name="transition_to_plan_id"
+                      label="Plan on next cycle"
+                    >
+                      <Select>
+                        {allPlans.map((plan) => (
+                          <Select.Option
+                            key={plan.plan_id}
+                            value={plan.plan_id}
+                          >
+                            {plan.plan_name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
                     <Form.Item
                       name="initial_external_links"
                       label="Link External ids"
@@ -349,10 +387,16 @@ const CreatePlan = () => {
               </Row>
             </Col>
 
-            <Col span={12}>
+            <Col span={14}>
               <Card
                 title="Added Components"
                 className="h-full"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button
                     htmlType="button"
@@ -374,11 +418,11 @@ const CreatePlan = () => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                {/* <div className="absolute inset-x-0 bottom-0 justify-center">
+                <div className="absolute inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
-                      label="Usage Billing Frequency"
+                      label="Components Billing Frequency"
                       name="usage_billing_frequency"
                       shouldUpdate={(prevValues, currentValues) =>
                         prevValues.plan_duration !== currentValues.plan_duration
@@ -397,7 +441,7 @@ const CreatePlan = () => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div> */}
+                </div>
               </Card>
             </Col>
 
@@ -405,6 +449,12 @@ const CreatePlan = () => {
               <Card
                 className="w-full my-5"
                 title="Added Features"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button htmlType="button" onClick={showFeatureModal}>
                     Add Feature
@@ -426,7 +476,16 @@ const CreatePlan = () => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Discount">
+              <Card
+                className="w-6/12 mb-20"
+                title="Discount"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
+              >
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}

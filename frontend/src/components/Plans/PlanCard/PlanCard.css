@@ -35,6 +35,7 @@
 .planDetailsValue {
   font-weight: 600;
   color: #1d1d1f;
+  align-self: center;
 }
 
 .planDetails {

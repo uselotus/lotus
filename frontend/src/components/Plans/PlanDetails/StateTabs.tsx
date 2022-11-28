@@ -8,9 +8,9 @@ import { Plan } from "../../../api/api";
 interface StateTabsProps {
   tabs: string[];
   activeTab: string;
-  version: number;
+  version: number | string;
   version_id: string;
-  activeVersion: string | undefined;
+  activeVersion: number | string | undefined;
 }
 
 const StateTabs: FC<StateTabsProps> = ({

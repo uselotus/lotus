@@ -9,7 +9,25 @@ services:
     env_file:
       - ./env/.env.prod
 
-  backend:
+  redpanda:
+    image: docker.redpanda.com/vectorized/redpanda:v22.2.2
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    expose:
+      - 8081
+      - 8082
+      - 9092
+      - 9644
+      - 29092
+
+  backend: &backend
     env_file:
       - ./env/.env.prod
     build:
@@ -20,11 +38,18 @@ services:
       - 8000
     volumes:
       - django_static_volume:/lotus/staticfiles
-    command:  sh -c "./scripts/start_backend.prod.sh"
+    command: sh -c "./scripts/start_backend.prod.sh"
     depends_on:
       - db
       - redis
+      - redpanda
     restart: on-failure
+
+  event_consumer:
+    <<: *backend
+    expose:
+      - 7999
+    command: sh -c "./scripts/start_consumer.sh"
 
   frontend:
     restart: always

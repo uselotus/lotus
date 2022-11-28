@@ -1,6 +1,6 @@
 // @ts-ignore
 import React, { FC } from "react";
-import { Menu, Dropdown, Button, Typography } from "antd";
+import { Menu, Dropdown, Button, Typography, Tag } from "antd";
 import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
@@ -51,6 +51,14 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
     navigate("/plans/" + plan.plan_id);
   };
 
+  const customerNameOrID = (target_customer: any | undefined) => {
+    if (target_customer.customer_name) {
+      return target_customer.customer_name;
+    } else {
+      return target_customer.customer_id;
+    }
+  };
+
   return (
     <div className="planCard pointer" onClick={gotoPlanDetail}>
       <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
@@ -62,14 +70,15 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
       </div>
       <Typography.Title className="pt-4" level={2}>
         {plan.target_customer !== null
-          ? plan.plan_name +
-            ": " +
-            (plan.target_customer?.name ??
-              plan.target_customer?.customer_id.substring(0, 8))
+          ? plan.plan_name + ": " + customerNameOrID(plan.target_customer)
           : plan.plan_name}
       </Typography.Title>
 
       <div>
+        {plan.parent_plan !== null ? (
+          <Tag color="#C3986B">{plan.parent_plan?.plan_name}</Tag>
+        ) : null}
+
         <div className="flex activeSubscriptions">
           <div className="pr-1">
             Total Active Subscriptions: {plan.active_subscriptions}

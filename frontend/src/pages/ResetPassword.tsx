@@ -53,7 +53,16 @@ const ResetPassword: FC = () => {
     <div className="grid h-screen place-items-center">
       {!isEmailSent ? (
         <div className="space-y-4">
-          <Card title="Reset your Password" className="flex flex-col">
+          <Card
+            title="Reset your Password"
+            className="flex flex-col"
+            style={{
+              borderRadius: "0.5rem",
+              borderWidth: "2px",
+              borderColor: "#EAEAEB",
+              borderStyle: "solid",
+            }}
+          >
             <Form onFinish={handleResetPassword} name="normal_login">
               <Form.Item>
                 <label htmlFor="email">Email</label>

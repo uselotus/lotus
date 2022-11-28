@@ -58,7 +58,11 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
-import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
+import {
+  DraftInvoiceType,
+  InvoiceType,
+  MarkInvoiceStatusAsPaid,
+} from "../types/invoice-type";
 
 const cookies = new Cookies();
 
@@ -382,5 +386,8 @@ export const Invoices = {
     return requests.patch(`api/invoices/${data.invoice_id}/`, {
       payment_status: data.payment_status,
     });
+  },
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType[]> => {
+    return requests.get("api/draft_invoice/", { params: { customer_id } });
   },
 };

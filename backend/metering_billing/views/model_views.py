@@ -264,6 +264,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if self.action == "retrieve":
             customer = self.get_object()
             total_amount_due = customer.get_outstanding_revenue()
+            next_amount_due = customer.get_active_sub_drafts_revenue()
             invoices = Invoice.objects.filter(
                 ~Q(payment_status=INVOICE_STATUS.DRAFT),
                 organization=organization,
@@ -277,6 +278,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     "total_amount_due": total_amount_due,
                     "invoices": invoices,
                     "balance_adjustments": balance_adjustments,
+                    "next_amount_due": next_amount_due,
                 }
             )
         return context
@@ -344,13 +346,9 @@ class MetricViewSet(viewsets.ModelViewSet):
             instance = serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
             raise DuplicateMetric
-        try:
-            user = self.request.user
-        except:
-            user = None
-        if user:
+        if self.request.user.is_authenticated:
             action.send(
-                user,
+                self.request.user,
                 verb="created",
                 action_object=instance,
             )
@@ -437,9 +435,9 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super(PlanVersionViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
-        try:
+        if self.request.user.is_authenticated:
             user = self.request.user
-        except:
+        else:
             user = None
         context.update({"organization": organization, "user": user})
         return context
@@ -464,9 +462,9 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        try:
+        if self.request.user.is_authenticated:
             user = self.request.user
-        except:
+        else:
             user = None
         instance = serializer.save(
             organization=parse_organization(self.request), created_by=user
@@ -481,11 +479,10 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
+        if self.request.user.is_authenticated:
             user = self.request.user
-        except:
+        else:
             user = None
-        user = self.request.user
         if user:
             if instance.status == PLAN_VERSION_STATUS.ACTIVE:
                 action.send(
@@ -571,17 +568,17 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super(PlanViewSet, self).get_serializer_context()
         organization = parse_organization(self.request)
-        try:
+        if self.request.user.is_authenticated:
             user = self.request.user
-        except:
+        else:
             user = None
         context.update({"organization": organization, "user": user})
         return context
 
     def perform_create(self, serializer):
-        try:
+        if self.request.user.is_authenticated:
             user = self.request.user
-        except:
+        else:
             user = None
         instance = serializer.save(
             organization=parse_organization(self.request), created_by=user
@@ -595,11 +592,10 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
+        if self.request.user.is_authenticated:
             user = self.request.user
-        except:
+        else:
             user = None
-        user = self.request.user
         if user:
             if instance.status == PLAN_STATUS.ARCHIVED:
                 action.send(
@@ -657,16 +653,14 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if serializer.validated_data["start_date"] <= now_utc():
             serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
         instance = serializer.save(organization=parse_organization(self.request))
-        try:
-            user = self.request.user
+
+        if self.request.user.is_authenticated:
             action.send(
-                user,
+                self.request.user,
                 verb="subscribed",
                 action_object=instance.customer,
                 target=instance.billing_plan,
             )
-        except:
-            pass
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -697,11 +691,10 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
+        if self.request.user.is_authenticated:
             user = self.request.user
-        except:
+        else:
             user = None
-        user = self.request.user
         if user:
             if instance.status == SUBSCRIPTION_STATUS.ENDED:
                 action.send(
@@ -732,17 +725,26 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "patch", "head"]
     lookup_field = "invoice_id"
     permission_classes_per_method = {
-        "list": [IsAuthenticated],
-        "retrieve": [IsAuthenticated],
+        "list": [IsAuthenticated | HasUserAPIKey],
+        "retrieve": [IsAuthenticated | HasUserAPIKey],
         "partial_update": [IsAuthenticated],
     }
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
-        return Invoice.objects.filter(
+        args = [
             ~Q(payment_status=INVOICE_STATUS.DRAFT),
-            organization=organization,
-        )
+            Q(organization=parse_organization(self.request)),
+        ]
+        customer_id = self.request.query_params.get("customer_id")
+        if customer_id:
+            args.append(Q(customer__customer_id=customer_id))
+        payment_status = self.request.query_params.get("payment_status")
+        if payment_status and payment_status in [
+            INVOICE_STATUS.PAID,
+            INVOICE_STATUS.UNPAID,
+        ]:
+            args.append(Q(payment_status=payment_status))
+        return Invoice.objects.filter(*args)
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -754,9 +756,6 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         organization = parse_organization(self.request)
         context.update({"organization": organization})
         return context
-
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -776,6 +775,23 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 properties={"organization": organization.company_name},
             )
         return response
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                name="InvoiceFilterSerializer",
+                fields={
+                    "customer_id": serializers.CharField(required=False),
+                    "payment_status": serializers.ChoiceField(
+                        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID],
+                        required=False,
+                    ),
+                },
+            ),
+        ],
+    )
+    def list(self, request):
+        return super().list(request)
 
 
 class AlertViewSet(viewsets.ModelViewSet):

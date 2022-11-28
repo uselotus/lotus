@@ -20,11 +20,10 @@ from metering_billing.utils import now_utc
 from rest_framework import status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from svix.api import Svix, ApplicationIn
-
+from svix.api import ApplicationIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
@@ -162,7 +161,7 @@ class ResetPasswordView(APIView):
 
 
 class SessionView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         return JsonResponse({"isAuthenticated": True})
