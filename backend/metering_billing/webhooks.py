@@ -1,11 +1,10 @@
 import json
-import requests
-from svix.api import Svix, MessageIn
-from django.conf import settings
-from metering_billing.utils import (
-    now_utc,
-)
 
+import requests
+from django.conf import settings
+from metering_billing.serializers.model_serializers import InvoiceSerializer
+from metering_billing.utils import now_utc
+from svix.api import MessageIn, Svix
 
 SVIX_SECRET = settings.SVIX_SECRET
 
@@ -22,7 +21,7 @@ def invoice_created_webhook(invoice, organization):
                 payload={
                     "attempt": 2,
                     "created_at": now,
-                    "properties": invoice,
+                    "properties": InvoiceSerializer(invoice).data,
                 },
             ),
         )
