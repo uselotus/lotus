@@ -1,10 +1,12 @@
+// @ts-ignore
 import React, { FC, useState } from "react";
-import { useQuery, useMutation } from "react-query";
+import {useMutation, useQuery} from "react-query";
 import { useNavigate } from "react-router-dom";
-import { Divider, Typography, Row, Col, Input, Button, Form, Tag } from "antd";
-import { Organization } from "../../../../api/api";
+import { Divider, Typography } from "antd";
+import {Organization} from "../../../../api/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
+import PricingUnitDropDown from "../../../PricingUnitDropDown";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -18,15 +20,15 @@ const GeneralTab: FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
 
-  // const {
-  //   data: organization, // organization is the data returned from the query
-  //   isLoading,
-  //   isError,
-  // } = useQuery(["organization"], () =>
-  //   Organization.get().then((res) => {
-  //     return res[0];
-  //   })
-  // );
+  const {
+    data,
+    isLoading,
+    isError,
+  } = useQuery(["organization"], () =>
+    Organization.get().then((res) => {
+      return res[0];
+    })
+  );
 
   const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
@@ -52,6 +54,22 @@ const GeneralTab: FC = () => {
     }
   );
 
+   const updateOrg = useMutation(
+    (obj: { org_id: string; default_currency_code: string } ) => Organization.updateOrganization(obj.org_id, obj.default_currency_code),
+    {
+      onSuccess: () => {
+        toast.success("Successfully Updated Default Currency", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+      onError: () => {
+        toast.error("Failed to Update Default Currency", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
+
   const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
     mutation.mutate({ email });
   };
@@ -63,6 +81,15 @@ const GeneralTab: FC = () => {
       <Divider />
 
       {mutation.isLoading && <LoadingSpinner />}
+        <p>
+            <b>Default Organization Currency:</b> { data?.default_currency ? (
+            <PricingUnitDropDown defaultValue={data?.default_currency?.code }
+                                 setCurrentCurrency={value => updateOrg.mutate({
+                                     org_id: data.organization_id,
+                                     default_currency_code: value
+                                 })}/>
+        ) : "N/A"}
+        </p>
     </div>
   );
 };

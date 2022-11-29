@@ -1090,6 +1090,7 @@ class CustomerBalanceAdjustmentViewSet(
         "create": [IsAuthenticated],
         "destroy": [IsAuthenticated],
     }
+    lookup_field = "adjustment_id"
 
     def get_queryset(self):
         filter_kwargs = {"organization": parse_organization(self.request)}

@@ -110,6 +110,8 @@ export const Customer = {
     requests.post("api/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
+  updateCustomer: (customer_id: string, default_currency_code:string): Promise<CustomerDetailType> =>
+    requests.patch(`api/customers/${customer_id}/`, {default_currency_code:default_currency_code}),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`api/customer_detail/`, { params: { customer_id } }),
   //Subscription handling
@@ -268,9 +270,11 @@ export const Authentication = {
 export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("api/organization/invite/", { email }),
-  get: (): Promise<OrganizationType[]> => requests.get("api/organization/"),
+  get: (): Promise<OrganizationType[]> => requests.get("api/organizations/"),
   getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
     requests.get("api/actions/", { params: { c: cursor } }),
+  updateOrganization: (org_id: string, default_currency_code:string): Promise<CustomerDetailType> =>
+    requests.patch(`api/organizations/${org_id}/`, {default_currency_code:default_currency_code}),
 };
 
 export const GetRevenue = {
