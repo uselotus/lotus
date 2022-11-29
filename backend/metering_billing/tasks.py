@@ -54,7 +54,8 @@ def calculate_invoice():
     )  # grace period of 30 minutes for sending events
     subs_to_bill = list(
         Subscription.objects.filter(
-            Q(scheduled_end_date__lt=now_minus_30) | Q(next_billing_date__lt=now_minus_30),
+            Q(scheduled_end_date__lt=now_minus_30)
+            | Q(next_billing_date__lt=now_minus_30),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
     )
@@ -63,11 +64,15 @@ def calculate_invoice():
     for old_subscription in subs_to_bill:
         # Generate the invoice
         try:
-            generate_invoice(old_subscription, charge_next_plan=old_subscription.auto_renew)
+            generate_invoice(
+                old_subscription, charge_next_plan=old_subscription.auto_renew
+            )
             now = now_utc()
         except Exception as e:
             print(e)
-            print("Error generating invoice for subscription {}".format(old_subscription))
+            print(
+                "Error generating invoice for subscription {}".format(old_subscription)
+            )
             continue
         if old_subscription.scheduled_end_date > now:
             # if the subscription is not ending, then we just need to update the next billing date
@@ -94,7 +99,8 @@ def calculate_invoice():
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
                 "billing_plan": new_bp,
-                "start_date": old_subscription.scheduled_end_date + relativedelta(seconds=+1),
+                "start_date": old_subscription.scheduled_end_date
+                + relativedelta(seconds=+1),
                 "auto_renew": True,
                 "is_new": False,
             }
@@ -160,7 +166,9 @@ def run_backtest(backtest_id):
         all_results = {
             "substitution_results": [],
         }
-        print("Running backtest for {} substitutions".format(len(backtest_substitutions)))
+        print(
+            "Running backtest for {} substitutions".format(len(backtest_substitutions))
+        )
         for subst in backtest_substitutions:
             outer_results = {
                 "substitution_name": f"{str(subst.original_plan)} --> {str(subst.new_plan)}",
@@ -177,7 +185,9 @@ def run_backtest(backtest_id):
             }
             # since we can have at most one new plan per old plan, the old plan uniquely
             # identifies the substitutiont
-            subst_subscriptions = all_subs_time_period.filter(billing_plan=subst.original_plan)
+            subst_subscriptions = all_subs_time_period.filter(
+                billing_plan=subst.original_plan
+            )
             inner_results = {
                 "cumulative_revenue": {},
                 "revenue_by_metric": {},
@@ -239,9 +249,9 @@ def run_backtest(backtest_id):
                     "new_plan_revenue"
                 ] += new_usage_revenue["total_amount_due"]
                 # customer revenue
-                inner_results["top_customers"][customer]["new_plan_revenue"] += new_usage_revenue[
-                    "total_amount_due"
-                ]
+                inner_results["top_customers"][customer][
+                    "new_plan_revenue"
+                ] += new_usage_revenue["total_amount_due"]
                 # per metric
                 for component_pk, component_dict in new_usage_revenue["components"]:
                     metric = PlanComponent.objects.get(pk=component_pk).billable_metric
@@ -266,7 +276,9 @@ def run_backtest(backtest_id):
                 date_cumrev_list.append((date.date(), cum_rev_dict))
             cum_rev_lst = date_cumrev_list
             try:
-                every_date = list(dates_bwn_two_dts(cum_rev_lst[-1][0], cum_rev_lst[0][0]))
+                every_date = list(
+                    dates_bwn_two_dts(cum_rev_lst[-1][0], cum_rev_lst[0][0])
+                )
             except IndexError:
                 every_date = []
             if cum_rev_lst:
@@ -275,13 +287,19 @@ def run_backtest(backtest_id):
             else:
                 rev_dict = {}
             for date in every_date:
-                if date < cum_rev_lst[-1][0]:  # have not reached the next data point yet, dont add
+                if (
+                    date < cum_rev_lst[-1][0]
+                ):  # have not reached the next data point yet, dont add
                     new_dict = last_dict.copy()
                     new_dict["date"] = date
-                elif date == cum_rev_lst[-1][0]:  # have reached the next data point, add it
+                elif (
+                    date == cum_rev_lst[-1][0]
+                ):  # have reached the next data point, add it
                     date, rev_dict = cum_rev_lst.pop()
                     new_dict = {**rev_dict, "date": date}
-                    new_dict["original_plan_revenue"] += last_dict["original_plan_revenue"]
+                    new_dict["original_plan_revenue"] += last_dict[
+                        "original_plan_revenue"
+                    ]
                     new_dict["new_plan_revenue"] += last_dict["new_plan_revenue"]
                     last_dict = new_dict
                 else:
@@ -363,9 +381,9 @@ def run_backtest(backtest_id):
             except IndexError:
                 outer_results["original_plan"]["plan_revenue"] = Decimal(0)
             try:
-                outer_results["new_plan"]["plan_revenue"] = inner_results["cumulative_revenue"][
-                    -1
-                ]["new_plan_revenue"]
+                outer_results["new_plan"]["plan_revenue"] = inner_results[
+                    "cumulative_revenue"
+                ][-1]["new_plan_revenue"]
             except IndexError:
                 outer_results["new_plan"]["plan_revenue"] = Decimal(0)
             try:
@@ -378,14 +396,16 @@ def run_backtest(backtest_id):
                 outer_results["pct_revenue_change"] = None
             all_results["substitution_results"].append(outer_results)
         all_results["original_plans_revenue"] = sum(
-            x["original_plan"]["plan_revenue"] for x in all_results["substitution_results"]
+            x["original_plan"]["plan_revenue"]
+            for x in all_results["substitution_results"]
         )
         all_results["new_plans_revenue"] = sum(
             x["new_plan"]["plan_revenue"] for x in all_results["substitution_results"]
         )
         try:
             all_results["pct_revenue_change"] = (
-                all_results["new_plans_revenue"] / all_results["original_plans_revenue"] - 1
+                all_results["new_plans_revenue"] / all_results["original_plans_revenue"]
+                - 1
             )
         except (ZeroDivisionError, InvalidOperation):
             all_results["pct_revenue_change"] = None
