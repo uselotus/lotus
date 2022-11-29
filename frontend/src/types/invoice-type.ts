@@ -18,12 +18,16 @@ export interface DraftInvoiceType {
 }
 
 export interface BalanceAdjustments {
-  amount: number;
-  amount_currency: string;
-  description: string;
-  created: string;
-  effective_at: string;
-  expires_at: string;
+    amount: number;
+    amount_currency: string;
+    description: string;
+    created: string;
+    effective_at: string;
+    expires_at: string;
+    adjustment_id: string;
+    customer_id: string;
+    parent_adjustment_id: string;
+    pricing_unit_code: string;
 }
 
 interface InvoiceCustomer {

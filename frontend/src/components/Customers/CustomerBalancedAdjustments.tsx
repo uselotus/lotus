@@ -9,10 +9,12 @@ import {
 import dayjs from "dayjs";
 import {useNavigate} from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import {useQuery, UseQueryResult} from "react-query";
-import {BalanceAdjustment} from "../../api/api";
+import {useMutation, useQuery, UseQueryResult} from "react-query";
+import {BalanceAdjustment, Plan} from "../../api/api";
 import LoadingSpinner from "../LoadingSpinner";
 import {MoreOutlined} from "@ant-design/icons";
+import {InitialExternalLinks} from "../../types/plan-type";
+import {toast} from "react-toastify";
 
 interface Props {
   customerId:string;
@@ -30,6 +32,22 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
                 return res;
             })
     );
+
+  const deleteCredit = useMutation(
+    (adjustment_id: string) => BalanceAdjustment.deleteCredit(adjustment_id),
+    {
+      onSuccess: () => {
+        toast.success("Successfully deleted Credit", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+      onError: () => {
+        toast.error("Failed to delete Credit", {
+          position: toast.POSITION.TOP_CENTER,
+        });
+      },
+    }
+  );
 
 
   const columns = [
@@ -74,7 +92,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
         render:(_, record:BalanceAdjustments) => (
             <Dropdown overlay={
                 <Menu>
-                    <Menu.Item onClick={() => console.log("HAVE TO IMPLEMEMENT VOID FEATURE OF CREDIT")}>
+                    <Menu.Item onClick={() => deleteCredit.mutate(record.adjustment_id)}>
                         <div className="archiveLabel">Void Credit</div>
                     </Menu.Item>
                 </Menu>
