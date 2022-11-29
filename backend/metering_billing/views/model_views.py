@@ -9,7 +9,6 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateCustomerID, DuplicateMetric
 from metering_billing.models import (
-    Alert,
     Backtest,
     Customer,
     CustomerBalanceAdjustment,
@@ -26,6 +25,8 @@ from metering_billing.models import (
     Product,
     Subscription,
     User,
+    WebhookEndpoint,
+    WebhookTrigger,
 )
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.backtest_serializers import (
@@ -49,8 +50,10 @@ from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from svix.api import MessageIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class CustomPagination(CursorPagination):
@@ -109,14 +112,21 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     API endpoint that allows alerts to be viewed or edited.
     """
 
-    queryset = Alert.objects.filter(type="webhook")
-    serializer_class = AlertSerializer
+    serializer_class = WebhookEndpointSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = ["get", "post", "head", "delete", "patch"]
+    lookup_field = "webhook_endpoint_id"
+    permission_classes_per_method = {
+        "create": [IsAuthenticated],
+        "list": [IsAuthenticated],
+        "retrieve": [IsAuthenticated],
+        "destroy": [IsAuthenticated],
+        "partial_update": [IsAuthenticated],
+    }
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return super().get_queryset().filter(organization=organization)
+        return WebhookEndpoint.objects.filter(organization=organization)
 
     def get_serializer_context(self):
         context = super(WebhookViewSet, self).get_serializer_context()
@@ -126,6 +136,34 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
+
+    def perform_destroy(self, instance):
+        if SVIX_API_KEY != "":
+            svix = Svix(SVIX_API_KEY)
+            svix.endpoint.delete(
+                instance.organization.organization_id,
+                instance.webhook_endpoint_id,
+            )
+        instance.delete()
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except:
+                username = None
+            organization = parse_organization(self.request)
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username if username else organization.company_name + " (API Key)"
+                ),
+                event=f"{self.action}_webhook",
+                properties={"organization": organization.company_name},
+            )
+        return response
 
 
 class CursorSetPagination(CustomPagination):
@@ -784,48 +822,6 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def list(self, request):
         return super().list(request)
-
-
-class AlertViewSet(viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Alerts.
-    """
-
-    serializer_class = AlertSerializer
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-    http_method_names = ["get", "post", "head", "put", "delete"]
-
-    def get_queryset(self):
-        organization = parse_organization(self.request)
-        return Alert.objects.filter(organization=organization)
-
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
-
-    def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-        if status.is_success(response.status_code):
-            try:
-                username = self.request.user.username
-            except:
-                username = None
-            organization = parse_organization(self.request)
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
-                event=f"{self.action}_alert",
-                properties={"organization": organization.company_name},
-            )
-        return response
-
-    def get_serializer_context(self):
-        context = super(AlertViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
-        context.update({"organization": organization})
-        return context
 
 
 class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

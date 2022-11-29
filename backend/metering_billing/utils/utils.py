@@ -206,39 +206,47 @@ def calculate_end_date(interval, start_date):
 
 
 def product_uuid():
-    return "prod_" + str(uuid.uuid4())
+    return "prod_" + str(uuid.uuid4().hex)
 
 
 def customer_uuid():
-    return "cust_" + str(uuid.uuid4())
+    return "cust_" + str(uuid.uuid4().hex)
 
 
 def metric_uuid():
-    return "metric_" + str(uuid.uuid4())
+    return "metric_" + str(uuid.uuid4().hex)
 
 
 def plan_version_uuid():
-    return "plnvrs_" + str(uuid.uuid4())
+    return "plnvrs_" + str(uuid.uuid4().hex)
 
 
 def plan_uuid():
-    return "plan_" + str(uuid.uuid4())
+    return "plan_" + str(uuid.uuid4().hex)
 
 
 def subscription_uuid():
-    return "subs_" + str(uuid.uuid4())
+    return "subs_" + str(uuid.uuid4().hex)
 
 
 def backtest_uuid():
-    return "btst_" + str(uuid.uuid4())
+    return "btst_" + str(uuid.uuid4().hex)
 
 
 def invoice_uuid():
-    return "inv_" + str(uuid.uuid4())
+    return "inv_" + str(uuid.uuid4().hex)
 
 
 def organization_uuid():
-    return "org_" + str(uuid.uuid4())
+    return "org_" + str(uuid.uuid4().hex)
+
+
+def webhook_secret_uuid():
+    return "whsec_" + str(uuid.uuid4().hex)
+
+
+def webhook_endpoint_uuid():
+    return "whend_" + str(uuid.uuid4().hex)
 
 
 def date_as_min_dt(date):

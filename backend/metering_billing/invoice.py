@@ -17,11 +17,6 @@ from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
     convert_to_decimal,
-    date_as_max_dt,
-    date_as_min_dt,
-    make_all_dates_times_strings,
-    make_all_datetimes_dates,
-    make_all_decimals_floats,
     now_utc,
 )
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
@@ -182,7 +177,9 @@ def generate_invoice(
             )
 
     for obj in (
-        invoice.inv_line_items.all().values("associated_plan_version").distinct()
+        invoice.inv_line_items.filter(associated_plan_version__isnull=False)
+        .values("associated_plan_version")
+        .distinct()
     ):
         plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
         if plan_version.price_adjustment:
@@ -267,7 +264,6 @@ def generate_invoice(
         #         'external_type': invoice.external_payment_obj_type,
         #         },
         # )
-        invoice_data = InvoiceSerializer(invoice).data
-        invoice_created_webhook(invoice_data, organization)
+        invoice_created_webhook(invoice, organization)
 
     return invoice
