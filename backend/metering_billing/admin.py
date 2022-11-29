@@ -5,7 +5,6 @@ from rest_framework_api_key.models import APIKey
 from simple_history.admin import SimpleHistoryAdmin
 
 from .models import (
-    Alert,
     APIToken,
     Backtest,
     BacktestSubstitution,
@@ -23,6 +22,7 @@ from .models import (
     PlanVersion,
     Subscription,
     User,
+    WebhookEndpoint,
 )
 
 
@@ -32,7 +32,7 @@ class CustomAdmin(UserAdmin, SimpleHistoryAdmin):
 
 # Register your models here.
 admin.site.register(Organization, SimpleHistoryAdmin)
-admin.site.register(Alert, SimpleHistoryAdmin)
+admin.site.register(WebhookEndpoint)
 admin.site.register(User, CustomAdmin)
 admin.site.register(Customer, SimpleHistoryAdmin)
 admin.site.register(Event)

@@ -241,6 +241,14 @@ def organization_uuid():
     return "org_" + str(uuid.uuid4())
 
 
+def webhook_secret_uuid():
+    return "lotus_whsec_" + str(uuid.uuid4())
+
+
+def webhook_endpoint_uuid():
+    return "whend_" + str(uuid.uuid4())
+
+
 def date_as_min_dt(date):
     return datetime.datetime.combine(date, datetime.time.min, tzinfo=pytz.UTC)
 
