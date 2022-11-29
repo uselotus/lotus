@@ -66,8 +66,9 @@ import {
 import {
   DraftInvoiceType,
   InvoiceType,
-  MarkInvoiceStatusAsPaid,
 } from "../types/invoice-type";
+import {BalanceAdjustments, MarkInvoiceStatusAsPaid} from "../types/invoice-type";
+import {CreateBalanceAdjustmentType} from "../types/balance-adjustment";
 
 const cookies = new Cookies();
 
@@ -406,4 +407,7 @@ export const Invoices = {
 export const BalanceAdjustment = {
   createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
     requests.post("api/create_balance_adjustment/", post),
+
+  getBalanceAdjustmentByCustomer: (customer_id: string): Promise<BalanceAdjustments[]> =>
+        requests.get(`api/balance_adjustments/?customer_id=${customer_id}`),
 };
