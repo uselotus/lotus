@@ -1,3 +1,4 @@
+// @ts-ignore
 import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
@@ -101,22 +102,6 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   const [tableData, setTableData] = useState<CustomerTableItem[]>();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-
-  if(!columns.find(t => t.title === "Actions")) {
-      columns.push(
-          {
-              title: "Actions",
-              width: 120,
-              render: (_, record) => (
-                  <Tag
-                      onClick={() => navigate("/customers-create-credit/" + record.customer_id)}
-                      color="blue">
-                      Create Credit
-                  </Tag>
-              ),
-          },
-      )
-  }
 
   useEffect(() => {
     if (customerArray !== undefined) {

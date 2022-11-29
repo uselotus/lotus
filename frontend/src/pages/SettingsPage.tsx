@@ -9,6 +9,7 @@ import ActivityStream from "../components/Settings/settings/tabs/ActivityTab";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
+import CreatePricingUnit from "../components/Settings/settings/tabs/CreatePricingUnitTab";
 
 const tabItems = [
   {
@@ -30,6 +31,10 @@ const tabItems = [
   {
     key: "developer-settings",
     tab: "Developer Settings",
+  },
+  {
+    key: "create-pricing-units",
+    tab: "Create Pricing Units",
   },
   // {
   //   key: "billing",
@@ -61,6 +66,8 @@ const SettingsPage: FC = () => {
         return <ActivityStream />;
       case "Developer Settings":
         return <DeveloperTab />;
+      case "Create Pricing Units":
+         return <CreatePricingUnit/>;
       default:
         return <GeneralTab />;
     }

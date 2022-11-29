@@ -1,7 +1,7 @@
+// @ts-ignore
 import React, {useEffect, useState} from "react";
 import { Form, Tabs, Modal } from "antd";
 import { PlanType } from "../../types/plan-type";
-import {  Select } from "antd";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -9,7 +9,7 @@ import {
   CancelSubscriptionType,
 } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
-import {BalanceAdjustment, Customer, Plan} from "../../api/api";
+import { Customer} from "../../api/api";
 import SubscriptionView from "./CustomerSubscriptionView";
 import {
   useMutation,
@@ -24,14 +24,11 @@ import {
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
-import { CustomerIntegrations } from "./CustomerIntegrations";
 import { CustomerCostType } from "../../types/revenue-type";
 import CustomerInfoView from "./CustomerInfo";
+// @ts-ignore
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
-import {BalanceAdjustments} from "../../types/invoice-type";
-
-const { Option } = Select;
 
 function CustomerDetail(props: {
   visible: boolean;
@@ -42,8 +39,6 @@ function CustomerDetail(props: {
 }) {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
-  const [balanceAdjustments, setBalanceAdjustments] = useState<BalanceAdjustments[]>([])
-  const [isBalanceAdjustmentLoaded, setIsBalanceAdjustmentLoaded] = useState(false)
   const [startDate, setStartDate] = useState<string>(
     dayjs().subtract(1, "month").format("YYYY-MM-DD")
   );
@@ -52,10 +47,6 @@ function CustomerDetail(props: {
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
     CustomerDetailSubscription[]
   >([]);
-
-  useEffect(() => {
-      const response = getBalanceAdjustments()
-  }, [])
 
   const { data, isLoading }: UseQueryResult<CustomerDetailType> =
     useQuery<CustomerDetailType>(
@@ -164,18 +155,6 @@ function CustomerDetail(props: {
     });
   };
 
-  const getBalanceAdjustments = async () => {
-      if(props.customer_id && !isBalanceAdjustmentLoaded) {
-          try {
-              const data = await BalanceAdjustment.getBalanceAdjustmentByCustomer(props.customer_id)
-              setBalanceAdjustments(data)
-              setIsBalanceAdjustmentLoaded(true)
-          } catch (error) {
-            console.log(error)
-          }
-      }
-  }
-
   const refetchGraphData = (start_date: string, end_date: string) => {
     setStartDate(start_date);
     setEndDate(end_date);
@@ -248,7 +227,7 @@ function CustomerDetail(props: {
               </Tabs.TabPane>
               <Tabs.TabPane tab="Credits" key="credits">
                 <CustomerBalancedAdjustments
-                  balanceAdjustments={balanceAdjustments}
+                  customerId={props.customer_id}
                 />
               </Tabs.TabPane>
               {/*

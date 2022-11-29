@@ -1,21 +1,24 @@
 import {
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  InputNumber,
-  Row,
+    Button,
+    Card,
+    Col,
+    Form,
+    Input,
+    InputNumber,
+    Row, Select,
 } from "antd";
 // @ts-ignore
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "react-query";
+import {useMutation, useQueryClient, UseQueryResult} from "react-query";
 import { toast } from "react-toastify";
-import {BalanceAdjustment} from "../api/api";
+import {BalanceAdjustment, Plan, PricingUnits} from "../api/api";
 import { PageLayout } from "../components/base/PageLayout";
 import {CreateBalanceAdjustmentType} from "../types/balance-adjustment";
 import {useParams} from "react-router";
+import { useQuery } from "react-query";
+import {PricingUnit} from "../types/pricing-unit-type";
+import PricingUnitDropDown from "../components/PricingUnitDropDown";
 
 type Params = {
     customerId: string;
@@ -26,6 +29,14 @@ const CreateCredit = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const { customerId } = useParams<Params>();
+
+  const { data , isLoading }: UseQueryResult<PricingUnit[]> = useQuery<PricingUnit[]>(
+    ["pricing_unit_list"],
+    () =>
+      PricingUnits.list().then((res) => {
+        return res;
+      })
+  );
 
   const mutation = useMutation(
     (post: CreateBalanceAdjustmentType) => BalanceAdjustment.createCredit(post),
@@ -50,7 +61,6 @@ const CreateCredit = () => {
     navigate(-1);
   };
 
-
   const submit = () => {
     form
       .validateFields()
@@ -59,7 +69,8 @@ const CreateCredit = () => {
             customer_id:customerId,
             amount:values.amount,
             amount_currency:values.amount_currency,
-            description:values.description
+            description:values.description,
+            pricing_unit_code: values.pricing_unit_code
         });
       })
       .catch((info) => {});
@@ -86,8 +97,8 @@ const CreateCredit = () => {
           name="create_credit"
           initialValues={{
             amount: null,
-            amount_currency: "USD",
             description: "",
+            pricing_unit_code: null
           }}
           onFinish={submit}
           autoComplete="off"
@@ -116,16 +127,14 @@ const CreateCredit = () => {
                         },
                       ]}
                     >
-                      <InputNumber
-                            addonBefore="$"
-                            defaultValue={0}
-                            precision={2}
-                      />
+                      <InputNumber defaultValue={0}  precision={2}/>
                     </Form.Item>
-                      <Form.Item label="currency" name="amount_currency">
-                          <Input
-                              placeholder="Ex: Add a currency"
-                          />
+                      <Form.Item rules={[{required: true, message: "Please Select a currency"}]}
+                          className="col-span-2"
+                          name="pricing_unit_code"
+                          label="Currency"
+                      >
+                          <PricingUnitDropDown setCurrentCurrency={value => form.setFieldValue("pricing_unit_code", value)}/>
                       </Form.Item>
                   </Card>
                 </Col>

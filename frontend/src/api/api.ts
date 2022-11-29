@@ -69,6 +69,7 @@ import {
 } from "../types/invoice-type";
 import {BalanceAdjustments, MarkInvoiceStatusAsPaid} from "../types/invoice-type";
 import {CreateBalanceAdjustmentType} from "../types/balance-adjustment";
+import { PricingUnit} from "../types/pricing-unit-type";
 
 const cookies = new Cookies();
 
@@ -406,8 +407,19 @@ export const Invoices = {
 
 export const BalanceAdjustment = {
   createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
-    requests.post("api/create_balance_adjustment/", post),
+    requests.post("api/balance_adjustments/", post),
 
-  getBalanceAdjustmentByCustomer: (customer_id: string): Promise<BalanceAdjustments[]> =>
-        requests.get(`api/balance_adjustments/?customer_id=${customer_id}`),
+  getCreditsByCustomer: (params: {customer_id: string, format: string}): Promise<BalanceAdjustments[]> =>
+      requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`),
+
+  deleteCredit: (adjustment_id: string): Promise<any> =>
+    requests.delete(`api/balance_adjustments/${adjustment_id}`),
+};
+
+export const PricingUnits = {
+    create: (post: PricingUnit): Promise<PricingUnit> =>
+        requests.post("api/pricing_units/", post),
+
+    list: (): Promise<PricingUnit[]> =>
+        requests.get(`api/pricing_units/`),
 };
