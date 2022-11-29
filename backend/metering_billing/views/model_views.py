@@ -227,11 +227,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "customer_id"
-    http_method_names = ["get", "post", "head"]
+    http_method_names = ["get", "post", "head", "patch"]
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
         "create": [IsAuthenticated | HasUserAPIKey],
+        "partial_update": [IsAuthenticated | HasUserAPIKey],
     }
 
     def get_queryset(self):
