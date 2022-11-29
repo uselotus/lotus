@@ -1,9 +1,10 @@
+// @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { Select } from "antd";
+// @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
-import { Paper } from "../base/Paper";
 
 const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
@@ -108,6 +109,9 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           <p>
             <b>Billing Address:</b> {data.billing_address ?? "N/A"}
           </p>
+           <p>
+               <b>Default Currency:</b> {data.default_currency?.name ?? "N/A"}
+           </p>
           <p>
             <b>Amount Due On Next Invoice:</b> {"$"}
             {data.next_amount_due.toFixed(2)}
