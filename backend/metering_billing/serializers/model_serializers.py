@@ -1678,7 +1678,6 @@ class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
             "amount",
             "pricing_unit_code",
             "description",
-            "created",
             "effective_at",
             "expires_at",
             "parent_adjustment_id",
@@ -1705,23 +1704,26 @@ class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
-        if data["amount"] == 0:
+        amount = data.get("amount", 0)
+        customer = data["customer"]
+        parent_adjustment = data.get("parent_adjustment", None)
+        if amount == 0:
             raise serializers.ValidationError("Amount must be non-zero")
-        if data["amount"] < 0:
-            if data["parent_adjustment"] is None:
+        if amount < 0:
+            if parent_adjustment is None:
                 raise serializers.ValidationError(
                     "Parent adjustment must be set for negative adjustments"
                 )
-        if data["parent_adjustment"] is not None:
-            if data["parent_adjustment"].amount <= 0:
+        if parent_adjustment is not None:
+            if parent_adjustment.amount <= 0:
                 raise serializers.ValidationError(
                     "Parent adjustment must be positive for child adjustments"
                 )
-            if data["parent_adjustment"].customer != data["customer"]:
+            if parent_adjustment.customer != customer:
                 raise serializers.ValidationError(
                     "Parent adjustment must be for the same customer"
                 )
-            if data["parent_adjustment"].get_remaining_balance() - data["amount"] < 0:
+            if parent_adjustment.get_remaining_balance() - amount < 0:
                 raise serializers.ValidationError(
                     "Parent adjustment does not have enough remaining balance"
                 )
