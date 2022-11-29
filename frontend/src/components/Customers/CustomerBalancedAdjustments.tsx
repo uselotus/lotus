@@ -1,4 +1,4 @@
-import {Table, Button, Select} from "antd";
+import {Table, Button, Select, Dropdown, Menu} from "antd";
 import {FC, useState} from "react";
 // @ts-ignore
 import React from "react";
@@ -10,8 +10,9 @@ import dayjs from "dayjs";
 import {useNavigate} from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
 import {useQuery, UseQueryResult} from "react-query";
-import {BalanceAdjustment, PricingUnits} from "../../api/api";
+import {BalanceAdjustment} from "../../api/api";
 import LoadingSpinner from "../LoadingSpinner";
+import {MoreOutlined} from "@ant-design/icons";
 
 interface Props {
   customerId:string;
@@ -67,6 +68,27 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
         <span>{dayjs(expires_at).format("YYYY/MM/DD HH:mm")}</span>
       ),
     },
+      {title:"Actions",
+       dataIndex: "actions",
+          key:"actions",
+        render:(_, record:BalanceAdjustments) => (
+            <Dropdown overlay={
+                <Menu>
+                    <Menu.Item onClick={() => console.log("HAVE TO IMPLEMEMENT VOID FEATURE OF CREDIT")}>
+                        <div className="archiveLabel">Void Credit</div>
+                    </Menu.Item>
+                </Menu>
+            } trigger={["click"]}>
+                <Button
+                    type="text"
+                    size="small"
+                    onClick={(e) => e.preventDefault()}
+                >
+                    <MoreOutlined/>
+                </Button>
+            </Dropdown>
+        )
+      }
   ];
   const navigate = useNavigate();
 
