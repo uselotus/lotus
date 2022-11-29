@@ -137,21 +137,22 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
             "triggers",
             "triggers_in",
         )
-        extra_kwargs = (
-            {
-                "webhook_endpoint_id": {"read_only": True},
-                "webhook_secret": {"read_only": True},
-                "triggers": {"read_only": True},
-                "triggers_in": {"write_only": True},
-            },
-        )
+        extra_kwargs = {
+            "webhook_endpoint_id": {"read_only": True},
+            "webhook_secret": {"read_only": True},
+            "triggers": {"read_only": True},
+            "triggers_in": {"write_only": True},
+        }
 
     triggers_in = serializers.ListField(
         child=serializers.ChoiceField(choices=WEBHOOK_TRIGGER_EVENTS.choices),
         write_only=True,
         required=True,
     )
-    triggers = WebhookTriggerSerializer(many=True, read_only=True, source="triggers")
+    triggers = WebhookTriggerSerializer(
+        many=True,
+        read_only=True,
+    )
 
     def create(self, validated_data):
         triggers_in = validated_data.pop("triggers_in")
