@@ -3,11 +3,11 @@ export interface MetricType {
   property_name: string;
   usage_aggregation_type: string;
   billable_aggregation_type?: string;
-  id?: number;
+  metric_id: string;
   billable_metric_name?: string;
   metric_type: "counter" | "stateful" | "rate";
-  numeric_filters?: string[];
-  categorical_filters?: string[];
+  numeric_filters?: NumericFilterType[];
+  categorical_filters?: CateogricalFilterType[];
   granularity?: string;
   event_type?: "delta" | "total";
   is_cost_metric?: boolean;
@@ -40,4 +40,16 @@ interface UsageData {
 interface CustomerUsage {
   metric_amount: number;
   customer: { name: string };
+}
+
+export interface CateogricalFilterType {
+  property_name: string;
+  operator: string;
+  comparison_value: string[];
+}
+
+export interface NumericFilterType {
+  property_name: string;
+  operator: string;
+  comparison_value: number;
 }

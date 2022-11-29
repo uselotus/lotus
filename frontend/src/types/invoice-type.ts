@@ -9,6 +9,14 @@ export interface InvoiceType {
   external_payment_obj_type: string;
 }
 
+export interface DraftInvoiceType {
+  line_items: LineItem[];
+  cost_due: string;
+  cost_due_currency: string;
+  cust_connected_to_payment_provider: boolean;
+  org_connected_to_cust_payment_provider: boolean;
+}
+
 export interface BalanceAdjustments {
   amount: number;
   amount_currency: string;
@@ -28,10 +36,14 @@ interface InvoiceOrganization {
 }
 
 interface LineItem {
-  components: object;
-  flat_amount_due: number;
-  total_amount_due: number;
-  usage_amount_due: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  quantity: number;
+  sutotal: string;
+  billing_type: string;
+  plan_version_id: string;
+  metadata: any;
 }
 
 export interface MarkInvoiceStatusAsPaid {

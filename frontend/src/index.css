@@ -159,17 +159,25 @@ a {
 /*}*/
 
 .ant-picker-ranges .ant-picker-preset > .ant-tag-blue {
-    color: #1d1d1f;
-    background: #cca43b !important;
-    border-color: #1d1d1f!important;
-    cursor: pointer;
+  color: #1d1d1f;
+  background: #cca43b !important;
+  border-color: #1d1d1f !important;
+  cursor: pointer;
+}
+
+.ant-input:focus {
+  border-color: #cca43b;
+}
+
+.mr-2 {
+    margin-right: 0.5rem;
 }
 
 .customer-detail-card {
-    background: #d3d3d33d;
-    padding: 10px 20px;
-    border-radius: 10px;
-    width:500px;
+  background: #d3d3d33d;
+  padding: 10px 20px;
+  border-radius: 10px;
+  width: 500px;
 }
 
 /**

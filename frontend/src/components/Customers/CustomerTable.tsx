@@ -34,7 +34,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
   },
   {
     title: "Plans",
-    width: 120,
+    width: 180,
     dataIndex: "subscriptions",
     render: (_, record) => (
       <div>
@@ -49,7 +49,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
   },
   {
     title: "Outstanding Revenue",
-    width: 120,
+    width: 60,
     sorter: (a, b) => a.total_amount_due - b.total_amount_due,
 
     render: (_, record) => (
@@ -65,7 +65,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
   },
   {
     title: "Subscription Renews",
-    width: 120,
+    width: 60,
     render: (_, record) => (
       <div>
         {record.subscriptions[0] !== undefined &&

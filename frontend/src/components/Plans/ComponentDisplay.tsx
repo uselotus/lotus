@@ -3,6 +3,7 @@ import { Button, Row, Col, Descriptions, Table } from "antd";
 import { Paper } from "../base/Paper";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { CreateComponent, Tier } from "../../types/plan-type";
+import "./ComponentDisplay.css";
 
 const dummy_components: CreateComponent[] = [
   {
@@ -81,6 +82,7 @@ export const ComponentDisplay: FC<{
               style={{ backgroundColor: "FAFAFA" }}
               size="middle"
               rowClassName="bg-[#FAFAFA]"
+              className="noborderTable"
               columns={[
                 {
                   title: "Range",

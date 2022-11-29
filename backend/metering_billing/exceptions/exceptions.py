@@ -35,7 +35,7 @@ class DuplicateCustomerID(APIException):
 
 class DuplicateMetric(APIException):
     status_code = 409
-    default_detail = "Metric already exists"
+    default_detail = "Metric with that name already exists"
     default_code = "Metric already exists"
 
 

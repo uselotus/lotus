@@ -1,16 +1,15 @@
-import React, { FC, useState, useEffect, useRef } from "react";
+import React, { FC, useRef, useState } from "react";
 
 import {
   ProTable,
   ProFormInstance,
   ProColumns,
 } from "@ant-design/pro-components";
-import { Button, Tag, Tooltip } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Tag } from "antd";
 import { MetricType } from "../../types/metric-type";
-import { Metrics } from "../../api/api";
+import MetricDetails from "./MetricDetails";
 
-const colorMap = new Map<string, string>([
+export const colorMap = new Map<string, string>([
   ["count", "green"],
   ["sum", "blue"],
   ["max", "pink"],
@@ -20,13 +19,69 @@ const colorMap = new Map<string, string>([
   ["unique", "geekblue"],
 ]);
 
+const operatorDisplayMap = new Map<string, string>([
+  ["eq", "="],
+  ["isin", "is"],
+  ["gt", ">"],
+  ["gte", ">="],
+  ["lt", "<"],
+  ["lte", "<="],
+  ["isnotin", "is not"],
+]);
+
 interface Props {
   metricArray: MetricType[];
 }
 
 const MetricTable: FC<Props> = ({ metricArray }) => {
-  const navigate = useNavigate();
   const formRef = useRef<ProFormInstance>();
+  const [currentMetric, setCurrentMetric] = useState<MetricType | null>();
+  var filters: any[];
+
+  const mergeFilters = (
+    numeric_filters: any[] | undefined,
+    categorical_filters: any[] | undefined
+  ) => {
+    console.log(numeric_filters, categorical_filters);
+    if (numeric_filters !== undefined && categorical_filters === undefined) {
+      filters = numeric_filters.map((filter) => {
+        return {
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        };
+      });
+    } else if (
+      categorical_filters !== undefined &&
+      numeric_filters === undefined
+    ) {
+      filters = categorical_filters.map((filter) => {
+        return {
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        };
+      });
+    } else if (
+      numeric_filters !== undefined &&
+      categorical_filters !== undefined
+    ) {
+      filters = numeric_filters.map((filter) => {
+        return {
+          ...filter,
+          operator: operatorDisplayMap.get(filter.operator),
+        };
+      });
+      filters = filters.concat(
+        categorical_filters.map((filter) => {
+          return {
+            ...filter,
+            operator: operatorDisplayMap.get(filter.operator),
+          };
+        })
+      );
+    }
+
+    return filters;
+  };
 
   const columns: ProColumns<MetricType>[] = [
     {
@@ -34,15 +89,34 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     },
     {
       title: "Metric Name",
-      width: 150,
+      width: 100,
       dataIndex: "billable_metric_name",
       align: "left",
+    },
+    {
+      title: "Is Cost",
+      dataIndex: "billable_metric_name",
+      align: "left",
+      width: 30,
+      render: (_, record) => (
+        <div className="self-center">
+          {record.is_cost_metric === true && <Tag>Cost</Tag>}
+        </div>
+      ),
     },
     {
       title: "Type",
       width: 100,
       dataIndex: "metric_type",
       align: "left",
+      render: (_, record) => {
+        {
+          if (record.metric_type === "stateful") {
+            return "continuous";
+          }
+          return "counter";
+        }
+      },
     },
     {
       title: "Event Name",
@@ -66,6 +140,33 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       dataIndex: "property_name",
       align: "left",
     },
+    {
+      title: "Filters",
+      width: 150,
+      align: "left",
+      render: (_, record) => {
+        {
+          const filters = mergeFilters(
+            record.numeric_filters,
+            record.categorical_filters
+          );
+
+          if (filters) {
+            return (
+              <div className="space-y-2">
+                {filters.map((filter) => (
+                  <Tag color="" key={filter.property_name}>
+                    {<b>{filter.property_name}</b>} {filter.operator} {'"'}
+                    {filter.comparison_value}
+                    {'"'}
+                  </Tag>
+                ))}
+              </div>
+            );
+          }
+        }
+      },
+    },
   ];
 
   return (
@@ -73,6 +174,14 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       <ProTable<MetricType>
         columns={columns}
         dataSource={metricArray}
+        onRow={(record, rowIndex) => {
+          return {
+            onClick: (event) => {
+              console.log(event, "heree");
+              setCurrentMetric(record);
+            },
+          };
+        }}
         toolBarRender={false}
         rowKey="customer_id"
         formRef={formRef}
@@ -85,6 +194,12 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
         }}
         options={false}
       />
+      {!!currentMetric && (
+        <MetricDetails
+          metric={currentMetric}
+          onclose={() => setCurrentMetric(null)}
+        />
+      )}
     </div>
   );
 };

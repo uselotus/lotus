@@ -18,7 +18,6 @@ from rest_framework.views import APIView
 def paid_handler(event):
     invoice = event["data"]["object"]  # dj-stripe invoice object
     id = invoice.id
-    print("waddup baby")
     matching_invoice = Invoice.objects.filter(
         external_payment_obj_type=PAYMENT_PROVIDERS.STRIPE, external_payment_obj_id=id
     ).first()

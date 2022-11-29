@@ -56,7 +56,6 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
         start_date = dayjs().startOf("year").format("YYYY-MM-DD");
         break;
     }
-    console.log(start_date);
 
     onDateChange(start_date, end_date);
   };
@@ -69,6 +68,15 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+
+    label: {
+      position: "middle",
+      layout: [
+        { type: "interval-adjust-position" },
+        { type: "interval-hide-overlap" },
+        { type: "adjust-color" },
+      ],
+    },
   };
 
   return (
@@ -102,12 +110,12 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           </p>
           <p>
             <b>Amount Due On Next Invoice:</b> {"$"}
-            {data.total_amount_due.toFixed(2)}
+            {data.next_amount_due.toFixed(2)}
           </p>
         </div>
         <div className="grid grid-cols-2 justify-items-center mx-8 gap-8 py-4 w-full border-2 border-solid rounded border-[#EAEAEB]">
           <div>
-            <p className=" mb-4">Total Revenue</p>
+            <p className=" mb-4">Earned Revenue</p>
             {cost_data === undefined ? (
               <LoadingSpinner />
             ) : (
@@ -134,16 +142,16 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             )}
           </div>
           <div className=" ol-span-2">
-            <p className=" mb-4">Margin Percent</p>
+            <p className=" mb-4">Profit Margin</p>
             {cost_data.margin === undefined ? (
               <LoadingSpinner />
             ) : cost_data.margin < 0 ? (
               <span className="text-3xl font-bold text-danger">
-                {displayMetric(cost_data.margin).toFixed(2)}%
+                {displayMetric(cost_data.margin * 100).toFixed(2)}%
               </span>
             ) : (
               <span className="text-3xl font-bold text-success">
-                {displayMetric(cost_data.margin).toFixed(2)}%
+                {displayMetric(cost_data.margin * 100).toFixed(2)}%
               </span>
             )}
           </div>

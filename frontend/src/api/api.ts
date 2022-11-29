@@ -6,6 +6,11 @@ import {
   CustomerDetailType,
 } from "../types/customer-type";
 import {
+  WebhookEndpoint,
+  WebhookEndpointCreate,
+  WebhookEndpointUpdate,
+} from "../types/webhook-type";
+import {
   PlanType,
   CreatePlanType,
   UpdatePlanType,
@@ -58,8 +63,11 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
-import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
-import {CreateBalanceAdjustmentType} from "../types/balance-adjustment";
+import {
+  DraftInvoiceType,
+  InvoiceType,
+  MarkInvoiceStatusAsPaid,
+} from "../types/invoice-type";
 
 const cookies = new Cookies();
 
@@ -188,12 +196,16 @@ export const Plan = {
     requests.patch(`api/plan_versions/${version_id}/`, post),
 };
 
-export const Alerts = {
-  getUrls: (): Promise<any> => requests.get("api/webhooks/"),
-  addUrl: (url: string): Promise<any> =>
-    requests.post("api/webhooks/", { webhook_url: url }),
-  deleteUrl: (id: number): Promise<any> =>
-    requests.delete(`api/webhooks/${id}`),
+export const Webhook = {
+  getEndpoints: (): Promise<WebhookEndpoint> => requests.get("api/webhooks/"),
+  createEndpoint: (post: WebhookEndpointCreate): Promise<WebhookEndpoint> =>
+    requests.post("api/webhooks/", post),
+  deleteEndpoint: (wh_id: string): Promise<WebhookEndpoint> =>
+    requests.delete(`api/webhooks/${wh_id}/`),
+  editEndpoint: (
+    wh_id: number,
+    post: WebhookEndpointUpdate
+  ): Promise<WebhookEndpoint> => requests.patch(`api/webhooks/${wh_id}/`, post),
 };
 
 export const Authentication = {
@@ -318,6 +330,8 @@ export const Metrics = {
     requests.post("api/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>
     requests.delete(`api/metrics/${id}`),
+  archiveMetric: (id: string): Promise<{}> =>
+    requests.patch(`api/metrics/${id}/`, { status: "archived" }),
 };
 
 export const Events = {
@@ -371,11 +385,11 @@ export const Stripe = {
 export const PaymentProcessorIntegration = {
   getPaymentProcessorConnectionStatus: (): Promise<
     PaymentProcessorStatusType[]
-  > => requests.get("api/payment_providers/"),
+  > => requests.get("/api/payment_providers/"),
   connectPaymentProcessor: (
     pp_info: PaymentProcessorConnectionRequestType
   ): Promise<PaymentProcessorConnectionResponseType> =>
-    requests.post("api/payment_providers/", { pp_info }),
+    requests.post("/api/payment_providers/", { pp_info }),
 };
 
 export const Invoices = {
@@ -384,9 +398,12 @@ export const Invoices = {
       payment_status: data.payment_status,
     });
   },
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType[]> => {
+    return requests.get("api/draft_invoice/", { params: { customer_id } });
+  },
 };
 
 export const BalanceAdjustment = {
-    createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
-        requests.post("api/create_balance_adjustment/", post),
+  createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
+    requests.post("api/create_balance_adjustment/", post),
 };

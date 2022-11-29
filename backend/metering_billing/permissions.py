@@ -10,7 +10,7 @@ class HasUserAPIKey(BaseHasAPIKey):
         try:
             return request.META.get("HTTP_X_API_KEY")
         except KeyError:
-            meta_dict = {k.lower(): v for k, v in request.META}
+            meta_dict = {k.lower(): v for k, v in request.META.items()}
             if "http_x_api_key".lower() in meta_dict:
                 return meta_dict["http_x_api_key"]
             else:

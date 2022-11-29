@@ -179,7 +179,8 @@ class StripeConnector(PaymentProvider):
                 stripe_name = stripe_name if stripe_name else "no_stripe_name"
                 stripe_currency = stripe_customer.currency
                 customer = Customer.objects.filter(
-                    Q(integrations__stripe__id=stripe_id) | Q(email=stripe_email),
+                    Q(integrations__stripe__id=stripe_id)
+                    | (Q(email=stripe_email) & Q(email__isnull=False)),
                     organization=organization,
                 ).first()
                 if customer:  # customer exists in system already
@@ -252,7 +253,6 @@ class StripeConnector(PaymentProvider):
                 "external_payment_obj_type": PAYMENT_PROVIDERS.STRIPE,
                 "organization": customer.organization,
                 "subscription": None,
-                "line_items": {},
             }
             lotus_invoice = Invoice.objects.create(**invoice_kwargs)
             lotus_invoices.append(lotus_invoice)

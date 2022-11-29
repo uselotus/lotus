@@ -9,19 +9,27 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+import logging
 import os
 import re
 import ssl
 from datetime import timedelta
+from json import loads
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 import django_heroku
+import kafka_helper
 import posthog
 import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
+from kafka import KafkaConsumer, KafkaProducer
+from kafka.admin import KafkaAdminClient, NewTopic
+from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
+from svix.api import EventTypeIn, Svix
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -53,17 +61,18 @@ PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
 STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default="sk_live_")
 STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default="sk_test_")
-STRIPE_LIVE_MODE = config(
-    "STRIPE_LIVE_MODE", default=(not DEBUG), cast=bool
-)  # Matches debug
-STRIPE_SECRET_KEY = (
-    STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
-)
+STRIPE_LIVE_MODE = config("STRIPE_LIVE_MODE", default=(not DEBUG), cast=bool)  # Matches debug
+STRIPE_SECRET_KEY = STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
 # Get it from the section in the Stripe dashboard where you added the webhook endpoint
-DJSTRIPE_WEBHOOK_SECRET = config("WEBHOOK_SECRET", default="whsec_")
+DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+# Webhooks for Svix
+SVIX_API_KEY = config("SVIX_API_KEY", default="")
 
+
+# Optional Observalility Services
+CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
 
 if SENTRY_DSN != "":
     sentry_sdk.init(
@@ -101,6 +110,7 @@ else:
     ALLOWED_HOSTS = [
         "*uselotus.io",
     ]
+
 
 # Application definition
 
@@ -189,9 +199,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
             ],
             "libraries": {
-                "render_vite_bundle": (
-                    "metering_billing.template_tags.render_vite_bundle"
-                ),
+                "render_vite_bundle": ("metering_billing.template_tags.render_vite_bundle"),
             },
         },
     },
@@ -235,9 +243,7 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": (
-            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.UserAttributeSimilarityValidator"),
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -250,6 +256,87 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+def value_deserializer(value):
+    try:
+        return loads(value.decode("utf-8"))
+    except Exception as e:
+        print(e)
+        return None
+
+
+def key_deserializer(key):
+    try:
+        return key.decode("utf-8")
+    except Exception as e:
+        print(e)
+        return None
+
+
+# Kafka/Redpanda Settings
+KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
+KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
+if type(KAFKA_EVENTS_TOPIC) == bytes:
+    KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
+KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
+KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
+KAFKA_HOST = config("KAFKA_URL", default="redpanda:29092")
+if KAFKA_HOST:
+    if "," not in KAFKA_HOST:
+        KAFKA_HOST = KAFKA_HOST
+    else:
+        KAFKA_HOST = [
+            "{}:{}".format(parsedUrl.hostname, parsedUrl.port)
+            for parsedUrl in [urlparse(url) for url in KAFKA_HOST.split(",")]
+        ]
+    producer_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "api_version": (2, 5, 0),
+    }
+    consumer_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "auto_offset_reset": "earliest",
+        "value_deserializer": value_deserializer,
+        "key_deserializer": key_deserializer,
+        "api_version": (2, 5, 0),
+    }
+    admin_client_config = {
+        "bootstrap_servers": KAFKA_HOST,
+        "client_id": "events-client",
+    }
+
+    KAFKA_CERTIFICATE = config("KAFKA_CLIENT_CERT", default=None)
+    KAFKA_KEY = config("KAFKA_CLIENT_CERT_KEY", default=None)
+    KAFKA_CA = config("KAFKA_TRUSTED_CERT", default=None)
+    if KAFKA_CERTIFICATE and KAFKA_KEY and KAFKA_CA:
+        ssl_context = kafka_helper.get_kafka_ssl_context()
+        for cfg in [producer_config, consumer_config, admin_client_config]:
+            cfg["security_protocol"] = "SSL"
+            cfg["ssl_context"] = ssl_context
+
+    PRODUCER_CONFIG = producer_config
+    CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
+    # print(PRODUCER.__dict__["_sender"].__dict__)
+    # print("PRODUCER PRODUCER STARTUP")
+    ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
+
+    existing_topics = ADMIN_CLIENT.list_topics()
+    if KAFKA_EVENTS_TOPIC not in existing_topics and SELF_HOSTED:
+        try:
+            ADMIN_CLIENT.create_topics(
+                new_topics=[
+                    NewTopic(
+                        name=KAFKA_EVENTS_TOPIC,
+                        num_partitions=KAFKA_NUM_PARTITIONS,
+                        replication_factor=KAFKA_REPLICATION_FACTOR,
+                    )
+                ]
+            )
+        except TopicAlreadyExistsError:
+            pass
+else:
+    PRODUCER_CONFIG = None
+    CONSUMER = None
 
 # redis settings
 if os.environ.get("REDIS_URL"):
@@ -371,7 +458,7 @@ REST_FRAMEWORK = {
         "knox.auth.TokenAuthentication",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "EXCEPTION_HANDLER": "metering_billing.custom_exception_handler.custom_exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
 SPECTACULAR_SETTINGS = {
@@ -397,6 +484,23 @@ SPECTACULAR_SETTINGS = {
             "TokenAuth": [],
         }
     ],
+    "ENUM_NAME_OVERRIDES": {
+        "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
+        "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
+        "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
+        "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
+        "SubscriptionStatusEnum": "metering_billing.utils.enums.SUBSCRIPTION_STATUS.choices",
+        "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",
+        "PlanStatusEnum": "metering_billing.utils.enums.PLAN_STATUS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "ProductStatusEnum": "metering_billing.utils.enums.PRODUCT_STATUS.choices",
+        "InvoiceStatusEnum": "metering_billing.utils.enums.INVOICE_STATUS.choices",
+        "FailureStatusEnum": ["eror"],
+        "SuccessStatusEnum": ["success"],
+        "TrackEventSuccessEnum": ["all", "some"],
+        "TrackEventFailureEnum": ["none"],
+        "OrganizationUserStatus": "metering_billing.utils.enums.ORGANIZATION_STATUS.choices",
+    },
 }
 REST_KNOX = {
     "TOKEN_TTL": timedelta(hours=2),
@@ -453,4 +557,17 @@ LOTUS_HOST = config("LOTUS_HOST", default=None)
 LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
 META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
-django_heroku.settings(locals())
+django_heroku.settings(locals(), logging=False)
+
+# create svix events
+if SVIX_API_KEY != "":
+    svix = Svix(SVIX_API_KEY)
+    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+    if "invoice.created" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is created",
+                archived=False,
+                name="invoice.created",
+            )
+        )

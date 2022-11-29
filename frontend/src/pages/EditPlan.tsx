@@ -61,7 +61,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   const { setReplacementPlan } = usePlanUpdater();
   const [editComponentItem, setEditComponentsItem] = useState<any>();
   const [targetCustomerId, setTargetCustomerId] = useState<string>(); // target customer id
-  const [allPlans, setAllPlans] =  useState<PlanType[]>([])
+  const [allPlans, setAllPlans] = useState<PlanType[]>([]);
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
   >([
@@ -69,8 +69,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     { label: "Quarterly", name: "quarterly" },
     { label: "Yearly", name: "yearly" },
   ]);
-  const [priceAdjustmentType, setPriceAdjustmentType] =
-    useState<string>("none");
+  const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>(
+    plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
+      "none"
+  );
 
   const queryClient = useQueryClient();
 
@@ -79,10 +81,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   );
 
   useEffect(() => {
-      if(!allPlans?.length) {
-          Plan.getPlans().then(data => setAllPlans(data))
-      }
-  }, [])
+    if (!allPlans?.length) {
+      Plan.getPlans().then((data) => setAllPlans(data));
+    }
+  }, []);
 
   useEffect(() => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
@@ -90,6 +92,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         return {
           metric: component.billable_metric.billable_metric_name,
           tiers: component.tiers,
+          separate_by: component.separate_by,
+          proration_granularity: component.proration_granularity,
           id: component.billable_metric.billable_metric_name,
         };
       }
@@ -266,9 +270,14 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
+              proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
           }
+        }
+        if (values.usage_billing_frequency === "yearly") {
+          values.usage_billing_frequency = "end_of_period";
         }
 
         const initialPlanVersion: CreateInitialVersionType = {
@@ -278,7 +287,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           flat_rate: values.flat_rate,
           components: usagecomponentslist,
           features: planFeatures,
-          // usage_billing_frequency: values.usage_billing_frequency,
+          usage_billing_frequency: values.usage_billing_frequency,
         };
         if (
           values.price_adjustment_type !== undefined &&
@@ -286,10 +295,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         ) {
           if (
             values.price_adjustment_type === "percentage" ||
-            values.price_adjustment_type === "flat"
+            values.price_adjustment_type === "fixed"
           ) {
-            values.price_adjustment_value =
-              Math.abs(values.price_adjustment_value) * -1;
+            values.price_adjustment_amount =
+              Math.abs(values.price_adjustment_amount) * -1;
           }
           initialPlanVersion["price_adjustment"] = {
             price_adjustment_type: values.price_adjustment_type,
@@ -314,7 +323,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             flat_rate: values.flat_rate,
             components: usagecomponentslist,
             features: planFeatures,
-            // usage_billing_frequency: values.usage_billing_frequency,
+            usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
           };
@@ -393,7 +402,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             description: plan.versions[versionIndex].description,
             flat_rate: plan.versions[versionIndex].flat_rate,
             pay_in_advance: plan.versions[versionIndex].flat_fee_billing_type,
-            // usage_billing_frequency: plan.versions[versionIndex].usage_billing_frequency,
+            usage_billing_frequency:
+              plan.versions[versionIndex].usage_billing_frequency,
             plan_duration: plan.plan_duration,
             flat_fee_billing_type:
               plan.versions[versionIndex].flat_fee_billing_type,
@@ -412,7 +422,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           labelAlign="left"
         >
           <Row gutter={[24, 24]}>
-            <Col span={12}>
+            <Col span={10}>
               <Row gutter={[24, 24]}>
                 <Col span="24">
                   <Card title="Plan Information">
@@ -437,11 +447,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                             ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "monthly"
+                            );
                           } else if (e.target.value === "quarterly") {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
                               { label: "Quarterly", name: "quarterly" },
                             ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "quarterly"
+                            );
                           } else {
                             setAvailableBillingTypes([
                               { label: "Monthly", name: "monthly" },
@@ -477,28 +495,36 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         </Select.Option>
                       </Select>
                     </Form.Item>
-                     <Form.Item
-                          name="transition_to_plan_id"
-                          label="Plan on next cycle"
-                     >
-                          <Select>
-                              {
-                                  allPlans.map(plan => (
-                                      <Select.Option value={plan.plan_id}>
-                                          {plan.plan_name}
-                                      </Select.Option>
-                                  ))
-                              }
-                          </Select>
-                      </Form.Item>
+                    <Form.Item
+                      name="transition_to_plan_id"
+                      label="Plan on next cycle"
+                    >
+                      <Select>
+                        {allPlans.map((item) => (
+                          <Select.Option
+                            key={item.plan_id}
+                            value={item.plan_id}
+                          >
+                            {plan.plan_id === item.plan_id
+                              ? "Self"
+                              : item.plan_name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
                   </Card>
                 </Col>
               </Row>
             </Col>
-
-            <Col span={12}>
+            <Col span={14}>
               <Card
                 title="Added Components"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 className="h-full"
                 extra={[
                   <Button
@@ -521,7 +547,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                {/* <div className="absolute inset-x-0 bottom-0 justify-center">
+                <div className="absolute inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -544,13 +570,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div> */}
+                </div>
               </Card>
             </Col>
             <Col span="24">
               <Card
                 className="w-full my-5"
                 title="Added Features"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button htmlType="button" onClick={showFeatureModal}>
                     Add Feature
@@ -572,7 +604,16 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Discount">
+              <Card
+                className="w-6/12 mb-20"
+                title="Discount"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
+              >
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}
@@ -585,9 +626,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       }}
                     >
                       <Select.Option value="none">None</Select.Option>
-                      <Select.Option value="price_override">
+                      {/* <Select.Option value="price_override">
                         Overwrite Price
-                      </Select.Option>
+                      </Select.Option> */}
                       <Select.Option value="percentage">
                         Percentage Off
                       </Select.Option>

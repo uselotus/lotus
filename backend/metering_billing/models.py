@@ -32,7 +32,10 @@ from metering_billing.utils import (
     plan_version_uuid,
     product_uuid,
     subscription_uuid,
+    webhook_endpoint_uuid,
+    webhook_secret_uuid,
 )
+<<<<<<< HEAD
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     BATCH_ROUNDING_TYPE,
@@ -60,10 +63,22 @@ from metering_billing.utils.enums import (
     USAGE_BILLING_FREQUENCY,
     USAGE_CALC_GRANULARITY,
 )
+=======
+from metering_billing.utils.enums import *
+>>>>>>> staging
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
+from svix.api import (
+    ApplicationIn,
+    EndpointIn,
+    EndpointSecretRotateIn,
+    EndpointUpdate,
+    Svix,
+)
+from svix.internal.openapi_client.models.http_error import HttpError
 
 META = settings.META
+SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class Organization(models.Model):
@@ -90,23 +105,125 @@ class Organization(models.Model):
                 raise ValueError(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
+<<<<<<< HEAD
         if not self.default_currency:
             self.default_currency = PricingUnit.objects.filter(code="USD").first()
+=======
+        new = not self.pk
+>>>>>>> staging
         super(Organization, self).save(*args, **kwargs)
+        if SVIX_API_KEY != "" and new:
+            svix = Svix(SVIX_API_KEY)
+            svix_app = svix.application.create(
+                ApplicationIn(uid=self.organization_id, name=self.company_name)
+            )
 
     @property
     def users(self):
         return self.org_users
 
 
-class Alert(models.Model):
-    type = models.CharField(max_length=20, default="webhook")
+class WebhookEndpointManager(models.Manager):
+    def create_with_triggers(self, *args, **kwargs):
+        triggers = kwargs.pop("triggers", [])
+        wh_endpoint = self.model(**kwargs)
+        wh_endpoint.save(triggers=triggers)
+        return wh_endpoint
+
+
+class WebhookEndpoint(models.Model):
+    webhook_endpoint_id = models.CharField(
+        default=webhook_endpoint_uuid, max_length=100, unique=True
+    )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_alerts"
     )
-    webhook_url = models.CharField(max_length=300, blank=True, null=True)
     name = models.CharField(max_length=100, default=" ")
-    history = HistoricalRecords()
+    webhook_url = models.CharField(max_length=300)
+    webhook_secret = models.CharField(max_length=100, default=webhook_secret_uuid)
+
+    objects = WebhookEndpointManager()
+
+    class Meta:
+        unique_together = ("organization", "webhook_url")
+
+    def save(self, *args, **kwargs):
+        new = not self.pk
+        triggers = kwargs.pop("triggers", [])
+        super(WebhookEndpoint, self).save(*args, **kwargs)
+        if SVIX_API_KEY != "":
+            try:
+                svix = Svix(SVIX_API_KEY)
+                if new:
+                    endpoint_create_dict = {
+                        "uid": self.webhook_endpoint_id,
+                        "description": self.name,
+                        "url": self.webhook_url,
+                        "version": 1,
+                        "secret": self.webhook_secret,
+                    }
+                    if len(triggers) > 0:
+                        endpoint_create_dict["filter_types"] = []
+                        for trigger in triggers:
+                            endpoint_create_dict["filter_types"].append(
+                                trigger.trigger_name
+                            )
+                            trigger.webhook_endpoint = self
+                            trigger.save()
+                    svix_endpoint = svix.endpoint.create(
+                        self.organization.organization_id,
+                        EndpointIn(**endpoint_create_dict),
+                    )
+                else:
+                    triggers = self.triggers.all().values_list(
+                        "trigger_name", flat=True
+                    )
+                    svix_endpoint = svix.endpoint.get(
+                        self.organization.organization_id,
+                        self.webhook_endpoint_id,
+                    )
+
+                    svix_endpoint = svix_endpoint.__dict__
+                    svix_update_dict = {}
+                    svix_update_dict["uid"] = self.webhook_endpoint_id
+                    svix_update_dict["description"] = self.name
+                    svix_update_dict["url"] = self.webhook_url
+
+                    # triggers
+                    svix_triggers = svix_endpoint.get("filter_types") or []
+                    version = svix_endpoint.get("version")
+                    if set(triggers) != set(svix_triggers):
+                        version += 1
+                    svix_update_dict["filter_types"] = list(triggers)
+                    svix_update_dict["version"] = version
+                    updated_endpoint = svix.endpoint.update(
+                        self.organization.organization_id,
+                        self.webhook_endpoint_id,
+                        EndpointUpdate(**svix_update_dict),
+                    )
+
+                    current_endpoint_secret = svix.endpoint.get_secret(
+                        self.organization.organization_id,
+                        self.webhook_endpoint_id,
+                    )
+                    if current_endpoint_secret.key != self.webhook_secret:
+                        svix.endpoint.rotate_secret(
+                            self.organization.organization_id,
+                            self.webhook_endpoint_id,
+                            EndpointSecretRotateIn(key=self.webhook_secret),
+                        )
+            except HttpError as e:
+                self.delete()
+                raise ValueError(e)
+
+
+class WebhookTrigger(models.Model):
+    webhook_endpoint = models.ForeignKey(
+        WebhookEndpoint, on_delete=models.CASCADE, related_name="triggers"
+    )
+    trigger_name = models.CharField(
+        choices=WEBHOOK_TRIGGER_EVENTS.choices, max_length=40
+    )
 
 
 class User(AbstractUser):
@@ -222,6 +339,33 @@ class Customer(models.Model):
 
         return subscription_usages
 
+    def get_active_sub_drafts_revenue(self):
+        customer_subscriptions = (
+            Subscription.objects.filter(
+                customer=self,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+                organization=self.organization,
+            )
+            .prefetch_related("billing_plan__plan_components")
+            .prefetch_related("billing_plan__plan_components__billable_metric")
+            .select_related("billing_plan")
+        )
+        total = 0
+        for subscription in customer_subscriptions:
+            inv = generate_invoice(
+                subscription,
+                draft=True,
+                flat_fee_behavior="full_amount",
+                charge_next_plan=True,
+            )
+            total += inv.cost_due
+            inv.delete()
+        try:
+            total = total.amount
+        except:
+            pass
+        return total
+
     def get_currency_balance(self, currency):
         now = now_utc()
         balance = self.customer_balance_adjustments.filter(
@@ -232,17 +376,13 @@ class Customer(models.Model):
         return balance
 
     def get_outstanding_revenue(self):
-        usg_rev = self.get_usage_and_revenue()
-        active_sub_amount_due = sum(
-            x["total_amount_due"] for x in usg_rev["subscriptions"]
-        )
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
-            .exclude(subscription__in=usg_rev["sub_objects"])
+            .exclude(subscription__status=SUBSCRIPTION_STATUS.ACTIVE)
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
-        total_amount_due = active_sub_amount_due + (unpaid_invoice_amount_due or 0)
+        total_amount_due = unpaid_invoice_amount_due or 0
         return total_amount_due
 
 
@@ -414,7 +554,7 @@ class Event(models.Model):
     event_name = models.CharField(max_length=200, null=False)
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id = models.CharField(max_length=255, unique=True)
+    idempotency_id = models.CharField(max_length=255)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]
@@ -452,7 +592,8 @@ class Metric(models.Model):
         default=METRIC_TYPE.COUNTER,
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
-    billable_metric_name = models.CharField(
+    billable_metric_name = models.CharField(max_length=200, null=True, blank=True)
+    metric_id = models.CharField(
         max_length=200, null=False, blank=True, default=metric_uuid
     )
     event_type = models.CharField(
@@ -489,11 +630,16 @@ class Metric(models.Model):
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
     categorical_filters = models.ManyToManyField(CategoricalFilter, blank=True)
 
+    # status
+    status = models.CharField(
+        choices=METRIC_STATUS.choices, max_length=40, default=METRIC_STATUS.ACTIVE
+    )
+
     # records
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "billable_metric_name")
+        unique_together = ("organization", "metric_id")
 
     def __str__(self):
         return self.billable_metric_name
@@ -507,15 +653,19 @@ class Metric(models.Model):
         end_date,
         granularity,
         customer=None,
+        group_by=[],
+        proration=None,
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_usage(
             results_granularity=granularity,
-            start_date=start_date,
-            end_date=end_date,
+            start=start_date,
+            end=end_date,
             customer=customer,
+            group_by=group_by,
+            proration=proration,
         )
 
         return usage
@@ -524,16 +674,26 @@ class Metric(models.Model):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-
-        usage = handler.get_current_usage(subscription)
+        all_components = subscription.billing_plan.plan_components.all()
+        group_by = []
+        usage = None
+        for component in all_components:
+            if component.billable_metric == self:
+                group_by = component.separate_by
+                usage = handler.get_current_usage(subscription, group_by=group_by)
+                break
 
         return usage
 
-    def get_earned_usage_per_day(self, start_date, end_date, customer):
+    def get_earned_usage_per_day(
+        self, start, end, customer, group_by=[], proration=None
+    ):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-        usage = handler.get_earned_usage_per_day(start_date, end_date, customer)
+        usage = handler.get_earned_usage_per_day(
+            start, end, customer, group_by, proration
+        )
 
         return usage
 
@@ -570,44 +730,40 @@ class PriceTier(models.Model):
         null=True,
     )
 
-    def calculate_revenue(
-        self, usage_dict: dict, prev_tier_end=False, division_factor=None
-    ):
-        if division_factor is None:
-            division_factor = len(usage_dict)
+    def calculate_revenue(self, usage: float, prev_tier_end=False):
+        # if division_factor is None:
+        #     division_factor = len(usage_dict)
         revenue = 0
         discontinuous_range = (
             prev_tier_end != self.range_start and prev_tier_end is not None
         )
-        for usage in usage_dict.values():
-            usage = convert_to_decimal(usage)
-            usage_in_range = (
-                self.range_start <= usage
-                if discontinuous_range
-                else self.range_start < usage or self.range_start == 0
-            )
-            if usage_in_range:
-                if self.type == PRICE_TIER_TYPE.FLAT:
-                    revenue += self.cost_per_batch / division_factor
-                elif self.type == PRICE_TIER_TYPE.PER_UNIT:
-                    if self.range_end is not None:
-                        billable_units = min(
-                            usage - self.range_start, self.range_end - self.range_start
-                        )
-                    else:
-                        billable_units = usage - self.range_start
-                    if discontinuous_range:
-                        billable_units += 1
-                    billable_batches = billable_units / self.metric_units_per_batch
-                    if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
-                        billable_batches = math.ceil(billable_batches)
-                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
-                        billable_batches = math.floor(billable_batches)
-                    elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
-                        billable_batches = round(billable_batches)
-                    revenue += (
-                        self.cost_per_batch * billable_batches
-                    ) / division_factor
+        # for usage in usage_dict.values():
+        usage = convert_to_decimal(usage)
+        usage_in_range = (
+            self.range_start <= usage
+            if discontinuous_range
+            else self.range_start < usage or self.range_start == 0
+        )
+        if usage_in_range:
+            if self.type == PRICE_TIER_TYPE.FLAT:
+                revenue += self.cost_per_batch
+            elif self.type == PRICE_TIER_TYPE.PER_UNIT:
+                if self.range_end is not None:
+                    billable_units = min(
+                        usage - self.range_start, self.range_end - self.range_start
+                    )
+                else:
+                    billable_units = usage - self.range_start
+                if discontinuous_range:
+                    billable_units += 1
+                billable_batches = billable_units / self.metric_units_per_batch
+                if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
+                    billable_batches = math.ceil(billable_batches)
+                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
+                    billable_batches = math.floor(billable_batches)
+                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
+                    billable_batches = round(billable_batches)
+                revenue += self.cost_per_batch * billable_batches
         return revenue
 
 
@@ -633,16 +789,30 @@ class PlanComponent(models.Model):
         blank=True,
         default=COMPONENT_RESET_FREQUENCY.NONE,
     )
+<<<<<<< HEAD
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.CASCADE,
         related_name="+",
         null=True,
         blank=True,
+=======
+    separate_by = models.JSONField(default=list, blank=True, null=True)
+    proration_granularity = models.CharField(
+        choices=METRIC_GRANULARITY.choices,
+        max_length=10,
+        default=METRIC_GRANULARITY.TOTAL,
+>>>>>>> staging
     )
 
     def __str__(self):
         return str(self.billable_metric)
+
+    def save(self, *args, **kwargs):
+        if self.separate_by is None:
+            self.separate_by = []
+        assert isinstance(self.separate_by, list)
+        super().save(*args, **kwargs)
 
     def calculate_total_revenue(
         self, subscription
@@ -668,42 +838,78 @@ class PlanComponent(models.Model):
         billable_metric = self.billable_metric
         revenue_dict = {"revenue": Decimal(0), "subperiods": []}
         for period_start, period_end in periods:
-            usage = billable_metric.get_usage(
+            all_usage = billable_metric.get_usage(
                 granularity=USAGE_CALC_GRANULARITY.TOTAL,
                 start_date=period_start,
                 end_date=period_end,
                 customer=subscription.customer,
+                group_by=self.separate_by,
+                proration=self.proration_granularity,
             )
-            # extract usage
-            usage = usage.get(subscription.customer.customer_name, {})
-            if len(usage) >= 1:
-                usage_qty = sum(usage.values())
-                usage_qty = convert_to_decimal(usage_qty)
-                revenue = 0
-                tiers = self.tiers.all()
-                for i, tier in enumerate(tiers):
-                    if i > 0:
-                        prev_tier_end = tiers[i - 1].range_end
-                        tier_revenue = tier.calculate_revenue(
-                            usage, prev_tier_end=prev_tier_end
+            nperiods_metric_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            billable_metric.granularity, period_start, period_end
                         )
-                    else:
-                        tier_revenue = tier.calculate_revenue(usage)
-                    revenue += tier_revenue
-                revenue = convert_to_decimal(revenue)
+                    )
+                ),
+                1,
+            )
+            nperiods_proration_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            self.proration_granularity, period_start, period_end
+                        )
+                    )
+                ),
+                1,
+            )
+            if nperiods_proration_granularity > nperiods_metric_granularity:
+                usage_normalization_factor = convert_to_decimal(
+                    nperiods_metric_granularity / nperiods_proration_granularity
+                )
             else:
-                usage_qty = Decimal(0)
-                revenue = Decimal(0)
-            revenue_dict["revenue"] += revenue
-            revenue_dict["subperiods"].append(
-                {
+                usage_normalization_factor = 1
+            # extract usage
+            separated_usage = all_usage.get(subscription.customer.customer_name, {})
+            for i, (unique_identifier, usage_by_period) in enumerate(
+                separated_usage.items()
+            ):
+                if len(usage_by_period) >= 1:
+                    usage_qty = (
+                        convert_to_decimal(sum(usage_by_period.values()))
+                        * usage_normalization_factor
+                    )
+                    usage_qty = convert_to_decimal(usage_qty)
+                    revenue = 0
+                    tiers = self.tiers.all()
+                    for i, tier in enumerate(tiers):
+                        if i > 0:
+                            prev_tier_end = tiers[i - 1].range_end
+                            tier_revenue = tier.calculate_revenue(
+                                usage_qty, prev_tier_end=prev_tier_end
+                            )
+                        else:
+                            tier_revenue = tier.calculate_revenue(usage_qty)
+                        revenue += tier_revenue
+                    revenue = convert_to_decimal(revenue)
+                else:
+                    usage_qty = Decimal(0)
+                    revenue = Decimal(0)
+                revenue_dict["revenue"] += revenue
+                subp = {
                     "start_date": period_start,
                     "end_date": period_end,
                     "usage_qty": usage_qty,
                     "revenue": revenue,
                 }
-            )
-
+                if len(unique_identifier) > 1:
+                    subp["unique_identifier"] = dict(
+                        zip(self.separate_by, unique_identifier[1:])
+                    )
+                revenue_dict["subperiods"].append(subp)
         return revenue_dict
 
     def calculate_earned_revenue_per_day(
@@ -735,38 +941,64 @@ class PlanComponent(models.Model):
             if start_date > now:
                 break
         for period_start, period_end in periods:
-            usage = billable_metric.get_earned_usage_per_day(
-                start_date=period_start,
-                end_date=period_end,
+            all_usage = billable_metric.get_earned_usage_per_day(
+                start=period_start,
+                end=period_end,
                 customer=subscription.customer,
+                group_by=self.separate_by,
+                proration=self.proration_granularity,
             )
-            if len(usage) >= 1:
-                running_total_revenue = Decimal(0)
-                running_total_usage = Decimal(0)
-                for date, usage_qty in usage.items():
-                    date = convert_to_date(date)
-                    usage_qty = convert_to_decimal(usage_qty)
-                    if billable_metric.metric_type == METRIC_TYPE.COUNTER:
+            nperiods_metric_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            billable_metric.granularity, period_start, period_end
+                        )
+                    )
+                ),
+                1,
+            )
+            nperiods_proration_granularity = max(
+                len(
+                    list(
+                        periods_bwn_twodates(
+                            self.proration_granularity, period_start, period_end
+                        )
+                    )
+                ),
+                1,
+            )
+            usage_normalization_factor = convert_to_decimal(
+                nperiods_metric_granularity / nperiods_proration_granularity
+            )
+            # extract usage
+            for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
+                if len(usage_by_period) >= 1:
+                    running_total_revenue = Decimal(0)
+                    running_total_usage = Decimal(0)
+                    for date, usage_qty in usage_by_period.items():
+                        date = convert_to_date(date)
+                        usage_qty = (
+                            convert_to_decimal(usage_qty) * usage_normalization_factor
+                        )
                         running_total_usage += usage_qty
-                    else:
-                        running_total_usage = usage_qty
-                    revenue = Decimal(0)
-                    tiers = self.tiers.all()
-                    for i, tier in enumerate(tiers):
-                        calc_rev_dict = {
-                            "usage_dict": {date: running_total_usage},
-                        }
-                        if billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-                            calc_rev_dict["division_factor"] = len(usage)
-                        if i > 0:
-                            prev_tier_end = tiers[i - 1].range_end
-                            calc_rev_dict["prev_tier_end"] = prev_tier_end
-                        tier_revenue = tier.calculate_revenue(**calc_rev_dict)
-                        revenue += convert_to_decimal(tier_revenue)
-                    date_revenue = revenue - running_total_revenue
-                    running_total_revenue += date_revenue
-                    if date in results:
-                        results[date] += date_revenue
+                        revenue = Decimal(0)
+                        tiers = self.tiers.all()
+                        for i, tier in enumerate(tiers):
+                            if i > 0:
+                                prev_tier_end = tiers[i - 1].range_end
+                                tier_revenue = tier.calculate_revenue(
+                                    running_total_usage, prev_tier_end=prev_tier_end
+                                )
+                            else:
+                                tier_revenue = tier.calculate_revenue(
+                                    running_total_usage
+                                )
+                            revenue += convert_to_decimal(tier_revenue)
+                        date_revenue = revenue - running_total_revenue
+                        running_total_revenue += date_revenue
+                        if date in results:
+                            results[date] += date_revenue
         return results
 
 
@@ -803,7 +1035,6 @@ class Invoice(models.Model):
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
-    line_items = models.JSONField(null=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
@@ -840,12 +1071,20 @@ class InvoiceLineItem(models.Model):
     name = models.CharField(max_length=200)
     start_date = models.DateTimeField(max_length=100, default=now_utc)
     end_date = models.DateTimeField(max_length=100, default=now_utc)
+<<<<<<< HEAD
     quantity = models.DecimalField(decimal_places=10, max_digits=20, default=1.0)
     subtotal = models.DecimalField(
         decimal_places=10, max_digits=20, default=Decimal(0.0)
     )
     pricing_unit = models.ForeignKey(
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+=======
+    quantity = models.DecimalField(
+        decimal_places=10, max_digits=20, default=1.0, null=True, blank=True
+    )
+    subtotal = MoneyField(
+        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
+>>>>>>> staging
     )
     billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
@@ -856,6 +1095,7 @@ class InvoiceLineItem(models.Model):
     associated_plan_version = models.ForeignKey(
         "PlanVersion", on_delete=models.CASCADE, null=True, related_name="+"
     )
+    metadata = models.JSONField(default=dict, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.pricing_unit:
@@ -1350,12 +1590,14 @@ class Subscription(models.Model):
             return_dict[period] = Decimal(0)
         for period, d in self.prorated_flat_costs_dict.items():
             period = convert_to_date(period)
-            return_dict[period] += convert_to_decimal(d["amount"])
+            if period in return_dict:
+                return_dict[period] += convert_to_decimal(d["amount"])
         for component in self.billing_plan.plan_components.all():
             rev_per_day = component.calculate_earned_revenue_per_day(self)
             for period, amount in rev_per_day.items():
                 period = convert_to_date(period)
-                return_dict[period] += amount
+                if period in return_dict:
+                    return_dict[period] += amount
         return return_dict
 
 

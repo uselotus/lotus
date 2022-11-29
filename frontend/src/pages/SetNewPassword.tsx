@@ -68,7 +68,16 @@ const SetNewPassword: FC = () => {
       <>
         <div className="grid h-screen place-items-center">
           <div className=" space-y-4">
-            <Card title="Login" className="flex flex-col">
+            <Card
+              title="Login"
+              className="flex flex-col"
+              style={{
+                borderRadius: "0.5rem",
+                borderWidth: "2px",
+                borderColor: "#EAEAEB",
+                borderStyle: "solid",
+              }}
+            >
               <Form onFinish={handleUpdatePassword} name="normal_login">
                 <label htmlFor="password">New Password</label>
                 <Form.Item>
