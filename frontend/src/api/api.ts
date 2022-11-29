@@ -413,7 +413,7 @@ export const BalanceAdjustment = {
       requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`),
 
   deleteCredit: (adjustment_id: string): Promise<any> =>
-    requests.delete(`api/balance_adjustments/${adjustment_id}`),
+    requests.delete(`api/balance_adjustments/${adjustment_id}/`),
 };
 
 export const PricingUnits = {
