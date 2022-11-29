@@ -44,6 +44,7 @@ from metering_billing.utils.enums import (
     MAKE_PLAN_VERSION_ACTIVE_TYPE,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
+    METRIC_STATUS,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PAYMENT_PLANS,
@@ -349,7 +350,8 @@ class Metric(models.Model):
         default=METRIC_TYPE.COUNTER,
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
-    billable_metric_name = models.CharField(
+    billable_metric_name = models.CharField(max_length=200, null=True, blank=True)
+    metric_id = models.CharField(
         max_length=200, null=False, blank=True, default=metric_uuid
     )
     event_type = models.CharField(
@@ -386,11 +388,16 @@ class Metric(models.Model):
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
     categorical_filters = models.ManyToManyField(CategoricalFilter, blank=True)
 
+    # status
+    status = models.CharField(
+        choices=METRIC_STATUS.choices, max_length=40, default=METRIC_STATUS.ACTIVE
+    )
+
     # records
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "billable_metric_name")
+        unique_together = ("organization", "metric_id")
 
     def __str__(self):
         return self.billable_metric_name
@@ -588,6 +595,7 @@ class PlanComponent(models.Model):
                 group_by=self.separate_by,
                 proration=self.proration_granularity,
             )
+            print("all_usage", all_usage)
             nperiods_metric_granularity = max(
                 len(
                     list(
@@ -616,25 +624,17 @@ class PlanComponent(models.Model):
                 usage_normalization_factor = 1
             # extract usage
             separated_usage = all_usage.get(subscription.customer.customer_name, {})
-            print("separated_usage", separated_usage)
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
+                print("nperiods_metric_granularity", nperiods_metric_granularity)
+                print("nperiods_proration_granularity", nperiods_proration_granularity)
+                print("usage_normalization_factor", usage_normalization_factor)
                 if len(usage_by_period) >= 1:
                     usage_qty = (
                         convert_to_decimal(sum(usage_by_period.values()))
                         * usage_normalization_factor
                     )
-                    print("length of usage_by_period", len(usage_by_period))
-                    print("usage by period", usage_by_period)
-                    print("usage_qty", usage_qty)
-                    print("period_start", period_start)
-                    print("period_end", period_end)
-                    print(
-                        "nperiods_proration_granularity", nperiods_proration_granularity
-                    )
-                    print("nperiods_metric_granularity", nperiods_metric_granularity)
-                    print("usage_normalization_factor", usage_normalization_factor)
                     usage_qty = convert_to_decimal(usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()

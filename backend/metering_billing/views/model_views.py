@@ -33,33 +33,12 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestDetailSerializer,
     BacktestSummarySerializer,
 )
-from metering_billing.serializers.model_serializers import (
-    ActionSerializer,
-    AlertSerializer,
-    CustomerDetailSerializer,
-    CustomerSerializer,
-    EventSerializer,
-    ExternalPlanLinkSerializer,
-    FeatureSerializer,
-    InvoiceSerializer,
-    InvoiceUpdateSerializer,
-    MetricSerializer,
-    OrganizationSettingSerializer,
-    PlanDetailSerializer,
-    PlanSerializer,
-    PlanUpdateSerializer,
-    PlanVersionSerializer,
-    PlanVersionUpdateSerializer,
-    ProductSerializer,
-    SubscriptionDetailSerializer,
-    SubscriptionSerializer,
-    SubscriptionUpdateSerializer,
-    UserSerializer,
-)
+from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc, now_utc_ts
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
+    METRIC_STATUS,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -303,18 +282,31 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
 
-class MetricViewSet(viewsets.ModelViewSet):
+class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Billable Metrics.
     """
 
-    serializer_class = MetricSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = ["get", "post", "head", "patch"]
+    lookup_field = "metric_id"
+    permission_classes_per_method = {
+        "list": [IsAuthenticated | HasUserAPIKey],
+        "retrieve": [IsAuthenticated | HasUserAPIKey],
+        "create": [IsAuthenticated | HasUserAPIKey],
+        "partial_update": [IsAuthenticated],
+    }
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return Metric.objects.filter(organization=organization)
+        return Metric.objects.filter(
+            organization=organization, status=METRIC_STATUS.ACTIVE
+        )
+
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return MetricUpdateSerializer
+        return MetricSerializer
 
     def get_serializer_context(self):
         context = super(MetricViewSet, self).get_serializer_context()

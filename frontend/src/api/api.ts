@@ -321,6 +321,8 @@ export const Metrics = {
     requests.post("api/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>
     requests.delete(`api/metrics/${id}`),
+  archiveMetric: (id: string): Promise<{}> =>
+    requests.patch(`api/metrics/${id}/`, { status: "archived" }),
 };
 
 export const Events = {
