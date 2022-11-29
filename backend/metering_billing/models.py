@@ -595,6 +595,7 @@ class PlanComponent(models.Model):
                 group_by=self.separate_by,
                 proration=self.proration_granularity,
             )
+            print("all_usage", all_usage)
             nperiods_metric_granularity = max(
                 len(
                     list(
@@ -626,6 +627,9 @@ class PlanComponent(models.Model):
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
+                print("nperiods_metric_granularity", nperiods_metric_granularity)
+                print("nperiods_proration_granularity", nperiods_proration_granularity)
+                print("usage_normalization_factor", usage_normalization_factor)
                 if len(usage_by_period) >= 1:
                     usage_qty = (
                         convert_to_decimal(sum(usage_by_period.values()))
