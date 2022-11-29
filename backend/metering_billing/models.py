@@ -35,37 +35,7 @@ from metering_billing.utils import (
     webhook_endpoint_uuid,
     webhook_secret_uuid,
 )
-<<<<<<< HEAD
-from metering_billing.utils.enums import (
-    BACKTEST_STATUS,
-    BATCH_ROUNDING_TYPE,
-    CATEGORICAL_FILTER_OPERATORS,
-    COMPONENT_RESET_FREQUENCY,
-    CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
-    EVENT_TYPE,
-    FLAT_FEE_BILLING_TYPE,
-    INVOICE_STATUS,
-    MAKE_PLAN_VERSION_ACTIVE_TYPE,
-    METRIC_AGGREGATION,
-    METRIC_GRANULARITY,
-    METRIC_TYPE,
-    NUMERIC_FILTER_OPERATORS,
-    PAYMENT_PLANS,
-    PAYMENT_PROVIDERS,
-    PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
-    PRICE_ADJUSTMENT_TYPE,
-    PRICE_TIER_TYPE,
-    PRODUCT_STATUS,
-    REPLACE_IMMEDIATELY_TYPE,
-    SUBSCRIPTION_STATUS,
-    USAGE_BILLING_FREQUENCY,
-    USAGE_CALC_GRANULARITY,
-)
-=======
 from metering_billing.utils.enums import *
->>>>>>> staging
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 from svix.api import (
@@ -105,12 +75,9 @@ class Organization(models.Model):
                 raise ValueError(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
-<<<<<<< HEAD
         if not self.default_currency:
             self.default_currency = PricingUnit.objects.filter(code="USD").first()
-=======
         new = not self.pk
->>>>>>> staging
         super(Organization, self).save(*args, **kwargs)
         if SVIX_API_KEY != "" and new:
             svix = Svix(SVIX_API_KEY)
@@ -459,9 +426,9 @@ class CustomerBalanceAdjustment(models.Model):
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
-        return self.amount - self.drawdowns.aggregate(drawdowns=Sum("amount"))[
-            "drawdowns"
-        ] or Decimal(0)
+        dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))["drawdowns"]
+        drawdowns = dd_aggregate or 0
+        return self.amount - drawdowns
 
     def zero_out(self, reason=None):
         if reason == "expired":
@@ -789,20 +756,18 @@ class PlanComponent(models.Model):
         blank=True,
         default=COMPONENT_RESET_FREQUENCY.NONE,
     )
-<<<<<<< HEAD
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.CASCADE,
         related_name="+",
         null=True,
         blank=True,
-=======
+    )
     separate_by = models.JSONField(default=list, blank=True, null=True)
     proration_granularity = models.CharField(
         choices=METRIC_GRANULARITY.choices,
         max_length=10,
         default=METRIC_GRANULARITY.TOTAL,
->>>>>>> staging
     )
 
     def __str__(self):
@@ -1071,20 +1036,12 @@ class InvoiceLineItem(models.Model):
     name = models.CharField(max_length=200)
     start_date = models.DateTimeField(max_length=100, default=now_utc)
     end_date = models.DateTimeField(max_length=100, default=now_utc)
-<<<<<<< HEAD
     quantity = models.DecimalField(decimal_places=10, max_digits=20, default=1.0)
     subtotal = models.DecimalField(
         decimal_places=10, max_digits=20, default=Decimal(0.0)
     )
     pricing_unit = models.ForeignKey(
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
-=======
-    quantity = models.DecimalField(
-        decimal_places=10, max_digits=20, default=1.0, null=True, blank=True
-    )
-    subtotal = MoneyField(
-        decimal_places=10, max_digits=20, default_currency="USD", default=0.0
->>>>>>> staging
     )
     billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
