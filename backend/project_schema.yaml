@@ -168,6 +168,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomerBalanceAdjustment'
           description: ''
+  /api/balance_adjustments/{id}/:
+    delete:
+      operationId: balance_adjustments_destroy
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this customer balance adjustment.
+        required: true
+      tags:
+      - balance_adjustments
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/batch_create_customers/:
     post:
       operationId: batch_create_customers_create
@@ -2401,10 +2421,10 @@ components:
           additionalProperties: {}
           nullable: true
         default_currency:
-          type: integer
-          nullable: true
+          $ref: '#/components/schemas/PricingUnit'
       required:
       - balance_adjustments
+      - default_currency
       - invoices
       - next_amount_due
       - subscriptions
@@ -2518,17 +2538,8 @@ components:
           allOf:
           - $ref: '#/components/schemas/Customer'
           readOnly: true
-        pricing_unit:
-          $ref: '#/components/schemas/PricingUnit'
-        org_connected_to_cust_payment_provider:
-          type: boolean
-        cust_connected_to_payment_provider:
-          type: boolean
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/InvoiceLineItem'
-          readOnly: true
+        payment_status:
+          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
         cost_due:
           type: number
           format: double
@@ -2536,12 +2547,21 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        cust_connected_to_payment_provider:
+          type: boolean
         subscription:
           allOf:
           - $ref: '#/components/schemas/Subscription'
           readOnly: true
-        payment_status:
-          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
+        org_connected_to_cust_payment_provider:
+          type: boolean
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+          readOnly: true
+        pricing_unit:
+          $ref: '#/components/schemas/PricingUnit'
       required:
       - cost_due
       - customer
@@ -2733,23 +2753,70 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
-        source:
-          $ref: '#/components/schemas/PaymentProvidersEnum'
         external_plan_id:
           type: string
           maxLength: 100
+        source:
+          $ref: '#/components/schemas/PaymentProvidersEnum'
       required:
       - external_plan_id
       - source
     InitialPlanVersion:
       type: object
       properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PlanVersionStatusEnum'
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        version_id:
+          type: string
+          readOnly: true
         version:
           type: integer
+          readOnly: true
+        transition_to:
+          type: string
+          nullable: true
+          readOnly: true
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        replace_with:
+          type: integer
+          nullable: true
           readOnly: true
         active_subscriptions:
           type: integer
           readOnly: true
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        usage_billing_frequency:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        created_by:
+          type: string
+          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
         description:
           type: string
           nullable: true
@@ -2759,53 +2826,6 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        usage_billing_frequency:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
-        status:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersionStatusEnum'
-          readOnly: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        created_by:
-          type: string
-          readOnly: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3557,50 +3577,50 @@ components:
     PlanDetail:
       type: object
       properties:
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExternalPlanLink'
+        product_id:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/PlanStatusEnum'
+        plan_id:
+          type: string
+          maxLength: 100
+        created_by:
+          type: string
           readOnly: true
-        active_subscriptions:
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        num_versions:
           type: integer
           readOnly: true
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
-        num_versions:
+        active_subscriptions:
           type: integer
-          readOnly: true
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        status:
-          $ref: '#/components/schemas/PlanStatusEnum'
-        product_id:
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        created_on:
           type: string
-          nullable: true
-        created_by:
-          type: string
+          format: date-time
           readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
         plan_name:
           type: string
           maxLength: 100
@@ -4174,39 +4194,39 @@ components:
     SubscriptionDetail:
       type: object
       properties:
+        status:
+          $ref: '#/components/schemas/SubscriptionStatusEnum'
+        plan_id:
+          type: string
+          writeOnly: true
         customer:
           allOf:
           - $ref: '#/components/schemas/Customer'
           readOnly: true
-        end_date:
-          type: string
-          format: date-time
-        auto_renew:
-          type: boolean
-        subscription_id:
-          type: string
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
-        customer_id:
-          type: string
-          writeOnly: true
         is_new:
           type: boolean
-        start_date:
-          type: string
-          format: date-time
         scheduled_end_date:
           type: string
           format: date-time
           readOnly: true
           nullable: true
-        plan_id:
+        subscription_id:
           type: string
-          writeOnly: true
         billing_plan:
           allOf:
           - $ref: '#/components/schemas/PlanVersion'
           readOnly: true
+        start_date:
+          type: string
+          format: date-time
+        end_date:
+          type: string
+          format: date-time
+        auto_renew:
+          type: boolean
+        customer_id:
+          type: string
+          writeOnly: true
       required:
       - billing_plan
       - customer
