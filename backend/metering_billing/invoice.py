@@ -122,10 +122,7 @@ def generate_invoice(
                     k,
                 )
         amt_invoiced = subscription.amount_already_invoiced()
-        if (
-            len(date_range_costs) == 1
-            and abs(float(amt_invoiced) - date_range_costs[0][0]) < 0.01
-        ):
+        if len(date_range_costs) == 1 and abs(float(amt_invoiced) - date_range_costs[0][0]) < 0.01:
             pass
         else:
             for amount, plan_version_id, start, end in date_range_costs:
@@ -166,9 +163,7 @@ def generate_invoice(
             InvoiceLineItem.objects.create(
                 name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
                 start_date=subscription.end_date,
-                end_date=calculate_end_date(
-                    next_bp.plan.plan_duration, subscription.end_date
-                ),
+                end_date=calculate_end_date(next_bp.plan.plan_duration, subscription.end_date),
                 quantity=None,
                 subtotal=next_bp.flat_rate,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
@@ -177,18 +172,16 @@ def generate_invoice(
             )
 
     for obj in (
-        invoice.inv_line_items.all().values("associated_plan_version").distinct()
+        invoice.inv_line_items.filter(associated_plan_version__isnull=False)
+        .values("associated_plan_version")
+        .distinct()
     ):
-        try:
-            plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
-        except:
-            print(obj)
-            raise
+        plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
         if plan_version.price_adjustment:
             plan_amount = (
-                invoice.inv_line_items.filter(
-                    associated_plan_version=plan_version
-                ).aggregate(tot=Sum("subtotal"))["tot"]
+                invoice.inv_line_items.filter(associated_plan_version=plan_version).aggregate(
+                    tot=Sum("subtotal")
+                )["tot"]
                 or 0
             )
             price_adj_name = str(plan_version.price_adjustment)
@@ -248,9 +241,7 @@ def generate_invoice(
                 customer_conn = pp_connector.customer_connected(customer)
                 org_conn = pp_connector.organization_connected(organization)
                 if customer_conn and org_conn:
-                    invoice.external_payment_obj_id = (
-                        pp_connector.create_payment_object(invoice)
-                    )
+                    invoice.external_payment_obj_id = pp_connector.create_payment_object(invoice)
                     invoice.external_payment_obj_type = pp
                     invoice.save()
                     break
