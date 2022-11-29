@@ -179,3 +179,7 @@ class REPLACE_IMMEDIATELY_TYPE(models.TextChoices):
 class ORGANIZATION_STATUS(models.TextChoices):
     ACTIVE = ("Active", _("Active"))
     INVITED = ("Invited", _("Invited"))
+
+
+class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
+    INVOICE_CREATED = ("invoice.created", _("invoice.created"))

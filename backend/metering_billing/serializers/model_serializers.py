@@ -8,7 +8,6 @@ from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
-    Alert,
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -30,25 +29,12 @@ from metering_billing.models import (
     Product,
     Subscription,
     User,
+    WebhookEndpoint,
+    WebhookTrigger,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
-from metering_billing.utils.enums import (
-    BATCH_ROUNDING_TYPE,
-    EVENT_TYPE,
-    FLAT_FEE_BILLING_TYPE,
-    INVOICE_STATUS,
-    MAKE_PLAN_VERSION_ACTIVE_TYPE,
-    METRIC_GRANULARITY,
-    METRIC_STATUS,
-    ORGANIZATION_STATUS,
-    PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
-    PRICE_TIER_TYPE,
-    REPLACE_IMMEDIATELY_TYPE,
-    SUBSCRIPTION_STATUS,
-)
+from metering_billing.utils.enums import *
 from rest_framework import serializers
 
 from .serializer_utils import SlugRelatedFieldWithOrganization
@@ -136,14 +122,73 @@ class EventSerializer(serializers.ModelSerializer):
         return ret
 
 
-class AlertSerializer(serializers.ModelSerializer):
+class WebhookTriggerSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Alert
+        model = WebhookTrigger
+        fields = [
+            "trigger_name",
+        ]
+
+
+class WebhookEndpointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WebhookEndpoint
         fields = (
-            "type",
-            "webhook_url",
+            "webhook_endpoint_id",
             "name",
+            "webhook_url",
+            "webhook_secret",
+            "triggers",
+            "triggers_in",
         )
+        extra_kwargs = {
+            "webhook_endpoint_id": {"read_only": True},
+            "webhook_secret": {"read_only": True},
+            "triggers": {"read_only": True},
+            "triggers_in": {"write_only": True},
+        }
+
+    triggers_in = serializers.ListField(
+        child=serializers.ChoiceField(choices=WEBHOOK_TRIGGER_EVENTS.choices),
+        write_only=True,
+        required=True,
+    )
+    triggers = WebhookTriggerSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    def validate(self, attrs):
+        if len(attrs.get("triggers_in", [])) == 0:
+            raise serializers.ValidationError("At least one trigger must be specified")
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        triggers_in = validated_data.pop("triggers_in")
+        trigger_objs = []
+        for trigger in triggers_in:
+            wh_trigger_obj = WebhookTrigger(trigger_name=trigger)
+            trigger_objs.append(wh_trigger_obj)
+        webhook_endpoint = WebhookEndpoint.objects.create_with_triggers(
+            **validated_data, triggers=trigger_objs
+        )
+        return webhook_endpoint
+
+    def update(self, instance, validated_data):
+        triggers_in = validated_data.pop("triggers_in")
+        instance.name = validated_data.get("name", instance.name)
+        instance.webhook_url = validated_data.get("webhook_url", instance.webhook_url)
+        for trigger in instance.triggers.all():
+            if trigger.trigger_name not in triggers_in:
+                trigger.delete()
+            else:
+                triggers_in.remove(trigger.trigger_name)
+        for trigger in triggers_in:
+            WebhookTrigger.objects.create(
+                webhook_endpoint=instance, trigger_name=trigger
+            )
+        instance.save()
+        return instance
 
 
 ## USER

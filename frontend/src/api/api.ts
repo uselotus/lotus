@@ -6,6 +6,11 @@ import {
   CustomerDetailType,
 } from "../types/customer-type";
 import {
+  WebhookEndpoint,
+  WebhookEndpointCreate,
+  WebhookEndpointUpdate,
+} from "../types/webhook-type";
+import {
   PlanType,
   CreatePlanType,
   UpdatePlanType,
@@ -191,12 +196,16 @@ export const Plan = {
     requests.patch(`api/plan_versions/${version_id}/`, post),
 };
 
-export const Alerts = {
-  getUrls: (): Promise<any> => requests.get("api/webhooks/"),
-  addUrl: (url: string): Promise<any> =>
-    requests.post("api/webhooks/", { webhook_url: url }),
-  deleteUrl: (id: number): Promise<any> =>
-    requests.delete(`api/webhooks/${id}`),
+export const Webhook = {
+  getEndpoints: (): Promise<WebhookEndpoint> => requests.get("api/webhooks/"),
+  createEndpoint: (post: WebhookEndpointCreate): Promise<WebhookEndpoint> =>
+    requests.post("api/webhooks/", post),
+  deleteEndpoint: (wh_id: string): Promise<WebhookEndpoint> =>
+    requests.delete(`api/webhooks/${wh_id}/`),
+  editEndpoint: (
+    wh_id: number,
+    post: WebhookEndpointUpdate
+  ): Promise<WebhookEndpoint> => requests.patch(`api/webhooks/${wh_id}/`, post),
 };
 
 export const Authentication = {

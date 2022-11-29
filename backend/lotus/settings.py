@@ -29,6 +29,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
+from svix.api import EventTypeIn, Svix
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -70,6 +71,8 @@ STRIPE_SECRET_KEY = (
 DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+# Webhooks for Svix
+SVIX_API_KEY = config("SVIX_API_KEY", default="")
 
 
 # Optional Observalility Services
@@ -111,6 +114,7 @@ else:
     ALLOWED_HOSTS = [
         "*uselotus.io",
     ]
+
 
 # Application definition
 
@@ -562,3 +566,16 @@ LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
 META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
 django_heroku.settings(locals(), logging=False)
+
+# create svix events
+if SVIX_API_KEY != "":
+    svix = Svix(SVIX_API_KEY)
+    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+    if "invoice.created" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is created",
+                archived=False,
+                name="invoice.created",
+            )
+        )

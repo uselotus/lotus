@@ -32,38 +32,23 @@ from metering_billing.utils import (
     plan_version_uuid,
     product_uuid,
     subscription_uuid,
+    webhook_endpoint_uuid,
+    webhook_secret_uuid,
 )
-from metering_billing.utils.enums import (
-    BACKTEST_STATUS,
-    BATCH_ROUNDING_TYPE,
-    CATEGORICAL_FILTER_OPERATORS,
-    COMPONENT_RESET_FREQUENCY,
-    EVENT_TYPE,
-    FLAT_FEE_BILLING_TYPE,
-    INVOICE_STATUS,
-    MAKE_PLAN_VERSION_ACTIVE_TYPE,
-    METRIC_AGGREGATION,
-    METRIC_GRANULARITY,
-    METRIC_STATUS,
-    METRIC_TYPE,
-    NUMERIC_FILTER_OPERATORS,
-    PAYMENT_PLANS,
-    PAYMENT_PROVIDERS,
-    PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
-    PRICE_ADJUSTMENT_TYPE,
-    PRICE_TIER_TYPE,
-    PRODUCT_STATUS,
-    REPLACE_IMMEDIATELY_TYPE,
-    SUBSCRIPTION_STATUS,
-    USAGE_BILLING_FREQUENCY,
-    USAGE_CALC_GRANULARITY,
-)
+from metering_billing.utils.enums import *
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
+from svix.api import (
+    ApplicationIn,
+    EndpointIn,
+    EndpointSecretRotateIn,
+    EndpointUpdate,
+    Svix,
+)
+from svix.internal.openapi_client.models.http_error import HttpError
 
 META = settings.META
+SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class Organization(models.Model):
@@ -87,21 +72,120 @@ class Organization(models.Model):
                 raise ValueError(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
+        new = not self.pk
         super(Organization, self).save(*args, **kwargs)
+        if SVIX_API_KEY != "" and new:
+            svix = Svix(SVIX_API_KEY)
+            svix_app = svix.application.create(
+                ApplicationIn(uid=self.organization_id, name=self.company_name)
+            )
 
     @property
     def users(self):
         return self.org_users
 
 
-class Alert(models.Model):
-    type = models.CharField(max_length=20, default="webhook")
+class WebhookEndpointManager(models.Manager):
+    def create_with_triggers(self, *args, **kwargs):
+        triggers = kwargs.pop("triggers", [])
+        wh_endpoint = self.model(**kwargs)
+        wh_endpoint.save(triggers=triggers)
+        return wh_endpoint
+
+
+class WebhookEndpoint(models.Model):
+    webhook_endpoint_id = models.CharField(
+        default=webhook_endpoint_uuid, max_length=100, unique=True
+    )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_alerts"
     )
-    webhook_url = models.CharField(max_length=300, blank=True, null=True)
     name = models.CharField(max_length=100, default=" ")
-    history = HistoricalRecords()
+    webhook_url = models.CharField(max_length=300)
+    webhook_secret = models.CharField(max_length=100, default=webhook_secret_uuid)
+
+    objects = WebhookEndpointManager()
+
+    class Meta:
+        unique_together = ("organization", "webhook_url")
+
+    def save(self, *args, **kwargs):
+        new = not self.pk
+        triggers = kwargs.pop("triggers", [])
+        super(WebhookEndpoint, self).save(*args, **kwargs)
+        if SVIX_API_KEY != "":
+            try:
+                svix = Svix(SVIX_API_KEY)
+                if new:
+                    endpoint_create_dict = {
+                        "uid": self.webhook_endpoint_id,
+                        "description": self.name,
+                        "url": self.webhook_url,
+                        "version": 1,
+                        "secret": self.webhook_secret,
+                    }
+                    if len(triggers) > 0:
+                        endpoint_create_dict["filter_types"] = []
+                        for trigger in triggers:
+                            endpoint_create_dict["filter_types"].append(
+                                trigger.trigger_name
+                            )
+                            trigger.webhook_endpoint = self
+                            trigger.save()
+                    svix_endpoint = svix.endpoint.create(
+                        self.organization.organization_id,
+                        EndpointIn(**endpoint_create_dict),
+                    )
+                else:
+                    triggers = self.triggers.all().values_list(
+                        "trigger_name", flat=True
+                    )
+                    svix_endpoint = svix.endpoint.get(
+                        self.organization.organization_id,
+                        self.webhook_endpoint_id,
+                    )
+
+                    svix_endpoint = svix_endpoint.__dict__
+                    svix_update_dict = {}
+                    svix_update_dict["uid"] = self.webhook_endpoint_id
+                    svix_update_dict["description"] = self.name
+                    svix_update_dict["url"] = self.webhook_url
+
+                    # triggers
+                    svix_triggers = svix_endpoint.get("filter_types") or []
+                    version = svix_endpoint.get("version")
+                    if set(triggers) != set(svix_triggers):
+                        version += 1
+                    svix_update_dict["filter_types"] = list(triggers)
+                    svix_update_dict["version"] = version
+                    updated_endpoint = svix.endpoint.update(
+                        self.organization.organization_id,
+                        self.webhook_endpoint_id,
+                        EndpointUpdate(**svix_update_dict),
+                    )
+
+                    current_endpoint_secret = svix.endpoint.get_secret(
+                        self.organization.organization_id,
+                        self.webhook_endpoint_id,
+                    )
+                    if current_endpoint_secret.key != self.webhook_secret:
+                        svix.endpoint.rotate_secret(
+                            self.organization.organization_id,
+                            self.webhook_endpoint_id,
+                            EndpointSecretRotateIn(key=self.webhook_secret),
+                        )
+            except HttpError as e:
+                self.delete()
+                raise ValueError(e)
+
+
+class WebhookTrigger(models.Model):
+    webhook_endpoint = models.ForeignKey(
+        WebhookEndpoint, on_delete=models.CASCADE, related_name="triggers"
+    )
+    trigger_name = models.CharField(
+        choices=WEBHOOK_TRIGGER_EVENTS.choices, max_length=40
+    )
 
 
 class User(AbstractUser):
@@ -595,7 +679,6 @@ class PlanComponent(models.Model):
                 group_by=self.separate_by,
                 proration=self.proration_granularity,
             )
-            print("all_usage", all_usage)
             nperiods_metric_granularity = max(
                 len(
                     list(
@@ -627,9 +710,6 @@ class PlanComponent(models.Model):
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
-                print("nperiods_metric_granularity", nperiods_metric_granularity)
-                print("nperiods_proration_granularity", nperiods_proration_granularity)
-                print("usage_normalization_factor", usage_normalization_factor)
                 if len(usage_by_period) >= 1:
                     usage_qty = (
                         convert_to_decimal(sum(usage_by_period.values()))
