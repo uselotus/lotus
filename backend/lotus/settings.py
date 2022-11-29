@@ -61,12 +61,8 @@ PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
 STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default="sk_live_")
 STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default="sk_test_")
-STRIPE_LIVE_MODE = config(
-    "STRIPE_LIVE_MODE", default=(not DEBUG), cast=bool
-)  # Matches debug
-STRIPE_SECRET_KEY = (
-    STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
-)
+STRIPE_LIVE_MODE = config("STRIPE_LIVE_MODE", default=(not DEBUG), cast=bool)  # Matches debug
+STRIPE_SECRET_KEY = STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
 # Get it from the section in the Stripe dashboard where you added the webhook endpoint
 DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
@@ -203,9 +199,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
             ],
             "libraries": {
-                "render_vite_bundle": (
-                    "metering_billing.template_tags.render_vite_bundle"
-                ),
+                "render_vite_bundle": ("metering_billing.template_tags.render_vite_bundle"),
             },
         },
     },
@@ -249,9 +243,7 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": (
-            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
-        ),
+        "NAME": ("django.contrib.auth.password_validation.UserAttributeSimilarityValidator"),
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -568,7 +560,7 @@ META = LOTUS_API_KEY and LOTUS_HOST
 django_heroku.settings(locals(), logging=False)
 
 # create svix events
-if SVIX_API_KEY != ""
+if SVIX_API_KEY != "":
     svix = Svix(SVIX_API_KEY)
     list_response_event_type_out = [x.name for x in svix.event_type.list().data]
     if "invoice.created" not in list_response_event_type_out:
