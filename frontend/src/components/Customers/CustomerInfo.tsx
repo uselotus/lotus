@@ -68,6 +68,15 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+
+    label: {
+      position: "middle",
+      layout: [
+        { type: "interval-adjust-position" },
+        { type: "interval-hide-overlap" },
+        { type: "adjust-color" },
+      ],
+    },
   };
 
   return (
