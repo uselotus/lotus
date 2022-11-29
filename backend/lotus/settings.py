@@ -568,13 +568,14 @@ META = LOTUS_API_KEY and LOTUS_HOST
 django_heroku.settings(locals(), logging=False)
 
 # create svix events
-svix = Svix(SVIX_API_KEY)
-list_response_event_type_out = [x.name for x in svix.event_type.list().data]
-if "invoice.created" not in list_response_event_type_out:
-    event_type_out = svix.event_type.create(
-        EventTypeIn(
-            description="Invoice is created",
-            archived=False,
-            name="invoice.created",
+if SVIX_API_KEY != ""
+    svix = Svix(SVIX_API_KEY)
+    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+    if "invoice.created" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is created",
+                archived=False,
+                name="invoice.created",
+            )
         )
-    )
