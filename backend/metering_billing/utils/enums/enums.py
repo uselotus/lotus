@@ -144,7 +144,12 @@ class BACKTEST_STATUS(models.TextChoices):
 
 class PRODUCT_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
-    DEPRECATED = ("deprecated", _("Deprecated"))
+    ARCHIVED = ("archived", _("Archived"))
+
+
+class METRIC_STATUS(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    ARCHIVED = ("archived", _("Archived"))
 
 
 class MAKE_PLAN_VERSION_ACTIVE_TYPE(models.TextChoices):

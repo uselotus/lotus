@@ -342,10 +342,45 @@ class NumericFilterSerializer(serializers.ModelSerializer):
         fields = ("property_name", "operator", "comparison_value")
 
 
+class MetricUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Metric
+        fields = (
+            "billable_metric_name",
+            "status",
+        )
+
+    def validate(self, data):
+        data = super().validate(data)
+        if data.get("status") == METRIC_STATUS.ARCHIVED:
+            all_active_plan_versions = PlanVersion.objects.filter(
+                organization=self.context["organization"],
+                plan__in=Plan.objects.filter(status=PLAN_STATUS.ACTIVE),
+            ).prefetch_related("plan_components", "plan_components__billable_metric")
+            for plan_version in all_active_plan_versions:
+                if plan_version.num_active_subs() == 0:
+                    continue
+                for component in plan_version.plan_components.all():
+                    if component.billable_metric == self.instance:
+                        raise serializers.ValidationError(
+                            "Cannot archive metric that is used in active plan"
+                        )
+        return data
+
+    def update(self, instance, validated_data):
+        instance.billable_metric_name = validated_data.get(
+            "billable_metric_name", instance.billable_metric_name
+        )
+        instance.status = validated_data.get("status", instance.status)
+        instance.save()
+        return instance
+
+
 class MetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = (
+            "metric_id",
             "event_name",
             "property_name",
             "usage_aggregation_type",
@@ -363,6 +398,7 @@ class MetricSerializer(serializers.ModelSerializer):
             "metric_type": {"required": True},
             "usage_aggregation_type": {"required": True},
             "event_name": {"required": True},
+            "metric_id": {"read_only": True},
         }
 
     numeric_filters = NumericFilterSerializer(

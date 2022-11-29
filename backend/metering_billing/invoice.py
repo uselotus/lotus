@@ -79,7 +79,7 @@ def generate_invoice(
             subperiods = usg_rev["subperiods"]
             for subperiod in subperiods:
                 ili = InvoiceLineItem.objects.create(
-                    name=plan_component.billable_metric.billable_metric_name,
+                    name=str(plan_component.billable_metric.billable_metric_name),
                     start_date=subperiod["start_date"],
                     end_date=subperiod["end_date"],
                     quantity=subperiod["usage_qty"],

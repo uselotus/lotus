@@ -34,33 +34,12 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestDetailSerializer,
     BacktestSummarySerializer,
 )
-from metering_billing.serializers.model_serializers import (
-    ActionSerializer,
-    CustomerDetailSerializer,
-    CustomerSerializer,
-    EventSerializer,
-    ExternalPlanLinkSerializer,
-    FeatureSerializer,
-    InvoiceSerializer,
-    InvoiceUpdateSerializer,
-    MetricSerializer,
-    OrganizationSettingSerializer,
-    PlanDetailSerializer,
-    PlanSerializer,
-    PlanUpdateSerializer,
-    PlanVersionSerializer,
-    PlanVersionUpdateSerializer,
-    ProductSerializer,
-    SubscriptionDetailSerializer,
-    SubscriptionSerializer,
-    SubscriptionUpdateSerializer,
-    UserSerializer,
-    WebhookEndpointSerializer,
-)
+from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc, now_utc_ts
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
+    METRIC_STATUS,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -119,9 +98,7 @@ class PermissionPolicyMixin:
                 and self.permission_classes_per_method
                 and self.permission_classes_per_method.get(handler.__name__)
             ):
-                self.permission_classes = self.permission_classes_per_method.get(
-                    handler.__name__
-                )
+                self.permission_classes = self.permission_classes_per_method.get(handler.__name__)
         except:
             pass
 
@@ -177,9 +154,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_webhook",
                 properties={"organization": organization.company_name},
             )
@@ -193,9 +168,7 @@ class CursorSetPagination(CustomPagination):
     cursor_query_param = "c"
 
 
-class EventViewSet(
-    PermissionPolicyMixin, mixins.ListModelMixin, viewsets.GenericViewSet
-):
+class EventViewSet(PermissionPolicyMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """
     API endpoint that allows events to be viewed.
     """
@@ -212,11 +185,7 @@ class EventViewSet(
     def get_queryset(self):
         now = now_utc()
         organization = parse_organization(self.request)
-        return (
-            super()
-            .get_queryset()
-            .filter(organization=organization, time_created__lt=now)
-        )
+        return super().get_queryset().filter(organization=organization, time_created__lt=now)
 
     def get_serializer_context(self):
         context = super(EventViewSet, self).get_serializer_context()
@@ -331,27 +300,36 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_customer",
                 properties={"organization": organization.company_name},
             )
         return response
 
 
-class MetricViewSet(viewsets.ModelViewSet):
+class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Billable Metrics.
     """
 
-    serializer_class = MetricSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = ["get", "post", "head", "patch"]
+    lookup_field = "metric_id"
+    permission_classes_per_method = {
+        "list": [IsAuthenticated | HasUserAPIKey],
+        "retrieve": [IsAuthenticated | HasUserAPIKey],
+        "create": [IsAuthenticated | HasUserAPIKey],
+        "partial_update": [IsAuthenticated],
+    }
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return Metric.objects.filter(organization=organization)
+        return Metric.objects.filter(organization=organization, status=METRIC_STATUS.ACTIVE)
+
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return MetricUpdateSerializer
+        return MetricSerializer
 
     def get_serializer_context(self):
         context = super(MetricViewSet, self).get_serializer_context()
@@ -370,9 +348,7 @@ class MetricViewSet(viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_metric",
                 properties={"organization": organization.company_name},
             )
@@ -427,9 +403,7 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_feature",
                 properties={"organization": organization.company_name},
             )
@@ -490,9 +464,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_plan_version",
                 properties={"organization": organization.company_name},
             )
@@ -503,9 +475,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = self.request.user
         else:
             user = None
-        instance = serializer.save(
-            organization=parse_organization(self.request), created_by=user
-        )
+        instance = serializer.save(organization=parse_organization(self.request), created_by=user)
         if user:
             action.send(
                 user,
@@ -567,9 +537,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     ).annotate(
                         active_subscriptions=Count(
                             "bp_subscription",
-                            filter=Q(
-                                bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE
-                            ),
+                            filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
                         )
                     ),
                 )
@@ -587,9 +555,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_plan",
                 properties={"organization": organization.company_name},
             )
@@ -617,9 +583,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = self.request.user
         else:
             user = None
-        instance = serializer.save(
-            organization=parse_organization(self.request), created_by=user
-        )
+        instance = serializer.save(organization=parse_organization(self.request), created_by=user)
         if user:
             action.send(
                 user,
@@ -718,9 +682,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_subscription",
                 properties={"organization": organization.company_name},
             )
@@ -805,9 +767,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_invoice",
                 properties={"organization": organization.company_name},
             )
@@ -874,9 +834,7 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_backtest",
                 properties={"organization": organization.company_name},
             )
@@ -917,9 +875,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_product",
                 properties={"organization": organization.company_name},
             )
@@ -957,9 +913,7 @@ class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             .get_queryset()
             .filter(
                 actor_object_id__in=list(
-                    User.objects.filter(organization=organization).values_list(
-                        "id", flat=True
-                    )
+                    User.objects.filter(organization=organization).values_list("id", flat=True)
                 )
             )
         )
@@ -993,9 +947,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
+                else (username if username else organization.company_name + " (API Key)"),
                 event=f"{self.action}_external_plan_link",
                 properties={"organization": organization.company_name},
             )
@@ -1014,9 +966,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         parameters=[
             inline_serializer(
                 name="SourceSerializer",
-                fields={
-                    "source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)
-                },
+                fields={"source": serializers.ChoiceField(choices=PAYMENT_PROVIDERS.choices)},
             ),
         ],
     )
