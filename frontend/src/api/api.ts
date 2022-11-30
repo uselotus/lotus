@@ -413,8 +413,12 @@ export const BalanceAdjustment = {
   createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
     requests.post("api/balance_adjustments/", post),
 
-  getCreditsByCustomer: (params: {customer_id: string, format: string}): Promise<BalanceAdjustments[]> =>
-      requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`),
+  getCreditsByCustomer: (params: {customer_id: string, format?: string}): Promise<BalanceAdjustments[]> => {
+      if(params.format) {
+          return requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`)
+      }
+      return requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}`)
+  },
 
   deleteCredit: (adjustment_id: string): Promise<any> =>
     requests.delete(`api/balance_adjustments/${adjustment_id}/`),

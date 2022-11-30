@@ -19,6 +19,9 @@ import {useParams} from "react-router";
 import { useQuery } from "react-query";
 import {PricingUnit} from "../types/pricing-unit-type";
 import PricingUnitDropDown from "../components/PricingUnitDropDown";
+// @ts-ignore
+import dayjs from "dayjs";
+import { DatePicker } from 'antd';
 
 type Params = {
     customerId: string;
@@ -37,6 +40,10 @@ const CreateCredit = () => {
         return res;
       })
   );
+
+  const disabledDate = (current) => {
+  return current && current < dayjs().startOf('day');
+};
 
   const mutation = useMutation(
     (post: CreateBalanceAdjustmentType) => BalanceAdjustment.createCredit(post),
@@ -70,8 +77,11 @@ const CreateCredit = () => {
             amount:values.amount,
             amount_currency:values.amount_currency,
             description:values.description,
-            pricing_unit_code: values.pricing_unit_code
+            pricing_unit_code: values.pricing_unit_code,
+            effective_at:values.effective_at,
+            expires_at:values.expires_at,
         });
+        queryClient.invalidateQueries("balance_adjustments");
       })
       .catch((info) => {});
   };
@@ -98,7 +108,9 @@ const CreateCredit = () => {
           initialValues={{
             amount: null,
             description: "",
-            pricing_unit_code: null
+            pricing_unit_code: null,
+            effective_at: dayjs(Date.now()),
+            expires_at: null
           }}
           onFinish={submit}
           autoComplete="off"
@@ -135,6 +147,25 @@ const CreateCredit = () => {
                           label="Currency"
                       >
                           <PricingUnitDropDown setCurrentCurrency={value => form.setFieldValue("pricing_unit_code", value)}/>
+                      </Form.Item>
+                      <Form.Item
+                          valuePropName='date'
+                          rules={[{required: true, message: "Please Select a date"}]}
+                          name="effective_at"
+                          label="Effective At"
+                      >
+                          <DatePicker
+                              defaultValue={dayjs(Date.now())}
+                              disabledDate={disabledDate}
+                              onChange={data => form.setFieldValue("effective_at", dayjs(data))}/>
+                      </Form.Item>
+                      <Form.Item
+                          valuePropName='date'
+                          name="expires_at"
+                          label="Expires At"
+                      >
+                          <DatePicker disabledDate={disabledDate}
+                                      onChange={data => form.setFieldValue("expires_at", dayjs(data))}/>
                       </Form.Item>
                   </Card>
                 </Col>

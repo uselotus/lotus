@@ -1,3 +1,5 @@
+import {PricingUnit} from "./pricing-unit-type";
+
 export interface InvoiceType {
   cost_due: string;
   cost_due_currency: string;
@@ -27,7 +29,8 @@ export interface BalanceAdjustments {
     adjustment_id: string;
     customer_id: string;
     parent_adjustment_id: string;
-    pricing_unit_code: string;
+    pricing_unit: PricingUnit;
+    status: "active" | "inactive";
 }
 
 interface InvoiceCustomer {

@@ -4,4 +4,6 @@ export interface CreateBalanceAdjustmentType {
     amount_currency: string;
     description: string;
     pricing_unit_code: string;
+    effective_at: string;
+    expires_at?: string;
 }

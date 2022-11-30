@@ -9,10 +9,11 @@ import {PricingUnit} from "../types/pricing-unit-type";
 interface PricingUnitDropDownProps {
     defaultValue?:string,
     setCurrentCurrency:(currency:string) => void
+    shouldShowAllOption?:boolean
 }
 
 
-const PricingUnitDropDown:React.FC<PricingUnitDropDownProps> = ({defaultValue, setCurrentCurrency}) => {
+const PricingUnitDropDown:React.FC<PricingUnitDropDownProps> = ({defaultValue, setCurrentCurrency, shouldShowAllOption}) => {
     const {data, isLoading}: UseQueryResult<PricingUnit[]> = useQuery<PricingUnit[]>(
         ["pricing_unit_list"],
         () =>
@@ -21,8 +22,23 @@ const PricingUnitDropDown:React.FC<PricingUnitDropDownProps> = ({defaultValue, s
             })
     );
 
+    const getCurrencies = () => {
+        const items = data || []
+        if(shouldShowAllOption) {
+            return [
+                ...items,
+                {
+                    code: "All",
+                    name: "All Currencies",
+                    symbol: ""
+                },
+            ]
+        }
+        return items
+    }
+
     return (
-        <Select size="small" defaultValue={defaultValue} onChange={setCurrentCurrency} options={data?.map(pc => {
+        <Select size="small" defaultValue={defaultValue} onChange={setCurrentCurrency} options={getCurrencies()?.map(pc => {
             return {label: `${pc.name}-${pc.symbol}`, value: pc.code}
         })}/>
     );
