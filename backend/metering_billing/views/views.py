@@ -745,7 +745,8 @@ class ImportCustomersView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
+        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+            raise AssertionError
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
             num = connector.import_customers(organization)
@@ -796,7 +797,8 @@ class ImportPaymentObjectsView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
+        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+            raise AssertionError
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
             num = connector.import_payment_objects(organization)
@@ -849,7 +851,8 @@ class TransferSubscriptionsView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
+        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+            raise AssertionError
         end_now = request.data.get("end_now", False)
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
