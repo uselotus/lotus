@@ -80,7 +80,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
-    command: celery -A lotus worker -l info
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus worker -l info;"
     depends_on:
       - redis
       - backend
@@ -94,7 +94,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: production
-    command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler;"
     depends_on:
       - celery
       - backend

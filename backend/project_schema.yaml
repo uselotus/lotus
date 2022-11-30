@@ -2592,18 +2592,25 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+          readOnly: true
+        payment_status:
+          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
+        cost_due_currency:
+          type: string
+        subscription:
+          allOf:
+          - $ref: '#/components/schemas/Subscription'
+          readOnly: true
         org_connected_to_cust_payment_provider:
           type: boolean
         customer:
           allOf:
           - $ref: '#/components/schemas/Customer'
           readOnly: true
-        payment_status:
-          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
-        pricing_unit:
-          $ref: '#/components/schemas/PricingUnit'
-        cust_connected_to_payment_provider:
-          type: boolean
       required:
       - cost_due
       - customer
@@ -3639,6 +3646,8 @@ components:
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
+        status:
+          $ref: '#/components/schemas/PlanStatusEnum'
         initial_external_links:
           type: array
           items:
@@ -4242,7 +4251,7 @@ components:
     SubscriptionDetail:
       type: object
       properties:
-        plan_id:
+        start_date:
           type: string
           writeOnly: true
         end_date:

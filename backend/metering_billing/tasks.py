@@ -447,3 +447,9 @@ def run_backtest(backtest_id):
 def run_generate_invoice(subscription_pk, **kwargs):
     subscription = Subscription.objects.get(pk=subscription_pk)
     generate_invoice(subscription, **kwargs)
+
+
+@shared_task
+def handle_webhook_creation_sync(webhook_pk):
+    webhook = Webhook.objects.get(pk=webhook_pk)
+    webhook.create_webhook()

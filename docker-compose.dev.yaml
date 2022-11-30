@@ -8,6 +8,11 @@ services:
       - ./pgdata_dev:/var/lib/postgresql/data
     env_file:
       - ./env/.env.dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lotus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redpanda:
     image: docker.redpanda.com/vectorized/redpanda:v22.2.2
@@ -83,7 +88,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
-    command: celery -A lotus worker -l info
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus worker -l info;"
     depends_on:
       - redis
       - backend
@@ -97,7 +102,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
-    command: celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler;"
     depends_on:
       - celery
       - backend

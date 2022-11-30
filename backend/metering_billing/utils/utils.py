@@ -48,7 +48,7 @@ def convert_to_datetime(value, date_behavior="min"):
 def make_all_decimals_floats(data):
     if isinstance(data, list):
         return [make_all_decimals_floats(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_decimals_floats(key): make_all_decimals_floats(val)
             for key, val in data.items()
@@ -62,12 +62,12 @@ def make_all_decimals_floats(data):
 def make_all_dates_times_strings(data):
     if isinstance(data, list):
         return [make_all_dates_times_strings(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_dates_times_strings(key): make_all_dates_times_strings(val)
             for key, val in data.items()
         }
-    elif isinstance(data, datetime.date) or isinstance(data, datetime.datetime):
+    elif isinstance(data, (datetime.date, datetime.datetime)):
         return str(data)
     else:
         return data
@@ -76,7 +76,7 @@ def make_all_dates_times_strings(data):
 def make_all_datetimes_dates(data):
     if isinstance(data, list):
         return [make_all_datetimes_dates(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_datetimes_dates(key): make_all_datetimes_dates(val)
             for key, val in data.items()
@@ -95,8 +95,7 @@ def years_bwn_twodates(start_date, end_date):
 
 def months_bwn_two_dates(start_date, end_date):
     months_btwn = (
-        12 * relativedelta(end_date, start_date).years
-        + relativedelta(end_date, start_date).months
+        12 * relativedelta(end_date, start_date).years + relativedelta(end_date, start_date).months
     )
     for n in range(months_btwn + 1):
         next_date = start_date + relativedelta(months=n)
@@ -128,9 +127,7 @@ def decimal_to_cents(amount):
     return int(amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100))
 
 
-def periods_bwn_twodates(
-    granularity, start_time, end_time, truncate_to_granularity=False
-):
+def periods_bwn_twodates(granularity, start_time, end_time, truncate_to_granularity=False):
     start_time = convert_to_datetime(start_time, date_behavior="min")
     end_time = convert_to_datetime(end_time, date_behavior="max")
     rd = relativedelta(start_time, end_time)
@@ -150,16 +147,11 @@ def periods_bwn_twodates(
         elif granularity == METRIC_GRANULARITY.HOUR:
             normalize_rd = relativedelta(minute=0, second=0, microsecond=0)
             rd = relativedelta(hours=+1)
-        elif (
-            granularity == USAGE_CALC_GRANULARITY.DAILY
-            or granularity == METRIC_GRANULARITY.DAY
-        ):
+        elif granularity == USAGE_CALC_GRANULARITY.DAILY or granularity == METRIC_GRANULARITY.DAY:
             normalize_rd = relativedelta(hour=0, minute=0, second=0, microsecond=0)
             rd = relativedelta(days=+1)
         elif granularity == METRIC_GRANULARITY.MONTH:
-            normalize_rd = relativedelta(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            normalize_rd = relativedelta(day=1, hour=0, minute=0, second=0, microsecond=0)
             rd = relativedelta(months=+1)
         elif granularity == METRIC_GRANULARITY.QUARTER:
             cur_quarter = (start_time.month - 1) // 3
@@ -168,14 +160,10 @@ def periods_bwn_twodates(
             )
             rd = relativedelta(months=+3)
         elif granularity == METRIC_GRANULARITY.YEAR:
-            normalize_rd = relativedelta(
-                month=1, day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            normalize_rd = relativedelta(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
             rd = relativedelta(years=+1)
         k = 1
-        start_time = (
-            start_time + normalize_rd if truncate_to_granularity else start_time
-        )
+        start_time = start_time + normalize_rd if truncate_to_granularity else start_time
         end_time = end_time + normalize_rd if truncate_to_granularity else end_time
         ret = start_time
         while ret < end_time:

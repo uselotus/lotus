@@ -458,12 +458,71 @@ def setup_demo_3(company_name, username, email, password):
                     Event,
                     organization=organization,
                     customer=customer,
+<<<<<<< HEAD
                     event_name="log_num_seats",
                     properties=gaussian_users(n, users_mean, users_sd, max_users),
                     time_created=random_date(sub.start_date, sub.end_date, n),
                     idempotency_id=uuid.uuid4,
                     _quantity=n,
                 )
+=======
+                    event_name="generate_text",
+                    time_created=tc,
+                    idempotency_id=str(uuid.uuid4().hex),
+                    properties={
+                        "language": language,
+                        "subsection": subsection,
+                        "compute_time": compute_time,
+                        "words": event_words,
+                    },
+                )
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="computation",
+                    time_created=tc,
+                    idempotency_id=str(uuid.uuid4().hex),
+                    properties={
+                        "cost": abs(compute_time * random.gauss(0.05, 0.01)),
+                    },
+                )
+                word_count += event_words
+            max_users = max(
+                x.range_end
+                for x in plan.plan_components.get(billable_metric=num_seats).tiers.all()
+            )
+            n = max(int(random.gauss(6, 1.5) // 1), 1)
+            baker.make(
+                Event,
+                organization=organization,
+                customer=customer,
+                event_name="log_num_seats",
+                properties=gaussian_users(n, users_mean, users_sd, max_users),
+                time_created=random_date(sub.start_date, sub.end_date, n),
+                idempotency_id=uuid.uuid4,
+                _quantity=n,
+            )
+            if months == 0:
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
+                )
+            next_plan = (
+                bp_10_compute_seats
+                if months + 1 == 0
+                else (bp_25_compute_seats if months + 1 == 1 else bp_50_compute_seats)
+            )
+            sub.flat_fee_already_billed = next_plan.flat_rate.amount
+            sub.save()
+            if months != 5:
+                cur_replace_with = sub.billing_plan.replace_with
+                sub.billing_plan.replace_with = next_plan
+                sub.save()
+                run_generate_invoice.delay(
+                    sub.pk, issue_date=sub.end_date, charge_next_plan=True
+                )
+                sub.billing_plan.replace_with = cur_replace_with
+                sub.save()
+>>>>>>> main
 
                 next_plan = (
                     bp_10_compute_seats
@@ -472,6 +531,7 @@ def setup_demo_3(company_name, username, email, password):
                         bp_25_compute_seats if months + 1 == 1 else bp_50_compute_seats
                     )
                 )
+<<<<<<< HEAD
                 if months == 0:
                     run_generate_invoice.delay(
                         sub.pk,
@@ -491,6 +551,51 @@ def setup_demo_3(company_name, username, email, password):
                     )
                     sub.billing_plan.replace_with = cur_replace_with
                     sub.save()
+=======
+            )
+            word_limit = tot_word_limit - np.random.randint(0, tot_word_limit * 0.2)
+            word_count = 0
+            while word_count < word_limit:
+                event_words = random.gauss(325, 60) // 1
+                if word_count + event_words > word_limit:
+                    break
+                compute_time = event_words * random.gauss(0.1, 0.02)
+                language = random.choice(languages)
+                subsection = (
+                    1 if plan == free_bp else np.random.exponential(scale=scale)
+                )
+                subsection = str(subsection // 1)
+                tc = list(random_date(sub.start_date, sub.end_date, 1))[0]
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="generate_text",
+                    time_created=tc,
+                    idempotency_id=uuid.uuid4(),
+                    properties={
+                        "language": language,
+                        "subsection": subsection,
+                        "compute_time": compute_time,
+                        "words": event_words,
+                    },
+                )
+                word_count += event_words
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="computation",
+                    time_created=tc,
+                    idempotency_id=uuid.uuid4(),
+                    properties={
+                        "cost": abs(compute_time * random.gauss(0.075, 0.01)),
+                    },
+                )
+                word_count += event_words
+            max_users = max(
+                x.range_end
+                for x in plan.plan_components.get(billable_metric=num_seats).tiers.all()
+            )
+>>>>>>> main
 
     # for i, customer in enumerate(medium_customers):
     #     beginning = six_months_ago
