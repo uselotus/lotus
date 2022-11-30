@@ -238,9 +238,7 @@ class StripeConnector(PaymentProvider):
                 external_payment_obj_id=stripe_invoice.id
             ).exists():
                 continue
-            cost_due = Money(
-                Decimal(stripe_invoice.amount_due) / 100, stripe_invoice.currency
-            )
+            cost_due = Decimal(stripe_invoice.amount_due) / 100
             invoice_kwargs = {
                 "customer": customer,
                 "cost_due": cost_due,
@@ -322,7 +320,7 @@ class StripeConnector(PaymentProvider):
             #     "enabled": True,
             # },
             "description": "Invoice from {}".format(customer.organization.company_name),
-            "currency": invoice.cost_due.currency,
+            "currency": invoice.cost_due,
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
@@ -337,7 +335,6 @@ class StripeConnector(PaymentProvider):
             name = line_item.name
             amount = line_item.subtotal
             customer = stripe_customer_id
-            currency = line_item.subtotal.currency
             period = {
                 "start": int(line_item.start_date.timestamp()),
                 "end": int(line_item.end_date.timestamp()),
@@ -347,7 +344,6 @@ class StripeConnector(PaymentProvider):
                 "description": name,
                 "amount": int(amount * 100),
                 "customer": customer,
-                "currency": currency,
                 "period": period,
                 "tax_behavior": tax_behavior,
             }

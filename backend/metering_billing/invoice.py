@@ -58,6 +58,7 @@ def generate_invoice(
 
     if not issue_date:
         issue_date = now_utc()
+    issue_date_fmt = issue_date.strftime("%Y-%m-%d")
 
     customer = subscription.customer
     organization = subscription.organization
@@ -213,7 +214,7 @@ def generate_invoice(
             organization=organization,
             customer=customer,
             amount=-subtotal,
-            description=f"Balance increase from invoice {invoice.invoice_id} generated on {issue_date}",
+            description=f"Balance increase from invoice {invoice.invoice_id} generated on {issue_date_fmt}",
             created=issue_date,
             effective_at=issue_date,
             status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
@@ -225,7 +226,7 @@ def generate_invoice(
             leftover = CustomerBalanceAdjustment.draw_down_amount(
                 customer,
                 balance_adjustment,
-                description=f"Balance decrease from invoice {invoice.invoice_id} generated on {issue_date}",
+                description=f"Balance decrease from invoice {invoice.invoice_id} generated on {issue_date_fmt}",
             )
             InvoiceLineItem.objects.create(
                 name=f"{subscription.subscription_id} Customer Balance Adjustment",

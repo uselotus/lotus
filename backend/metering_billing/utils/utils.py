@@ -250,7 +250,7 @@ def webhook_endpoint_uuid():
 
 
 def customer_balance_adjustment_uuid():
-    return "custbaladj_" + str(uuid.uuid4())
+    return "custbaladj_" + str(uuid.uuid4().hex)
 
 
 def date_as_min_dt(date):
