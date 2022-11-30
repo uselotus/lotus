@@ -193,7 +193,7 @@ class MetricHandler(abc.ABC):
             ):
                 kind = "quarter"
                 granularity = METRIC_GRANULARITY.QUARTER
-            if kind != None:
+            if kind is not None:
                 groupby_kwargs["time_created_truncated"] = Trunc(
                     expression=F("time_created"),
                     kind=kind,

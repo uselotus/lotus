@@ -125,7 +125,7 @@ class StripeConnector(PaymentProvider):
             self.redirect_url = ""
 
     def working(self) -> bool:
-        return self.secret_key != "" and self.secret_key != None
+        return self.secret_key != "" and self.secret_key is not None
 
     def customer_connected(self, customer) -> bool:
         pp_ids = customer.integrations
@@ -135,7 +135,7 @@ class StripeConnector(PaymentProvider):
 
     def organization_connected(self, organization) -> bool:
         if self.self_hosted:
-            return self.secret_key != "" and self.secret_key != None
+            return self.secret_key != "" and self.secret_key is not None
         else:
             return (
                 organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "")
