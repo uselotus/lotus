@@ -481,7 +481,7 @@ def setup_demo_3(company_name, username, email, password):
                     1 if plan == free_bp else np.random.exponential(scale=scale)
                 )
                 subsection = str(subsection // 1)
-                tc = random_date(sub.start_date, sub.end_date, 1)
+                tc = list(random_date(sub.start_date, sub.end_date, 1))[0]
                 Event.objects.create(
                     organization=organization,
                     customer=customer,
