@@ -495,11 +495,13 @@ class Metric(models.Model):
         end_date,
         granularity,
         customer=None,
-        group_by=[],
+        group_by=None,
         proration=None,
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
+        if group_by is None:
+            group_by = []
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_usage(
             results_granularity=granularity,
@@ -528,10 +530,12 @@ class Metric(models.Model):
         return usage
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=[], proration=None
+        self, start, end, customer, group_by=None, proration=None
     ):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
+        if group_by is None:
+            group_by = []
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_earned_usage_per_day(
             start, end, customer, group_by, proration

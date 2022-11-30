@@ -33,7 +33,7 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
 )
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView

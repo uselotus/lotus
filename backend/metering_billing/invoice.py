@@ -1,16 +1,10 @@
 from __future__ import absolute_import
 
-import datetime
-import os
-import sys
-import uuid
-from datetime import timezone
 from decimal import Decimal
 
 import lotus_python
-import posthog
 from django.conf import settings
-from django.db.models import Count, Q, Sum
+from django.db.models import Sum
 from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
