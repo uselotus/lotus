@@ -227,10 +227,10 @@ class CounterHandler(MetricHandler):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
-        if (
-            billable_metric.metric_type != METRIC_TYPE.COUNTER
-        ):
-            raise AssertionError(f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler.")
+        if billable_metric.metric_type != METRIC_TYPE.COUNTER:
+            raise AssertionError(
+                f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
+            )
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
         self.numeric_filters = billable_metric.numeric_filters.all()
         self.categorical_filters = billable_metric.categorical_filters.all()
@@ -242,9 +242,12 @@ class CounterHandler(MetricHandler):
         )
 
         if (
-            self.usage_aggregation_type not in CounterHandler._allowed_usage_aggregation_types()
+            self.usage_aggregation_type
+            not in CounterHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}.")
+            raise AssertionError(
+                f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
+            )
 
     @staticmethod
     def _allowed_usage_aggregation_types() -> list[METRIC_AGGREGATION]:
@@ -462,17 +465,17 @@ class CounterHandler(MetricHandler):
         # now validate
         if metric_type != METRIC_TYPE.COUNTER:
             raise AssertionError
-        if (
-            usg_agg_type not in CounterHandler._allowed_usage_aggregation_types()
-        ):
-            raise AssertionError("[METRIC TYPE: COUNTER] Usage aggregation type {} is not allowed.".format(
-                usg_agg_type
-            ))
+        if usg_agg_type not in CounterHandler._allowed_usage_aggregation_types():
+            raise AssertionError(
+                "[METRIC TYPE: COUNTER] Usage aggregation type {} is not allowed.".format(
+                    usg_agg_type
+                )
+            )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
-            if (
-                property_name is None
-            ):
-                raise AssertionError("[METRIC TYPE: COUNTER] Must specify property name unless using COUNT aggregation")
+            if property_name is None:
+                raise AssertionError(
+                    "[METRIC TYPE: COUNTER] Must specify property name unless using COUNT aggregation"
+                )
         else:
             if property_name is not None:
                 print(
@@ -504,10 +507,10 @@ class StatefulHandler(MetricHandler):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
-        if (
-            billable_metric.metric_type != METRIC_TYPE.STATEFUL
-        ):
-            raise AssertionError(f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler.")
+        if billable_metric.metric_type != METRIC_TYPE.STATEFUL:
+            raise AssertionError(
+                f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
+            )
         self.event_type = billable_metric.event_type
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
         self.granularity = billable_metric.granularity
@@ -521,9 +524,12 @@ class StatefulHandler(MetricHandler):
         )
 
         if (
-            self.usage_aggregation_type not in StatefulHandler._allowed_usage_aggregation_types()
+            self.usage_aggregation_type
+            not in StatefulHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}.")
+            raise AssertionError(
+                f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
+            )
 
     @staticmethod
     def validate_data(data: dict) -> dict:
@@ -543,12 +549,12 @@ class StatefulHandler(MetricHandler):
         # now validate
         if metric_type != METRIC_TYPE.STATEFUL:
             raise AssertionError
-        if (
-            usg_agg_type not in StatefulHandler._allowed_usage_aggregation_types()
-        ):
-            raise AssertionError("[METRIC TYPE: STATEFUL] Usage aggregation type {} is not allowed.".format(
-                usg_agg_type
-            ))
+        if usg_agg_type not in StatefulHandler._allowed_usage_aggregation_types():
+            raise AssertionError(
+                "[METRIC TYPE: STATEFUL] Usage aggregation type {} is not allowed.".format(
+                    usg_agg_type
+                )
+            )
         if not granularity:
             raise AssertionError("[METRIC TYPE: STATEFUL] Must specify granularity")
         if bill_agg_type:
@@ -953,10 +959,10 @@ class RateHandler(MetricHandler):
         self.organization = billable_metric.organization
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
-        if (
-            billable_metric.metric_type != METRIC_TYPE.RATE
-        ):
-            raise AssertionError(f"Billable metric of type {billable_metric.metric_type} can't be handled by a RateHandler.")
+        if billable_metric.metric_type != METRIC_TYPE.RATE:
+            raise AssertionError(
+                f"Billable metric of type {billable_metric.metric_type} can't be handled by a RateHandler."
+            )
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
         self.billable_aggregation_type = billable_metric.billable_aggregation_type
         self.granularity = billable_metric.granularity
@@ -970,13 +976,19 @@ class RateHandler(MetricHandler):
         )
 
         if (
-            self.usage_aggregation_type not in RateHandler._allowed_usage_aggregation_types()
+            self.usage_aggregation_type
+            not in RateHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}.")
+            raise AssertionError(
+                f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
+            )
         if (
-            self.billable_aggregation_type not in RateHandler._allowed_billable_aggregation_types()
+            self.billable_aggregation_type
+            not in RateHandler._allowed_billable_aggregation_types()
         ):
-            raise AssertionError(f"Billable aggregation type {self.billable_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}.")
+            raise AssertionError(
+                f"Billable aggregation type {self.billable_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
+            )
 
     @staticmethod
     def validate_data(data: dict) -> dict:
@@ -996,23 +1008,23 @@ class RateHandler(MetricHandler):
         # now validate
         if metric_type != METRIC_TYPE.RATE:
             raise AssertionError
-        if (
-            usg_agg_type not in RateHandler._allowed_usage_aggregation_types()
-        ):
-            raise AssertionError("[METRIC TYPE: RATE] Usage aggregation type {} is not allowed.".format(
-                usg_agg_type
-            ))
-        if (
-            bill_agg_type not in RateHandler._allowed_billable_aggregation_types()
-        ):
-            raise AssertionError("[METRIC TYPE: RATE] Billable aggregation type {} is not allowed.".format(
-                bill_agg_type
-            ))
+        if usg_agg_type not in RateHandler._allowed_usage_aggregation_types():
+            raise AssertionError(
+                "[METRIC TYPE: RATE] Usage aggregation type {} is not allowed.".format(
+                    usg_agg_type
+                )
+            )
+        if bill_agg_type not in RateHandler._allowed_billable_aggregation_types():
+            raise AssertionError(
+                "[METRIC TYPE: RATE] Billable aggregation type {} is not allowed.".format(
+                    bill_agg_type
+                )
+            )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
-            if (
-                property_name is None
-            ):
-                raise AssertionError("[METRIC TYPE: RATE] Must specify property name unless using COUNT aggregation")
+            if property_name is None:
+                raise AssertionError(
+                    "[METRIC TYPE: RATE] Must specify property name unless using COUNT aggregation"
+                )
         else:
             if property_name is not None:
                 print(
