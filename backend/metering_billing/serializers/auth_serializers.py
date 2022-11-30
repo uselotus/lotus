@@ -10,11 +10,10 @@ class RegistrationDetailSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         token = self.context.get("token", None)
-        if not token:
-            if attrs["company_name"] is None:
-                raise serializers.ValidationError(
-                    "Company name is required for registration"
-                )
+        if not token and attrs.get("company_name") is None:
+            raise serializers.ValidationError(
+                "Company name is required for registration"
+            )
         return super().validate(attrs)
 
 

@@ -626,13 +626,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = self.request.user
         else:
             user = None
-        if user:
-            if instance.status == PLAN_STATUS.ARCHIVED:
-                action.send(
-                    user,
-                    verb="archived",
-                    action_object=instance,
-                )
+        if user and instance.status == PLAN_STATUS.ARCHIVED:
+            action.send(
+                user,
+                verb="archived",
+                action_object=instance,
+            )
 
 
 class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

@@ -125,7 +125,7 @@ class StripeConnector(PaymentProvider):
             self.redirect_url = ""
 
     def working(self) -> bool:
-        return self.secret_key != "" and self.secret_key is not None
+        return self.secret_key != "" and self.secret_key != None
 
     def customer_connected(self, customer) -> bool:
         pp_ids = customer.integrations
@@ -135,7 +135,7 @@ class StripeConnector(PaymentProvider):
 
     def organization_connected(self, organization) -> bool:
         if self.self_hosted:
-            return self.secret_key != "" and self.secret_key is not None
+            return self.secret_key != "" and self.secret_key != None
         else:
             return (
                 organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "")
@@ -457,9 +457,9 @@ class StripeConnector(PaymentProvider):
             except Customer.DoesNotExist:
                 continue
             sub_items = subscription["items"]
-            item_ids = set([x["price"]["id"] for x in sub_items["data"]]) | set(
+            item_ids = {x["price"]["id"] for x in sub_items["data"]} | {
                 [x["price"]["product"] for x in sub_items["data"]]
-            )
+            }
             matching_plans = list(filter(lambda x: x[1] & item_ids, lotus_plans))
             # if no plans match any of the items, don't transfer
             if len(matching_plans) == 0:

@@ -304,9 +304,9 @@ class PeriodMetricUsageView(APIView):
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "top_n_customers"]
         ]
-        if type(q_start) == str:
+        if type(q_start) is str:
             q_start = parser.parse(q_start).date()
-        if type(q_end) == str:
+        if type(q_end) is str:
             q_end = parser.parse(q_end).date()
         q_start = date_as_min_dt(q_start)
         q_end = date_as_max_dt(q_end)
@@ -327,18 +327,18 @@ class PeriodMetricUsageView(APIView):
             metric_dict = return_dict[metric.billable_metric_name]
             for customer_name, unique_dict in usage_summary.items():
                 for unique_tuple, period_dict in unique_dict.items():
-                    for datetime, qty in period_dict.items():
+                    for time, qty in period_dict.items():
                         qty = convert_to_decimal(qty)
                         customer_identifier = customer_name
                         if len(unique_tuple) > 1:
                             for unique in unique_tuple[1:]:
                                 customer_identifier += f"__{unique}"
-                        if datetime not in metric_dict["data"]:
-                            metric_dict["data"][datetime] = {
+                        if time not in metric_dict["data"]:
+                            metric_dict["data"][time] = {
                                 "total_usage": Decimal(0),
                                 "customer_usages": {},
                             }
-                        date_dict = metric_dict["data"][datetime]
+                        date_dict = metric_dict["data"][time]
                         date_dict["total_usage"] += qty
                         date_dict["customer_usages"][customer_name] = qty
                         metric_dict["total_usage"] += qty
@@ -351,10 +351,8 @@ class PeriodMetricUsageView(APIView):
                     key=lambda x: x[1],
                     reverse=True,
                 )[:top_n]
-                metric_dict["top_n_customers"] = list(x[0] for x in top_n_customers)
-                metric_dict["top_n_customers_usage"] = list(
-                    x[1] for x in top_n_customers
-                )
+                metric_dict["top_n_customers"] = [x[0] for x in top_n_customers]
+                metric_dict["top_n_customers_usage"] = [x[1] for x in top_n_customers]
             else:
                 del metric_dict["top_n_customers"]
         for metric, metric_d in return_dict.items():
@@ -681,8 +679,11 @@ class GetCustomerAccessView(APIView):
                         custom_metric_usage = metric_usage[customer.customer_name]
                         for unique_tup, d in custom_metric_usage.items():
                             i = iter(unique_tup)
-                            _ = next(i)  # i.next() in older versions
-                            groupby_vals = list(i)
+                            try:
+                                _ = next(i)  # i.next() in older versions
+                                groupby_vals = list(i)
+                            except:
+                                groupby_vals = []
                             usage = list(d.values())[0]
                             unique_tup_dict = {
                                 "event_name": event_name,

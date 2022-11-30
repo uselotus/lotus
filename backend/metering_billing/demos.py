@@ -378,7 +378,7 @@ def setup_demo_3(company_name, username, email, password):
                     customer=customer,
                     event_name="generate_text",
                     time_created=tc,
-                    idempotency_id=uuid.uuid4(),
+                    idempotency_id=str(uuid.uuid4().hex),
                     properties={
                         "language": language,
                         "subsection": subsection,
@@ -391,7 +391,7 @@ def setup_demo_3(company_name, username, email, password):
                     customer=customer,
                     event_name="computation",
                     time_created=tc,
-                    idempotency_id=uuid.uuid4(),
+                    idempotency_id=str(uuid.uuid4().hex),
                     properties={
                         "cost": abs(compute_time * random.gauss(0.05, 0.01)),
                     },
@@ -481,8 +481,7 @@ def setup_demo_3(company_name, username, email, password):
                     1 if plan == free_bp else np.random.exponential(scale=scale)
                 )
                 subsection = str(subsection // 1)
-                for tc in random_date(sub.start_date, sub.end_date, 1):
-                    tc = tc
+                tc = random_date(sub.start_date, sub.end_date, 1)
                 Event.objects.create(
                     organization=organization,
                     customer=customer,

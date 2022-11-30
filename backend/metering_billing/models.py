@@ -362,12 +362,7 @@ class CustomerBalanceAdjustment(models.Model):
 
     class Meta:
         ordering = ["-created"]
-
-    class Meta:
         unique_together = ("customer", "created")
-
-    def __str__(self):
-        return f"{self.customer} {self.amount} {self.created}"
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -1346,8 +1341,7 @@ class Subscription(models.Model):
         return flat_fee_prev_invoices + (billed_invoices or 0)
 
     def get_usage_and_revenue(self):
-        sub_dict = {}
-        sub_dict["components"] = []
+        sub_dict = {"components": []}
         # set up the billing plan for this subscription
         plan = self.billing_plan
         # set up other details of the subscription

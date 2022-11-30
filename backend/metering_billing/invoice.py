@@ -100,7 +100,7 @@ def generate_invoice(
         ]
         for k, v in flat_costs_dict_list:
             last_elem_amount, last_elem_plan, last_elem_start, _ = date_range_costs[-1]
-            assert type(k) == type(str(issue_date.date())), "k is not a string"
+            assert type(k) is type(str(issue_date.date())), "k is not a string"
             if (str(issue_date.date()) < k) and flat_fee_behavior == "prorate":
                 # only add flat fee if it is before or equal the issue date, or if we specified
                 # that we are NOT prorating

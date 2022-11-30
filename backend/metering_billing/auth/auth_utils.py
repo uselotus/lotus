@@ -76,7 +76,7 @@ def fast_api_key_validation_and_cache(request):
         except:
             return HttpResponseBadRequest("Invalid API key"), False
         organization_pk = api_key.organization.pk
-        if type(organization_pk) != int:
+        if type(organization_pk) is not int:
             raise AssertionError("Organization PK must be an integer")
         expiry_date = api_key.expiry_date
         timeout = (

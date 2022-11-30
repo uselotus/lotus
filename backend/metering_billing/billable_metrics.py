@@ -747,7 +747,7 @@ class StatefulHandler(MetricHandler):
         elif self.event_type == EVENT_TYPE.DELTA:
             last_pre_query_grouped = (
                 pre_query_all_events.filter(*filter_args, **grouping_filter)
-                .values(*[x for x in grouping_filter.keys()])
+                .values(*[x for x in grouping_filter])
                 .annotate(last_qty=Sum(Cast(F("property_value"), FloatField())))
             )
             last_pre_query_actual_events = pre_query_all_events.annotate(
@@ -952,7 +952,8 @@ class StatefulHandler(MetricHandler):
                             day = convert_to_date(day)
                             if day < period:
                                 continue
-                            if less_than:
+                            if less_than is not None:
+                                # make sure less than is not none to avoid comparison bug
                                 if day >= less_than:
                                     break
                             if usage > last_value:
