@@ -1169,7 +1169,7 @@ class RateHandler(MetricHandler):
         per_customer = self.get_usage(
             start=start,
             end=end,
-            granularity=USAGE_CALC_GRANULARITY.DAILY,
+            results_granularity=USAGE_CALC_GRANULARITY.DAILY,
             customer=customer,
             group_by=group_by,
             proration=proration,
