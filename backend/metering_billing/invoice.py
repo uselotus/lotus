@@ -1,24 +1,13 @@
 from __future__ import absolute_import
 
-import datetime
-import os
-import sys
-import uuid
-from datetime import timezone
 from decimal import Decimal
 
 import lotus_python
-import posthog
 from django.conf import settings
-from django.db.models import Count, Q, Sum
+from django.db.models import Sum
 from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import (
-    calculate_end_date,
-    convert_to_datetime,
-    convert_to_decimal,
-    now_utc,
-)
+from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -92,7 +81,7 @@ def generate_invoice(
                     ili.metadata = subperiod["unique_identifier"]
                     ili.save()
     # flat fee calculation for current plan
-    if not flat_fee_behavior == "refund":
+    if flat_fee_behavior != "refund":
         flat_costs_dict_list = sorted(
             list(subscription.prorated_flat_costs_dict.items()), key=lambda x: x[0]
         )
@@ -106,7 +95,7 @@ def generate_invoice(
         ]
         for k, v in flat_costs_dict_list:
             last_elem_amount, last_elem_plan, last_elem_start, _ = date_range_costs[-1]
-            assert type(k) == type(str(issue_date.date())), "k is not a string"
+            assert type(k) is type(str(issue_date.date())), "k is not a string"
             if (str(issue_date.date()) < k) and flat_fee_behavior == "prorate":
                 # only add flat fee if it is before or equal the issue date, or if we specified
                 # that we are NOT prorating

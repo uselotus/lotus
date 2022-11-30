@@ -457,9 +457,9 @@ class StripeConnector(PaymentProvider):
             except Customer.DoesNotExist:
                 continue
             sub_items = subscription["items"]
-            item_ids = set([x["price"]["id"] for x in sub_items["data"]]) | set(
+            item_ids = {x["price"]["id"] for x in sub_items["data"]} | {
                 [x["price"]["product"] for x in sub_items["data"]]
-            )
+            }
             matching_plans = list(filter(lambda x: x[1] & item_ids, lotus_plans))
             # if no plans match any of the items, don't transfer
             if len(matching_plans) == 0:

@@ -48,7 +48,7 @@ def convert_to_datetime(value, date_behavior="min"):
 def make_all_decimals_floats(data):
     if isinstance(data, list):
         return [make_all_decimals_floats(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_decimals_floats(key): make_all_decimals_floats(val)
             for key, val in data.items()
@@ -62,12 +62,12 @@ def make_all_decimals_floats(data):
 def make_all_dates_times_strings(data):
     if isinstance(data, list):
         return [make_all_dates_times_strings(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_dates_times_strings(key): make_all_dates_times_strings(val)
             for key, val in data.items()
         }
-    elif isinstance(data, datetime.date) or isinstance(data, datetime.datetime):
+    elif isinstance(data, (datetime.date, datetime.datetime)):
         return str(data)
     else:
         return data
@@ -76,7 +76,7 @@ def make_all_dates_times_strings(data):
 def make_all_datetimes_dates(data):
     if isinstance(data, list):
         return [make_all_datetimes_dates(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_datetimes_dates(key): make_all_datetimes_dates(val)
             for key, val in data.items()

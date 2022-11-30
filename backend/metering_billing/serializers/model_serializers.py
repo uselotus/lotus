@@ -686,7 +686,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         pc = PlanComponent.objects.create(**validated_data)
         for tier in tiers:
             tier = PriceTierSerializer().create(tier)
-            assert type(tier) == PriceTier
+            assert type(tier) is PriceTier
             tier.plan_component = pc
             tier.save()
         return pc
@@ -917,7 +917,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         components_data = validated_data.pop("plan_components", [])
         if len(components_data) > 0:
             components = PlanComponentSerializer(many=True).create(components_data)
-            assert type(components[0]) == PlanComponent
+            assert type(components[0]) is PlanComponent
         else:
             components = []
         features_data = validated_data.pop("features", [])
@@ -1289,10 +1289,6 @@ class SubscriptionDetailSerializer(SubscriptionSerializer):
 
 
 class SubscriptionInvoiceSerializer(SubscriptionSerializer):
-    class Meta:
-        model = Customer
-        fields = ("customer_name",)
-
     class Meta(SubscriptionSerializer.Meta):
         model = Subscription
         fields = fields = tuple(
@@ -1364,7 +1360,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             instance.switch_subscription_bp(new_bp)
         elif validated_data.get("status") or new_bp:
             replace_type = validated_data.get("replace_immediately_type")
-            prorate = True if new_bp else False
+            prorate = new_bp is not None
             bill_usage = (
                 replace_type
                 == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL

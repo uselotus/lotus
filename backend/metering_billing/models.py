@@ -362,12 +362,7 @@ class CustomerBalanceAdjustment(models.Model):
 
     class Meta:
         ordering = ["-created"]
-
-    class Meta:
         unique_together = ("customer", "created")
-
-    def __str__(self):
-        return f"{self.customer} {self.amount} {self.created}"
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -495,11 +490,13 @@ class Metric(models.Model):
         end_date,
         granularity,
         customer=None,
-        group_by=[],
+        group_by=None,
         proration=None,
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
+        if group_by is None:
+            group_by = []
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_usage(
             results_granularity=granularity,
@@ -528,10 +525,12 @@ class Metric(models.Model):
         return usage
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=[], proration=None
+        self, start, end, customer, group_by=None, proration=None
     ):
         from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 
+        if group_by is None:
+            group_by = []
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_earned_usage_per_day(
             start, end, customer, group_by, proration
@@ -1342,8 +1341,7 @@ class Subscription(models.Model):
         return flat_fee_prev_invoices + (billed_invoices or 0)
 
     def get_usage_and_revenue(self):
-        sub_dict = {}
-        sub_dict["components"] = []
+        sub_dict = {"components": []}
         # set up the billing plan for this subscription
         plan = self.billing_plan
         # set up other details of the subscription
