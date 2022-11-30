@@ -65,7 +65,9 @@ def calculate_invoice():
         # Generate the invoice
         try:
             generate_invoice(
-                old_subscription, charge_next_plan=old_subscription.auto_renew
+                old_subscription,
+                charge_next_plan=old_subscription.auto_renew,
+                flat_fee_cutoff_date=old_subscription.end_date,
             )
             now = now_utc()
         except Exception as e:
@@ -433,9 +435,3 @@ def run_backtest(backtest_id):
 def run_generate_invoice(subscription_pk, **kwargs):
     subscription = Subscription.objects.get(pk=subscription_pk)
     generate_invoice(subscription, **kwargs)
-
-
-@shared_task
-def handle_webhook_creation_sync(webhook_pk):
-    webhook = Webhook.objects.get(pk=webhook_pk)
-    webhook.create_webhook()

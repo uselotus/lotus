@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import datetime
 from decimal import Decimal
 
 import lotus_python
@@ -7,7 +8,12 @@ from django.conf import settings
 from django.db.models import Sum
 from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
+from metering_billing.utils import (
+    calculate_end_date,
+    convert_to_date,
+    convert_to_datetime,
+    now_utc,
+)
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -24,7 +30,7 @@ def generate_invoice(
     subscription,
     draft=False,
     charge_next_plan=False,
-    flat_fee_behavior="prorate",
+    flat_fee_cutoff_date=None,
     include_usage=True,
     issue_date=None,
 ):
@@ -39,10 +45,16 @@ def generate_invoice(
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
-    assert flat_fee_behavior in ["refund", "full_amount", "prorate"]
+    assert (
+        flat_fee_cutoff_date == -1
+        or isinstance(flat_fee_cutoff_date, datetime.date)
+        or flat_fee_cutoff_date is None
+    ), "flat_fee_cutoff_date must be a date, None, or -1"
 
     if not issue_date:
         issue_date = now_utc()
+    if isinstance(flat_fee_cutoff_date, datetime.date):
+        flat_fee_cutoff_date = convert_to_date(flat_fee_cutoff_date)
 
     customer = subscription.customer
     organization = subscription.organization
@@ -81,7 +93,7 @@ def generate_invoice(
                     ili.metadata = subperiod["unique_identifier"]
                     ili.save()
     # flat fee calculation for current plan
-    if flat_fee_behavior != "refund":
+    if flat_fee_cutoff_date != -1:
         flat_costs_dict_list = sorted(
             list(subscription.prorated_flat_costs_dict.items()), key=lambda x: x[0]
         )
@@ -95,10 +107,10 @@ def generate_invoice(
         ]
         for k, v in flat_costs_dict_list:
             last_elem_amount, last_elem_plan, last_elem_start, _ = date_range_costs[-1]
-            assert type(k) is type(str(issue_date.date())), "k is not a string"
-            if (str(issue_date.date()) < k) and flat_fee_behavior == "prorate":
-                # only add flat fee if it is before or equal the issue date, or if we specified
-                # that we are NOT prorating
+            k = convert_to_date(k)
+            issue_dt = convert_to_date(issue_date)
+            if flat_fee_cutoff_date and k > flat_fee_cutoff_date:
+                # if we are further along or on the cutoff date then stop counting
                 break
             if v["plan_version_id"] != last_elem_plan:
                 date_range_costs.append((v["amount"], v["plan_version_id"], k, k))

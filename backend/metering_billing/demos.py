@@ -413,9 +413,7 @@ def setup_demo_3(company_name, username, email, password):
                 _quantity=n,
             )
             if months == 0:
-                run_generate_invoice.delay(
-                    sub.pk, issue_date=sub.start_date, flat_fee_behavior="full_amount"
-                )
+                run_generate_invoice.delay(sub.pk, issue_date=sub.start_date)
             next_plan = (
                 bp_10_compute_seats
                 if months + 1 == 0

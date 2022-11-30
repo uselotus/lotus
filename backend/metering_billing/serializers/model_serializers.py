@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Union
 
 from actstream.models import Action
+from dateutil.relativedelta import relativedelta
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric
@@ -1215,6 +1216,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "auto_renew",
             "is_new",
             "subscription_id",
+            "align_to_next_period_start",
         )
         read_only_fields = (
             "customer",
@@ -1241,6 +1243,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         source="billing_plan.plan",
         queryset=Plan.objects.all(),
         write_only=True,
+    )
+    align_to_next_period_start = serializers.BooleanField(
+        required=False, default=False, write_only=True
     )
 
     # READ ONLY
@@ -1271,10 +1276,27 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        align_to_next_period_start = validated_data.pop(
+            "align_to_next_period_start", False
+        )
         sub = super().create(validated_data)
+        if align_to_next_period_start:
+            sub.end_date = calculate_end_date(
+                sub.billing_plan.plan.plan_duration,
+                sub.start_date,
+                clip_to_period_end=True,
+            )
+            sub.save()
         # new subscription means we need to create an invoice if its pay in advance
         if sub.billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            generate_invoice(sub, flat_fee_behavior="full_amount", include_usage=False)
+            if align_to_next_period_start:
+                generate_invoice(
+                    sub,
+                    flat_fee_cutoff_date=sub.end_date - relativedelta(days=1),
+                    include_usage=False,
+                )
+            else:
+                generate_invoice(sub, include_usage=False)
         return sub
 
 
