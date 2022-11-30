@@ -1719,6 +1719,7 @@ class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
             "customer_id",
             "amount",
             "pricing_unit_code",
+            "pricing_unit",
             "description",
             "effective_at",
             "expires_at",
@@ -1737,7 +1738,9 @@ class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
         queryset=PricingUnit.objects.all(),
         required=True,
         source="pricing_unit",
+        write_only=True,
     )
+    pricing_unit = PricingUnitSerializer(read_only=True)
     parent_adjustment_id = SlugRelatedFieldWithOrganization(
         slug_field="adjustment_id",
         required=False,
