@@ -1760,7 +1760,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "customer_id",
             "email",
             "customer_name",
-            "balance_adjustments",
             "invoices",
             "total_amount_due",
             "next_amount_due",
@@ -1771,7 +1770,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
 
     subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
-    balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
     next_amount_due = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
@@ -1785,13 +1783,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
-        return timeline
-
-    def get_balance_adjustments(
-        self, obj
-    ) -> CustomerBalanceAdjustmentSerializer(many=True):
-        timeline = self.context.get("balance_adjustments")
-        timeline = CustomerBalanceAdjustmentSerializer(timeline, many=True).data
         return timeline
 
     def get_total_amount_due(self, obj) -> float:

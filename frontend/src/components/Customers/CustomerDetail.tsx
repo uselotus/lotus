@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Tabs, Modal } from "antd";
 import { PlanType } from "../../types/plan-type";
 import {
@@ -9,7 +9,7 @@ import {
   CancelSubscriptionType,
 } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
-import { Customer} from "../../api/api";
+import { Customer } from "../../api/api";
 import SubscriptionView from "./CustomerSubscriptionView";
 import {
   useMutation,
@@ -81,6 +81,10 @@ function CustomerDetail(props: {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries([
+          "balance_adjustments",
+          props.customer_id,
+        ]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription created successfully");
       },
@@ -93,6 +97,10 @@ function CustomerDetail(props: {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries([
+          "balance_adjustments",
+          props.customer_id,
+        ]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription cancelled successfully");
       },
@@ -105,6 +113,10 @@ function CustomerDetail(props: {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries([
+          "balance_adjustments",
+          props.customer_id,
+        ]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription switched successfully");
       },
@@ -226,9 +238,7 @@ function CustomerDetail(props: {
                 <CustomerInvoiceView invoices={data?.invoices} />
               </Tabs.TabPane>
               <Tabs.TabPane tab="Credits" key="credits">
-                <CustomerBalancedAdjustments
-                  customerId={props.customer_id}
-                />
+                <CustomerBalancedAdjustments customerId={props.customer_id} />
               </Tabs.TabPane>
               {/*
                <Tabs.TabPane tab="Integrations" key="integrations">

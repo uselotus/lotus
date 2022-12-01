@@ -455,7 +455,7 @@ class CustomerBalanceAdjustment(models.Model):
     def get_remaining_balance(self):
         dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))["drawdowns"]
         drawdowns = dd_aggregate or 0
-        return self.amount - drawdowns
+        return self.amount + drawdowns
 
     def zero_out(self, reason=None):
         if reason == "expired":
@@ -1518,7 +1518,6 @@ class Subscription(models.Model):
             ~Q(payment_status=INVOICE_STATUS.VOIDED)
             & ~Q(payment_status=INVOICE_STATUS.DRAFT)
         ).aggregate(tot=Sum("cost_due"))["tot"]
-
         return flat_fee_prev_invoices + (billed_invoices or 0)
 
     def get_usage_and_revenue(self):

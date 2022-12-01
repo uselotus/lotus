@@ -320,7 +320,7 @@ class StripeConnector(PaymentProvider):
             #     "enabled": True,
             # },
             "description": "Invoice from {}".format(customer.organization.company_name),
-            "currency": invoice.cost_due,
+            "currency": invoice.pricing_unit.code.lower(),
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
@@ -345,6 +345,7 @@ class StripeConnector(PaymentProvider):
                 "amount": int(amount * 100),
                 "customer": customer,
                 "period": period,
+                "currency": invoice.pricing_unit.code.lower(),
                 "tax_behavior": tax_behavior,
             }
             stripe.InvoiceItem.create(**inv_dict)

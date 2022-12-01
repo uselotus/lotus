@@ -290,15 +290,11 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 ~Q(payment_status=INVOICE_STATUS.DRAFT),
                 organization=organization,
                 customer=customer,
-            )
-            balance_adjustments = CustomerBalanceAdjustment.objects.filter(
-                customer=customer,
-            )
+            ).order_by("-issue_date")
             context.update(
                 {
                     "total_amount_due": total_amount_due,
                     "invoices": invoices,
-                    "balance_adjustments": balance_adjustments,
                     "next_amount_due": next_amount_due,
                 }
             )
@@ -1138,7 +1134,7 @@ class CustomerBalanceAdjustmentViewSet(
 
     def get_queryset(self):
         filter_kwargs = {"organization": parse_organization(self.request)}
-        customer_id = self.request.query_params.get("source")
+        customer_id = self.request.query_params.get("customer_id")
         if customer_id:
             filter_kwargs["customer__customer_id"] = customer_id
         return CustomerBalanceAdjustment.objects.filter(**filter_kwargs)
