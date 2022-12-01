@@ -1,7 +1,7 @@
 import React, { FC, useState } from "react";
 import { useQuery, useMutation } from "react-query";
 import { useNavigate } from "react-router-dom";
-import { Divider, Typography, Row, Col, Input, Button, Form, Tag } from "antd";
+import { Table, Typography, Row, Col, Input, Button, Form, Tag } from "antd";
 import { Organization } from "../../../../api/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../../components/LoadingSpinner";
@@ -63,72 +63,59 @@ const TeamTab: FC = () => {
         <div className="px-4 sm:px-6 lg:px-8 basis-7/12 border-2 border-solid rounded border-[#EAEAEB]">
           <div className="mt-8 flex flex-col">
             <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-              <div className="inline-block min-w-full py-2 align-middle">
-                <div className="overflow-hidden shadow-sm ring-1 ring-black ring-opacity-5">
-                  <table className="min-w-full divide-y divide-gray-300">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th
-                          scope="col"
-                          className="py-3.5 pl-4 pr-3 text-left font-medium text-gray-900 sm:pl-6 lg:pl-8"
-                        >
-                          Username
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-3 py-3.5 text-left font-medium text-gray-900"
-                        >
-                          Email
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-3 py-3.5 text-left font-medium	text-gray-900"
-                        >
-                          Role
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-3 py-3.5 text-left font-medium text-gray-900"
-                        >
-                          Status
-                        </th>
-                        <th
-                          scope="col"
-                          className="relative py-3.5 pl-3 pr-4 sm:pr-6 lg:pr-8"
-                        >
-                          <span className="sr-only">Edit</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                      {organization?.users?.map((person) => (
-                        <tr key={person.email}>
-                          <td className="whitespace-nowrap py-4 pl-4 pr-3  text-gray-900 sm:pl-6 lg:pl-8">
-                            {person.username}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-gray-500">
-                            {person.email}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-gray-500">
-                            {person.role}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-gray-500">
-                            <Tag color={ person.status === "Active" ? "green" : "yellow"}>{person.status}</Tag>
-                          </td>
-                          {/* <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right  sm:pr-6 lg:pr-8">
-                            <a
-                              href="#"
-                              className=" text-darkgold hover:text-black"
-                            >
-                              Edit
-                              <span className="sr-only">, {person.name}</span>
-                            </a>
-                          </td> */}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="inline-block min-w-full align-middle">
+                <Table
+                  className="min-w-full divide-y divide-gray-200"
+                  columns={
+                    [
+                      {
+                        title: "Username",
+                        dataIndex: "username",
+                        key: "username",
+                      },
+                      {
+                        title: "Email",
+                        dataIndex: "email",
+                        key: "email",
+                      },
+                      {
+                        title: "Role",
+                        dataIndex: "role",
+                        key: "role",
+                      },
+                      {
+                        title: "Status",
+                        dataIndex: "status",
+                        key: "status",
+                        render: (status: string) => {
+                          let color = status === "active" ? "green" : "yellow";
+                          return (
+                            <Tag color={color} key={status}>
+                              {status.toUpperCase()}
+                            </Tag>
+                          );
+                        },
+                      },
+                      {
+                        render(text, record) {
+                          return (
+                            <div className="flex flex-row space-x-2">
+                              <Button
+                                type="primary"
+                                onClick={() => {
+                                  console.log(record);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                            </div>
+                          );
+                        },
+                      },
+                    ] as any
+                  }
+                  dataSource={organization?.users}
+                />
               </div>
             </div>
           </div>

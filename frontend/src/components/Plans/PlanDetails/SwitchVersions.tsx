@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useEffect, useState, version } from "react";
+import React, { FC, Fragment, useEffect, useState, version } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
@@ -191,13 +191,17 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
               </div>
             </div>
             <div className="flex items-center planInfo py-2 mt-2">
-              <div className="pr-2 infoLabel">
-                Components Billing Frequency:
-              </div>
-              <div className="infoValue">
-                {" "}
-                {selectedVersion.usage_billing_frequency}
-              </div>
+              {selectedVersion?.usage_billing_frequency ? (
+                <Fragment>
+                  <div className="pr-2 infoLabel">
+                    Components Billing Frequency:
+                  </div>
+                  <div className="infoValue">
+                    {" "}
+                    {selectedVersion.usage_billing_frequency}
+                  </div>
+                </Fragment>
+              ) : null}
             </div>
           </div>
         </div>

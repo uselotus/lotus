@@ -403,7 +403,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             flat_rate: plan.versions[versionIndex].flat_rate,
             pay_in_advance: plan.versions[versionIndex].flat_fee_billing_type,
             usage_billing_frequency:
-              plan.versions[versionIndex].usage_billing_frequency,
+              plan.versions[versionIndex].usage_billing_frequency ||
+              plan.plan_duration,
             plan_duration: plan.plan_duration,
             flat_fee_billing_type:
               plan.versions[versionIndex].flat_fee_billing_type,

@@ -6,17 +6,18 @@ import { Select } from "antd";
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import {useMutation} from "react-query";
-import { Customer} from "../../api/api";
-import {toast} from "react-toastify";
+import { useMutation } from "react-query";
+import { Customer } from "../../api/api";
+import { toast } from "react-toastify";
 
 const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
     []
   );
 
-   const updateCustomer = useMutation(
-    (obj: { customer_id: string; default_currency_code: string } ) => Customer.updateCustomer(obj.customer_id, obj.default_currency_code),
+  const updateCustomer = useMutation(
+    (obj: { customer_id: string; default_currency_code: string }) =>
+      Customer.updateCustomer(obj.customer_id, obj.default_currency_code),
     {
       onSuccess: () => {
         toast.success("Successfully Updated Default Currency", {
@@ -89,14 +90,8 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     isStack: true,
     seriesField: "metric",
     groupField: "type",
-
-    label: {
-      position: "middle",
-      layout: [
-        { type: "interval-adjust-position" },
-        { type: "interval-hide-overlap" },
-        { type: "adjust-color" },
-      ],
+    tooltip: {
+      fields: ["date", "amount", "type"],
     },
   };
 
@@ -129,12 +124,22 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           <p>
             <b>Billing Address:</b> {data.billing_address ?? "N/A"}
           </p>
-           <p>
-               <b>Default Currency:</b> {data.default_currency ? (
-               <PricingUnitDropDown defaultValue={data.default_currency.code}
-                                    setCurrentCurrency={value => updateCustomer.mutate({customer_id:data.customer_id, default_currency_code:value})}/>
-           ) :  "N/A"}
-           </p>
+          <p>
+            <b>Default Currency:</b>{" "}
+            {data.default_currency ? (
+              <PricingUnitDropDown
+                defaultValue={data.default_currency.code}
+                setCurrentCurrency={(value) =>
+                  updateCustomer.mutate({
+                    customer_id: data.customer_id,
+                    default_currency_code: value,
+                  })
+                }
+              />
+            ) : (
+              "N/A"
+            )}
+          </p>
           <p>
             <b>Amount Due On Next Invoice:</b> {"$"}
             {data.next_amount_due.toFixed(2)}

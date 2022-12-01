@@ -20,7 +20,7 @@ import {
   CancelSubscriptionType,
 } from "../../types/subscription-type";
 //import the Customer type from the api.ts file
-import { Customer, Plan, Invoices } from "../../api/api";
+import { Plan, Invoices } from "../../api/api";
 import dayjs from "dayjs";
 
 import { CustomerDetailSubscription } from "../../types/customer-type";
@@ -258,7 +258,7 @@ const SubscriptionView: FC<Props> = ({
   }
   return (
     <div className="mt-auto">
-      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plan</h2>
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
       <div className="flex flex-col justify-center">
         <List>
           {subscriptions.map((subscription) => (
@@ -308,14 +308,16 @@ const SubscriptionView: FC<Props> = ({
         {invoiceData && invoiceData.length > 0 && (
           <div className="w-full space-y-8">
             <h2 className="mb-2 pb-4 pt-4 font-bold text-main">
-              Draft Invoice
+              Draft Invoice View
             </h2>
             <div className="grid grid-cols-2">
               <p>
-                <b>Currency: </b> {invoiceData[0].cost_due_currency}
+                <b>Currency: </b> {invoiceData[0].pricing_unit.code}
               </p>
               <p>
-                <b>Cost Due: </b> {invoiceData[0].cost_due}
+                <b>Total Cost Due: </b>
+                {invoiceData[0].pricing_unit.symbol}
+                {invoiceData[0].cost_due}
               </p>
             </div>
             <Table
@@ -347,6 +349,12 @@ const SubscriptionView: FC<Props> = ({
                 {
                   title: "Subtotal",
                   dataIndex: "subtotal",
+                  render: (_, record) => (
+                    <div className="flex flex-col">
+                      {invoiceData[0].pricing_unit.symbol}
+                      {record.subtotal.toFixed(2)}
+                    </div>
+                  ),
                 },
                 {
                   title: "Billing Type",
