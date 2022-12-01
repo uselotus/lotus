@@ -137,10 +137,7 @@ class StripeConnector(PaymentProvider):
         if self.self_hosted:
             return self.secret_key != "" and self.secret_key != None
         else:
-            return (
-                organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "")
-                != ""
-            )
+            return organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "") != ""
 
     def update_payment_object_status(self, payment_object_id):
         stripe.api_key = self.secret_key
@@ -164,14 +161,10 @@ class StripeConnector(PaymentProvider):
         stripe_cust_kwargs = {}
         if org_ppis.get(PAYMENT_PROVIDERS.STRIPE) not in ["", None]:
             # this is to get "on behalf" of someone
-            stripe_cust_kwargs["stripe_account"] = org_ppis.get(
-                PAYMENT_PROVIDERS.STRIPE
-            )
+            stripe_cust_kwargs["stripe_account"] = org_ppis.get(PAYMENT_PROVIDERS.STRIPE)
         try:
             stripe_customers_response = stripe.Customer.list(**stripe_cust_kwargs)
-            for i, stripe_customer in enumerate(
-                stripe_customers_response.auto_paging_iter()
-            ):
+            for i, stripe_customer in enumerate(stripe_customers_response.auto_paging_iter()):
                 stripe_id = stripe_customer.id
                 stripe_email = stripe_customer.email
                 stripe_metadata = stripe_customer.metadata
@@ -184,9 +177,7 @@ class StripeConnector(PaymentProvider):
                     organization=organization,
                 ).first()
                 if customer:  # customer exists in system already
-                    cur_pp_dict = customer.integrations.get(
-                        PAYMENT_PROVIDERS.STRIPE, {}
-                    )
+                    cur_pp_dict = customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {})
                     cur_pp_dict["id"] = stripe_id
                     cur_pp_dict["email"] = stripe_email
                     cur_pp_dict["metadata"] = stripe_metadata
@@ -234,17 +225,13 @@ class StripeConnector(PaymentProvider):
         )
         lotus_invoices = []
         for stripe_invoice in invoices.auto_paging_iter():
-            if Invoice.objects.filter(
-                external_payment_obj_id=stripe_invoice.id
-            ).exists():
+            if Invoice.objects.filter(external_payment_obj_id=stripe_invoice.id).exists():
                 continue
             cost_due = Decimal(stripe_invoice.amount_due) / 100
             invoice_kwargs = {
                 "customer": customer,
                 "cost_due": cost_due,
-                "issue_date": datetime.datetime.fromtimestamp(
-                    stripe_invoice.created, pytz.utc
-                ),
+                "issue_date": datetime.datetime.fromtimestamp(stripe_invoice.created, pytz.utc),
                 "org_connected_to_cust_payment_provider": True,
                 "cust_connected_to_payment_provider": True,
                 "external_payment_obj_id": stripe_invoice.id,
@@ -256,9 +243,7 @@ class StripeConnector(PaymentProvider):
             lotus_invoices.append(lotus_invoice)
         return lotus_invoices
 
-    def create_customer(
-        self, customer
-    ) -> Union[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID]:
+    def create_customer(self, customer) -> Union[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID]:
         stripe.api_key = self.secret_key
         from metering_billing.models import OrganizationSetting
 
@@ -269,8 +254,7 @@ class StripeConnector(PaymentProvider):
         )
         if setting.setting_value == "true":
             assert (
-                customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id")
-                is None
+                customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id") is None
             ), "Customer already has a Stripe ID"
             customer_kwargs = {
                 "name": customer.customer_name,
@@ -280,9 +264,7 @@ class StripeConnector(PaymentProvider):
                 org_stripe_acct = customer.organization.payment_provider_ids.get(
                     PAYMENT_PROVIDERS.STRIPE, ""
                 )
-                assert (
-                    org_stripe_acct != ""
-                ), "Organization does not have a Stripe account ID"
+                assert org_stripe_acct != "", "Organization does not have a Stripe account ID"
                 customer_kwargs["stripe_account"] = org_stripe_acct
             try:
                 stripe_customer = stripe.Customer.create(**customer_kwargs)
@@ -298,9 +280,7 @@ class StripeConnector(PaymentProvider):
         elif setting.setting_value == "false":
             pass
         else:
-            raise Exception(
-                "Invalid value for generate_customer_after_creating_in_lotus setting"
-            )
+            raise Exception("Invalid value for generate_customer_after_creating_in_lotus setting")
 
     def create_payment_object(self, invoice) -> str:
         from metering_billing.models import Customer, Organization
@@ -309,9 +289,7 @@ class StripeConnector(PaymentProvider):
         # check everything works as expected + build invoice item
         assert invoice.external_payment_obj_id is None
         customer = invoice.customer
-        stripe_customer_id = customer.integrations.get(
-            PAYMENT_PROVIDERS.STRIPE, {}
-        ).get("id")
+        stripe_customer_id = customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id")
         assert stripe_customer_id is not None, "Customer does not have a Stripe ID"
         invoice_kwargs = {
             "auto_advance": True,
@@ -326,9 +304,7 @@ class StripeConnector(PaymentProvider):
             org_stripe_acct = customer.organization.payment_provider_ids.get(
                 PAYMENT_PROVIDERS.STRIPE, ""
             )
-            assert (
-                org_stripe_acct != ""
-            ), "Organization does not have a Stripe account ID"
+            assert org_stripe_acct != "", "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
         for line_item in invoice.inv_line_items.all():
@@ -407,9 +383,7 @@ class StripeConnector(PaymentProvider):
         org_ppis = organization.payment_provider_ids
         stripe_cust_kwargs = {}
         if org_ppis.get(PAYMENT_PROVIDERS.STRIPE) not in [None, ""]:
-            stripe_cust_kwargs["stripe_account"] = org_ppis.get(
-                PAYMENT_PROVIDERS.STRIPE
-            )
+            stripe_cust_kwargs["stripe_account"] = org_ppis.get(PAYMENT_PROVIDERS.STRIPE)
         else:
             if not self.self_hosted:
                 raise Exception(
@@ -424,9 +398,7 @@ class StripeConnector(PaymentProvider):
             .prefetch_related(
                 Prefetch(
                     "external_links",
-                    queryset=ExternalPlanLink.objects.filter(
-                        source=PAYMENT_PROVIDERS.STRIPE
-                    ),
+                    queryset=ExternalPlanLink.objects.filter(source=PAYMENT_PROVIDERS.STRIPE),
                 )
             )
             .values("id", external_id=F("external_links__external_plan_id"))
@@ -438,13 +410,10 @@ class StripeConnector(PaymentProvider):
             plan_dict[plan_obj["id"]].add(plan_obj["external_id"])
 
         lotus_plans = [
-            (plan_id, external_plan_ids)
-            for plan_id, external_plan_ids in plan_dict.items()
+            (plan_id, external_plan_ids) for plan_id, external_plan_ids in plan_dict.items()
         ]
         for subscription in stripe_subscriptions.auto_paging_iter():
-            if (
-                subscription.cancel_at_period_end
-            ):  # don't transfer subscriptions that are ending
+            if subscription.cancel_at_period_end:  # don't transfer subscriptions that are ending
                 continue
             try:  # if no customer matches, don't transfer
                 customer = Customer.objects.get(
@@ -480,13 +449,9 @@ class StripeConnector(PaymentProvider):
                         invoice_now=True,
                     )
                 else:
-                    subscription_kwargs[
-                        "start_date"
-                    ] = datetime.datetime.utcfromtimestamp(
+                    subscription_kwargs["start_date"] = datetime.datetime.utcfromtimestamp(
                         subscription.current_period_end
-                    ).replace(
-                        tzinfo=pytz.utc
-                    )
+                    ).replace(tzinfo=pytz.utc)
                     subscription_kwargs["status"] = SUBSCRIPTION_STATUS.NOT_STARTED
                     stripe.Subscription.modify(
                         subscription.id,
@@ -494,9 +459,7 @@ class StripeConnector(PaymentProvider):
                     )
                 Subscription.objects.create(**subscription_kwargs)
             else:  # error if multiple plans match
-                err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(
-                    subscription
-                )
+                err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(subscription)
                 for plan_id, linked_ids in matching_plans:
                     err_msg += "Plan {} matches items {}".format(
                         plan_id, item_ids.intersection(linked_ids)

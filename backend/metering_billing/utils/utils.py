@@ -95,8 +95,7 @@ def years_bwn_twodates(start_date, end_date):
 
 def months_bwn_two_dates(start_date, end_date):
     months_btwn = (
-        12 * relativedelta(end_date, start_date).years
-        + relativedelta(end_date, start_date).months
+        12 * relativedelta(end_date, start_date).years + relativedelta(end_date, start_date).months
     )
     for n in range(months_btwn + 1):
         next_date = start_date + relativedelta(months=n)
@@ -128,9 +127,7 @@ def decimal_to_cents(amount):
     return int(amount.quantize(Decimal(".01"), rounding=ROUND_DOWN) * Decimal(100))
 
 
-def periods_bwn_twodates(
-    granularity, start_time, end_time, truncate_to_granularity=False
-):
+def periods_bwn_twodates(granularity, start_time, end_time, truncate_to_granularity=False):
     start_time = convert_to_datetime(start_time, date_behavior="min")
     end_time = convert_to_datetime(end_time, date_behavior="max")
     rd = relativedelta(start_time, end_time)
@@ -150,16 +147,11 @@ def periods_bwn_twodates(
         elif granularity == METRIC_GRANULARITY.HOUR:
             normalize_rd = relativedelta(minute=0, second=0, microsecond=0)
             rd = relativedelta(hours=+1)
-        elif (
-            granularity == USAGE_CALC_GRANULARITY.DAILY
-            or granularity == METRIC_GRANULARITY.DAY
-        ):
+        elif granularity == USAGE_CALC_GRANULARITY.DAILY or granularity == METRIC_GRANULARITY.DAY:
             normalize_rd = relativedelta(hour=0, minute=0, second=0, microsecond=0)
             rd = relativedelta(days=+1)
         elif granularity == METRIC_GRANULARITY.MONTH:
-            normalize_rd = relativedelta(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            normalize_rd = relativedelta(day=1, hour=0, minute=0, second=0, microsecond=0)
             rd = relativedelta(months=+1)
         elif granularity == METRIC_GRANULARITY.QUARTER:
             cur_quarter = (start_time.month - 1) // 3
@@ -168,14 +160,10 @@ def periods_bwn_twodates(
             )
             rd = relativedelta(months=+3)
         elif granularity == METRIC_GRANULARITY.YEAR:
-            normalize_rd = relativedelta(
-                month=1, day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            normalize_rd = relativedelta(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
             rd = relativedelta(years=+1)
         k = 1
-        start_time = (
-            start_time + normalize_rd if truncate_to_granularity else start_time
-        )
+        start_time = start_time + normalize_rd if truncate_to_granularity else start_time
         end_time = end_time + normalize_rd if truncate_to_granularity else end_time
         ret = start_time
         while ret < end_time:
@@ -196,27 +184,114 @@ def now_utc_ts():
     return str(now_utc().timestamp())
 
 
-def calculate_end_date(interval, start_date, clip_to_period_end=False):
+def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None):
     if interval == PLAN_DURATION.MONTHLY:
-        end_date = start_date + relativedelta(months=+1)
-        normalize_rd = relativedelta(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = date_as_max_dt(start_date + relativedelta(months=+1, days=-1))
+        if anchor_day:
+            tentative_end_date = date_as_max_dt(
+                start_date + relativedelta(day=anchor_day, days=-1)
+            )
+            if tentative_end_date > start_date:
+                end_date = tentative_end_date
+            else:
+                end_date = date_as_max_dt(
+                    start_date + relativedelta(months=1, day=anchor_day, days=-1)
+                )
     elif interval == PLAN_DURATION.QUARTERLY:
-        end_date = start_date + relativedelta(months=+3)
-        normalize_rd = relativedelta(
-            month=(end_date.month - 1) // 3 * 4,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
-        )
+        end_date = date_as_max_dt(start_date + relativedelta(months=+3, days=-1))
+        if anchor_day and not anchor_month:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(months=3, day=anchor_day, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.months >= 3 and (
+                rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):  # went too far
+                end_date = date_as_max_dt(
+                    start_date + relativedelta(months=2, day=anchor_day, days=-1)
+                )
+        elif anchor_day and anchor_month:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(month=anchor_month, day=anchor_day, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.months >= 3 and (
+                rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):  # went too far
+                while rd.months >= 3:
+                    end_date = date_as_max_dt(end_date + relativedelta(months=-3))
+                    rd = relativedelta(end_date, start_date)
+            elif end_date < start_date:
+                while end_date < start_date:
+                    end_date = date_as_max_dt(end_date + relativedelta(months=3))
+        elif anchor_month and not anchor_day:
+            end_date = date_as_max_dt(start_date + relativedelta(month=anchor_month, days=-1))
+            rd = relativedelta(end_date, start_date)
+            if rd.months >= 3 and (
+                rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                while rd.months >= 3:
+                    end_date = date_as_max_dt(end_date + relativedelta(months=-3))
+                    rd = relativedelta(end_date, start_date)
+            elif end_date < start_date:
+                while end_date < start_date:
+                    end_date = date_as_max_dt(end_date + relativedelta(months=3))
     elif interval == PLAN_DURATION.YEARLY:
-        end_date = start_date + relativedelta(years=+1)
-        normalize_rd = relativedelta(
-            month=1, day=1, hour=0, minute=0, second=0, microsecond=0
-        )
-    if clip_to_period_end:
-        end_date = end_date + normalize_rd
+        end_date = date_as_max_dt(start_date + relativedelta(years=+1, days=-1))
+        if anchor_day and not anchor_month:
+            end_date = date_as_max_dt(start_date + relativedelta(years=1, day=anchor_day, days=-1))
+            rd = relativedelta(end_date, start_date)
+            if rd.years >= 1 and (
+                rd.months > 0
+                or rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                end_date = date_as_max_dt(
+                    start_date + relativedelta(months=11, day=anchor_day, days=-1)
+                )
+        elif anchor_day and anchor_month:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(years=1, month=anchor_month, day=anchor_day, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.years >= 1 and (
+                rd.months > 0
+                or rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                end_date = end_date + relativedelta(years=-1)
+        elif anchor_month and not anchor_day:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(years=1, month=anchor_month, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.years >= 1 and (
+                rd.months > 0
+                or rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                end_date = end_date + relativedelta(years=-1)
     return end_date
 
 

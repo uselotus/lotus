@@ -267,6 +267,11 @@ class Customer(models.Model):
                 raise ValueError(f"Payment provider {k} id was not provided")
         if not self.default_currency:
             self.default_currency = self.organization.default_currency
+        if not self.pk:
+            self.subscription_manager = SubscriptionManager.objects.create(
+                customer=self,
+                organization=self.organization,
+            )
         super(Customer, self).save(*args, **kwargs)
         Event.objects.filter(organization=self.organization, cust_id=self.customer_id).update(
             customer=self
@@ -1099,6 +1104,12 @@ class PlanVersion(models.Model):
     price_adjustment = models.ForeignKey(
         "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
     )
+    day_anchor = models.SmallIntegerField(
+        default=1, validators=[MinValueValidator(1), MaxValueValidator(31)], null=True, blank=True
+    )
+    month_anchor = models.SmallIntegerField(
+        default=1, validators=[MinValueValidator(1), MaxValueValidator(12)], null=True, blank=True
+    )
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
@@ -1401,7 +1412,10 @@ class Subscription(models.Model):
         now = now_utc()
         if not self.end_date:
             self.end_date = calculate_end_date(
-                self.billing_plan.plan.plan_duration, self.start_date
+                self.billing_plan.plan.plan_duration,
+                self.start_date,
+                anchor_day=self.billing_plan.day_anchor,
+                anchor_month=self.billing_plan.month_anchor,
             )
         if not self.scheduled_end_date:
             self.scheduled_end_date = self.end_date

@@ -898,6 +898,8 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "features",
             "price_adjustment",
             "usage_billing_frequency",
+            "day_anchor",
+            "month_anchor",
             # write only
             "make_active",
             "make_active_type",
@@ -1301,7 +1303,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "auto_renew",
             "is_new",
             "subscription_id",
-            "align_to_next_period_start",
             "filters",
         )
         read_only_fields = (
@@ -1331,9 +1332,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         queryset=Plan.objects.all(),
         write_only=True,
     )
-    align_to_next_period_start = serializers.BooleanField(
-        required=False, default=False, write_only=True
-    )
 
     # READ ONLY
     customer = CustomerSerializer(read_only=True)
@@ -1343,7 +1341,12 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         data["billing_plan"] = data["billing_plan"]["plan"].display_version
         # check no existing subs
         sd = data["start_date"]
-        ed = calculate_end_date(data["billing_plan"].plan.plan_duration, sd)
+        ed = calculate_end_date(
+            data["billing_plan"].plan.plan_duration,
+            sd,
+            anchor_day=data["billing_plan"].anchor_day,
+            anchor_month=data["billing_plan"].anchor_month,
+        )
         num_existing_subs = Subscription.objects.filter(
             Q(start_date__range=(sd, ed)) | Q(end_date__range=(sd, ed)),
             customer__customer_id=data["customer"].customer_id,
@@ -1363,7 +1366,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        align_to_next_period_start = validated_data.pop("align_to_next_period_start", False)
         filters = validated_data.pop("filters", [])
         sub = super().create(validated_data)
         for filter_data in filters:
@@ -1372,23 +1374,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             except CategoricalFilter.MultipleObjectsReturned:
                 cf = CategoricalFilter.objects.filter(**filter_data).first()
             sub.filters.add(cf)
-        if align_to_next_period_start:
-            sub.end_date = calculate_end_date(
-                sub.billing_plan.plan.plan_duration,
-                sub.start_date,
-                clip_to_period_end=True,
-            )
         sub.save()
         # new subscription means we need to create an invoice if its pay in advance
         if sub.billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            if align_to_next_period_start:
-                generate_invoice(
-                    sub,
-                    flat_fee_cutoff_date=sub.end_date - relativedelta(days=1),
-                    include_usage=False,
-                )
-            else:
-                generate_invoice(sub, include_usage=False)
+            generate_invoice(
+                sub,
+                flat_fee_cutoff_date=sub.end_date,
+                include_usage=False,
+            )
         return sub
 
 
