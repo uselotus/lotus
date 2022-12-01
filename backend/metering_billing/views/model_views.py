@@ -48,7 +48,7 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
 )
 from rest_framework import mixins, serializers, status, viewsets
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -137,7 +137,10 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        try:
+            serializer.save(organization=parse_organization(self.request))
+        except ValueError as e:
+            raise APIException(e)
 
     def perform_destroy(self, instance):
         if SVIX_API_KEY != "":

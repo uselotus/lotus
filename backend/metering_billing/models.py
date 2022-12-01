@@ -180,8 +180,27 @@ class WebhookEndpoint(models.Model):
                             EndpointSecretRotateIn(key=self.webhook_secret),
                         )
             except HttpError as e:
+                list_response_application_out = svix.application.list()
+                dt = list_response_application_out.data
+                lst = [x for x in dt if x.uid == self.organization.organization_id]
+                try:
+                    svix_app = lst[0]
+                except IndexError:
+                    svix_app = None
+                if svix_app:
+                    list_response_endpoint_out = svix.endpoint.list(svix_app.id).data
+                else:
+                    list_response_endpoint_out = []
+
+                dictionary = {
+                    "error": e,
+                    "organization_id": self.organization.organization_id,
+                    "webhook_endpoint_id": self.webhook_endpoint_id,
+                    "svix_app": svix_app,
+                    "endpoint data": list_response_endpoint_out,
+                }
                 self.delete()
-                raise ValueError(e)
+                raise ValueError(dictionary)
 
 
 class WebhookTrigger(models.Model):
