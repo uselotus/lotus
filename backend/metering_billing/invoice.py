@@ -7,7 +7,12 @@ from django.conf import settings
 from django.db.models import Sum
 from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.utils import calculate_end_date, convert_to_datetime, now_utc
+from metering_billing.utils import (
+    calculate_end_date,
+    convert_to_datetime,
+    convert_to_decimal,
+    now_utc,
+)
 from metering_billing.utils.enums import FLAT_FEE_BILLING_TYPE, INVOICE_STATUS
 from metering_billing.webhooks import invoice_created_webhook
 
