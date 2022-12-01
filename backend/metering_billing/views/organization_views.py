@@ -13,21 +13,6 @@ from rest_framework.views import APIView
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
-
-class OrganizationViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    """
-    A simple ViewSet for viewing and editing OrganizationSettings.
-    """
-
-    serializer_class = OrganizationSerializer
-    permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "head"]
-
-    def get_queryset(self):
-        organization = parse_organization(self.request)
-        return Organization.objects.filter(pk=organization.pk)
-
-
 # class OrganizationView(APIView):
 #     permission_classes = [IsAuthenticated]
 
