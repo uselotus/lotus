@@ -530,10 +530,7 @@ class DraftInvoiceView(APIView):
             )
         )
         invoices = [
-            generate_invoice(
-                sub, draft=True, flat_fee_behavior="full_amount", charge_next_plan=True
-            )
-            for sub in subs
+            generate_invoice(sub, draft=True, charge_next_plan=True) for sub in subs
         ]
         serializer = DraftInvoiceSerializer(invoices, many=True).data
         try:

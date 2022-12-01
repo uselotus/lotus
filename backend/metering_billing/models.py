@@ -322,7 +322,6 @@ class Customer(models.Model):
             inv = generate_invoice(
                 subscription,
                 draft=True,
-                flat_fee_behavior="full_amount",
                 charge_next_plan=True,
             )
             total += inv.cost_due
@@ -1503,8 +1502,7 @@ class Subscription(models.Model):
                 dates_bwn_two_dts(self.start_date, self.scheduled_end_date)
             )
             for day in dates_bwn:
-                if isinstance(day, datetime.datetime):
-                    day = day.date()
+                day = convert_to_date(day)
                 if day >= today or not self.pk:
                     flat_fee_dictionary[str(day)] = {
                         "plan_version_id": self.billing_plan.version_id,
@@ -1551,10 +1549,11 @@ class Subscription(models.Model):
                 )
             )
         self.auto_renew = False
-        self.end_date = now_utc()
+        now = now_utc()
+        self.end_date = now
         generate_invoice(
             self,
-            flat_fee_behavior="prorate" if prorate else "full_amount",
+            flat_fee_cutoff_date=now if prorate else None,
             include_usage=bill_usage,
         )
         self.status = SUBSCRIPTION_STATUS.ENDED
@@ -1565,13 +1564,19 @@ class Subscription(models.Model):
         self.save()
 
     def switch_subscription_bp(self, new_version):
+        old_qty = sum([x["amount"] for x in self.prorated_flat_costs_dict.values()])
         self.billing_plan = new_version
         self.scheduled_end_date = self.end_date = calculate_end_date(
             new_version.plan.plan_duration, self.start_date
         )
         self.save()
-        if new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            generate_invoice(self, include_usage=False, flat_fee_behavior="full_amount")
+        new_qty = sum([x["amount"] for x in self.prorated_flat_costs_dict.values()])
+        if (
+            new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+            and new_version.flat_rate.amount > 0
+            and new_qty > old_qty
+        ):
+            generate_invoice(self, include_usage=False)
 
     def calculate_earned_revenue_per_day(self):
         return_dict = {}

@@ -67,7 +67,9 @@ def calculate_invoice():
         # Generate the invoice
         try:
             generate_invoice(
-                old_subscription, charge_next_plan=old_subscription.auto_renew
+                old_subscription,
+                charge_next_plan=old_subscription.auto_renew,
+                flat_fee_cutoff_date=old_subscription.end_date,
             )
             now = now_utc()
         except Exception as e:

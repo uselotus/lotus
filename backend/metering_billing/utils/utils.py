@@ -196,13 +196,28 @@ def now_utc_ts():
     return str(now_utc().timestamp())
 
 
-def calculate_end_date(interval, start_date):
+def calculate_end_date(interval, start_date, clip_to_period_end=False):
     if interval == PLAN_DURATION.MONTHLY:
-        return start_date + relativedelta(months=+1)
+        end_date = start_date + relativedelta(months=+1)
+        normalize_rd = relativedelta(day=1, hour=0, minute=0, second=0, microsecond=0)
     elif interval == PLAN_DURATION.QUARTERLY:
-        return start_date + relativedelta(months=+3)
+        end_date = start_date + relativedelta(months=+3)
+        normalize_rd = relativedelta(
+            month=(end_date.month - 1) // 3 * 4,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
     elif interval == PLAN_DURATION.YEARLY:
-        return start_date + relativedelta(years=+1)
+        end_date = start_date + relativedelta(years=+1)
+        normalize_rd = relativedelta(
+            month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+    if clip_to_period_end:
+        end_date = end_date + normalize_rd
+    return end_date
 
 
 def product_uuid():
