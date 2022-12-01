@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+// @ts-ignore
+import React, { useEffect, useState } from "react";
 import { Form, Tabs, Modal } from "antd";
 import { PlanType } from "../../types/plan-type";
-import { Card, Col, Row, Select } from "antd";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -24,13 +24,11 @@ import {
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
-import { CustomerIntegrations } from "./CustomerIntegrations";
 import { CustomerCostType } from "../../types/revenue-type";
 import CustomerInfoView from "./CustomerInfo";
+// @ts-ignore
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
-
-const { Option } = Select;
 
 function CustomerDetail(props: {
   visible: boolean;
@@ -83,6 +81,10 @@ function CustomerDetail(props: {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries([
+          "balance_adjustments",
+          props.customer_id,
+        ]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription created successfully");
       },
@@ -95,6 +97,10 @@ function CustomerDetail(props: {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries([
+          "balance_adjustments",
+          props.customer_id,
+        ]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription cancelled successfully");
       },
@@ -107,6 +113,10 @@ function CustomerDetail(props: {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
+        queryClient.invalidateQueries([
+          "balance_adjustments",
+          props.customer_id,
+        ]);
         queryClient.invalidateQueries(["customer_detail", props.customer_id]);
         toast.success("Subscription switched successfully");
       },
@@ -228,12 +238,11 @@ function CustomerDetail(props: {
                 <CustomerInvoiceView invoices={data?.invoices} />
               </Tabs.TabPane>
               <Tabs.TabPane tab="Credits" key="credits">
-                <CustomerBalancedAdjustments
-                  balanceAdjustments={data?.balance_adjustments}
-                />
+                <CustomerBalancedAdjustments customerId={props.customer_id} />
               </Tabs.TabPane>
-              {/* <Tabs.TabPane tab="Integrations" key="integrations">
-                {data?.integrations ? (
+              {/*
+               <Tabs.TabPane tab="Integrations" key="integrations">
+                {!!data?.integrations?.length ? (
                   <CustomerIntegrations integrations={data?.integrations} />
                 ) : (
                   <h2> No Integrations </h2>

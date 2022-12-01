@@ -53,6 +53,11 @@ class METRIC_TYPE(models.TextChoices):
     RATE = ("rate", _("Rate"))
 
 
+class CUSTOMER_BALANCE_ADJUSTMENT_STATUS(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    INACTIVE = ("inactive", _("Inactive"))
+
+
 class METRIC_GRANULARITY(models.TextChoices):
     SECOND = ("seconds", _("Second"))
     MINUTE = ("minutes", _("Minute"))

@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Union
 
 from actstream.models import Action
+from dateutil.relativedelta import relativedelta
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric
@@ -26,6 +27,7 @@ from metering_billing.models import (
     PlanVersion,
     PriceAdjustment,
     PriceTier,
+    PricingUnit,
     Product,
     Subscription,
     User,
@@ -37,7 +39,10 @@ from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import *
 from rest_framework import serializers
 
-from .serializer_utils import SlugRelatedFieldWithOrganization
+from .serializer_utils import (
+    SlugRelatedFieldWithOrganization,
+    SlugRelatedFieldWithOrganizationOrNull,
+)
 
 
 class OrganizationUserSerializer(serializers.ModelSerializer):
@@ -65,17 +70,39 @@ class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
         return "Admin"
 
 
+class PricingUnitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PricingUnit
+        fields = ("code", "name", "symbol")
+
+    def validate(self, attrs):
+        super().validate(attrs)
+        code_exists = PricingUnit.objects.filter(
+            Q(organization=self.context["organization"]) | Q(organization__isnull=True),
+            code=attrs["code"],
+        ).exists()
+        if code_exists:
+            raise serializers.ValidationError("Pricing unit code already exists")
+        return attrs
+
+    def create(self, validated_data):
+        return PricingUnit.objects.create(**validated_data)
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
+            "organization_id",
             "company_name",
             "payment_plan",
             "payment_provider_ids",
             "users",
+            "default_currency",
         )
 
     users = serializers.SerializerMethodField()
+    default_currency = PricingUnitSerializer()
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(organization=obj)
@@ -92,6 +119,48 @@ class OrganizationSerializer(serializers.ModelSerializer):
             for x in invited_users_data
         ]
         return users_data + invited_users_data
+
+
+class OrganizationUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("default_currency_code",)
+
+    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
+    )
+
+    def update(self, instance, validated_data):
+        assert (
+            type(validated_data.get("default_currency")) == PricingUnit
+            or validated_data.get("default_currency") is None
+        )
+        instance.default_currency = validated_data.get(
+            "default_currency", instance.default_currency
+        )
+        instance.save()
+        return instance
+
+
+class CustomerUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ("default_currency_code",)
+
+    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
+    )
+
+    def update(self, instance, validated_data):
+        assert (
+            type(validated_data.get("default_currency")) == PricingUnit
+            or validated_data.get("default_currency") is None
+        )
+        instance.default_currency = validated_data.get(
+            "default_currency", instance.default_currency
+        )
+        instance.save()
+        return instance
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -268,6 +337,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider_id",
             "properties",
             "integrations",
+            "default_currency_code",
         )
         extra_kwargs = {
             "customer_id": {"required": True},
@@ -278,6 +348,13 @@ class CustomerSerializer(serializers.ModelSerializer):
         required=False, allow_null=True, write_only=True
     )
     email = serializers.EmailField(required=True)
+    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+        source="default_currency",
+        write_only=True,
+    )
 
     def validate(self, data):
         super().validate(data)
@@ -1215,6 +1292,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "auto_renew",
             "is_new",
             "subscription_id",
+            "align_to_next_period_start",
         )
         read_only_fields = (
             "customer",
@@ -1241,6 +1319,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         source="billing_plan.plan",
         queryset=Plan.objects.all(),
         write_only=True,
+    )
+    align_to_next_period_start = serializers.BooleanField(
+        required=False, default=False, write_only=True
     )
 
     # READ ONLY
@@ -1271,10 +1352,27 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        align_to_next_period_start = validated_data.pop(
+            "align_to_next_period_start", False
+        )
         sub = super().create(validated_data)
+        if align_to_next_period_start:
+            sub.end_date = calculate_end_date(
+                sub.billing_plan.plan.plan_duration,
+                sub.start_date,
+                clip_to_period_end=True,
+            )
+            sub.save()
         # new subscription means we need to create an invoice if its pay in advance
         if sub.billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            generate_invoice(sub, flat_fee_behavior="full_amount", include_usage=False)
+            if align_to_next_period_start:
+                generate_invoice(
+                    sub,
+                    flat_fee_cutoff_date=sub.end_date - relativedelta(days=1),
+                    include_usage=False,
+                )
+            else:
+                generate_invoice(sub, include_usage=False)
         return sub
 
 
@@ -1587,7 +1685,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = (
             "invoice_id",
             "cost_due",
-            "cost_due_currency",
+            "pricing_unit",
             "issue_date",
             "payment_status",
             "cust_connected_to_payment_provider",
@@ -1600,9 +1698,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         )
 
     cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
+        max_digits=10,
+        decimal_places=2,
     )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
+    pricing_unit = PricingUnitSerializer()
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
     line_items = InvoiceLineItemSerializer(
@@ -1634,14 +1733,46 @@ class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
-            "customer",
+            "adjustment_id",
+            "customer_id",
             "amount",
-            "amount_currency",
+            "pricing_unit_code",
+            "pricing_unit",
             "description",
-            "created",
             "effective_at",
             "expires_at",
+            "status",
+            "parent_adjustment_id",
         )
+
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
+    )
+    pricing_unit_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=True,
+        source="pricing_unit",
+        write_only=True,
+    )
+    pricing_unit = PricingUnitSerializer(read_only=True)
+    parent_adjustment_id = SlugRelatedFieldWithOrganization(
+        slug_field="adjustment_id",
+        required=False,
+        source="parent_adjustment",
+        read_only=True,
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        amount = data.get("amount", 0)
+        customer = data["customer"]
+        if amount <= 0:
+            raise serializers.ValidationError("Amount must be non-zero")
+        return data
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
@@ -1651,19 +1782,19 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "customer_id",
             "email",
             "customer_name",
-            "balance_adjustments",
             "invoices",
             "total_amount_due",
             "next_amount_due",
             "subscriptions",
             "integrations",
+            "default_currency",
         )
 
     subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
-    balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
     next_amount_due = serializers.SerializerMethodField()
+    default_currency = PricingUnitSerializer()
 
     def get_subscriptions(self, obj) -> SubscriptionCustomerDetailSerializer(many=True):
         return SubscriptionCustomerDetailSerializer(
@@ -1674,13 +1805,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
-        return timeline
-
-    def get_balance_adjustments(
-        self, obj
-    ) -> CustomerBalanceAdjustmentSerializer(many=True):
-        timeline = self.context.get("balance_adjustments")
-        timeline = CustomerBalanceAdjustmentSerializer(timeline, many=True).data
         return timeline
 
     def get_total_amount_due(self, obj) -> float:
