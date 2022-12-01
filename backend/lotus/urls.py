@@ -23,6 +23,7 @@ from metering_billing.views import auth_views, organization_views, track
 from metering_billing.views.model_views import (
     ActionViewSet,
     BacktestViewSet,
+    CustomerBalanceAdjustmentViewSet,
     CustomerViewSet,
     EventViewSet,
     ExternalPlanLinkViewSet,
@@ -30,8 +31,10 @@ from metering_billing.views.model_views import (
     InvoiceViewSet,
     MetricViewSet,
     OrganizationSettingViewSet,
+    OrganizationViewSet,
     PlanVersionViewSet,
     PlanViewSet,
+    PricingUnitViewSet,
     ProductViewSet,
     SubscriptionViewSet,
     UserViewSet,
@@ -41,7 +44,6 @@ from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
     CostAnalysisView,
-    CustomerBalanceAdjustmentView,
     CustomerBatchCreateView,
     CustomersSummaryView,
     CustomersWithRevenueView,
@@ -77,15 +79,19 @@ router.register(r"plan_versions", PlanVersionViewSet, basename="plan_version")
 router.register(r"events", EventViewSet, basename="event")
 router.register(r"actions", ActionViewSet, basename="action")
 router.register(
-    r"external_plan_link", ExternalPlanLinkViewSet, basename="external_plan_links"
+    r"external_plan_links", ExternalPlanLinkViewSet, basename="external_plan_link"
 )
 router.register(
     r"organization_settings",
     OrganizationSettingViewSet,
     basename="organization_setting",
 )
+router.register(r"organizations", OrganizationViewSet, basename="organization")
+router.register(r"pricing_units", PricingUnitViewSet, basename="pricing_unit")
 router.register(
-    r"organization", organization_views.OrganizationViewSet, basename="organization"
+    r"balance_adjustments",
+    CustomerBalanceAdjustmentViewSet,
+    basename="balance_adjustment",
 )
 
 

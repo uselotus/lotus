@@ -84,7 +84,7 @@ class TestStripeIntegration:
         stripe_connector = PAYMENT_PROVIDER_MAP[PAYMENT_PROVIDERS.STRIPE]
         stripe_connector.initialize_settings(setup_dict["org"])
         # when self hosted make sure everything works
-        assert SELF_HOSTED == True
+        assert SELF_HOSTED is True
         assert stripe_connector.working()
         assert stripe_connector.organization_connected(setup_dict["org"])
 
@@ -205,12 +205,12 @@ class TestStripeIntegration:
             organization=setup_dict["org"],
         )
 
-        assert stripe_sub.cancel_at_period_end == False
+        assert stripe_sub.cancel_at_period_end is False
         stripe_connector.transfer_subscriptions(setup_dict["org"], end_now=False)
 
         time.sleep(10)
         stripe_sub = stripe.Subscription.retrieve(stripe_sub.id)
-        assert stripe_sub.cancel_at_period_end == True
+        assert stripe_sub.cancel_at_period_end is True
         assert (
             Subscription.objects.filter(
                 organization=setup_dict["org"],

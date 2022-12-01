@@ -29,6 +29,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
+from svix.api import EventTypeIn, Svix
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -70,6 +71,8 @@ STRIPE_SECRET_KEY = (
 DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+# Webhooks for Svix
+SVIX_API_KEY = config("SVIX_API_KEY", default="")
 
 
 # Optional Observalility Services
@@ -111,6 +114,7 @@ else:
     ALLOWED_HOSTS = [
         "*uselotus.io",
     ]
+
 
 # Application definition
 
@@ -198,11 +202,6 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
-            "libraries": {
-                "render_vite_bundle": (
-                    "metering_billing.template_tags.render_vite_bundle"
-                ),
-            },
         },
     },
 ]
@@ -280,7 +279,7 @@ def key_deserializer(key):
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
-if type(KAFKA_EVENTS_TOPIC) == bytes:
+if type(KAFKA_EVENTS_TOPIC) is bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
@@ -562,3 +561,16 @@ LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
 META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
 django_heroku.settings(locals(), logging=False)
+
+# create svix events
+if SVIX_API_KEY != "":
+    svix = Svix(SVIX_API_KEY)
+    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+    if "invoice.created" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is created",
+                archived=False,
+                name="invoice.created",
+            )
+        )

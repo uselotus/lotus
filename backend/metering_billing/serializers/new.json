@@ -1,0 +1,49 @@
+// Stateful, validastorsCount Metric
+{
+    "event_name": "log_validators_count",
+    "customer_id": "123456789", //this is the "account holder" you mentioned
+    "timestamp": "2019-01-01T00:00:00Z",
+    "properties": {
+        "count": 7,
+        "shard_id": "shard_1234567890",
+        "environment": "prod_env"
+    }
+}
+// Stateful, rpcNodes Metric
+{
+    "event_name": "log_rpcnodes_count",
+    "customer_id": "123456789", //this is the "account holder" you mentioned
+    "timestamp": "2019-01-01T00:00:00Z",
+    "properties": {
+        "count": 2,
+        "shard_id": "shard_1234567890",
+        "environment": "prod_env"
+    }
+}
+//Stateful, storageUsed Metric
+{
+    "event_name": "log_storageUsed_count",
+    "customer_id": "123456789", //this is the "account holder" you mentioned
+    "timestamp": "2019-01-01T00:00:00Z",
+    "properties": {
+        "gb": 30,
+        "shard_id": "shard_1234567890",
+        "environment": "prod_env"
+    }
+}
+
+// Rate, transactionsCountLimit Metric 
+// Counter, transactionsCount Metric
+{
+    "event_name": "log_transactions_count",
+    "customer_id": "123456789", //this is the "account holder" you mentioned
+    "timestamp": "2019-01-01T00:00:00Z",
+    "properties": {
+        "property_x": 100,
+        "property_y": 200,
+        "property_z": 300,
+        "shard_id": "shard_1234567890",
+        "environment": "test_env"
+    }
+}
+

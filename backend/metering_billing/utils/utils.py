@@ -48,7 +48,7 @@ def convert_to_datetime(value, date_behavior="min"):
 def make_all_decimals_floats(data):
     if isinstance(data, list):
         return [make_all_decimals_floats(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_decimals_floats(key): make_all_decimals_floats(val)
             for key, val in data.items()
@@ -62,12 +62,12 @@ def make_all_decimals_floats(data):
 def make_all_dates_times_strings(data):
     if isinstance(data, list):
         return [make_all_dates_times_strings(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_dates_times_strings(key): make_all_dates_times_strings(val)
             for key, val in data.items()
         }
-    elif isinstance(data, datetime.date) or isinstance(data, datetime.datetime):
+    elif isinstance(data, (datetime.date, datetime.datetime)):
         return str(data)
     else:
         return data
@@ -76,7 +76,7 @@ def make_all_dates_times_strings(data):
 def make_all_datetimes_dates(data):
     if isinstance(data, list):
         return [make_all_datetimes_dates(x) for x in data]
-    elif isinstance(data, dict) or isinstance(data, collections.OrderedDict):
+    elif isinstance(data, (dict, collections.OrderedDict)):
         return {
             make_all_datetimes_dates(key): make_all_datetimes_dates(val)
             for key, val in data.items()
@@ -196,49 +196,76 @@ def now_utc_ts():
     return str(now_utc().timestamp())
 
 
-def calculate_end_date(interval, start_date):
+def calculate_end_date(interval, start_date, clip_to_period_end=False):
     if interval == PLAN_DURATION.MONTHLY:
-        return start_date + relativedelta(months=+1)
+        end_date = start_date + relativedelta(months=+1)
+        normalize_rd = relativedelta(day=1, hour=0, minute=0, second=0, microsecond=0)
     elif interval == PLAN_DURATION.QUARTERLY:
-        return start_date + relativedelta(months=+3)
+        end_date = start_date + relativedelta(months=+3)
+        normalize_rd = relativedelta(
+            month=(end_date.month - 1) // 3 * 4,
+            day=1,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
     elif interval == PLAN_DURATION.YEARLY:
-        return start_date + relativedelta(years=+1)
+        end_date = start_date + relativedelta(years=+1)
+        normalize_rd = relativedelta(
+            month=1, day=1, hour=0, minute=0, second=0, microsecond=0
+        )
+    if clip_to_period_end:
+        end_date = end_date + normalize_rd
+    return end_date
 
 
 def product_uuid():
-    return "prod_" + str(uuid.uuid4())
+    return "prod_" + str(uuid.uuid4().hex)
 
 
 def customer_uuid():
-    return "cust_" + str(uuid.uuid4())
+    return "cust_" + str(uuid.uuid4().hex)
 
 
 def metric_uuid():
-    return "metric_" + str(uuid.uuid4())
+    return "metric_" + str(uuid.uuid4().hex)
 
 
 def plan_version_uuid():
-    return "plnvrs_" + str(uuid.uuid4())
+    return "plnvrs_" + str(uuid.uuid4().hex)
 
 
 def plan_uuid():
-    return "plan_" + str(uuid.uuid4())
+    return "plan_" + str(uuid.uuid4().hex)
 
 
 def subscription_uuid():
-    return "subs_" + str(uuid.uuid4())
+    return "subs_" + str(uuid.uuid4().hex)
 
 
 def backtest_uuid():
-    return "btst_" + str(uuid.uuid4())
+    return "btst_" + str(uuid.uuid4().hex)
 
 
 def invoice_uuid():
-    return "inv_" + str(uuid.uuid4())
+    return "inv_" + str(uuid.uuid4().hex)
 
 
 def organization_uuid():
-    return "org_" + str(uuid.uuid4())
+    return "org_" + str(uuid.uuid4().hex)
+
+
+def webhook_secret_uuid():
+    return "whsec_" + str(uuid.uuid4().hex)
+
+
+def webhook_endpoint_uuid():
+    return "whend_" + str(uuid.uuid4().hex)
+
+
+def customer_balance_adjustment_uuid():
+    return "custbaladj_" + str(uuid.uuid4().hex)
 
 
 def date_as_min_dt(date):
