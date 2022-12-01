@@ -1592,7 +1592,7 @@ class Subscription(models.Model):
         new_qty = sum([x["amount"] for x in self.prorated_flat_costs_dict.values()])
         if (
             new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
-            and new_version.flat_rate.amount > 0
+            and new_version.flat_rate > 0
             and new_qty > old_qty
         ):
             generate_invoice(self, include_usage=False)
