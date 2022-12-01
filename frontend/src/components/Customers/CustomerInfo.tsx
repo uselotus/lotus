@@ -58,6 +58,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
       return result_list;
     });
     setTransformedGraphData(newgraphdata.flat(1));
+    console.log(newgraphdata.flat(1));
   }, [cost_data]);
 
   const onSwitch = (key: string) => {
@@ -90,8 +91,16 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+    colorField: "type", // or seriesField in some cases
+    color: ({ type }) => {
+      if (type === "revenue") {
+        return "#C3986B";
+      } else if (type === "cost") {
+        return "green";
+      }
+    },
     tooltip: {
-      fields: ["date", "amount", "type"],
+      fields: ["type"],
     },
   };
 
