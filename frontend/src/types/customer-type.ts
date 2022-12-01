@@ -1,6 +1,7 @@
 import { PlanDisplay } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
 import { BalanceAdjustments, InvoiceType} from "./invoice-type";
+import {PricingUnit} from "./pricing-unit-type";
 
 export interface CustomerType {
   customer_name: string;
@@ -9,6 +10,8 @@ export interface CustomerType {
   email: string;
   payment_provider_id?: string;
   payment_provider?: string;
+  default_currency?:PricingUnit
+  default_currency_code?:string
 }
 
 export interface CustomerDetailType extends CustomerType {

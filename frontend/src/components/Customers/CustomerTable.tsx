@@ -1,3 +1,4 @@
+// @ts-ignore
 import React, { FC, useState, useEffect } from "react";
 import type { ProColumns } from "@ant-design/pro-components";
 import { ProTable } from "@ant-design/pro-components";
@@ -5,17 +6,14 @@ import {
   CustomerPlus,
   CustomerTableItem,
   CustomerTotal,
-  CustomerDetailSubscription,
 } from "../../types/customer-type";
 import { Button, Tag } from "antd";
-import LoadingSpinner from "../LoadingSpinner";
-import CreateCustomerForm, { CreateCustomerState } from "./CreateCustomerForm";
+import { CreateCustomerState } from "./CreateCustomerForm";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
-import { Customer, Plan } from "../../api/api";
+import { Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
-import { CreateSubscriptionType } from "../../types/subscription-type";
-import { toast } from "react-toastify";
 import CustomerDetail from "./CustomerDetail";
+import {useNavigate} from "react-router-dom";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
@@ -103,6 +101,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
     useState<CreateCustomerState>(defaultCustomerState);
   const [tableData, setTableData] = useState<CustomerTableItem[]>();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (customerArray !== undefined) {

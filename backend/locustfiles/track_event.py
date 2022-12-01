@@ -1,5 +1,4 @@
 import uuid
-from telnetlib import STATUS
 
 from locust import HttpUser, between, task
 

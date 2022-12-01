@@ -198,7 +198,7 @@ class TestGetAccess:
         )
         assert (
             response[0]["metric_usage"] < response[0]["metric_total_limit"]
-        ) == False
+        ) is False
 
     def test_get_access_free_bm_allow(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
@@ -231,7 +231,7 @@ class TestGetAccess:
         assert (
             response[0]["event_name"] == setup_dict["allow_limit_metrics"][0].event_name
         )
-        assert (response[0]["metric_usage"] < response[0]["metric_free_limit"]) == False
+        assert (response[0]["metric_usage"] < response[0]["metric_free_limit"]) is False
 
     def test_get_access_feature_allow(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
@@ -531,7 +531,7 @@ class TestGetAccessWithSeparateBy:
         assert len(response) == 4
         for r in response:
             assert r["event_name"] == setup_dict["deny_limit_metrics"][0].event_name
-            assert (r["metric_usage"] < r["metric_total_limit"]) == False
+            assert (r["metric_usage"] < r["metric_total_limit"]) is False
             assert len(r["separate_by_properties"]) == 2
 
     def test_get_access_free_bm_allow_with_separate_by(

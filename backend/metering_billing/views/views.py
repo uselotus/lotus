@@ -33,7 +33,7 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
 )
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -304,9 +304,9 @@ class PeriodMetricUsageView(APIView):
             serializer.validated_data.get(key, None)
             for key in ["start_date", "end_date", "top_n_customers"]
         ]
-        if type(q_start) == str:
+        if type(q_start) is str:
             q_start = parser.parse(q_start).date()
-        if type(q_end) == str:
+        if type(q_end) is str:
             q_end = parser.parse(q_end).date()
         q_start = date_as_min_dt(q_start)
         q_end = date_as_max_dt(q_end)
@@ -327,18 +327,18 @@ class PeriodMetricUsageView(APIView):
             metric_dict = return_dict[metric.billable_metric_name]
             for customer_name, unique_dict in usage_summary.items():
                 for unique_tuple, period_dict in unique_dict.items():
-                    for datetime, qty in period_dict.items():
+                    for time, qty in period_dict.items():
                         qty = convert_to_decimal(qty)
                         customer_identifier = customer_name
                         if len(unique_tuple) > 1:
                             for unique in unique_tuple[1:]:
                                 customer_identifier += f"__{unique}"
-                        if datetime not in metric_dict["data"]:
-                            metric_dict["data"][datetime] = {
+                        if time not in metric_dict["data"]:
+                            metric_dict["data"][time] = {
                                 "total_usage": Decimal(0),
                                 "customer_usages": {},
                             }
-                        date_dict = metric_dict["data"][datetime]
+                        date_dict = metric_dict["data"][time]
                         date_dict["total_usage"] += qty
                         date_dict["customer_usages"][customer_name] = qty
                         metric_dict["total_usage"] += qty
@@ -351,10 +351,8 @@ class PeriodMetricUsageView(APIView):
                     key=lambda x: x[1],
                     reverse=True,
                 )[:top_n]
-                metric_dict["top_n_customers"] = list(x[0] for x in top_n_customers)
-                metric_dict["top_n_customers_usage"] = list(
-                    x[1] for x in top_n_customers
-                )
+                metric_dict["top_n_customers"] = [x[0] for x in top_n_customers]
+                metric_dict["top_n_customers_usage"] = [x[1] for x in top_n_customers]
             else:
                 del metric_dict["top_n_customers"]
         for metric, metric_d in return_dict.items():
@@ -681,8 +679,11 @@ class GetCustomerAccessView(APIView):
                         custom_metric_usage = metric_usage[customer.customer_name]
                         for unique_tup, d in custom_metric_usage.items():
                             i = iter(unique_tup)
-                            _ = next(i)  # i.next() in older versions
-                            groupby_vals = list(i)
+                            try:
+                                _ = next(i)  # i.next() in older versions
+                                groupby_vals = list(i)
+                            except:
+                                groupby_vals = []
                             usage = list(d.values())[0]
                             unique_tup_dict = {
                                 "event_name": event_name,
@@ -745,7 +746,8 @@ class ImportCustomersView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
+        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+            raise AssertionError
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
             num = connector.import_customers(organization)
@@ -796,7 +798,8 @@ class ImportPaymentObjectsView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
+        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+            raise AssertionError
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
             num = connector.import_payment_objects(organization)
@@ -849,7 +852,8 @@ class TransferSubscriptionsView(APIView):
     def post(self, request, format=None):
         organization = parse_organization(request)
         source = request.data["source"]
-        assert source in [choice[0] for choice in PAYMENT_PROVIDERS.choices]
+        if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
+            raise AssertionError
         end_now = request.data.get("end_now", False)
         connector = PAYMENT_PROVIDER_MAP[source]
         try:
@@ -968,50 +972,62 @@ class PlansByNumCustomersView(APIView):
         )
 
 
-class CustomerBalanceAdjustmentView(APIView):
-    permission_classes = [IsAuthenticated]
+# class CustomerBalanceAdjustmentView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        parameters=[
-            inline_serializer(
-                name="CustomerBalanceAdjustmentRequestSerializer",
-                fields={"customer_id": serializers.CharField()},
-            ),
-        ],
-        responses={
-            200: CustomerDetailSerializer,
-            400: inline_serializer(
-                name="CustomerBalanceAdjustmentErrorResponseSerializer",
-                fields={"error_detail": serializers.CharField()},
-            ),
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Get the current settings for the organization.
-        """
-        organization = parse_organization(request)
-        customer_id = request.query_params.get("customer_id")
-        customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
-            customer_id=customer_id
-        ).prefetch_related(
-            Prefetch(
-                "customer",
-                queryset=Customer.objects.filter(organization=organization),
-                to_attr="customers",
-            ),
-        )
-        if len(customer_balances_adjustment) == 0:
-            return Response(
-                {
-                    "error_detail": "CustomerBalanceAdjustmentView with customer_id {} does not exist".format(
-                        customer_id
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+#     @extend_schema(
+#         request=inline_serializer(
+#             name="CreateBalanceAdjustmentRequest",
+#             fields={
+#                 "amount": serializers.IntegerField(required=True),
+#                 "customer_id": serializers.CharField(required=True),
+#                 "amount_currency": serializers.CharField(required=True),
+#                 "description": serializers.CharField(),
+#             },
+#         ),
+#         responses={
+#             200: inline_serializer(
+#                 name="CreateBalanceAdjustmentSuccess",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["success"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#             400: inline_serializer(
+#                 name="CreateBalanceAdjustmentFailure",
+#                 fields={
+#                     "status": serializers.ChoiceField(choices=["error"]),
+#                     "detail": serializers.CharField(),
+#                 },
+#             ),
+#         },
+#     )
+#     def get(self, request, format=None):
+#         """
+#         Get the current settings for the organization.
+#         """
+#         organization = parse_organization(request)
+#         customer_id = request.query_params.get("customer_id")
+#         customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
+#             customer_id=customer_id
+#         ).prefetch_related(
+#             Prefetch(
+#                 "customer",
+#                 queryset=Customer.objects.filter(organization=organization),
+#                 to_attr="customers",
+#             ),
+#         )
+#         if len(customer_balances_adjustment) == 0:
+#             return Response(
+#                 {
+#                     "error_detail": "CustomerBalanceAdjustmentView with customer_id {} does not exist".format(
+#                         customer_id
+#                     )
+#                 },
+#                 status=status.HTTP_400_BAD_REQUEST,
+#             )
+#         serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
+#         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class CustomerBatchCreateView(APIView):
