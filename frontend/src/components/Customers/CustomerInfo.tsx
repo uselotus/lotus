@@ -92,13 +92,8 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     seriesField: "metric",
     groupField: "type",
     colorField: "type", // or seriesField in some cases
-    color: ({ type }) => {
-      if (type === "revenue") {
-        return "#C3986B";
-      } else if (type === "cost") {
-        return "green";
-      }
-    },
+    color: ["#C3986B", "#5AD8A6"],
+
     tooltip: {
       fields: ["type"],
     },

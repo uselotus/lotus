@@ -66,6 +66,7 @@ const TeamTab: FC = () => {
               <div className="inline-block min-w-full align-middle">
                 <Table
                   className="min-w-full divide-y divide-gray-200"
+                  pagination={false}
                   columns={
                     [
                       {
@@ -88,7 +89,7 @@ const TeamTab: FC = () => {
                         dataIndex: "status",
                         key: "status",
                         render: (status: string) => {
-                          let color = status === "active" ? "green" : "yellow";
+                          let color = status === "Active" ? "green" : "yellow";
                           return (
                             <Tag color={color} key={status}>
                               {status.toUpperCase()}
@@ -100,14 +101,14 @@ const TeamTab: FC = () => {
                         render(text, record) {
                           return (
                             <div className="flex flex-row space-x-2">
-                              <Button
+                              {/* <Button
                                 type="primary"
                                 onClick={() => {
                                   console.log(record);
                                 }}
                               >
                                 Edit
-                              </Button>
+                              </Button> */}
                             </div>
                           );
                         },

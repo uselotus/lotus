@@ -92,7 +92,7 @@ export const DeveloperTab = () => {
     error: webhookError,
     data: webhookData,
     isLoading,
-  } = useQuery<any>(["urls"], Webhook.getEndpoints);
+  } = useQuery<any>("urls", Webhook.getEndpoints);
 
   const getKey = () => {
     APIToken.newAPIToken().then((data) => {
@@ -125,8 +125,8 @@ export const DeveloperTab = () => {
           setVisibleWebhook(false);
           setWebhookSelected(undefined);
         })
-        .catch((err) => {
-          toast.error("Webhook URL already exists");
+        .catch((error) => {
+          toast.error(error.response.data.non_field_errors[0]);
         });
     } else {
       toast.error("Please enter a valid URL starting with https://");

@@ -20,7 +20,7 @@ import {
   CancelSubscriptionType,
 } from "../../types/subscription-type";
 //import the Customer type from the api.ts file
-import { Plan, Invoices } from "../../api/api";
+import { Invoices } from "../../api/api";
 import dayjs from "dayjs";
 
 import { CustomerDetailSubscription } from "../../types/customer-type";
