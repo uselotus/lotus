@@ -284,6 +284,7 @@ const CreatePlan = () => {
             price_adjustment_type: "none",
             plan_duration: "monthly",
             align_plan: "calendar_aligned",
+            usage_billing_frequency: "monthly",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -467,11 +468,11 @@ const CreatePlan = () => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                <div className="absolute inset-x-0 bottom-0 justify-center">
+                <div className="inset-x-0 bottom-0 justify-center self-end">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
-                      label="Components Billing Frequency"
+                      label="Billing Frequency"
                       name="usage_billing_frequency"
                       shouldUpdate={(prevValues, currentValues) =>
                         prevValues.plan_duration !== currentValues.plan_duration
