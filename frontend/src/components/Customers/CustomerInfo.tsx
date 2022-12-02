@@ -14,6 +14,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
     []
   );
+  const [isEdit, setIsEdit] = React.useState(false);
 
   const updateCustomer = useMutation(
     (obj: { customer_id: string; default_currency_code: string }) =>

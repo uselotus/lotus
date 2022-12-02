@@ -124,7 +124,7 @@ const GeneralTab: FC = () => {
           </Button>
         </div>
       </div>
-      <Modal
+      {/* <Modal
         title="Edit Organization Settings"
         visible={isEdit}
         onCancel={() => setIsEdit(false)}
@@ -173,7 +173,7 @@ const GeneralTab: FC = () => {
             </Form.Item>
           </Form>
         </div>
-      </Modal>
+      </Modal> */}
     </div>
   );
 };
