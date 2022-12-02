@@ -165,7 +165,8 @@ else:
 EMAIL_DOMAIN = os.environ.get("MAILGUN_DOMAIN")
 EMAIL_USERNAME = "noreply"
 DEFAULT_FROM_EMAIL = f"{EMAIL_USERNAME}@{EMAIL_DOMAIN}"
-SERVER_EMAIL = "you@uselotus.io"  # ditto (default from-email for Django errors)
+# ditto (default from-email for Django errors)
+SERVER_EMAIL = "you@uselotus.io"
 
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
@@ -515,12 +516,13 @@ REST_KNOX = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^https://\w+\.uselotus\.io$",
-    ]
+# if DEBUG:
+#     CORS_ALLOW_ALL_ORIGINS = True
+# else:
+#     CORS_ALLOWED_ORIGIN_REGEXES = [
+#         r"^https://\w+\.uselotus\.io$",
+#     ]
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
