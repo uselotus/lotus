@@ -14,7 +14,6 @@ from django.db.models import (
     F,
     FloatField,
     Max,
-    Min,
     OuterRef,
     Q,
     Subquery,
@@ -268,10 +267,12 @@ class CounterHandler(MetricHandler):
             METRIC_AGGREGATION.MAX,
         ]
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         if group_by is None:
             group_by = []
-        return super()._build_filter_kwargs(start, end, customer, group_by)
+        if filters is None:
+            filters = {}
+        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
 
     def _build_pre_groupby_annotation_kwargs(self, group_by=None):
         if group_by is None:
@@ -300,7 +301,7 @@ class CounterHandler(MetricHandler):
         if group_by is None:
             group_by = []
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -366,12 +367,14 @@ class CounterHandler(MetricHandler):
         return per_customer
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
+        self, start, end, customer, group_by=None, proration=None, filters=None
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -591,10 +594,12 @@ class StatefulHandler(MetricHandler):
             raise AssertionError("[METRIC TYPE: STATEFUL] Must specify property name.")
         return data
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         if group_by is None:
             group_by = []
-        return super()._build_filter_kwargs(start, end, customer, group_by)
+        if filters is None:
+            filters = {}
+        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
 
     def _build_pre_groupby_annotation_kwargs(self, group_by=None):
         if group_by is None:
@@ -622,8 +627,10 @@ class StatefulHandler(MetricHandler):
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -881,7 +888,7 @@ class StatefulHandler(MetricHandler):
             end=subscription.end_date,
             customer=subscription.customer,
             group_by=group_by,
-            filters=None,
+            filters=filters,
         )
         self.usage_aggregation_type = cur_usg_agg
         self.granularity = cur_granularity
@@ -906,6 +913,7 @@ class StatefulHandler(MetricHandler):
             customer=customer,
             group_by=group_by,
             proration=proration,
+            filters=filters,
         )
         longer_than_daily = [
             METRIC_GRANULARITY.TOTAL,
@@ -949,6 +957,7 @@ class StatefulHandler(MetricHandler):
                     customer=customer,
                     group_by=group_by,
                     proration=METRIC_GRANULARITY.DAY,
+                    filters=filters,
                 ).get(customer.customer_name, {})
                 for unique_customer_tuple, unique_usage in customer_usage.items():
                     daily_per_unique = daily_per_customer.get(unique_customer_tuple, {})
@@ -1094,10 +1103,12 @@ class RateHandler(MetricHandler):
             start = None
         return start, end
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         if group_by is None:
             group_by = []
-        return super()._build_filter_kwargs(start, end, customer, group_by)
+        if filters is None:
+            filters = {}
+        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
 
     def _build_pre_groupby_annotation_kwargs(self, group_by=None):
         if group_by is None:
@@ -1113,13 +1124,13 @@ class RateHandler(MetricHandler):
             customer, results_granularity, start, group_by, proration
         )
 
-    def get_current_usage(self, subscription, group_by=None):
+    def get_current_usage(self, subscription, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         start, end = self._get_current_query_start_end()
         start = start if start else subscription.start_date
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, subscription.customer, group_by
+            start, end, subscription.customer, group_by, filters
         )
         filter_kwargs["time_created__gt"] = subscription.start_date
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
@@ -1179,17 +1190,33 @@ class RateHandler(MetricHandler):
         customer=None,
         group_by=None,
         proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
+        )
+        print(
+            "FILTER ARGS: {}".format(filter_args),
+            "\n",
+            "FILTER KWARGS: {}".format(filter_kwargs),
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
+        print(
+            "PRE GROUPBY ANNOTATION KWARGS: {}".format(pre_groupby_annotation_kwargs),
+            "\n",
+        )
         groupby_kwargs = self._build_groupby_kwargs(
             customer, results_granularity, start, group_by
+        )
+        print(
+            "GROUPBY KWARGS: {}".format(groupby_kwargs),
+            "\n",
         )
 
         q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
@@ -1231,6 +1258,7 @@ class RateHandler(MetricHandler):
         q_gb = rate_per_event.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(new_usage_qty=Max("usage_qty"))
 
+        print("q_post_gb_ann", q_post_gb_ann)
         return_dict = {}
         unique_groupby_props = ["customer_name"] + group_by
         for row in q_post_gb_ann:

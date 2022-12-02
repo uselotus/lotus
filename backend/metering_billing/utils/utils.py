@@ -196,6 +196,65 @@ def now_utc_ts():
     return str(now_utc().timestamp())
 
 
+def get_granularity_ratio(metric_granularity, proration_granularity, start_date):
+    if (
+        proration_granularity == METRIC_GRANULARITY.TOTAL
+        or proration_granularity is None
+    ):
+        return 1
+    granularity_dict = {
+        METRIC_GRANULARITY.SECOND: {
+            METRIC_GRANULARITY.SECOND: 1,
+        },
+        METRIC_GRANULARITY.MINUTE: {
+            METRIC_GRANULARITY.SECOND: 60,
+            METRIC_GRANULARITY.MINUTE: 1,
+        },
+        METRIC_GRANULARITY.HOUR: {
+            METRIC_GRANULARITY.SECOND: 60 * 60,
+            METRIC_GRANULARITY.MINUTE: 60,
+            METRIC_GRANULARITY.HOUR: 1,
+        },
+        METRIC_GRANULARITY.DAY: {
+            METRIC_GRANULARITY.SECOND: 24 * 60 * 60,
+            METRIC_GRANULARITY.MINUTE: 24 * 60,
+            METRIC_GRANULARITY.HOUR: 24,
+            METRIC_GRANULARITY.DAY: 1,
+        },
+    }
+    plus_month = start_date + relativedelta(months=1)
+    days_in_month = (plus_month - start_date).days
+    granularity_dict[METRIC_GRANULARITY.MONTH] = {
+        METRIC_GRANULARITY.SECOND: days_in_month * 24 * 60 * 60,
+        METRIC_GRANULARITY.MINUTE: days_in_month * 24 * 60,
+        METRIC_GRANULARITY.HOUR: days_in_month * 24,
+        METRIC_GRANULARITY.DAY: days_in_month,
+        METRIC_GRANULARITY.MONTH: 1,
+    }
+    plus_quarter = start_date + relativedelta(months=3)
+    days_in_quarter = (plus_quarter - start_date).days
+    granularity_dict[METRIC_GRANULARITY.QUARTER] = {
+        METRIC_GRANULARITY.SECOND: days_in_quarter * 24 * 60 * 60,
+        METRIC_GRANULARITY.MINUTE: days_in_quarter * 24 * 60,
+        METRIC_GRANULARITY.HOUR: days_in_quarter * 24,
+        METRIC_GRANULARITY.DAY: days_in_quarter,
+        METRIC_GRANULARITY.MONTH: 3,
+        METRIC_GRANULARITY.QUARTER: 1,
+    }
+    plus_year = start_date + relativedelta(years=1)
+    days_in_year = (plus_year - start_date).days
+    granularity_dict[METRIC_GRANULARITY.YEAR] = {
+        METRIC_GRANULARITY.SECOND: days_in_year * 24 * 60 * 60,
+        METRIC_GRANULARITY.MINUTE: days_in_year * 24 * 60,
+        METRIC_GRANULARITY.HOUR: days_in_year * 24,
+        METRIC_GRANULARITY.DAY: days_in_year,
+        METRIC_GRANULARITY.MONTH: 12,
+        METRIC_GRANULARITY.QUARTER: 4,
+        METRIC_GRANULARITY.YEAR: 1,
+    }
+    return granularity_dict[metric_granularity][proration_granularity]
+
+
 def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None):
     if interval == PLAN_DURATION.MONTHLY:
         end_date = date_as_max_dt(start_date + relativedelta(months=+1, days=-1))

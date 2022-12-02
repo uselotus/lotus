@@ -23,6 +23,7 @@ from metering_billing.utils import (
     customer_balance_adjustment_uuid,
     customer_uuid,
     dates_bwn_two_dts,
+    get_granularity_ratio,
     invoice_uuid,
     metric_uuid,
     now_plus_day,
@@ -273,14 +274,18 @@ class Customer(models.Model):
                 raise ValueError(f"Payment provider {k} id was not provided")
         if not self.default_currency:
             self.default_currency = self.organization.default_currency
-        if not self.pk:
+        new = not self.pk
+        super(Customer, self).save(*args, **kwargs)
+        if new:
             self.subscription_manager = SubscriptionManager.objects.create(
                 customer=self,
                 organization=self.organization,
             )
-        super(Customer, self).save(*args, **kwargs)
+            self.save()
         Event.objects.filter(
-            organization=self.organization, cust_id=self.customer_id
+            organization=self.organization,
+            cust_id=self.customer_id,
+            customer__isnull=True,
         ).update(customer=self)
 
     def get_billing_plan_names(self) -> str:
@@ -845,6 +850,7 @@ class PlanComponent(models.Model):
         billable_metric = self.billable_metric
         revenue_dict = {"revenue": Decimal(0), "subperiods": []}
         for period_start, period_end in periods:
+            print("period_start", period_start, "period_end", period_end)
             all_usage = billable_metric.get_usage(
                 granularity=USAGE_CALC_GRANULARITY.TOTAL,
                 start_date=period_start,
@@ -854,42 +860,45 @@ class PlanComponent(models.Model):
                 proration=self.proration_granularity,
                 filters=subscription.get_filters_dictionary(),
             )
-            nperiods_metric_granularity = max(
-                len(
-                    list(
-                        periods_bwn_twodates(
-                            billable_metric.granularity, period_start, period_end
-                        )
-                    )
-                ),
-                1,
-            )
-            nperiods_proration_granularity = max(
-                len(
-                    list(
-                        periods_bwn_twodates(
-                            self.proration_granularity, period_start, period_end
-                        )
-                    )
-                ),
-                1,
-            )
-            if nperiods_proration_granularity > nperiods_metric_granularity:
-                usage_normalization_factor = convert_to_decimal(
-                    nperiods_metric_granularity / nperiods_proration_granularity
-                )
+            print("all_usage", all_usage)
+
+            if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
+                # if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
+                #     metric_granularity = METRIC_GRANULARITY.WEEKLY
+                if self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
+                    metric_granularity = METRIC_GRANULARITY.MONTH
+                elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
+                    metric_granularity = METRIC_GRANULARITY.QUARTER
+                else:
+                    plan_dur = subscription.billing_plan.plan.plan_duration
+                    if plan_dur == PLAN_DURATION.MONTHLY:
+                        metric_granularity = METRIC_GRANULARITY.MONTH
+                    elif plan_dur == PLAN_DURATION.QUARTERLY:
+                        metric_granularity = METRIC_GRANULARITY.QUARTER
+                    elif plan_dur == PLAN_DURATION.YEARLY:
+                        metric_granularity = METRIC_GRANULARITY.YEAR
             else:
-                usage_normalization_factor = 1
+                metric_granularity = billable_metric.granularity
+            proration_granularity = self.proration_granularity
+
+            usage_normalization_factor = get_granularity_ratio(
+                metric_granularity, proration_granularity, start_date
+            )
             # extract usage
             separated_usage = all_usage.get(subscription.customer.customer_name, {})
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
+                print("usage by period", usage_by_period)
+                print("metric_granularity", metric_granularity)
+                print("proration_granularity", proration_granularity)
+                print("usage_normalization_factor", usage_normalization_factor)
                 if len(usage_by_period) >= 1:
                     usage_qty = (
                         convert_to_decimal(sum(usage_by_period.values()))
-                        * usage_normalization_factor
+                        / usage_normalization_factor
                     )
+                    print("usage qty", usage_qty)
                     usage_qty = convert_to_decimal(usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()
@@ -1438,13 +1447,11 @@ class SubscriptionManager(models.Model):
         Customer, on_delete=models.CASCADE, related_name="subscription_manager"
     )
     day_anchor = models.SmallIntegerField(
-        default=1,
         validators=[MinValueValidator(1), MaxValueValidator(31)],
         null=True,
         blank=True,
     )
     month_anchor = models.SmallIntegerField(
-        default=1,
         validators=[MinValueValidator(1), MaxValueValidator(12)],
         null=True,
         blank=True,
@@ -1456,10 +1463,14 @@ class SubscriptionManager(models.Model):
     def handle_add_subscription(self, subscription):
         if self.day_anchor is None:
             self.day_anchor = subscription.start_date.day
-        if self.month_anchor is None and subscription.billing_plan.plan.duration in [
-            PLAN_DURATION.YEARLY,
-            PLAN_DURATION.QUARTERLY,
-        ]:
+        if (
+            self.month_anchor is None
+            and subscription.billing_plan.plan.plan_duration
+            in [
+                PLAN_DURATION.YEARLY,
+                PLAN_DURATION.QUARTERLY,
+            ]
+        ):
             self.month_anchor = subscription.start_date.month
         self.save()
 

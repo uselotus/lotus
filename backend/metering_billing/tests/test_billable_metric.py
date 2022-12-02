@@ -1852,6 +1852,7 @@ class TestCalculateMetricWithFilters:
         event_times = [time_created] + [
             time_created + relativedelta(minutes=i) for i in range(1, 20)
         ]
+        print(event_times)
         properties = (
             4 * [{"num_rows": 1, "test_filter_property": "12erfg"}]
             + 3 * [{"num_rows": 2, "test_filter_property": "4refvbnj"}]

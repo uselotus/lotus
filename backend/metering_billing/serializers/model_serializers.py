@@ -436,6 +436,7 @@ class SubscriptionCategoricalFilterSerializer(CategoricalFilterSerializer):
         model = CategoricalFilter
         fields = tuple(
             set(CategoricalFilterSerializer.Meta.fields)
+            | set(("value",))
             - set(
                 [
                     "operator",
@@ -446,10 +447,8 @@ class SubscriptionCategoricalFilterSerializer(CategoricalFilterSerializer):
 
     value = serializers.CharField(source="comparison_value")
 
-    comparison_value = serializers.CharField()
-
     def create(self, validated_data):
-        comparison_value = validated_data.pop("comparison_value")
+        comparison_value = validated_data.pop("value")
         comparison_value = [comparison_value]
         validated_data["comparison_value"] = comparison_value
         return CategoricalFilter.objects.create(
@@ -1486,8 +1485,8 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
         ):
             if (
-                data["billing_plan"].plan.duration
-                != self.instance.billing_plan.plan.duration
+                data["billing_plan"].plan.plan_duration
+                != self.instance.billing_plan.plan.plan_duration
             ):
                 raise serializers.ValidationError(
                     "Cannot change plan duration with CHANGE_SUBSCRIPTION_PLAN replace type"
