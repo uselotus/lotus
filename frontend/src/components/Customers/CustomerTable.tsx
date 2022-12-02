@@ -54,7 +54,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
     sorter: (a, b) => a.total_amount_due - b.total_amount_due,
 
     render: (_, record) => (
-      <div className="self-center">
+      <div className="content-center">
         {record.total_amount_due !== undefined ? (
           <p>${record.total_amount_due.toFixed(2)}</p>
         ) : (

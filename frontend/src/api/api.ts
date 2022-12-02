@@ -63,13 +63,13 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
+import { DraftInvoiceType, InvoiceType } from "../types/invoice-type";
 import {
-  DraftInvoiceType,
-  InvoiceType,
+  BalanceAdjustments,
+  MarkInvoiceStatusAsPaid,
 } from "../types/invoice-type";
-import {BalanceAdjustments, MarkInvoiceStatusAsPaid} from "../types/invoice-type";
-import {CreateBalanceAdjustmentType} from "../types/balance-adjustment";
-import { PricingUnit} from "../types/pricing-unit-type";
+import { CreateBalanceAdjustmentType } from "../types/balance-adjustment";
+import { PricingUnit } from "../types/pricing-unit-type";
 
 const cookies = new Cookies();
 
@@ -110,8 +110,13 @@ export const Customer = {
     requests.post("api/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
-  updateCustomer: (customer_id: string, default_currency_code:string): Promise<CustomerDetailType> =>
-    requests.patch(`api/customers/${customer_id}/`, {default_currency_code:default_currency_code}),
+  updateCustomer: (
+    customer_id: string,
+    default_currency_code: string
+  ): Promise<CustomerDetailType> =>
+    requests.patch(`api/customers/${customer_id}/`, {
+      default_currency_code: default_currency_code,
+    }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`api/customer_detail/`, { params: { customer_id } }),
   //Subscription handling
@@ -137,7 +142,7 @@ export const Customer = {
     subscription_id: string,
     post: CancelSubscriptionType
   ): Promise<CancelSubscriptionType> =>
-    requests.patch(`api/subscriptions/${subscription_id}/`, post),
+    requests.delete(`api/subscriptions/${subscription_id}/`, post),
   changeSubscriptionPlan: (
     subscription_id: string,
     post: ChangeSubscriptionPlanType
@@ -273,8 +278,13 @@ export const Organization = {
   get: (): Promise<OrganizationType[]> => requests.get("api/organizations/"),
   getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
     requests.get("api/actions/", { params: { c: cursor } }),
-  updateOrganization: (org_id: string, default_currency_code:string): Promise<CustomerDetailType> =>
-    requests.patch(`api/organizations/${org_id}/`, {default_currency_code:default_currency_code}),
+  updateOrganization: (
+    org_id: string,
+    default_currency_code: string
+  ): Promise<CustomerDetailType> =>
+    requests.patch(`api/organizations/${org_id}/`, {
+      default_currency_code: default_currency_code,
+    }),
 };
 
 export const GetRevenue = {
@@ -413,11 +423,18 @@ export const BalanceAdjustment = {
   createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
     requests.post("api/balance_adjustments/", post),
 
-  getCreditsByCustomer: (params: {customer_id: string, format?: string}): Promise<BalanceAdjustments[]> => {
-      if(params.format) {
-          return requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`)
-      }
-      return requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}`)
+  getCreditsByCustomer: (params: {
+    customer_id: string;
+    format?: string;
+  }): Promise<BalanceAdjustments[]> => {
+    if (params.format) {
+      return requests.get(
+        `api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`
+      );
+    }
+    return requests.get(
+      `api/balance_adjustments/?customer_id=${params.customer_id}`
+    );
   },
 
   deleteCredit: (adjustment_id: string): Promise<any> =>
@@ -425,9 +442,8 @@ export const BalanceAdjustment = {
 };
 
 export const PricingUnits = {
-    create: (post: PricingUnit): Promise<PricingUnit> =>
-        requests.post("api/pricing_units/", post),
+  create: (post: PricingUnit): Promise<PricingUnit> =>
+    requests.post("api/pricing_units/", post),
 
-    list: (): Promise<PricingUnit[]> =>
-        requests.get(`api/pricing_units/`),
+  list: (): Promise<PricingUnit[]> => requests.get(`api/pricing_units/`),
 };
