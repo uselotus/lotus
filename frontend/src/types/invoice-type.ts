@@ -53,7 +53,7 @@ interface LineItem {
   start_date: string;
   end_date: string;
   quantity: number;
-  subtotal: string;
+  sutotal: string;
   billing_type: string;
   plan_version_id: string;
   metadata: any;

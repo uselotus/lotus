@@ -345,11 +345,6 @@ const SubscriptionView: FC<Props> = ({
                 {
                   title: "Quantity",
                   dataIndex: "quantity",
-                  render: (_, record) => (
-                    <div className="flex flex-col">
-                      {record.quantity !== null && record.quantity.toFixed(2)}
-                    </div>
-                  ),
                 },
                 {
                   title: "Subtotal",
