@@ -229,6 +229,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           type="primary"
           className="mr-4"
           size="large"
+          disabled={true}
           onClick={() => navigate("/customers-create-credit/" + customerId)}
         >
           Create Credit
