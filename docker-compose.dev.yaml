@@ -3,7 +3,7 @@ services:
     image: postgres:14-alpine
     restart: on-failure
     ports:
-      - 5432:5432
+      - 5433:5432
     volumes:
       - ./pgdata_dev:/var/lib/postgresql/data
     env_file:

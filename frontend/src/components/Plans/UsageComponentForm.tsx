@@ -24,33 +24,36 @@ const EditableContext = React.createContext<FormInstance<any> | null>(null);
 type EditableTableProps = Parameters<typeof Table>[0];
 
 type ColumnTypes = Exclude<EditableTableProps["columns"], undefined>;
-
-const validateTiers = (tiers: Tier[]) => {
+type ValidateTiersType = { isValid: boolean; message: string }[];
+const validateTiers = (tiers: Tier[]): ValidateTiersType => {
   const response: {} = {};
   var currentStart = 0;
   var currentEnd: number | undefined;
-  const arr2: boolean[] = tiers.map((tier, index) => {
+  const arr2: ValidateTiersType = tiers.map((tier, index) => {
+    console.log(tier.type);
     if (index === 0) {
       if (tier.range_end !== undefined && tier.range_start >= tier.range_end) {
-        return false;
+        return { isValid: false, message: "Range is not valid" };
       }
 
       currentStart = tier.range_start;
       currentEnd = tier.range_end;
 
       if (!["flat", "free", "per_unit"].includes(tier.type)) {
-        return false;
+        return { isValid: false, message: "Tiers are not valid" };
       } else if (tier.type === "per_unit") {
-        return (
-          typeof tier.cost_per_batch === "number" &&
+        return typeof tier.cost_per_batch === "number" &&
           typeof tier.metric_units_per_batch === "number" &&
           tier.metric_units_per_batch > 0 &&
-          tier.cost_per_batch >= 0
-        );
+          tier.cost_per_batch >= 0 === true
+          ? { isValid: true, message: "" }
+          : { isValid: false, message: "Unit is not valid." };
       } else if (tier.type === "flat") {
-        return (
-          typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0
-        );
+        return {
+          isValid:
+            typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0,
+          message: "",
+        };
       }
 
       //check if types are correct
@@ -61,30 +64,38 @@ const validateTiers = (tiers: Tier[]) => {
         tier.range_start > currentEnd + 1 ||
         (tier.range_end !== undefined && tier.range_start >= tier.range_end)
       ) {
-        return false;
+        console.log(tier);
+        console.log("Ok1", tier.range_start < currentEnd);
+        console.log("ok2", currentEnd);
+        return { isValid: false, message: "Range is not valid." };
       } else {
         currentStart = tier.range_start;
         currentEnd = tier.range_end;
 
         if (!["flat", "free", "per_unit"].includes(tier.type)) {
-          return false;
+          return { isValid: false, message: "Tiers are not valid" };
         } else if (tier.type === "per_unit") {
-          return (
-            typeof tier.cost_per_batch === "number" &&
+          console.log(" expect you to get hit");
+          return typeof tier.cost_per_batch === "number" &&
             typeof tier.metric_units_per_batch === "number" &&
             tier.metric_units_per_batch > 0 &&
-            tier.cost_per_batch >= 0
-          );
+            tier.cost_per_batch >= 0 === true
+            ? { isValid: true, message: "" }
+            : { isValid: false, message: "Unit is not valid." };
         } else if (tier.type === "flat") {
-          return (
-            typeof tier.cost_per_batch === "number" && tier.cost_per_batch >= 0
-          );
+          return {
+            isValid:
+              typeof tier.cost_per_batch === "number" &&
+              tier.cost_per_batch >= 0,
+            message: "",
+          };
         }
       }
     }
-    return true;
+    return { isValid: true, message: "" };
   });
-  return arr2.every((val) => val === true);
+  console.log(arr2);
+  return arr2;
 };
 
 interface Item {
@@ -96,10 +107,11 @@ interface Item {
 
 const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
   const [form] = Form.useForm();
+  const count = useRef(0);
   return (
     <Form form={form} component={false}>
       <EditableContext.Provider value={form}>
-        <tr {...props} />
+        <tr data-index-number={String(count.current++)} {...props} />
       </EditableContext.Provider>
     </Form>
   );
@@ -241,7 +253,7 @@ function UsageComponentForm({
   );
   const initalData = editComponentItem ?? null;
   const [errorMessage, setErrorMessage] = useState("");
-
+  const buttonRef = useRef<HTMLButtonElement | undefined>(undefined!);
   const initialTier: Tier[] = [
     {
       type: "free",
@@ -411,6 +423,20 @@ function UsageComponentForm({
     };
   });
 
+  useEffect(() => {
+    // logic for disabling add tier button when there's an error
+    if (validateTiers(currentTiers).some((item) => item.isValid === false)) {
+      buttonRef.current ? (buttonRef.current.disabled = true) : null;
+      const errorMessage = validateTiers(currentTiers).filter(
+        (item) => item.isValid === false
+      )[0].message;
+      setErrorMessage(errorMessage);
+    } else {
+      buttonRef.current ? (buttonRef.current.disabled = false) : null;
+      setErrorMessage("");
+    }
+  }, [currentTiers]);
+
   return (
     <Modal
       visible={visible}
@@ -421,6 +447,7 @@ function UsageComponentForm({
       width={900}
       okButtonProps={{
         className: "bg-black text-white justify-self-end",
+        disabled: errorMessage.length > 0,
       }}
       onCancel={() => {
         onCancel();
@@ -431,7 +458,9 @@ function UsageComponentForm({
         form
           .validateFields()
           .then((values) => {
-            if (validateTiers(currentTiers) === true) {
+            if (
+              validateTiers(currentTiers).every((item) => item.isValid === true)
+            ) {
               handleComponentAdd({
                 metric: values.metric,
                 tiers: currentTiers,
@@ -441,7 +470,17 @@ function UsageComponentForm({
               form.resetFields();
               setErrorMessage("");
             } else {
-              setErrorMessage("Tiers are not valid");
+              console.log(
+                validateTiers(currentTiers).filter(
+                  (item) => item.isValid === false
+                )
+              );
+              console.log(currentTiers);
+              validateTiers(currentTiers)
+                .filter((item) => item.isValid === false)
+                .forEach((item) => {
+                  setErrorMessage(item.message);
+                });
             }
           })
           .catch((info) => {});
@@ -502,8 +541,10 @@ function UsageComponentForm({
         <div className="flex justify-center w-full mt-4">
           <Button
             onClick={handleAdd}
+            ref={buttonRef}
             type="primary"
             style={{ marginBottom: 16 }}
+            disabled={errorMessage.length > 0}
           >
             Add Tier
           </Button>
