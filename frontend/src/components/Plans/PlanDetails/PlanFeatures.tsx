@@ -14,7 +14,7 @@ const PlanFeatures: FC<PlanFeaturesProps> = ({ features }) => {
       <div className="flex items-center justify-start flex-wrap">
         {features && features.length > 0 ? (
           features.map((feature) => (
-            <div className=" py-2 bg-[#FAFAFA] rounded planComponent mr-4 mb-2 px-4">
+            <div className=" py-2 bg-[#FAFAFA] rounded mr-4 mb-2 px-8 border-2 border-solid border-[#EAEAEB]">
               <div className="planDetails planComponentMetricName">
                 <div className="pr-1">{feature.feature_name}</div>
               </div>

@@ -123,7 +123,7 @@ const StripeIntegrationView: FC = () => {
   return (
     <PageLayout
       title="Stripe Integration"
-      extra={<button onClick={returnToDashboard}>Back to Integrations</button>}
+      extra={<Button onClick={returnToDashboard}>Back to Integrations</Button>}
     >
       <div className="w-6/12">
         <h2 className="text-16px mb-10">

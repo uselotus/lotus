@@ -37,14 +37,13 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
         Components:
       </div>
       {components && components.length > 0 ? (
-        <div className="flex items-center justify-start flex-wrap">
+        <div className="flex items-stretch justify-start flex-wrap">
           {components.map((component) => (
-            <div className="pt-2 pb-4 bg-[#FAFAFA] rounded planComponent mr-4 mb-2 px-4">
-              <div className="planDetails planComponentMetricName">
-                <div className="pr-1">Metric:</div>
+            <div className="pt-2 pb-4 bg-[#FAFAFA] mr-4 mb-2 px-8 border-2 border-solid border-[#EAEAEB]">
+              <div className="planDetails planComponentMetricName text-[20px] text-[#1d1d1fd9]">
                 <div> {component.billable_metric.billable_metric_name}</div>
               </div>
-              <div className="">
+              <div>
                 <Table
                   dataSource={component.tiers}
                   pagination={false}

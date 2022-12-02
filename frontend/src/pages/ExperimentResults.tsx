@@ -72,7 +72,13 @@ const ExperimentResults: FC = () => {
   const dataFormatter = (number: number) => `$${number.toFixed(2)}`;
 
   if (isLoading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex h-screen">
+        <div className="m-auto">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -90,11 +96,6 @@ const ExperimentResults: FC = () => {
         </Button>,
       ]}
     >
-      {isLoading && (
-        <div>
-          <LoadingSpinner />
-        </div>
-      )}
       {isError || experiment === undefined ? (
         <div>Something went wrong</div>
       ) : (

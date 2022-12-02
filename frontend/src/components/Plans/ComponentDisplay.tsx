@@ -52,10 +52,10 @@ export const ComponentDisplay: FC<{
     <Row gutter={[12, 12]}>
       {componentsData.map((component: any, index: number) => (
         <Col span="24" key={index}>
-          <Paper>
+          <Paper border={true} className="items-stretch">
             <Descriptions
               title={component?.metric}
-              size="small"
+              className="text-[20px]"
               column={2}
               extra={[
                 <Button
