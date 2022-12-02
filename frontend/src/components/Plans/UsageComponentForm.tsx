@@ -572,7 +572,7 @@ function UsageComponentForm({
             defaultActiveKey={"1"}
           >
             <Panel header="Advanced Settings" key="1">
-              <div className="mb-8">
+              {/* <div className="mb-8">
                 (Optional) Separate Reporting Based on Distinct Property Value
               </div>
 
@@ -592,7 +592,7 @@ function UsageComponentForm({
                     Important: Only events that contain the property with name{" "}
                     {separateByProperties} will be counted under this metric.
                   </p>
-                )}
+                )} */}
 
               {metricStateful === true && (
                 <Fragment>
