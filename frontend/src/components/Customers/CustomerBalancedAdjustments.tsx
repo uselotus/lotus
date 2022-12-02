@@ -108,15 +108,15 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   ];
   const navigate = useNavigate();
 
-  if (isLoading) {
-    return (
-      <div className="flex">
-        <div className="m-auto">
-          <LoadingSpinner />
-        </div>
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="flex">
+  //       <div className="m-auto">
+  //         <LoadingSpinner />
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const actionColumn = {
     title: "-",

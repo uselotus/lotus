@@ -87,21 +87,21 @@ const SubscriptionView: FC<Props> = ({
 
   const cancelAndBill = () => {
     onCancel(subscriptions[0].subscription_id, {
-      status: "ended",
-      replace_immediately_type: "end_current_subscription_and_bill",
+      bill_usage: true,
+      flat_fee_behavior: "charge_full",
     });
   };
 
   const cancelAndDontBill = () => {
     onCancel(subscriptions[0].subscription_id, {
-      status: "ended",
-      replace_immediately_type: "end_current_subscription_dont_bill",
+      bill_usage: false,
+      flat_fee_behavior: "refund",
     });
   };
 
   const turnAutoRenewOff = () => {
     onAutoRenewOff(subscriptions[0].subscription_id, {
-      auto_renew: false,
+      turn_off_auto_renew: true,
     });
   };
 
@@ -148,7 +148,7 @@ const SubscriptionView: FC<Props> = ({
         {
           label: (
             <div onClick={() => cancelAndDontBill()}>
-              Cancel Without Billing
+              Cancel And Refund
             </div>
           ),
           key: "1",
@@ -166,22 +166,7 @@ const SubscriptionView: FC<Props> = ({
       acc.push({
         label: plan.label,
         value: plan.value,
-        children: [
-          {
-            label:
-              "End current subscription and bill + start new subscription with selected plan",
-            value: "end_current_subscription_and_bill",
-          },
-          {
-            label:
-              "End current subscription and don't bill + start new subscription with selected plan",
-            value: "end_current_subscription_dont_bill",
-          },
-          {
-            label: "Switch plan mid-subscription",
-            value: "change_subscription_plan",
-          },
-        ],
+       
       } as PlanOption);
     }
     return acc;
@@ -189,11 +174,7 @@ const SubscriptionView: FC<Props> = ({
 
   const onChange = (value: string[], selectedOptions: PlanOption[]) => {
     onPlanChange(subscriptions[0].subscription_id, {
-      plan_id: selectedOptions[0].value,
-      replace_immediately_type: value[1] as
-        | "change_subscription_plan"
-        | "end_current_subscription_and_bill"
-        | "end_current_subscription_dont_bill",
+      replace_plan_id: selectedOptions[0].value
     });
   };
 

@@ -25,33 +25,21 @@ export interface CreateSubscriptionType
 }
 
 export interface UpdateSubscriptionType {
-  plan_id?: string;
-  status?: "ended";
-  auto_renew?: boolean;
-  replace_immediately_type?:
-    | "end_current_subscription_and_bill"
-    | "end_current_subscription_dont_bill"
-    | "change_subscription_plan";
+  replace_plan_id?: string;
+  end_date?: string;
+  turn_off_auto_renew?: boolean;
 }
 
-export interface CancelSubscriptionType
-  extends Omit<UpdateSubscriptionType, "plan_id"> {
-  status: "ended";
-  replace_immediately_type:
-    | "end_current_subscription_and_bill"
-    | "end_current_subscription_dont_bill";
+export interface CancelSubscriptionType {
+  bill_usage: boolean;
+  flat_fee_behavior: "refund" | "prorate" | "charge_full";
 }
 
-export interface ChangeSubscriptionPlanType
-  extends Omit<UpdateSubscriptionType, "status"> {
-  plan_id: string;
-  replace_immediately_type:
-    | "change_subscription_plan"
-    | "end_current_subscription_and_bill"
-    | "end_current_subscription_dont_bill";
+export interface ChangeSubscriptionPlanType extends UpdateSubscriptionType {
+  replace_plan_id: string;
 }
 
 export interface TurnSubscriptionAutoRenewOffType
-  extends Omit<UpdateSubscriptionType, "plan_id" | "status"> {
-  auto_renew: false;
+  extends UpdateSubscriptionType {
+  turn_off_auto_renew: true;
 }
