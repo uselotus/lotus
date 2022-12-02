@@ -476,7 +476,7 @@ def setup_demo_3(company_name, username, email, password):
                     run_generate_invoice.delay(
                         sub.pk,
                         issue_date=sub.start_date,
-                        flat_fee_behavior="full_amount",
+                        flat_fee_cutoff_date=None,
                         include_usage=False,
                     )
                 else:
