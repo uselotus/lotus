@@ -40,6 +40,12 @@ interface ComponentDisplay {
   id: number;
 }
 
+const durationConversion = {
+  monthly: "Month",
+  quarterly: "Quarter",
+  yearly: "Year",
+};
+
 const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
@@ -222,6 +228,20 @@ const CreatePlan = () => {
           };
         }
 
+        if (values.align_plan == "calendar_aligned") {
+          if (values.plan_duration === "yearly") {
+            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
+          }
+          if (values.plan_duration === "monthly") {
+            initialPlanVersion["day_anchor"] = 1;
+          }
+          if (values.plan_duration === "quarterly") {
+            initialPlanVersion["day_anchor"] = 1;
+          }
+        }
+        }
+
         const plan: CreatePlanType = {
           plan_name: values.name,
           plan_duration: values.plan_duration,
@@ -263,6 +283,8 @@ const CreatePlan = () => {
             flat_rate: 0,
             flat_fee_billing_type: "in_advance",
             price_adjustment_type: "none",
+            plan_duration: "monthly",
+            align_plan: "calendar_aligned",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -329,12 +351,40 @@ const CreatePlan = () => {
                               { label: "Quarterly", name: "quarterly" },
                               { label: "Yearly", name: "yearly" },
                             ]);
+                            form.setFieldValue(
+                              "usage_billing_frequency",
+                              "yearly"
+                            );
                           }
                         }}
                       >
                         <Radio value="monthly">Monthly</Radio>
                         <Radio value="quarterly">Quarterly</Radio>
                         <Radio value="yearly">Yearly</Radio>
+                      </Radio.Group>
+                    </Form.Item>
+                    <Form.Item
+                      label="When To Bill"
+                      name="align_plan"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please Select One",
+                        },
+                      ]}
+                    >
+                      <Radio.Group>
+                        <Radio value="calendar_aligned">
+                          Start of Every{" "}
+                          {
+                            durationConversion[
+                              form.getFieldValue("plan_duration")
+                            ]
+                          }
+                        </Radio>
+                        <Radio value="subscription_aligned">
+                          Start of Subscription
+                        </Radio>
                       </Radio.Group>
                     </Form.Item>
 

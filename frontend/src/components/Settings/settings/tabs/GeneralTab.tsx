@@ -1,9 +1,11 @@
 // @ts-ignore
 import React, { FC, useState } from "react";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { useNavigate } from "react-router-dom";
-import { Divider, Typography } from "antd";
-import { Organization } from "../../../../api/api";
+import { Divider, Typography, Form, Input, Button, Modal, Select } from "antd";
+import { Organization, PricingUnits } from "../../../../api/api";
+import { EditOutlined } from "@ant-design/icons";
+import { PricingUnit } from "../../../../types/pricing-unit-type";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
 import PricingUnitDropDown from "../../../PricingUnitDropDown";
@@ -19,9 +21,38 @@ interface FormElements extends HTMLFormElement {
 const GeneralTab: FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [isEdit, setIsEdit] = useState(false);
+  const [form] = Form.useForm();
+
+  const {
+    data: pricingUnits,
+    isLoading: pricingUnitsLoading,
+  }: UseQueryResult<PricingUnit[]> = useQuery<PricingUnit[]>(
+    ["pricing_unit_list"],
+    () =>
+      PricingUnits.list().then((res) => {
+        return res;
+      })
+  );
+
+  const getCurrencies = () => {
+    const items = data || [];
+    if (false) {
+      return [
+        ...items,
+        {
+          code: "All",
+          name: "All Currencies",
+          symbol: "",
+        },
+      ];
+    }
+    return items;
+  };
 
   const { data, isLoading, isError } = useQuery(["organization"], () =>
     Organization.get().then((res) => {
+      console.log(res);
       return res[0];
     })
   );
@@ -77,23 +108,72 @@ const GeneralTab: FC = () => {
 
       <Divider />
 
-      {mutation.isLoading && <LoadingSpinner />}
-      <p>
-        <b>Default Organization Currency:</b>{" "}
-        {data?.default_currency ? (
-          <PricingUnitDropDown
-            defaultValue={data?.default_currency?.code}
-            setCurrentCurrency={(value) =>
-              updateOrg.mutate({
-                org_id: data.organization_id,
-                default_currency_code: value,
-              })
-            }
-          />
-        ) : (
-          "N/A"
-        )}
-      </p>
+      <div className="flex flex-col w-6/12 justify-between">
+        {mutation.isLoading && <LoadingSpinner />}
+        <p className=" text-[16px]">
+          <b>Company Name:</b> {data?.company_name ? data.company_name : "N/A"}
+        </p>
+        <p className=" text-[16px]">
+          <b className="">Default Organization Currency:</b>{" "}
+          {data?.default_currency?.name} ({data?.default_currency?.symbol})
+        </p>
+
+        <div className="">
+          <Button onClick={() => setIsEdit(true)} className="justify-self-end">
+            Edit
+          </Button>
+        </div>
+      </div>
+      <Modal
+        title="Edit Organization Settings"
+        visible={isEdit}
+        onCancel={() => setIsEdit(false)}
+        okText="Save"
+        onOk={() => {
+          if (data) {
+            updateOrg.mutate({
+              org_id: data.organization_id,
+              default_currency_code: form.getFieldValue(
+                "default_currency_code"
+              ),
+            });
+          }
+          setIsEdit(false);
+        }}
+      >
+        <div className="flex flex-col w-6/12 justify-between">
+          <Form
+            form={form}
+            initialValues={{
+              company_name: data?.company_name,
+            }}
+          >
+            <Form.Item
+              label="Company Name"
+              name="company_name"
+              rules={[
+                {
+                  required: true,
+                },
+              ]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              label="Default Organization Currency"
+              name="default_currency"
+            >
+              <Select
+                size="small"
+                // onChange={setCurrentCurrency}
+                options={getCurrencies()?.map((pc) => {
+                  return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
+                })}
+              />
+            </Form.Item>
+          </Form>
+        </div>
+      </Modal>
     </div>
   );
 };

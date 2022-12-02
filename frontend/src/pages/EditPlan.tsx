@@ -39,6 +39,11 @@ import VersionActiveForm from "../components/Plans/VersionActiveForm";
 interface CustomizedState {
   plan: PlanType;
 }
+const durationConversion = {
+  monthly: "Month",
+  quarterly: "Quarter",
+  yearly: "Year",
+};
 
 interface Props {
   type: "backtest" | "version" | "custom";
@@ -414,6 +419,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             price_adjustment_type:
               plan.versions[versionIndex].price_adjustment
                 ?.price_adjustment_type || "none",
+            align_plan:
+              plan.versions[versionIndex].day_anchor !== undefined
+                ? "calendar_aligned"
+                : "none",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -473,6 +482,30 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         <Radio value="monthly">Monthly</Radio>
                         <Radio value="quarterly">Quarterly</Radio>
                         <Radio value="yearly">Yearly</Radio>
+                      </Radio.Group>
+                    </Form.Item>
+                    <Form.Item
+                      label="When To Bill"
+                      name="align_plan"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please Select One",
+                        },
+                      ]}
+                    >
+                      <Radio.Group>
+                        <Radio value="calendar_aligned">
+                          Start of Every{" "}
+                          {
+                            durationConversion[
+                              form.getFieldValue("plan_duration")
+                            ]
+                          }
+                        </Radio>
+                        <Radio value="subscription_aligned">
+                          Start of Subscription
+                        </Radio>
                       </Radio.Group>
                     </Form.Item>
 
