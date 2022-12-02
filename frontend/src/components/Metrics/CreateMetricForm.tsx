@@ -334,10 +334,14 @@ const CreateMetricForm = (props: {
                       },
                     ]}
                   >
-                    <Select defaultValue="days">
-                      <Option value="days">day</Option>
-                      <Option value="hours">hour</Option>
+                    <Select defaultValue="minutes">
                       <Option value="minutes">minute</Option>
+
+                      <Option value="hours">hour</Option>
+
+                      <Option value="days">day</Option>
+
+                      <Option value="months">month</Option>
                     </Select>
                   </Form.Item>
                   <Form.Item
