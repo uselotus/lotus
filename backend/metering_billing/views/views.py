@@ -572,6 +572,9 @@ class GetCustomerAccessView(APIView):
                                 "metric_free_limit": serializers.FloatField(),
                                 "metric_total_limit": serializers.FloatField(),
                                 "subscription_id": serializers.CharField(),
+                                "subscription_uid_values": serializers.DictField(
+                                    child=serializers.CharField()
+                                ),
                             },
                         ),
                         required=False,
@@ -640,10 +643,16 @@ class GetCustomerAccessView(APIView):
                 "billing_plan__plan_components",
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
+                "filters",
             )
 
             for sub in subscriptions:
                 cache_key = f"customer_id:{customer_id}__event_name:{event_name}"
+                subscription_uid_values = {}
+                for filter in sub.filters.all():
+                    subscription_uid_values[
+                        filter.property_name
+                    ] = filter.comparison_value[0]
                 for component in sub.billing_plan.plan_components.all():
                     metric = component.billable_metric
                     if metric.event_name == event_name:
@@ -670,6 +679,7 @@ class GetCustomerAccessView(APIView):
                                 "metric_total_limit": total_limit,
                                 "subscription_id": subscription_id,
                                 "separate_by_properties": {},
+                                "subscription_uid_values": subscription_uid_values,
                             }
                             metrics.append(unique_tup_dict)
                             continue
@@ -690,6 +700,7 @@ class GetCustomerAccessView(APIView):
                                 "metric_total_limit": total_limit,
                                 "subscription_id": subscription_id,
                                 "separate_by_properties": {},
+                                "subscription_uid_values": subscription_uid_values,
                             }
                             if len(groupby_vals) > 0:
                                 unique_tup_dict["separate_by_properties"] = dict(

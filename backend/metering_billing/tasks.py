@@ -103,8 +103,9 @@ def calculate_invoice():
                 "organization": old_subscription.organization,
                 "customer": old_subscription.customer,
                 "billing_plan": new_bp,
-                "start_date": old_subscription.scheduled_end_date
-                + relativedelta(seconds=+1),
+                "start_date": date_as_min_dt(
+                    old_subscription.scheduled_end_date + relativedelta(days=+1)
+                ),
                 "auto_renew": True,
                 "is_new": False,
             }

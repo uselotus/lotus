@@ -62,6 +62,7 @@ class MetricHandler(abc.ABC):
         customer: Optional[Customer],
         group_by: Optional[list[str]],
         proration: Optional[METRIC_GRANULARITY],
+        filters: Optional[dict[str, str]],
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         """This method will be used to calculate the usage at the given results_granularity. This is purely how much has been used and will typically be used in dahsboarding to show usage of the metric. You should be able to handle any aggregation type returned in the allowed_usage_aggregation_types method.
 
@@ -95,8 +96,10 @@ class MetricHandler(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         """This method will be used to build the filter args for the get_usage and get_earned_usage_per_day methods. You should build the filter args for the Event model, and return them as a dictionary. You should also handle the case where customer is None, which means that you should return the usage for all customers."""
+        if filters is None:
+            filters = {}
         now = now_utc()
         filter_kwargs = {
             "organization": self.organization,
@@ -128,6 +131,8 @@ class MetricHandler(abc.ABC):
             d = {f"properties__{f.property_name}__in": f.comparison_value}
             q = Q(**d) if f.operator == CATEGORICAL_FILTER_OPERATORS.ISIN else ~Q(**d)
             filter_args.append(q)
+        for filter_name, filter_value in filters.items():
+            filter_args.append(Q(**{f"properties__{filter_name}": filter_value}))
         return filter_args, filter_kwargs
 
     @abc.abstractmethod
@@ -290,6 +295,7 @@ class CounterHandler(MetricHandler):
         customer=None,
         group_by=None,
         proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
@@ -341,7 +347,7 @@ class CounterHandler(MetricHandler):
             return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
         return return_dict
 
-    def get_current_usage(self, subscription, group_by=None):
+    def get_current_usage(self, subscription, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         per_customer = self.get_usage(
@@ -350,6 +356,7 @@ class CounterHandler(MetricHandler):
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
             customer=subscription.customer,
             group_by=group_by,
+            filters=filters,
         )
         if not (
             subscription.customer.customer_name in per_customer
@@ -611,6 +618,7 @@ class StatefulHandler(MetricHandler):
         customer=None,
         group_by=None,
         proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
@@ -860,7 +868,7 @@ class StatefulHandler(MetricHandler):
             usage_dict = new_usage_dict
         return usage_dict
 
-    def get_current_usage(self, subscription, group_by=None):
+    def get_current_usage(self, subscription, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         cur_usg_agg = self.usage_aggregation_type
@@ -873,6 +881,7 @@ class StatefulHandler(MetricHandler):
             end=subscription.end_date,
             customer=subscription.customer,
             group_by=group_by,
+            filters=None,
         )
         self.usage_aggregation_type = cur_usg_agg
         self.granularity = cur_granularity
@@ -880,7 +889,13 @@ class StatefulHandler(MetricHandler):
         return usg
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
+        self,
+        start,
+        end,
+        customer,
+        group_by=None,
+        proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
@@ -1232,10 +1247,18 @@ class RateHandler(MetricHandler):
         return return_dict
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
+        self,
+        start,
+        end,
+        customer,
+        group_by=None,
+        proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         per_customer = self.get_usage(
             start=start,
             end=end,
@@ -1243,6 +1266,7 @@ class RateHandler(MetricHandler):
             customer=customer,
             group_by=group_by,
             proration=proration,
+            filters=filters,
         )
 
         return_dict = {}
