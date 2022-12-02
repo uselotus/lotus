@@ -264,6 +264,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     form.submit();
   };
 
+  /// Submit Pricing Plan Http Request
   const submitPricingPlan = () => {
     form
       .validateFields()
@@ -294,6 +295,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           features: planFeatures,
           usage_billing_frequency: values.usage_billing_frequency,
         };
+        if (values.align_plan == "calendar_aligned") {
+          if (values.plan_duration === "yearly") {
+            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
+          }
+          if (values.plan_duration === "monthly") {
+            initialPlanVersion["day_anchor"] = 1;
+          }
+          if (values.plan_duration === "quarterly") {
+            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
+          }
+        }
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
@@ -332,6 +346,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             make_active: activeVersion,
             make_active_type: activeVersionType,
           };
+          if (values.align_plan == "calendar_aligned") {
+            if (values.plan_duration === "yearly") {
+              newVersion["day_anchor"] = 1;
+              newVersion["month_anchor"] = 1;
+            }
+            if (values.plan_duration === "monthly") {
+              newVersion["day_anchor"] = 1;
+            }
+            if (values.plan_duration === "quarterly") {
+              newVersion["day_anchor"] = 1;
+              newVersion["month_anchor"] = 1;
+            }
+          }
           if (
             values.price_adjustment_type !== undefined &&
             values.price_adjustment_type !== "none"
@@ -422,7 +449,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             align_plan:
               plan.versions[versionIndex].day_anchor !== undefined
                 ? "calendar_aligned"
-                : "none",
+                : "subscription_aligned",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}

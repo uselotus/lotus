@@ -238,10 +238,9 @@ const CreatePlan = () => {
           }
           if (values.plan_duration === "quarterly") {
             initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
           }
         }
-        }
-
         const plan: CreatePlanType = {
           plan_name: values.name,
           plan_duration: values.plan_duration,
