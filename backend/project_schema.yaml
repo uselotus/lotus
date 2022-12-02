@@ -250,7 +250,7 @@ paths:
           description: ''
   /api/customer_access/:
     get:
-      operationId: customer_access_retrieve
+      operationId: customer_access_list
       parameters:
       - in: query
         name: customer_id
@@ -263,11 +263,13 @@ paths:
         schema:
           type: string
           minLength: 1
+        required: true
       - in: query
-        name: feature_name
+        name: subscription_filters
         schema:
-          type: string
-          minLength: 1
+          type: object
+          additionalProperties:
+            type: string
       tags:
       - customer_access
       security:
@@ -278,7 +280,51 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetCustomerAccessSuccess'
+                type: array
+                items:
+                  $ref: '#/components/schemas/GetEventAccess'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCustomerAccessFailure'
+          description: ''
+  /api/customer_feature_access/:
+    get:
+      operationId: customer_feature_access_list
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      - in: query
+        name: feature_name
+        schema:
+          type: string
+          minLength: 1
+        required: true
+      - in: query
+        name: subscription_filters
+        schema:
+          type: object
+          additionalProperties:
+            type: string
+      tags:
+      - customer_feature_access
+      security:
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GetFeatureAccess'
           description: ''
         '400':
           content:
@@ -2248,7 +2294,7 @@ components:
           type: string
           maxLength: 100
         operator:
-          $ref: '#/components/schemas/OperatorC83Enum'
+          $ref: '#/components/schemas/CategoricalFilterOperatorEnum'
         comparison_value:
           type: array
           items:
@@ -2257,6 +2303,11 @@ components:
       - comparison_value
       - operator
       - property_name
+    CategoricalFilterOperatorEnum:
+      enum:
+      - isin
+      - isnotin
+      type: string
     CostAnalysis:
       type: object
       properties:
@@ -2565,15 +2616,20 @@ components:
     DraftInvoice:
       type: object
       properties:
+        cust_connected_to_payment_provider:
+          type: boolean
         subscription:
           allOf:
           - $ref: '#/components/schemas/Subscription'
           readOnly: true
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/InvoiceLineItem'
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
           readOnly: true
+        pricing_unit:
+          $ref: '#/components/schemas/PricingUnit'
+        payment_status:
+          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
         cost_due:
           type: number
           format: double
@@ -2581,18 +2637,13 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        cust_connected_to_payment_provider:
-          type: boolean
-        payment_status:
-          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
-        customer:
-          allOf:
-          - $ref: '#/components/schemas/Customer'
-          readOnly: true
-        pricing_unit:
-          $ref: '#/components/schemas/PricingUnit'
         org_connected_to_cust_payment_provider:
           type: boolean
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+          readOnly: true
       required:
       - cost_due
       - customer
@@ -2691,16 +2742,6 @@ components:
           maxLength: 200
       required:
       - feature_name
-    FeatureUsage:
-      type: object
-      properties:
-        feature_name:
-          type: string
-        subscription_id:
-          type: string
-      required:
-      - feature_name
-      - subscription_id
     FlatFeeBillingTypeEnum:
       enum:
       - in_arrears
@@ -2716,17 +2757,47 @@ components:
       required:
       - detail
       - status
-    GetCustomerAccessSuccess:
+    GetEventAccess:
       type: object
       properties:
-        metrics:
+        event_name:
+          type: string
+        subscription_id:
+          type: string
+        subscription_filters:
+          type: object
+          additionalProperties:
+            type: string
+        subscription_has_event:
+          type: boolean
+        usage_per_metric:
           type: array
           items:
-            $ref: '#/components/schemas/MetricUsage'
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureUsage'
+            $ref: '#/components/schemas/MetricDetail'
+      required:
+      - event_name
+      - subscription_filters
+      - subscription_has_event
+      - subscription_id
+      - usage_per_metric
+    GetFeatureAccess:
+      type: object
+      properties:
+        feature:
+          type: string
+        subscription_id:
+          type: string
+        subscription_filters:
+          type: object
+          additionalProperties:
+            type: string
+        access:
+          type: boolean
+      required:
+      - access
+      - feature
+      - subscription_filters
+      - subscription_id
     ImportCustomerFailure:
       type: object
       properties:
@@ -2795,6 +2866,49 @@ components:
     InitialPlanVersion:
       type: object
       properties:
+        version:
+          type: integer
+          readOnly: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        version_id:
+          type: string
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        usage_billing_frequency:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          nullable: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
         flat_rate:
           type: number
           format: double
@@ -2807,66 +2921,23 @@ components:
           maximum: 12
           minimum: 1
           nullable: true
-        replace_with:
-          type: integer
-          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PlanVersionStatusEnum'
           readOnly: true
-        transition_to:
+        created_by:
           type: string
-          nullable: true
           readOnly: true
         created_on:
           type: string
           format: date-time
           readOnly: true
-        usage_billing_frequency:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
-        status:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersionStatusEnum'
-          readOnly: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustment'
-        version_id:
-          type: string
-          readOnly: true
-        created_by:
-          type: string
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          nullable: true
-        version:
-          type: integer
-          readOnly: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        description:
+        transition_to:
           type: string
           nullable: true
-          maxLength: 200
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3091,6 +3162,28 @@ components:
       - latest
       - average
       type: string
+    MetricDetail:
+      type: object
+      properties:
+        metric_name:
+          type: string
+        metric_id:
+          type: string
+        metric_usage:
+          type: number
+          format: double
+        metric_free_limit:
+          type: number
+          format: double
+        metric_total_limit:
+          type: number
+          format: double
+      required:
+      - metric_free_limit
+      - metric_id
+      - metric_name
+      - metric_total_limit
+      - metric_usage
     MetricGranularityEnum:
       enum:
       - seconds
@@ -3132,41 +3225,6 @@ components:
           maxLength: 200
         status:
           $ref: '#/components/schemas/ProductStatusEnum'
-    MetricUsage:
-      type: object
-      properties:
-        separate_by_properties:
-          type: object
-          additionalProperties:
-            type: string
-        event_name:
-          type: string
-        metric_name:
-          type: string
-        metric_usage:
-          type: number
-          format: double
-        metric_free_limit:
-          type: number
-          format: double
-        metric_total_limit:
-          type: number
-          format: double
-        subscription_id:
-          type: string
-        subscription_uid_values:
-          type: object
-          additionalProperties:
-            type: string
-      required:
-      - event_name
-      - metric_free_limit
-      - metric_name
-      - metric_total_limit
-      - metric_usage
-      - separate_by_properties
-      - subscription_id
-      - subscription_uid_values
     NullEnum:
       enum:
       - null
@@ -3192,11 +3250,6 @@ components:
       - eq
       - lt
       - lte
-      type: string
-    OperatorC83Enum:
-      enum:
-      - isin
-      - isnotin
       type: string
     Organization:
       type: object
@@ -3638,51 +3691,51 @@ components:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
-        num_versions:
+        plan_name:
+          type: string
+          maxLength: 100
+        active_subscriptions:
           type: integer
-          readOnly: true
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
           readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        product_id:
+        plan_id:
           type: string
-          nullable: true
+          maxLength: 100
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/PlanStatusEnum'
+        created_by:
+          type: string
+          readOnly: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
         initial_external_links:
           type: array
           items:
             $ref: '#/components/schemas/InitialExternalPlanLink'
           writeOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
-        status:
-          $ref: '#/components/schemas/PlanStatusEnum'
+        num_versions:
+          type: integer
+          readOnly: true
         target_customer:
           allOf:
           - $ref: '#/components/schemas/CustomerNameAndID'
           readOnly: true
-        plan_name:
+        product_id:
           type: string
-          maxLength: 100
-        created_by:
-          type: string
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
+          nullable: true
       required:
       - active_subscriptions
       - created_by
@@ -4211,7 +4264,7 @@ components:
           type: boolean
         subscription_id:
           type: string
-        filters:
+        subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
@@ -4224,20 +4277,11 @@ components:
     SubscriptionCategoricalFilter:
       type: object
       properties:
-        operator:
-          $ref: '#/components/schemas/OperatorC83Enum'
         value:
           type: string
-        comparison_value:
-          type: array
-          items:
-            type: string
         property_name:
           type: string
-          maxLength: 100
       required:
-      - comparison_value
-      - operator
       - property_name
       - value
     SubscriptionCustomerDetail:
@@ -4284,43 +4328,43 @@ components:
     SubscriptionDetail:
       type: object
       properties:
+        subscription_id:
+          type: string
         customer_id:
           type: string
           writeOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        auto_renew:
+          type: boolean
         plan_id:
           type: string
           writeOnly: true
-        subscription_id:
-          type: string
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
-        end_date:
-          type: string
-          format: date-time
-        filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
         scheduled_end_date:
           type: string
           format: date-time
           readOnly: true
           nullable: true
-        auto_renew:
-          type: boolean
-        start_date:
-          type: string
-          format: date-time
-        customer:
-          allOf:
-          - $ref: '#/components/schemas/Customer'
-          readOnly: true
         is_new:
           type: boolean
         billing_plan:
           allOf:
           - $ref: '#/components/schemas/PlanVersion'
           readOnly: true
+        end_date:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/SubscriptionStatusEnum'
+        start_date:
+          type: string
+          format: date-time
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
       required:
       - billing_plan
       - customer

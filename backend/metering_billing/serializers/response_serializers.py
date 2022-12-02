@@ -66,3 +66,26 @@ class CostAnalysisSerializer(serializers.Serializer):
     total_cost = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
     margin = serializers.DecimalField(decimal_places=10, max_digits=20)
+
+
+class GetFeatureAccessSerializer(serializers.Serializer):
+    feature = serializers.CharField()
+    subscription_id = serializers.CharField()
+    subscription_filters = serializers.DictField(child=serializers.CharField())
+    access = serializers.BooleanField()
+
+
+class MetricDetailSerializer(serializers.Serializer):
+    metric_name = serializers.CharField()
+    metric_id = serializers.CharField()
+    metric_usage = serializers.FloatField()
+    metric_free_limit = serializers.FloatField()
+    metric_total_limit = serializers.FloatField()
+
+
+class GetEventAccessSerializer(serializers.Serializer):
+    event_name = serializers.CharField()
+    subscription_id = serializers.CharField()
+    subscription_filters = serializers.DictField(child=serializers.CharField())
+    subscription_has_event = serializers.BooleanField()
+    usage_per_metric = MetricDetailSerializer(many=True)

@@ -549,48 +549,14 @@ class DraftInvoiceView(APIView):
         return Response(serializer, status=status.HTTP_200_OK)
 
 
-class GetCustomerAccessView(APIView):
+class GetCustomerEventAccessView(APIView):
     permission_classes = []
     authentication_classes = []
 
     @extend_schema(
-        parameters=[GetCustomerAccessRequestSerializer],
+        parameters=[GetCustomerEventAccessRequestSerializer],
         responses={
-            200: inline_serializer(
-                name="GetCustomerAccessSuccess",
-                fields={
-                    "metrics": serializers.ListField(
-                        child=inline_serializer(
-                            name="MetricUsageSerializer",
-                            fields={
-                                "separate_by_properties": serializers.DictField(
-                                    child=serializers.CharField()
-                                ),
-                                "event_name": serializers.CharField(),
-                                "metric_name": serializers.CharField(),
-                                "metric_usage": serializers.FloatField(),
-                                "metric_free_limit": serializers.FloatField(),
-                                "metric_total_limit": serializers.FloatField(),
-                                "subscription_id": serializers.CharField(),
-                                "subscription_uid_values": serializers.DictField(
-                                    child=serializers.CharField()
-                                ),
-                            },
-                        ),
-                        required=False,
-                    ),
-                    "features": serializers.ListField(
-                        child=inline_serializer(
-                            name="FeatureUsageSerializer",
-                            fields={
-                                "feature_name": serializers.CharField(),
-                                "subscription_id": serializers.CharField(),
-                            },
-                        ),
-                        required=False,
-                    ),
-                },
-            ),
+            200: GetEventAccessSerializer(many=True),
             400: inline_serializer(
                 name="GetCustomerAccessFailure",
                 fields={
@@ -606,7 +572,7 @@ class GetCustomerAccessView(APIView):
             return result
         else:
             organization_pk = result
-        serializer = GetCustomerAccessRequestSerializer(data=request.query_params)
+        serializer = GetCustomerEventAccessRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         # try:
         #     username = self.request.user.username
@@ -630,96 +596,165 @@ class GetCustomerAccessView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         event_name = serializer.validated_data.get("event_name")
+        subscriptions = Subscription.objects.select_related("billing_plan").filter(
+            organization_id=organization_pk,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+            customer=customer,
+        )
+        subscription_filters = {
+            k: v
+            for k, v in request.query_params.items()
+            if k not in ["event_name", "customer_id"]
+        }
+        for subscription_filter in subscription_filters:
+            subscriptions = subscriptions.filter(**subscription_filter)
+        metrics = []
+        subscriptions = subscriptions.prefetch_related(
+            "billing_plan__plan_components",
+            "billing_plan__plan_components__billable_metric",
+            "billing_plan__plan_components__tiers",
+            "filters",
+        )
+        for sub in subscriptions:
+            subscription_filters = {}
+            for filter in sub.filters.all():
+                subscription_filters[filter.property_name] = filter.comparison_value[0]
+            single_sub_dict = {
+                "event_name": event_name,
+                "subscription_id": sub.subscription_id,
+                "subscription_filters": subscription_filters,
+                "subscription_has_event": False,
+                "usage_per_metric": [],
+            }
+            for component in sub.billing_plan.plan_components.all():
+                metric = component.billable_metric
+                if metric.event_name == event_name:
+                    single_sub_dict["subscription_has_event"] = True
+                    metric_name = metric.billable_metric_name
+                    tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
+                    free_limit = (
+                        tiers[0].range_end
+                        if tiers[0].type == PRICE_TIER_TYPE.FREE
+                        else None
+                    )
+                    total_limit = tiers[-1].range_end
+                    subscription_id = sub.subscription_id
+                    metric_usage = metric.get_current_usage(sub)
+                    if metric_usage == {}:
+                        unique_tup_dict = {
+                            "metric_name": metric_name,
+                            "metric_usage": 0,
+                            "metric_free_limit": free_limit,
+                            "metric_total_limit": total_limit,
+                            "subscription_id": subscription_id,
+                        }
+                        single_sub_dict["metrics"].append(unique_tup_dict)
+                        continue
+                    custom_metric_usage = metric_usage[customer.customer_name]
+                    for unique_tup, d in custom_metric_usage.items():
+                        i = iter(unique_tup)
+                        try:
+                            _ = next(i)  # i.next() in older versions
+                            groupby_vals = list(i)
+                        except:
+                            groupby_vals = []
+                        usage = list(d.values())[0]
+                        unique_tup_dict = {
+                            "metric_name": metric_name,
+                            "metric_usage": usage,
+                            "metric_free_limit": free_limit,
+                            "metric_total_limit": total_limit,
+                            "separate_by_properties": {},
+                        }
+                        if len(groupby_vals) > 0:
+                            unique_tup_dict["separate_by_properties"] = dict(
+                                zip(component.separate_by, groupby_vals)
+                            )
+                        single_sub_dict["metrics"].append(unique_tup_dict)
+            metrics.append(single_sub_dict)
+        return Response(
+            metrics,
+            status=status.HTTP_200_OK,
+        )
+
+
+class GetCustomerFeatureAccessView(APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    @extend_schema(
+        parameters=[GetCustomerFeatureAccessRequestSerializer],
+        responses={
+            200: GetFeatureAccessSerializer(many=True),
+            400: inline_serializer(
+                name="GetCustomerAccessFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["error"]),
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def get(self, request, format=None):
+        result, success = fast_api_key_validation_and_cache(request)
+        if not success:
+            return result
+        else:
+            organization_pk = result
+        serializer = GetCustomerEventAccessRequestSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        # try:
+        #     username = self.request.user.username
+        # except:
+        #     username = None
+        # posthog.capture(
+        #     POSTHOG_PERSON
+        #     if POSTHOG_PERSON
+        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     event="get_access",
+        #     properties={"organization": organization.company_name},
+        # )
+        customer_id = serializer.validated_data["customer_id"]
+        try:
+            customer = Customer.objects.get(
+                organization_id=organization_pk, customer_id=customer_id
+            )
+        except Customer.DoesNotExist:
+            return Response(
+                {"status": "error", "detail": "Customer not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         feature_name = serializer.validated_data.get("feature_name")
         subscriptions = Subscription.objects.select_related("billing_plan").filter(
             organization_id=organization_pk,
             status=SUBSCRIPTION_STATUS.ACTIVE,
             customer=customer,
         )
-        metrics = []
+        subscription_filters = {
+            k: v
+            for k, v in request.query_params.items()
+            if k not in ["event_name", "customer_id"]
+        }
+        for subscription_filter in subscription_filters:
+            subscriptions = subscriptions.filter(**subscription_filter)
         features = []
-        if event_name:
-            subscriptions = subscriptions.prefetch_related(
-                "billing_plan__plan_components",
-                "billing_plan__plan_components__billable_metric",
-                "billing_plan__plan_components__tiers",
-                "filters",
-            )
-
-            for sub in subscriptions:
-                cache_key = f"customer_id:{customer_id}__event_name:{event_name}"
-                subscription_uid_values = {}
-                for filter in sub.filters.all():
-                    subscription_uid_values[
-                        filter.property_name
-                    ] = filter.comparison_value[0]
-                for component in sub.billing_plan.plan_components.all():
-                    metric = component.billable_metric
-                    if metric.event_name == event_name:
-                        metric_name = metric.billable_metric_name
-                        tiers = sorted(
-                            component.tiers.all(), key=lambda x: x.range_start
-                        )
-                        free_limit = (
-                            tiers[0].range_end
-                            if tiers[0].type == PRICE_TIER_TYPE.FREE
-                            else None
-                        )
-                        total_limit = tiers[-1].range_end
-                        subscription_id = sub.subscription_id
-                        metric_usage = metric.get_current_usage(sub)
-                        if metric_usage is None:
-                            continue
-                        elif metric_usage == {}:
-                            unique_tup_dict = {
-                                "event_name": event_name,
-                                "metric_name": metric_name,
-                                "metric_usage": 0,
-                                "metric_free_limit": free_limit,
-                                "metric_total_limit": total_limit,
-                                "subscription_id": subscription_id,
-                                "separate_by_properties": {},
-                                "subscription_uid_values": subscription_uid_values,
-                            }
-                            metrics.append(unique_tup_dict)
-                            continue
-                        custom_metric_usage = metric_usage[customer.customer_name]
-                        for unique_tup, d in custom_metric_usage.items():
-                            i = iter(unique_tup)
-                            try:
-                                _ = next(i)  # i.next() in older versions
-                                groupby_vals = list(i)
-                            except:
-                                groupby_vals = []
-                            usage = list(d.values())[0]
-                            unique_tup_dict = {
-                                "event_name": event_name,
-                                "metric_name": metric_name,
-                                "metric_usage": usage,
-                                "metric_free_limit": free_limit,
-                                "metric_total_limit": total_limit,
-                                "subscription_id": subscription_id,
-                                "separate_by_properties": {},
-                                "subscription_uid_values": subscription_uid_values,
-                            }
-                            if len(groupby_vals) > 0:
-                                unique_tup_dict["separate_by_properties"] = dict(
-                                    zip(component.separate_by, groupby_vals)
-                                )
-                            metrics.append(unique_tup_dict)
-        elif feature_name:
-            subscriptions = subscriptions.prefetch_related("billing_plan__features")
-            for sub in subscriptions:
-                for feature in sub.billing_plan.features.all():
-                    if feature.feature_name == feature_name:
-                        features.append(
-                            {
-                                "feature_name": feature_name,
-                                "subscription_id": sub.subscription_id,
-                            }
-                        )
+        subscriptions = subscriptions.prefetch_related("billing_plan__features")
+        for sub in subscriptions:
+            subscription_filters = {}
+            for filter in sub.filters.all():
+                subscription_filters[filter.property_name] = filter.comparison_value[0]
+            sub_dict = {
+                "feature_name": feature_name,
+                "subscription_id": sub.subscription_id,
+                "subscription_filters": subscription_filters,
+                "access": False,
+            }
+            for feature in sub.billing_plan.features.all():
+                if feature.feature_name == feature_name:
+                    sub_dict["access"] = True
+            features.append(sub_dict)
         return Response(
-            {"metrics": metrics, "features": features},
+            features,
             status=status.HTTP_200_OK,
         )
 

@@ -1,21 +1,20 @@
 from rest_framework import serializers
 
 
-class GetCustomerAccessRequestSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(required=True)
-    event_name = serializers.CharField(required=False)
-    feature_name = serializers.CharField(required=False)
+class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
+    customer_id = serializers.CharField()
+    event_name = serializers.CharField()
+    subscription_filters = serializers.DictField(
+        child=serializers.CharField(), required=False
+    )
 
-    def validate(self, data):
-        if not data.get("event_name") and not data.get("feature_name"):
-            raise serializers.ValidationError(
-                "Must provide either event_name or feature_name"
-            )
-        if data.get("event_name") and data.get("feature_name"):
-            raise serializers.ValidationError(
-                "Cannot provide both event_name and feature_name"
-            )
-        return data
+
+class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
+    customer_id = serializers.CharField()
+    feature_name = serializers.CharField()
+    subscription_filters = serializers.DictField(
+        child=serializers.CharField(), required=False
+    )
 
 
 class CancelSubscriptionRequestSerializer(serializers.Serializer):

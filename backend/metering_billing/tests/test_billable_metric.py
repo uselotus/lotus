@@ -512,7 +512,7 @@ class TestCalculateMetric:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=45),
+            start_date=now - relativedelta(days=31),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -1059,7 +1059,7 @@ class TestCalculateMetric:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=45),
+            start_date=now - relativedelta(days=31),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -1921,7 +1921,7 @@ class TestCalculateMetricWithFilters:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=45),
+            start_date=now - relativedelta(days=31),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 

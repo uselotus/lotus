@@ -54,11 +54,9 @@ SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class Organization(models.Model):
-    organization_id = models.CharField(
-        default=organization_uuid, max_length=100)
+    organization_id = models.CharField(default=organization_uuid, max_length=100)
     company_name = models.CharField(max_length=100, blank=False, null=False)
-    payment_provider_ids = models.JSONField(
-        default=dict, blank=True, null=True)
+    payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
     payment_plan = models.CharField(
         max_length=40,
@@ -80,8 +78,7 @@ class Organization(models.Model):
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         if not self.default_currency:
-            self.default_currency = PricingUnit.objects.filter(
-                code="USD").first()
+            self.default_currency = PricingUnit.objects.filter(code="USD").first()
         new = not self.pk
         super(Organization, self).save(*args, **kwargs)
         if SVIX_API_KEY != "" and new:
@@ -112,8 +109,7 @@ class WebhookEndpoint(models.Model):
     )
     name = models.CharField(max_length=100, default=" ")
     webhook_url = models.CharField(max_length=300)
-    webhook_secret = models.CharField(
-        max_length=100, default=webhook_secret_uuid)
+    webhook_secret = models.CharField(max_length=100, default=webhook_secret_uuid)
 
     objects = WebhookEndpointManager()
 
@@ -221,8 +217,7 @@ class Product(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_products"
     )
-    product_id = models.CharField(
-        default=product_uuid, max_length=100, unique=True)
+    product_id = models.CharField(default=product_uuid, max_length=100, unique=True)
     status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
     history = HistoricalRecords()
 
@@ -412,8 +407,7 @@ class CustomerBalanceAdjustment(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            prev_amount, new_amount = self.amount, kwargs.get(
-                "amount", self.amount)
+            prev_amount, new_amount = self.amount, kwargs.get("amount", self.amount)
             prev_price_unit, new_price_unit = self.pricing_unit, kwargs.get(
                 "pricing_unit", self.pricing_unit
             )
@@ -469,8 +463,7 @@ class CustomerBalanceAdjustment(models.Model):
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
-        dd_aggregate = self.drawdowns.aggregate(
-            drawdowns=Sum("amount"))["drawdowns"]
+        dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))["drawdowns"]
         drawdowns = dd_aggregate or 0
         return self.amount + drawdowns
 
@@ -580,8 +573,7 @@ class Event(models.Model):
 
 class NumericFilter(models.Model):
     property_name = models.CharField(max_length=100)
-    operator = models.CharField(
-        max_length=10, choices=NUMERIC_FILTER_OPERATORS.choices)
+    operator = models.CharField(max_length=10, choices=NUMERIC_FILTER_OPERATORS.choices)
     comparison_value = models.FloatField()
 
 
@@ -608,8 +600,7 @@ class Metric(models.Model):
         default=METRIC_TYPE.COUNTER,
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
-    billable_metric_name = models.CharField(
-        max_length=200, null=True, blank=True)
+    billable_metric_name = models.CharField(max_length=200, null=True, blank=True)
     metric_id = models.CharField(
         max_length=200, null=False, blank=True, default=metric_uuid
     )
@@ -701,8 +692,7 @@ class Metric(models.Model):
         for component in all_components:
             if component.billable_metric == self:
                 group_by = component.separate_by
-                usage = handler.get_current_usage(
-                    subscription, group_by=group_by)
+                usage = handler.get_current_usage(subscription, group_by=group_by)
                 break
 
         return usage
@@ -860,7 +850,6 @@ class PlanComponent(models.Model):
         billable_metric = self.billable_metric
         revenue_dict = {"revenue": Decimal(0), "subperiods": []}
         for period_start, period_end in periods:
-            print("period_start", period_start, "period_end", period_end)
             all_usage = billable_metric.get_usage(
                 granularity=USAGE_CALC_GRANULARITY.TOTAL,
                 start_date=period_start,
@@ -870,7 +859,6 @@ class PlanComponent(models.Model):
                 proration=self.proration_granularity,
                 filters=subscription.get_filters_dictionary(),
             )
-            print("all_usage", all_usage)
 
             if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
                 # if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
@@ -895,21 +883,15 @@ class PlanComponent(models.Model):
                 metric_granularity, proration_granularity, start_date
             )
             # extract usage
-            separated_usage = all_usage.get(
-                subscription.customer.customer_name, {})
+            separated_usage = all_usage.get(subscription.customer.customer_name, {})
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
-                print("usage by period", usage_by_period)
-                print("metric_granularity", metric_granularity)
-                print("proration_granularity", proration_granularity)
-                print("usage_normalization_factor", usage_normalization_factor)
                 if len(usage_by_period) >= 1:
                     usage_qty = (
                         convert_to_decimal(sum(usage_by_period.values()))
                         / usage_normalization_factor
                     )
-                    print("usage qty", usage_qty)
                     usage_qty = convert_to_decimal(usage_qty)
                     revenue = 0
                     tiers = self.tiers.all()
@@ -976,28 +958,27 @@ class PlanComponent(models.Model):
                 group_by=self.separate_by,
                 proration=self.proration_granularity,
             )
-            nperiods_metric_granularity = max(
-                len(
-                    list(
-                        periods_bwn_twodates(
-                            billable_metric.granularity, period_start, period_end
-                        )
-                    )
-                ),
-                1,
-            )
-            nperiods_proration_granularity = max(
-                len(
-                    list(
-                        periods_bwn_twodates(
-                            self.proration_granularity, period_start, period_end
-                        )
-                    )
-                ),
-                1,
-            )
-            usage_normalization_factor = convert_to_decimal(
-                nperiods_metric_granularity / nperiods_proration_granularity
+            if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
+                # if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
+                #     metric_granularity = METRIC_GRANULARITY.WEEKLY
+                if self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
+                    metric_granularity = METRIC_GRANULARITY.MONTH
+                elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
+                    metric_granularity = METRIC_GRANULARITY.QUARTER
+                else:
+                    plan_dur = subscription.billing_plan.plan.plan_duration
+                    if plan_dur == PLAN_DURATION.MONTHLY:
+                        metric_granularity = METRIC_GRANULARITY.MONTH
+                    elif plan_dur == PLAN_DURATION.QUARTERLY:
+                        metric_granularity = METRIC_GRANULARITY.QUARTER
+                    elif plan_dur == PLAN_DURATION.YEARLY:
+                        metric_granularity = METRIC_GRANULARITY.YEAR
+            else:
+                metric_granularity = billable_metric.granularity
+            proration_granularity = self.proration_granularity
+
+            usage_normalization_factor = get_granularity_ratio(
+                metric_granularity, proration_granularity, start_date
             )
             # extract usage
             for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
@@ -1007,8 +988,7 @@ class PlanComponent(models.Model):
                     for date, usage_qty in usage_by_period.items():
                         date = convert_to_date(date)
                         usage_qty = (
-                            convert_to_decimal(usage_qty) *
-                            usage_normalization_factor
+                            convert_to_decimal(usage_qty) / usage_normalization_factor
                         )
                         running_total_usage += usage_qty
                         revenue = Decimal(0)
@@ -1036,8 +1016,7 @@ class Feature(models.Model):
         Organization, on_delete=models.CASCADE, null=False, related_name="org_features"
     )
     feature_name = models.CharField(max_length=200, null=False)
-    feature_description = models.CharField(
-        max_length=200, blank=True, null=True)
+    feature_description = models.CharField(max_length=200, blank=True, null=True)
 
     class Meta:
         unique_together = ("organization", "feature_name")
@@ -1054,17 +1033,14 @@ class Invoice(models.Model):
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
-    invoice_pdf = models.FileField(
-        upload_to="invoices/", null=True, blank=True)
+    invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
-    payment_status = models.CharField(
-        max_length=40, choices=INVOICE_STATUS.choices)
+    payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
     invoice_id = models.CharField(
         max_length=100, null=False, blank=True, default=invoice_uuid, unique=True
     )
-    external_payment_obj_id = models.CharField(
-        max_length=200, blank=True, null=True)
+    external_payment_obj_id = models.CharField(max_length=200, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
@@ -1155,8 +1131,7 @@ class OrganizationInviteToken(models.Model):
     )
     email = models.EmailField()
     token = models.CharField(max_length=250, default=uuid.uuid4)
-    expire_at = models.DateTimeField(
-        default=now_plus_day, null=False, blank=False)
+    expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
 
 
 class PlanVersion(models.Model):
@@ -1174,10 +1149,8 @@ class PlanVersion(models.Model):
     usage_billing_frequency = models.CharField(
         max_length=40, choices=USAGE_BILLING_FREQUENCY.choices, null=True, blank=True
     )
-    plan = models.ForeignKey(
-        "Plan", on_delete=models.CASCADE, related_name="versions")
-    status = models.CharField(
-        max_length=40, choices=PLAN_VERSION_STATUS.choices)
+    plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
+    status = models.CharField(max_length=40, choices=PLAN_VERSION_STATUS.choices)
     replace_with = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
     )
@@ -1228,8 +1201,7 @@ class PlanVersion(models.Model):
         return str(self.plan) + " v" + str(self.version)
 
     def num_active_subs(self):
-        cnt = self.bp_subscriptions.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE).count()
+        cnt = self.bp_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).count()
         return cnt
 
 
@@ -1273,8 +1245,7 @@ class Plan(models.Model):
         Organization, on_delete=models.CASCADE, related_name="org_plans"
     )
     plan_name = models.CharField(max_length=100, null=False, blank=False)
-    plan_duration = models.CharField(
-        choices=PLAN_DURATION.choices, max_length=40)
+    plan_duration = models.CharField(choices=PLAN_DURATION.choices, max_length=40)
     display_version = models.ForeignKey(
         "PlanVersion", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
@@ -1317,8 +1288,7 @@ class Plan(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                check=(Q(parent_plan__isnull=True) &
-                       Q(target_customer__isnull=True))
+                check=(Q(parent_plan__isnull=True) & Q(target_customer__isnull=True))
                 | Q(parent_plan__isnull=False) & Q(target_customer__isnull=False),
                 name="both_null_or_both_not_null",
             )
@@ -1379,8 +1349,7 @@ class Plan(models.Model):
                 .annotate(
                     active_subscriptions=Count(
                         "bp_subscription",
-                        filter=Q(
-                            bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
+                        filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
                         output_field=models.IntegerField(),
                     )
                 )
@@ -1414,8 +1383,7 @@ class Plan(models.Model):
                 )
                 .prefetch_related("bp_subscriptions")
             )
-            versions.update(status=PLAN_VERSION_STATUS.INACTIVE,
-                            replace_with=None)
+            versions.update(status=PLAN_VERSION_STATUS.INACTIVE, replace_with=None)
             for version in versions:
                 for sub in version.bp_subscriptions.filter(
                     status=SUBSCRIPTION_STATUS.ACTIVE
@@ -1429,8 +1397,7 @@ class Plan(models.Model):
                         bill_usage = (
                             REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
                         )
-                        sub.end_subscription_now(
-                            bill_usage=bill_usage, prorate=True)
+                        sub.end_subscription_now(bill_usage=bill_usage, prorate=True)
                         Subscription.objects.create(
                             billing_plan=new_version,
                             organization=self.organization,
@@ -1560,8 +1527,7 @@ class Subscription(models.Model):
     subscription_id = models.CharField(
         max_length=100, null=False, blank=True, default=subscription_uuid
     )
-    prorated_flat_costs_dict = models.JSONField(
-        default=dict, blank=True, null=True)
+    prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
     flat_fee_already_billed = models.DecimalField(
         decimal_places=10, max_digits=20, default=Decimal(0)
     )
@@ -1655,10 +1621,8 @@ class Subscription(models.Model):
         plan_components_qs = plan.plan_components.all()
         # For each component of the plan, calculate usage/revenue
         for plan_component in plan_components_qs:
-            plan_component_summary = plan_component.calculate_total_revenue(
-                self)
-            sub_dict["components"].append(
-                (plan_component.pk, plan_component_summary))
+            plan_component_summary = plan_component.calculate_total_revenue(self)
+            sub_dict["components"].append((plan_component.pk, plan_component_summary))
         sub_dict["usage_amount_due"] = Decimal(0)
         for component_pk, component_dict in sub_dict["components"]:
             sub_dict["usage_amount_due"] += component_dict["revenue"]
@@ -1691,12 +1655,10 @@ class Subscription(models.Model):
         self.save()
 
     def switch_subscription_bp(self, new_version):
-        old_qty = sum([x["amount"]
-                      for x in self.prorated_flat_costs_dict.values()])
+        old_qty = sum([x["amount"] for x in self.prorated_flat_costs_dict.values()])
         self.billing_plan = new_version
         self.save()
-        new_qty = sum([x["amount"]
-                      for x in self.prorated_flat_costs_dict.values()])
+        new_qty = sum([x["amount"] for x in self.prorated_flat_costs_dict.values()])
         if (
             new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
             and new_version.flat_rate.amount > 0
@@ -1780,8 +1742,7 @@ class OrganizationSetting(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_settings"
     )
-    setting_id = models.CharField(
-        default=uuid.uuid4, max_length=100, unique=True)
+    setting_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
     setting_name = models.CharField(max_length=100, null=False, blank=False)
     setting_value = models.CharField(max_length=100, null=False, blank=False)
     setting_group = models.CharField(max_length=100, null=True, blank=True)
@@ -1849,6 +1810,5 @@ class CustomPricingUnitConversion(models.Model):
         PricingUnit, on_delete=models.CASCADE, related_name="+"
     )
     from_qty = models.DecimalField(max_digits=20, decimal_places=10)
-    to_unit = models.ForeignKey(
-        PricingUnit, on_delete=models.CASCADE, related_name="+")
+    to_unit = models.ForeignKey(PricingUnit, on_delete=models.CASCADE, related_name="+")
     to_qty = models.DecimalField(max_digits=20, decimal_places=10)

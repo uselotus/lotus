@@ -1199,24 +1199,11 @@ class RateHandler(MetricHandler):
         filter_args, filter_kwargs = self._build_filter_kwargs(
             start, end, customer, group_by, filters
         )
-        print(
-            "FILTER ARGS: {}".format(filter_args),
-            "\n",
-            "FILTER KWARGS: {}".format(filter_kwargs),
-        )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
-        print(
-            "PRE GROUPBY ANNOTATION KWARGS: {}".format(pre_groupby_annotation_kwargs),
-            "\n",
-        )
         groupby_kwargs = self._build_groupby_kwargs(
             customer, results_granularity, start, group_by
-        )
-        print(
-            "GROUPBY KWARGS: {}".format(groupby_kwargs),
-            "\n",
         )
 
         q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
