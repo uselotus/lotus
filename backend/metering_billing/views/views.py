@@ -328,7 +328,10 @@ class PeriodMetricUsageView(APIView):
             for customer_name, unique_dict in usage_summary.items():
                 for unique_tuple, period_dict in unique_dict.items():
                     for time, qty in period_dict.items():
-                        qty = convert_to_decimal(qty)
+                        if qty is not None:
+                            qty = convert_to_decimal(qty)
+                        else:
+                            qty = 0
                         customer_identifier = customer_name
                         if len(unique_tuple) > 1:
                             for unique in unique_tuple[1:]:

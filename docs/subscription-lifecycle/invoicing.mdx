@@ -1,0 +1,25 @@
+---
+title: "Invoicing"
+description: "After a subscription ends, an invoice is generated."
+---
+
+Lotus aggregates all of the usage during the subscription and calculates the
+line items and final total that the customer owes your business.
+
+Lotus provides a webhook that will send an invoice-generated event to a URL you
+specify so that your team can stay up to date on the invoices that have been
+issued.
+
+After generating an invoice, Lotus integrates with your payment gateway or
+provider to collect the cash for your invoice.
+
+For every customer, you can choose how each should be invoiced based on the
+current integrations. You may also choose to generate the invoice yourself and
+collect payment without a 3rd-party integration.
+
+We primarily integrate with Stripe to send payment_intents or invoices through
+Stripe Invoice. You can use Stripe to handle the final complexities such as
+sales tax and dunning. We don't currently handle these.
+
+Currently, Lotus is close to integrating with Bill.com and Paddle to expand the
+invoicing + collection options.

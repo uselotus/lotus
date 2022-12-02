@@ -1,0 +1,149 @@
+{
+  "name": "Lotus",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "api": {
+    "baseUrl": "https://api.uselotus.io"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#C3986B",
+    "light": "#FFECD2",
+    "dark": "#3A3A3A",
+    "ultraLight": "#FFFBF4",
+    "ultraDark": "#272727",
+    "background": {
+      "dark": "#171717"
+    },
+    "anchors": {
+      "from": "#C3986B",
+      "to": "#8A5927"
+    }
+  },
+  "topbarCtaButton": {
+    "name": "Sign Up",
+    "url": "https://form.typeform.com/to/pehx2YSQ"
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub Repo",
+      "url": "https://docs.uselotus.io/docs/api-reference/plans/plan-object#:~:text=API%20Reference-,GitHub,-SDK%20Setup"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "API Reference",
+      "icon": "square-terminal",
+      "url": "api-reference"
+    },
+    {
+      "name": "Blog",
+      "icon": "newspaper",
+      "url": "https://www.uselotus.io/blog"
+    },
+    {
+      "name": "Github",
+      "icon": "github",
+      "url": "https://github.com/uselotus/lotus"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Overview",
+      "pages": ["overview/why-lotus", "overview/self-hosting"]
+    },
+    {
+      "group": "Metering",
+      "pages": ["metering/creating-metrics", "metering/logging-events"]
+    },
+    {
+      "group": "Plan Management",
+      "pages": [
+        "plan-management/creating-plans",
+        "plan-management/plan-templates",
+        "plan-management/versioning"
+      ]
+    },
+    {
+      "group": "Subscription Lifecycle",
+      "pages": [
+        "subscription-lifecycle/creating-subscriptions",
+        "subscription-lifecycle/invoicing",
+        "subscription-lifecycle/managing-access"
+      ]
+    },
+    {
+      "group": "Experimenting",
+      "pages": ["experimentation/backtests"]
+    },
+    {
+      "group": "External Integrations",
+      "pages": ["external-integrations/stripe"]
+    },
+    {
+      "group": "Extensibility",
+      "pages": [
+        "extensibility/integrate-payment-providers",
+        "extensibility/custom-metrics"
+      ]
+    },
+    {
+      "group": "Other",
+      "pages": ["contributing"]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/api-overview",
+        {
+          "group": "SDK Setup",
+          "pages": [
+            "api-reference/python-guide",
+            "api-reference/typescript-guide"
+          ]
+        },
+        {
+          "group": "Events",
+          "pages": ["api-reference/events/tracking"]
+        },
+        {
+          "group": "Customers",
+          "pages": [
+            "api-reference/customers/customer-object",
+            "api-reference/customers/create-customer",
+            "api-reference/customers/retrieve-customer",
+            "api-reference/customers/list-customers",
+            "api-reference/customers/get-customer-access"
+          ]
+        },
+        {
+          "group": "Subscriptions",
+          "pages": [
+            "api-reference/subscriptions/subscription-object",
+            "api-reference/subscriptions/create-subscription",
+            "api-reference/subscriptions/retrieve-subscription",
+            "api-reference/subscriptions/cancel-subscription",
+            "api-reference/subscriptions/change-subscription",
+            "api-reference/subscriptions/list-subscriptions"
+          ]
+        },
+        {
+          "group": "Plans",
+          "pages": [
+            "api-reference/plans/plan-object",
+            "api-reference/plans/retrieve-plan",
+            "api-reference/plans/change-plan",
+            "api-reference/plans/list-plans"
+          ]
+        }
+      ]
+    }
+  ],
+  "footerSocials": {
+    "linkedin": "https://www.linkedin.com/company/uselotusio/",
+    "twitter": "https://twitter.com/uselotusio",
+    "instagram": "https://www.instagram.com/uselotusio/"
+  }
+}
