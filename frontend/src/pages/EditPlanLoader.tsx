@@ -56,7 +56,11 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
 
   return (
     <Fragment>
-      {isLoading && <LoadingSpinner />}
+      {isLoading && (
+        <div className="flex justify-center">
+          <LoadingSpinner />{" "}
+        </div>
+      )}
       {isError && (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="mb-5">Could Not Load Plan</h2>

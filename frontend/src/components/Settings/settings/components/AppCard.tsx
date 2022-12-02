@@ -26,6 +26,7 @@ export const AppCard = ({
         style={{
           boxShadow: "0 2px 4px 0 #a8a8a833",
         }}
+        hoverable={true}
         title={<Avatar shape="square" src={icon} />}
         size="small"
         extra={

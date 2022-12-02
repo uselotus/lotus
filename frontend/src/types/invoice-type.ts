@@ -1,4 +1,5 @@
-import {PricingUnit} from "./pricing-unit-type";
+import { CustomerType } from "./customer-type";
+import { PricingUnit } from "./pricing-unit-type";
 
 export interface InvoiceType {
   cost_due: string;
@@ -14,23 +15,28 @@ export interface InvoiceType {
 export interface DraftInvoiceType {
   line_items: LineItem[];
   cost_due: string;
-  cost_due_currency: string;
+  customer: CustomerType;
+  pricing_unit: {
+    code: string;
+    name: string;
+    symbol: string;
+  };
   cust_connected_to_payment_provider: boolean;
   org_connected_to_cust_payment_provider: boolean;
 }
 
 export interface BalanceAdjustments {
-    amount: number;
-    amount_currency: string;
-    description: string;
-    created: string;
-    effective_at: string;
-    expires_at: string;
-    adjustment_id: string;
-    customer_id: string;
-    parent_adjustment_id: string;
-    pricing_unit: PricingUnit;
-    status: "active" | "inactive";
+  amount: number;
+  amount_currency: string;
+  description: string;
+  created: string;
+  effective_at: string;
+  expires_at: string;
+  adjustment_id: string;
+  customer_id: string;
+  parent_adjustment_id: string;
+  pricing_unit: PricingUnit;
+  status: "active" | "inactive";
 }
 
 interface InvoiceCustomer {
