@@ -30,7 +30,6 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
   var currentStart = 0;
   var currentEnd: number | undefined;
   const arr2: ValidateTiersType = tiers.map((tier, index) => {
-    console.log(tier.type);
     if (index === 0) {
       if (tier.range_end !== undefined && tier.range_start >= tier.range_end) {
         return { isValid: false, message: "Range is not valid" };
@@ -64,9 +63,6 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
         tier.range_start > currentEnd + 1 ||
         (tier.range_end !== undefined && tier.range_start >= tier.range_end)
       ) {
-        console.log(tier);
-        console.log("Ok1", tier.range_start < currentEnd);
-        console.log("ok2", currentEnd);
         return { isValid: false, message: "Range is not valid." };
       } else {
         currentStart = tier.range_start;
@@ -75,7 +71,6 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
         if (!["flat", "free", "per_unit"].includes(tier.type)) {
           return { isValid: false, message: "Tiers are not valid" };
         } else if (tier.type === "per_unit") {
-          console.log(" expect you to get hit");
           return typeof tier.cost_per_batch === "number" &&
             typeof tier.metric_units_per_batch === "number" &&
             tier.metric_units_per_batch > 0 &&
@@ -94,7 +89,7 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
     }
     return { isValid: true, message: "" };
   });
-  console.log(arr2);
+
   return arr2;
 };
 
@@ -107,11 +102,11 @@ interface Item {
 
 const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
   const [form] = Form.useForm();
-  const count = useRef(0);
+
   return (
     <Form form={form} component={false}>
       <EditableContext.Provider value={form}>
-        <tr data-index-number={String(count.current++)} {...props} />
+        <tr {...props} />
       </EditableContext.Provider>
     </Form>
   );
