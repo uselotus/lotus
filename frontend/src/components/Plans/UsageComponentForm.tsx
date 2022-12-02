@@ -469,18 +469,6 @@ function UsageComponentForm({
               form.submit();
               form.resetFields();
               setErrorMessage("");
-            } else {
-              console.log(
-                validateTiers(currentTiers).filter(
-                  (item) => item.isValid === false
-                )
-              );
-              console.log(currentTiers);
-              validateTiers(currentTiers)
-                .filter((item) => item.isValid === false)
-                .forEach((item) => {
-                  setErrorMessage(item.message);
-                });
             }
           })
           .catch((info) => {});
