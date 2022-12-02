@@ -51,7 +51,7 @@ jobs:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
-      WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+      DJSTRIPE_WEBHOOK_SECRET: ${{ secrets.DJSTRIPE_WEBHOOK_SECRET }}
       DEBUG: False
       KAFKA_URL: "localhost:9092"
 
@@ -125,7 +125,7 @@ jobs:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
       STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
-      WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+      DJSTRIPE_WEBHOOK_SECRET: ${{ secrets.DJSTRIPE_WEBHOOK_SECRET }}
       DEBUG: False
       KAFKA_URL: "localhost:9092"
 

@@ -29,6 +29,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
+from svix.api import EventTypeIn, Svix
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,8 +41,10 @@ except:
 
 VITE_API_URL = config("VITE_API_URL", default="http://localhost:8000")
 VITE_STRIPE_CLIENT = config("VITE_STRIPE_CLIENT", default="")
-EVENT_CACHE_FLUSH_SECONDS = config("EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
-EVENT_CACHE_FLUSH_COUNT = config("EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
+EVENT_CACHE_FLUSH_SECONDS = config(
+    "EVENT_CACHE_FLUSH_SECONDS", default=180, cast=int)
+EVENT_CACHE_FLUSH_COUNT = config(
+    "EVENT_CACHE_FLUSH_COUNT", default=1000, cast=int)
 DOCKERIZED = config("DOCKERIZED", default=False, cast=bool)
 ON_HEROKU = config("ON_HEROKU", default=False, cast=bool)
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -55,7 +58,8 @@ POSTGRES_USER = config("POSTGRES_USER", default="lotus")
 POSTGRES_PASSWORD = config("POSTGRES_PASSWORD", default="lotus")
 SENTRY_DSN = config("SENTRY_DSN", default="")
 SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
-PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
+PRODUCT_ANALYTICS_OPT_IN = config(
+    "PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
 STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default="sk_live_")
@@ -67,9 +71,11 @@ STRIPE_SECRET_KEY = (
     STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
 )
 # Get it from the section in the Stripe dashboard where you added the webhook endpoint
-DJSTRIPE_WEBHOOK_SECRET = config("WEBHOOK_SECRET", default="whsec_")
+DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+# Webhooks for Svix
+SVIX_API_KEY = config("SVIX_API_KEY", default="")
 
 
 # Optional Observalility Services
@@ -103,7 +109,8 @@ posthog.host = "https://app.posthog.com"
 
 if not PRODUCT_ANALYTICS_OPT_IN or DEBUG:
     posthog.disabled = True
-POSTHOG_PERSON = "self_hosted_" + str(hash(SECRET_KEY)) if SELF_HOSTED else None
+POSTHOG_PERSON = "self_hosted_" + \
+    str(hash(SECRET_KEY)) if SELF_HOSTED else None
 
 if DEBUG or SELF_HOSTED:
     ALLOWED_HOSTS = ["*"]
@@ -111,6 +118,7 @@ else:
     ALLOWED_HOSTS = [
         "*uselotus.io",
     ]
+
 
 # Application definition
 
@@ -161,7 +169,8 @@ else:
 EMAIL_DOMAIN = os.environ.get("MAILGUN_DOMAIN")
 EMAIL_USERNAME = "noreply"
 DEFAULT_FROM_EMAIL = f"{EMAIL_USERNAME}@{EMAIL_DOMAIN}"
-SERVER_EMAIL = "you@uselotus.io"  # ditto (default from-email for Django errors)
+# ditto (default from-email for Django errors)
+SERVER_EMAIL = "you@uselotus.io"
 
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
@@ -198,11 +207,6 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
-            "libraries": {
-                "render_vite_bundle": (
-                    "metering_billing.template_tags.render_vite_bundle"
-                ),
-            },
         },
     },
 ]
@@ -210,7 +214,8 @@ TEMPLATES = [
 WSGI_APPLICATION = "lotus.wsgi.application"
 
 AUTH_USER_MODEL = "metering_billing.User"
-AUTHENTICATION_BACKENDS = ["metering_billing.model_backend.EmailOrUsernameModelBackend"]
+AUTHENTICATION_BACKENDS = [
+    "metering_billing.model_backend.EmailOrUsernameModelBackend"]
 SOCIAL_AUTH_JSONFIELD_ENABLED = True
 # SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # SESSION_COOKIE_AGE = 2 * 60 * 60  # set just 10 seconds to test
@@ -279,8 +284,9 @@ def key_deserializer(key):
 
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
-KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
-if type(KAFKA_EVENTS_TOPIC) == bytes:
+KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + \
+    config("EVENTS_TOPIC", default="test-topic")
+if type(KAFKA_EVENTS_TOPIC) is bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
@@ -516,12 +522,13 @@ REST_KNOX = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^https://\w+\.uselotus\.io$",
-    ]
+# if DEBUG:
+#     CORS_ALLOW_ALL_ORIGINS = True
+# else:
+#     CORS_ALLOWED_ORIGIN_REGEXES = [
+#         r"^https://\w+\.uselotus\.io$",
+#     ]
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
@@ -562,3 +569,17 @@ LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
 META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
 django_heroku.settings(locals(), logging=False)
+
+# create svix events
+if SVIX_API_KEY != "":
+    svix = Svix(SVIX_API_KEY)
+    list_response_event_type_out = [
+        x.name for x in svix.event_type.list().data]
+    if "invoice.created" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is created",
+                archived=False,
+                name="invoice.created",
+            )
+        )

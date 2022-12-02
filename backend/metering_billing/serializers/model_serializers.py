@@ -3,12 +3,12 @@ from decimal import Decimal
 from typing import Union
 
 from actstream.models import Action
+from dateutil.relativedelta import relativedelta
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
-    Alert,
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -27,30 +27,22 @@ from metering_billing.models import (
     PlanVersion,
     PriceAdjustment,
     PriceTier,
+    PricingUnit,
     Product,
     Subscription,
     User,
+    WebhookEndpoint,
+    WebhookTrigger,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
-from metering_billing.utils.enums import (
-    BATCH_ROUNDING_TYPE,
-    EVENT_TYPE,
-    FLAT_FEE_BILLING_TYPE,
-    INVOICE_STATUS,
-    MAKE_PLAN_VERSION_ACTIVE_TYPE,
-    METRIC_GRANULARITY,
-    ORGANIZATION_STATUS,
-    PLAN_DURATION,
-    PLAN_STATUS,
-    PLAN_VERSION_STATUS,
-    PRICE_TIER_TYPE,
-    REPLACE_IMMEDIATELY_TYPE,
-    SUBSCRIPTION_STATUS,
-)
+from metering_billing.utils.enums import *
 from rest_framework import serializers
 
-from .serializer_utils import SlugRelatedFieldWithOrganization
+from .serializer_utils import (
+    SlugRelatedFieldWithOrganization,
+    SlugRelatedFieldWithOrganizationOrNull,
+)
 
 
 class OrganizationUserSerializer(serializers.ModelSerializer):
@@ -78,17 +70,39 @@ class OrganizationInvitedUserSerializer(serializers.ModelSerializer):
         return "Admin"
 
 
+class PricingUnitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PricingUnit
+        fields = ("code", "name", "symbol")
+
+    def validate(self, attrs):
+        super().validate(attrs)
+        code_exists = PricingUnit.objects.filter(
+            Q(organization=self.context["organization"]) | Q(organization__isnull=True),
+            code=attrs["code"],
+        ).exists()
+        if code_exists:
+            raise serializers.ValidationError("Pricing unit code already exists")
+        return attrs
+
+    def create(self, validated_data):
+        return PricingUnit.objects.create(**validated_data)
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = (
+            "organization_id",
             "company_name",
             "payment_plan",
             "payment_provider_ids",
             "users",
+            "default_currency",
         )
 
     users = serializers.SerializerMethodField()
+    default_currency = PricingUnitSerializer()
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(organization=obj)
@@ -105,6 +119,48 @@ class OrganizationSerializer(serializers.ModelSerializer):
             for x in invited_users_data
         ]
         return users_data + invited_users_data
+
+
+class OrganizationUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("default_currency_code",)
+
+    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
+    )
+
+    def update(self, instance, validated_data):
+        assert (
+            type(validated_data.get("default_currency")) == PricingUnit
+            or validated_data.get("default_currency") is None
+        )
+        instance.default_currency = validated_data.get(
+            "default_currency", instance.default_currency
+        )
+        instance.save()
+        return instance
+
+
+class CustomerUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = ("default_currency_code",)
+
+    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
+    )
+
+    def update(self, instance, validated_data):
+        assert (
+            type(validated_data.get("default_currency")) == PricingUnit
+            or validated_data.get("default_currency") is None
+        )
+        instance.default_currency = validated_data.get(
+            "default_currency", instance.default_currency
+        )
+        instance.save()
+        return instance
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -135,14 +191,73 @@ class EventSerializer(serializers.ModelSerializer):
         return ret
 
 
-class AlertSerializer(serializers.ModelSerializer):
+class WebhookTriggerSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Alert
+        model = WebhookTrigger
+        fields = [
+            "trigger_name",
+        ]
+
+
+class WebhookEndpointSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WebhookEndpoint
         fields = (
-            "type",
-            "webhook_url",
+            "webhook_endpoint_id",
             "name",
+            "webhook_url",
+            "webhook_secret",
+            "triggers",
+            "triggers_in",
         )
+        extra_kwargs = {
+            "webhook_endpoint_id": {"read_only": True},
+            "webhook_secret": {"read_only": True},
+            "triggers": {"read_only": True},
+            "triggers_in": {"write_only": True},
+        }
+
+    triggers_in = serializers.ListField(
+        child=serializers.ChoiceField(choices=WEBHOOK_TRIGGER_EVENTS.choices),
+        write_only=True,
+        required=True,
+    )
+    triggers = WebhookTriggerSerializer(
+        many=True,
+        read_only=True,
+    )
+
+    def validate(self, attrs):
+        if len(attrs.get("triggers_in", [])) == 0:
+            raise serializers.ValidationError("At least one trigger must be specified")
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        triggers_in = validated_data.pop("triggers_in")
+        trigger_objs = []
+        for trigger in triggers_in:
+            wh_trigger_obj = WebhookTrigger(trigger_name=trigger)
+            trigger_objs.append(wh_trigger_obj)
+        webhook_endpoint = WebhookEndpoint.objects.create_with_triggers(
+            **validated_data, triggers=trigger_objs
+        )
+        return webhook_endpoint
+
+    def update(self, instance, validated_data):
+        triggers_in = validated_data.pop("triggers_in")
+        instance.name = validated_data.get("name", instance.name)
+        instance.webhook_url = validated_data.get("webhook_url", instance.webhook_url)
+        for trigger in instance.triggers.all():
+            if trigger.trigger_name not in triggers_in:
+                trigger.delete()
+            else:
+                triggers_in.remove(trigger.trigger_name)
+        for trigger in triggers_in:
+            WebhookTrigger.objects.create(
+                webhook_endpoint=instance, trigger_name=trigger
+            )
+        instance.save()
+        return instance
 
 
 ## USER
@@ -222,6 +337,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider_id",
             "properties",
             "integrations",
+            "default_currency_code",
         )
         extra_kwargs = {
             "customer_id": {"required": True},
@@ -232,6 +348,13 @@ class CustomerSerializer(serializers.ModelSerializer):
         required=False, allow_null=True, write_only=True
     )
     email = serializers.EmailField(required=True)
+    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+        source="default_currency",
+        write_only=True,
+    )
 
     def validate(self, data):
         super().validate(data)
@@ -314,10 +437,45 @@ class NumericFilterSerializer(serializers.ModelSerializer):
         fields = ("property_name", "operator", "comparison_value")
 
 
+class MetricUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Metric
+        fields = (
+            "billable_metric_name",
+            "status",
+        )
+
+    def validate(self, data):
+        data = super().validate(data)
+        if data.get("status") == METRIC_STATUS.ARCHIVED:
+            all_active_plan_versions = PlanVersion.objects.filter(
+                organization=self.context["organization"],
+                plan__in=Plan.objects.filter(status=PLAN_STATUS.ACTIVE),
+            ).prefetch_related("plan_components", "plan_components__billable_metric")
+            for plan_version in all_active_plan_versions:
+                if plan_version.num_active_subs() == 0:
+                    continue
+                for component in plan_version.plan_components.all():
+                    if component.billable_metric == self.instance:
+                        raise serializers.ValidationError(
+                            "Cannot archive metric that is used in active plan"
+                        )
+        return data
+
+    def update(self, instance, validated_data):
+        instance.billable_metric_name = validated_data.get(
+            "billable_metric_name", instance.billable_metric_name
+        )
+        instance.status = validated_data.get("status", instance.status)
+        instance.save()
+        return instance
+
+
 class MetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = (
+            "metric_id",
             "event_name",
             "property_name",
             "usage_aggregation_type",
@@ -335,6 +493,7 @@ class MetricSerializer(serializers.ModelSerializer):
             "metric_type": {"required": True},
             "usage_aggregation_type": {"required": True},
             "event_name": {"required": True},
+            "metric_id": {"read_only": True},
         }
 
     numeric_filters = NumericFilterSerializer(
@@ -604,7 +763,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
         pc = PlanComponent.objects.create(**validated_data)
         for tier in tiers:
             tier = PriceTierSerializer().create(tier)
-            assert type(tier) == PriceTier
+            assert type(tier) is PriceTier
             tier.plan_component = pc
             tier.save()
         return pc
@@ -811,7 +970,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         if data.get("plan_components"):
             component_metrics = []
             for component in data.get("plan_components"):
-                if component.get("metric") in component_metrics:
+                if component.get("billable_metric") in component_metrics:
                     raise serializers.ValidationError(
                         "Plan components must have unique metrics."
                     )
@@ -835,7 +994,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         components_data = validated_data.pop("plan_components", [])
         if len(components_data) > 0:
             components = PlanComponentSerializer(many=True).create(components_data)
-            assert type(components[0]) == PlanComponent
+            assert type(components[0]) is PlanComponent
         else:
             components = []
         features_data = validated_data.pop("features", [])
@@ -1133,6 +1292,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "auto_renew",
             "is_new",
             "subscription_id",
+            "align_to_next_period_start",
         )
         read_only_fields = (
             "customer",
@@ -1159,6 +1319,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         source="billing_plan.plan",
         queryset=Plan.objects.all(),
         write_only=True,
+    )
+    align_to_next_period_start = serializers.BooleanField(
+        required=False, default=False, write_only=True
     )
 
     # READ ONLY
@@ -1189,10 +1352,27 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        align_to_next_period_start = validated_data.pop(
+            "align_to_next_period_start", False
+        )
         sub = super().create(validated_data)
+        if align_to_next_period_start:
+            sub.end_date = calculate_end_date(
+                sub.billing_plan.plan.plan_duration,
+                sub.start_date,
+                clip_to_period_end=True,
+            )
+            sub.save()
         # new subscription means we need to create an invoice if its pay in advance
         if sub.billing_plan.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            generate_invoice(sub, flat_fee_behavior="full_amount", include_usage=False)
+            if align_to_next_period_start:
+                generate_invoice(
+                    sub,
+                    flat_fee_cutoff_date=sub.end_date - relativedelta(days=1),
+                    include_usage=False,
+                )
+            else:
+                generate_invoice(sub, include_usage=False)
         return sub
 
 
@@ -1207,10 +1387,6 @@ class SubscriptionDetailSerializer(SubscriptionSerializer):
 
 
 class SubscriptionInvoiceSerializer(SubscriptionSerializer):
-    class Meta:
-        model = Customer
-        fields = ("customer_name",)
-
     class Meta(SubscriptionSerializer.Meta):
         model = Subscription
         fields = fields = tuple(
@@ -1282,7 +1458,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             instance.switch_subscription_bp(new_bp)
         elif validated_data.get("status") or new_bp:
             replace_type = validated_data.get("replace_immediately_type")
-            prorate = True if new_bp else False
+            prorate = new_bp is not None
             bill_usage = (
                 replace_type
                 == REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
@@ -1494,11 +1670,10 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
             "quantity",
             "subtotal",
             "billing_type",
-            "invoice_id",
             "plan_version_id",
+            "metadata",
         )
 
-    invoice_id = serializers.CharField(source="invoice.invoice_id", read_only=True)
     plan_version_id = serializers.CharField(
         source="associated_plan_version.plan_version_id", read_only=True
     )
@@ -1510,7 +1685,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = (
             "invoice_id",
             "cost_due",
-            "cost_due_currency",
+            "pricing_unit",
             "issue_date",
             "payment_status",
             "cust_connected_to_payment_provider",
@@ -1523,9 +1698,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         )
 
     cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
+        max_digits=10,
+        decimal_places=2,
     )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
+    pricing_unit = PricingUnitSerializer()
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionSerializer(read_only=True)
     line_items = InvoiceLineItemSerializer(
@@ -1533,35 +1709,70 @@ class InvoiceSerializer(serializers.ModelSerializer):
     )
 
 
+class DraftInvoiceSerializer(InvoiceSerializer):
+    class Meta(InvoiceSerializer.Meta):
+        model = Invoice
+        fields = tuple(
+            set(InvoiceSerializer.Meta.fields)
+            - set(
+                [
+                    "invoice_id",
+                    "issue_date",
+                    "external_payment_obj_id",
+                    "external_payment_obj_type",
+                ]
+            )
+        )
+
+    payment_status = serializers.ChoiceField(
+        choices=[INVOICE_STATUS.DRAFT], required=True
+    )
+
+
 class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
-            "customer",
+            "adjustment_id",
+            "customer_id",
             "amount",
-            "amount_currency",
+            "pricing_unit_code",
+            "pricing_unit",
             "description",
-            "created",
             "effective_at",
             "expires_at",
+            "status",
+            "parent_adjustment_id",
         )
 
-
-class DraftInvoiceSerializer(InvoiceSerializer):
-    class Meta(InvoiceSerializer.Meta):
-        model = Invoice
-        fields = (
-            "cost_due",
-            "cost_due_currency",
-            "cust_connected_to_payment_provider",
-            "org_connected_to_cust_payment_provider",
-            "line_items",
-        )
-
-    cost_due = serializers.DecimalField(
-        max_digits=10, decimal_places=2, source="cost_due.amount"
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
     )
-    cost_due_currency = serializers.CharField(source="cost_due.currency")
+    pricing_unit_code = SlugRelatedFieldWithOrganizationOrNull(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=True,
+        source="pricing_unit",
+        write_only=True,
+    )
+    pricing_unit = PricingUnitSerializer(read_only=True)
+    parent_adjustment_id = SlugRelatedFieldWithOrganization(
+        slug_field="adjustment_id",
+        required=False,
+        source="parent_adjustment",
+        read_only=True,
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        amount = data.get("amount", 0)
+        customer = data["customer"]
+        if amount <= 0:
+            raise serializers.ValidationError("Amount must be non-zero")
+        return data
 
 
 class CustomerDetailSerializer(serializers.ModelSerializer):
@@ -1571,19 +1782,19 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "customer_id",
             "email",
             "customer_name",
-            "balance_adjustments",
             "invoices",
             "total_amount_due",
             "next_amount_due",
             "subscriptions",
             "integrations",
+            "default_currency",
         )
 
     subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
-    balance_adjustments = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
     next_amount_due = serializers.SerializerMethodField()
+    default_currency = PricingUnitSerializer()
 
     def get_subscriptions(self, obj) -> SubscriptionCustomerDetailSerializer(many=True):
         return SubscriptionCustomerDetailSerializer(
@@ -1594,13 +1805,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")
         timeline = InvoiceSerializer(timeline, many=True).data
-        return timeline
-
-    def get_balance_adjustments(
-        self, obj
-    ) -> CustomerBalanceAdjustmentSerializer(many=True):
-        timeline = self.context.get("balance_adjustments")
-        timeline = CustomerBalanceAdjustmentSerializer(timeline, many=True).data
         return timeline
 
     def get_total_amount_due(self, obj) -> float:

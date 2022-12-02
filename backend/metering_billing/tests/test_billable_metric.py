@@ -283,7 +283,7 @@ class TestCalculateMetric:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
         )
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
@@ -336,7 +336,7 @@ class TestCalculateMetric:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=23),
+            start_date=now - relativedelta(days=46),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -358,7 +358,7 @@ class TestCalculateMetric:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
         )
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
@@ -512,7 +512,7 @@ class TestCalculateMetric:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=21),
+            start_date=now - relativedelta(days=45),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -538,7 +538,7 @@ class TestCalculateMetric:
             granularity=METRIC_GRANULARITY.MONTH,
             event_type=EVENT_TYPE.DELTA,
         )
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test"
         )
@@ -615,7 +615,7 @@ class TestCalculateMetric:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
         )
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test"
         )
@@ -761,13 +761,12 @@ class TestCalculateMetric:
             granularity=METRIC_GRANULARITY.MONTH,
             event_type=EVENT_TYPE.DELTA,
         )
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test"
         )
-        event_times = [time_created] + [
-            time_created + relativedelta(days=i) for i in range(8)
-        ]
+        event_times = [time_created + relativedelta(days=i) for i in range(8)]
+        print("event times", event_times)
         for groupby_dim_1 in ["foo", "bar"]:
             for groupby_dimension_2 in ["baz", "qux"]:
                 for groupby_dimension_3 in ["quux", "quuz"]:
@@ -1060,7 +1059,7 @@ class TestCalculateMetric:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=21),
+            start_date=now - relativedelta(days=45),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -1180,7 +1179,7 @@ class TestCalculateMetricProrationForStateful:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.HOUR,
         )
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
@@ -1239,7 +1238,7 @@ class TestCalculateMetricProrationForStateful:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=23),
+            start_date=now - relativedelta(days=46),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -1286,7 +1285,7 @@ class TestCalculateMetricProrationForStateful:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.DAY,
         )
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
@@ -1341,7 +1340,7 @@ class TestCalculateMetricProrationForStateful:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=23),
+            start_date=now - relativedelta(days=46),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -1479,105 +1478,105 @@ class TestCalculateMetricProrationForStateful:
                 assert day["revenue"] == 0
         assert data["total_revenue"] == float(usage_revenue_dict["revenue"])
 
-    def test_metric_granularity_total_on_yearly_plan_proration_quarterly(
-        self, billable_metric_test_common_setup
-    ):
-        num_billable_metrics = 0
-        setup_dict = billable_metric_test_common_setup(
-            num_billable_metrics=num_billable_metrics,
-            auth_method="session_auth",
-            user_org_and_api_key_org_different=False,
-        )
-        plan = setup_dict["plan"]
-        plan.plan_duration = PLAN_DURATION.YEARLY
-        plan.save()
-        billable_metric = Metric.objects.create(
-            organization=setup_dict["org"],
-            event_name="number_of_users",
-            property_name="number",
-            usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
-            granularity=METRIC_GRANULARITY.TOTAL,
-        )
-        time_created = now_utc() - relativedelta(months=5)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
-        event_times = [time_created + relativedelta(days=i) for i in range(0, 4)]
-        properties = (
-            1 * [{"number": 4}]
-            + 1 * [{"number": 8}]
-            + 1 * [{"number": 12}]
-            + [{"number": 0}]
-        )  # 4 corresponds to 1 user-year, 8 to 2 user-years, 12 to 3 user-years.. so total will
-        # be 3 user-years, which is 200... we should make sure that we have 100 each day cuz
-        # that's how much we "earned" that day
-        baker.make(
-            Event,
-            event_name="number_of_users",
-            properties=iter(properties),
-            organization=setup_dict["org"],
-            time_created=iter(event_times),
-            customer=customer,
-            _quantity=4,
-        )
-        billing_plan = PlanVersion.objects.create(
-            organization=setup_dict["org"],
-            flat_rate=0,
-            version=1,
-            plan=setup_dict["plan"],
-        )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.QUARTER,
-        )
-        free_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
-            range_start=0,
-            range_end=1,
-        )
-        paid_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
-            range_start=1,
-            cost_per_batch=100,
-            metric_units_per_batch=1,
-        )
-        now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(months=6, day=1, hour=0),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-        )
+    # def test_metric_granularity_total_on_yearly_plan_proration_quarterly(
+    #     self, billable_metric_test_common_setup
+    # ):
+    #     num_billable_metrics = 0
+    #     setup_dict = billable_metric_test_common_setup(
+    #         num_billable_metrics=num_billable_metrics,
+    #         auth_method="session_auth",
+    #         user_org_and_api_key_org_different=False,
+    #     )
+    #     plan = setup_dict["plan"]
+    #     plan.plan_duration = PLAN_DURATION.YEARLY
+    #     plan.save()
+    #     billable_metric = Metric.objects.create(
+    #         organization=setup_dict["org"],
+    #         event_name="number_of_users",
+    #         property_name="number",
+    #         usage_aggregation_type=METRIC_AGGREGATION.MAX,
+    #         metric_type=METRIC_TYPE.STATEFUL,
+    #         granularity=METRIC_GRANULARITY.TOTAL,
+    #     )
+    #     time_created = now_utc() - relativedelta(months=5)
+    #     customer = baker.make(
+    #         Customer, organization=setup_dict["org"], customer_name="foo"
+    #     )
+    #     event_times = [time_created + relativedelta(days=i) for i in range(0, 4)]
+    #     properties = (
+    #         1 * [{"number": 4}]
+    #         + 1 * [{"number": 8}]
+    #         + 1 * [{"number": 12}]
+    #         + [{"number": 0}]
+    #     )  # 4 corresponds to 1 user-year, 8 to 2 user-years, 12 to 3 user-years.. so total will
+    #     # be 3 user-years, which is 200... we should make sure that we have 100 each day cuz
+    #     # that's how much we "earned" that day
+    #     baker.make(
+    #         Event,
+    #         event_name="number_of_users",
+    #         properties=iter(properties),
+    #         organization=setup_dict["org"],
+    #         time_created=iter(event_times),
+    #         customer=customer,
+    #         _quantity=4,
+    #     )
+    #     billing_plan = PlanVersion.objects.create(
+    #         organization=setup_dict["org"],
+    #         flat_rate=0,
+    #         version=1,
+    #         plan=setup_dict["plan"],
+    #     )
+    #     plan_component = PlanComponent.objects.create(
+    #         billable_metric=billable_metric,
+    #         plan_version=billing_plan,
+    #         proration_granularity=METRIC_GRANULARITY.QUARTER,
+    #     )
+    #     free_tier = PriceTier.objects.create(
+    #         plan_component=plan_component,
+    #         type=PRICE_TIER_TYPE.FREE,
+    #         range_start=0,
+    #         range_end=1,
+    #     )
+    #     paid_tier = PriceTier.objects.create(
+    #         plan_component=plan_component,
+    #         type=PRICE_TIER_TYPE.PER_UNIT,
+    #         range_start=1,
+    #         cost_per_batch=100,
+    #         metric_units_per_batch=1,
+    #     )
+    #     now = now_utc()
+    #     subscription = Subscription.objects.create(
+    #         organization=setup_dict["org"],
+    #         billing_plan=billing_plan,
+    #         customer=customer,
+    #         start_date=now - relativedelta(months=6, day=1, hour=0),
+    #         status=SUBSCRIPTION_STATUS.ACTIVE,
+    #     )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
-        assert usage_revenue_dict["revenue"] == Decimal(200)
+    #     usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+    #     assert usage_revenue_dict["revenue"] == Decimal(200)
 
-        payload = {}
-        response = setup_dict["client"].get(
-            reverse("cost_analysis"),
-            {
-                "customer_id": customer.customer_id,
-                "start_date": subscription.start_date.date(),
-                "end_date": subscription.end_date.date(),
-            },
-        )
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        per_day = data["per_day"]
-        amt_per_day = None
-        for day in per_day:
-            if day["revenue"] != 0 and not amt_per_day:
-                amt_per_day = day["revenue"]
-                assert amt_per_day == 100
-                assert amt_per_day == day["revenue"]
-            else:
-                assert day["revenue"] == 0 or day["revenue"] == amt_per_day
-        assert data["total_revenue"] == usage_revenue_dict["revenue"]
+    #     payload = {}
+    #     response = setup_dict["client"].get(
+    #         reverse("cost_analysis"),
+    #         {
+    #             "customer_id": customer.customer_id,
+    #             "start_date": subscription.start_date.date(),
+    #             "end_date": subscription.end_date.date(),
+    #         },
+    #     )
+    #     assert response.status_code == status.HTTP_200_OK
+    #     data = response.json()
+    #     per_day = data["per_day"]
+    #     amt_per_day = None
+    #     for day in per_day:
+    #         if day["revenue"] != 0 and not amt_per_day:
+    #             amt_per_day = day["revenue"]
+    #             assert amt_per_day == 100
+    #             assert amt_per_day == day["revenue"]
+    #         else:
+    #             assert day["revenue"] == 0 or day["revenue"] == amt_per_day
+    #     assert data["total_revenue"] == usage_revenue_dict["revenue"]
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1670,7 +1669,7 @@ class TestCalculateMetricWithFilters:
         )
         billable_metric.numeric_filters.add(numeric_filter)
         billable_metric.save()
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
@@ -1724,7 +1723,7 @@ class TestCalculateMetricWithFilters:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=23),
+            start_date=now - relativedelta(days=46),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
@@ -1755,7 +1754,7 @@ class TestCalculateMetricWithFilters:
         )
         billable_metric.categorical_filters.add(numeric_filter)
         billable_metric.save()
-        time_created = now_utc() - relativedelta(days=21)
+        time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
@@ -1921,7 +1920,7 @@ class TestCalculateMetricWithFilters:
             organization=setup_dict["org"],
             billing_plan=billing_plan,
             customer=customer,
-            start_date=now - relativedelta(days=21),
+            start_date=now - relativedelta(days=45),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 

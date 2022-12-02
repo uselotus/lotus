@@ -1,3 +1,5 @@
+import {PricingUnit} from "./pricing-unit-type";
+
 export interface InvoiceType {
   cost_due: string;
   cost_due_currency: string;
@@ -9,13 +11,26 @@ export interface InvoiceType {
   external_payment_obj_type: string;
 }
 
+export interface DraftInvoiceType {
+  line_items: LineItem[];
+  cost_due: string;
+  cost_due_currency: string;
+  cust_connected_to_payment_provider: boolean;
+  org_connected_to_cust_payment_provider: boolean;
+}
+
 export interface BalanceAdjustments {
-  amount: number;
-  amount_currency: string;
-  description: string;
-  created: string;
-  effective_at: string;
-  expires_at: string;
+    amount: number;
+    amount_currency: string;
+    description: string;
+    created: string;
+    effective_at: string;
+    expires_at: string;
+    adjustment_id: string;
+    customer_id: string;
+    parent_adjustment_id: string;
+    pricing_unit: PricingUnit;
+    status: "active" | "inactive";
 }
 
 interface InvoiceCustomer {
@@ -28,10 +43,14 @@ interface InvoiceOrganization {
 }
 
 interface LineItem {
-  components: object;
-  flat_amount_due: number;
-  total_amount_due: number;
-  usage_amount_due: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  quantity: number;
+  sutotal: string;
+  billing_type: string;
+  plan_version_id: string;
+  metadata: any;
 }
 
 export interface MarkInvoiceStatusAsPaid {

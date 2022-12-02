@@ -9,7 +9,6 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateCustomerID, DuplicateMetric
 from metering_billing.models import (
-    Alert,
     Backtest,
     Customer,
     CustomerBalanceAdjustment,
@@ -23,9 +22,12 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
+    PricingUnit,
     Product,
     Subscription,
     User,
+    WebhookEndpoint,
+    WebhookTrigger,
 )
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.backtest_serializers import (
@@ -33,33 +35,12 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestDetailSerializer,
     BacktestSummarySerializer,
 )
-from metering_billing.serializers.model_serializers import (
-    ActionSerializer,
-    AlertSerializer,
-    CustomerDetailSerializer,
-    CustomerSerializer,
-    EventSerializer,
-    ExternalPlanLinkSerializer,
-    FeatureSerializer,
-    InvoiceSerializer,
-    InvoiceUpdateSerializer,
-    MetricSerializer,
-    OrganizationSettingSerializer,
-    PlanDetailSerializer,
-    PlanSerializer,
-    PlanUpdateSerializer,
-    PlanVersionSerializer,
-    PlanVersionUpdateSerializer,
-    ProductSerializer,
-    SubscriptionDetailSerializer,
-    SubscriptionSerializer,
-    SubscriptionUpdateSerializer,
-    UserSerializer,
-)
+from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc, now_utc_ts
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
+    METRIC_STATUS,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
@@ -67,11 +48,15 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
 )
 from rest_framework import mixins, serializers, status, viewsets
+from rest_framework.exceptions import APIException, ValidationError
+
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from svix.api import MessageIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class CustomPagination(CursorPagination):
@@ -130,14 +115,21 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     API endpoint that allows alerts to be viewed or edited.
     """
 
-    queryset = Alert.objects.filter(type="webhook")
-    serializer_class = AlertSerializer
+    serializer_class = WebhookEndpointSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = ["get", "post", "head", "delete", "patch"]
+    lookup_field = "webhook_endpoint_id"
+    permission_classes_per_method = {
+        "create": [IsAuthenticated],
+        "list": [IsAuthenticated],
+        "retrieve": [IsAuthenticated],
+        "destroy": [IsAuthenticated],
+        "partial_update": [IsAuthenticated],
+    }
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return super().get_queryset().filter(organization=organization)
+        return WebhookEndpoint.objects.filter(organization=organization)
 
     def get_serializer_context(self):
         context = super(WebhookViewSet, self).get_serializer_context()
@@ -146,7 +138,38 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        try:
+            serializer.save(organization=parse_organization(self.request))
+        except ValueError as e:
+            raise APIException(e)
+
+    def perform_destroy(self, instance):
+        if SVIX_API_KEY != "":
+            svix = Svix(SVIX_API_KEY)
+            svix.endpoint.delete(
+                instance.organization.organization_id,
+                instance.webhook_endpoint_id,
+            )
+        instance.delete()
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except:
+                username = None
+            organization = parse_organization(self.request)
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username if username else organization.company_name + " (API Key)"
+                ),
+                event=f"{self.action}_webhook",
+                properties={"organization": organization.company_name},
+            )
+        return response
 
 
 class CursorSetPagination(CustomPagination):
@@ -219,12 +242,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
     permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "customer_id"
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = ["get", "post", "head", "patch"]
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
         "create": [IsAuthenticated | HasUserAPIKey],
-        "destroy": [IsAuthenticated],
+        "partial_update": [IsAuthenticated | HasUserAPIKey],
     }
 
     def get_queryset(self):
@@ -249,6 +272,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "retrieve":
             return CustomerDetailSerializer
+        elif self.action == "partial_update":
+            return CustomerUpdateSerializer
         return CustomerSerializer
 
     def perform_create(self, serializer):
@@ -269,15 +294,11 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 ~Q(payment_status=INVOICE_STATUS.DRAFT),
                 organization=organization,
                 customer=customer,
-            )
-            balance_adjustments = CustomerBalanceAdjustment.objects.filter(
-                customer=customer,
-            )
+            ).order_by("-issue_date")
             context.update(
                 {
                     "total_amount_due": total_amount_due,
                     "invoices": invoices,
-                    "balance_adjustments": balance_adjustments,
                     "next_amount_due": next_amount_due,
                 }
             )
@@ -303,18 +324,31 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
 
-class MetricViewSet(viewsets.ModelViewSet):
+class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Billable Metrics.
     """
 
-    serializer_class = MetricSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = ["get", "post", "head", "patch"]
+    lookup_field = "metric_id"
+    permission_classes_per_method = {
+        "list": [IsAuthenticated | HasUserAPIKey],
+        "retrieve": [IsAuthenticated | HasUserAPIKey],
+        "create": [IsAuthenticated | HasUserAPIKey],
+        "partial_update": [IsAuthenticated],
+    }
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return Metric.objects.filter(organization=organization)
+        return Metric.objects.filter(
+            organization=organization, status=METRIC_STATUS.ACTIVE
+        )
+
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return MetricUpdateSerializer
+        return MetricSerializer
 
     def get_serializer_context(self):
         context = super(MetricViewSet, self).get_serializer_context()
@@ -361,7 +395,7 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     serializer_class = FeatureSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = ["get", "post", "head"]
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
@@ -596,13 +630,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             user = self.request.user
         else:
             user = None
-        if user:
-            if instance.status == PLAN_STATUS.ARCHIVED:
-                action.send(
-                    user,
-                    verb="archived",
-                    action_object=instance,
-                )
+        if user and instance.status == PLAN_STATUS.ARCHIVED:
+            action.send(
+                user,
+                verb="archived",
+                action_object=instance,
+            )
 
 
 class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -794,48 +827,6 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return super().list(request)
 
 
-class AlertViewSet(viewsets.ModelViewSet):
-    """
-    A simple ViewSet for viewing and editing Alerts.
-    """
-
-    serializer_class = AlertSerializer
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-    http_method_names = ["get", "post", "head", "put", "delete"]
-
-    def get_queryset(self):
-        organization = parse_organization(self.request)
-        return Alert.objects.filter(organization=organization)
-
-    def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
-
-    def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-        if status.is_success(response.status_code):
-            try:
-                username = self.request.user.username
-            except:
-                username = None
-            organization = parse_organization(self.request)
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
-                event=f"{self.action}_alert",
-                properties={"organization": organization.company_name},
-            )
-        return response
-
-    def get_serializer_context(self):
-        context = super(AlertViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
-        context.update({"organization": organization})
-        return context
-
-
 class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Backtests.
@@ -843,7 +834,11 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
     lookup_field = "backtest_id"
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
@@ -902,7 +897,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = "product_id"
-    http_method_names = ["get", "post", "head", "delete"]
+    http_method_names = [
+        "get",
+        "post",
+        "head",
+    ]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -1049,16 +1048,124 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
             filter_kwargs["setting_group"] = setting_group
         return OrganizationSetting.objects.filter(**filter_kwargs)
 
+
+class PricingUnitViewSet(
+    mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet
+):
+    """
+    A simple ViewSet for viewing and editing PricingUnits.
+    """
+
+    serializer_class = PricingUnitSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head"]
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return PricingUnit.objects.filter(
+            Q(organization=organization) | Q(organization__isnull=True)
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
+    def get_serializer_context(self):
+        context = super(PricingUnitViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+
+class OrganizationViewSet(
+    PermissionPolicyMixin,
+    mixins.ListModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    A simple ViewSet for viewing and editing OrganizationSettings.
+    """
+
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "patch", "head"]
+    permission_classes_per_method = {
+        "list": [IsAuthenticated],
+        "partial_update": [IsAuthenticated],
+    }
+    lookup_field = "organization_id"
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return Organization.objects.filter(pk=organization.pk)
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        obj = queryset.first()
+        return obj
+
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return OrganizationUpdateSerializer
+        return OrganizationSerializer
+
+    def get_serializer_context(self):
+        context = super(OrganizationViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+
+class CustomerBalanceAdjustmentViewSet(
+    PermissionPolicyMixin,
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+    """
+
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "delete", "head"]
+    serializer_class = CustomerBalanceAdjustmentSerializer
+    permission_classes_per_method = {
+        "list": [IsAuthenticated],
+        "create": [IsAuthenticated],
+        "destroy": [IsAuthenticated],
+    }
+    lookup_field = "adjustment_id"
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": parse_organization(self.request)}
+        customer_id = self.request.query_params.get("customer_id")
+        if customer_id:
+            filter_kwargs["customer__customer_id"] = customer_id
+        return CustomerBalanceAdjustment.objects.filter(**filter_kwargs)
+
+    def get_serializer_context(self):
+        context = super(CustomerBalanceAdjustmentViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+    def perform_create(self, serializer):
+        serializer.save(organization=parse_organization(self.request))
+
     @extend_schema(
         parameters=[
             inline_serializer(
-                name="SettingFilterSerializer",
+                name="BalanceAdjustmentCustomerFilter",
                 fields={
-                    "setting_name": serializers.CharField(required=False),
-                    "setting_group": serializers.CharField(required=False),
+                    "customer_id": serializers.CharField(required=True),
                 },
             ),
         ],
     )
     def list(self, request):
         return super().list(request)
+
+    def perform_destroy(self, instance):
+        if instance.amount <= 0:
+            raise ValidationError("Cannot delete a negative adjustment.")
+        instance.zero_out(reason="voided")

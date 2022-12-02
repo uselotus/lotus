@@ -6,6 +6,11 @@ import {
   CustomerDetailType,
 } from "../types/customer-type";
 import {
+  WebhookEndpoint,
+  WebhookEndpointCreate,
+  WebhookEndpointUpdate,
+} from "../types/webhook-type";
+import {
   PlanType,
   CreatePlanType,
   UpdatePlanType,
@@ -58,7 +63,13 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
-import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
+import {
+  DraftInvoiceType,
+  InvoiceType,
+} from "../types/invoice-type";
+import {BalanceAdjustments, MarkInvoiceStatusAsPaid} from "../types/invoice-type";
+import {CreateBalanceAdjustmentType} from "../types/balance-adjustment";
+import { PricingUnit} from "../types/pricing-unit-type";
 
 const cookies = new Cookies();
 
@@ -99,6 +110,8 @@ export const Customer = {
     requests.post("api/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("api/customer_totals/"),
+  updateCustomer: (customer_id: string, default_currency_code:string): Promise<CustomerDetailType> =>
+    requests.patch(`api/customers/${customer_id}/`, {default_currency_code:default_currency_code}),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`api/customer_detail/`, { params: { customer_id } }),
   //Subscription handling
@@ -187,12 +200,16 @@ export const Plan = {
     requests.patch(`api/plan_versions/${version_id}/`, post),
 };
 
-export const Alerts = {
-  getUrls: (): Promise<any> => requests.get("api/webhooks/"),
-  addUrl: (url: string): Promise<any> =>
-    requests.post("api/webhooks/", { webhook_url: url }),
-  deleteUrl: (id: number): Promise<any> =>
-    requests.delete(`api/webhooks/${id}`),
+export const Webhook = {
+  getEndpoints: (): Promise<WebhookEndpoint> => requests.get("api/webhooks/"),
+  createEndpoint: (post: WebhookEndpointCreate): Promise<WebhookEndpoint> =>
+    requests.post("api/webhooks/", post),
+  deleteEndpoint: (wh_id: string): Promise<WebhookEndpoint> =>
+    requests.delete(`api/webhooks/${wh_id}/`),
+  editEndpoint: (
+    wh_id: number,
+    post: WebhookEndpointUpdate
+  ): Promise<WebhookEndpoint> => requests.patch(`api/webhooks/${wh_id}/`, post),
 };
 
 export const Authentication = {
@@ -253,9 +270,11 @@ export const Authentication = {
 export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("api/organization/invite/", { email }),
-  get: (): Promise<OrganizationType[]> => requests.get("api/organization/"),
+  get: (): Promise<OrganizationType[]> => requests.get("api/organizations/"),
   getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
     requests.get("api/actions/", { params: { c: cursor } }),
+  updateOrganization: (org_id: string, default_currency_code:string): Promise<CustomerDetailType> =>
+    requests.patch(`api/organizations/${org_id}/`, {default_currency_code:default_currency_code}),
 };
 
 export const GetRevenue = {
@@ -317,6 +336,8 @@ export const Metrics = {
     requests.post("api/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>
     requests.delete(`api/metrics/${id}`),
+  archiveMetric: (id: string): Promise<{}> =>
+    requests.patch(`api/metrics/${id}/`, { status: "archived" }),
 };
 
 export const Events = {
@@ -383,4 +404,30 @@ export const Invoices = {
       payment_status: data.payment_status,
     });
   },
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType[]> => {
+    return requests.get("api/draft_invoice/", { params: { customer_id } });
+  },
+};
+
+export const BalanceAdjustment = {
+  createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
+    requests.post("api/balance_adjustments/", post),
+
+  getCreditsByCustomer: (params: {customer_id: string, format?: string}): Promise<BalanceAdjustments[]> => {
+      if(params.format) {
+          return requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`)
+      }
+      return requests.get(`api/balance_adjustments/?customer_id=${params.customer_id}`)
+  },
+
+  deleteCredit: (adjustment_id: string): Promise<any> =>
+    requests.delete(`api/balance_adjustments/${adjustment_id}/`),
+};
+
+export const PricingUnits = {
+    create: (post: PricingUnit): Promise<PricingUnit> =>
+        requests.post("api/pricing_units/", post),
+
+    list: (): Promise<PricingUnit[]> =>
+        requests.get(`api/pricing_units/`),
 };
