@@ -188,3 +188,9 @@ class ORGANIZATION_STATUS(models.TextChoices):
 
 class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
     INVOICE_CREATED = ("invoice.created", _("invoice.created"))
+
+
+class FLAT_FEE_BEHAVIOR_ON_CANCEL(models.TextChoices):
+    REFUND = ("refund", _("Refund"))
+    PRORATE = ("prorate", _("Prorate"))
+    CHARGE_FULL = ("charge_full", _("Charge Full"))

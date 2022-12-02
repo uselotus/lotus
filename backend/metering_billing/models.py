@@ -353,6 +353,7 @@ class Customer(models.Model):
                 subscription,
                 draft=True,
                 charge_next_plan=True,
+                flat_fee_cutoff_date=subscription.end_date,
             )
             total += inv.cost_due
             inv.delete()
@@ -1188,13 +1189,11 @@ class PlanVersion(models.Model):
         "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
     )
     day_anchor = models.SmallIntegerField(
-        default=1,
         validators=[MinValueValidator(1), MaxValueValidator(31)],
         null=True,
         blank=True,
     )
     month_anchor = models.SmallIntegerField(
-        default=1,
         validators=[MinValueValidator(1), MaxValueValidator(12)],
         null=True,
         blank=True,
@@ -1416,7 +1415,10 @@ class Plan(models.Model):
                         bill_usage = (
                             REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL
                         )
-                        sub.end_subscription_now(bill_usage=bill_usage, prorate=True)
+                        sub.end_subscription_now(
+                            bill_usage=bill_usage,
+                            flat_fee_behavior=FLAT_FEE_BEHAVIOR_ON_CANCEL.PRORATE,
+                        )
                         Subscription.objects.create(
                             billing_plan=new_version,
                             organization=self.organization,
@@ -1473,16 +1475,18 @@ class SubscriptionManager(models.Model):
 
     def handle_add_subscription(self, subscription):
         if self.day_anchor is None:
-            self.day_anchor = subscription.start_date.day
-        if (
-            self.month_anchor is None
-            and subscription.billing_plan.plan.plan_duration
-            in [
+            if subscription.billing_plan.day_anchor is not None:
+                self.day_anchor = subscription.billing_plan.day_anchor
+            else:
+                self.day_anchor = subscription.start_date.day
+        if self.month_anchor is None:
+            if subscription.billing_plan.month_anchor is not None:
+                self.month_anchor = subscription.billing_plan.month_anchor
+            elif subscription.billing_plan.plan.plan_duration in [
                 PLAN_DURATION.YEARLY,
                 PLAN_DURATION.QUARTERLY,
-            ]
-        ):
-            self.month_anchor = subscription.start_date.month
+            ]:
+                self.month_anchor = subscription.start_date.month
         self.save()
 
     def handle_remove_subscription(self):
@@ -1572,7 +1576,10 @@ class Subscription(models.Model):
                 anchor_month=anchor_month,
             )
         if not self.scheduled_end_date:
-            self.scheduled_end_date = self.end_date
+            self.scheduled_end_date = calculate_end_date(
+                self.billing_plan.plan.plan_duration,
+                self.start_date,
+            )
         if not self.next_billing_date or self.next_billing_date < now:
             start_date = self.start_date
             next_billing_date = self.start_date
@@ -1612,6 +1619,7 @@ class Subscription(models.Model):
                         "plan_version_id": self.billing_plan.version_id,
                         "amount": float(self.billing_plan.flat_rate) / len(dates_bwn),
                     }
+            self.prorated_flat_costs_dict = flat_fee_dictionary
         super(Subscription, self).save(*args, **kwargs)
 
     def get_filters_dictionary(self):
@@ -1651,19 +1659,25 @@ class Subscription(models.Model):
         )
         return sub_dict
 
-    def end_subscription_now(self, bill_usage=True, prorate=True):
+    def end_subscription_now(
+        self, bill_usage=True, flat_fee_behavior=FLAT_FEE_BEHAVIOR_ON_CANCEL.CHARGE_FULL
+    ):
         if self.status != SUBSCRIPTION_STATUS.ACTIVE:
-            raise Exception(
-                "Subscription needs to be active to end it. Subscription status is {}".format(
-                    self.status
-                )
-            )
+            return
         self.auto_renew = False
         now = now_utc()
+        old_end_date = self.end_date
         self.end_date = now
+        flat_fee_cutoff_date = (
+            old_end_date
+            if flat_fee_behavior == FLAT_FEE_BEHAVIOR_ON_CANCEL.CHARGE_FULL
+            else (
+                now if flat_fee_behavior == FLAT_FEE_BEHAVIOR_ON_CANCEL.PRORATE else -1
+            )
+        )
         generate_invoice(
             self,
-            flat_fee_cutoff_date=now if prorate else None,
+            flat_fee_cutoff_date=flat_fee_cutoff_date,
             include_usage=bill_usage,
         )
         self.status = SUBSCRIPTION_STATUS.ENDED
@@ -1683,7 +1697,9 @@ class Subscription(models.Model):
             and new_version.flat_rate > 0
             and new_qty > old_qty
         ):
-            generate_invoice(self, include_usage=False)
+            generate_invoice(
+                self, flat_fee_cutoff_date=self.end_date, include_usage=False
+            )
 
     def calculate_earned_revenue_per_day(self):
         return_dict = {}

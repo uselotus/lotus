@@ -21,6 +21,7 @@ from .models import (
     PlanComponent,
     PlanVersion,
     Subscription,
+    SubscriptionManager,
     User,
     WebhookEndpoint,
 )
@@ -36,6 +37,7 @@ admin.site.register(WebhookEndpoint)
 admin.site.register(User, CustomAdmin)
 admin.site.register(Customer, SimpleHistoryAdmin)
 admin.site.register(Event)
+admin.site.register(SubscriptionManager)
 admin.site.register(Plan, SimpleHistoryAdmin)
 admin.site.register(Backtest)
 admin.site.register(Metric, SimpleHistoryAdmin)

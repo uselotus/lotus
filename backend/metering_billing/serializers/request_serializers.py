@@ -4,6 +4,7 @@ from rest_framework import serializers
 class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField()
     event_name = serializers.CharField()
+    metric_id = serializers.CharField(required=False)
     subscription_filters = serializers.DictField(
         child=serializers.CharField(), required=False
     )

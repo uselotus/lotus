@@ -138,7 +138,7 @@ urlpatterns = [
     path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
     path("api/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
     path(
-        "api/customer_access/",
+        "api/customer_metric_access/",
         GetCustomerEventAccessView.as_view(),
         name="customer_access",
     ),

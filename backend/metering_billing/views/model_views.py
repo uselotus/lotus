@@ -643,13 +643,14 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated | HasUserAPIKey]
-    http_method_names = ["get", "post", "head", "patch"]
+    http_method_names = ["get", "post", "head", "patch", "delete"]
     lookup_field = "subscription_id"
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],
         "create": [IsAuthenticated | HasUserAPIKey],
         "partial_update": [IsAuthenticated | HasUserAPIKey],
+        "delete": [IsAuthenticated | HasUserAPIKey],
     }
 
     def get_serializer_context(self):
@@ -659,10 +660,27 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return context
 
     def get_queryset(self):
+        if self.action == "list":
+            args = []
+            serializer = SubscriptionListFilterSerializer(
+                self.request.query_params
+            ).is_valid(raise_exception=True)
+            args.append(Q(status__in=serializer.validated_data["status"]))
+            if serializer.validated_data.get("plan_id"):
+                args.append(
+                    Q(billing_plan__plan__plan_id=serializer.validated_data["plan_id"])
+                )
+            if serializer.validated_data.get("customer_id"):
+                args.append(
+                    Q(customer__customer_id=serializer.validated_data["customer_id"])
+                )
+        else:
+            args = [Q(status__in=[SUBSCRIPTION_STATUS.ACTIVE])]
         organization = parse_organization(self.request)
         qs = (
             Subscription.objects.filter(
-                organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+                *args,
+                organization=organization,
             )
             .select_related("customer")
             .select_related("billing_plan")
@@ -679,6 +697,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     queryset=PriceTier.objects.all(),
                 )
             )
+
         return qs
 
     def perform_create(self, serializer):
@@ -693,6 +712,28 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 action_object=instance.customer,
                 target=instance.billing_plan,
             )
+
+    @extend_schema(
+        parameters=[SubscriptionListFilterSerializer],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request)
+
+    @extend_schema(
+        parameters=[SubscriptionCancelRequestSerializer],
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request)
+
+    def perform_destroy(self, instance):
+        serializer = SubscriptionCancelRequestSerializer(
+            self.request.query_params
+        ).is_valid(raise_exception=True)
+        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
+        bill_usage = serializer.validated_data["bill_usage"]
+        instance.end_subscription_now(
+            flat_fee_behavior=flat_fee_behavior, bill_usage=bill_usage
+        )
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -767,15 +808,19 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             ~Q(payment_status=INVOICE_STATUS.DRAFT),
             Q(organization=parse_organization(self.request)),
         ]
-        customer_id = self.request.query_params.get("customer_id")
-        if customer_id:
-            args.append(Q(customer__customer_id=customer_id))
-        payment_status = self.request.query_params.get("payment_status")
-        if payment_status and payment_status in [
-            INVOICE_STATUS.PAID,
-            INVOICE_STATUS.UNPAID,
-        ]:
-            args.append(Q(payment_status=payment_status))
+        if self.action == "list":
+            args = []
+            serializer = InvoiceListFilterSerializer(
+                self.request.query_params
+            ).is_valid(raise_exception=True)
+            args.append(
+                Q(payment_status__in=serializer.validated_data["payment_status"])
+            )
+            if serializer.validated_data.get("customer_id"):
+                args.append(
+                    Q(customer__customer_id=serializer.validated_data["customer_id"])
+                )
+
         return Invoice.objects.filter(*args)
 
     def get_serializer_class(self):
@@ -809,18 +854,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
     @extend_schema(
-        parameters=[
-            inline_serializer(
-                name="InvoiceFilterSerializer",
-                fields={
-                    "customer_id": serializers.CharField(required=False),
-                    "payment_status": serializers.ChoiceField(
-                        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID],
-                        required=False,
-                    ),
-                },
-            ),
-        ],
+        parameters=[InvoiceListFilterSerializer],
     )
     def list(self, request):
         return super().list(request)

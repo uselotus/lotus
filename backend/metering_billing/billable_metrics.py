@@ -1245,7 +1245,6 @@ class RateHandler(MetricHandler):
         q_gb = rate_per_event.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(new_usage_qty=Max("usage_qty"))
 
-        print("q_post_gb_ann", q_post_gb_ann)
         return_dict = {}
         unique_groupby_props = ["customer_name"] + group_by
         for row in q_post_gb_ann:
