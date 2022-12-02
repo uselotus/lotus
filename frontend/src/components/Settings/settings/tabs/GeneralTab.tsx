@@ -1,8 +1,22 @@
 // @ts-ignore
 import React, { FC, useState } from "react";
-import { useMutation, useQuery, UseQueryResult } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  UseQueryResult,
+  useQueryClient,
+} from "react-query";
 import { useNavigate } from "react-router-dom";
-import { Divider, Typography, Form, Input, Button, Modal, Select } from "antd";
+import {
+  Divider,
+  Typography,
+  Form,
+  Input,
+  Button,
+  Modal,
+  Select,
+  Tag,
+} from "antd";
 import { Organization, PricingUnits } from "../../../../api/api";
 import { EditOutlined } from "@ant-design/icons";
 import { PricingUnit } from "../../../../types/pricing-unit-type";
@@ -23,6 +37,8 @@ const GeneralTab: FC = () => {
   const [email, setEmail] = useState("");
   const [isEdit, setIsEdit] = useState(false);
   const [form] = Form.useForm();
+  const queryClient = useQueryClient();
+  const [currentCurrency, setCurrentCurrency] = useState("");
 
   const {
     data: pricingUnits,
@@ -35,24 +51,9 @@ const GeneralTab: FC = () => {
       })
   );
 
-  const getCurrencies = () => {
-    const items = data || [];
-    if (false) {
-      return [
-        ...items,
-        {
-          code: "All",
-          name: "All Currencies",
-          symbol: "",
-        },
-      ];
-    }
-    return items;
-  };
-
   const { data, isLoading, isError } = useQuery(["organization"], () =>
     Organization.get().then((res) => {
-      console.log(res);
+      setCurrentCurrency(res[0].default_currency.code);
       return res[0];
     })
   );
@@ -89,6 +90,7 @@ const GeneralTab: FC = () => {
         toast.success("Successfully Updated Default Currency", {
           position: toast.POSITION.TOP_CENTER,
         });
+        queryClient.invalidateQueries("organization");
       },
       onError: () => {
         toast.error("Failed to Update Default Currency", {
@@ -115,7 +117,15 @@ const GeneralTab: FC = () => {
         </p>
         <p className=" text-[16px]">
           <b className="">Default Organization Currency:</b>{" "}
-          {data?.default_currency?.name} ({data?.default_currency?.symbol})
+          {data ? (
+            <Tag size="large">
+              {data.default_currency?.name +
+                " " +
+                data?.default_currency?.symbol}
+            </Tag>
+          ) : (
+            "N/A"
+          )}
         </p>
 
         <div className="">
@@ -124,7 +134,7 @@ const GeneralTab: FC = () => {
           </Button>
         </div>
       </div>
-      {/* <Modal
+      <Modal
         title="Edit Organization Settings"
         visible={isEdit}
         onCancel={() => setIsEdit(false)}
@@ -133,19 +143,19 @@ const GeneralTab: FC = () => {
           if (data) {
             updateOrg.mutate({
               org_id: data.organization_id,
-              default_currency_code: form.getFieldValue(
-                "default_currency_code"
-              ),
+              default_currency_code: currentCurrency,
             });
+            form.resetFields();
           }
           setIsEdit(false);
         }}
       >
-        <div className="flex flex-col w-6/12 justify-between">
+        <div className="flex flex-col justify-between">
           <Form
             form={form}
             initialValues={{
               company_name: data?.company_name,
+              default_currency: data?.default_currency?.code,
             }}
           >
             <Form.Item
@@ -157,23 +167,22 @@ const GeneralTab: FC = () => {
                 },
               ]}
             >
-              <Input />
+              <Input disabled={true} />
             </Form.Item>
             <Form.Item
               label="Default Organization Currency"
               name="default_currency"
             >
               <Select
-                size="small"
-                // onChange={setCurrentCurrency}
-                options={getCurrencies()?.map((pc) => {
+                onChange={setCurrentCurrency}
+                options={pricingUnits?.map((pc) => {
                   return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
                 })}
               />
             </Form.Item>
           </Form>
         </div>
-      </Modal> */}
+      </Modal>
     </div>
   );
 };

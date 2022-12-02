@@ -1,7 +1,7 @@
 // @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { Select } from "antd";
+import { Select, Tag } from "antd";
 // @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
@@ -115,8 +115,8 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           </Select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-16">
-        <div className="customer-detail-card">
+      <div className="grid grid-cols-2 gap-8">
+        <div className="border-2 border-solid rounded border-[#EAEAEB] py-4 px-8">
           <p>
             <b>Customer Name:</b> {data.customer_name}
           </p>
@@ -131,7 +131,16 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           </p>
           <p>
             <b>Default Currency:</b>{" "}
-            {data.default_currency ? (
+            {data ? (
+              <Tag size="large">
+                {data.default_currency?.name +
+                  " " +
+                  data?.default_currency?.symbol}
+              </Tag>
+            ) : (
+              "N/A"
+            )}
+            {/* {data.default_currency ? (
               <PricingUnitDropDown
                 defaultValue={data.default_currency.code}
                 setCurrentCurrency={(value) =>
@@ -143,14 +152,14 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
               />
             ) : (
               "N/A"
-            )}
+            )} */}
           </p>
           <p>
             <b>Amount Due On Next Invoice:</b> {"$"}
             {data.next_amount_due.toFixed(2)}
           </p>
         </div>
-        <div className="grid grid-cols-2 justify-items-center mx-8 gap-8 py-4 w-full border-2 border-solid rounded border-[#EAEAEB]">
+        <div className="grid grid-cols-2 justify-items-center mx-8 gap-8 py-4 border-2 border-solid rounded border-[#EAEAEB]">
           <div>
             <p className=" mb-4">Earned Revenue</p>
             {cost_data === undefined ? (
