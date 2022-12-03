@@ -72,7 +72,11 @@ def add_customers_to_org():
 
     def do_add_customers_to_org(organization, n):
         customer_set = baker.make(
-            Customer, _quantity=n, organization=organization, customer_id=uuid.uuid4
+            Customer,
+            _quantity=n,
+            organization=organization,
+            customer_id=uuid.uuid4,
+            customer_name="test_customer",
         )
         return customer_set
 

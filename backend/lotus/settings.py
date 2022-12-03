@@ -29,6 +29,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
+from svix.api import EventTypeIn, Svix
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,9 +68,11 @@ STRIPE_SECRET_KEY = (
     STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
 )
 # Get it from the section in the Stripe dashboard where you added the webhook endpoint
-DJSTRIPE_WEBHOOK_SECRET = config("WEBHOOK_SECRET", default="whsec_")
+DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+# Webhooks for Svix
+SVIX_API_KEY = config("SVIX_API_KEY", default="")
 
 
 # Optional Observalility Services
@@ -111,6 +114,7 @@ else:
     ALLOWED_HOSTS = [
         "*uselotus.io",
     ]
+
 
 # Application definition
 
@@ -161,7 +165,8 @@ else:
 EMAIL_DOMAIN = os.environ.get("MAILGUN_DOMAIN")
 EMAIL_USERNAME = "noreply"
 DEFAULT_FROM_EMAIL = f"{EMAIL_USERNAME}@{EMAIL_DOMAIN}"
-SERVER_EMAIL = "you@uselotus.io"  # ditto (default from-email for Django errors)
+# ditto (default from-email for Django errors)
+SERVER_EMAIL = "you@uselotus.io"
 
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
@@ -198,11 +203,6 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
-            "libraries": {
-                "render_vite_bundle": (
-                    "metering_billing.template_tags.render_vite_bundle"
-                ),
-            },
         },
     },
 ]
@@ -280,7 +280,7 @@ def key_deserializer(key):
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
-if type(KAFKA_EVENTS_TOPIC) == bytes:
+if type(KAFKA_EVENTS_TOPIC) is bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
@@ -488,6 +488,23 @@ SPECTACULAR_SETTINGS = {
             "TokenAuth": [],
         }
     ],
+    "ENUM_NAME_OVERRIDES": {
+        "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
+        "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
+        "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
+        "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
+        "SubscriptionStatusEnum": "metering_billing.utils.enums.SUBSCRIPTION_STATUS.choices",
+        "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",
+        "PlanStatusEnum": "metering_billing.utils.enums.PLAN_STATUS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "ProductStatusEnum": "metering_billing.utils.enums.PRODUCT_STATUS.choices",
+        "InvoiceStatusEnum": "metering_billing.utils.enums.INVOICE_STATUS.choices",
+        "FailureStatusEnum": ["eror"],
+        "SuccessStatusEnum": ["success"],
+        "TrackEventSuccessEnum": ["all", "some"],
+        "TrackEventFailureEnum": ["none"],
+        "OrganizationUserStatus": "metering_billing.utils.enums.ORGANIZATION_STATUS.choices",
+    },
 }
 REST_KNOX = {
     "TOKEN_TTL": timedelta(hours=2),
@@ -499,12 +516,13 @@ REST_KNOX = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^https://\w+\.uselotus\.io$",
-    ]
+# if DEBUG:
+#     CORS_ALLOW_ALL_ORIGINS = True
+# else:
+#     CORS_ALLOWED_ORIGIN_REGEXES = [
+#         r"^https://\w+\.uselotus\.io$",
+#     ]
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
@@ -545,3 +563,16 @@ LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
 META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
 django_heroku.settings(locals(), logging=False)
+
+# create svix events
+if SVIX_API_KEY != "":
+    svix = Svix(SVIX_API_KEY)
+    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+    if "invoice.created" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is created",
+                archived=False,
+                name="invoice.created",
+            )
+        )

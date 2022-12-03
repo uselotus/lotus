@@ -141,6 +141,7 @@ const CreatePlan = () => {
         },
       ];
       setComponentsData(newComponentsData);
+      console.log(newComponentsData);
     }
     setEditComponentsItem(undefined);
     setcomponentVisible(false);
@@ -183,6 +184,8 @@ const CreatePlan = () => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
+              proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -269,7 +272,7 @@ const CreatePlan = () => {
           labelAlign="left"
         >
           <Row gutter={[24, 24]}>
-            <Col span={12}>
+            <Col span={10}>
               <Row gutter={[24, 24]}>
                 <Col span="24">
                   <Card title="Plan Information">
@@ -370,7 +373,6 @@ const CreatePlan = () => {
                         ))}
                       </Select>
                     </Form.Item>
-
                     <Form.Item
                       name="initial_external_links"
                       label="Link External ids"
@@ -385,10 +387,16 @@ const CreatePlan = () => {
               </Row>
             </Col>
 
-            <Col span={12}>
+            <Col span={14}>
               <Card
                 title="Added Components"
                 className="h-full"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button
                     htmlType="button"
@@ -441,6 +449,12 @@ const CreatePlan = () => {
               <Card
                 className="w-full my-5"
                 title="Added Features"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button htmlType="button" onClick={showFeatureModal}>
                     Add Feature
@@ -462,7 +476,16 @@ const CreatePlan = () => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Discount">
+              <Card
+                className="w-6/12 mb-20"
+                title="Discount"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
+              >
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}

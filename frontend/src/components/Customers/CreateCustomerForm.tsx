@@ -1,5 +1,7 @@
 import { Modal, Form, Input, Select } from "antd";
+// @ts-ignore
 import React from "react";
+import PricingUnitDropDown from "../PricingUnitDropDown";
 
 export interface CreateCustomerState {
   name: string;
@@ -10,6 +12,7 @@ export interface CreateCustomerState {
   email: string;
   payment_provider?: string;
   payment_provider_id?: string;
+  default_currency_code?: string;
 }
 
 const CreateCustomerForm = (props: {
@@ -80,6 +83,13 @@ const CreateCustomerForm = (props: {
             label="Payment Provider ID"
           >
             <Input />
+          </Form.Item>
+          <Form.Item
+            className="col-span-4"
+            name="default_currency_code"
+            label="Default currency"
+          >
+             <PricingUnitDropDown setCurrentCurrency={value => form.setFieldValue("default_currency_code", value)}/>
           </Form.Item>
         </div>
       </Form>

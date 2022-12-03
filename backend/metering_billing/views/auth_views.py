@@ -17,17 +17,16 @@ from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.serializer_utils import EmailSerializer
 from metering_billing.services.user import user_service
 from metering_billing.utils import now_utc
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
+SVIX_API_KEY = settings.SVIX_API_KEY
 
 
 class LoginViewMixin(KnoxLoginView):
@@ -230,6 +229,7 @@ class RegisterView(LoginViewMixin, APIView):
             org = Organization.objects.create(
                 company_name=reg_dict["company_name"],
             )
+
             token = None
             if META:
                 lotus_python.create_customer(
@@ -240,10 +240,12 @@ class RegisterView(LoginViewMixin, APIView):
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
             msg = f"User with username already exists"
+            org.delete()
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
         existing_user_num = User.objects.filter(email=email).count()
         if existing_user_num > 0:
             msg = f"User with email already exists"
+            org.delete()
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.create_user(

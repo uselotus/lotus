@@ -63,7 +63,7 @@ def fast_api_key_validation_and_cache(request):
     try:
         key = request.META["HTTP_X_API_KEY"]
     except KeyError:
-        meta_dict = {k.lower(): v for k, v in request.META}
+        meta_dict = {k.lower(): v for k, v in request.META.items()}
         if "http_x_api_key".lower() in meta_dict:
             key = meta_dict["http_x_api_key"]
         else:
@@ -71,16 +71,16 @@ def fast_api_key_validation_and_cache(request):
     prefix, _, _ = key.partition(".")
     organization_pk = cache.get(prefix)
     if not organization_pk:
-        api_key = HasUserAPIKey().get_key(request)
         try:
             api_key = APIToken.objects.get_from_key(key)
         except:
             return HttpResponseBadRequest("Invalid API key"), False
         organization_pk = api_key.organization.pk
-        assert type(organization_pk) == int
+        if type(organization_pk) is not int:
+            raise AssertionError("Organization PK must be an integer")
         expiry_date = api_key.expiry_date
         timeout = (
-            60 * 60 * 24 * 7
+            60 * 60 * 24
             if expiry_date is None
             else (expiry_date - now_utc()).total_seconds()
         )

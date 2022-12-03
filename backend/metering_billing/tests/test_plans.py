@@ -7,7 +7,7 @@ from metering_billing.models import Plan, PlanVersion, Subscription
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import *
 from model_bakery import baker
-from rest_framework import status
+from rest_framework import serializers, status
 from rest_framework.test import APIClient
 
 

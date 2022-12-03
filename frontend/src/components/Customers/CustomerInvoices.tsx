@@ -150,7 +150,13 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
         <Table
           columns={columns}
           dataSource={invoices}
-          pagination={{ pageSize: 10 }}
+          pagination={{
+            showTotal: (total, range) => (
+              <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
+            ),
+            pageSize: 6,
+          }}
+          showSorterTooltip={false}
         />
       ) : (
         <p>No invoices found</p>

@@ -1,0 +1,92 @@
+---
+title: "Contributing"
+description: "Contributions are what make the open source community such an amazing place to
+learn, inspire, and create. Any contributions you make are greatly
+appreciated."
+---
+
+If you have a suggestion that would make this better, please
+[fork the repo](https://github.com/uselotus/lotus) and
+[create a pull request](https://makeapullrequest.com/). You can also simply
+[request a feature](https://github.com/uselotus/lotus/issues/new?assignees=&labels=&template=feature%5Frequest.md&title=).
+
+Don't forget to give the project a star! Thanks again!
+
+## Extensibility
+
+Lotus aims to serve as many use cases as possible! We want to make sure that you
+can extend the project to fit your needs. We have a special tag in our issues
+for features that already have a framework or template for you to use, allowing
+you to enhance the code to fit your needs seamlessly. For example, building a
+new integration with a payment processor, or hooking up a different CRM.
+
+You can find these issues tagged with the
+[extensibility label in our Github issues](https://github.com/uselotus/lotus/issues?q=is%3Aopen+is%3Aissue+label%3Aextensibility).
+
+## 👷‍♂️ Local Development
+
+In order to develop locally, we recommend using Docker to set up the
+environment, which allows for hot reloading of both frontend and backend code.
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and
+   make sure it is running.
+2. Clone the repo (our version, or your fork of it) and navigate to the project.
+
+```bash
+git clone https://github.com/uselotus/lotus.git && cd lotus
+```
+
+3. Change the environment variables located in `env/.env.dev.example` to suit
+   your needs. If you need help you can check out the example environment
+   variables at the bottom of this page.
+4. Rename `env/.env.dev.example` to `env/.env.dev`. Make sure you don't commit
+   your secret environment variables anywhere!
+5. Build and run the Docker Image!
+
+```bash
+docker-compose -f docker-compose.dev.yaml up --build
+```
+
+You should now be able to access the homepage at
+[localhost:8000/](http://localhost:8000/), and sign in using the
+`ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined. The homepage takes a minute
+or two to load, so be patient!
+
+If you make any changes to the backend settings, you might need to restart the
+Docker container.
+
+#### 🔍 Before Committing
+
+1. Run tests
+
+```bash
+chmod +x ./scripts/run-tests-docker.sh  && ./scripts/run-tests-docker.sh
+```
+
+2. Check the python code style
+
+```bash
+chmod +x ./scripts/run-codestyle-docker.sh  && ./scripts/run-codestyle-docker.sh
+```
+
+#### Local Development Env variables
+
+| Variable Name          | (Default) Value          | Change? |
+| ---------------------- | ------------------------ | ------- |
+| POSTGRES_USER          | lotus                    | ✔       |
+| POSTGRES_DB            | lotus                    | ✔       |
+| POSTGRES_PASSWORD      | lotus                    | ✔       |
+| SECRET_KEY             | change_me                | ✔       |
+| ADMIN_USERNAME         | admin                    | ✔       |
+| ADMIN_EMAIL            | example@example.com      | ✔       |
+| ADMIN_PASSWORD         | insecure_password        | ✔       |
+| DEBUG                  | True                     |         |
+| SELF_HOSTED            | True                     |         |
+| DOCKERIZED             | True                     |         |
+| DJANGO_SETTINGS_MODULE | "lotus.settings"         |         |
+| NODE_ENV               | development              |         |
+| VITE_API_URL           | "http://localhost:8000/" |         |
+| VITE_STRIPE_CLIENT     | ca\_                     | ✔       |
+| STRIPE_LIVE_SECRET_KEY | sk_live\_                | ✔       |
+| STRIPE_TEST_SECRET_KEY | sk_test\_                | ✔       |
+| WEBHOOK_SECRET         | whsec\_                  | ✔       |
