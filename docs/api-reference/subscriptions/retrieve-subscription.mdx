@@ -1,0 +1,28 @@
+---
+openapi: "GET /api/subscriptions/{subscription_id}/"
+hideApiMarker: true
+---
+
+Retrieves a [subscription](/api-reference/subscriptions/subscription-object) object.
+
+A `Retrieve Subscription` call requires
+
+- `subscription_id`
+
+<CodeGroup>
+
+```py Python
+lotus.retrieve_subscription(
+  subscription_id='sub_0569173e-e665-4369',
+)
+```
+
+```ts Typescript
+await lotus.getSubscriptionDetails({
+  subscriptionId: "sub_0569173e-e665-4369",
+});
+```
+
+</CodeGroup>
+
+---
