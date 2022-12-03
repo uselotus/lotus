@@ -20,7 +20,7 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    Subscription,
+    SubscriptionRecord,
     User,
 )
 from metering_billing.tasks import run_backtest, run_generate_invoice

@@ -296,7 +296,7 @@ class Customer(models.Model):
         new = not self.pk
         super(Customer, self).save(*args, **kwargs)
         if new:
-            self.subscription_manager = SubscriptionManager.objects.create(
+            self.subscription_manager = Subscription.objects.create(
                 customer=self,
                 organization=self.organization,
             )
@@ -1071,7 +1071,10 @@ class Invoice(models.Model):
         Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
     subscription = models.ForeignKey(
-        "Subscription", on_delete=models.CASCADE, null=True, related_name="invoices"
+        "SubscriptionRecord",
+        on_delete=models.CASCADE,
+        null=True,
+        related_name="invoices",
     )
     history = HistoricalRecords()
 
@@ -1219,7 +1222,9 @@ class PlanVersion(models.Model):
         return str(self.plan) + " v" + str(self.version)
 
     def num_active_subs(self):
-        cnt = self.bp_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).count()
+        cnt = self.subscription_records.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE
+        ).count()
         return cnt
 
 
@@ -1316,11 +1321,11 @@ class Plan(models.Model):
         return f"{self.plan_name}"
 
     def active_subs_by_version(self):
-        versions = self.versions.all().prefetch_related("bp_subscriptions")
+        versions = self.versions.all().prefetch_related("subscription_records")
         versions_count = versions.annotate(
             active_subscriptions=Count(
-                "bp_subscription",
-                filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
+                "subscription_records",
+                filter=Q(subscription_record__status=SUBSCRIPTION_STATUS.ACTIVE),
                 output_field=models.IntegerField(),
             )
         )
@@ -1366,8 +1371,10 @@ class Plan(models.Model):
                 .filter(~Q(pk=new_version.pk), status__in=replace_with_lst)
                 .annotate(
                     active_subscriptions=Count(
-                        "bp_subscription",
-                        filter=Q(bp_subscription__status=SUBSCRIPTION_STATUS.ACTIVE),
+                        "subscription_record",
+                        filter=Q(
+                            subscription_record__status=SUBSCRIPTION_STATUS.ACTIVE
+                        ),
                         output_field=models.IntegerField(),
                     )
                 )
@@ -1399,11 +1406,11 @@ class Plan(models.Model):
                         PLAN_VERSION_STATUS.RETIRING,
                     ],
                 )
-                .prefetch_related("bp_subscriptions")
+                .prefetch_related("subscription_records")
             )
             versions.update(status=PLAN_VERSION_STATUS.INACTIVE, replace_with=None)
             for version in versions:
-                for sub in version.bp_subscriptions.filter(
+                for sub in version.subscription_records.filter(
                     status=SUBSCRIPTION_STATUS.ACTIVE
                 ):
                     if (
@@ -1449,15 +1456,12 @@ class ExternalPlanLink(models.Model):
         unique_together = ("organization", "source", "external_plan_id")
 
 
-class SubscriptionManager(models.Model):
+class Subscription(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="subscription_managers",
+        related_name="subscriptions",
         null=True,
-    )
-    customer = models.OneToOneField(
-        Customer, on_delete=models.CASCADE, related_name="subscription_manager"
     )
     day_anchor = models.SmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(31)],
@@ -1469,6 +1473,28 @@ class SubscriptionManager(models.Model):
         null=True,
         blank=True,
     )
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        null=False,
+        related_name="subscriptions",
+    )
+    billing_cadence = models.CharField(
+        choices=PLAN_DURATION.choices, max_length=20, null=False
+    )
+    start_date = models.DateTimeField()
+    next_billing_date = models.DateTimeField(null=True, blank=True)
+    last_billing_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField()
+    status = models.CharField(
+        max_length=20,
+        choices=SUBSCRIPTION_STATUS.choices,
+        default=SUBSCRIPTION_STATUS.NOT_STARTED,
+    )
+    subscription_id = models.CharField(
+        max_length=100, null=False, blank=True, default=subscription_uuid
+    )
+    history = HistoricalRecords()
 
     def get_anchors(self):
         return self.day_anchor, self.month_anchor
@@ -1507,37 +1533,29 @@ class SubscriptionManager(models.Model):
         self.save()
 
 
-class Subscription(models.Model):
-    """
-    Subscription object. An explanation of the Subscription's fields follows:
-    customer: The customer that the subscription belongs to.
-    plan_name: The name of the plan that the subscription is for.
-    start_date: The date at which the subscription started.
-    end_date: The date at which the subscription will end.
-    status: The status of the subscription, active or ended.
-    """
-
+class SubscriptionRecord(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
         null=False,
-        related_name="org_subscriptions",
+        related_name="subscription_records",
     )
     customer = models.ForeignKey(
         Customer,
         on_delete=models.CASCADE,
         null=False,
-        related_name="customer_subscriptions",
+        related_name="subscription_records",
     )
-    billing_plan = models.ForeignKey(
+    plan_version = models.ForeignKey(
         PlanVersion,
         on_delete=models.CASCADE,
         null=False,
-        related_name="bp_subscriptions",
-        related_query_name="bp_subscription",
+        related_name="subscription_records",
+        related_query_name="subscription_record",
     )
     start_date = models.DateTimeField()
     next_billing_date = models.DateTimeField(null=True, blank=True)
+    last_billing_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField()
     scheduled_end_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(

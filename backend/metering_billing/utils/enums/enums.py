@@ -194,3 +194,8 @@ class FLAT_FEE_BEHAVIOR_ON_CANCEL(models.TextChoices):
     REFUND = ("refund", _("Refund"))
     PRORATE = ("prorate", _("Prorate"))
     CHARGE_FULL = ("charge_full", _("Charge Full"))
+
+
+class INVOICING_BEHAVIOR_ON_CANCEL(models.TextChoices):
+    ADD_TO_NEXT_INVOICE = ("add_to_next_invoice", _("Add to Next Invoice"))
+    INVOICE_NOW = ("invoice_now", _("Invoice Now"))

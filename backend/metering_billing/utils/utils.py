@@ -395,6 +395,10 @@ def subscription_uuid():
     return "subs_" + str(uuid.uuid4().hex)
 
 
+def subscription_record_uuid():
+    return "subsrec_" + str(uuid.uuid4().hex)
+
+
 def backtest_uuid():
     return "btst_" + str(uuid.uuid4().hex)
 

@@ -41,8 +41,8 @@ from metering_billing.utils.enums import (
 Metric = apps.get_app_config("metering_billing").get_model(model_name="Metric")
 Customer = apps.get_app_config("metering_billing").get_model(model_name="Customer")
 Event = apps.get_app_config("metering_billing").get_model(model_name="Event")
-Subscription = apps.get_app_config("metering_billing").get_model(
-    model_name="Subscription"
+SubscriptionRecord = apps.get_app_config("metering_billing").get_model(
+    model_name="SubscriptionRecord"
 )
 
 
@@ -74,7 +74,7 @@ class MetricHandler(abc.ABC):
     @abc.abstractmethod
     def get_current_usage(
         self,
-        subscription: Subscription,
+        subscription: SubscriptionRecord,
         group_by: list[str] = [],
     ) -> float:
         """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Stateful with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
@@ -348,19 +348,19 @@ class CounterHandler(MetricHandler):
             return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
         return return_dict
 
-    def get_current_usage(self, subscription, group_by=None, filters=None):
+    def get_current_usage(self, subscription_record, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         per_customer = self.get_usage(
-            start=subscription.start_date,
-            end=subscription.end_date,
+            start=subscription_record.start_date,
+            end=subscription_record.end_date,
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            customer=subscription.customer,
+            customer=subscription_record.customer,
             group_by=group_by,
             filters=filters,
         )
         if not (
-            subscription.customer.customer_name in per_customer
+            subscription_record.customer.customer_name in per_customer
             or len(per_customer) == 0
         ):
             raise AssertionError
@@ -875,7 +875,7 @@ class StatefulHandler(MetricHandler):
             usage_dict = new_usage_dict
         return usage_dict
 
-    def get_current_usage(self, subscription, group_by=None, filters=None):
+    def get_current_usage(self, subscription_record, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         cur_usg_agg = self.usage_aggregation_type
@@ -884,9 +884,9 @@ class StatefulHandler(MetricHandler):
         self.granularity = METRIC_GRANULARITY.TOTAL
         usg = self.get_usage(
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            start=subscription.start_date,
-            end=subscription.end_date,
-            customer=subscription.customer,
+            start=subscription_record.start_date,
+            end=subscription_record.end_date,
+            customer=subscription_record.customer,
             group_by=group_by,
             filters=filters,
         )
@@ -1124,20 +1124,20 @@ class RateHandler(MetricHandler):
             customer, results_granularity, start, group_by, proration
         )
 
-    def get_current_usage(self, subscription, group_by=None, filters=None):
+    def get_current_usage(self, subscription_record, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         start, end = self._get_current_query_start_end()
-        start = start if start else subscription.start_date
+        start = start if start else subscription_record.start_date
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, subscription.customer, group_by, filters
+            start, end, subscription_record.customer, group_by, filters
         )
-        filter_kwargs["time_created__gt"] = subscription.start_date
+        filter_kwargs["time_created__gt"] = subscription_record.start_date
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
         groupby_kwargs = self._build_groupby_kwargs(
-            subscription.customer,
+            subscription_record.customer,
             results_granularity=None,
             start=start,
             group_by=group_by,

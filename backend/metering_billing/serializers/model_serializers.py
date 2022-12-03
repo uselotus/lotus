@@ -9,32 +9,7 @@ from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
-    CategoricalFilter,
-    Customer,
-    CustomerBalanceAdjustment,
-    Event,
-    ExternalPlanLink,
-    Feature,
-    Invoice,
-    InvoiceLineItem,
-    Metric,
-    NumericFilter,
-    Organization,
-    OrganizationInviteToken,
-    OrganizationSetting,
-    Plan,
-    PlanComponent,
-    PlanVersion,
-    PriceAdjustment,
-    PriceTier,
-    PricingUnit,
-    Product,
-    Subscription,
-    User,
-    WebhookEndpoint,
-    WebhookTrigger,
-)
+from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import *
@@ -277,17 +252,19 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 # CUSTOMER
-class FilterActiveSubscriptionSerializer(serializers.ListSerializer):
+class FilterActiveSubscriptionRecordSerializer(serializers.ListSerializer):
     def to_representation(self, data):
         data = [x for x in data if x.status == SUBSCRIPTION_STATUS.ACTIVE]
-        return super(FilterActiveSubscriptionSerializer, self).to_representation(data)
+        return super(FilterActiveSubscriptionRecordSerializer, self).to_representation(
+            data
+        )
 
 
 class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Subscription
+        model = SubscriptionRecord
         fields = ("billing_plan_name", "plan_version", "end_date", "auto_renew")
-        list_serializer_class = FilterActiveSubscriptionSerializer
+        list_serializer_class = FilterActiveSubscriptionRecordSerializer
 
     billing_plan_name = serializers.CharField(source="billing_plan.plan.plan_name")
     plan_version = serializers.CharField(source="billing_plan.version")
@@ -307,7 +284,7 @@ class CustomerSummarySerializer(serializers.ModelSerializer):
 
 class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer):
     class Meta(SubscriptionCustomerSummarySerializer.Meta):
-        model = Subscription
+        model = SubscriptionRecord
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + (
             "subscription_id",
             "start_date",
@@ -1101,11 +1078,12 @@ class PlanNameAndIDSerializer(serializers.ModelSerializer):
         )
 
 
-class CustomerNameAndIDSerializer(serializers.ModelSerializer):
+class ShortCustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
         fields = (
             "customer_name",
+            "email",
             "customer_id",
         )
 
@@ -1178,7 +1156,7 @@ class PlanSerializer(serializers.ModelSerializer):
 
     # READ ONLY
     parent_plan = PlanNameAndIDSerializer(read_only=True)
-    target_customer = CustomerNameAndIDSerializer(read_only=True)
+    target_customer = ShortCustomerSerializer(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
     display_version = PlanVersionSerializer(read_only=True)
     num_versions = serializers.SerializerMethodField(read_only=True)
@@ -1314,28 +1292,39 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = (
-            "customer_id",
+            "subscription_id",
+            "day_anchor",
+            "month_anchor",
             "customer",
+            "billing_cadence",
+            "start_date",
+            "next_billing_date",
+            "last_billing_date",
+            "end_date",
+            "status",
+            "subscription_id",
+        )
+
+    customer = ShortCustomerSerializer(read_only=True)
+
+
+class SubscriptionRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "customer_id",
             "plan_id",
             "start_date",
             "end_date",
-            "scheduled_end_date",
-            "status",
             "auto_renew",
             "is_new",
-            "subscription_id",
             "subscription_filters",
-        )
-        read_only_fields = (
-            "customer",
-            "scheduled_end_date",
         )
 
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField(required=False)
     auto_renew = serializers.BooleanField(required=False)
     is_new = serializers.BooleanField(required=False)
-    subscription_id = serializers.CharField(required=False)
     subscription_filters = SubscriptionCategoricalFilterSerializer(
         many=True, required=False
     )
@@ -1356,31 +1345,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         write_only=True,
     )
 
-    # READ ONLY
-    customer = CustomerSerializer(read_only=True)
-
     def validate(self, data):
         # extract the plan version from the plan
         data["billing_plan"] = data["billing_plan"]["plan"].display_version
-        # check no existing subs
-        sd = data["start_date"]
-        anchor_date, anchor_month = data["customer"].subscription_manager.get_anchors()
-        ed = calculate_end_date(
-            data["billing_plan"].plan.plan_duration,
-            sd,
-            anchor_day=anchor_date,
-            anchor_month=anchor_month,
-        )
-        # num_existing_subs = Subscription.objects.filter(
-        #     Q(start_date__range=(sd, ed)) | Q(end_date__range=(sd, ed)),
-        #     customer__customer_id=data["customer"].customer_id,
-        #     billing_plan__version_id=data["billing_plan"].version_id,
-        #     status=SUBSCRIPTION_STATUS.ACTIVE,
-        # ).count()
-        # if num_existing_subs > 0:
-        #     raise serializers.ValidationError(
-        #         f"Customer already has an active subscription to this plan"
-        #     )
         # check that if the plan is designed for a specific customer, that the customer is that customer
         tc = data["billing_plan"].plan.target_customer
         if tc is not None and tc != data["customer"]:
@@ -1423,21 +1390,21 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return sub
 
 
-class SubscriptionDetailSerializer(SubscriptionSerializer):
-    class Meta(SubscriptionSerializer.Meta):
-        model = Subscription
+class SubscriptionRecordDetailSerializer(SubscriptionRecordSerializer):
+    class Meta(SubscriptionRecordSerializer.Meta):
+        model = SubscriptionRecord
         fields = tuple(
-            set(SubscriptionSerializer.Meta.fields).union(set(["billing_plan"]))
+            set(SubscriptionRecordSerializer.Meta.fields).union(set(["billing_plan"]))
         )
 
     billing_plan = PlanVersionSerializer(read_only=True)
 
 
-class SubscriptionInvoiceSerializer(SubscriptionSerializer):
-    class Meta(SubscriptionSerializer.Meta):
-        model = Subscription
+class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
+    class Meta(SubscriptionRecordSerializer.Meta):
+        model = SubscriptionRecord
         fields = fields = tuple(
-            set(SubscriptionSerializer.Meta.fields)
+            set(SubscriptionRecordSerializer.Meta.fields)
             - set(
                 [
                     "customer_id",
@@ -1449,10 +1416,14 @@ class SubscriptionInvoiceSerializer(SubscriptionSerializer):
         )
 
 
-class SubscriptionUpdateSerializer(serializers.ModelSerializer):
+class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Subscription
-        fields = ("replace_plan_id", "turn_off_auto_renew", "end_date")
+        model = SubscriptionRecord
+        fields = (
+            "replace_plan_id",
+            "turn_off_auto_renew",
+            "end_date",
+        )
 
     replace_plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
@@ -1484,21 +1455,28 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class SubscriptionCancelRequestSerializer(serializers.Serializer):
+class SubscriptionRecordFilterSerializer(serializers.Serializer):
+    customer_id = serializers.CharField(required=False)
+    plan_id = serializers.CharField(required=False)
+    # status = serializers.MultipleChoiceField(
+    #     choices=SUBSCRIPTION_STATUS.choices,
+    #     required=False,
+    #     default=[SUBSCRIPTION_STATUS.ACTIVE],
+    # )
+    subscription_filters = serializers.ListField(
+        child=SubscriptionCategoricalFilterSerializer(), required=False
+    )
+
+
+class SubscriptionRecordDeleteSerializer(serializers.Serializer):
     flat_fee_behavior = serializers.ChoiceField(
         choices=FLAT_FEE_BEHAVIOR_ON_CANCEL.choices,
         default=FLAT_FEE_BEHAVIOR_ON_CANCEL.CHARGE_FULL,
     )
     bill_usage = serializers.BooleanField(default=False)
-
-
-class SubscriptionListFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(required=False)
-    plan_id = serializers.CharField(required=False)
-    status = serializers.MultipleChoiceField(
-        choices=SUBSCRIPTION_STATUS.choices,
-        required=False,
-        default=[SUBSCRIPTION_STATUS.ACTIVE],
+    invoicing_behavior_on_cancel = serializers.ChoiceField(
+        choices=INVOICING_BEHAVIOR_ON_CANCEL.choices,
+        default=INVOICING_BEHAVIOR_ON_CANCEL.INVOICE_NOW,
     )
 
 
@@ -1510,10 +1488,13 @@ class ExperimentalToActiveRequestSerializer(serializers.Serializer):
     )
 
 
-class SubscriptionActionSerializer(SubscriptionSerializer):
-    class Meta(SubscriptionSerializer.Meta):
-        model = Subscription
-        fields = SubscriptionSerializer.Meta.fields + ("string_repr", "object_type")
+class SubscriptionActionSerializer(SubscriptionRecordSerializer):
+    class Meta(SubscriptionRecordSerializer.Meta):
+        model = SubscriptionRecord
+        fields = SubscriptionRecordSerializer.Meta.fields + (
+            "string_repr",
+            "object_type",
+        )
 
     string_repr = serializers.SerializerMethodField()
     object_type = serializers.SerializerMethodField()
@@ -1522,7 +1503,7 @@ class SubscriptionActionSerializer(SubscriptionSerializer):
         return obj.subscription_id
 
     def get_object_type(self, obj):
-        return "Subscription"
+        return "SubscriptionRecord"
 
 
 class UserActionSerializer(OrganizationUserSerializer):
@@ -1600,7 +1581,7 @@ GFK_MODEL_SERIALIZER_MAPPING = {
     User: UserActionSerializer,
     PlanVersion: PlanVersionActionSerializer,
     Plan: PlanActionSerializer,
-    Subscription: SubscriptionActionSerializer,
+    SubscriptionRecord: SubscriptionActionSerializer,
     Metric: MetricActionSerializer,
     Customer: CustomerActionSerializer,
 }
@@ -1727,7 +1708,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     )
     pricing_unit = PricingUnitSerializer()
     customer = CustomerSerializer(read_only=True)
-    subscription = SubscriptionSerializer(read_only=True)
+    subscription = SubscriptionRecordSerializer(read_only=True)
     line_items = InvoiceLineItemSerializer(
         many=True, read_only=True, source="inv_line_items"
     )

@@ -19,7 +19,7 @@ from metering_billing.models import (
     Invoice,
     Organization,
     PlanComponent,
-    Subscription,
+    SubscriptionRecord,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (

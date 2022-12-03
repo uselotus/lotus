@@ -288,7 +288,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetCustomerAccessFailure'
+                $ref: '#/components/schemas/GetCustomerFeatureAccessFailure'
           description: ''
   /api/customer_metric_access/:
     get:
@@ -335,7 +335,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetCustomerAccessFailure'
+                $ref: '#/components/schemas/GetCustomerEventAccessFailure'
           description: ''
   /api/customer_summary/:
     get:
@@ -1724,17 +1724,11 @@ paths:
           type: string
           minLength: 1
       - in: query
-        name: status
+        name: subscription_filters
         schema:
           type: array
           items:
-            enum:
-            - active
-            - ended
-            - not_started
-            type: string
-          default:
-          - active
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
       tags:
       - subscriptions
       security:
@@ -1749,34 +1743,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Subscription'
-          description: ''
-    post:
-      operationId: subscriptions_create
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      tags:
-      - subscriptions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Subscription'
-        required: true
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
           description: ''
   /api/subscriptions/{subscription_id}/:
     get:
@@ -1796,44 +1762,7 @@ paths:
         TokenAuth: []
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionDetail'
-          description: ''
-    patch:
-      operationId: subscriptions_partial_update
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: subscription_id
-        schema:
-          type: string
-        required: true
-      tags:
-      - subscriptions
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscriptionUpdate'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscriptionUpdate'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/PatchedSubscriptionUpdate'
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionUpdate'
-          description: ''
+          description: No response body
     delete:
       operationId: subscriptions_destroy
       description: A simple ViewSet for viewing and editing Subscriptions.
@@ -1853,11 +1782,146 @@ paths:
           type: string
           default: charge_full
           minLength: 1
+      - in: query
+        name: invoicing_behavior_on_cancel
+        schema:
+          enum:
+          - add_to_next_invoice
+          - invoice_now
+          type: string
+          default: invoice_now
+          minLength: 1
       - in: path
         name: subscription_id
         schema:
           type: string
         required: true
+      tags:
+      - subscriptions
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/subscriptions/plans/:
+    post:
+      operationId: subscriptions_plans_create
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      tags:
+      - subscriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecord'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecord'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRecord'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionRecord'
+          description: ''
+    patch:
+      operationId: subscriptions_plans_partial_update
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      parameters:
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: plan_id
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: subscription_filters
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+      tags:
+      - subscriptions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubscriptionRecordUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubscriptionRecordUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubscriptionRecordUpdate'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionRecordUpdate'
+          description: ''
+    delete:
+      operationId: subscriptions_plans_destroy
+      description: A simple ViewSet for viewing and editing Subscriptions.
+      parameters:
+      - in: query
+        name: bill_usage
+        schema:
+          type: boolean
+          default: false
+      - in: query
+        name: customer_id
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: flat_fee_behavior
+        schema:
+          enum:
+          - refund
+          - prorate
+          - charge_full
+          type: string
+          default: charge_full
+          minLength: 1
+      - in: query
+        name: invoicing_behavior_on_cancel
+        schema:
+          enum:
+          - add_to_next_invoice
+          - invoice_now
+          type: string
+          default: invoice_now
+          minLength: 1
+      - in: query
+        name: plan_id
+        schema:
+          type: string
+          minLength: 1
+      - in: query
+        name: subscription_filters
+        schema:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
       tags:
       - subscriptions
       security:
@@ -2349,6 +2413,12 @@ components:
       - ignore
       - overwrite
       type: string
+    BillingCadenceEnum:
+      enum:
+      - monthly
+      - quarterly
+      - yearly
+      type: string
     BlankEnum:
       enum:
       - ''
@@ -2569,16 +2639,6 @@ components:
       - next_amount_due
       - subscriptions
       - total_amount_due
-    CustomerNameAndID:
-      type: object
-      properties:
-        customer_name:
-          type: string
-          nullable: true
-          maxLength: 100
-        customer_id:
-          type: string
-          maxLength: 50
     CustomerSummary:
       type: object
       properties:
@@ -2681,11 +2741,27 @@ components:
     DraftInvoice:
       type: object
       properties:
+        subscription:
+          allOf:
+          - $ref: '#/components/schemas/SubscriptionRecord'
+          readOnly: true
+        payment_status:
+          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/InvoiceLineItem'
           readOnly: true
+        pricing_unit:
+          $ref: '#/components/schemas/PricingUnit'
+        cust_connected_to_payment_provider:
+          type: boolean
+        org_connected_to_cust_payment_provider:
+          type: boolean
         cost_due:
           type: number
           format: double
@@ -2693,22 +2769,6 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        pricing_unit:
-          $ref: '#/components/schemas/PricingUnit'
-        cust_connected_to_payment_provider:
-          type: boolean
-        subscription:
-          allOf:
-          - $ref: '#/components/schemas/Subscription'
-          readOnly: true
-        customer:
-          allOf:
-          - $ref: '#/components/schemas/Customer'
-          readOnly: true
-        org_connected_to_cust_payment_provider:
-          type: boolean
-        payment_status:
-          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
       required:
       - cost_due
       - customer
@@ -2812,7 +2872,17 @@ components:
       - in_arrears
       - in_advance
       type: string
-    GetCustomerAccessFailure:
+    GetCustomerEventAccessFailure:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/Status956Enum'
+        detail:
+          type: string
+      required:
+      - detail
+      - status
+    GetCustomerFeatureAccessFailure:
       type: object
       properties:
         status:
@@ -2931,71 +3001,40 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          nullable: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          nullable: true
         usage_billing_frequency:
           nullable: true
           oneOf:
           - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
         version_id:
           type: string
-          readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersionStatusEnum'
           readOnly: true
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
+        created_by:
+          type: string
+          readOnly: true
         transition_to:
           type: string
           nullable: true
           readOnly: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        created_by:
-          type: string
-          readOnly: true
         flat_fee_billing_type:
           $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -3003,6 +3042,37 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          nullable: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PlanVersionStatusEnum'
+          readOnly: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          nullable: true
+        version:
+          type: integer
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -3058,7 +3128,7 @@ components:
           readOnly: true
         subscription:
           allOf:
-          - $ref: '#/components/schemas/Subscription'
+          - $ref: '#/components/schemas/SubscriptionRecord'
           readOnly: true
       required:
       - cost_due
@@ -3492,7 +3562,7 @@ components:
         transition_to_plan_version_id:
           type: string
           writeOnly: true
-    PatchedSubscriptionUpdate:
+    PatchedSubscriptionRecordUpdate:
       type: object
       properties:
         replace_plan_id:
@@ -3689,7 +3759,7 @@ components:
           readOnly: true
         target_customer:
           allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
+          - $ref: '#/components/schemas/ShortCustomer'
           readOnly: true
         created_on:
           type: string
@@ -3752,52 +3822,52 @@ components:
         plan_name:
           type: string
           maxLength: 100
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
+        product_id:
+          type: string
+          nullable: true
+        created_by:
+          type: string
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
         plan_duration:
           $ref: '#/components/schemas/PlanDurationEnum'
-        num_versions:
-          type: integer
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/ShortCustomer'
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        external_links:
+        status:
+          $ref: '#/components/schemas/PlanStatusEnum'
+        initial_external_links:
           type: array
           items:
-            $ref: '#/components/schemas/ExternalPlanLink'
-          readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
-        created_on:
-          type: string
-          format: date-time
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        num_versions:
+          type: integer
           readOnly: true
         active_subscriptions:
           type: integer
           readOnly: true
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/CustomerNameAndID'
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/PlanStatusEnum'
-        created_by:
-          type: string
-          readOnly: true
-        product_id:
-          type: string
-          nullable: true
       required:
       - active_subscriptions
       - created_by
@@ -4174,6 +4244,21 @@ components:
       - date
       - new_plan_revenue
       - original_plan_revenue
+    ShortCustomer:
+      type: object
+      properties:
+        customer_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 100
+        customer_id:
+          type: string
+          maxLength: 50
     SingleCustomerValue:
       type: object
       properties:
@@ -4297,44 +4382,45 @@ components:
     Subscription:
       type: object
       properties:
-        customer_id:
+        subscription_id:
           type: string
-          writeOnly: true
+          maxLength: 100
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          nullable: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          nullable: true
         customer:
           allOf:
-          - $ref: '#/components/schemas/Customer'
+          - $ref: '#/components/schemas/ShortCustomer'
           readOnly: true
-        plan_id:
-          type: string
-          writeOnly: true
+        billing_cadence:
+          $ref: '#/components/schemas/BillingCadenceEnum'
         start_date:
           type: string
           format: date-time
+        next_billing_date:
+          type: string
+          format: date-time
+          nullable: true
+        last_billing_date:
+          type: string
+          format: date-time
+          nullable: true
         end_date:
           type: string
           format: date-time
-        scheduled_end_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
         status:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
-        auto_renew:
-          type: boolean
-        is_new:
-          type: boolean
-        subscription_id:
-          type: string
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
       required:
+      - billing_cadence
       - customer
-      - customer_id
-      - plan_id
-      - scheduled_end_date
+      - end_date
       - start_date
     SubscriptionCategoricalFilter:
       type: object
@@ -4387,60 +4473,34 @@ components:
       - billing_plan_name
       - end_date
       - plan_version
-    SubscriptionDetail:
+    SubscriptionRecord:
       type: object
       properties:
+        customer_id:
+          type: string
+          writeOnly: true
+        plan_id:
+          type: string
+          writeOnly: true
+        start_date:
+          type: string
+          format: date-time
         end_date:
           type: string
           format: date-time
+        auto_renew:
+          type: boolean
+        is_new:
+          type: boolean
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-        plan_id:
-          type: string
-          writeOnly: true
-        billing_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersion'
-          readOnly: true
-        customer:
-          allOf:
-          - $ref: '#/components/schemas/Customer'
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
-        scheduled_end_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        auto_renew:
-          type: boolean
-        start_date:
-          type: string
-          format: date-time
-        is_new:
-          type: boolean
-        subscription_id:
-          type: string
-        customer_id:
-          type: string
-          writeOnly: true
       required:
-      - billing_plan
-      - customer
       - customer_id
       - plan_id
-      - scheduled_end_date
       - start_date
-    SubscriptionStatusEnum:
-      enum:
-      - active
-      - ended
-      - not_started
-      type: string
-    SubscriptionUpdate:
+    SubscriptionRecordUpdate:
       type: object
       properties:
         replace_plan_id:
@@ -4451,6 +4511,12 @@ components:
         end_date:
           type: string
           format: date-time
+    SubscriptionStatusEnum:
+      enum:
+      - active
+      - ended
+      - not_started
+      type: string
     SuccessStatusEnum:
       enum:
       - success

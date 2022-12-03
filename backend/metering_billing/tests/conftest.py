@@ -166,7 +166,7 @@ def get_billable_metrics_in_org():
 
 @pytest.fixture
 def add_subscription_to_org():
-    from metering_billing.models import Subscription
+    from metering_billing.models import SubscriptionRecord
 
     def do_add_subscription_to_org(organization, billing_plan, customer):
         sub = Subscription.objects.create(

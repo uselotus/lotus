@@ -60,6 +60,7 @@ from metering_billing.views.views import (  # MergeCustomersView,
     TransferSubscriptionsView,
 )
 from rest_framework import routers
+from rest_framework_nested import routers
 
 DEBUG = settings.DEBUG
 ON_HEROKU = settings.ON_HEROKU
@@ -68,6 +69,12 @@ PROFILER_ENABLED = settings.PROFILER_ENABLED
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
 router.register(r"customers", CustomerViewSet, basename="customer")
+
+# customers_router = routers.NestedSimpleRouter(router, r"customers", lookup="")
+# customers_router.register(
+#     r"plans", SubscriptionRecordViewSet, basename="customer-plans"
+# )
+
 router.register(r"metrics", MetricViewSet, basename="metric")
 router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")

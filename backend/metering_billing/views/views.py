@@ -10,7 +10,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import APIToken, Customer, Metric, Subscription
+from metering_billing.models import APIToken, Customer, Metric, SubscriptionRecord
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.serializers.auth_serializers import *
@@ -567,7 +567,7 @@ class GetCustomerEventAccessView(APIView):
         responses={
             200: GetEventAccessSerializer(many=True),
             400: inline_serializer(
-                name="GetCustomerAccessFailure",
+                name="GetCustomerEventAccessFailure",
                 fields={
                     "status": serializers.ChoiceField(choices=["error"]),
                     "detail": serializers.CharField(),
@@ -696,7 +696,7 @@ class GetCustomerFeatureAccessView(APIView):
         responses={
             200: GetFeatureAccessSerializer(many=True),
             400: inline_serializer(
-                name="GetCustomerAccessFailure",
+                name="GetCustomerFeatureAccessFailure",
                 fields={
                     "status": serializers.ChoiceField(choices=["error"]),
                     "detail": serializers.CharField(),
