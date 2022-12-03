@@ -93,7 +93,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     seriesField: "metric",
     groupField: "type",
     colorField: "type", // or seriesField in some cases
-    color: ["#C3986B", "#5AD8A6"],
+    color: ["#C3986B", "#3F3F40"],
 
     tooltip: {
       fields: ["type"],
