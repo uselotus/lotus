@@ -5,7 +5,10 @@
     "dark": "/logo/dark.svg"
   },
   "api": {
-    "baseUrl": "https://api.uselotus.io"
+    "baseUrl": "https://api.uselotus.io",
+    "auth": {
+      "name": "X-API-KEY"
+    }
   },
   "favicon": "/favicon.png",
   "colors": {
@@ -52,7 +55,7 @@
   "navigation": [
     {
       "group": "Overview",
-      "pages": ["overview/why-lotus", "overview/self-hosting"]
+      "pages": ["overview/why-lotus", "overview/self-hosting", "contributing"]
     },
     {
       "group": "Metering",
@@ -63,7 +66,8 @@
       "pages": [
         "plan-management/creating-plans",
         "plan-management/plan-templates",
-        "plan-management/versioning"
+        "plan-management/versioning",
+        "plan-management/credits"
       ]
     },
     {
@@ -91,7 +95,7 @@
     },
     {
       "group": "Other",
-      "pages": ["contributing"]
+      "pages": ["webhooks/webhooks", "idempotency"]
     },
     {
       "group": "API Reference",
@@ -136,6 +140,13 @@
             "api-reference/plans/retrieve-plan",
             "api-reference/plans/change-plan",
             "api-reference/plans/list-plans"
+          ]
+        },
+        {
+          "group": "Invoices",
+          "pages": [
+            "api-reference/invoices/invoice-object",
+            "api-reference/invoices/get-invoice"
           ]
         }
       ]

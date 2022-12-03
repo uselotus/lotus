@@ -1,5 +1,5 @@
 ---
-title: "Create Pricing Plans"
+title: "Create Plans"
 ---
 
 Once you have defined your value [metrics](/metering/creating-metrics), it's
@@ -9,18 +9,21 @@ page looks like:
 
 ![Plan Creation Page](/images/plan-management/create_plan-53a83aaa55da2a676ec6bc0025ed842f.png)
 
-It might look like a lot, but let's break it down!
+Let's break it down.
 
 ## Plan Information
 
 ![Plan Information Section](/images/plan-management/plan_info-18cd963ccb0993f03d011f221c6c3e82.png)
 
-This section has metadata about your plan, including its name and description,
-billing frequency information, and the flat subscription fee any customers on
-this plan will pay per billing period. One of Lotus' core concepts is
-[plan versioning](/plan-management/versioning), so keep in mind that when you
-make new versions of the same plan, the only two things you can't change are the
-plan name and the plan duration. Everything else is fair game!
+This section has metadata about your plan, including its name and description, billing frequency information, and the flat subscription fee any customers on this plan will pay per billing period.
+
+In addition we expose the option to define how you when you want the plan to issue invoices:
+
+- Aligned with the calendar, 1st of the month etc.
+
+- On the day that the subscription was originally created, i.e the 4th of every month
+
+One of Lotus' core concepts is [plan versioning](./versioning.md), so keep in mind that when you make new versions of the same plan, the only two things you can't change are the plan name and the plan duration. Everything else is fair game!
 
 Additionally, we know that you might have existing subscriptions associated with
 a payment provider (such as [Stripe](/external-integrations/stripe)), so we
