@@ -255,24 +255,24 @@ def get_granularity_ratio(metric_granularity, proration_granularity, start_date)
     return granularity_dict[metric_granularity][proration_granularity]
 
 
-def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None):
+def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None):
     if interval == PLAN_DURATION.MONTHLY:
         end_date = date_as_max_dt(start_date + relativedelta(months=+1, days=-1))
-        if anchor_day:
+        if day_anchor:
             tentative_end_date = date_as_max_dt(
-                start_date + relativedelta(day=anchor_day, days=-1)
+                start_date + relativedelta(day=day_anchor, days=-1)
             )
             if tentative_end_date > start_date:
                 end_date = tentative_end_date
             else:
                 end_date = date_as_max_dt(
-                    start_date + relativedelta(months=1, day=anchor_day, days=-1)
+                    start_date + relativedelta(months=1, day=day_anchor, days=-1)
                 )
     elif interval == PLAN_DURATION.QUARTERLY:
         end_date = date_as_max_dt(start_date + relativedelta(months=+3, days=-1))
-        if anchor_day and not anchor_month:
+        if day_anchor and not month_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(months=3, day=anchor_day, days=-1)
+                start_date + relativedelta(months=3, day=day_anchor, days=-1)
             )
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
@@ -283,11 +283,11 @@ def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None)
                 or rd.microseconds > 0
             ):  # went too far
                 end_date = date_as_max_dt(
-                    start_date + relativedelta(months=2, day=anchor_day, days=-1)
+                    start_date + relativedelta(months=2, day=day_anchor, days=-1)
                 )
-        elif anchor_day and anchor_month:
+        elif day_anchor and month_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(month=anchor_month, day=anchor_day, days=-1)
+                start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1)
             )
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
@@ -303,9 +303,9 @@ def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None)
             elif end_date < start_date:
                 while end_date < start_date:
                     end_date = date_as_max_dt(end_date + relativedelta(months=3))
-        elif anchor_month and not anchor_day:
+        elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(month=anchor_month, days=-1)
+                start_date + relativedelta(month=month_anchor, days=-1)
             )
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
@@ -323,9 +323,9 @@ def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None)
                     end_date = date_as_max_dt(end_date + relativedelta(months=3))
     elif interval == PLAN_DURATION.YEARLY:
         end_date = date_as_max_dt(start_date + relativedelta(years=+1, days=-1))
-        if anchor_day and not anchor_month:
+        if day_anchor and not month_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(years=1, day=anchor_day, days=-1)
+                start_date + relativedelta(years=1, day=day_anchor, days=-1)
             )
             rd = relativedelta(end_date, start_date)
             if rd.years >= 1 and (
@@ -337,12 +337,12 @@ def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None)
                 or rd.microseconds > 0
             ):
                 end_date = date_as_max_dt(
-                    start_date + relativedelta(months=11, day=anchor_day, days=-1)
+                    start_date + relativedelta(months=11, day=day_anchor, days=-1)
                 )
-        elif anchor_day and anchor_month:
+        elif day_anchor and month_anchor:
             end_date = date_as_max_dt(
                 start_date
-                + relativedelta(years=1, month=anchor_month, day=anchor_day, days=-1)
+                + relativedelta(years=1, month=month_anchor, day=day_anchor, days=-1)
             )
             rd = relativedelta(end_date, start_date)
             if rd.years >= 1 and (
@@ -354,9 +354,9 @@ def calculate_end_date(interval, start_date, anchor_day=None, anchor_month=None)
                 or rd.microseconds > 0
             ):
                 end_date = end_date + relativedelta(years=-1)
-        elif anchor_month and not anchor_day:
+        elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
-                start_date + relativedelta(years=1, month=anchor_month, days=-1)
+                start_date + relativedelta(years=1, month=month_anchor, days=-1)
             )
             rd = relativedelta(end_date, start_date)
             if rd.years >= 1 and (

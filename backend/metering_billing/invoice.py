@@ -16,7 +16,9 @@ from metering_billing.utils import (
     now_utc,
 )
 from metering_billing.utils.enums import (
+    CHARGEABLE_ITEM_TYPE,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
+    FLAT_FEE_BEHAVIOR,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
 )
@@ -35,8 +37,7 @@ def generate_invoice(
     subscription,
     draft=False,
     charge_next_plan=False,
-    flat_fee_cutoff_date=None,
-    include_usage=True,
+    generate_next_subscription_record=False,
     issue_date=None,
 ):
     """
@@ -47,25 +48,22 @@ def generate_invoice(
         Invoice,
         InvoiceLineItem,
         PlanVersion,
+        SubscriptionRecord,
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
-    assert (
-        flat_fee_cutoff_date == -1
-        or isinstance(flat_fee_cutoff_date, datetime.date)
-        or flat_fee_cutoff_date is None
-    ), "flat_fee_cutoff_date must be a date, None, or -1"
+    subscription_records = SubscriptionRecord.objects.filter(
+        organization=subscription.organization,
+        customer=subscription.customer,
+        next_billing_date__range=(subscription.start_date, subscription.end_date),
+    ).order_by("start_date")
 
     if not issue_date:
         issue_date = now_utc()
-    if isinstance(flat_fee_cutoff_date, datetime.date):
-        flat_fee_cutoff_date = convert_to_date(flat_fee_cutoff_date)
     issue_date_fmt = issue_date.strftime("%Y-%m-%d")
 
     customer = subscription.customer
     organization = subscription.organization
-    billing_plan = subscription.billing_plan
-    pricing_unit = billing_plan.pricing_unit
 
     # create kwargs for invoice
     invoice_kwargs = {
@@ -78,137 +76,124 @@ def generate_invoice(
     # Create the invoice
     invoice = Invoice.objects.create(**invoice_kwargs)
 
-    # usage calculation
-    if include_usage:
-        for plan_component in billing_plan.plan_components.all():
-            usg_rev = plan_component.calculate_total_revenue(subscription)
-            subperiods = usg_rev["subperiods"]
-            for subperiod in subperiods:
-                ili = InvoiceLineItem.objects.create(
-                    name=str(plan_component.billable_metric.billable_metric_name),
-                    start_date=subperiod["start_date"],
-                    end_date=subperiod["end_date"],
-                    quantity=subperiod["usage_qty"],
-                    subtotal=subperiod["revenue"],
-                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                    invoice=invoice,
-                    associated_plan_version=subscription.billing_plan,
+    for subscription_record in subscription_records:
+        billing_plan = subscription.billing_plan
+        pricing_unit = billing_plan.pricing_unit
+        # usage calculation
+        if subscription_record.invoice_usage_fees:
+            for plan_component in billing_plan.plan_components.all():
+                usg_rev = plan_component.calculate_total_revenue(subscription)
+                subperiods = usg_rev["subperiods"]
+                for subperiod in subperiods:
+                    ili = InvoiceLineItem.objects.create(
+                        name=str(plan_component.billable_metric.billable_metric_name),
+                        start_date=subperiod["start_date"],
+                        end_date=subperiod["end_date"],
+                        quantity=subperiod["usage_qty"],
+                        subtotal=subperiod["revenue"],
+                        billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
+                        invoice=invoice,
+                        associated_subscription_record=subscription_record,
+                    )
+                    if "unique_identifier" in subperiod:
+                        ili.metadata = subperiod["unique_identifier"]
+                        ili.save()
+        # flat fee calculation for current plan
+        if subscription_record.flat_fee_behavior is not FLAT_FEE_BEHAVIOR.REFUND:
+            if subscription_record.flat_fee_behavior is FLAT_FEE_BEHAVIOR.PRORATE:
+                duration_aligned_end_date = convert_to_date(
+                    calculate_end_date(
+                        billing_plan.duration, subscription_record.start_date
+                    )
                 )
-                if "unique_identifier" in subperiod:
-                    ili.metadata = subperiod["unique_identifier"]
-                    ili.save()
-    # flat fee calculation for current plan
-    if flat_fee_cutoff_date != -1:
-        flat_costs_dict_list = sorted(
-            list(subscription.prorated_flat_costs_dict.items()), key=lambda x: x[0]
-        )
-        date_range_costs = [
-            (
-                0,
-                flat_costs_dict_list[0][1]["plan_version_id"],
-                flat_costs_dict_list[0][0],
-                flat_costs_dict_list[0][0],
-            )
-        ]
-        for k, v in flat_costs_dict_list:
-            last_elem_amount, last_elem_plan, last_elem_start, _ = date_range_costs[-1]
-            k = convert_to_date(k)
-            issue_dt = convert_to_date(issue_date)
-            if flat_fee_cutoff_date and k > flat_fee_cutoff_date:
-                # if we are further along or on the cutoff date then stop counting
-                break
-            if v["plan_version_id"] != last_elem_plan:
-                date_range_costs.append((v["amount"], v["plan_version_id"], k, k))
+                start = convert_to_date(subscription_record.start_date)
+                end = convert_to_date(subscription_record.end_date)
+                # now calculate the proration as the ratio of the duration aligned end date to the total duration
+                proration_factor = (end - start).days / (
+                    duration_aligned_end_date - start
+                ).days
+                flat_fee_due = subscription_record.flat_fee * proration_factor
             else:
-                last_elem_amount += v["amount"]
-                date_range_costs[-1] = (
-                    last_elem_amount,
-                    last_elem_plan,
-                    last_elem_start,
-                    k,
-                )
-        amt_invoiced = subscription.amount_already_invoiced()
-        if (
-            len(date_range_costs) == 1
-            and abs(float(amt_invoiced) - date_range_costs[0][0]) < 0.01
-        ):
-            pass
-        else:
-            for amount, plan_version_id, start, end in date_range_costs:
-                cur_bp = PlanVersion.objects.get(
-                    organization=organization, version_id=plan_version_id
-                )
-                billing_plan_name = cur_bp.plan.plan_name
-                billing_plan_version = cur_bp.version
+                flat_fee_due = subscription_record.flat_fee
+            flat_fee_paid = subscription_record.amount_already_invoiced()
+            if abs(float(flat_fee_paid) - float(flat_fee_due)) < 0.01:
+                pass
+            else:
+                billing_plan_name = billing_plan.plan.plan_name
+                billing_plan_version = billing_plan.plan_version
                 InvoiceLineItem.objects.create(
                     name=f"{billing_plan_name} v{billing_plan_version} Prorated Flat Fee",
                     start_date=convert_to_datetime(start, date_behavior="min"),
                     end_date=convert_to_datetime(end, date_behavior="max"),
                     quantity=None,
-                    subtotal=amount,
-                    billing_type=cur_bp.flat_fee_billing_type,
+                    subtotal=flat_fee_due,
+                    billing_type=billing_plan.flat_fee_billing_type,
+                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
                     invoice=invoice,
-                    associated_plan_version=cur_bp,
+                    associated_subscription_record=subscription_record,
                 )
-            if amt_invoiced > 0:
+                if flat_fee_paid > 0:
+                    InvoiceLineItem.objects.create(
+                        name=f"{billing_plan_name} v{billing_plan_version} Flat Fee Already Invoiced",
+                        start_date=issue_date,
+                        end_date=issue_date,
+                        quantity=None,
+                        subtotal=-flat_fee_paid,
+                        billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
+                        invoice=invoice,
+                        associated_subscription_record=subscription_record,
+                    )
+        # next plan flat fee calculation
+        if charge_next_plan:
+            if billing_plan.transition_to:
+                next_bp = billing_plan.transition_to.display_version
+            elif billing_plan.replace_with:
+                next_bp = billing_plan.replace_with
+            else:
+                next_bp = billing_plan
+            if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
                 InvoiceLineItem.objects.create(
-                    name=f"{subscription.subscription_id} Already Invoiced",
+                    name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
+                    start_date=subscription.end_date,
+                    end_date=calculate_end_date(
+                        next_bp.plan.plan_duration, subscription.end_date
+                    ),
+                    quantity=None,
+                    subtotal=next_bp.flat_rate,
+                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+                    invoice=invoice,
+                    associated_plan_version=next_bp,
+                )
+
+        for obj in (
+            invoice.inv_line_items.filter(associated_plan_version__isnull=False)
+            .values("associated_plan_version")
+            .distinct()
+        ):
+            plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
+            if plan_version.price_adjustment:
+                plan_amount = (
+                    invoice.inv_line_items.filter(
+                        associated_plan_version=plan_version
+                    ).aggregate(tot=Sum("subtotal"))["tot"]
+                    or 0
+                )
+                price_adj_name = str(plan_version.price_adjustment)
+                new_amount_due = billing_plan.price_adjustment.apply(plan_amount)
+                new_amount_due = max(new_amount_due, Decimal(0))
+                difference = new_amount_due - plan_amount
+                InvoiceLineItem.objects.create(
+                    name=f"{plan_version.plan.plan_name} v{plan_version.version} {price_adj_name}",
                     start_date=issue_date,
                     end_date=issue_date,
                     quantity=None,
-                    subtotal=-amt_invoiced,
-                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+                    subtotal=difference,
+                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
                     invoice=invoice,
+                    associated_plan_version=plan_version,
                 )
-    # next plan flat fee calculation
-    if charge_next_plan:
-        if billing_plan.transition_to:
-            next_bp = billing_plan.transition_to.display_version
-        elif billing_plan.replace_with:
-            next_bp = billing_plan.replace_with
-        else:
-            next_bp = billing_plan
-        if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-            InvoiceLineItem.objects.create(
-                name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
-                start_date=subscription.end_date,
-                end_date=calculate_end_date(
-                    next_bp.plan.plan_duration, subscription.end_date
-                ),
-                quantity=None,
-                subtotal=next_bp.flat_rate,
-                billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
-                invoice=invoice,
-                associated_plan_version=next_bp,
-            )
-
-    for obj in (
-        invoice.inv_line_items.filter(associated_plan_version__isnull=False)
-        .values("associated_plan_version")
-        .distinct()
-    ):
-        plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
-        if plan_version.price_adjustment:
-            plan_amount = (
-                invoice.inv_line_items.filter(
-                    associated_plan_version=plan_version
-                ).aggregate(tot=Sum("subtotal"))["tot"]
-                or 0
-            )
-            price_adj_name = str(plan_version.price_adjustment)
-            new_amount_due = billing_plan.price_adjustment.apply(plan_amount)
-            new_amount_due = max(new_amount_due, Decimal(0))
-            difference = new_amount_due - plan_amount
-            InvoiceLineItem.objects.create(
-                name=f"{plan_version.plan.plan_name} v{plan_version.version} {price_adj_name}",
-                start_date=issue_date,
-                end_date=issue_date,
-                quantity=None,
-                subtotal=difference,
-                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                invoice=invoice,
-                associated_plan_version=plan_version,
-            )
 
     subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0:

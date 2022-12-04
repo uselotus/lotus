@@ -34,6 +34,7 @@ def draft_invoice_test_common_setup(
     add_product_to_org,
     add_plan_to_product,
     add_plan_version_to_plan,
+    add_subscription_to_org,
 ):
     def do_draft_invoice_test_common_setup(*, auth_method):
         setup_dict = {}
@@ -112,14 +113,11 @@ def draft_invoice_test_common_setup(
                 metric_units_per_batch=mupb,
             )
         setup_dict["billing_plan"] = plan_version
-        subscription = Subscription.objects.create(
-            organization=org,
-            customer=customer,
-            billing_plan=plan_version,
-            start_date=now_utc() - timedelta(days=3),
-            status="active",
+        subscription, subscription_record = add_subscription_to_org(
+            org, plan_version, customer, now_utc() - timedelta(days=3)
         )
         setup_dict["subscription"] = subscription
+        setup_dict["subscription_record"] = subscription_record
 
         return setup_dict
 

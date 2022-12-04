@@ -33,6 +33,7 @@ from metering_billing.utils import (
     plan_uuid,
     plan_version_uuid,
     product_uuid,
+    subscription_record_uuid,
     subscription_uuid,
     webhook_endpoint_uuid,
     webhook_secret_uuid,
@@ -293,14 +294,7 @@ class Customer(models.Model):
                 raise ValueError(f"Payment provider {k} id was not provided")
         if not self.default_currency:
             self.default_currency = self.organization.default_currency
-        new = not self.pk
         super(Customer, self).save(*args, **kwargs)
-        if new:
-            self.subscription_manager = Subscription.objects.create(
-                customer=self,
-                organization=self.organization,
-            )
-            self.save()
         Event.objects.filter(
             organization=self.organization,
             cust_id=self.customer_id,
@@ -1071,7 +1065,7 @@ class Invoice(models.Model):
         Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
     subscription = models.ForeignKey(
-        "SubscriptionRecord",
+        "Subscription",
         on_delete=models.CASCADE,
         null=True,
         related_name="invoices",
@@ -1115,11 +1109,17 @@ class InvoiceLineItem(models.Model):
     billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
     )
+    chargeable_item_type = models.CharField(
+        max_length=40, choices=CHARGEABLE_ITEM_TYPE.choices
+    )
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, null=True, related_name="inv_line_items"
     )
-    associated_plan_version = models.ForeignKey(
-        "PlanVersion", on_delete=models.CASCADE, null=True, related_name="+"
+    associated_subscription_record = models.ForeignKey(
+        "Subscription",
+        on_delete=models.CASCADE,
+        null=True,
+        related_name="line_items",
     )
     metadata = models.JSONField(default=dict, blank=True, null=True)
 
@@ -1424,7 +1424,7 @@ class Plan(models.Model):
                         )
                         sub.end_subscription_now(
                             bill_usage=bill_usage,
-                            flat_fee_behavior=FLAT_FEE_BEHAVIOR_ON_CANCEL.PRORATE,
+                            flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE,
                         )
                         Subscription.objects.create(
                             billing_plan=new_version,
@@ -1483,8 +1483,6 @@ class Subscription(models.Model):
         choices=PLAN_DURATION.choices, max_length=20, null=False
     )
     start_date = models.DateTimeField()
-    next_billing_date = models.DateTimeField(null=True, blank=True)
-    last_billing_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField()
     status = models.CharField(
         max_length=20,
@@ -1499,23 +1497,29 @@ class Subscription(models.Model):
     def get_anchors(self):
         return self.day_anchor, self.month_anchor
 
-    def handle_add_subscription(self, subscription):
+    def handle_attach_plan(
+        self,
+        plan_day_anchor=None,
+        plan_month_anchor=None,
+        plan_start_date=None,
+        plan_duration=None,
+    ):
         if self.day_anchor is None:
-            if subscription.billing_plan.day_anchor is not None:
-                self.day_anchor = subscription.billing_plan.day_anchor
+            if plan_day_anchor is not None:
+                self.day_anchor = plan_day_anchor
             else:
-                self.day_anchor = subscription.start_date.day
+                self.day_anchor = plan_start_date.day
         if self.month_anchor is None:
-            if subscription.billing_plan.month_anchor is not None:
-                self.month_anchor = subscription.billing_plan.month_anchor
-            elif subscription.billing_plan.plan.plan_duration in [
+            if plan_month_anchor is not None:
+                self.month_anchor = plan_month_anchor
+            elif plan_duration in [
                 PLAN_DURATION.YEARLY,
                 PLAN_DURATION.QUARTERLY,
             ]:
-                self.month_anchor = subscription.start_date.month
+                self.month_anchor = plan_start_date.month
         self.save()
 
-    def handle_remove_subscription(self):
+    def handle_remove_plan(self):
         active_subs = self.customer.subscriptions.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         )
@@ -1546,7 +1550,7 @@ class SubscriptionRecord(models.Model):
         null=False,
         related_name="subscription_records",
     )
-    plan_version = models.ForeignKey(
+    billing_plan = models.ForeignKey(
         PlanVersion,
         on_delete=models.CASCADE,
         null=False,
@@ -1565,33 +1569,40 @@ class SubscriptionRecord(models.Model):
     )
     auto_renew = models.BooleanField(default=True)
     is_new = models.BooleanField(default=True)
-    subscription_id = models.CharField(
-        max_length=100, null=False, blank=True, default=subscription_uuid
+    subscription_record_id = models.CharField(
+        max_length=100, null=False, blank=True, default=subscription_record_uuid
     )
     prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
     flat_fee_already_billed = models.DecimalField(
         decimal_places=10, max_digits=20, default=Decimal(0)
     )
     filters = models.ManyToManyField(CategoricalFilter, blank=True)
+    invoice_usage_charges = models.BooleanField(default=True)
+    flat_fee_behavior = models.CharField(
+        choices=FLAT_FEE_BEHAVIOR.choices,
+        max_length=20,
+        default=FLAT_FEE_BEHAVIOR.PRORATE,
+    )
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "subscription_id")
+        unique_together = ("organization", "subscription_record_id")
 
     def __str__(self):
         return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            self.customer.subscription_manager.handle_add_subscription(self)
         now = now_utc()
         if not self.end_date:
-            anchor_date, anchor_month = self.customer.subscription_manager.get_anchors()
+            subscription = self.customer.subscriptions.filter(
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+            ).first()
+            day_anchor, month_anchor = subscription.get_anchors()
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration,
                 self.start_date,
-                anchor_day=anchor_date,
-                anchor_month=anchor_month,
+                day_anchor=day_anchor,
+                month_anchor=month_anchor,
             )
         if not self.scheduled_end_date:
             self.scheduled_end_date = calculate_end_date(
@@ -1638,7 +1649,7 @@ class SubscriptionRecord(models.Model):
                         "amount": float(self.billing_plan.flat_rate) / len(dates_bwn),
                     }
             self.prorated_flat_costs_dict = flat_fee_dictionary
-        super(Subscription, self).save(*args, **kwargs)
+        super(SubscriptionRecord, self).save(*args, **kwargs)
 
     def get_filters_dictionary(self):
         filters_dict = {}
@@ -1678,7 +1689,7 @@ class SubscriptionRecord(models.Model):
         return sub_dict
 
     def end_subscription_now(
-        self, bill_usage=True, flat_fee_behavior=FLAT_FEE_BEHAVIOR_ON_CANCEL.CHARGE_FULL
+        self, bill_usage=True, flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL
     ):
         if self.status != SUBSCRIPTION_STATUS.ACTIVE:
             return
@@ -1688,10 +1699,8 @@ class SubscriptionRecord(models.Model):
         self.end_date = now
         flat_fee_cutoff_date = (
             old_end_date
-            if flat_fee_behavior == FLAT_FEE_BEHAVIOR_ON_CANCEL.CHARGE_FULL
-            else (
-                now if flat_fee_behavior == FLAT_FEE_BEHAVIOR_ON_CANCEL.PRORATE else -1
-            )
+            if flat_fee_behavior == FLAT_FEE_BEHAVIOR.CHARGE_FULL
+            else (now if flat_fee_behavior == FLAT_FEE_BEHAVIOR.PRORATE else -1)
         )
         generate_invoice(
             self,

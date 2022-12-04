@@ -191,7 +191,7 @@ class CostAnalysisView(APIView):
         for date, items in per_day_dict.items():
             items["cost_data"] = [v for k, v in items["cost_data"].items()]
         subscriptions = (
-            Subscription.objects.filter(
+            SubscriptionRecord.objects.filter(
                 Q(start_date__range=[start_date, end_date])
                 | Q(end_date__range=[start_date, end_date])
                 | (Q(start_date__lte=start_date) & Q(end_date__gte=end_date)),

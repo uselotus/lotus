@@ -323,165 +323,6 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
 
-# class SubscriptionRecordViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
-#     """
-#     A simple ViewSet for viewing and editing Subscription Records.
-#     """
-
-#     serializer_class = SubscriptionRecordSerializer
-#     permission_classes = [IsAuthenticated | HasUserAPIKey]
-#     http_method_names = ["get", "post", "head", "patch", "delete"]
-#     lookup_field = "plan_id"
-#     permission_classes_per_method = {
-#         "list": [IsAuthenticated | HasUserAPIKey],
-#         "retrieve": [IsAuthenticated | HasUserAPIKey],
-#         "create": [IsAuthenticated | HasUserAPIKey],
-#         "partial_update": [IsAuthenticated | HasUserAPIKey],
-#         "destroy": [IsAuthenticated | HasUserAPIKey],
-#     }
-
-#     def get_serializer_class(self):
-#         if self.action == "partial_update":
-#             return SubscriptionRecordUpdateSerializer
-#         elif self.action == "retrieve":
-#             return SubscriptionRecordDetailSerializer
-#         else:
-#             return SubscriptionRecordSerializer
-
-#     def get_serializer_context(self):
-#         context = super(SubscriptionRecordViewSet, self).get_serializer_context()
-#         organization = parse_organization(self.request)
-#         context.update({"organization": organization})
-#         return context
-
-#     def get_queryset(self):
-#         try:
-#             if self.action == "list":
-#                 args = []
-#                 serializer = SubscriptionListFilterSerializer(
-#                     self.request.query_params
-#                 ).is_valid(raise_exception=True)
-#                 args.append(Q(status__in=serializer.validated_data["status"]))
-#                 if serializer.validated_data.get("plan_id"):
-#                     args.append(
-#                         Q(
-#                             billing_plan__plan__plan_id=serializer.validated_data[
-#                                 "plan_id"
-#                             ]
-#                         )
-#                     )
-#             else:
-#                 args = [Q(status__in=[SUBSCRIPTION_STATUS.ACTIVE])]
-#             has_customer = self.kwargs.get("customer_customer_id")
-#             if has_customer:
-#                 args.append(Q(customer__customer_id=has_customer))
-#             organization = parse_organization(self.request)
-#             qs = (
-#                 SubscriptionRecord.objects.filter(
-#                     *args,
-#                     organization=organization,
-#                 )
-#                 .select_related("customer")
-#                 .select_related("billing_plan")
-#             )
-#             if self.action == "retrieve":
-#                 qs = qs.prefetch_related(
-#                     Prefetch(
-#                         "billing_plan__plan_components",
-#                         queryset=PlanComponent.objects.all(),
-#                     )
-#                 ).prefetch_related(
-#                     Prefetch(
-#                         "billing_plan__plan_components__tiers",
-#                         queryset=PriceTier.objects.all(),
-#                     )
-#                 )
-#         except Exception as e:
-#             print("error is:", e)
-#             raise
-
-#         return qs
-
-#     def perform_create(self, serializer):
-#         if serializer.validated_data["start_date"] <= now_utc():
-#             serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
-#         instance = serializer.save(organization=parse_organization(self.request))
-
-#         if self.request.user.is_authenticated:
-#             action.send(
-#                 self.request.user,
-#                 verb="subscribed",
-#                 action_object=instance.customer,
-#                 target=instance.billing_plan,
-#             )
-
-#     @extend_schema(
-#         parameters=[SubscriptionRecordFilterSerializer],
-#     )
-#     def list(self, request, *args, **kwargs):
-#         return super().list(request)
-
-#     @extend_schema(
-#         parameters=[SubscriptionRecordDeleteSerializer],
-#     )
-#     def destroy(self, request, *args, **kwargs):
-#         return super().destroy(request)
-
-#     def perform_destroy(self, instance):
-#         serializer = SubscriptionCancelRequestSerializer(
-#             self.request.query_params
-#         ).is_valid(raise_exception=True)
-#         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
-#         bill_usage = serializer.validated_data["bill_usage"]
-#         instance.end_subscription_now(
-#             flat_fee_behavior=flat_fee_behavior, bill_usage=bill_usage
-#         )
-
-#     def dispatch(self, request, *args, **kwargs):
-#         response = super().dispatch(request, *args, **kwargs)
-#         if status.is_success(response.status_code):
-#             try:
-#                 username = self.request.user.username
-#             except:
-#                 username = None
-#             organization = parse_organization(self.request)
-#             posthog.capture(
-#                 POSTHOG_PERSON
-#                 if POSTHOG_PERSON
-#                 else (
-#                     username if username else organization.company_name + " (API Key)"
-#                 ),
-#                 event=f"{self.action}_subscription",
-#                 properties={"organization": organization.company_name},
-#             )
-#         return response
-
-#     def perform_update(self, serializer):
-#         instance = serializer.save()
-#         if self.request.user.is_authenticated:
-#             user = self.request.user
-#         else:
-#             user = None
-#         if user:
-#             if instance.status == SUBSCRIPTION_STATUS.ENDED:
-#                 action.send(
-#                     user,
-#                     verb="canceled",
-#                     action_object=instance.billing_plan,
-#                     target=instance.customer,
-#                 )
-#             elif (
-#                 serializer.validated_data.get("replace_immediately_type")
-#                 == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
-#             ):
-#                 action.send(
-#                     user,
-#                     verb="switched to",
-#                     action_object=instance.billing_plan,
-#                     target=instance.customer,
-#                 )
-
-
 class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
     A simple ViewSet for viewing and editing Billable Metrics.
@@ -538,12 +379,12 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             instance = serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
             raise DuplicateMetric
-        if self.request.user.is_authenticated:
-            action.send(
-                self.request.user,
-                verb="created",
-                action_object=instance,
-            )
+        # if self.request.user.is_authenticated:
+        #     action.send(
+        #         self.request.user,
+        #         verb="created",
+        #         action_object=instance,
+        #     )
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -819,62 +660,73 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         context.update({"organization": organization})
         return context
 
+    def get_serializer_class(self):
+        if self.action == "plans":
+            return SubscriptionRecordSerializer
+        elif self.action == "update_plans":
+            return SubscriptionRecordUpdateSerializer
+        else:
+            return SubscriptionSerializer
+
     def get_queryset(self):
+        # need for: list, update_plans, cancel_plans
         if self.action == "list":
             args = []
-            serializer = SubscriptionListFilterSerializer(
+            serializer = SubscriptionStatusFilterSerializer(
                 self.request.query_params
             ).is_valid(raise_exception=True)
             args.append(Q(status__in=serializer.validated_data["status"]))
-            if serializer.validated_data.get("plan_id"):
-                args.append(
-                    Q(billing_plan__plan__plan_id=serializer.validated_data["plan_id"])
-                )
             if serializer.validated_data.get("customer_id"):
                 args.append(
                     Q(customer__customer_id=serializer.validated_data["customer_id"])
                 )
-        else:
-            args = [Q(status__in=[SUBSCRIPTION_STATUS.ACTIVE])]
-        organization = parse_organization(self.request)
-        qs = (
-            Subscription.objects.filter(
-                *args,
-                organization=organization,
-            )
-            .select_related("customer")
-            .select_related("billing_plan")
-        )
-        if self.action == "retrieve":
-            qs = qs.prefetch_related(
-                Prefetch(
-                    "billing_plan__plan_components",
-                    queryset=PlanComponent.objects.all(),
+            organization = parse_organization(self.request)
+            qs = (
+                Subscription.objects.filter(
+                    *args,
+                    organization=organization,
                 )
-            ).prefetch_related(
-                Prefetch(
-                    "billing_plan__plan_components__tiers",
-                    queryset=PriceTier.objects.all(),
+                .select_related("customer")
+                .select_related("billing_plan")
+                .prefetch_related(
+                    Prefetch(
+                        "billing_plan__plan_components",
+                        queryset=PlanComponent.objects.all(),
+                    )
+                )
+                .prefetch_related(
+                    Prefetch(
+                        "billing_plan__plan_components__tiers",
+                        queryset=PriceTier.objects.all(),
+                    )
                 )
             )
+        elif self.action in ["update_plans", "cancel_plans"]:
+            serializer = SubscriptionRecordFilterSerializer(
+                self.request.query_params
+            ).is_valid(raise_exception=True)
+            args = []
+            args.append(Q(status__in=serializer.validated_data["status"]))
+            if serializer.validated_data.get("customer_id"):
+                args.append(
+                    Q(customer__customer_id=serializer.validated_data["customer_id"])
+                )
+            if serializer.validated_data.get("subscription_filters"):
+                for filter in serializer.validated_data["subscription_filters"]:
+                    property_name = filter["property_name"]
+                    value = filter["value"]
+                    has_key = Q(filters__has_key=property_name)
+                    key_is_not_null = Q(**{f"filters__{property_name}__isnull": False})
+                    key_equals = Q(**{f"filters__{property_name}": value})
+                    args.extend([has_key, key_is_not_null, key_equals])
+            organization = parse_organization(self.request)
+            args.append(Q(organization=organization))
+            qs = SubscriptionRecord.objects.filter(*args)
 
         return qs
 
-    # def perform_create(self, serializer):
-    #     if serializer.validated_data["start_date"] <= now_utc():
-    #         serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
-    #     instance = serializer.save(organization=parse_organization(self.request))
-
-    #     if self.request.user.is_authenticated:
-    #         action.send(
-    #             self.request.user,
-    #             verb="subscribed",
-    #             action_object=instance.customer,
-    #             target=instance.billing_plan,
-    #         )
-
     @extend_schema(
-        parameters=[SubscriptionRecordFilterSerializer],
+        parameters=[SubscriptionStatusFilterSerializer],
     )
     def list(self, request, *args, **kwargs):
         return super().list(request)
@@ -885,56 +737,20 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request)
 
-    def _perform_destroy(self, instance):
+    def perform_destroy(self, instance):
         serializer = SubscriptionRecordDeleteSerializer(
             self.request.query_params
         ).is_valid(raise_exception=True)
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
         bill_usage = serializer.validated_data["bill_usage"]
+        invoicing_behavior_on_cancel = serializer.validated_data[
+            "invoicing_behavior_on_cancel"
+        ]
         instance.end_subscription_now(
-            flat_fee_behavior=flat_fee_behavior, bill_usage=bill_usage
+            flat_fee_behavior=flat_fee_behavior,
+            bill_usage=bill_usage,
+            invoicing_behavior_on_cancel=invoicing_behavior_on_cancel,
         )
-
-    def get_serializer_class(self):
-        if self.action == "plans":
-            return SubscriptionRecordSerializer
-        elif self.action == "update_plans":
-            return SubscriptionRecordUpdateSerializer
-
-        #     {
-        #     "list": [IsAuthenticated | HasUserAPIKey],
-        #     "retrieve": [IsAuthenticated | HasUserAPIKey],
-        #     "partial_update": [IsAuthenticated | HasUserAPIKey],
-        #     "delete": [IsAuthenticated | HasUserAPIKey],
-        #     "plans": [IsAuthenticated | HasUserAPIKey],
-        #     "update_plans": [IsAuthenticated | HasUserAPIKey],
-        #     "cancel_plans": [IsAuthenticated | HasUserAPIKey],
-        # }
-        if self.action == "partial_update":
-            return SubscriptionUpdateSerializer
-        elif self.action == "retrieve":
-            return SubscriptionDetailSerializer
-        else:
-            return SubscriptionSerializer
-
-    def dispatch(self, request, *args, **kwargs):
-        response = super().dispatch(request, *args, **kwargs)
-        if status.is_success(response.status_code):
-            try:
-                username = self.request.user.username
-            except:
-                username = None
-            organization = parse_organization(self.request)
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (API Key)"
-                ),
-                event=f"{self.action}_subscription",
-                properties={"organization": organization.company_name},
-            )
-        return response
 
     def perform_update(self, serializer):
         instance = serializer.save()
@@ -963,18 +779,52 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def plans(self, request, *args, **kwargs):
-        serializer = SubscriptionAddPlanSerializer(data=request.data)
+        # run checks to make sure it's valid
+        serializer = SubscriptionRecordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         organization = parse_organization(self.request)
+
+        # check to see if subscription exists
         subscription = Subscription.objects.filter(
             organization=organization,
-            status__in=[SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.TRIAL],
+            status__in=[SUBSCRIPTION_STATUS.ACTIVE],
+            customer=serializer.validated_data["customer"],
         ).first()
         if not subscription:
-            raise ValidationError("No active subscription found for this organization")
-        billing_plan = serializer.validated_data["billing_plan"]
-        subscription.add_plan(billing_plan)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            duration = serializer.validated_data["billing_plan"].plan.plan_duration
+            start_date = serializer.validated_data["start_date"]
+            day_anchor = serializer.validated_data.get("day_anchor", start_date.day)
+            month_anchor = serializer.validated_data.get(
+                "month_anchor",
+                start_date.month
+                if duration in [PLAN_DURATION.QUARTERLY, PLAN_DURATION.YEARLY]
+                else None,
+            )
+            end_date = serializer.validated_data.get("end_date")
+            if not end_date:
+                end_date = calculate_end_date(
+                    duration,
+                    start_date,
+                    day_anchor=day_anchor,
+                    month_anchor=month_anchor,
+                )
+            subscription = Subscription.objects.create(
+                organization=organization,
+                customer=serializer.validated_data["customer"],
+                billing_cadence=duration,
+                start_date=serializer.validated_data["start_date"],
+                end_date=end_date,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+            )
+            subscription.handle_attach_plan(
+                plan_day_anchor=day_anchor,
+                plan_month_anchor=month_anchor,
+                plan_start_date=start_date,
+                plan_duration=duration,
+            )
+        # now we can actually create the subscription record
+        subscription_record = serializer.save(organization=organization)
+        return Response(status=status.HTTP_201_CREATED)
 
     @plans.mapping.delete
     @extend_schema(
@@ -984,17 +834,22 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         ],
     )
     def cancel_plans(self, request, *args, **kwargs):
-        serializer = SubscriptionRemovePlanSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        organization = parse_organization(self.request)
-        subscription = Subscription.objects.filter(
-            organization=organization,
-            status__in=[SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.TRIAL],
-        ).first()
-        if not subscription:
-            raise ValidationError("No active subscription found for this organization")
-        billing_plan = serializer.validated_data["billing_plan"]
-        subscription.remove_plan(billing_plan)
+        qs = self.get_queryset()
+        serializer = SubscriptionRecordDeleteSerializer(
+            self.request.query_params
+        ).is_valid(raise_exception=True)
+        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
+        bill_usage = serializer.validated_data["bill_usage"]
+        invoicing_behavior_on_cancel = serializer.validated_data[
+            "invoicing_behavior_on_cancel"
+        ]
+        for subscription_record in qs:
+            subscription_record.end_subscription_now(
+                flat_fee_behavior=flat_fee_behavior,
+                bill_usage=bill_usage,
+                invoicing_behavior_on_cancel=invoicing_behavior_on_cancel,
+            )
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @plans.mapping.patch
@@ -1002,18 +857,58 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         parameters=[SubscriptionRecordFilterSerializer],
     )
     def update_plans(self, request, *args, **kwargs):
-        serializer = SubscriptionUpdatePlanSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        organization = parse_organization(self.request)
-        subscription = Subscription.objects.filter(
-            organization=organization,
-            status__in=[SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.TRIAL],
-        ).first()
-        if not subscription:
-            raise ValidationError("No active subscription found for this organization")
-        billing_plan = serializer.validated_data["billing_plan"]
-        subscription.update_plan(billing_plan)
+        qs = self.get_queryset()
+
+        for subscription_record in qs:
+            serializer = self.get_serializer(
+                subscription_record, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except:
+                username = None
+            organization = parse_organization(self.request)
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username if username else organization.company_name + " (API Key)"
+                ),
+                event=f"{self.action}_subscription",
+                properties={"organization": organization.company_name},
+            )
+            # if username:
+            #     if self.action == "plans":
+            #         action.send(
+            #             self.request.user,
+            #             verb="attached",
+            #             action_object=instance.customer,
+            #             target=instance.billing_plan,
+            #         )
+
+        return response
+
+
+# def perform_create(self, serializer):
+#     if serializer.validated_data["start_date"] <= now_utc():
+#         serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
+#     instance = serializer.save(organization=parse_organization(self.request))
+
+#     if self.request.user.is_authenticated:
+#         action.send(
+#             self.request.user,
+#             verb="subscribed",
+#             action_object=instance.customer,
+#             target=instance.billing_plan,
+#         )
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

@@ -190,12 +190,19 @@ class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
     INVOICE_CREATED = ("invoice.created", _("invoice.created"))
 
 
-class FLAT_FEE_BEHAVIOR_ON_CANCEL(models.TextChoices):
+class FLAT_FEE_BEHAVIOR(models.TextChoices):
     REFUND = ("refund", _("Refund"))
     PRORATE = ("prorate", _("Prorate"))
     CHARGE_FULL = ("charge_full", _("Charge Full"))
 
 
-class INVOICING_BEHAVIOR_ON_CANCEL(models.TextChoices):
+class INVOICING_BEHAVIOR(models.TextChoices):
     ADD_TO_NEXT_INVOICE = ("add_to_next_invoice", _("Add to Next Invoice"))
     INVOICE_NOW = ("invoice_now", _("Invoice Now"))
+
+
+class CHARGEABLE_ITEM_TYPE(models.TextChoices):
+    USAGE_CHARGE = ("usage_charge", _("Usage Charge"))
+    RECURRING_CHARGE = ("recurring_charge", _("Recurring Charge"))
+    ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
+    ADJUSTMENT = ("adjustment", _("Adjustment"))
