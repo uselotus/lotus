@@ -125,9 +125,9 @@ function CustomerDetail(props: {
 
   const turnSubscriptionAutoRenewOffMutation = useMutation(
     (obj: {
-      subscription_id: string;
+      params: object;
       post: TurnSubscriptionAutoRenewOffType;
-    }) => Customer.turnSubscriptionAutoRenewOff(obj.subscription_id, obj.post),
+    }) => Customer.turnSubscriptionAutoRenewOff( obj.post, obj.params),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -158,11 +158,11 @@ function CustomerDetail(props: {
   };
 
   const turnSubscriptionAutoRenewOff = (
-    subscription_id: string,
+    params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => {
     turnSubscriptionAutoRenewOffMutation.mutate({
-      subscription_id: subscription_id,
+      params: params,
       post: props,
     });
   };

@@ -96,7 +96,7 @@ const requests = {
     instance.get(url, params).then(responseBody),
   post: (url: string, body: {}, headers?: {}) =>
     instance.post(url, body, headers).then(responseBody),
-  patch: (url: string, body: {}) =>
+  patch: (url: string, body: {}, params?: {}) =>
     instance.patch(url, body).then(responseBody),
   delete: (url: string, params?: {}) => instance.delete(url).then(responseBody),
 };
@@ -131,13 +131,18 @@ export const Customer = {
   },
   createSubscription: (
     post: CreateSubscriptionType
-  ): Promise<SubscriptionType> => requests.post("api/subscriptions/", post),
+  ): Promise<SubscriptionType> =>
+    requests.post("api/subscriptions/plans/", post),
   updateSubscription: (
-    //this is the general version, try to use the specific ones below
     subscription_id: string,
-    post: UpdateSubscriptionType
+    post: UpdateSubscriptionType,
+    params?: {
+      customer_id?: string;
+      plan_id?: string;
+      subscription_filters?: { property_name: string; value: string }[];
+    }
   ): Promise<UpdateSubscriptionType> =>
-    requests.patch(`api/subscriptions/${subscription_id}/`, post),
+    requests.patch(`api/subscriptions/plans/`, post, params),
   cancelSubscription: (
     subscription_id: string,
     post: CancelSubscriptionType
@@ -145,14 +150,23 @@ export const Customer = {
     requests.delete(`api/subscriptions/${subscription_id}/`, post),
   changeSubscriptionPlan: (
     subscription_id: string,
-    post: ChangeSubscriptionPlanType
+    post: ChangeSubscriptionPlanType,
+    params?: {
+      customer_id?: string;
+      plan_id?: string;
+      subscription_filters?: { property_name: string; value: string }[];
+    }
   ): Promise<ChangeSubscriptionPlanType> =>
-    requests.patch(`api/subscriptions/${subscription_id}/`, post),
+    requests.patch(`api/subscriptions/plans/`, post, params),
   turnSubscriptionAutoRenewOff: (
-    subscription_id: string,
-    post: TurnSubscriptionAutoRenewOffType
+    post: TurnSubscriptionAutoRenewOffType,
+    params?: {
+      customer_id?: string;
+      plan_id?: string;
+      subscription_filters?: { property_name: string; value: string }[];
+    }
   ): Promise<TurnSubscriptionAutoRenewOffType> =>
-    requests.patch(`api/subscriptions/${subscription_id}/`, post),
+    requests.patch(`api/subscriptions/plans/`, post, params),
 };
 
 export const Plan = {
