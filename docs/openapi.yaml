@@ -2769,6 +2769,7 @@ components:
         event_name:
           type: string
           maxLength: 200
+          description: The name of the event.
         properties:
           type: object
           additionalProperties: {}
