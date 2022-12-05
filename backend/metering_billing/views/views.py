@@ -464,7 +464,6 @@ class CustomersSummaryView(APIView):
                 to_attr="billing_plans",
             ),
         )
-        print(customers[0].__dict__)
         serializer = CustomerSummarySerializer(customers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

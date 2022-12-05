@@ -252,13 +252,6 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 # CUSTOMER
-# class FilterActiveSubscriptionRecordSerializer(serializers.ListSerializer):
-#     def to_representation(self, data):
-#         print(data)
-#         data = [x for x in data if x.status == SUBSCRIPTION_STATUS.ACTIVE]
-#         return super(FilterActiveSubscriptionRecordSerializer, self).to_representation(
-#             data
-#         )
 
 
 class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
@@ -268,18 +261,6 @@ class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
 
     billing_plan_name = serializers.CharField(source="billing_plan.plan.plan_name")
     plan_version = serializers.CharField(source="billing_plan.version")
-
-
-class CustomerSummarySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Customer
-        fields = (
-            "customer_name",
-            "customer_id",
-            "subscriptions",
-        )
-
-    subscriptions = SubscriptionCustomerSummarySerializer(read_only=True, many=True)
 
 
 class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer):
@@ -1343,56 +1324,61 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        try:
-            filters = validated_data.pop("subscription_filters", [])
-            now = now_utc()
-            validated_data["status"] = (
-                SUBSCRIPTION_STATUS.NOT_STARTED
-                if validated_data["start_date"] > now
-                else SUBSCRIPTION_STATUS.ACTIVE
-            )
-            sub_record = super().create(validated_data)
-            for filter_data in filters:
-                sub_cat_filter_dict = {
-                    "property_name": filter_data["property_name"],
-                    "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
-                    "comparison_value": [filter_data["value"]],
-                }
-                try:
-                    cf, _ = CategoricalFilter.objects.get_or_create(
-                        **sub_cat_filter_dict
-                    )
-                except CategoricalFilter.MultipleObjectsReturned:
-                    cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
-                sub_record.filters.add(cf)
-            sub_record.save()
-            # new subscription means we need to create an invoice if its pay in advance
-            if (
-                sub_record.billing_plan.flat_fee_billing_type
-                == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
-            ):
-                (
-                    sub,
-                    sub_records,
-                ) = sub_record.customer.get_subscription_and_records()
-                filtered_sub_records = sub_records.filter(pk=sub_record.pk).update(
-                    flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-                    invoice_usage_charges=False,
-                )
-                generate_invoice(
-                    sub,
-                    filtered_sub_records,
-                )
-                sub_record.invoice_usage_charges = True
-                sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
-                sub_record.save()
-            return sub_record
-        except Exception as e:
+        # try:
+        filters = validated_data.pop("subscription_filters", [])
+        now = now_utc()
+        validated_data["status"] = (
+            SUBSCRIPTION_STATUS.NOT_STARTED
+            if validated_data["start_date"] > now
+            else SUBSCRIPTION_STATUS.ACTIVE
+        )
+        print("pre create", validated_data)
+        sub_record = super().create(validated_data)
+        print("successfully created sub record")
+        for filter_data in filters:
+            sub_cat_filter_dict = {
+                "property_name": filter_data["property_name"],
+                "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
+                "comparison_value": [filter_data["value"]],
+            }
             try:
-                sub_record.delete()
-            except:
-                pass
-            raise APIException(f"Error creating subscription: {e}")
+                cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
+            except CategoricalFilter.MultipleObjectsReturned:
+                cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
+            sub_record.filters.add(cf)
+        sub_record.save()
+        # new subscription means we need to create an invoice if its pay in advance
+        if (
+            sub_record.billing_plan.flat_fee_billing_type
+            == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+        ):
+            print("generating invoice")
+            (
+                sub,
+                sub_records,
+            ) = sub_record.customer.get_subscription_and_records()
+            filtered_sub_records = sub_records.filter(pk=sub_record.pk).update(
+                flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+                invoice_usage_charges=False,
+            )
+            print("filtered sub records", filtered_sub_records)
+            print("sub", sub)
+            generate_invoice(
+                sub,
+                sub_records.filter(pk=sub_record.pk),
+            )
+            sub_record.invoice_usage_charges = True
+            sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
+            sub_record.save()
+            print("finish w sub record")
+        return sub_record
+        # except Exception as e:
+        #     try:
+        #         sub_record.delete()
+        #     except:
+        #         pass
+        #     print("ran into an error", e)
+        #     raise APIException(f"Error creating subscription: {e}")
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -1412,6 +1398,11 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     customer = ShortCustomerSerializer(read_only=True)
     plans = SubscriptionRecordSerializer(many=True, read_only=True)
+
+    def get_plans(self, obj) -> SubscriptionRecordSerializer(many=True):
+        return SubscriptionRecordSerializer(
+            obj.get_subscription_records(), many=True
+        ).data
 
 
 class SubscriptionRecordDetailSerializer(SubscriptionRecordSerializer):
@@ -1591,6 +1582,24 @@ class MetricActionSerializer(MetricSerializer):
 
     def get_object_type(self, obj):
         return "Metric"
+
+
+class CustomerSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = (
+            "customer_name",
+            "customer_id",
+            "subscriptions",
+        )
+
+    subscriptions = serializers.SerializerMethodField()
+
+    def get_subscriptions(
+        self, obj
+    ) -> SubscriptionCustomerSummarySerializer(many=True, required=False):
+        sub_obj = obj.subscription_records.filter(status=SUBSCRIPTION_STATUS.ACTIVE)
+        return SubscriptionCustomerSummarySerializer(sub_obj, many=True).data
 
 
 class CustomerActionSerializer(CustomerSerializer):
@@ -1835,16 +1844,18 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "default_currency",
         )
 
-    subscription = serializers.SerializerMethodField()
+    subscription = serializers.SerializerMethodField(required=False)
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
     next_amount_due = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
 
-    def get_subscription(self, obj) -> SubscriptionSerializer:
-        return SubscriptionSerializer(
-            obj.subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).first(),
-        ).data
+    def get_subscription(self, obj) -> Union[SubscriptionSerializer, None]:
+        sub_obj = obj.subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).first()
+        if sub_obj is None:
+            return None
+        else:
+            return SubscriptionSerializer(sub_obj).data
 
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):
         timeline = self.context.get("invoices")

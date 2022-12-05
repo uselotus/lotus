@@ -73,7 +73,10 @@ def generate_invoice(
     }
     # Create the invoice
     invoice = Invoice.objects.create(**invoice_kwargs)
-
+    try:
+        _ = (e for e in subscription_records)
+    except TypeError:
+        subscription_records = [subscription_records]
     for subscription_record in subscription_records:
         billing_plan = subscription_record.billing_plan
         pricing_unit = billing_plan.pricing_unit
@@ -236,8 +239,6 @@ def generate_invoice(
                 effective_at=issue_date,
                 status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
             )
-            subscription.flat_fee_already_billed += subtotal
-            subscription.save()
     elif subtotal > 0:
         customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(customer)
         balance_adjustment = min(subtotal, customer_balance)
@@ -247,8 +248,6 @@ def generate_invoice(
                 balance_adjustment,
                 description=f"Balance decrease from invoice {invoice.invoice_id} generated on {issue_date_fmt}",
             )
-            subscription.flat_fee_already_billed += balance_adjustment - leftover
-            subscription.save()
             InvoiceLineItem.objects.create(
                 name=f"{subscription.subscription_id} Customer Balance Adjustment",
                 start_date=issue_date,

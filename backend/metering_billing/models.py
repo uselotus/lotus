@@ -305,13 +305,16 @@ class Customer(models.Model):
         active_subscription = self.subscriptions.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         ).first()
-        active_subscription_records = self.subscription_records.filter(
-            next_billing_date__range=(
-                active_subscription.start_date,
-                active_subscription.end_date,
-            ),
-            fully_billed=False,
-        )
+        if active_subscription:
+            active_subscription_records = self.subscription_records.filter(
+                next_billing_date__range=(
+                    active_subscription.start_date,
+                    active_subscription.end_date,
+                ),
+                fully_billed=False,
+            )
+        else:
+            active_subscription_records = None
         return active_subscription, active_subscription_records
 
     def get_billing_plan_names(self) -> str:
@@ -344,20 +347,17 @@ class Customer(models.Model):
         return subscription_usages
 
     def get_active_sub_drafts_revenue(self):
-        sub, sub_records = self.get_subscription_and_records()
         total = 0
-        inv = generate_invoice(
-            sub,
-            sub_records,
-            draft=True,
-            charge_next_plan=True,
-        )
-        total += inv.cost_due
-        inv.delete()
-        try:
-            total = total.amount
-        except:
-            pass
+        sub, sub_records = self.get_subscription_and_records()
+        if sub is not None and sub_records is not None:
+            inv = generate_invoice(
+                sub,
+                sub_records,
+                draft=True,
+                charge_next_plan=True,
+            )
+            total += inv.cost_due
+            inv.delete()
         return total
 
     def get_currency_balance(self, currency):
@@ -1542,6 +1542,14 @@ class Subscription(models.Model):
         elif active_subs_with_monthly_quarterly.count() == 0:
             self.month_anchor = None
         self.save()
+
+    def get_subscription_records(self):
+        return self.customer.subscription_records.filter(
+            Q(last_payment_date__range=(self.start_date, self.end_date))
+            | Q(end_date__range=(self.start_date, self.end_date))
+            | Q(start_date__lte=self.start_date, end_date__gte=self.end_date),
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        ).first()
 
 
 class SubscriptionRecord(models.Model):

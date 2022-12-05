@@ -799,6 +799,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             customer=serializer.validated_data["customer"],
         ).first()
         if not subscription:
+            print("no subscription found")
             duration = serializer.validated_data["billing_plan"].plan.plan_duration
             start_date = serializer.validated_data["start_date"]
             day_anchor = serializer.validated_data.get("day_anchor", start_date.day)

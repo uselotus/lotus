@@ -20,11 +20,13 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
+    Subscription,
     SubscriptionRecord,
     User,
 )
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
+    calculate_end_date,
     date_as_max_dt,
     date_as_min_dt,
     now_utc,
@@ -393,12 +395,11 @@ def setup_demo_3(company_name, username, email, password):
                     )
                     ct_mean, ct_sd = 0.065, 0.01
 
-                sub = Subscription.objects.create(
+                sub, sr = make_subscription_and_subscription_record(
                     organization=organization,
                     customer=customer,
-                    billing_plan=plan,
+                    plan=plan,
                     start_date=sub_start,
-                    status="ended",
                     is_new=months == 0,
                 )
                 tot_word_limit = float(
@@ -475,24 +476,25 @@ def setup_demo_3(company_name, username, email, password):
                 if months == 0:
                     run_generate_invoice.delay(
                         sub.pk,
+                        [sr.pk],
                         issue_date=sub.start_date,
-                        flat_fee_cutoff_date=None,
-                        include_usage=False,
                     )
-                else:
-                    sub.flat_fee_already_billed = sub.billing_plan.flat_rate
-                    sub.save()
                 if months != 5:
-                    cur_replace_with = sub.billing_plan.replace_with
-                    sub.billing_plan.replace_with = next_plan
-                    sub.save()
+                    cur_replace_with = sr.billing_plan.replace_with
+                    sr.billing_plan.replace_with = next_plan
+                    sr.save()
                     run_generate_invoice.delay(
-                        sub.pk, issue_date=sub.end_date, charge_next_plan=True
+                        sub.pk, [sr.pk], issue_date=sub.end_date, charge_next_plan=True
                     )
-                    sub.billing_plan.replace_with = cur_replace_with
-                    sub.save()
+                    sr.billing_plan.replace_with = cur_replace_with
+                    sr.save()
     now = now_utc()
     Subscription.objects.filter(
+        organization=organization,
+        status=SUBSCRIPTION_STATUS.ENDED,
+        end_date__gt=now,
+    ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
+    SubscriptionRecord.objects.filter(
         organization=organization,
         status=SUBSCRIPTION_STATUS.ENDED,
         end_date__gt=now,
@@ -579,3 +581,36 @@ def gaussian_users(n, mean=3, sd=1, mx=None):
         yield {
             "qty": int(max(qty, 1)),
         }
+
+
+def make_subscription_and_subscription_record(
+    organization,
+    customer,
+    plan,
+    start_date,
+    is_new,
+):
+    end_date = calculate_end_date(
+        plan.plan.plan_duration,
+        start_date,
+    )
+    sub = Subscription.objects.create(
+        organization=organization,
+        customer=customer,
+        start_date=start_date,
+        end_date=end_date,
+        status=SUBSCRIPTION_STATUS.ACTIVE,
+    )
+    sub.handle_attach_plan(
+        plan.day_anchor, plan.month_anchor, start_date, plan.plan.plan_duration
+    )
+    sr = SubscriptionRecord.objects.create(
+        organization=organization,
+        customer=customer,
+        billing_plan=plan,
+        start_date=start_date,
+        status=SUBSCRIPTION_STATUS.ENDED,
+    )
+    sub.status = SUBSCRIPTION_STATUS.ENDED
+    sub.save()
+    return sub, sr

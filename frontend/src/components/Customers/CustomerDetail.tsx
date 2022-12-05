@@ -54,6 +54,8 @@ function CustomerDetail(props: {
       ["customer_detail", props.customer_id],
       () =>
         Customer.getCustomerDetail(props.customer_id).then((res) => {
+          console.log("ANKARA MESSI ANKARA MESSI");
+          console.log(res);
           setCustomerSubscriptions(res.subscription.plans);
           return res;
         }),
