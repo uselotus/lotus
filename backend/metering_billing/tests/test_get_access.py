@@ -11,6 +11,7 @@ from metering_billing.models import (
     PlanVersion,
     PriceTier,
     Subscription,
+    SubscriptionRecord,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
@@ -32,6 +33,7 @@ def get_access_test_common_setup(
     add_customers_to_org,
     add_product_to_org,
     add_plan_to_product,
+    add_subscription_to_org,
 ):
     def do_get_access_test_common_setup(*, auth_method):
         setup_dict = {}
@@ -150,13 +152,11 @@ def get_access_test_common_setup(
         billing_plan.features.add(*feature_set[:1])
         billing_plan.save()
         setup_dict["billing_plan"] = billing_plan
-        subscription = baker.make(
-            Subscription,
+        subscription, subscription_record = add_subscription_to_org(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
         )
         setup_dict["subscription"] = subscription
         return setup_dict
@@ -172,15 +172,19 @@ class TestGetAccess:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["allow_limit_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        print(response.json())
+        response = response.json()
         assert len(response) == 1
         assert (
             response[0]["event_name"] == setup_dict["allow_limit_metrics"][0].event_name
         )
-        assert response[0]["metric_usage"] < response[0]["metric_total_limit"]
+        assert (
+            response[0]["usage_per_metric"][0]["metric_usage"]
+            < response[0]["usage_per_metric"][0]["metric_total_limit"]
+        )
 
     def test_get_access_limit_bm_deny(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
@@ -189,15 +193,16 @@ class TestGetAccess:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["deny_limit_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 1
         assert (
             response[0]["event_name"] == setup_dict["deny_limit_metrics"][0].event_name
         )
         assert (
-            response[0]["metric_usage"] < response[0]["metric_total_limit"]
+            response[0]["usage_per_metric"][0]["metric_usage"]
+            < response[0]["usage_per_metric"][0]["metric_total_limit"]
         ) is False
 
     def test_get_access_free_bm_allow(self, get_access_test_common_setup):
@@ -207,15 +212,18 @@ class TestGetAccess:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["allow_free_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 1
         assert (
             response[0]["event_name"] == setup_dict["allow_free_metrics"][0].event_name
         )
-        assert response[0]["metric_usage"] < response[0]["metric_free_limit"]
+        assert (
+            response[0]["usage_per_metric"][0]["metric_usage"]
+            < response[0]["usage_per_metric"][0]["metric_free_limit"]
+        )
 
     def test_get_access_free_bm_deny(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
@@ -224,14 +232,17 @@ class TestGetAccess:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["allow_limit_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 1
         assert (
             response[0]["event_name"] == setup_dict["allow_limit_metrics"][0].event_name
         )
-        assert (response[0]["metric_usage"] < response[0]["metric_free_limit"]) is False
+        assert (
+            response[0]["usage_per_metric"][0]["metric_usage"]
+            < response[0]["usage_per_metric"][0]["metric_free_limit"]
+        ) is False
 
     def test_get_access_feature_allow(self, get_access_test_common_setup):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
@@ -240,10 +251,10 @@ class TestGetAccess:
             "customer_id": setup_dict["customer"].customer_id,
             "feature_name": setup_dict["features"][0].feature_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_feature_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        feature = response.json()["features"]
+        feature = response.json()
         assert len(feature) == 1
         feature = feature[0]
         assert feature["feature_name"] == setup_dict["features"][0].feature_name
@@ -255,10 +266,10 @@ class TestGetAccess:
             "customer_id": setup_dict["customer"].customer_id,
             "feature_name": setup_dict["features"][1].feature_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_feature_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        feature = response.json()["features"]
+        feature = response.json()
         assert len(feature) == 0
 
     def test_get_access_stateful_with_max_reached_previously(
@@ -332,13 +343,16 @@ class TestGetAccess:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": metric.event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 1
         assert response[0]["event_name"] == "log_num_users"
-        assert response[0]["metric_usage"] < response[0]["metric_total_limit"]
+        assert (
+            response[0]["usage_per_metric"][0]["metric_usage"]
+            < response[0]["usage_per_metric"][0]["metric_total_limit"]
+        )
 
 
 @pytest.fixture
@@ -349,6 +363,7 @@ def get_access_test_common_setup_with_separate_by(
     add_customers_to_org,
     add_product_to_org,
     add_plan_to_product,
+    add_subscription_to_org,
 ):
     def do_get_access_test_common_setup_with_separate_by(*, auth_method):
         setup_dict = {}
@@ -478,13 +493,11 @@ def get_access_test_common_setup_with_separate_by(
         billing_plan.features.add(*feature_set[:1])
         billing_plan.save()
         setup_dict["billing_plan"] = billing_plan
-        subscription = baker.make(
-            Subscription,
+        subscription, subscription_record = add_subscription_to_org(
             organization=org,
             customer=customer,
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
         )
         setup_dict["subscription"] = subscription
         return setup_dict
@@ -504,10 +517,10 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["allow_limit_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 4
         for r in response:
             assert r["event_name"] == setup_dict["allow_limit_metrics"][0].event_name
@@ -525,9 +538,9 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["deny_limit_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 4
         for r in response:
             assert r["event_name"] == setup_dict["deny_limit_metrics"][0].event_name
@@ -545,10 +558,10 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["allow_free_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 1
         for r in response:
             assert r["event_name"] == setup_dict["allow_free_metrics"][0].event_name
@@ -566,9 +579,9 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": setup_dict["allow_limit_metrics"][0].event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 4
         for r in response:
             assert r["event_name"] == setup_dict["allow_limit_metrics"][0].event_name
@@ -586,10 +599,10 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "feature_name": setup_dict["features"][0].feature_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_feature_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        feature = response.json()["features"]
+        feature = response.json()
         assert len(feature) == 1
         feature = feature[0]
         assert feature["feature_name"] == setup_dict["features"][0].feature_name
@@ -605,7 +618,7 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "feature_name": setup_dict["features"][1].feature_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_feature_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
         feature = response.json()["features"]
@@ -704,10 +717,10 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": metric.event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 4
         for r in response:
             assert r["event_name"] == "log_num_users"
@@ -756,7 +769,7 @@ class TestGetAccessWithSeparateBy:
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        subscription = Subscription.objects.create(
+        subscription = SubscriptionRecord.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
@@ -785,10 +798,10 @@ class TestGetAccessWithSeparateBy:
             "customer_id": setup_dict["customer"].customer_id,
             "event_name": metric.event_name,
         }
-        response = setup_dict["client"].get(reverse("customer_access"), payload)
+        response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = response.json()["metrics"]
+        response = response.json()
         assert len(response) == 4
         for r in response:
             assert r["event_name"] == "db_insert"

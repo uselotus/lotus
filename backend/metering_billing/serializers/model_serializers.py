@@ -252,19 +252,19 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 # CUSTOMER
-class FilterActiveSubscriptionRecordSerializer(serializers.ListSerializer):
-    def to_representation(self, data):
-        data = [x for x in data if x.status == SUBSCRIPTION_STATUS.ACTIVE]
-        return super(FilterActiveSubscriptionRecordSerializer, self).to_representation(
-            data
-        )
+# class FilterActiveSubscriptionRecordSerializer(serializers.ListSerializer):
+#     def to_representation(self, data):
+#         print(data)
+#         data = [x for x in data if x.status == SUBSCRIPTION_STATUS.ACTIVE]
+#         return super(FilterActiveSubscriptionRecordSerializer, self).to_representation(
+#             data
+#         )
 
 
 class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionRecord
         fields = ("billing_plan_name", "plan_version", "end_date", "auto_renew")
-        list_serializer_class = FilterActiveSubscriptionRecordSerializer
 
     billing_plan_name = serializers.CharField(source="billing_plan.plan.plan_name")
     plan_version = serializers.CharField(source="billing_plan.version")

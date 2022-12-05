@@ -221,7 +221,14 @@ def add_subscription_to_org():
             auto_renew=True,
             is_new=True,
         )
-
+        now = now_utc()
+        if subscription_record.start_date > now:
+            subscription_record.status = SUBSCRIPTION_STATUS.NOT_STARTED
+        elif subscription_record.end_date < now:
+            subscription_record.status = SUBSCRIPTION_STATUS.ENDED
+        else:
+            subscription_record.status = SUBSCRIPTION_STATUS.ACTIVE
+        subscription_record.save()
         return subscription, subscription_record
 
     return do_add_subscription_to_org

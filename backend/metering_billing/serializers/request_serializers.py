@@ -1,3 +1,6 @@
+from metering_billing.serializers.model_serializers import (
+    SubscriptionCategoricalFilterSerializer,
+)
 from rest_framework import serializers
 
 
@@ -5,16 +8,16 @@ class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField()
     event_name = serializers.CharField()
     metric_id = serializers.CharField(required=False)
-    subscription_filters = serializers.DictField(
-        child=serializers.CharField(), required=False
+    subscription_filters = serializers.ListField(
+        child=SubscriptionCategoricalFilterSerializer(), required=False
     )
 
 
 class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField()
     feature_name = serializers.CharField()
-    subscription_filters = serializers.DictField(
-        child=serializers.CharField(), required=False
+    subscription_filters = serializers.ListField(
+        child=SubscriptionCategoricalFilterSerializer(), required=False
     )
 
 

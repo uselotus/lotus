@@ -85,7 +85,7 @@ class PeriodMetricRevenueView(APIView):
         # earned
         for start, end, num in [(p1_start, p1_end, 1), (p2_start, p2_end, 2)]:
             subs = (
-                Subscription.objects.filter(
+                SubscriptionRecord.objects.filter(
                     Q(start_date__range=(start, end))
                     | Q(end_date__range=(start, end))
                     | Q(start_date__lte=start, end_date__gte=end),
@@ -261,7 +261,7 @@ class PeriodSubscriptionsView(APIView):
 
         return_dict = {}
         for i, (p_start, p_end) in enumerate([[p1_start, p1_end], [p2_start, p2_end]]):
-            p_subs = Subscription.objects.filter(
+            p_subs = SubscriptionRecord.objects.filter(
                 Q(start_date__range=[p_start, p_end])
                 | Q(end_date__range=[p_start, p_end]),
                 organization=organization,
@@ -452,16 +452,19 @@ class CustomersSummaryView(APIView):
         organization = parse_organization(request)
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
-                "customer_subscriptions",
-                queryset=Subscription.objects.filter(organization=organization),
+                "subscription_records",
+                queryset=SubscriptionRecord.objects.filter(
+                    organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+                ),
                 to_attr="subscriptions",
             ),
             Prefetch(
-                "customer_subscriptions__billing_plan",
+                "subscription_records__billing_plan",
                 queryset=PlanVersion.objects.filter(organization=organization),
                 to_attr="billing_plans",
             ),
         )
+        print(customers[0].__dict__)
         serializer = CustomerSummarySerializer(customers, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -613,12 +616,12 @@ class GetCustomerEventAccessView(APIView):
             customer=customer,
         )
         subscription_filters = {
-            k: v
-            for k, v in request.query_params.items()
-            if k not in ["event_name", "customer_id"]
+            x["property_name"]: x["value"]
+            for x in serializer.validated_data.get("subscription_filters", [])
         }
-        for subscription_filter in subscription_filters:
-            subscriptions = subscriptions.filter(**subscription_filter)
+        for key, value in subscription_filters.items():
+            key = f"properties__{key}"
+            subscriptions = subscriptions.filter(**{key: value})
         metrics = []
         subscriptions = subscriptions.prefetch_related(
             "billing_plan__plan_components",
@@ -632,15 +635,15 @@ class GetCustomerEventAccessView(APIView):
                 subscription_filters[filter.property_name] = filter.comparison_value[0]
             single_sub_dict = {
                 "event_name": event_name,
-                "subscription_id": sub.subscription_id,
+                "plan_id": sub.billing_plan.plan_id,
                 "subscription_filters": subscription_filters,
-                "subscription_has_event": False,
+                "has_event": False,
                 "usage_per_metric": [],
             }
             for component in sub.billing_plan.plan_components.all():
                 metric = component.billable_metric
                 if metric.event_name == event_name:
-                    single_sub_dict["subscription_has_event"] = True
+                    single_sub_dict["has_event"] = True
                     metric_name = metric.billable_metric_name
                     tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
                     free_limit = (
@@ -649,7 +652,6 @@ class GetCustomerEventAccessView(APIView):
                         else None
                     )
                     total_limit = tiers[-1].range_end
-                    subscription_id = sub.subscription_id
                     metric_usage = metric.get_current_usage(sub)
                     if metric_usage == {}:
                         unique_tup_dict = {
@@ -657,9 +659,9 @@ class GetCustomerEventAccessView(APIView):
                             "metric_usage": 0,
                             "metric_free_limit": free_limit,
                             "metric_total_limit": total_limit,
-                            "subscription_id": subscription_id,
+                            "metric_id": metric.metric_id,
                         }
-                        single_sub_dict["metrics"].append(unique_tup_dict)
+                        single_sub_dict["usage_per_metric"].append(unique_tup_dict)
                         continue
                     custom_metric_usage = metric_usage[customer.customer_name]
                     for unique_tup, d in custom_metric_usage.items():
@@ -681,7 +683,7 @@ class GetCustomerEventAccessView(APIView):
                             unique_tup_dict["separate_by_properties"] = dict(
                                 zip(component.separate_by, groupby_vals)
                             )
-                        single_sub_dict["metrics"].append(unique_tup_dict)
+                        single_sub_dict["usage_per_metric"].append(unique_tup_dict)
             metrics.append(single_sub_dict)
         return Response(
             metrics,
@@ -712,7 +714,9 @@ class GetCustomerFeatureAccessView(APIView):
             return result
         else:
             organization_pk = result
-        serializer = GetCustomerEventAccessRequestSerializer(data=request.query_params)
+        serializer = GetCustomerFeatureAccessRequestSerializer(
+            data=request.query_params
+        )
         serializer.is_valid(raise_exception=True)
         # try:
         #     username = self.request.user.username
@@ -744,12 +748,12 @@ class GetCustomerFeatureAccessView(APIView):
             customer=customer,
         )
         subscription_filters = {
-            k: v
-            for k, v in request.query_params.items()
-            if k not in ["event_name", "customer_id"]
+            x["property_name"]: x["value"]
+            for x in serializer.validated_data.get("subscription_filters", [])
         }
-        for subscription_filter in subscription_filters:
-            subscriptions = subscriptions.filter(**subscription_filter)
+        for key, value in subscription_filters.items():
+            key = f"properties__{key}"
+            subscriptions = subscriptions.filter(**{key: value})
         features = []
         subscriptions = subscriptions.prefetch_related("billing_plan__features")
         for sub in subscriptions:
@@ -758,7 +762,7 @@ class GetCustomerFeatureAccessView(APIView):
                 subscription_filters[filter.property_name] = filter.comparison_value[0]
             sub_dict = {
                 "feature_name": feature_name,
-                "subscription_id": sub.subscription_id,
+                "plan_id": sub.billing_plan.plan_id,
                 "subscription_filters": subscription_filters,
                 "access": False,
             }
@@ -1007,7 +1011,7 @@ class PlansByNumCustomersView(APIView):
     def get(self, request, format=None):
         organization = parse_organization(request)
         plans = (
-            Subscription.objects.filter(
+            SubscriptionRecord.objects.filter(
                 organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
             )
             .values(plan_name=F("billing_plan__plan__plan_name"))

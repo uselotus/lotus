@@ -332,7 +332,7 @@ class Customer(models.Model):
 
     def get_active_sub_drafts_revenue(self):
         customer_subscriptions = (
-            Subscription.objects.filter(
+            SubscriptionRecord.objects.filter(
                 customer=self,
                 status=SUBSCRIPTION_STATUS.ACTIVE,
                 organization=self.organization,
@@ -1324,7 +1324,7 @@ class Plan(models.Model):
         versions = self.versions.all().prefetch_related("subscription_records")
         versions_count = versions.annotate(
             active_subscriptions=Count(
-                "subscription_records",
+                "subscription_record",
                 filter=Q(subscription_record__status=SUBSCRIPTION_STATUS.ACTIVE),
                 output_field=models.IntegerField(),
             )

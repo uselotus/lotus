@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .model_serializers import MetricSerializer, SubscriptionCustomerSummarySerializer
+from .model_serializers import MetricSerializer
 
 
 class PeriodSubscriptionsResponseSerializer(serializers.Serializer):
@@ -70,7 +70,7 @@ class CostAnalysisSerializer(serializers.Serializer):
 
 class GetFeatureAccessSerializer(serializers.Serializer):
     feature = serializers.CharField()
-    subscription_id = serializers.CharField()
+    plan_id = serializers.CharField()
     subscription_filters = serializers.DictField(child=serializers.CharField())
     access = serializers.BooleanField()
 
@@ -85,7 +85,7 @@ class MetricDetailSerializer(serializers.Serializer):
 
 class GetEventAccessSerializer(serializers.Serializer):
     event_name = serializers.CharField()
-    subscription_id = serializers.CharField()
+    plan_id = serializers.CharField()
     subscription_filters = serializers.DictField(child=serializers.CharField())
-    subscription_has_event = serializers.BooleanField()
+    has_event = serializers.BooleanField()
     usage_per_metric = MetricDetailSerializer(many=True)

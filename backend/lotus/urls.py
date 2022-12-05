@@ -147,7 +147,7 @@ urlpatterns = [
     path(
         "api/customer_metric_access/",
         GetCustomerEventAccessView.as_view(),
-        name="customer_access",
+        name="customer_metric_access",
     ),
     path(
         "api/customer_feature_access/",
