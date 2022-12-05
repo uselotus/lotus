@@ -32,7 +32,7 @@ interface Props {
   subscriptions: CustomerDetailSubscription[];
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
-    subscription_id: string,
+    params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => void;
   onCancel: (subscription_id: string, props: CancelSubscriptionType) => void;
@@ -100,7 +100,7 @@ const SubscriptionView: FC<Props> = ({
   };
 
   const turnAutoRenewOff = () => {
-    onAutoRenewOff(subscriptions[0].subscription_id, {
+    onAutoRenewOff(subscriptions[0].plan_version, {
       turn_off_auto_renew: true,
     });
   };

@@ -1,7 +1,7 @@
 // @ts-ignore
 import React, { useEffect, useState } from "react";
 import { Form, Tabs, Modal } from "antd";
-import { PlanType } from "../../types/plan-type";
+import { PlanType} from "../../types/plan-type";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -20,6 +20,7 @@ import {
 import {
   CustomerDetailType,
   CustomerDetailSubscription,
+  DetailPlan,
 } from "../../types/customer-type";
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
@@ -45,7 +46,7 @@ function CustomerDetail(props: {
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
 
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
-    CustomerDetailSubscription[]
+    DetailPlan[]
   >([]);
 
   const { data, isLoading }: UseQueryResult<CustomerDetailType> =
@@ -53,7 +54,7 @@ function CustomerDetail(props: {
       ["customer_detail", props.customer_id],
       () =>
         Customer.getCustomerDetail(props.customer_id).then((res) => {
-          setCustomerSubscriptions(res.subscriptions);
+          setCustomerSubscriptions(res.subscription.plans);
           return res;
         }),
       {
@@ -125,9 +126,9 @@ function CustomerDetail(props: {
 
   const turnSubscriptionAutoRenewOffMutation = useMutation(
     (obj: {
-      subscription_id: string;
+      params: object;
       post: TurnSubscriptionAutoRenewOffType;
-    }) => Customer.turnSubscriptionAutoRenewOff(obj.subscription_id, obj.post),
+    }) => Customer.turnSubscriptionAutoRenewOff( obj.post, obj.params),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -158,11 +159,11 @@ function CustomerDetail(props: {
   };
 
   const turnSubscriptionAutoRenewOff = (
-    subscription_id: string,
+    params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => {
     turnSubscriptionAutoRenewOffMutation.mutate({
-      subscription_id: subscription_id,
+      params: params,
       post: props,
     });
   };
