@@ -119,7 +119,8 @@
             "api-reference/customers/create-customer",
             "api-reference/customers/retrieve-customer",
             "api-reference/customers/list-customers",
-            "api-reference/customers/get-customer-access"
+            "api-reference/customers/get-customer-access",
+            "api-reference/customers/customer-feature-access"
           ]
         },
         {
