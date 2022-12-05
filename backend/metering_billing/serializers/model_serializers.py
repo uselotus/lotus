@@ -286,7 +286,7 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
     class Meta(SubscriptionCustomerSummarySerializer.Meta):
         model = SubscriptionRecord
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + (
-            "subscription_id",
+            # "subscription_id",
             "start_date",
             "status",
         )
@@ -1389,7 +1389,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "status",
-            "subscription_id",
             "plans",
         )
 

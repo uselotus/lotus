@@ -752,31 +752,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             invoicing_behavior_on_cancel=invoicing_behavior_on_cancel,
         )
 
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        if self.request.user.is_authenticated:
-            user = self.request.user
-        else:
-            user = None
-        if user:
-            if instance.status == SUBSCRIPTION_STATUS.ENDED:
-                action.send(
-                    user,
-                    verb="canceled",
-                    action_object=instance.billing_plan,
-                    target=instance.customer,
-                )
-            elif (
-                serializer.validated_data.get("replace_immediately_type")
-                == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
-            ):
-                action.send(
-                    user,
-                    verb="switched to",
-                    action_object=instance.billing_plan,
-                    target=instance.customer,
-                )
-
     @action(detail=False, methods=["post"])
     def plans(self, request, *args, **kwargs):
         # run checks to make sure it's valid
@@ -830,7 +805,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     @extend_schema(
         parameters=[
             SubscriptionRecordFilterSerializer,
-            SubscriptionRecordDeleteSerializer,
         ],
     )
     def cancel_plans(self, request, *args, **kwargs):

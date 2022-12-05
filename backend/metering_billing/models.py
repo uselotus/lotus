@@ -1113,7 +1113,7 @@ class InvoiceLineItem(models.Model):
         max_length=40, choices=CHARGEABLE_ITEM_TYPE.choices
     )
     invoice = models.ForeignKey(
-        Invoice, on_delete=models.CASCADE, null=True, related_name="inv_line_items"
+        Invoice, on_delete=models.CASCADE, null=True, related_name="line_items"
     )
     associated_subscription_record = models.ForeignKey(
         "Subscription",
@@ -1572,10 +1572,10 @@ class SubscriptionRecord(models.Model):
     subscription_record_id = models.CharField(
         max_length=100, null=False, blank=True, default=subscription_record_uuid
     )
-    prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
-    flat_fee_already_billed = models.DecimalField(
-        decimal_places=10, max_digits=20, default=Decimal(0)
-    )
+    # prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
+    # flat_fee_already_billed = models.DecimalField(
+    #     decimal_places=10, max_digits=20, default=Decimal(0)
+    # )
     filters = models.ManyToManyField(CategoricalFilter, blank=True)
     invoice_usage_charges = models.BooleanField(default=True)
     flat_fee_behavior = models.CharField(

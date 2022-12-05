@@ -205,4 +205,5 @@ class CHARGEABLE_ITEM_TYPE(models.TextChoices):
     USAGE_CHARGE = ("usage_charge", _("Usage Charge"))
     RECURRING_CHARGE = ("recurring_charge", _("Recurring Charge"))
     ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
-    ADJUSTMENT = ("adjustment", _("Adjustment"))
+    PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
+    CUSTOMER_ADJUSTMENT = ("customer_adjustment", _("Customer Adjustment"))

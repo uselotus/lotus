@@ -4,6 +4,7 @@ import datetime
 from decimal import Decimal
 
 import lotus_python
+from dateutil import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from djmoney.money import Money
@@ -13,6 +14,8 @@ from metering_billing.utils import (
     convert_to_date,
     convert_to_datetime,
     convert_to_decimal,
+    date_as_max_dt,
+    date_as_min_dt,
     now_utc,
 )
 from metering_billing.utils.enums import (
@@ -79,6 +82,7 @@ def generate_invoice(
     for subscription_record in subscription_records:
         billing_plan = subscription.billing_plan
         pricing_unit = billing_plan.pricing_unit
+        subscription_record_check_discount = [subscription_record]
         # usage calculation
         if subscription_record.invoice_usage_fees:
             for plan_component in billing_plan.plan_components.all():
@@ -146,15 +150,42 @@ def generate_invoice(
                         associated_subscription_record=subscription_record,
                     )
         # next plan flat fee calculation
-        if charge_next_plan:
-            if billing_plan.transition_to:
-                next_bp = billing_plan.transition_to.display_version
-            elif billing_plan.replace_with:
-                next_bp = billing_plan.replace_with
+        if billing_plan.transition_to:
+            next_bp = billing_plan.transition_to.display_version
+        elif billing_plan.replace_with:
+            next_bp = billing_plan.replace_with
+        else:
+            next_bp = billing_plan
+        if generate_next_subscription_record:
+            if (
+                subscription_record.end_date <= subscription_record.end_date
+                and subscription_record.auto_renew
+            ):
+                subrec_dict = {
+                    "organization": subscription_record.organization,
+                    "customer": subscription_record.customer,
+                    "billing_plan": next_bp,
+                    "start_date": date_as_min_dt(
+                        subscription_record.end_date + relativedelta(days=1)
+                    ),
+                    "is_new": False,
+                    "filters": subscription_record.filters,
+                }
+                next_subscription_record = SubscriptionRecord.objects.create(
+                    **subrec_dict
+                )
+                subscription_record_check_discount.append(next_subscription_record)
             else:
-                next_bp = billing_plan
-            if next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-                InvoiceLineItem.objects.create(
+                next_subscription_record = None
+        else:
+            next_subscription_record = None
+        if charge_next_plan:
+            if (
+                next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+                and next_bp.flat_fee > 0
+                and subscription_record.auto_renew
+            ):
+                ili = InvoiceLineItem.objects.create(
                     name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
                     start_date=subscription.end_date,
                     end_date=calculate_end_date(
@@ -164,19 +195,17 @@ def generate_invoice(
                     subtotal=next_bp.flat_rate,
                     billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                     invoice=invoice,
-                    associated_plan_version=next_bp,
                 )
+                if next_subscription_record:
+                    ili.associated_subscription_record = next_subscription_record
+                    ili.save()
 
-        for obj in (
-            invoice.inv_line_items.filter(associated_plan_version__isnull=False)
-            .values("associated_plan_version")
-            .distinct()
-        ):
-            plan_version = PlanVersion.objects.get(pk=obj["associated_plan_version"])
+        for subscription_record in subscription_record_check_discount:
+            plan_version = subscription_record.billing_plan
             if plan_version.price_adjustment:
                 plan_amount = (
-                    invoice.inv_line_items.filter(
-                        associated_plan_version=plan_version
+                    invoice.line_items.filter(
+                        associated_subscription_record=subscription_record
                     ).aggregate(tot=Sum("subtotal"))["tot"]
                     or 0
                 )
@@ -191,8 +220,9 @@ def generate_invoice(
                     quantity=None,
                     subtotal=difference,
                     billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
                     invoice=invoice,
-                    associated_plan_version=plan_version,
+                    associated_subscription_record=subscription_record,
                 )
 
     subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
@@ -204,6 +234,7 @@ def generate_invoice(
             quantity=None,
             subtotal=-subtotal,
             billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+            chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
             invoice=invoice,
         )
         if not draft:
@@ -236,6 +267,7 @@ def generate_invoice(
                 quantity=None,
                 subtotal=-balance_adjustment + leftover,
                 billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
                 invoice=invoice,
             )
 
