@@ -6,26 +6,29 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0099_remove_historicalsubscriptionrecord_flat_fee_already_billed_and_more'),
+        (
+            "metering_billing",
+            "0099_remove_historicalsubscriptionrecord_flat_fee_already_billed_and_more",
+        ),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='historicalsubscriptionrecord',
-            name='scheduled_end_date',
+            model_name="historicalsubscriptionrecord",
+            name="scheduled_end_date",
         ),
         migrations.RemoveField(
-            model_name='subscriptionrecord',
-            name='scheduled_end_date',
+            model_name="subscriptionrecord",
+            name="scheduled_end_date",
         ),
         migrations.AddField(
-            model_name='historicalsubscriptionrecord',
-            name='unadjusted_duration_days',
+            model_name="historicalsubscriptionrecord",
+            name="unadjusted_duration_days",
             field=models.IntegerField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='subscriptionrecord',
-            name='unadjusted_duration_days',
+            model_name="subscriptionrecord",
+            name="unadjusted_duration_days",
             field=models.IntegerField(blank=True, null=True),
         ),
     ]

@@ -38,6 +38,7 @@ META = settings.META
 
 def generate_invoice(
     subscription,
+    subscription_records,
     draft=False,
     charge_next_plan=False,
     generate_next_subscription_record=False,
@@ -54,12 +55,6 @@ def generate_invoice(
         SubscriptionRecord,
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
-
-    subscription_records = SubscriptionRecord.objects.filter(
-        organization=subscription.organization,
-        customer=subscription.customer,
-        next_billing_date__range=(subscription.start_date, subscription.end_date),
-    ).order_by("start_date")
 
     if not issue_date:
         issue_date = now_utc()
@@ -80,13 +75,13 @@ def generate_invoice(
     invoice = Invoice.objects.create(**invoice_kwargs)
 
     for subscription_record in subscription_records:
-        billing_plan = subscription.billing_plan
+        billing_plan = subscription_record.billing_plan
         pricing_unit = billing_plan.pricing_unit
         subscription_record_check_discount = [subscription_record]
         # usage calculation
-        if subscription_record.invoice_usage_fees:
+        if subscription_record.invoice_usage_charges:
             for plan_component in billing_plan.plan_components.all():
-                usg_rev = plan_component.calculate_total_revenue(subscription)
+                usg_rev = plan_component.calculate_total_revenue(subscription_record)
                 subperiods = usg_rev["subperiods"]
                 for subperiod in subperiods:
                     ili = InvoiceLineItem.objects.create(
@@ -105,22 +100,21 @@ def generate_invoice(
                         ili.save()
         # flat fee calculation for current plan
         if subscription_record.flat_fee_behavior is not FLAT_FEE_BEHAVIOR.REFUND:
+            start = convert_to_date(subscription_record.start_date)
+            end = convert_to_date(subscription_record.end_date)
             if subscription_record.flat_fee_behavior is FLAT_FEE_BEHAVIOR.PRORATE:
-                start = convert_to_date(subscription_record.start_date)
-                end = convert_to_date(subscription_record.end_date)
-                # now calculate the proration as the ratio of the duration aligned end date to the total duration
                 proration_factor = (
                     end - start
                 ).days / subscription_record.unadjusted_duration_days
-                flat_fee_due = subscription_record.flat_fee * proration_factor
+                flat_fee_due = billing_plan.flat_rate * proration_factor
             else:
-                flat_fee_due = subscription_record.flat_fee
+                flat_fee_due = billing_plan.flat_rate
             flat_fee_paid = subscription_record.amount_already_invoiced()
             if abs(float(flat_fee_paid) - float(flat_fee_due)) < 0.01:
                 pass
             else:
                 billing_plan_name = billing_plan.plan.plan_name
-                billing_plan_version = billing_plan.plan_version
+                billing_plan_version = billing_plan.version
                 InvoiceLineItem.objects.create(
                     name=f"{billing_plan_name} v{billing_plan_version} Prorated Flat Fee",
                     start_date=convert_to_datetime(start, date_behavior="min"),
@@ -177,7 +171,7 @@ def generate_invoice(
         if charge_next_plan:
             if (
                 next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
-                and next_bp.flat_fee > 0
+                and next_bp.flat_rate > 0
                 and subscription_record.auto_renew
             ):
                 ili = InvoiceLineItem.objects.create(
@@ -220,7 +214,7 @@ def generate_invoice(
                     associated_subscription_record=subscription_record,
                 )
 
-    subtotal = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+    subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0:
         InvoiceLineItem.objects.create(
             name=f"{subscription.subscription_id} Customer Balance Adjustment",
@@ -266,11 +260,10 @@ def generate_invoice(
                 invoice=invoice,
             )
 
-    invoice.cost_due = invoice.inv_line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+    invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if abs(invoice.cost_due) < 0.01 and not draft:
         invoice.payment_status = INVOICE_STATUS.PAID
     invoice.save()
-
     if not draft:
         for pp in customer.integrations.keys():
             if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():

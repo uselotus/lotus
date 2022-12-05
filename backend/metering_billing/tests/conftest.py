@@ -245,6 +245,16 @@ def get_subscriptions_in_org():
 
 
 @pytest.fixture
+def get_subscription_records_in_org():
+    from metering_billing.models import SubscriptionRecord
+
+    def do_get_subscription_records_in_org(organization):
+        return SubscriptionRecord.objects.filter(organization=organization)
+
+    return do_get_subscription_records_in_org
+
+
+@pytest.fixture
 def add_product_to_org():
     from metering_billing.models import Product
 

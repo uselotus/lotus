@@ -7,34 +7,42 @@ import metering_billing.utils.utils
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0096_historicalsubscription_subscription_and_more'),
+        ("metering_billing", "0096_historicalsubscription_subscription_and_more"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='subscriptionrecord',
+            name="subscriptionrecord",
             unique_together=set(),
         ),
         migrations.RemoveField(
-            model_name='historicalsubscriptionrecord',
-            name='subscription_id',
+            model_name="historicalsubscriptionrecord",
+            name="subscription_id",
         ),
         migrations.AddField(
-            model_name='historicalsubscriptionrecord',
-            name='subscription_record_id',
-            field=models.CharField(blank=True, default=metering_billing.utils.utils.subscription_record_uuid, max_length=100),
+            model_name="historicalsubscriptionrecord",
+            name="subscription_record_id",
+            field=models.CharField(
+                blank=True,
+                default=metering_billing.utils.utils.subscription_record_uuid,
+                max_length=100,
+            ),
         ),
         migrations.AddField(
-            model_name='subscriptionrecord',
-            name='subscription_record_id',
-            field=models.CharField(blank=True, default=metering_billing.utils.utils.subscription_record_uuid, max_length=100),
+            model_name="subscriptionrecord",
+            name="subscription_record_id",
+            field=models.CharField(
+                blank=True,
+                default=metering_billing.utils.utils.subscription_record_uuid,
+                max_length=100,
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='subscriptionrecord',
-            unique_together={('organization', 'subscription_record_id')},
+            name="subscriptionrecord",
+            unique_together={("organization", "subscription_record_id")},
         ),
         migrations.RemoveField(
-            model_name='subscriptionrecord',
-            name='subscription_id',
+            model_name="subscriptionrecord",
+            name="subscription_id",
         ),
     ]

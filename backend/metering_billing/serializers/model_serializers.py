@@ -286,7 +286,6 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
     class Meta(SubscriptionCustomerSummarySerializer.Meta):
         model = SubscriptionRecord
         fields = SubscriptionCustomerSummarySerializer.Meta.fields + (
-            # "subscription_id",
             "start_date",
             "status",
         )
@@ -1346,7 +1345,13 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         try:
             filters = validated_data.pop("subscription_filters", [])
-            sub = super().create(validated_data)
+            now = now_utc()
+            validated_data["status"] = (
+                SUBSCRIPTION_STATUS.NOT_STARTED
+                if validated_data["start_date"] > now
+                else SUBSCRIPTION_STATUS.ACTIVE
+            )
+            sub_record = super().create(validated_data)
             for filter_data in filters:
                 sub_cat_filter_dict = {
                     "property_name": filter_data["property_name"],
@@ -1359,22 +1364,35 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
                     )
                 except CategoricalFilter.MultipleObjectsReturned:
                     cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
-                sub.filters.add(cf)
-            sub.save()
+                sub_record.filters.add(cf)
+            sub_record.save()
             # new subscription means we need to create an invoice if its pay in advance
             if (
-                sub.billing_plan.flat_fee_billing_type
+                sub_record.billing_plan.flat_fee_billing_type
                 == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
             ):
+                (
+                    sub,
+                    sub_records,
+                ) = sub_record.customer.get_subscription_and_records()
+                filtered_sub_records = sub_records.filter(pk=sub_record.pk).update(
+                    flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+                    invoice_usage_charges=False,
+                )
                 generate_invoice(
                     sub,
-                    flat_fee_cutoff_date=sub.end_date,
-                    include_usage=False,
+                    filtered_sub_records,
                 )
+                sub_record.invoice_usage_charges = True
+                sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
+                sub_record.save()
+            return sub_record
         except Exception as e:
-            sub.delete()
+            try:
+                sub_record.delete()
+            except:
+                pass
             raise APIException(f"Error creating subscription: {e}")
-        return sub
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -1455,22 +1473,6 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
             data["billing_plan"] = data["billing_plan"]["plan"].display_version
         return data
 
-    def update(self, instance, validated_data):
-        instance.auto_renew = not validated_data.get(
-            "turn_off_auto_renew", not instance.auto_renew
-        )
-        instance.end_date = validated_data.get("end_date", instance.end_date)
-        instance.save()
-        new_bp = validated_data.get("billing_plan")
-        if new_bp:
-            instance.switch_subscription_bp(
-                new_bp,
-                invoicing_behavior=validated_data.get(
-                    "replace_plan_invoicing_behavior"
-                ),
-            )
-        return instance
-
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=False)
@@ -1480,7 +1482,7 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
     )
 
 
-class SubscriptionRecordDeleteSerializer(serializers.Serializer):
+class SubscriptionRecordCancelSerializer(serializers.Serializer):
     flat_fee_behavior = serializers.ChoiceField(
         choices=FLAT_FEE_BEHAVIOR.choices,
         default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
@@ -1490,6 +1492,14 @@ class SubscriptionRecordDeleteSerializer(serializers.Serializer):
         choices=INVOICING_BEHAVIOR.choices,
         default=INVOICING_BEHAVIOR.INVOICE_NOW,
     )
+
+
+class SubscriptionCancelSerializer(serializers.Serializer):
+    flat_fee_behavior = serializers.ChoiceField(
+        choices=FLAT_FEE_BEHAVIOR.choices,
+        default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+    )
+    bill_usage = serializers.BooleanField(default=False)
 
 
 class SubscriptionStatusFilterSerializer(serializers.Serializer):
@@ -1820,21 +1830,20 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "invoices",
             "total_amount_due",
             "next_amount_due",
-            "subscriptions",
+            "subscription",
             "integrations",
             "default_currency",
         )
 
-    subscriptions = serializers.SerializerMethodField()
+    subscription = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
     next_amount_due = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
 
-    def get_subscriptions(self, obj) -> SubscriptionCustomerDetailSerializer(many=True):
-        return SubscriptionCustomerDetailSerializer(
-            obj.customer_subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE),
-            many=True,
+    def get_subscription(self, obj) -> SubscriptionSerializer:
+        return SubscriptionSerializer(
+            obj.subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).first(),
         ).data
 
     def get_invoices(self, obj) -> InvoiceSerializer(many=True):

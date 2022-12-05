@@ -6,18 +6,18 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0097_alter_subscriptionrecord_unique_together_and_more'),
+        ("metering_billing", "0097_alter_subscriptionrecord_unique_together_and_more"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='historicalsubscriptionrecord',
-            old_name='plan_version',
-            new_name='billing_plan',
+            model_name="historicalsubscriptionrecord",
+            old_name="plan_version",
+            new_name="billing_plan",
         ),
         migrations.RenameField(
-            model_name='subscriptionrecord',
-            old_name='plan_version',
-            new_name='billing_plan',
+            model_name="subscriptionrecord",
+            old_name="plan_version",
+            new_name="billing_plan",
         ),
     ]

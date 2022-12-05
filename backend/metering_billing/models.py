@@ -301,6 +301,19 @@ class Customer(models.Model):
             customer__isnull=True,
         ).update(customer=self)
 
+    def get_subscription_and_records(self):
+        active_subscription = self.subscriptions.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE
+        ).first()
+        active_subscription_records = self.subscription_records.filter(
+            next_billing_date__range=(
+                active_subscription.start_date,
+                active_subscription.end_date,
+            ),
+            fully_billed=False,
+        )
+        return active_subscription, active_subscription_records
+
     def get_billing_plan_names(self) -> str:
         subscription_set = Subscription.objects.filter(
             customer=self, status=SUBSCRIPTION_STATUS.ACTIVE
@@ -331,26 +344,16 @@ class Customer(models.Model):
         return subscription_usages
 
     def get_active_sub_drafts_revenue(self):
-        customer_subscriptions = (
-            SubscriptionRecord.objects.filter(
-                customer=self,
-                status=SUBSCRIPTION_STATUS.ACTIVE,
-                organization=self.organization,
-            )
-            .prefetch_related("billing_plan__plan_components")
-            .prefetch_related("billing_plan__plan_components__billable_metric")
-            .select_related("billing_plan")
-        )
+        sub, sub_records = self.get_subscription_and_records()
         total = 0
-        for subscription in customer_subscriptions:
-            inv = generate_invoice(
-                subscription,
-                draft=True,
-                charge_next_plan=True,
-                flat_fee_cutoff_date=subscription.end_date,
-            )
-            total += inv.cost_due
-            inv.delete()
+        inv = generate_invoice(
+            sub,
+            sub_records,
+            draft=True,
+            charge_next_plan=True,
+        )
+        total += inv.cost_due
+        inv.delete()
         try:
             total = total.amount
         except:
@@ -841,13 +844,13 @@ class PlanComponent(models.Model):
         super().save(*args, **kwargs)
 
     def calculate_total_revenue(
-        self, subscription
+        self, subscription_record
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
         periods = []
-        start_date = subscription.start_date
+        start_date = subscription_record.start_date
         end_date = start_date
         now = now_utc()
-        while end_date < subscription.end_date:
+        while end_date < subscription_record.end_date:
             if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
                 end_date = start_date + relativedelta(weeks=1)
             elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
@@ -855,8 +858,8 @@ class PlanComponent(models.Model):
             elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
                 end_date = start_date + relativedelta(months=3)
             else:
-                end_date = subscription.end_date
-            end_date = min(subscription.end_date, end_date)
+                end_date = subscription_record.end_date
+            end_date = min(subscription_record.end_date, end_date)
             periods.append((start_date, end_date))
             start_date = end_date
             if start_date > now:
@@ -868,10 +871,10 @@ class PlanComponent(models.Model):
                 granularity=USAGE_CALC_GRANULARITY.TOTAL,
                 start_date=period_start,
                 end_date=period_end,
-                customer=subscription.customer,
+                customer=subscription_record.customer,
                 group_by=self.separate_by,
                 proration=self.proration_granularity,
-                filters=subscription.get_filters_dictionary(),
+                filters=subscription_record.get_filters_dictionary(),
             )
 
             if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
@@ -882,7 +885,7 @@ class PlanComponent(models.Model):
                 elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
                     metric_granularity = METRIC_GRANULARITY.QUARTER
                 else:
-                    plan_dur = subscription.billing_plan.plan.plan_duration
+                    plan_dur = subscription_record.billing_plan.plan.plan_duration
                     if plan_dur == PLAN_DURATION.MONTHLY:
                         metric_granularity = METRIC_GRANULARITY.MONTH
                     elif plan_dur == PLAN_DURATION.QUARTERLY:
@@ -897,7 +900,9 @@ class PlanComponent(models.Model):
                 metric_granularity, proration_granularity, start_date
             )
             # extract usage
-            separated_usage = all_usage.get(subscription.customer.customer_name, {})
+            separated_usage = all_usage.get(
+                subscription_record.customer.customer_name, {}
+            )
             for i, (unique_identifier, usage_by_period) in enumerate(
                 separated_usage.items()
             ):
@@ -1116,7 +1121,7 @@ class InvoiceLineItem(models.Model):
         Invoice, on_delete=models.CASCADE, null=True, related_name="line_items"
     )
     associated_subscription_record = models.ForeignKey(
-        "Subscription",
+        "SubscriptionRecord",
         on_delete=models.CASCADE,
         null=True,
         related_name="line_items",
@@ -1520,18 +1525,20 @@ class Subscription(models.Model):
         self.save()
 
     def handle_remove_plan(self):
-        active_subs = self.customer.subscriptions.filter(
+        active_sub_records = self.customer.subscription_records.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         )
-        active_subs_with_monthly_quarterly = active_subs.filter(
-            billing_plan__plan__duration__in=[
+        active_subs_with_monthly_quarterly = active_sub_records.filter(
+            billing_plan__plan__plan_duration__in=[
                 PLAN_DURATION.YEARLY,
                 PLAN_DURATION.QUARTERLY,
             ]
         )
-        if active_subs.count() == 0:
+        if active_sub_records.count() == 0:
             self.day_anchor = None
             self.month_anchor = None
+            self.end_date = now_utc()
+            self.status = SUBSCRIPTION_STATUS.ENDED
         elif active_subs_with_monthly_quarterly.count() == 0:
             self.month_anchor = None
         self.save()
@@ -1579,6 +1586,7 @@ class SubscriptionRecord(models.Model):
         max_length=20,
         default=FLAT_FEE_BEHAVIOR.PRORATE,
     )
+    fully_billed = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     class Meta:
@@ -1645,12 +1653,12 @@ class SubscriptionRecord(models.Model):
         return filters_dict
 
     def amount_already_invoiced(self):
-        flat_fee_prev_invoices = self.flat_fee_already_billed or 0
-        billed_invoices = self.invoices.filter(
-            ~Q(payment_status=INVOICE_STATUS.VOIDED)
-            & ~Q(payment_status=INVOICE_STATUS.DRAFT)
-        ).aggregate(tot=Sum("cost_due"))["tot"]
-        return flat_fee_prev_invoices + (billed_invoices or 0)
+        billed_invoices = self.line_items.filter(
+            ~Q(invoice__payment_status=INVOICE_STATUS.VOIDED)
+            & ~Q(invoice__payment_status=INVOICE_STATUS.DRAFT),
+            subtotal__isnull=False,
+        ).aggregate(tot=Sum("subtotal"))["tot"]
+        return billed_invoices or 0
 
     def get_usage_and_revenue(self):
         sub_dict = {"components": []}
@@ -1676,24 +1684,17 @@ class SubscriptionRecord(models.Model):
         return sub_dict
 
     def end_subscription_now(
-        self, bill_usage=True, flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL
+        self,
+        bill_usage=True,
+        flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
     ):
         if self.status != SUBSCRIPTION_STATUS.ACTIVE:
             return
-        self.auto_renew = False
         now = now_utc()
-        old_end_date = self.end_date
+        self.flat_fee_behavior = flat_fee_behavior
+        self.invoice_usage_charges = bill_usage
+        self.auto_renew = False
         self.end_date = now
-        flat_fee_cutoff_date = (
-            old_end_date
-            if flat_fee_behavior == FLAT_FEE_BEHAVIOR.CHARGE_FULL
-            else (now if flat_fee_behavior == FLAT_FEE_BEHAVIOR.PRORATE else -1)
-        )
-        generate_invoice(
-            self,
-            flat_fee_cutoff_date=flat_fee_cutoff_date,
-            include_usage=bill_usage,
-        )
         self.status = SUBSCRIPTION_STATUS.ENDED
         self.save()
 
@@ -1701,7 +1702,9 @@ class SubscriptionRecord(models.Model):
         self.auto_renew = False
         self.save()
 
-    def switch_subscription_bp(self, new_version):
+    def switch_subscription_bp(
+        self, new_version, invoicing_behavior=INVOICING_BEHAVIOR.INVOICE_NOW
+    ):
         now = now_utc()
         SubscriptionRecord.objects.create(
             organization=self.organization,
@@ -1715,10 +1718,6 @@ class SubscriptionRecord(models.Model):
         self.end_date = now
         self.auto_renew = False
         self.save()
-        if False:
-            generate_invoice(
-                self, flat_fee_cutoff_date=self.end_date, include_usage=False
-            )
 
     def calculate_earned_revenue_per_day(self):
         return_dict = {}

@@ -522,29 +522,19 @@ class DraftInvoiceView(APIView):
                 {"error": "Customer not found"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        subs = (
-            SubscriptionRecord.objects.filter(
-                customer=customer,
-                organization=organization,
-                status=SUBSCRIPTION_STATUS.ACTIVE,
-            )
-            .select_related("billing_plan")
-            .prefetch_related(
-                "billing_plan__plan_components",
-                "billing_plan__plan_components__billable_metric",
-                "billing_plan__plan_components__tiers",
-            )
+        sub, sub_records = customer.get_subscription_and_records()
+        sub_records = sub_records.select_related("billing_plan").prefetch_related(
+            "billing_plan__plan_components",
+            "billing_plan__plan_components__billable_metric",
+            "billing_plan__plan_components__tiers",
         )
-        invoices = [
-            generate_invoice(
-                sub,
-                draft=True,
-                charge_next_plan=True,
-                flat_fee_cutoff_date=sub.end_date,
-            )
-            for sub in subs
-        ]
-        serializer = DraftInvoiceSerializer(invoices, many=True).data
+        invoice = generate_invoice(
+            sub,
+            sub_records,
+            draft=True,
+            charge_next_plan=serializer.validated_data.get("include_next_period", True),
+        )
+        serializer = DraftInvoiceSerializer(invoice).data
         try:
             username = self.request.user.username
         except:
@@ -556,8 +546,7 @@ class DraftInvoiceView(APIView):
             event="draft_invoice",
             properties={"organization": organization.company_name},
         )
-        for invoice in invoices:
-            invoice.delete()
+        invoice.delete()
         return Response(serializer, status=status.HTTP_200_OK)
 
 

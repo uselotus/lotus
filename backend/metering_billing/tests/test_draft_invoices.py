@@ -167,12 +167,14 @@ class TestGenerateInvoice:
         )
         assert len(active_subscriptions) == 1
 
-        payload = {"customer_id": setup_dict["customer"].customer_id}
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "include_next_period": False,
+        }
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        before_cost = response.data[0]["cost_due"]
-
+        before_cost = response.data["cost_due"]
         pct_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
             price_adjustment_name=r"1% discount",
@@ -184,9 +186,8 @@ class TestGenerateInvoice:
         setup_dict["billing_plan"].save()
 
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
-
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data[0]["cost_due"]
+        after_cost = response.data["cost_due"]
         assert (before_cost * Decimal("0.99")).quantize(Decimal(10) ** -2) == after_cost
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
@@ -202,7 +203,7 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data[0]["cost_due"]
+        after_cost = response.data["cost_due"]
         assert before_cost - Decimal("1") == after_cost
 
         override_price_adjustment = PriceAdjustment.objects.create(
@@ -218,5 +219,5 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        after_cost = response.data[0]["cost_due"]
+        after_cost = response.data["cost_due"]
         assert Decimal("20") == after_cost

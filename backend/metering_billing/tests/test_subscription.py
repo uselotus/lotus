@@ -19,6 +19,7 @@ from metering_billing.models import (
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
+    FLAT_FEE_BEHAVIOR,
     PRICE_TIER_TYPE,
     REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
@@ -123,7 +124,6 @@ def subscription_test_common_setup(
         payload = {
             "name": "test_subscription",
             "start_date": now_utc().date() - timedelta(days=35),
-            "status": "active",
             "customer_id": customer.customer_id,
             "plan_id": billing_plan.plan.plan_id,
         }
@@ -149,7 +149,7 @@ class TestCreateSubscription:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-list"),
+            reverse("subscription-plans"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -158,7 +158,10 @@ class TestCreateSubscription:
         assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
 
     def test_session_auth_can_create_subscription_nonempty_before(
-        self, subscription_test_common_setup, get_subscriptions_in_org
+        self,
+        subscription_test_common_setup,
+        get_subscriptions_in_org,
+        get_subscription_records_in_org,
     ):
         # covers num_subscriptions_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false, authenticated=true
         num_subscriptions = 1
@@ -167,16 +170,23 @@ class TestCreateSubscription:
             auth_method="session_auth",
             user_org_and_api_key_org_different=False,
         )
+        num_subscription_records_before = len(
+            get_subscription_records_in_org(setup_dict["org"])
+        )
 
         response = setup_dict["client"].post(
-            reverse("subscription-list"),
+            reverse("subscription-plans"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
 
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions + 1
+        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
+        assert (
+            len(get_subscription_records_in_org(setup_dict["org"]))
+            == num_subscription_records_before + 1
+        )
 
     def test_user_org_and_api_key_different_reject_creation(
         self, subscription_test_common_setup, get_subscriptions_in_org
@@ -190,7 +200,7 @@ class TestCreateSubscription:
         )
 
         response = setup_dict["client"].post(
-            reverse("subscription-list"),
+            reverse("subscription-plans"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -263,16 +273,13 @@ class TestUpdateSub:
         prev_invoices_len = Invoice.objects.all().count()
         assert len(active_subscriptions) == 1
 
-        payload = {
-            "status": SUBSCRIPTION_STATUS.ENDED,
-            "replace_immediately_type": REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL,
+        params = {
+            "bill_usage": True,
+            "customer_id": setup_dict["customer"].customer_id,
+            "flat_fee_behavior": FLAT_FEE_BEHAVIOR.CHARGE_FULL,
         }
-        response = setup_dict["client"].patch(
-            reverse(
-                "subscription-detail",
-                kwargs={"subscription_id": active_subscriptions[0].subscription_id},
-            ),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
+        response = setup_dict["client"].delete(
+            reverse("subscription-plans") + "?" + urllib.parse.urlencode(params),
             content_type="application/json",
         )
 
@@ -287,7 +294,7 @@ class TestUpdateSub:
             customer=setup_dict["customer"],
         )
         new_invoices_len = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_204_NO_CONTENT
         assert len(after_active_subscriptions) + 1 == len(active_subscriptions)
         assert len(after_canceled_subscriptions) == 1
         assert new_invoices_len == prev_invoices_len + 1
@@ -336,60 +343,6 @@ class TestUpdateSub:
     #     assert len(after_canceled_subscriptions) == 1
     #     assert new_invoices_len == prev_invoices_len
 
-    def test_replace_bp_and_create_new_sub(
-        self, subscription_test_common_setup, add_plan_to_product
-    ):
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=1, auth_method="session_auth"
-        )
-
-        active_subscriptions = Subscription.objects.filter(
-            status="active",
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        prev_invoices_len = Invoice.objects.all().count()
-        assert len(active_subscriptions) == 1
-        plan = add_plan_to_product(setup_dict["product"])
-        pv = PlanVersion.objects.create(
-            organization=setup_dict["org"],
-            plan=plan,
-            version=1,
-            description="new plan",
-            flat_rate=60,
-        )
-        plan.make_version_active(pv)
-
-        payload = {
-            "plan_id": plan.plan_id,
-            "replace_immediately_type": REPLACE_IMMEDIATELY_TYPE.END_CURRENT_SUBSCRIPTION_AND_BILL,
-        }
-        response = setup_dict["client"].patch(
-            reverse(
-                "subscription-detail",
-                kwargs={"subscription_id": active_subscriptions[0].subscription_id},
-            ),
-            data=json.dumps(payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        after_active_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        after_canceled_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ENDED,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        )
-        new_invoices_len = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_200_OK
-        assert len(after_active_subscriptions) == len(active_subscriptions)
-        assert len(after_canceled_subscriptions) == 1
-        assert new_invoices_len == prev_invoices_len + 1
-        assert Invoice.objects.all()[0].cost_due - Decimal(30) < 0.0000001
-
     def test_replace_bp_halfway_through_and_prorate(
         self, subscription_test_common_setup, add_plan_to_product
     ):
@@ -415,14 +368,17 @@ class TestUpdateSub:
         plan.make_version_active(pv)
 
         payload = {
-            "plan_id": plan.plan_id,
-            "replace_immediately_type": REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN,
+            "replace_plan_id": plan.plan_id,
+        }
+        params = {
+            "customer_id": setup_dict["customer"].customer_id,
         }
         response = setup_dict["client"].patch(
             reverse(
-                "subscription-detail",
-                kwargs={"subscription_id": active_subscriptions[0].subscription_id},
-            ),
+                "subscription-plans",
+            )
+            + "?"
+            + urllib.parse.urlencode(params),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )

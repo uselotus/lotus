@@ -331,7 +331,7 @@ class StripeConnector(PaymentProvider):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
-        for line_item in invoice.inv_line_items.all():
+        for line_item in invoice.line_items.all():
             name = line_item.name
             amount = line_item.subtotal
             customer = stripe_customer_id

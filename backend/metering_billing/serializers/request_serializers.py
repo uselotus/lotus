@@ -67,3 +67,4 @@ class EventPreviewRequestSerializer(serializers.Serializer):
 
 class DraftInvoiceRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=True)
+    include_next_period = serializers.BooleanField(default=True)
