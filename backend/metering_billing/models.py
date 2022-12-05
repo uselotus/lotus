@@ -1107,10 +1107,10 @@ class InvoiceLineItem(models.Model):
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     billing_type = models.CharField(
-        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices
+        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
     )
     chargeable_item_type = models.CharField(
-        max_length=40, choices=CHARGEABLE_ITEM_TYPE.choices
+        max_length=40, choices=CHARGEABLE_ITEM_TYPE.choices, null=True, blank=True
     )
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, null=True, related_name="line_items"
@@ -1561,7 +1561,7 @@ class SubscriptionRecord(models.Model):
     next_billing_date = models.DateTimeField(null=True, blank=True)
     last_billing_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField()
-    scheduled_end_date = models.DateTimeField(null=True, blank=True)
+    unadjusted_duration_days = models.IntegerField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_STATUS.choices,
@@ -1572,10 +1572,6 @@ class SubscriptionRecord(models.Model):
     subscription_record_id = models.CharField(
         max_length=100, null=False, blank=True, default=subscription_record_uuid
     )
-    # prorated_flat_costs_dict = models.JSONField(default=dict, blank=True, null=True)
-    # flat_fee_already_billed = models.DecimalField(
-    #     decimal_places=10, max_digits=20, default=Decimal(0)
-    # )
     filters = models.ManyToManyField(CategoricalFilter, blank=True)
     invoice_usage_charges = models.BooleanField(default=True)
     flat_fee_behavior = models.CharField(
@@ -1604,11 +1600,16 @@ class SubscriptionRecord(models.Model):
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        if not self.scheduled_end_date:
-            self.scheduled_end_date = calculate_end_date(
-                self.billing_plan.plan.plan_duration,
-                self.start_date,
+        if not self.unadjusted_duration_days:
+            scheduled_end_date = convert_to_date(
+                calculate_end_date(
+                    self.billing_plan.plan.plan_duration,
+                    self.start_date,
+                )
             )
+            self.unadjusted_duration_days = (
+                scheduled_end_date - convert_to_date(self.start_date)
+            ).days
         if not self.next_billing_date or self.next_billing_date < now:
             start_date = self.start_date
             next_billing_date = self.start_date
@@ -1635,20 +1636,6 @@ class SubscriptionRecord(models.Model):
                 if start_date > now:
                     break
             self.next_billing_date = next_billing_date
-        if self.status == SUBSCRIPTION_STATUS.ACTIVE or not self.pk:
-            flat_fee_dictionary = self.prorated_flat_costs_dict
-            today = now_utc().date()
-            dates_bwn = list(
-                dates_bwn_two_dts(self.start_date, self.scheduled_end_date)
-            )
-            for day in dates_bwn:
-                day = convert_to_date(day)
-                if day >= today or not self.pk:
-                    flat_fee_dictionary[str(day)] = {
-                        "plan_version_id": self.billing_plan.version_id,
-                        "amount": float(self.billing_plan.flat_rate) / len(dates_bwn),
-                    }
-            self.prorated_flat_costs_dict = flat_fee_dictionary
         super(SubscriptionRecord, self).save(*args, **kwargs)
 
     def get_filters_dictionary(self):
@@ -1715,15 +1702,20 @@ class SubscriptionRecord(models.Model):
         self.save()
 
     def switch_subscription_bp(self, new_version):
-        old_qty = sum([x["amount"] for x in self.prorated_flat_costs_dict.values()])
-        self.billing_plan = new_version
+        now = now_utc()
+        SubscriptionRecord.objects.create(
+            organization=self.organization,
+            customer=self.customer,
+            billing_plan=new_version,
+            start_date=now,
+            end_date=self.end_date,
+            auto_renew=self.auto_renew,
+            unadjusted_duration_days=self.unadjusted_duration_days,
+        )
+        self.end_date = now
+        self.auto_renew = False
         self.save()
-        new_qty = sum([x["amount"] for x in self.prorated_flat_costs_dict.values()])
-        if (
-            new_version.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
-            and new_version.flat_rate > 0
-            and new_qty > old_qty
-        ):
+        if False:
             generate_invoice(
                 self, flat_fee_cutoff_date=self.end_date, include_usage=False
             )
@@ -1735,10 +1727,9 @@ class SubscriptionRecord(models.Model):
         ):
             period = convert_to_date(period)
             return_dict[period] = Decimal(0)
-        for period, d in self.prorated_flat_costs_dict.items():
-            period = convert_to_date(period)
-            if period in return_dict:
-                return_dict[period] += convert_to_decimal(d["amount"])
+            return_dict[period] += convert_to_decimal(
+                self.billing_plan.flat_rate / self.unadjusted_duration_days
+            )
         for component in self.billing_plan.plan_components.all():
             rev_per_day = component.calculate_earned_revenue_per_day(self)
             for period, amount in rev_per_day.items():

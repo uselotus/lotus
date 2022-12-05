@@ -520,7 +520,7 @@ class DraftInvoiceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         subs = (
-            Subscription.objects.filter(
+            SubscriptionRecord.objects.filter(
                 customer=customer,
                 organization=organization,
                 status=SUBSCRIPTION_STATUS.ACTIVE,
@@ -605,7 +605,9 @@ class GetCustomerEventAccessView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         event_name = serializer.validated_data.get("event_name")
-        subscriptions = Subscription.objects.select_related("billing_plan").filter(
+        subscriptions = SubscriptionRecord.objects.select_related(
+            "billing_plan"
+        ).filter(
             organization_id=organization_pk,
             status=SUBSCRIPTION_STATUS.ACTIVE,
             customer=customer,
@@ -734,7 +736,9 @@ class GetCustomerFeatureAccessView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         feature_name = serializer.validated_data.get("feature_name")
-        subscriptions = Subscription.objects.select_related("billing_plan").filter(
+        subscriptions = SubscriptionRecord.objects.select_related(
+            "billing_plan"
+        ).filter(
             organization_id=organization_pk,
             status=SUBSCRIPTION_STATUS.ACTIVE,
             customer=customer,

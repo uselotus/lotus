@@ -672,9 +672,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         # need for: list, update_plans, cancel_plans
         if self.action == "list":
             args = []
-            serializer = SubscriptionStatusFilterSerializer(
-                self.request.query_params
-            ).is_valid(raise_exception=True)
+            serializer = SubscriptionStatusFilterSerializer(self.request.query_params)
+            serializer.is_valid(raise_exception=True)
             args.append(Q(status__in=serializer.validated_data["status"]))
             if serializer.validated_data.get("customer_id"):
                 args.append(
@@ -703,10 +702,11 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         elif self.action in ["update_plans", "cancel_plans"]:
             serializer = SubscriptionRecordFilterSerializer(
-                self.request.query_params
-            ).is_valid(raise_exception=True)
+                data=self.request.query_params
+            )
+            serializer.is_valid(raise_exception=True)
             args = []
-            args.append(Q(status__in=serializer.validated_data["status"]))
+            args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
             if serializer.validated_data.get("customer_id"):
                 args.append(
                     Q(customer__customer_id=serializer.validated_data["customer_id"])
@@ -738,9 +738,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return super().destroy(request)
 
     def perform_destroy(self, instance):
-        serializer = SubscriptionRecordDeleteSerializer(
-            self.request.query_params
-        ).is_valid(raise_exception=True)
+        serializer = SubscriptionRecordDeleteSerializer(data=self.request.query_params)
+        serializer.is_valid(raise_exception=True)
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
         bill_usage = serializer.validated_data["bill_usage"]
         invoicing_behavior_on_cancel = serializer.validated_data[
@@ -805,13 +804,13 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     @extend_schema(
         parameters=[
             SubscriptionRecordFilterSerializer,
+            SubscriptionRecordDeleteSerializer,
         ],
     )
     def cancel_plans(self, request, *args, **kwargs):
         qs = self.get_queryset()
-        serializer = SubscriptionRecordDeleteSerializer(
-            self.request.query_params
-        ).is_valid(raise_exception=True)
+        serializer = SubscriptionRecordDeleteSerializer(data=self.request.query_params)
+        serializer.is_valid(raise_exception=True)
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
         bill_usage = serializer.validated_data["bill_usage"]
         invoicing_behavior_on_cancel = serializer.validated_data[
@@ -840,7 +839,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_200_OK)
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -907,9 +906,8 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         ]
         if self.action == "list":
             args = []
-            serializer = InvoiceListFilterSerializer(
-                self.request.query_params
-            ).is_valid(raise_exception=True)
+            serializer = InvoiceListFilterSerializer(data=self.request.query_params)
+            serializer.is_valid(raise_exception=True)
             args.append(
                 Q(payment_status__in=serializer.validated_data["payment_status"])
             )

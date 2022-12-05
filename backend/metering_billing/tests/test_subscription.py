@@ -1,5 +1,6 @@
 import itertools
 import json
+import urllib.parse
 from datetime import timedelta
 from decimal import Decimal
 
@@ -14,6 +15,7 @@ from metering_billing.models import (
     PlanVersion,
     PriceTier,
     Subscription,
+    SubscriptionRecord,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
@@ -441,42 +443,38 @@ class TestUpdateSub:
         assert len(after_active_subscriptions) == len(active_subscriptions)
         assert len(after_canceled_subscriptions) == 0
         assert new_invoices_len == prev_invoices_len
-        assert (
-            sum(
-                v["amount"]
-                for v in Subscription.objects.all()[0].prorated_flat_costs_dict.values()
-            )
-            - 60
-            < 0.000001
-        )
 
     def test_cancel_auto_renew(self, subscription_test_common_setup):
         setup_dict = subscription_test_common_setup(
             num_subscriptions=1, auth_method="session_auth"
         )
 
-        autorenew_subscriptions = Subscription.objects.filter(
-            status="active",
+        autorenew_subscription_records = SubscriptionRecord.objects.filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             auto_renew=True,
         )
         prev_invoices_len = Invoice.objects.all().count()
-        assert len(autorenew_subscriptions) == 1
+        assert len(autorenew_subscription_records) == 1
 
         payload = {
-            "auto_renew": False,
+            "turn_off_auto_renew": True,
+        }
+        params = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "plan_id": setup_dict["plan"].plan_id,
         }
         response = setup_dict["client"].patch(
             reverse(
-                "subscription-detail",
-                kwargs={"subscription_id": autorenew_subscriptions[0].subscription_id},
-            ),
+                "subscription-plans",
+            )
+            + "?"
+            + urllib.parse.urlencode(params),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
 
-        after_autorenew_subscriptions = Subscription.objects.filter(
+        after_autorenew_subscription_records = SubscriptionRecord.objects.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
@@ -485,5 +483,7 @@ class TestUpdateSub:
         new_invoices_len = Invoice.objects.all().count()
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(after_autorenew_subscriptions) + 1 == len(autorenew_subscriptions)
+        assert len(after_autorenew_subscription_records) + 1 == len(
+            autorenew_subscription_records
+        )
         assert new_invoices_len == prev_invoices_len

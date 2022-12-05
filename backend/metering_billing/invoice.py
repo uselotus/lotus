@@ -106,17 +106,12 @@ def generate_invoice(
         # flat fee calculation for current plan
         if subscription_record.flat_fee_behavior is not FLAT_FEE_BEHAVIOR.REFUND:
             if subscription_record.flat_fee_behavior is FLAT_FEE_BEHAVIOR.PRORATE:
-                duration_aligned_end_date = convert_to_date(
-                    calculate_end_date(
-                        billing_plan.duration, subscription_record.start_date
-                    )
-                )
                 start = convert_to_date(subscription_record.start_date)
                 end = convert_to_date(subscription_record.end_date)
                 # now calculate the proration as the ratio of the duration aligned end date to the total duration
-                proration_factor = (end - start).days / (
-                    duration_aligned_end_date - start
-                ).days
+                proration_factor = (
+                    end - start
+                ).days / subscription_record.unadjusted_duration_days
                 flat_fee_due = subscription_record.flat_fee * proration_factor
             else:
                 flat_fee_due = subscription_record.flat_fee
