@@ -25,6 +25,7 @@
     "dayjs": "1.11.5",
     "depcheck": "^1.4.3",
     "posthog-js": "^1.34.1",
+    "qs": "^6.11.0",
     "react": "18.2.0",
     "react-copy-to-clipboard": "5.1.0",
     "react-dom": "18.2.0",

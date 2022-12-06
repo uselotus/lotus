@@ -70,6 +70,7 @@ import {
 } from "../types/invoice-type";
 import { CreateBalanceAdjustmentType } from "../types/balance-adjustment";
 import { PricingUnit } from "../types/pricing-unit-type";
+import { qs } from "qs";
 
 const cookies = new Cookies();
 
@@ -88,6 +89,10 @@ export const instance = axios.create({
   timeout: 15000,
   withCredentials: true,
 });
+// add a param serializer to axios that encodes using the qs library, with the option to encode set to false
+// this allows us to pass in arrays as query params without them being encoded
+axios.defaults.paramsSerializer = (params) =>
+  qs.stringify(params, { encode: false });
 
 const responseBody = (response: AxiosResponse) => response.data;
 
