@@ -1520,7 +1520,7 @@ class Subscription(models.Model):
             ]:
                 self.month_anchor = plan_start_date.month
         if plan_billing_frequency in [USAGE_BILLING_FREQUENCY.END_OF_PERIOD, None]:
-            if self.billing_cadence is None:
+            if self.billing_cadence is None or self.billing_cadence == "":
                 self.billing_cadence = plan_duration
             elif self.billing_cadence == PLAN_DURATION.QUARTERLY:
                 if plan_duration == PLAN_DURATION.MONTHLY:
@@ -1532,7 +1532,7 @@ class Subscription(models.Model):
             if plan_billing_frequency == USAGE_BILLING_FREQUENCY.MONTHLY:
                 self.billing_cadence = PLAN_DURATION.MONTHLY
             elif plan_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
-                if self.billing_cadence in [PLAN_DURATION.YEARLY, None]:
+                if self.billing_cadence in [PLAN_DURATION.YEARLY, None, ""]:
                     self.billing_cadence = PLAN_DURATION.QUARTERLY
         new_end_date = calculate_end_date(
             self.billing_cadence,

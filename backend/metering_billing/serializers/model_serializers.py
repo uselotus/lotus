@@ -887,6 +887,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "status",
             "replace_with",
             "transition_to",
+            "plan_name",
         )
         read_only_fields = (
             "version",
@@ -1361,7 +1362,6 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
             sub_record.billing_plan.flat_fee_billing_type
             == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
         ):
-            print("generating invoice")
             (
                 sub,
                 sub_records,
@@ -1370,8 +1370,6 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
                 flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
                 invoice_usage_charges=False,
             )
-            print("filtered sub records", filtered_sub_records)
-            print("sub", sub)
             generate_invoice(
                 sub,
                 sub_records.filter(pk=sub_record.pk),
@@ -1379,15 +1377,7 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
             sub_record.invoice_usage_charges = True
             sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
             sub_record.save()
-            print("finish w sub record")
         return sub_record
-        # except Exception as e:
-        #     try:
-        #         sub_record.delete()
-        #     except:
-        #         pass
-        #     print("ran into an error", e)
-        #     raise APIException(f"Error creating subscription: {e}")
 
 
 class SubscriptionRecordDetailSerializer(SubscriptionRecordSerializer):
