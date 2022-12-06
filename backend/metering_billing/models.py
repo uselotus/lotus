@@ -1504,6 +1504,7 @@ class Subscription(models.Model):
         plan_month_anchor=None,
         plan_start_date=None,
         plan_duration=None,
+        plan_billing_cadence=None,
     ):
         if self.day_anchor is None:
             if plan_day_anchor is not None:
@@ -1518,6 +1519,7 @@ class Subscription(models.Model):
                 PLAN_DURATION.QUARTERLY,
             ]:
                 self.month_anchor = plan_start_date.month
+
         self.save()
 
     def handle_remove_plan(self):
