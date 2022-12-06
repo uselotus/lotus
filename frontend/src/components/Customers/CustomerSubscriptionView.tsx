@@ -27,6 +27,7 @@ import {
 } from "../../types/customer-type";
 import DraftInvoice from "./DraftInvoice";
 import { Link } from "react-router-dom";
+import qs from "qs";
 
 interface Props {
   customer_id: string;
