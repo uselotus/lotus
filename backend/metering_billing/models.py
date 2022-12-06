@@ -1541,11 +1541,11 @@ class Subscription(models.Model):
 
     def get_subscription_records(self):
         return self.customer.subscription_records.filter(
-            Q(last_payment_date__range=(self.start_date, self.end_date))
+            Q(last_billing_date__range=(self.start_date, self.end_date))
             | Q(end_date__range=(self.start_date, self.end_date))
             | Q(start_date__lte=self.start_date, end_date__gte=self.end_date),
             status=SUBSCRIPTION_STATUS.ACTIVE,
-        ).first()
+        )
 
 
 class SubscriptionRecord(models.Model):
