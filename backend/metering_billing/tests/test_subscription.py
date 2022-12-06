@@ -768,7 +768,7 @@ class TestSubscriptionAndSubscriptionRecord:
         new_sub_record = (
             SubscriptionRecord.objects.all().order_by("-start_date").first()
         )
-        assert sub.start_date != new_sub_record.start_date
+        assert sub.start_date == new_sub_record.start_date
         assert sub.end_date == new_sub_record.next_billing_date
         assert sub.end_date == new_sub_record.end_date
         assert sub.billing_cadence != new_sub_record.billing_plan.plan.plan_duration
@@ -799,13 +799,12 @@ class TestSubscriptionAndSubscriptionRecord:
             SubscriptionRecord.objects.all().order_by("-start_date").first()
         )
         old_sub_record = SubscriptionRecord.objects.all().order_by("-start_date").last()
+        print(new_sub_record.start_date, new_sub_record)
+        print(old_sub_record.start_date, old_sub_record)
         assert sub.start_date != new_sub_record.start_date
         assert sub.end_date == new_sub_record.next_billing_date
         assert sub.end_date == new_sub_record.end_date
-        assert sub.billing_cadence != new_sub_record.billing_plan.plan.plan_duration
-        assert (
-            sub.billing_cadence == new_sub_record.billing_plan.usage_billing_frequency
-        )
+        assert sub.billing_cadence == new_sub_record.billing_plan.plan_duration
         assert sub.month_anchor is not None
         assert sub.day_anchor is not None
         assert (new_sub_record.end_date + relativedelta(day=sub.day_anchor)).day == (

@@ -1410,7 +1410,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
 
     customer = ShortCustomerSerializer(read_only=True)
-    plans = SubscriptionRecordSerializer(many=True, read_only=True)
+    plans = serializers.SerializerMethodField()
 
     def get_plans(self, obj) -> SubscriptionRecordSerializer(many=True):
         return SubscriptionRecordSerializer(
@@ -1857,13 +1857,13 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "default_currency",
         )
 
-    subscription = serializers.SerializerMethodField(required=False)
+    subscription = serializers.SerializerMethodField(allow_null=True)
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
     next_amount_due = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
 
-    def get_subscription(self, obj) -> Union[SubscriptionSerializer, None]:
+    def get_subscription(self, obj) -> SubscriptionSerializer:
         sub_obj = obj.subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).first()
         if sub_obj is None:
             return None
