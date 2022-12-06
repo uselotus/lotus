@@ -712,10 +712,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             args = []
             args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
-            if serializer.validated_data.get("customer_id"):
-                args.append(
-                    Q(customer__customer_id=serializer.validated_data["customer_id"])
-                )
+            args.append(Q(customer=serializer.validated_data["customer"]))
             if serializer.validated_data.get("subscription_filters"):
                 for filter in serializer.validated_data["subscription_filters"]:
                     property_name = filter["property_name"]
@@ -725,9 +722,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     key_equals = Q(**{f"filters__{property_name}": value})
                     args.extend([has_key, key_is_not_null, key_equals])
             if serializer.validated_data.get("plan_id"):
-                args.append(
-                    Q(billing_plan__plan__plan_id=serializer.validated_data["plan_id"])
-                )
+                args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
             organization = parse_organization(self.request)
             args.append(Q(organization=organization))
             qs = SubscriptionRecord.objects.filter(*args)

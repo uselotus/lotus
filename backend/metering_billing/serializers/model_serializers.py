@@ -1453,11 +1453,29 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(required=False)
+    customer_id = serializers.CharField(required=True)
     plan_id = serializers.CharField(required=False)
     subscription_filters = serializers.ListField(
         child=SubscriptionCategoricalFilterSerializer(), required=False
     )
+
+    def validate(self, data):
+        # check that the customer ID matches an existing customer
+        try:
+            data["customer"] = Customer.objects.get(customer_id=data["customer_id"])
+        except Customer.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Customer with customer_id {data['customer_id']} does not exist"
+            )
+        # check that the plan ID matches an existing plan
+        if data.get("plan_id"):
+            try:
+                data["plan"] = Plan.objects.get(plan_id=data["plan_id"])
+            except Plan.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Plan with plan_id {data['plan_id']} does not exist"
+                )
+        return data
 
 
 class SubscriptionRecordCancelSerializer(serializers.Serializer):
