@@ -147,7 +147,11 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<UpdateSubscriptionType> =>
-    requests.patch(`api/subscriptions/plans/`, post, params),
+    requests.patch(
+      `api/subscriptions/plans/`,
+      post,
+      stringify(params, { encode: false })
+    ),
   cancelSubscription: (
     post: CancelSubscriptionType
   ): Promise<CancelSubscriptionType> =>
@@ -169,7 +173,11 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<TurnSubscriptionAutoRenewOffType> =>
-    requests.patch(`api/subscriptions/plans/`, post, params),
+    requests.patch(
+      `api/subscriptions/plans/`,
+      post,
+      stringify(params, { encode: false })
+    ),
 };
 
 export const Plan = {
