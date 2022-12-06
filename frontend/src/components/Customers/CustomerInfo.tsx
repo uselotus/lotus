@@ -89,14 +89,11 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     isStack: true,
     seriesField: "metric",
     groupField: "type",
+    colorField: "type", // or seriesField in some cases
+    color: ["#C3986B", "#3F3F40"],
 
-    label: {
-      position: "middle",
-      layout: [
-        { type: "interval-adjust-position" },
-        { type: "interval-hide-overlap" },
-        { type: "adjust-color" },
-      ],
+    tooltip: {
+      fields: ["type"],
     },
   };
 
