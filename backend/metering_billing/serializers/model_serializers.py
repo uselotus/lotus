@@ -1295,11 +1295,7 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
             "is_new",
             "subscription_filters",
             "status",
-            "plan_detail",
         )
-        extra_kwargs = {
-            "plan_detail": {"read_only": True},
-        }
 
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField(required=False)
@@ -1324,8 +1320,6 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         queryset=Plan.objects.all(),
         write_only=True,
     )
-
-    plan_detail = PlanVersionSerializer(read_only=True)
 
     def validate(self, data):
         # extract the plan version from the plan
@@ -1394,6 +1388,16 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         #     raise APIException(f"Error creating subscription: {e}")
 
 
+class SubscriptionRecordDetailSerializer(SubscriptionRecordSerializer):
+    class Meta(SubscriptionRecordSerializer.Meta):
+        model = SubscriptionRecord
+        fields = tuple(
+            set(SubscriptionRecordSerializer.Meta.fields).union(set(["plan_detail"]))
+        )
+
+    plan_detail = PlanVersionSerializer(source="billing_plan", read_only=True)
+
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
@@ -1412,20 +1416,11 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     customer = ShortCustomerSerializer(read_only=True)
     plans = serializers.SerializerMethodField()
 
-    def get_plans(self, obj) -> SubscriptionRecordSerializer(many=True):
-        return SubscriptionRecordSerializer(
-            obj.get_subscription_records(), many=True
-        ).data
-
-
-class SubscriptionRecordDetailSerializer(SubscriptionRecordSerializer):
-    class Meta(SubscriptionRecordSerializer.Meta):
-        model = SubscriptionRecord
-        fields = tuple(
-            set(SubscriptionRecordSerializer.Meta.fields).union(set(["billing_plan"]))
-        )
-
-    billing_plan = PlanVersionSerializer(read_only=True)
+    def get_plans(self, obj) -> SubscriptionRecordDetailSerializer(many=True):
+        sub_records = obj.get_subscription_records()
+        data = SubscriptionRecordDetailSerializer(sub_records, many=True).data
+        print(data)
+        return data
 
 
 class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
