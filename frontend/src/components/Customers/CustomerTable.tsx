@@ -13,7 +13,7 @@ import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
 import CustomerDetail from "./CustomerDetail";
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
@@ -54,7 +54,7 @@ const columns: ProColumns<CustomerTableItem>[] = [
     sorter: (a, b) => a.total_amount_due - b.total_amount_due,
 
     render: (_, record) => (
-      <div className="content-center">
+      <div className="self-center">
         {record.total_amount_due !== undefined ? (
           <p>${record.total_amount_due.toFixed(2)}</p>
         ) : (

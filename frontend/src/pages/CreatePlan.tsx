@@ -60,11 +60,7 @@ const CreatePlan = () => {
     useState<CreateComponent>();
   const [availableBillingTypes, setAvailableBillingTypes] = useState<
     { name: string; label: string }[]
-  >([
-    { label: "Monthly", name: "monthly" },
-    { label: "Quarterly", name: "quarterly" },
-    { label: "Yearly", name: "yearly" },
-  ]);
+  >([{ label: "Monthly", name: "monthly" }]);
   const queryClient = useQueryClient();
 
   useEffect(() => {

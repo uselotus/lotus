@@ -1,7 +1,7 @@
 // @ts-ignore
 import React, { useEffect, useState } from "react";
 import { Form, Tabs, Modal } from "antd";
-import { PlanType} from "../../types/plan-type";
+import { PlanType } from "../../types/plan-type";
 import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
@@ -93,8 +93,8 @@ function CustomerDetail(props: {
   );
 
   const cancelSubscriptionMutation = useMutation(
-    (obj: { subscription_id: string; post: CancelSubscriptionType }) =>
-      Customer.cancelSubscription(obj.subscription_id, obj.post),
+    (obj: { post: CancelSubscriptionType }) =>
+      Customer.cancelSubscription(obj.post),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -109,8 +109,8 @@ function CustomerDetail(props: {
   );
 
   const changeSubscriptionPlanMutation = useMutation(
-    (obj: { subscription_id: string; post: ChangeSubscriptionPlanType }) =>
-      Customer.changeSubscriptionPlan(obj.subscription_id, obj.post),
+    (obj: { params: object; post: ChangeSubscriptionPlanType }) =>
+      Customer.changeSubscriptionPlan(obj.post, obj.params),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -125,10 +125,8 @@ function CustomerDetail(props: {
   );
 
   const turnSubscriptionAutoRenewOffMutation = useMutation(
-    (obj: {
-      params: object;
-      post: TurnSubscriptionAutoRenewOffType;
-    }) => Customer.turnSubscriptionAutoRenewOff( obj.post, obj.params),
+    (obj: { params: object; post: TurnSubscriptionAutoRenewOffType }) =>
+      Customer.turnSubscriptionAutoRenewOff(obj.post, obj.params),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -138,22 +136,18 @@ function CustomerDetail(props: {
     }
   );
 
-  const cancelSubscription = (
-    subscription_id: string,
-    props: CancelSubscriptionType
-  ) => {
+  const cancelSubscription = (props: CancelSubscriptionType) => {
     cancelSubscriptionMutation.mutate({
-      subscription_id: subscription_id,
       post: props,
     });
   };
 
   const changeSubscriptionPlan = (
-    subscription_id: string,
+    params: object,
     props: ChangeSubscriptionPlanType
   ) => {
     changeSubscriptionPlanMutation.mutate({
-      subscription_id: subscription_id,
+      params: params,
       post: props,
     });
   };
@@ -162,6 +156,7 @@ function CustomerDetail(props: {
     params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => {
+    console.log(params);
     turnSubscriptionAutoRenewOffMutation.mutate({
       params: params,
       post: props,

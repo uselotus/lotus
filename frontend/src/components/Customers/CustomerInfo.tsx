@@ -5,7 +5,6 @@ import { Select, Tag } from "antd";
 // @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
-import PricingUnitDropDown from "../PricingUnitDropDown";
 import { useMutation } from "react-query";
 import { Customer } from "../../api/api";
 import { toast } from "react-toastify";
@@ -118,7 +117,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
       <div className="grid grid-cols-2 gap-8">
         <div className="border-2 border-solid rounded border-[#EAEAEB] py-4 px-8">
           <p>
-            <b>Customer Name:</b> {data.customer_name}
+            <b>Customer Name:</b> {data.customer_name ?? "N/A"}
           </p>
           <p>
             <b>Customer ID:</b> {data.customer_id ?? "N/A"}
@@ -132,7 +131,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           <p>
             <b>Default Currency:</b>{" "}
             {data ? (
-              <Tag size="large">
+              <Tag>
                 {data.default_currency?.name +
                   " " +
                   data?.default_currency?.symbol}
@@ -159,7 +158,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             {data.next_amount_due.toFixed(2)}
           </p>
         </div>
-        <div className="grid grid-cols-2 justify-items-center mx-8 gap-8 py-4 border-2 border-solid rounded border-[#EAEAEB]">
+        <div className="grid grid-cols-2 justify-items-center  gap-8 py-4 border-2 border-solid rounded border-[#EAEAEB]">
           <div>
             <p className=" mb-4">Earned Revenue</p>
             {cost_data === undefined ? (
@@ -187,7 +186,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
               </span>
             )}
           </div>
-          <div className=" ol-span-2">
+          <div className="">
             <p className=" mb-4">Profit Margin</p>
             {cost_data.margin === undefined ? (
               <LoadingSpinner />

@@ -26,6 +26,11 @@ export interface DraftInvoiceType2 {
   };
   cust_connected_to_payment_provider: boolean;
   org_connected_to_cust_payment_provider: boolean;
+  subscription: {
+    end_date: string;
+    start_date: string;
+    status: string;
+  };
 }
 
 export interface BalanceAdjustments {

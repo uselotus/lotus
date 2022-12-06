@@ -97,8 +97,9 @@ const requests = {
   post: (url: string, body: {}, headers?: {}) =>
     instance.post(url, body, headers).then(responseBody),
   patch: (url: string, body: {}, params?: {}) =>
-    instance.patch(url, body).then(responseBody),
-  delete: (url: string, params?: {}) => instance.delete(url).then(responseBody),
+    instance.patch(url, body, { params: params }).then(responseBody),
+  delete: (url: string, params?: {}) =>
+    instance.delete(url, { params: params }).then(responseBody),
 };
 
 export const Customer = {
@@ -144,12 +145,10 @@ export const Customer = {
   ): Promise<UpdateSubscriptionType> =>
     requests.patch(`api/subscriptions/plans/`, post, params),
   cancelSubscription: (
-    subscription_id: string,
     post: CancelSubscriptionType
   ): Promise<CancelSubscriptionType> =>
-    requests.delete(`api/subscriptions/${subscription_id}/`, post),
+    requests.delete(`api/subscriptions/plans/`, post),
   changeSubscriptionPlan: (
-    subscription_id: string,
     post: ChangeSubscriptionPlanType,
     params?: {
       customer_id?: string;

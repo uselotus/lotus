@@ -67,6 +67,7 @@ export interface PlanVersionType
   transition_to: string;
   active_subscriptions: number;
   features: FeatureType[];
+  plan_name?: string;
   usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
 }
 
