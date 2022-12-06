@@ -897,6 +897,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "status",
             "replace_with",
             "transition_to",
+            "plan_name",
         )
         extra_kwargs = {
             "make_active_type": {"write_only": True},
@@ -934,6 +935,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
     created_by = serializers.SerializerMethodField(read_only=True)
     replace_with = serializers.SerializerMethodField(read_only=True)
     transition_to = serializers.SerializerMethodField(read_only=True)
+    plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
 
     def get_created_by(self, obj) -> str:
         if obj.created_by != None:

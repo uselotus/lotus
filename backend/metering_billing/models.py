@@ -1504,7 +1504,7 @@ class Subscription(models.Model):
         plan_month_anchor=None,
         plan_start_date=None,
         plan_duration=None,
-        plan_billing_cadence=None,
+        plan_billing_frequency=None,
     ):
         if self.day_anchor is None:
             if plan_day_anchor is not None:
@@ -1519,14 +1519,35 @@ class Subscription(models.Model):
                 PLAN_DURATION.QUARTERLY,
             ]:
                 self.month_anchor = plan_start_date.month
-
+        if plan_billing_frequency in [USAGE_BILLING_FREQUENCY.END_OF_PERIOD, None]:
+            if self.billing_cadence is None:
+                self.billing_cadence = plan_duration
+            elif self.billing_cadence == PLAN_DURATION.QUARTERLY:
+                if plan_duration == PLAN_DURATION.MONTHLY:
+                    self.billing_cadence = PLAN_DURATION.MONTHLY
+            elif self.billing_cadence == PLAN_DURATION.YEARLY:
+                if plan_duration in [PLAN_DURATION.MONTHLY, PLAN_DURATION.QUARTERLY]:
+                    self.billing_cadence = plan_duration
+        else:
+            if plan_billing_frequency == USAGE_BILLING_FREQUENCY.MONTHLY:
+                self.billing_cadence = PLAN_DURATION.MONTHLY
+            elif plan_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
+                if self.billing_cadence in [PLAN_DURATION.YEARLY, None]:
+                    self.billing_cadence = PLAN_DURATION.QUARTERLY
+        new_end_date = calculate_end_date(
+            self.billing_cadence,
+            self.start_date,
+            day_anchor=self.day_anchor,
+            month_anchor=self.month_anchor,
+        )
+        self.end_date = new_end_date
         self.save()
 
     def handle_remove_plan(self):
         active_sub_records = self.customer.subscription_records.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         )
-        active_subs_with_monthly_quarterly = active_sub_records.filter(
+        active_subs_with_yearly_quarterly = active_sub_records.filter(
             billing_plan__plan__plan_duration__in=[
                 PLAN_DURATION.YEARLY,
                 PLAN_DURATION.QUARTERLY,
@@ -1537,9 +1558,10 @@ class Subscription(models.Model):
             self.month_anchor = None
             self.end_date = now_utc()
             self.status = SUBSCRIPTION_STATUS.ENDED
-        elif active_subs_with_monthly_quarterly.count() == 0:
+            self.save()
+        elif active_subs_with_yearly_quarterly.count() == 0:
             self.month_anchor = None
-        self.save()
+            self.save()
 
     def get_subscription_records(self):
         return self.customer.subscription_records.filter(
