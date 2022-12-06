@@ -928,12 +928,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert after_active_sub_records == 1
         assert before_active_subs == 1
         assert before_active_sub_records == 2
-        assert before_invoices == 0
-        assert after_invoices == 1
+        assert after_invoices == before_invoices + 1
 
         assert active_sub.billing_cadence == PLAN_DURATION.QUARTERLY
         assert active_sub.end_date == new_sub_record.next_billing_date
-
-    # def test_change_invoicing_cadence_if_monthly_plan_gets_added(
-    #     self, subscription_test_common_setup
-    # ):

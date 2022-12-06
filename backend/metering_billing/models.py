@@ -1572,10 +1572,39 @@ class Subscription(models.Model):
             self.month_anchor = None
             self.end_date = now_utc()
             self.status = SUBSCRIPTION_STATUS.ENDED
-            self.save()
-        elif active_subs_with_yearly_quarterly.count() == 0:
+            return
+        if active_subs_with_yearly_quarterly.count() == 0:
             self.month_anchor = None
-            self.save()
+        remaining_durations = active_sub_records.values_list(
+            "billing_plan__plan__plan_duration", flat=True
+        ).distinct()
+        remaining_usage_billing_freqs = active_sub_records.values_list(
+            "billing_plan__usage_billing_frequency", flat=True
+        ).distinct()
+        if (
+            PLAN_DURATION.MONTHLY in remaining_durations
+            or USAGE_BILLING_FREQUENCY.MONTHLY in remaining_usage_billing_freqs
+        ):
+            self.billing_cadence = PLAN_DURATION.MONTHLY
+        elif (
+            PLAN_DURATION.QUARTERLY in remaining_durations
+            or USAGE_BILLING_FREQUENCY.QUARTERLY in remaining_usage_billing_freqs
+        ):
+            self.billing_cadence = PLAN_DURATION.QUARTERLY
+        else:
+            self.billing_cadence = PLAN_DURATION.YEARLY
+        new_end_date = calculate_end_date(
+            self.billing_cadence,
+            self.start_date,
+            day_anchor=self.day_anchor,
+            month_anchor=self.month_anchor,
+        )
+        num_before = active_sub_records.filter(
+            next_billing_date__lt=new_end_date
+        ).count()
+        if num_before == 0:
+            self.end_date = new_end_date
+        self.save()
 
     def get_subscription_records(self):
         return self.customer.subscription_records.filter(

@@ -792,7 +792,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         plan_name = serializer.validated_data["billing_plan"].plan.plan_name
-        print("STARTING ON CREATION FOR PLAN: ", plan_name)
 
         # check to see if subscription exists
         subscription = Subscription.objects.filter(
@@ -805,11 +804,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         start_date = serializer.validated_data["start_date"]
         plan_day_anchor = serializer.validated_data["billing_plan"].day_anchor
         plan_month_anchor = serializer.validated_data["billing_plan"].month_anchor
-        print("START DATE: ", start_date)
-        print("PLAN DAY ANCHOR: ", plan_day_anchor)
-        print("PLAN MONTH ANCHOR: ", plan_month_anchor)
-        print("DURATION: ", duration)
-        print("BILLING FREQ: ", billing_freq)
         if subscription is None:
             subscription = Subscription.objects.create(
                 organization=organization,
@@ -818,28 +812,12 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 end_date=start_date,
                 status=SUBSCRIPTION_STATUS.ACTIVE,
             )
-        print(
-            "SUBSCRIPTION: ",
-            subscription,
-            subscription.start_date,
-            subscription.end_date,
-            subscription.day_anchor,
-            subscription.month_anchor,
-        )
         subscription.handle_attach_plan(
             plan_day_anchor=plan_day_anchor,
             plan_month_anchor=plan_month_anchor,
             plan_start_date=start_date,
             plan_duration=duration,
             plan_billing_frequency=billing_freq,
-        )
-        print(
-            "SUBSCRIPTION: ",
-            subscription,
-            subscription.start_date,
-            subscription.end_date,
-            subscription.day_anchor,
-            subscription.month_anchor,
         )
         day_anchor, month_anchor = subscription.get_anchors()
         end_date = calculate_end_date(
@@ -853,24 +831,20 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             USAGE_BILLING_FREQUENCY.MONTHLY,
             USAGE_BILLING_FREQUENCY.QUARTERLY,
         ]:
-            rd = (
-                relativedelta(months=1, day=day_anchor)
-                if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY
-                else relativedelta(months=3, day=day_anchor)
-            )
+            num_months = 1 if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY else 3
             next_billing_date = end_date
             done = False
             i = 0
             while not done:
-                next_billing_date = end_date - (i * rd) - relativedelta(days=1)
+                next_billing_date = end_date - i * relativedelta(months=num_months)
                 if next_billing_date < now_utc() or next_billing_date < start_date:
                     done = True
                     i -= 1
                 else:
                     i += 1
-            serializer.validated_data["next_billing_date"] = (
-                end_date - (i * rd) - relativedelta(days=1)
-            )
+            serializer.validated_data[
+                "next_billing_date"
+            ] = end_date - i * relativedelta(months=num_months)
         subscription_record = serializer.save(organization=organization)
 
         # now we can actually create the subscription record

@@ -1735,7 +1735,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionRecordSerializer(read_only=True)
     line_items = InvoiceLineItemSerializer(
-        many=True, read_only=True, source="inv_line_items"
+        many=True, read_only=True, source="line_items"
     )
 
 
