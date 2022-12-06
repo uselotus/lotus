@@ -160,11 +160,7 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<ChangeSubscriptionPlanType> =>
-    requests.patch(
-      `api/subscriptions/plans/`,
-      post,
-      stringify(params, { encode: false })
-    ),
+    requests.patch(`api/subscriptions/plans/`, post, params),
   turnSubscriptionAutoRenewOff: (
     post: TurnSubscriptionAutoRenewOffType,
     params?: {
