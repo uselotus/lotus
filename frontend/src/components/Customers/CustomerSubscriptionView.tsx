@@ -1,4 +1,4 @@
-import React, { FC, Fragment, useEffect, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import { PlanType } from "../../types/plan-type";
 import {
   Card,
@@ -10,7 +10,6 @@ import {
   Menu,
   Tag,
   Cascader,
-  Table,
 } from "antd";
 import type { DefaultOptionType } from "antd/es/cascader";
 import {
@@ -20,16 +19,17 @@ import {
   CancelSubscriptionType,
 } from "../../types/subscription-type";
 //import the Customer type from the api.ts file
-import { Invoices } from "../../api/api";
 import dayjs from "dayjs";
 
-import { CustomerDetailSubscription } from "../../types/customer-type";
-import { useQuery } from "react-query";
-import { DraftInvoiceType } from "../../types/invoice-type";
+import {
+  CustomerDetailSubscription,
+  DetailPlan,
+} from "../../types/customer-type";
+import DraftInvoice from "./DraftInvoice";
 
 interface Props {
   customer_id: string;
-  subscriptions: CustomerDetailSubscription[];
+  subscription: CustomerDetailSubscription;
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
     params: object,
@@ -67,7 +67,7 @@ interface ChangeOption {
 
 const SubscriptionView: FC<Props> = ({
   customer_id,
-  subscriptions,
+  subscription,
   plans,
   onCancel,
   onAutoRenewOff,
@@ -81,39 +81,35 @@ const SubscriptionView: FC<Props> = ({
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
 
+  const [subscriptionPlans, setSubscriptionPlans] = useState<DetailPlan[]>(
+    subscription?.plans || []
+  );
+
   const selectPlan = (plan_id: string) => {
     setSelectedPlan(plan_id);
   };
 
   const cancelAndBill = () => {
-    onCancel(subscriptions[0].subscription_id, {
+    onCancel(subscription.subscription_id, {
       bill_usage: true,
       flat_fee_behavior: "charge_full",
+      invoicing_behavior_on_cancel: "bill_now",
     });
   };
 
   const cancelAndDontBill = () => {
-    onCancel(subscriptions[0].subscription_id, {
-      bill_usage: false,
-      flat_fee_behavior: "refund",
-    });
+    // onCancel(subscriptions[0].subscription_id, {
+    //   bill_usage: false,
+    //   flat_fee_behavior: "refund",
+    //   invoicing_behavior
+    // });
   };
 
   const turnAutoRenewOff = () => {
-    onAutoRenewOff(subscriptions[0].plan_version, {
-      turn_off_auto_renew: true,
-    });
+    // onAutoRenewOff(subscriptions[0].plan_version, {
+    //   turn_off_auto_renew: true,
+    // });
   };
-
-  const { data: invoiceData, isLoading: invoiceLoading } = useQuery<
-    DraftInvoiceType[]
-  >(
-    ["draft_invoice", customer_id],
-    () => Invoices.getDraftInvoice(customer_id),
-    {
-      refetchInterval: 10000,
-    }
-  );
 
   useEffect(() => {
     if (plans !== undefined) {
@@ -147,9 +143,7 @@ const SubscriptionView: FC<Props> = ({
         },
         {
           label: (
-            <div onClick={() => cancelAndDontBill()}>
-              Cancel And Refund
-            </div>
+            <div onClick={() => cancelAndDontBill()}>Cancel And Refund</div>
           ),
           key: "1",
         },
@@ -162,20 +156,19 @@ const SubscriptionView: FC<Props> = ({
   );
 
   const plansWithSwitchOptions = planList?.reduce((acc, plan) => {
-    if (plan.label !== subscriptions[0]?.billing_plan_name) {
-      acc.push({
-        label: plan.label,
-        value: plan.value,
-       
-      } as PlanOption);
-    }
+    // if (plan.label !== subscriptions[0]?.billing_plan_name) {
+    //   acc.push({
+    //     label: plan.label,
+    //     value: plan.value,
+    //   } as PlanOption);
+    // }
     return acc;
   }, [] as PlanOption[]);
 
   const onChange = (value: string[], selectedOptions: PlanOption[]) => {
-    onPlanChange(subscriptions[0].subscription_id, {
-      replace_plan_id: selectedOptions[0].value
-    });
+    // onPlanChange(subscriptions[0].subscription_id, {
+    //   replace_plan_id: selectedOptions[0].value,
+    // });
   };
 
   const switchMenu = (
@@ -203,8 +196,7 @@ const SubscriptionView: FC<Props> = ({
     }
     form.resetFields();
   };
-
-  if (subscriptions.length === 0) {
+  if (subscription === null) {
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
@@ -242,27 +234,26 @@ const SubscriptionView: FC<Props> = ({
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
       <div className="flex flex-col justify-center">
         <List>
-          {subscriptions.map((subscription) => (
+          {subscriptionPlans.map((subPlan) => (
             <List.Item>
               <Card className=" bg-grey3 w-full">
                 <div className="grid grid-cols-2 items-stretch">
                   <h2 className="font-main font-bold">
-                    {subscription.billing_plan_name}
+                    {subPlan.plan_detail.created_by}
                   </h2>
                   <div className="grid grid-cols-2 justify-center space-y-3">
                     <p>
-                      <b>Subscription ID: </b> {subscription.subscription_id}
+                      <b>Subscription Plan Filters: </b>{" "}
+                      {subPlan.subscription_filters.toString()}
                     </p>
                     <p>
                       <b>Start Date:</b>{" "}
-                      {dayjs(subscription.start_date).format(
-                        "YYYY/MM/DD HH:mm"
-                      )}{" "}
+                      {dayjs(subPlan.start_date).format("YYYY/MM/DD HH:mm")}{" "}
                     </p>
 
                     <p>
                       <b>Renews:</b>{" "}
-                      {subscription.auto_renew ? (
+                      {subPlan.auto_renew ? (
                         <Tag color="green">Yes</Tag>
                       ) : (
                         <Tag color="red">No</Tag>
@@ -270,7 +261,7 @@ const SubscriptionView: FC<Props> = ({
                     </p>
                     <p>
                       <b>End Date:</b>{" "}
-                      {dayjs(subscription.end_date).format("YYYY/MM/DD HH:mm")}{" "}
+                      {dayjs(subPlan.end_date).format("YYYY/MM/DD HH:mm")}{" "}
                     </p>
                   </div>
                 </div>
@@ -286,70 +277,7 @@ const SubscriptionView: FC<Props> = ({
             <Button>Cancel Subscription</Button>
           </Dropdown>
         </div>
-        {invoiceData && invoiceData.length > 0 && (
-          <div className="w-full space-y-8">
-            <h2 className="mb-2 pb-4 pt-4 font-bold text-main">
-              Draft Invoice View
-            </h2>
-            <div className="grid grid-cols-2">
-              <p>
-                <b>Currency: </b> {invoiceData[0].pricing_unit.code}
-              </p>
-              <p>
-                <b>Total Cost Due: </b>
-                {invoiceData[0].pricing_unit.symbol}
-                {invoiceData[0].cost_due}
-              </p>
-            </div>
-            <Table
-              dataSource={invoiceData[0].line_items}
-              pagination={false}
-              columns={[
-                {
-                  title: "Name",
-                  dataIndex: "name",
-                  render: (_, record) => (
-                    <div className="flex flex-col">
-                      <p>{record.name}</p>
-                      {record.metadata && (
-                        <p className="text-s text-grey2">
-                          {Object.keys(record.metadata).map((key) => (
-                            <span>
-                              {key}: {record.metadata[key]}
-                            </span>
-                          ))}
-                        </p>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  title: "Quantity",
-                  dataIndex: "quantity",
-                  render: (_, record) => (
-                    <div className="flex flex-col">
-                      {record.quantity !== null && record.quantity.toFixed(2)}
-                    </div>
-                  ),
-                },
-                {
-                  title: "Subtotal",
-                  dataIndex: "subtotal",
-                  render: (_, record) => (
-                    <div className="flex flex-col">
-                      {invoiceData[0].pricing_unit.symbol}
-                      {record.subtotal.toFixed(2)}
-                    </div>
-                  ),
-                },
-                {
-                  title: "Billing Type",
-                  dataIndex: "billing_type",
-                },
-              ]}
-            />
-          </div>
-        )}
+        <DraftInvoice customer_id={customer_id} />
       </div>
     </div>
   );

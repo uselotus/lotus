@@ -54,9 +54,7 @@ function CustomerDetail(props: {
       ["customer_detail", props.customer_id],
       () =>
         Customer.getCustomerDetail(props.customer_id).then((res) => {
-          console.log("ANKARA MESSI ANKARA MESSI");
           console.log(res);
-          setCustomerSubscriptions(res.subscription.plans);
           return res;
         }),
       {
@@ -227,7 +225,7 @@ function CustomerDetail(props: {
                   <div key={props.customer_id}>
                     <SubscriptionView
                       customer_id={props.customer_id}
-                      subscriptions={data?.subscriptions}
+                      subscription={data?.subscription}
                       plans={props.plans}
                       onCreate={createSubscription}
                       onCancel={cancelSubscription}
