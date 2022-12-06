@@ -502,7 +502,12 @@ class DraftInvoiceView(APIView):
 
     @extend_schema(
         parameters=[DraftInvoiceRequestSerializer],
-        responses={200: DraftInvoiceSerializer(many=True)},
+        responses={
+            200: inline_serializer(
+                name="DraftInvoiceResponse",
+                fields={"invoice": DraftInvoiceSerializer(required=False)},
+            )
+        },
     )
     def get(self, request, format=None):
         """
@@ -522,31 +527,40 @@ class DraftInvoiceView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         sub, sub_records = customer.get_subscription_and_records()
-        sub_records = sub_records.select_related("billing_plan").prefetch_related(
-            "billing_plan__plan_components",
-            "billing_plan__plan_components__billable_metric",
-            "billing_plan__plan_components__tiers",
-        )
-        invoice = generate_invoice(
-            sub,
-            sub_records,
-            draft=True,
-            charge_next_plan=serializer.validated_data.get("include_next_period", True),
-        )
-        serializer = DraftInvoiceSerializer(invoice).data
-        try:
-            username = self.request.user.username
-        except:
-            username = None
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (username if username else organization.company_name + " (Unknown)"),
-            event="draft_invoice",
-            properties={"organization": organization.company_name},
-        )
-        invoice.delete()
-        return Response(serializer, status=status.HTTP_200_OK)
+        response = {"invoice": None}
+        if sub is None or sub_records is None:
+            pass
+        else:
+            sub_records = sub_records.select_related("billing_plan").prefetch_related(
+                "billing_plan__plan_components",
+                "billing_plan__plan_components__billable_metric",
+                "billing_plan__plan_components__tiers",
+            )
+            invoice = generate_invoice(
+                sub,
+                sub_records,
+                draft=True,
+                charge_next_plan=serializer.validated_data.get(
+                    "include_next_period", True
+                ),
+            )
+            serializer = DraftInvoiceSerializer(invoice).data
+            try:
+                username = self.request.user.username
+            except:
+                username = None
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username if username else organization.company_name + " (Unknown)"
+                ),
+                event="draft_invoice",
+                properties={"organization": organization.company_name},
+            )
+            invoice.delete()
+            response = {"invoice": serializer}
+        return Response(response, status=status.HTTP_200_OK)
 
 
 class GetCustomerEventAccessView(APIView):

@@ -878,8 +878,6 @@ class PlanComponent(models.Model):
             )
 
             if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
-                # if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
-                #     metric_granularity = METRIC_GRANULARITY.WEEKLY
                 if self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
                     metric_granularity = METRIC_GRANULARITY.MONTH
                 elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
@@ -978,8 +976,6 @@ class PlanComponent(models.Model):
                 proration=self.proration_granularity,
             )
             if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
-                # if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
-                #     metric_granularity = METRIC_GRANULARITY.WEEKLY
                 if self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
                     metric_granularity = METRIC_GRANULARITY.MONTH
                 elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
@@ -1605,10 +1601,10 @@ class SubscriptionRecord(models.Model):
 
     def save(self, *args, **kwargs):
         now = now_utc()
+        subscription = self.customer.subscriptions.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        ).first()
         if not self.end_date:
-            subscription = self.customer.subscriptions.filter(
-                status=SUBSCRIPTION_STATUS.ACTIVE,
-            ).first()
             day_anchor, month_anchor = subscription.get_anchors()
             self.end_date = calculate_end_date(
                 self.billing_plan.plan.plan_duration,
@@ -1627,31 +1623,36 @@ class SubscriptionRecord(models.Model):
                 scheduled_end_date - convert_to_date(self.start_date)
             ).days
         if not self.next_billing_date or self.next_billing_date < now:
-            start_date = self.start_date
-            next_billing_date = self.start_date
-            while next_billing_date < self.end_date:
-                if (
-                    self.billing_plan.usage_billing_frequency
-                    == USAGE_BILLING_FREQUENCY.WEEKLY
-                ):
-                    next_billing_date = start_date + relativedelta(weeks=1)
-                elif (
-                    self.billing_plan.usage_billing_frequency
-                    == USAGE_BILLING_FREQUENCY.MONTHLY
-                ):
-                    next_billing_date = start_date + relativedelta(months=1)
-                elif (
-                    self.billing_plan.usage_billing_frequency
-                    == USAGE_BILLING_FREQUENCY.QUARTERLY
-                ):
-                    next_billing_date = start_date + relativedelta(months=3)
+            if self.billing_plan.usage_billing_frequency in [
+                USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
+                None,
+            ]:
+                self.next_billing_date = self.end_date
+            elif (
+                self.billing_plan.usage_billing_frequency
+                == USAGE_BILLING_FREQUENCY.MONTHLY
+            ):
+                self.next_billing_date = subscription.end_date
+            elif (
+                self.billing_plan.usage_billing_frequency
+                == USAGE_BILLING_FREQUENCY.QUARTERLY
+            ):
+                if self.last_billing_date:
+                    self.next_billing_date = min(
+                        self.end_date, self.last_billing_date + relativedelta(months=3)
+                    )
                 else:
-                    next_billing_date = self.end_date
-                next_billing_date = min(self.end_date, next_billing_date)
-                start_date = next_billing_date
-                if start_date > now:
-                    break
-            self.next_billing_date = next_billing_date
+                    self.next_billing_date = min(
+                        self.end_date, self.start_date + relativedelta(months=3)
+                    )
+            else:
+                print(
+                    "Invalid usage billing frequency",
+                    self.billing_plan.usage_billing_frequency,
+                )
+                raise Exception(
+                    "Invalid usage billing frequency for subscription record"
+                )
         super(SubscriptionRecord, self).save(*args, **kwargs)
 
     def get_filters_dictionary(self):
