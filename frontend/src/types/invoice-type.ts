@@ -13,6 +13,9 @@ export interface InvoiceType {
 }
 
 export interface DraftInvoiceType {
+  invoice: DraftInvoiceType2;
+}
+export interface DraftInvoiceType2 {
   line_items: LineItem[];
   cost_due: string;
   customer: CustomerType;

@@ -428,7 +428,7 @@ export const Invoices = {
       payment_status: data.payment_status,
     });
   },
-  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType[]> => {
+  getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> => {
     return requests.get("api/draft_invoice/", { params: { customer_id } });
   },
 };

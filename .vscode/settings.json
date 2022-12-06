@@ -16,4 +16,7 @@
   "python.unitTest.pyTestEnabled": true,
   "python.linting.pylintEnabled": false,
   "python.linting.enabled": false,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
 }
