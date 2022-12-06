@@ -1373,6 +1373,9 @@ class SubscriptionRecordDetailSerializer(SubscriptionRecordSerializer):
         )
 
     plan_detail = PlanVersionSerializer(source="billing_plan", read_only=True)
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        source="filters", many=True, read_only=True
+    )
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -1733,10 +1736,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
     )
     pricing_unit = PricingUnitSerializer()
     customer = CustomerSerializer(read_only=True)
-    subscription = SubscriptionRecordSerializer(read_only=True)
-    line_items = InvoiceLineItemSerializer(
-        many=True, read_only=True, source="line_items"
-    )
+    subscription = SubscriptionRecordDetailSerializer(read_only=True)
+    line_items = InvoiceLineItemSerializer(many=True, read_only=True)
 
 
 class InvoiceListFilterSerializer(serializers.Serializer):
