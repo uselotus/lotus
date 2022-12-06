@@ -37,7 +37,7 @@ from metering_billing.serializers.backtest_serializers import (
 )
 from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import now_utc, now_utc_ts
+from metering_billing.utils import date_as_max_dt, now_utc, now_utc_ts
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
     METRIC_STATUS,
@@ -831,20 +831,39 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             USAGE_BILLING_FREQUENCY.MONTHLY,
             USAGE_BILLING_FREQUENCY.QUARTERLY,
         ]:
-            num_months = 1 if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY else 3
-            next_billing_date = end_date
-            done = False
+            found = False
             i = 0
-            while not done:
-                next_billing_date = end_date - i * relativedelta(months=num_months)
-                if next_billing_date < now_utc() or next_billing_date < start_date:
-                    done = True
-                    i -= 1
+            num_months = 1 if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY else 3
+            while not found:
+                tentative_nbd = date_as_max_dt(
+                    start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                )
+                if tentative_nbd <= start_date:
+                    i += 1
+                    continue
+                elif tentative_nbd > end_date:
+                    tentative_nbd = end_date
+                    break
+                months_btwn = relativedelta(tentative_nbd, start_date).months
+                if months_btwn % num_months == 0:
+                    found = True
                 else:
                     i += 1
+            # next_billing_date = end_date + relativedelta(
+            #     days=1, hour=0, minute=0, second=0, microsecond=0
+            # )
+            # done = False
+            # i = 0
+            # while not done:
+            #     next_billing_date = end_date - i * relativedelta(months=num_months)
+            #     if next_billing_date < now_utc() or next_billing_date < start_date:
+            #         done = True
+            #         i -= 1
+            #     else:
+            #         i += 1
             serializer.validated_data[
                 "next_billing_date"
-            ] = end_date - i * relativedelta(months=num_months)
+            ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
         subscription_record = serializer.save(organization=organization)
 
         # now we can actually create the subscription record

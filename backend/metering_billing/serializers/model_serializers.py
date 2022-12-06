@@ -1399,7 +1399,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def get_plans(self, obj) -> SubscriptionRecordDetailSerializer(many=True):
         sub_records = obj.get_subscription_records()
         data = SubscriptionRecordDetailSerializer(sub_records, many=True).data
-        print(data)
         return data
 
 

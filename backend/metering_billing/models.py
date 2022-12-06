@@ -1572,6 +1572,7 @@ class Subscription(models.Model):
             self.month_anchor = None
             self.end_date = now_utc()
             self.status = SUBSCRIPTION_STATUS.ENDED
+            self.save()
             return
         if active_subs_with_yearly_quarterly.count() == 0:
             self.month_anchor = None
