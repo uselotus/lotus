@@ -243,8 +243,12 @@ const SubscriptionView: FC<Props> = ({
                   </h2>
                   <div className="grid grid-cols-2 justify-center space-y-3">
                     <p>
-                      <b>Subscription Plan Filters: </b>{" "}
-                      {subPlan.subscription_filters.toString()}
+                      {/* <b>Subscription Plan Filters: </b>{" "}
+                      {subPlan.subscription_filters?.map((filter) => (
+                        <span>
+                          {filter.} : {filter.filter_value}
+                        </span>
+                      ))} */}
                     </p>
                     <p>
                       <b>Start Date:</b>{" "}
