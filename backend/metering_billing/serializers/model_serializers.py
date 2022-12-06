@@ -980,21 +980,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"replace_immediately_type must be specified when make_active_type is {MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_IMMEDIATELY}"
             )
-        version_usage_billing_frequency = data.pop(
-            "usage_billing_frequency", USAGE_BILLING_FREQUENCY.END_OF_PERIOD
-        )
-        plan_duration = data["plan"].plan_duration
-        if plan_duration == PLAN_DURATION.MONTHLY:
-            if version_usage_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
-                raise serializers.ValidationError(
-                    "Monthly plans cannot have quarterly usage billing frequency."
-                )
-            elif version_usage_billing_frequency == USAGE_BILLING_FREQUENCY.MONTHLY:
-                version_usage_billing_frequency = USAGE_BILLING_FREQUENCY.END_OF_PERIOD
-        elif plan_duration == PLAN_DURATION.QUARTERLY:
-            if version_usage_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
-                version_usage_billing_frequency = USAGE_BILLING_FREQUENCY.END_OF_PERIOD
-        data["usage_billing_frequency"] = version_usage_billing_frequency
         return data
 
     def create(self, validated_data):

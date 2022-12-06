@@ -130,7 +130,7 @@ def subscription_test_common_setup(
             )
         payload = {
             "name": "test_subscription",
-            "start_date": now_utc() - timedelta(days=35),
+            "start_date": now_utc() - timedelta(days=5),
             "customer_id": customer.customer_id,
             "plan_id": billing_plan.plan.plan_id,
         }
@@ -483,7 +483,7 @@ class TestSubscriptionAndSubscriptionRecord:
                 "value": "test2@test.com",
             }
         ]
-        cur_payload["start_date"] = cur_payload["start_date"] + timedelta(days=7)
+        cur_payload["start_date"] = cur_payload["start_date"] + timedelta(days=3)
 
         response = setup_dict["client"].post(
             reverse("subscription-plans"),
@@ -568,7 +568,7 @@ class TestSubscriptionAndSubscriptionRecord:
 
         cur_payload = setup_dict["payload"].copy()
         cur_payload["plan_id"] = new_plan.plan_id
-        cur_payload["start_date"] = cur_payload["start_date"] + timedelta(days=7)
+        cur_payload["start_date"] = cur_payload["start_date"] + timedelta(days=3)
 
         response = setup_dict["client"].post(
             reverse("subscription-plans"),
@@ -653,7 +653,7 @@ class TestSubscriptionAndSubscriptionRecord:
 
         cur_payload = setup_dict["payload"].copy()
         cur_payload["plan_id"] = new_plan.plan_id
-        cur_payload["start_date"] = cur_payload["start_date"] + timedelta(days=7)
+        cur_payload["start_date"] = cur_payload["start_date"] + timedelta(days=3)
 
         response = setup_dict["client"].post(
             reverse("subscription-plans"),
@@ -809,9 +809,130 @@ class TestSubscriptionAndSubscriptionRecord:
             new_sub_record.end_date + relativedelta(days=1)
         ).day
 
-    # def test_change_invoicing_cadence_if_all_monthly_plans_removed(
-    #     self, subscription_test_common_setup
-    # ):
+    def test_change_invoicing_cadence_if_all_monthly_plans_removed(
+        self, subscription_test_common_setup
+    ):
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=0, auth_method="session_auth"
+        )
+        cur_payload = setup_dict["payload"]
+        new_plan = Plan.objects.create(
+            organization=setup_dict["org"],
+            plan_name="yearly plan",
+            plan_duration=PLAN_DURATION.YEARLY,
+            display_version=setup_dict["billing_plan"],
+            status=PLAN_STATUS.ACTIVE,
+            plan_id="yearly-plan",
+        )
+
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=setup_dict["org"],
+            description="test_plan for testing",
+            flat_rate=30.0,
+            plan=new_plan,
+            usage_billing_frequency=USAGE_BILLING_FREQUENCY.QUARTERLY,
+        )
+        new_plan.display_version = billing_plan
+        new_plan.save()
+
+        prev_subscriptions_len = Subscription.objects.all().count()
+        prev_subscription_records_len = SubscriptionRecord.objects.all().count()
+        assert prev_subscriptions_len == 0
+        assert prev_subscription_records_len == 0
+
+        response = setup_dict["client"].post(
+            reverse("subscription-plans"),
+            data=json.dumps(cur_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        after_subscriptions_len = Subscription.objects.all().count()
+        after_subscription_records_len = SubscriptionRecord.objects.all().count()
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert after_subscriptions_len == prev_subscriptions_len + 1
+        assert after_subscription_records_len == prev_subscription_records_len + 1
+        sub = Subscription.objects.all().first()
+        sub_record = SubscriptionRecord.objects.all().first()
+        assert sub.start_date == sub_record.start_date
+        assert sub.end_date == sub_record.end_date
+        assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
+        assert sub.day_anchor == sub_record.start_date.day
+        assert sub.month_anchor == None
+        prev_subscriptions_len = after_subscriptions_len
+        prev_subscription_records_len = after_subscription_records_len
+
+        cur_payload = setup_dict["payload"].copy()
+        cur_payload["plan_id"] = new_plan.plan_id
+        cur_payload["start_date"] = cur_payload["start_date"] + timedelta(days=3)
+
+        response = setup_dict["client"].post(
+            reverse("subscription-plans"),
+            data=json.dumps(cur_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        after_subscriptions_len = Subscription.objects.all().count()
+        after_subscription_records_len = SubscriptionRecord.objects.all().count()
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert after_subscriptions_len == prev_subscriptions_len
+        assert after_subscription_records_len == prev_subscription_records_len + 1
+        sub = Subscription.objects.all().first()
+        new_sub_record = (
+            SubscriptionRecord.objects.all().order_by("-start_date").first()
+        )
+        old_sub_record = SubscriptionRecord.objects.all().order_by("start_date").first()
+        assert sub.start_date != new_sub_record.start_date
+        assert sub.end_date <= new_sub_record.next_billing_date
+        assert sub.end_date == old_sub_record.end_date
+        assert sub.billing_cadence != new_sub_record.billing_plan.plan.plan_duration
+        assert sub.billing_cadence == old_sub_record.billing_plan.plan.plan_duration
+        assert (new_sub_record.end_date + relativedelta(day=sub.day_anchor)).day == (
+            new_sub_record.end_date + relativedelta(days=1)
+        ).day
+        assert sub.month_anchor is not None
+
+        before_active_subs = Subscription.objects.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE
+        ).count()
+        before_active_sub_records = SubscriptionRecord.objects.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE
+        ).count()
+        before_invoices = Invoice.objects.all().count()
+
+        params = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "invoicing_behavior": INVOICING_BEHAVIOR.INVOICE_NOW,
+            "plan_id": setup_dict["plan"].plan_id,
+        }
+        response = setup_dict["client"].delete(
+            reverse("subscription-plans") + "?" + urlencode(params),
+            content_type="application/json",
+        )
+
+        after_active_subs = Subscription.objects.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE
+        ).count()
+        after_active_sub_records = SubscriptionRecord.objects.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE
+        ).count()
+        after_invoices = Invoice.objects.all().count()
+        active_sub = Subscription.objects.filter(
+            status=SUBSCRIPTION_STATUS.ACTIVE
+        ).first()
+
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert after_active_subs == 1
+        assert after_active_sub_records == 1
+        assert before_active_subs == 1
+        assert before_active_sub_records == 2
+        assert before_invoices == 0
+        assert after_invoices == 1
+
+        assert active_sub.billing_cadence == PLAN_DURATION.QUARTERLY
+        assert active_sub.end_date == new_sub_record.next_billing_date
 
     # def test_change_invoicing_cadence_if_monthly_plan_gets_added(
     #     self, subscription_test_common_setup

@@ -862,7 +862,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             done = False
             i = 0
             while not done:
-                next_billing_date = end_date - (i * rd)
+                next_billing_date = end_date - (i * rd) - relativedelta(days=1)
                 if next_billing_date < now_utc() or next_billing_date < start_date:
                     done = True
                     i -= 1
@@ -872,17 +872,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 end_date - (i * rd) - relativedelta(days=1)
             )
         subscription_record = serializer.save(organization=organization)
-
-        print(
-            "setting month anchor to",
-            month_anchor,
-            "validated data",
-            serializer.validated_data,
-            "start date month",
-            start_date.month,
-            "duration",
-            duration,
-        )
 
         # now we can actually create the subscription record
         response = self.get_serializer(subscription_record).data
