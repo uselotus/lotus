@@ -130,7 +130,7 @@ def subscription_test_common_setup(
             )
         payload = {
             "name": "test_subscription",
-            "start_date": now_utc().date() - timedelta(days=35),
+            "start_date": now_utc() - timedelta(days=35),
             "customer_id": customer.customer_id,
             "plan_id": billing_plan.plan.plan_id,
         }
@@ -770,7 +770,7 @@ class TestSubscriptionAndSubscriptionRecord:
         )
         assert sub.start_date == new_sub_record.start_date
         assert sub.end_date == new_sub_record.next_billing_date
-        assert sub.end_date == new_sub_record.end_date
+        assert sub.end_date != new_sub_record.end_date  # cuz its quarterly
         assert sub.billing_cadence != new_sub_record.billing_plan.plan.plan_duration
         assert (
             sub.billing_cadence == new_sub_record.billing_plan.usage_billing_frequency
@@ -793,18 +793,16 @@ class TestSubscriptionAndSubscriptionRecord:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert after_subscriptions_len == prev_subscriptions_len + 1
-        assert after_subscription_records_len == prev_subscription_records_len + 1
+        assert after_subscription_records_len == prev_subscription_records_len + 2
         sub = Subscription.objects.all().first()
         new_sub_record = (
             SubscriptionRecord.objects.all().order_by("-start_date").first()
         )
         old_sub_record = SubscriptionRecord.objects.all().order_by("-start_date").last()
-        print(new_sub_record.start_date, new_sub_record)
-        print(old_sub_record.start_date, old_sub_record)
         assert sub.start_date != new_sub_record.start_date
         assert sub.end_date == new_sub_record.next_billing_date
         assert sub.end_date == new_sub_record.end_date
-        assert sub.billing_cadence == new_sub_record.billing_plan.plan_duration
+        assert sub.billing_cadence == new_sub_record.billing_plan.plan.plan_duration
         assert sub.month_anchor is not None
         assert sub.day_anchor is not None
         assert (new_sub_record.end_date + relativedelta(day=sub.day_anchor)).day == (

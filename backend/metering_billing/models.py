@@ -1652,31 +1652,23 @@ class SubscriptionRecord(models.Model):
                 None,
             ]:
                 self.next_billing_date = self.end_date
-            elif (
-                self.billing_plan.usage_billing_frequency
-                == USAGE_BILLING_FREQUENCY.MONTHLY
-            ):
-                self.next_billing_date = subscription.end_date
-            elif (
-                self.billing_plan.usage_billing_frequency
-                == USAGE_BILLING_FREQUENCY.QUARTERLY
-            ):
+            else:
+                num_months = (
+                    1
+                    if self.billing_plan.usage_billing_frequency
+                    == USAGE_BILLING_FREQUENCY.MONTHLY
+                    else 3
+                )
                 if self.last_billing_date:
                     self.next_billing_date = min(
-                        self.end_date, self.last_billing_date + relativedelta(months=3)
+                        self.end_date,
+                        self.last_billing_date + relativedelta(months=num_months),
                     )
                 else:
                     self.next_billing_date = min(
-                        self.end_date, self.start_date + relativedelta(months=3)
+                        self.end_date,
+                        self.start_date + relativedelta(months=num_months),
                     )
-            else:
-                print(
-                    "Invalid usage billing frequency",
-                    self.billing_plan.usage_billing_frequency,
-                )
-                raise Exception(
-                    "Invalid usage billing frequency for subscription record"
-                )
         super(SubscriptionRecord, self).save(*args, **kwargs)
 
     def get_filters_dictionary(self):
