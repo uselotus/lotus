@@ -43,6 +43,7 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
+    ConfirmIdemsReceivedView,
     CostAnalysisView,
     CustomerBatchCreateView,
     CustomersSummaryView,
@@ -187,6 +188,11 @@ urlpatterns = [
     path("api/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
     path("api/session/", auth_views.SessionView.as_view(), name="api-session"),
     path("api/register/", auth_views.RegisterView.as_view(), name="register"),
+    path(
+        "api/verify_idems_received/",
+        ConfirmIdemsReceivedView.as_view(),
+        name="verify_idems_received",
+    ),
     path(
         "api/demo_register/",
         auth_views.DemoRegisterView.as_view(),

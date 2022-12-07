@@ -1034,64 +1034,6 @@ class PlansByNumCustomersView(APIView):
         )
 
 
-# class CustomerBalanceAdjustmentView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     @extend_schema(
-#         request=inline_serializer(
-#             name="CreateBalanceAdjustmentRequest",
-#             fields={
-#                 "amount": serializers.IntegerField(required=True),
-#                 "customer_id": serializers.CharField(required=True),
-#                 "amount_currency": serializers.CharField(required=True),
-#                 "description": serializers.CharField(),
-#             },
-#         ),
-#         responses={
-#             200: inline_serializer(
-#                 name="CreateBalanceAdjustmentSuccess",
-#                 fields={
-#                     "status": serializers.ChoiceField(choices=["success"]),
-#                     "detail": serializers.CharField(),
-#                 },
-#             ),
-#             400: inline_serializer(
-#                 name="CreateBalanceAdjustmentFailure",
-#                 fields={
-#                     "status": serializers.ChoiceField(choices=["error"]),
-#                     "detail": serializers.CharField(),
-#                 },
-#             ),
-#         },
-#     )
-#     def get(self, request, format=None):
-#         """
-#         Get the current settings for the organization.
-#         """
-#         organization = parse_organization(request)
-#         customer_id = request.query_params.get("customer_id")
-#         customer_balances_adjustment = CustomerBalanceAdjustment.objects.filter(
-#             customer_id=customer_id
-#         ).prefetch_related(
-#             Prefetch(
-#                 "customer",
-#                 queryset=Customer.objects.filter(organization=organization),
-#                 to_attr="customers",
-#             ),
-#         )
-#         if len(customer_balances_adjustment) == 0:
-#             return Response(
-#                 {
-#                     "error_detail": "CustomerBalanceAdjustmentView with customer_id {} does not exist".format(
-#                         customer_id
-#                     )
-#                 },
-#                 status=status.HTTP_400_BAD_REQUEST,
-#             )
-#         serializer = CustomerBalanceAdjustmentSerializer(customer_balances_adjustment)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
 class CustomerBatchCreateView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
@@ -1176,4 +1118,77 @@ class CustomerBatchCreateView(APIView):
                 "failed_customers": failed_customers,
             },
             status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class ConfirmIdemsReceivedView(APIView):
+    permission_classes = [IsAuthenticated | HasUserAPIKey]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ConfirmIdemsReceivedRequest",
+            fields={
+                "idempotency_ids": serializers.ListField(
+                    child=serializers.CharField(), required=True
+                ),
+                "number_days_lookback": serializers.IntegerField(
+                    default=30, required=False
+                ),
+                "customer_id": serializers.CharField(required=False),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="ConfirmIdemsReceived",
+                fields={
+                    "status": serializers.ChoiceField(choices=["success"]),
+                    "ids_not_found": serializers.ListField(
+                        child=serializers.CharField(), required=True
+                    ),
+                },
+            ),
+            400: inline_serializer(
+                name="ConfirmIdemsReceivedFailure",
+                fields={
+                    "status": serializers.ChoiceField(choices=["failure"]),
+                    "error": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        organization = parse_organization(request)
+        if request.data.get("idempotency_ids") is None:
+            return Response(
+                {
+                    "status": "failure",
+                    "error": "idempotency_ids is required",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if isinstance(request.data.get("idempotency_ids"), str):
+            idempotency_ids = {request.data.get("idempotency_ids")}
+        else:
+            idempotency_ids = list(set(request.data.get("idempotency_ids")))
+        number_days_lookback = request.data.get("number_days_lookback", 30)
+        now_minus_lookback = now_utc() - relativedelta(days=number_days_lookback)
+        num_batches_idems = len(idempotency_ids) // 1000 + 1
+        ids_not_found = []
+        for i in range(num_batches_idems):
+            idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
+            events = Event.objects.filter(
+                organization=organization,
+                time_created__gte=now_minus_lookback,
+                idempotency_id__in=idem_batch,
+            )
+            if request.data.get("customer_id"):
+                events = events.filter(customer_id=request.data.get("customer_id"))
+            events_set = set(events.values_list("idempotency_id", flat=True))
+            ids_not_found += list(idem_batch - events_set)
+        return Response(
+            {
+                "status": "success",
+                "ids_not_found": ids_not_found,
+            },
+            status=status.HTTP_200_OK,
         )
