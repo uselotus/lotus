@@ -1,0 +1,19 @@
+---
+title: "Webhooks"
+---
+
+Lotus exposes endpoints to fully integrate into your stack. All webhooks maintain the following structure.
+
+Here is a list of current webhooks.
+
+### invoice.created
+
+This webhook is generated when a subscription ends and an invoice is generated.
+
+### invoice.payment_successful
+
+This webhook is generated when a payment through a payment provider integration is successful (i.e. a payment through Stripe).
+
+### invoice.payment_failed
+
+This webhook is generated when a payment through a payment provider integration failed (i.e. a payment through Stripe).
