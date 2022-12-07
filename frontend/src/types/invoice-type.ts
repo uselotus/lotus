@@ -16,7 +16,7 @@ export interface DraftInvoiceType {
   invoice: DraftInvoiceType2;
 }
 export interface DraftInvoiceType2 {
-  line_items: LineItem[];
+  line_items: ExternalLineItem[];
   cost_due: number;
   customer: CustomerType;
   currency: {
@@ -54,6 +54,14 @@ interface InvoiceCustomer {
 
 interface InvoiceOrganization {
   company_name: string;
+}
+
+export interface ExternalLineItem {
+  end_date: string;
+  plan_name: string;
+  start_date: string;
+  subscription_filters?: { property_name: string; value: string }[];
+  sub_items: LineItem[];
 }
 
 export interface LineItem {
