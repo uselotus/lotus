@@ -167,7 +167,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
             </p>
           </div>
           <Table
-            dataSource={dummyInvoice.invoice.line_items}
+            dataSource={invoiceData.invoice.line_items}
             pagination={false}
             expandable={{ expandedRowRender, defaultExpandedRowKeys: ["0"] }}
             columns={[
@@ -176,14 +176,16 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 dataIndex: "name",
                 render: (_, record) => (
                   <div className="flex flex-col">
-                    <p>{record.name}</p>
-                    {record.metadata && (
-                      <p className="text-s text-grey2">
-                        {Object.keys(record.metadata).map((key) => (
-                          <span>
-                            {key}: {record.metadata[key]}
-                          </span>
-                        ))}
+                    <p>{record.plan_name}</p>
+                    {record.subscription_filters && (
+                      <p>
+                        {record.subscription_filters.map((filter: any) => {
+                          return (
+                            <span>
+                              {filter.property_name} : {filter.value}
+                            </span>
+                          );
+                        })}
                       </p>
                     )}
                   </div>
@@ -196,11 +198,9 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 render: (_, record) => {
                   return (
                     <div>
-                      <p>
-                        {dayjs(record.start_date).format("MM/DD/YYYY") +
-                          "-" +
-                          dayjs(record.end_date).format("MM/DD/YYYY")}
-                      </p>
+                      {dayjs(record.start_date).format("MM/DD/YYYY") +
+                        " - " +
+                        dayjs(record.end_date).format("MM/DD/YYYY")}
                     </div>
                   );
                 },
