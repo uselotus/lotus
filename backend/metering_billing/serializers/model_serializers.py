@@ -1741,12 +1741,15 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
 
 class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
     class Meta(InvoiceLineItemSerializer.Meta):
-        fields = set(InvoiceLineItemSerializer.Meta.fields) - set(
-            [
-                "plan_version_id",
-                "plan_name",
-                "subscription_filters",
-            ]
+        fields = tuple(
+            set(InvoiceLineItemSerializer.Meta.fields)
+            - set(
+                [
+                    "plan_version_id",
+                    "plan_name",
+                    "subscription_filters",
+                ]
+            )
         )
 
 
@@ -1817,9 +1820,11 @@ class DraftInvoiceSerializer(InvoiceSerializer):
     line_items = serializers.SerializerMethodField()
 
     def get_line_items(self, obj) -> GroupedLineItemSerializer(many=True):
-        associated_subscription_records = obj.line_items.values(
-            "associated_subscription_record"
-        ).distinct()
+        associated_subscription_records = (
+            obj.line_items.filter(associated_subscription_record__isnull=False)
+            .values_list("associated_subscription_record", flat=True)
+            .distinct()
+        )
         srs = []
         for associated_subscription_record in associated_subscription_records:
             line_items = obj.line_items.filter(

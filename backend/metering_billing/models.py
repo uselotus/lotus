@@ -1108,7 +1108,6 @@ class Invoice(models.Model):
             if last_invoice:
                 last_invoice_number = int(last_invoice.invoice_number[7:])
                 next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
-                print("next_invoice_number", next_invoice_number, last_invoice_number)
 
             self.invoice_number = today_string + "-" + next_invoice_number
             # if not self.due_date:
