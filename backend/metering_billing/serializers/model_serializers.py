@@ -1351,7 +1351,7 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
                 sub,
                 sub_records,
             ) = sub_record.customer.get_subscription_and_records()
-            filtered_sub_records = sub_records.filter(pk=sub_record.pk).update(
+            sub_records.filter(pk=sub_record.pk).update(
                 flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
                 invoice_usage_charges=False,
             )

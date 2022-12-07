@@ -576,6 +576,7 @@ def setup_paas_demo(
                 "num_validators_change",
                 "rpc_nodes_change",
                 "indexer_nodes_change",
+                "event_indexer_nodes_change",
                 "testnet_transaction",
                 "mainnet_transaction",
                 "testnet_transaction",
@@ -646,7 +647,7 @@ def setup_paas_demo(
         plan_duration=PLAN_DURATION.MONTHLY,
         status=PLAN_STATUS.ACTIVE,
     )
-    basic_plan = PlanVersion.objects.create(
+    professional_plan = PlanVersion.objects.create(
         organization=organization,
         description="Customizable Professional Pla",
         version=1,
@@ -656,7 +657,7 @@ def setup_paas_demo(
         flat_rate=0,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan,
+        plan_version=professional_plan,
         billable_metric=valnodes,
         free_units=2,
         max_units=10,
@@ -664,7 +665,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan,
+        plan_version=professional_plan,
         billable_metric=rpcnodes,
         free_units=2,
         max_units=10,
@@ -672,7 +673,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan,
+        plan_version=professional_plan,
         billable_metric=ixnodes,
         free_units=2,
         max_units=10,
@@ -680,7 +681,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan,
+        plan_version=professional_plan,
         billable_metric=evixnodes,
         free_units=2,
         max_units=10,
@@ -688,7 +689,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan,
+        plan_version=professional_plan,
         billable_metric=tntxns,
         free_units=None,
         max_units=5000,
@@ -696,10 +697,10 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan, billable_metric=tntxns_rate, free_units=50
+        plan_version=professional_plan, billable_metric=tntxns_rate, free_units=50
     )
     create_pc_and_tiers(
-        plan_version=basic_plan,
+        plan_version=professional_plan,
         billable_metric=mntxns,
         free_units=None,
         max_units=5000,
@@ -707,10 +708,14 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan, billable_metric=mntxns_rate, free_units=100
+        plan_version=professional_plan, billable_metric=mntxns_rate, free_units=100
     )
-    plan.display_version = basic_plan
+    plan.display_version = professional_plan
     plan.save()
+    for component in professional_plan.plan_components.all():
+        if component.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+            component.proration_granularity = METRIC_GRANULARITY.MINUTE
+            component.save()
 
 
 def create_pc_and_tiers(

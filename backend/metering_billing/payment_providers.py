@@ -331,7 +331,9 @@ class StripeConnector(PaymentProvider):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
-        for line_item in invoice.line_items.all():
+        for line_item in invoice.line_items.all().order_by(
+            F("associated_subscription_record").desc(nulls_last=True)
+        ):
             name = line_item.name
             amount = line_item.subtotal
             customer = stripe_customer_id
@@ -340,6 +342,13 @@ class StripeConnector(PaymentProvider):
                 "end": int(line_item.end_date.timestamp()),
             }
             tax_behavior = "exclusive"
+            sr = line_item.associated_subscription_record
+            metadata = {
+                "plan_name": sr.billing_plan.plan.plan_name,
+            }
+            filters = sr.filters.all()
+            for f in filters:
+                metadata[f.property_name] = f.comparison_value[0]
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),
@@ -347,6 +356,7 @@ class StripeConnector(PaymentProvider):
                 "period": period,
                 "currency": invoice.currency.code.lower(),
                 "tax_behavior": tax_behavior,
+                "metadata": metadata,
             }
             stripe.InvoiceItem.create(**inv_dict)
         stripe_invoice = stripe.Invoice.create(**invoice_kwargs)

@@ -903,8 +903,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 ).first()
                 generate_invoice(subscription, qs.filter(customer=customer))
                 subscription.handle_remove_plan()
-                print("subscription", subscription)
-                print("subscription status", subscription.status)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
