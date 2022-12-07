@@ -57,19 +57,21 @@ def calculate_invoice():
     )  # grace period of 30 minutes for sending events
     subs_to_bill = list(
         Subscription.objects.filter(
-            Q(scheduled_end_date__lt=now_minus_30)
-            | Q(next_billing_date__lt=now_minus_30),
+            Q(end_date__lt=now_minus_30),
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
     )
 
     # now generate invoices and new subs
     for old_subscription in subs_to_bill:
+        old_sub_records = old_subscription.get_subscription_records_to_bill()
         # Generate the invoice
         try:
             generate_invoice(
                 old_subscription,
-                charge_next_plan=old_subscription.auto_renew,
+                old_sub_records,
+                charge_next_plan=True,
+                generate_next_subscription_record=True,
             )
             now = now_utc()
         except Exception as e:
@@ -78,11 +80,24 @@ def calculate_invoice():
                 "Error generating invoice for subscription {}".format(old_subscription)
             )
             continue
-        if old_subscription.scheduled_end_date > now:
-            # if the subscription is not ending, then we just need to update the next billing date
-            old_subscription.next_billing_date = None  # this will auto calculate it
-            old_subscription.save()
-            continue
+        num_subscription_records_active = SubscriptionRecord.objects.filter(
+            Q(end_date__gte=old_subscription.end_date),
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+        ).count()
+        if num_subscription_records_active > 0:
+            sub = Subscription.objects.create(
+                organization=old_subscription.organization,
+                day_anchor=old_subscription.day_anchor,
+                month_anchor=old_subscription.month_anchor,
+                customer=old_subscription.customer,
+                billing_cadence=old_subscription.billing_cadence,
+                start_date=date_as_min_dt(
+                    old_subscription.end_date + relativedelta(days=+1)
+                ),
+                end_date=old_subscription.get_new_sub_end_date(),
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+            )
+            sub.handle_remove_plan()
         # End the old subscription and delete draft invoices
         old_subscription.status = SUBSCRIPTION_STATUS.ENDED
         old_subscription.save()
@@ -91,32 +106,6 @@ def calculate_invoice():
             payment_status=INVOICE_STATUS.DRAFT,
             subscription=old_subscription,
         ).delete()
-        # Renew the subscription
-        if old_subscription.auto_renew:
-            if old_subscription.billing_plan.transition_to is not None:
-                new_bp = old_subscription.billing_plan.transition_to.display_version
-            elif old_subscription.billing_plan.replace_with is not None:
-                new_bp = old_subscription.billing_plan.replace_with
-            else:
-                new_bp = old_subscription.billing_plan
-            subscription_kwargs = {
-                "organization": old_subscription.organization,
-                "customer": old_subscription.customer,
-                "billing_plan": new_bp,
-                "start_date": date_as_min_dt(
-                    old_subscription.scheduled_end_date + relativedelta(days=+1)
-                ),
-                "auto_renew": True,
-                "is_new": False,
-            }
-            sub = Subscription.objects.create(**subscription_kwargs)
-            if new_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE:
-                sub.flat_fee_already_billed = Decimal(new_bp.flat_rate)
-            if sub.start_date <= now <= sub.end_date:
-                sub.status = SUBSCRIPTION_STATUS.ACTIVE
-            else:
-                sub.status = SUBSCRIPTION_STATUS.ENDED
-            sub.save()
 
 
 @shared_task

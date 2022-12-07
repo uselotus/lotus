@@ -22,6 +22,7 @@ from metering_billing.utils import (
     convert_to_decimal,
     customer_balance_adjustment_uuid,
     customer_uuid,
+    date_as_min_dt,
     dates_bwn_two_dts,
     get_granularity_ratio,
     invoice_uuid,
@@ -1634,6 +1635,19 @@ class Subscription(models.Model):
             | Q(end_date__range=(self.start_date, self.end_date))
             | Q(start_date__lte=self.start_date, end_date__gte=self.end_date),
             status=SUBSCRIPTION_STATUS.ACTIVE,
+        )
+
+    def get_subscription_records_to_bill(self):
+        return self.customer.subscription_records.filter(
+            Q(last_billing_date__range=(self.start_date, self.end_date))
+            | Q(end_date__range=(self.start_date, self.end_date)),
+            fully_billed=False,
+        )
+
+    def get_new_sub_end_date(self):
+        new_date = date_as_min_dt(self.end_date + relativedelta(days=1))
+        return calculate_end_date(
+            self.billing_cadence, new_date, self.day_anchor, self.month_anchor
         )
 
 
