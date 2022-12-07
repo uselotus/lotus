@@ -87,16 +87,16 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
           </div>
         ),
       },
-      {
-        title: "Subtotal",
-        dataIndex: "subtotal",
-        render: (_, record) => (
-          <div className="flex flex-col">
-            {invoiceData.invoice.pricing_unit.symbol}
-            {record.subtotal.toFixed(2)}
-          </div>
-        ),
-      },
+      //   {
+      //     title: "Subtotal",
+      //     dataIndex: "subtotal",
+      //     render: (_, record) => (
+      //       <div className="flex flex-col">
+      //         {invoiceData.invoice.currency.symbol}
+      //         {record.subtotal.toFixed(2)}
+      //       </div>
+      //     ),
+      //   },
       {
         title: "Billing Type",
         dataIndex: "billing_type",
@@ -125,6 +125,24 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
     }
   }, [invoiceData]);
 
+  //   const perPlanItems = useMemo(() => {
+  //     if (
+  //       invoiceData?.invoice &&
+  //       invoiceData?.invoice?.line_items &&
+  //       organizedlineItems
+  //     ) {
+  //         const planItems: object = {};
+
+  //       for (let i = 0; i < organizedlineItems.ke; i++) {
+  //         planItems[organizedlineItems[i].plan_name] = organizedlineItems[i];
+  //       }
+
+  //       return planItems;
+  //     } else {
+  //       return null;
+  //     }
+  //   }, [organizedlineItems]);
+
   return (
     <div>
       {invoiceData?.invoice !== null && invoiceData?.invoice !== undefined && (
@@ -140,11 +158,11 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
               )}
             </p>
             <p>
-              <b>Currency: </b> {invoiceData.invoice.pricing_unit.code}
+              <b>Currency: </b> {invoiceData.invoice.currency.code}
             </p>
             <p>
               <b>Total Cost Due: </b>
-              {invoiceData.invoice.pricing_unit.symbol}
+              {invoiceData.invoice.currency.symbol}
               {invoiceData.invoice.cost_due}
             </p>
           </div>
@@ -172,27 +190,30 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 ),
               },
               {
-                title: "Quantity",
-                dataIndex: "quantity",
-                render: (_, record) => (
-                  <div className="flex flex-col">
-                    {record.quantity !== null && record.quantity.toFixed(2)}
-                  </div>
-                ),
+                title: "Dates",
+                dataIndex: "start_date",
+                key: "date",
+                render: (_, record) => {
+                  return (
+                    <div>
+                      <p>
+                        {dayjs(record.start_date).format("MM/DD/YYYY") +
+                          "-" +
+                          dayjs(record.end_date).format("MM/DD/YYYY")}
+                      </p>
+                    </div>
+                  );
+                },
               },
               {
                 title: "Subtotal",
                 dataIndex: "subtotal",
                 render: (_, record) => (
                   <div className="flex flex-col">
-                    {invoiceData.invoice.pricing_unit.symbol}
+                    {invoiceData.invoice.currency.symbol}
                     {record.subtotal.toFixed(2)}
                   </div>
                 ),
-              },
-              {
-                title: "Billing Type",
-                dataIndex: "billing_type",
               },
             ]}
           />

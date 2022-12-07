@@ -79,7 +79,6 @@ def generate_invoice(
         subscription_records = [subscription_records]
     for subscription_record in subscription_records:
         billing_plan = subscription_record.billing_plan
-        pricing_unit = billing_plan.pricing_unit
         subscription_record_check_discount = [subscription_record]
         # usage calculation
         if subscription_record.invoice_usage_charges:

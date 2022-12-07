@@ -1088,26 +1088,30 @@ class Invoice(models.Model):
                     "external_type": self.external_payment_obj_type,
                 },
             )
-        if not self.pricing_unit:
-            self.pricing_unit = self.organization.default_currency
+        if not self.currency:
+            self.currency = self.organization.default_currency
 
         ### Generate invoice number
-        today = datetime.date.today()
-        today_string = today.strftime("%y%m%d")
-        next_invoice_number = "000001"
-        last_invoice = (
-            Invoice.objects.filter(
-                invoice_number__startswith=today_string, organization=self.organization
+        if self.invoice_number is None or self.invoice_number == "":
+            today = datetime.date.today()
+            today_string = today.strftime("%y%m%d")
+            next_invoice_number = "000001"
+            last_invoice = (
+                Invoice.objects.filter(
+                    invoice_number__startswith=today_string,
+                    organization=self.organization,
+                )
+                .order_by("invoice_number")
+                .last()
             )
-            .order_by("invoice_number")
-            .last()
-        )
-        if last_invoice:
-            last_invoice_number = int(last_invoice.invoice_number[6:])
-            next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
-        self.invoice_number = today_string + "-" + next_invoice_number
-        # if not self.due_date:
-        #     self.due_date = self.issue_date + datetime.timedelta(days=1)
+            if last_invoice:
+                last_invoice_number = int(last_invoice.invoice_number[7:])
+                next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
+                print("next_invoice_number", next_invoice_number, last_invoice_number)
+
+            self.invoice_number = today_string + "-" + next_invoice_number
+            # if not self.due_date:
+            #     self.due_date = self.issue_date + datetime.timedelta(days=1)
         super().save(*args, **kwargs)
 
 
