@@ -60,43 +60,33 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       }
     );
 
-  const expandedRowRender = (subscriptiondata: any) => {
+  const expandedRowRender = (record) => {
+    console.log("record", record);
     const columns: TableColumnsType<LineItem> = [
       {
-        title: "Dates",
-        dataIndex: "start_date",
-        key: "date",
-        render: (_, record) => {
-          return (
-            <div>
-              <p>
-                {dayjs(record.start_date).format("MM/DD/YYYY") +
-                  "-" +
-                  dayjs(record.end_date).format("MM/DD/YYYY")}
-              </p>
-            </div>
-          );
-        },
+        title: "Item",
+        dataIndex: "name",
+        key: "name",
       },
       {
         title: "Quantity",
         dataIndex: "quantity",
         render: (_, record) => (
           <div className="flex flex-col">
-            {record.quantity !== null && record.quantity.toFixed(2)}
+            {record.quantity !== null ? record.quantity.toFixed(2) : "1"}
           </div>
         ),
       },
-      //   {
-      //     title: "Subtotal",
-      //     dataIndex: "subtotal",
-      //     render: (_, record) => (
-      //       <div className="flex flex-col">
-      //         {invoiceData.invoice.currency.symbol}
-      //         {record.subtotal.toFixed(2)}
-      //       </div>
-      //     ),
-      //   },
+      {
+        title: "Subtotal",
+        dataIndex: "subtotal",
+        render: (_, record) => (
+          <div className="flex flex-col">
+            {invoiceData?.invoice.currency.symbol}
+            {record.subtotal.toFixed(2)}
+          </div>
+        ),
+      },
       {
         title: "Billing Type",
         dataIndex: "billing_type",
@@ -106,7 +96,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
     return (
       <Table
         columns={columns}
-        dataSource={subscriptiondata}
+        dataSource={record.sub_items}
         pagination={false}
       />
     );
@@ -169,7 +159,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
           <Table
             dataSource={invoiceData.invoice.line_items}
             pagination={false}
-            expandable={{ expandedRowRender, defaultExpandedRowKeys: ["0"] }}
+            expandable={{ expandedRowRender }}
             columns={[
               {
                 title: "Name",
