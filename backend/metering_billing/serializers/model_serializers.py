@@ -151,6 +151,7 @@ class EventSerializer(serializers.ModelSerializer):
             "time_created",
             "idempotency_id",
             "customer_id",
+            "customer",
         )
 
     customer_id = SlugRelatedFieldWithOrganization(
