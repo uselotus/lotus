@@ -13,7 +13,7 @@ import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Plan } from "../../api/api";
 import { PlanType } from "../../types/plan-type";
 import CustomerDetail from "./CustomerDetail";
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const columns: ProColumns<CustomerTableItem>[] = [
   {
@@ -56,9 +56,9 @@ const columns: ProColumns<CustomerTableItem>[] = [
     render: (_, record) => (
       <div className="self-center">
         {record.total_amount_due !== undefined ? (
-          <p>${record.total_amount_due.toFixed(2)}</p>
+          <div>${record.total_amount_due.toFixed(2)}</div>
         ) : (
-          <p>${0.0}</p>
+          <div>${0.0}</div>
         )}
       </div>
     ),
@@ -138,6 +138,11 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   const onDetailCancel = () => {
     queryClient.invalidateQueries(["customer_list"]);
     queryClient.invalidateQueries(["customer_totals"]);
+    queryClient.invalidateQueries([
+      "customer_detail",
+      customerState.customer_id,
+    ]);
+
     setCustomerVisible(false);
   };
 

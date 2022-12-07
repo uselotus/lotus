@@ -17,10 +17,7 @@ import {
   useQuery,
   UseQueryResult,
 } from "react-query";
-import {
-  CustomerDetailType,
-  CustomerDetailSubscription,
-} from "../../types/customer-type";
+import { CustomerDetailType, DetailPlan } from "../../types/customer-type";
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
@@ -45,7 +42,7 @@ function CustomerDetail(props: {
   const [endDate, setEndDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
 
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
-    CustomerDetailSubscription[]
+    DetailPlan[]
   >([]);
 
   const { data, isLoading }: UseQueryResult<CustomerDetailType> =
@@ -53,7 +50,7 @@ function CustomerDetail(props: {
       ["customer_detail", props.customer_id],
       () =>
         Customer.getCustomerDetail(props.customer_id).then((res) => {
-          setCustomerSubscriptions(res.subscriptions);
+          console.log(res);
           return res;
         }),
       {
@@ -92,8 +89,8 @@ function CustomerDetail(props: {
   );
 
   const cancelSubscriptionMutation = useMutation(
-    (obj: { subscription_id: string; post: CancelSubscriptionType }) =>
-      Customer.cancelSubscription(obj.subscription_id, obj.post),
+    (obj: { post: CancelSubscriptionType }) =>
+      Customer.cancelSubscription(obj.post),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -108,8 +105,8 @@ function CustomerDetail(props: {
   );
 
   const changeSubscriptionPlanMutation = useMutation(
-    (obj: { subscription_id: string; post: ChangeSubscriptionPlanType }) =>
-      Customer.changeSubscriptionPlan(obj.subscription_id, obj.post),
+    (obj: { params: object; post: ChangeSubscriptionPlanType }) =>
+      Customer.changeSubscriptionPlan(obj.post, obj.params),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -124,10 +121,8 @@ function CustomerDetail(props: {
   );
 
   const turnSubscriptionAutoRenewOffMutation = useMutation(
-    (obj: {
-      subscription_id: string;
-      post: TurnSubscriptionAutoRenewOffType;
-    }) => Customer.turnSubscriptionAutoRenewOff(obj.subscription_id, obj.post),
+    (obj: { params: object; post: TurnSubscriptionAutoRenewOffType }) =>
+      Customer.turnSubscriptionAutoRenewOff(obj.post, obj.params),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -137,32 +132,29 @@ function CustomerDetail(props: {
     }
   );
 
-  const cancelSubscription = (
-    subscription_id: string,
-    props: CancelSubscriptionType
-  ) => {
+  const cancelSubscription = (props: CancelSubscriptionType) => {
     cancelSubscriptionMutation.mutate({
-      subscription_id: subscription_id,
       post: props,
     });
   };
 
   const changeSubscriptionPlan = (
-    subscription_id: string,
+    params: object,
     props: ChangeSubscriptionPlanType
   ) => {
     changeSubscriptionPlanMutation.mutate({
-      subscription_id: subscription_id,
+      params: params,
       post: props,
     });
   };
 
   const turnSubscriptionAutoRenewOff = (
-    subscription_id: string,
+    params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => {
+    console.log(params);
     turnSubscriptionAutoRenewOffMutation.mutate({
-      subscription_id: subscription_id,
+      params: params,
       post: props,
     });
   };
@@ -188,7 +180,7 @@ function CustomerDetail(props: {
       okType="default"
       onOk={props.onCancel}
       footer={null}
-      width={1000}
+      width="70%"
     >
       {props.plans === undefined ? (
         <div>
@@ -224,7 +216,7 @@ function CustomerDetail(props: {
                   <div key={props.customer_id}>
                     <SubscriptionView
                       customer_id={props.customer_id}
-                      subscriptions={data?.subscriptions}
+                      subscription={data?.subscription}
                       plans={props.plans}
                       onCreate={createSubscription}
                       onCancel={cancelSubscription}

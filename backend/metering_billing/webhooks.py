@@ -34,7 +34,7 @@ def invoice_created_webhook(invoice, organization):
                 organization.organization_id,
                 MessageIn(
                     event_type=WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED,
-                    event_id=invoice_data["invoice_id"],
+                    event_id=invoice_data["invoice_number"],
                     payload={
                         "attempt": 5,
                         "created_at": now,

@@ -16,7 +16,7 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    Subscription,
+    SubscriptionRecord,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
@@ -269,7 +269,9 @@ class TestCalculateMetric:
         metric_usage = list(dd.values())[0]
         assert metric_usage == 2
 
-    def test_stateful_total_granularity(self, billable_metric_test_common_setup):
+    def test_stateful_total_granularity(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -332,18 +334,20 @@ class TestCalculateMetric:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(days=46),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(days=46),
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
-    def test_stateful_daily_granularity(self, billable_metric_test_common_setup):
+    def test_stateful_daily_granularity(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -407,21 +411,18 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=time_created,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"], billing_plan, customer, time_created
         )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
         assert usage_revenue_dict["revenue"] >= Decimal(100) * Decimal(18) / Decimal(31)
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
-    def test_rate_hourly_granularity(self, billable_metric_test_common_setup):
+    def test_rate_hourly_granularity(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -508,20 +509,18 @@ class TestCalculateMetric:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(days=45),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(days=31),
         )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
         assert usage_revenue_dict["revenue"] == Decimal(61)
 
     def test_stateful_daily_granularity_delta_event(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -584,22 +583,18 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=time_created,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"], billing_plan, customer, time_created
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
         # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
         assert Decimal(100) * Decimal(12) / Decimal(28) >= usage_revenue_dict["revenue"]
         assert Decimal(100) * Decimal(12) / Decimal(31) <= usage_revenue_dict["revenue"]
 
     def test_stateful_daily_granularity_with_group_by(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -723,15 +718,10 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=time_created,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"], billing_plan, customer, time_created
         )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
         # if we multiply this by the 8 different combinations we're suppsoed to have, we
@@ -744,7 +734,7 @@ class TestCalculateMetric:
         ) / Decimal(28)
 
     def test_stateful_daily_granularity_delta_event_with_groupby(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -766,7 +756,6 @@ class TestCalculateMetric:
             Customer, organization=setup_dict["org"], customer_name="test"
         )
         event_times = [time_created + relativedelta(days=i) for i in range(8)]
-        print("event times", event_times)
         for groupby_dim_1 in ["foo", "bar"]:
             for groupby_dimension_2 in ["baz", "qux"]:
                 for groupby_dimension_3 in ["quux", "quuz"]:
@@ -842,15 +831,11 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=time_created,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"], billing_plan, customer, time_created
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
         # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
         # if we multiply this by the 8 different combinations we're suppsoed to have, we
@@ -864,7 +849,7 @@ class TestCalculateMetric:
         )
 
     def test_rate_hourly_granularity_with_groupby(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1055,19 +1040,20 @@ class TestCalculateMetric:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(days=45),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(days=31),
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
         assert usage_revenue_dict["revenue"] == 8 * Decimal(61)
 
-    def test_count_unique_with_groupby(self, billable_metric_test_common_setup):
+    def test_count_unique_with_groupby(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -1147,15 +1133,11 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=time_created,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"], billing_plan, customer, time_created
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 2 (-1 free) unique + 8 combinations gives 800
         assert 8 * Decimal(100) == usage_revenue_dict["revenue"]
 
@@ -1163,7 +1145,7 @@ class TestCalculateMetric:
 @pytest.mark.django_db(transaction=True)
 class TestCalculateMetricProrationForStateful:
     def test_proration_and_metric_granularity_sub_day(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1234,15 +1216,14 @@ class TestCalculateMetricProrationForStateful:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(days=46),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(days=46),
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         calculated_amt = (Decimal(87) - Decimal(60)) / Decimal(60) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - calculated_amt) < Decimal(0.01)
 
@@ -1269,7 +1250,7 @@ class TestCalculateMetricProrationForStateful:
         assert abs(data["total_revenue"] - float(calculated_amt)) < 0.01
 
     def test_metric_granularity_daily_proration_smaller_than_day(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1336,15 +1317,14 @@ class TestCalculateMetricProrationForStateful:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(days=46),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(days=46),
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         supposed_revenue = (Decimal(72) - Decimal(24)) / Decimal(24) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - supposed_revenue) < Decimal(0.01)
 
@@ -1370,7 +1350,7 @@ class TestCalculateMetricProrationForStateful:
         assert abs(data["total_revenue"] - float(supposed_revenue)) < 0.01
 
     def test_metric_granularity_greater_than_daily_proration_smaller_than_day(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1445,15 +1425,14 @@ class TestCalculateMetricProrationForStateful:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(months=4, days=23),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(months=4, days=23),
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert Decimal(100) > usage_revenue_dict["revenue"] > Decimal(0)
 
         payload = {}
@@ -1553,7 +1532,7 @@ class TestCalculateMetricProrationForStateful:
     #         status=SUBSCRIPTION_STATUS.ACTIVE,
     #     )
 
-    #     usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+    #     usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
     #     assert usage_revenue_dict["revenue"] == Decimal(200)
 
     #     payload = {}
@@ -1581,7 +1560,9 @@ class TestCalculateMetricProrationForStateful:
 
 @pytest.mark.django_db(transaction=True)
 class TestCalculateMetricWithFilters:
-    def test_count_unique_with_filters(self, billable_metric_test_common_setup):
+    def test_count_unique_with_filters(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -1638,7 +1619,6 @@ class TestCalculateMetricWithFilters:
             granularity=USAGE_CALC_GRANULARITY.TOTAL,
             customer=customer,
         )
-        print(metric_usage)
         metric_usage = metric_usage[customer.customer_name]
         assert len(metric_usage) == 1  # no groupbys
         unique_tup, dd = list(metric_usage.items())[0]
@@ -1647,7 +1627,7 @@ class TestCalculateMetricWithFilters:
         assert metric_usage == 2
 
     def test_stateful_total_granularity_with_filters(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1719,19 +1699,18 @@ class TestCalculateMetricWithFilters:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(days=46),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(days=46),
         )
 
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
     def test_stateful_daily_granularity_with_filters(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1804,22 +1783,17 @@ class TestCalculateMetricWithFilters:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=time_created,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"], billing_plan, customer, time_created
         )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
         assert usage_revenue_dict["revenue"] >= Decimal(100) * Decimal(18) / Decimal(31)
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity_with_filters(
-        self, billable_metric_test_common_setup
+        self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1916,14 +1890,12 @@ class TestCalculateMetricWithFilters:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription = Subscription.objects.create(
-            organization=setup_dict["org"],
-            billing_plan=billing_plan,
-            customer=customer,
-            start_date=now - relativedelta(days=45),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        subscription, subscription_record = add_subscription_to_org(
+            setup_dict["org"],
+            billing_plan,
+            customer,
+            now - relativedelta(days=31),
         )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription)
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
         assert usage_revenue_dict["revenue"] == Decimal(61)

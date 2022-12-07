@@ -1,22 +1,23 @@
 // @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
-import { Select } from "antd";
+import { Select, Tag } from "antd";
 // @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
-import PricingUnitDropDown from "../PricingUnitDropDown";
-import {useMutation} from "react-query";
-import { Customer} from "../../api/api";
-import {toast} from "react-toastify";
+import { useMutation } from "react-query";
+import { Customer } from "../../api/api";
+import { toast } from "react-toastify";
 
 const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
     []
   );
+  const [isEdit, setIsEdit] = React.useState(false);
 
-   const updateCustomer = useMutation(
-    (obj: { customer_id: string; default_currency_code: string } ) => Customer.updateCustomer(obj.customer_id, obj.default_currency_code),
+  const updateCustomer = useMutation(
+    (obj: { customer_id: string; default_currency_code: string }) =>
+      Customer.updateCustomer(obj.customer_id, obj.default_currency_code),
     {
       onSuccess: () => {
         toast.success("Successfully Updated Default Currency", {
@@ -57,6 +58,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
       return result_list;
     });
     setTransformedGraphData(newgraphdata.flat(1));
+    console.log(newgraphdata.flat(1));
   }, [cost_data]);
 
   const onSwitch = (key: string) => {
@@ -112,10 +114,10 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           </Select>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-16">
-        <div className="customer-detail-card">
+      <div className="grid grid-cols-2 gap-8">
+        <div className="border-2 border-solid rounded border-[#EAEAEB] py-4 px-8">
           <p>
-            <b>Customer Name:</b> {data.customer_name}
+            <b>Customer Name:</b> {data.customer_name ?? "N/A"}
           </p>
           <p>
             <b>Customer ID:</b> {data.customer_id ?? "N/A"}
@@ -126,18 +128,37 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
           <p>
             <b>Billing Address:</b> {data.billing_address ?? "N/A"}
           </p>
-           <p>
-               <b>Default Currency:</b> {data.default_currency ? (
-               <PricingUnitDropDown defaultValue={data.default_currency.code}
-                                    setCurrentCurrency={value => updateCustomer.mutate({customer_id:data.customer_id, default_currency_code:value})}/>
-           ) :  "N/A"}
-           </p>
+          <p>
+            <b>Default Currency:</b>{" "}
+            {data ? (
+              <Tag>
+                {data.default_currency?.name +
+                  " " +
+                  data?.default_currency?.symbol}
+              </Tag>
+            ) : (
+              "N/A"
+            )}
+            {/* {data.default_currency ? (
+              <PricingUnitDropDown
+                defaultValue={data.default_currency.code}
+                setCurrentCurrency={(value) =>
+                  updateCustomer.mutate({
+                    customer_id: data.customer_id,
+                    default_currency_code: value,
+                  })
+                }
+              />
+            ) : (
+              "N/A"
+            )} */}
+          </p>
           <p>
             <b>Amount Due On Next Invoice:</b> {"$"}
             {data.next_amount_due.toFixed(2)}
           </p>
         </div>
-        <div className="grid grid-cols-2 justify-items-center mx-8 gap-8 py-4 w-full border-2 border-solid rounded border-[#EAEAEB]">
+        <div className="grid grid-cols-2 justify-items-center  gap-8 py-4 border-2 border-solid rounded border-[#EAEAEB]">
           <div>
             <p className=" mb-4">Earned Revenue</p>
             {cost_data === undefined ? (
@@ -165,7 +186,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
               </span>
             )}
           </div>
-          <div className=" ol-span-2">
+          <div className="">
             <p className=" mb-4">Profit Margin</p>
             {cost_data.margin === undefined ? (
               <LoadingSpinner />

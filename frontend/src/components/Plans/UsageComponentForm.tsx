@@ -43,7 +43,6 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
       if (tier.range_end !== undefined && tier.range_start >= tier.range_end) {
         return { isValid: false, message: "Range is not valid" };
       }
-
       currentStart = tier.range_start;
       currentEnd = tier.range_end;
 
@@ -400,7 +399,7 @@ function UsageComponentForm({
 
       editable: true,
       render: (text: any, record: Tier) => {
-        if (record.range_end === undefined || record.range_end === "") {
+        if (record.range_end === undefined || record.range_end === null) {
           return "∞";
         } else {
           return record.range_end;
@@ -598,7 +597,7 @@ function UsageComponentForm({
             defaultActiveKey={"1"}
           >
             <Panel header="Advanced Settings" key="1">
-              <div className="mb-8">
+              {/* <div className="mb-8">
                 (Optional) Separate Reporting Based on Distinct Property Value
               </div>
 
@@ -618,7 +617,7 @@ function UsageComponentForm({
                     Important: Only events that contain the property with name{" "}
                     {separateByProperties} will be counted under this metric.
                   </p>
-                )}
+                )} */}
 
               {metricStateful === true && (
                 <Fragment>

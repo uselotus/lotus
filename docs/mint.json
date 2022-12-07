@@ -46,6 +46,7 @@
       "icon": "newspaper",
       "url": "https://www.uselotus.io/blog"
     },
+   
     {
       "name": "Github",
       "icon": "github",
@@ -79,23 +80,18 @@
       ]
     },
     {
-      "group": "Experimenting",
-      "pages": ["experimentation/backtests"]
-    },
-    {
       "group": "External Integrations",
       "pages": ["external-integrations/stripe"]
     },
     {
       "group": "Extensibility",
       "pages": [
-        "extensibility/integrate-payment-providers",
-        "extensibility/custom-metrics"
+        "extensibility/integrate-payment-providers"
       ]
     },
     {
       "group": "Other",
-      "pages": ["webhooks/webhooks", "idempotency"]
+      "pages": ["webhooks/webhooks", "experimentation/backtests","idempotency"]
     },
     {
       "group": "API Reference",
@@ -110,12 +106,13 @@
         },
         {
           "group": "Events",
-          "pages": ["api-reference/events/tracking"]
+          "pages": ["api-reference/events/tracking",          
+            "api-reference/events/verify-ingestion"
+        ]
         },
         {
           "group": "Customers",
           "pages": [
-            "api-reference/customers/customer-object",
             "api-reference/customers/create-customer",
             "api-reference/customers/retrieve-customer",
             "api-reference/customers/list-customers",
@@ -126,7 +123,6 @@
         {
           "group": "Subscriptions",
           "pages": [
-            "api-reference/subscriptions/subscription-object",
             "api-reference/subscriptions/create-subscription",
             "api-reference/subscriptions/retrieve-subscription",
             "api-reference/subscriptions/cancel-subscription",
@@ -137,7 +133,6 @@
         {
           "group": "Plans",
           "pages": [
-            "api-reference/plans/plan-object",
             "api-reference/plans/retrieve-plan",
             "api-reference/plans/change-plan",
             "api-reference/plans/list-plans"
@@ -146,7 +141,6 @@
         {
           "group": "Invoices",
           "pages": [
-            "api-reference/invoices/invoice-object",
             "api-reference/invoices/get-invoice"
           ]
         }

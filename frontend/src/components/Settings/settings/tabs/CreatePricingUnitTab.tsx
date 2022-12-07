@@ -1,16 +1,9 @@
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  Row,
-} from "antd";
+import { Button, Card, Col, Form, Input, Row } from "antd";
 // @ts-ignore
 import React, { useState } from "react";
 import { useMutation } from "react-query";
 import { toast } from "react-toastify";
-import {PricingUnits} from "../../../../api/api";
+import { PricingUnits } from "../../../../api/api";
 import { PricingUnit } from "../../../../types/pricing-unit-type";
 
 const CreatePricingUnit = () => {
@@ -31,7 +24,6 @@ const CreatePricingUnit = () => {
       },
     }
   );
-
 
   const submit = () => {
     form
@@ -63,25 +55,34 @@ const CreatePricingUnit = () => {
                 <Col span="24">
                   <Card title="Pricing Unit Information">
                     <Form.Item
-                        label="Code"
-                        rules={[{required: true, message: "Please enter a code"}]}
-                        name="code">
-                      <Input placeholder="Ex: Code for your Unit"/>
+                      label="Code"
+                      rules={[
+                        { required: true, message: "Please enter a code" },
+                      ]}
+                      name="code"
+                    >
+                      <Input placeholder="Ex: Code for your Unit" />
                     </Form.Item>
                     <Form.Item
-                        label="Name"
-                        rules={[{required: true, message: "Please enter a name"}]}
-                        name="name">
-                      <Input placeholder="Ex: Name for your Unit"/>
+                      label="Name"
+                      rules={[
+                        { required: true, message: "Please enter a name" },
+                      ]}
+                      name="name"
+                    >
+                      <Input placeholder="Ex: Name for your Unit" />
                     </Form.Item>
                     <Form.Item
-                        label="Symbol"
-                        rules={[{required: true, message: "Please enter a symbol"}]}
-                        name="symbol">
-                      <Input placeholder="Ex: Symbol for your Unit"/>
+                      label="Symbol"
+                      rules={[
+                        { required: true, message: "Please enter a symbol" },
+                      ]}
+                      name="symbol"
+                    >
+                      <Input placeholder="Ex: Symbol for your Unit" />
                     </Form.Item>
                     <Form.Item>
-                        <Button htmlType="submit">Create Unit</Button>
+                      <Button htmlType="submit">Create Unit</Button>
                     </Form.Item>
                   </Card>
                 </Col>

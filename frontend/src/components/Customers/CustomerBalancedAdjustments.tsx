@@ -108,15 +108,15 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   ];
   const navigate = useNavigate();
 
-  if (isLoading) {
-    return (
-      <div className="flex">
-        <div className="m-auto">
-          <LoadingSpinner />
-        </div>
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="flex">
+  //       <div className="m-auto">
+  //         <LoadingSpinner />
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const actionColumn = {
     title: "-",
@@ -201,15 +201,9 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
 
   return (
     <div>
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Credits</h2>
+
       <div className="flex items-center justify-between pb-5">
-        <Button
-          type="primary"
-          className="mr-4"
-          size="large"
-          onClick={() => navigate("/customers-create-credit/" + customerId)}
-        >
-          Create Credit
-        </Button>
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-between pr-6">
             <div className="mr-4">Currency:</div>
@@ -231,6 +225,15 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
             />
           </div>
         </div>
+        <Button
+          type="primary"
+          className="mr-4"
+          size="large"
+          disabled={true}
+          onClick={() => navigate("/customers-create-credit/" + customerId)}
+        >
+          Create Credit
+        </Button>
       </div>
       {!!data?.length ? (
         <Table
