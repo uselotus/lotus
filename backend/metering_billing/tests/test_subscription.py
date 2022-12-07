@@ -823,6 +823,13 @@ class TestSubscriptionAndSubscriptionRecord:
             status=PLAN_STATUS.ACTIVE,
             plan_id="yearly-plan",
         )
+        cur_payload = setup_dict["payload"]
+        cur_payload["subscription_filters"] = [
+            {
+                "property_name": "email",
+                "value": "test1@test.com",
+            }
+        ]
 
         billing_plan = baker.make(
             PlanVersion,
@@ -931,3 +938,129 @@ class TestSubscriptionAndSubscriptionRecord:
 
         assert active_sub.billing_cadence == PLAN_DURATION.QUARTERLY
         assert active_sub.end_date == new_sub_record.next_billing_date
+
+
+@pytest.mark.django_db(transaction=True)
+class TestRegressions:
+    def test_list_serializer_on_subs_not_valid(self, subscription_test_common_setup):
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=0, auth_method="session_auth"
+        )
+
+        prev_subscriptions_len = Subscription.objects.all().count()
+        prev_subscription_records_len = SubscriptionRecord.objects.all().count()
+        assert prev_subscriptions_len == 0
+        assert prev_subscription_records_len == 0
+
+        response = setup_dict["client"].post(
+            reverse("subscription-plans"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        after_subscriptions_len = Subscription.objects.all().count()
+        after_subscription_records_len = SubscriptionRecord.objects.all().count()
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert after_subscriptions_len == prev_subscriptions_len + 1
+        assert after_subscription_records_len == prev_subscription_records_len + 1
+        sub = Subscription.objects.all().first()
+        sub_record = SubscriptionRecord.objects.all().first()
+        assert sub.start_date == sub_record.start_date
+        assert sub.end_date == sub_record.end_date
+        assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
+        assert sub.day_anchor == sub_record.start_date.day
+        assert sub.month_anchor == None
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+        }
+        response = setup_dict["client"].get(reverse("subscription-list"), payload)
+        assert response.status_code == status.HTTP_200_OK
+
+        payload = {
+            "customer_id": "1234567890-fcfghjkldscfvgbhjo",
+        }
+        response = setup_dict["client"].get(reverse("subscription-list"), payload)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_patch_subscription_cant_find_customer(
+        self, subscription_test_common_setup
+    ):
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=0, auth_method="session_auth"
+        )
+
+        prev_subscriptions_len = Subscription.objects.all().count()
+        prev_subscription_records_len = SubscriptionRecord.objects.all().count()
+        assert prev_subscriptions_len == 0
+        assert prev_subscription_records_len == 0
+
+        response = setup_dict["client"].post(
+            reverse("subscription-plans"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        after_subscriptions_len = Subscription.objects.all().count()
+        after_subscription_records_len = SubscriptionRecord.objects.all().count()
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert after_subscriptions_len == prev_subscriptions_len + 1
+        assert after_subscription_records_len == prev_subscription_records_len + 1
+        sub = Subscription.objects.all().first()
+        sub_record = SubscriptionRecord.objects.all().first()
+        assert sub.start_date == sub_record.start_date
+        assert sub.end_date == sub_record.end_date
+        assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
+        assert sub.day_anchor == sub_record.start_date.day
+        assert sub.month_anchor == None
+
+        # assert normal customer is chilling
+        payload = {}
+        params = {
+            "customer_id": setup_dict["customer"].customer_id,
+        }
+        response = setup_dict["client"].patch(
+            reverse(
+                "subscription-plans",
+            )
+            + "?"
+            + urllib.parse.urlencode(params),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        # assert bad customer errors with 400
+        payload = {}
+        params = {
+            "customer_id": "7568989ok,l;loi8uyiop0iuj",
+        }
+        response = setup_dict["client"].patch(
+            reverse(
+                "subscription-plans",
+            )
+            + "?"
+            + urllib.parse.urlencode(params),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        # assert good customer with the id in the body instead of request fails
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+        }
+        params = {}
+        response = setup_dict["client"].patch(
+            reverse(
+                "subscription-plans",
+            )
+            + "?"
+            + urllib.parse.urlencode(params),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

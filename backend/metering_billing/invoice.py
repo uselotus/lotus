@@ -80,6 +80,7 @@ def generate_invoice(
     for subscription_record in subscription_records:
         billing_plan = subscription_record.billing_plan
         subscription_record_check_discount = [subscription_record]
+        amt_already_billed = subscription_record.amount_already_invoiced()
         # usage calculation
         if subscription_record.invoice_usage_charges:
             for plan_component in billing_plan.plan_components.all():
@@ -111,8 +112,7 @@ def generate_invoice(
                 flat_fee_due = billing_plan.flat_rate * proration_factor
             else:
                 flat_fee_due = billing_plan.flat_rate
-            flat_fee_paid = subscription_record.amount_already_invoiced()
-            if abs(float(flat_fee_paid) - float(flat_fee_due)) < 0.01:
+            if abs(float(amt_already_billed) - float(flat_fee_due)) < 0.01:
                 pass
             else:
                 billing_plan_name = billing_plan.plan.plan_name
@@ -128,13 +128,13 @@ def generate_invoice(
                     invoice=invoice,
                     associated_subscription_record=subscription_record,
                 )
-                if flat_fee_paid > 0:
+                if amt_already_billed > 0:
                     InvoiceLineItem.objects.create(
                         name=f"{billing_plan_name} v{billing_plan_version} Flat Fee Already Invoiced",
                         start_date=issue_date,
                         end_date=issue_date,
                         quantity=None,
-                        subtotal=-flat_fee_paid,
+                        subtotal=-amt_already_billed,
                         billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                         chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
                         invoice=invoice,

@@ -159,7 +159,7 @@ def run_backtest(backtest_id):
         for item in queries:
             query |= item
         all_subs_time_period = (
-            Subscription.objects.filter(
+            SubscriptionRecord.objects.filter(
                 query,
                 start_date__lte=end_date,
                 end_date__gte=start_date,
