@@ -1106,6 +1106,8 @@ class Invoice(models.Model):
             last_invoice_number = int(last_invoice.invoice_number[6:])
             next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
         self.invoice_number = today_string + "-" + next_invoice_number
+        # if not self.due_date:
+        #     self.due_date = self.issue_date + datetime.timedelta(days=1)
         super().save(*args, **kwargs)
 
 
