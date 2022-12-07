@@ -1044,7 +1044,7 @@ class Invoice(models.Model):
     cost_due = models.DecimalField(
         decimal_places=10, max_digits=20, default=Decimal(0.0)
     )
-    pricing_unit = models.ForeignKey(
+    currency = models.ForeignKey(
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
@@ -1053,7 +1053,7 @@ class Invoice(models.Model):
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
     due_date = models.DateTimeField(max_length=100, null=True, blank=True)
-    invoice_number = models.CharField(max_length=12, null=False, blank=True)
+    invoice_number = models.CharField(max_length=13, null=False, blank=True)
     external_payment_obj_id = models.CharField(max_length=200, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True

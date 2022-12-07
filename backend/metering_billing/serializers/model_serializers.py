@@ -1734,8 +1734,9 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
         source="associated_subscription_record.billing_plan.plan.plan_name",
         read_only=True,
     )
-    subscription_filters = SubscriptionRecordFilterSerializer(source = "associated_subscription_record.filters", many=True, read_only=True)
-
+    subscription_filters = SubscriptionRecordFilterSerializer(
+        source="associated_subscription_record.filters", many=True, read_only=True
+    )
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -1744,7 +1745,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = (
             "invoice_number",
             "cost_due",
-            "pricing_unit",
+            "currency",
             "issue_date",
             "payment_status",
             "cust_connected_to_payment_provider",
@@ -1761,7 +1762,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         max_digits=10,
         decimal_places=2,
     )
-    pricing_unit = PricingUnitSerializer()
+    currency = PricingUnitSerializer()
     customer = CustomerSerializer(read_only=True)
     subscription = SubscriptionRecordDetailSerializer(read_only=True)
     line_items = InvoiceLineItemSerializer(many=True, read_only=True)
