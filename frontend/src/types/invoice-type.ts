@@ -19,7 +19,7 @@ export interface DraftInvoiceType2 {
   line_items: LineItem[];
   cost_due: number;
   customer: CustomerType;
-  pricing_unit: {
+  currency: {
     code: string;
     name: string;
     symbol: string;

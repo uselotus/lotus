@@ -112,7 +112,7 @@ const SubscriptionView: FC<Props> = ({
       subscription_filters: subscription_filters,
       bill_usage: false,
       flat_fee_behavior: "refund",
-      invoicing_behavior_on_cancel: "add_to_next_invoice",
+      invoicing_behavior_on_cancel: "invoice_now",
     });
   };
 
@@ -163,16 +163,16 @@ const SubscriptionView: FC<Props> = ({
           ),
           key: "0",
         },
-        {
-          label: (
-            <div
-              onClick={() => cancelAndDontBill(plan_id, subscription_filters)}
-            >
-              Cancel Without Billing Current Due
-            </div>
-          ),
-          key: "1",
-        },
+        // {
+        //   label: (
+        //     <div
+        //       onClick={() => cancelAndDontBill(plan_id, subscription_filters)}
+        //     >
+        //       Cancel Without Billing & Refund
+        //     </div>
+        //   ),
+        //   key: "1",
+        // },
         {
           label: (
             <div
