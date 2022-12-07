@@ -1,41 +1,24 @@
 ---
 title: "Create Subscriptions"
-description: "Subscriptions assign a customer to a plan for a specific period of time. That
-period of time is usually specified by the plan's duration or interval (monthly,
-quarterly, and yearly) and the date on which you start the subscription."
+description: "Subscriptions assign a customer to a plan for a specific period of time (specified by the plans duration and the start date of the subscription)."
 ---
 
-It is important to note that a customer can only have one subscription at a
-time.
+A customer can have **multiple** subscriptions at the same time. However, all subscriptions that a customer is subscribed to will be on the same invoice schedule.
 
-Subscriptions represent periods over which a customer will be invoiced for every
-component and flat fee that is part of the associated plan.
-
-Therefore when altering subscriptions, there are specific choices you can make
-in Lotus about how and when to charge the customer.
+Therefore when altering subscriptions, there are specific choices you can make in Lotus about how and when to charge the customer.
 
 Canceling a subscription will allow the option of either:
 
 - issuing an invoice for that subscription period immediately,
-- issuing an invoice for the subscription when the subscription was scheduled to
-  renew/expire,
+- issuing an invoice for the subscription when the subscription was scheduled to renew/expire,
 - or deciding to not invoice the customer for the subscription.
 
-Another necessary behavior is the ability to switch the plan a customer is on,
-usually for upgrades and downgrades. There are similar options for these
-scenarios:
+Another necessary behavior is the ability to switch the plan a customer is on, usually for upgrades and downgrades. There are similar options for these scenarios:
 
-- End the current subscription immediately, bill for it, and then start the new
-  subscription with the new plan now
-- End the current subscription immediately, don't bill for it, and start the new
-  one now
+- End the current subscription immediately, bill for it, and then start the new subscription with the new plan now
+- End the current subscription immediately, don't bill for it, and start the new one now
 - Switch the plan while keeping the same subscription billing cycle
 
-![Example](/images/subscription-lifecycle/Subscriptions-0ce305f49897587c5a328c229d468cd4.gif)
+Upgrades and downgrades are handled internally for usage-based metrics based on the proration setting for the metric. Proration for a continuous metric is set at the component level.
 
-Upgrades and downgrades are handled internally for usage-based metrics based on
-the proration setting for the metric. Internally we have it set = day, so for a
-seats-based metric that is upgraded halfway through the month, the first half
-will be calculated based on the price of the seats for the month \* (# of days/#
-of days in the month). We will be adding more proration toggles and optionality
-soon.
+As a quick example, if proration is set to day for a seats-based metric that is upgraded halfway through the month, the first half will be calculated based on the price of the seats for the month \* (# of days/# of days in the month).
