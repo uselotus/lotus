@@ -10,46 +10,6 @@ interface Props {
   customer_id: string;
 }
 
-interface ExpandedDataType {
-  key: React.Key;
-  date: string;
-  name: string;
-  upgradeNum: string;
-}
-
-///generate dummy data for an invoice with many line items
-const dummyInvoice: DraftInvoiceType = {
-  invoice: {
-    subscription: {
-      start_date: "2021-01-01",
-      end_date: "2021-01-01",
-      status: "active",
-    },
-    pricing_unit: {
-      code: "USD",
-      symbol: "$",
-      name: "US Dollar",
-    },
-    cost_due: 100,
-    customer: {
-      customer_id: "1",
-      email: "dsfasfd@asdfsa.com",
-      customer_name: "test",
-    },
-    line_items: [
-      {
-        name: "test",
-        billing_type: "in_arrears",
-        quantity: 1,
-        subtotal: 100,
-        plan_version_id: "1",
-        start_date: "2021-01-01",
-        end_date: "2021-01-01",
-      },
-    ],
-  },
-};
-
 const DraftInvoice: FC<Props> = ({ customer_id }) => {
   const { data: invoiceData, isLoading: invoiceLoading } =
     useQuery<DraftInvoiceType>(
@@ -60,13 +20,27 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       }
     );
 
-  const expandedRowRender = (record) => {
+  const expandedRowRender = (record, index) => {
     console.log("record", record);
     const columns: TableColumnsType<LineItem> = [
       {
         title: "Item",
         dataIndex: "name",
         key: "name",
+      },
+      {
+        title: "Dates",
+        dataIndex: "start_date",
+        key: "date",
+        render: (_, record) => {
+          return (
+            <div>
+              {dayjs(record.start_date).format("MM/DD/YYYY") +
+                " - " +
+                dayjs(record.end_date).format("MM/DD/YYYY")}
+            </div>
+          );
+        },
       },
       {
         title: "Quantity",
@@ -101,19 +75,6 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       />
     );
   };
-
-  const organizedlineItems = useMemo(() => {
-    if (invoiceData?.invoice && invoiceData?.invoice?.line_items) {
-      const organizedItems: object = {};
-      for (let i = 0; i < invoiceData.invoice.line_items.length; i++) {
-        organizedItems[invoiceData.invoice.line_items[i].plan_version_id] =
-          invoiceData.invoice.line_items[i];
-      }
-      return organizedItems;
-    } else {
-      return null;
-    }
-  }, [invoiceData]);
 
   //   const perPlanItems = useMemo(() => {
   //     if (
@@ -164,6 +125,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
               {
                 title: "Name",
                 dataIndex: "name",
+                key: "plan_name",
                 render: (_, record) => (
                   <div className="flex flex-col">
                     <p>{record.plan_name}</p>
@@ -180,20 +142,6 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                     )}
                   </div>
                 ),
-              },
-              {
-                title: "Dates",
-                dataIndex: "start_date",
-                key: "date",
-                render: (_, record) => {
-                  return (
-                    <div>
-                      {dayjs(record.start_date).format("MM/DD/YYYY") +
-                        " - " +
-                        dayjs(record.end_date).format("MM/DD/YYYY")}
-                    </div>
-                  );
-                },
               },
               {
                 title: "Subtotal",
