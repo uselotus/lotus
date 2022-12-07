@@ -17,11 +17,7 @@ import {
   useQuery,
   UseQueryResult,
 } from "react-query";
-import {
-  CustomerDetailType,
-  CustomerDetailSubscription,
-  DetailPlan,
-} from "../../types/customer-type";
+import { CustomerDetailType, DetailPlan } from "../../types/customer-type";
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
@@ -184,7 +180,7 @@ function CustomerDetail(props: {
       okType="default"
       onOk={props.onCancel}
       footer={null}
-      width={1000}
+      width="70%"
     >
       {props.plans === undefined ? (
         <div>

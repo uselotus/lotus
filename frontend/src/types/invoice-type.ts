@@ -60,6 +60,7 @@ export interface ExternalLineItem {
   end_date: string;
   plan_name: string;
   start_date: string;
+  subtotal: number;
   subscription_filters?: { property_name: string; value: string }[];
   sub_items: LineItem[];
 }

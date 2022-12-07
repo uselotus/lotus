@@ -332,6 +332,7 @@ const SubscriptionView: FC<Props> = ({
                         subPlan.subscription_filters
                       )}
                       trigger={["click"]}
+                      className="w-6/12 justify-self-center"
                     >
                       <Button>Switch Plan</Button>
                     </Dropdown>
@@ -341,6 +342,7 @@ const SubscriptionView: FC<Props> = ({
                         subPlan.subscription_filters
                       )}
                       trigger={["click"]}
+                      className="w-6/12 justify-self-center"
                     >
                       <Button>Cancel Subscriptions</Button>
                     </Dropdown>
