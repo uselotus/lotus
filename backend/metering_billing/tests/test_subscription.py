@@ -823,6 +823,13 @@ class TestSubscriptionAndSubscriptionRecord:
             status=PLAN_STATUS.ACTIVE,
             plan_id="yearly-plan",
         )
+        cur_payload = setup_dict["payload"]
+        cur_payload["subscription_filters"] = [
+            {
+                "property_name": "email",
+                "value": "test1@test.com",
+            }
+        ]
 
         billing_plan = baker.make(
             PlanVersion,

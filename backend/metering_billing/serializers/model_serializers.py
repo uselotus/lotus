@@ -1766,6 +1766,20 @@ class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
         )
 
 
+class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
+    class Meta(InvoiceLineItemSerializer.Meta):
+        fields = tuple(
+            set(InvoiceLineItemSerializer.Meta.fields)
+            - set(
+                [
+                    "plan_version_id",
+                    "plan_name",
+                    "subscription_filters",
+                ]
+            )
+        )
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
