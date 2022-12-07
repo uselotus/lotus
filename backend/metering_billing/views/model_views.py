@@ -1,3 +1,5 @@
+import json
+
 import lotus_python
 import posthog
 from actstream import action
@@ -706,26 +708,32 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
             )
         elif self.action in ["update_plans", "cancel_plans"]:
-            serializer = SubscriptionRecordFilterSerializer(
-                data=self.request.query_params
-            )
-            serializer.is_valid(raise_exception=True)
+            params = self.request.query_params.copy()
+            dict_params = params.dict()
+            raw_filters = params.pop("subscription_filters", None)
+            if raw_filters:
+                if isinstance(raw_filters, list):
+                    raw_filters = raw_filters[0]
+                parsed_params = json.loads(raw_filters)
+                dict_params["subscription_filters"] = parsed_params
+            serializer = SubscriptionRecordFilterSerializer(data=dict_params)
+            serializer.is_valid(raise_exception=False)
             args = []
             args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
             args.append(Q(customer=serializer.validated_data["customer"]))
-            if serializer.validated_data.get("subscription_filters"):
-                for filter in serializer.validated_data["subscription_filters"]:
-                    property_name = filter["property_name"]
-                    value = filter["value"]
-                    has_key = Q(filters__has_key=property_name)
-                    key_is_not_null = Q(**{f"filters__{property_name}__isnull": False})
-                    key_equals = Q(**{f"filters__{property_name}": value})
-                    args.extend([has_key, key_is_not_null, key_equals])
             if serializer.validated_data.get("plan_id"):
                 args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
             organization = parse_organization(self.request)
             args.append(Q(organization=organization))
             qs = SubscriptionRecord.objects.filter(*args)
+            if serializer.validated_data.get("subscription_filters"):
+                for filter in serializer.validated_data["subscription_filters"]:
+                    m2m, _ = CategoricalFilter.objects.get_or_create(
+                        property_name=filter["property_name"],
+                        comparison_value=[filter["value"]],
+                        operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
+                    )
+                    qs = qs.filter(filters=m2m)
         else:
             qs = Subscription.objects.filter(organization=organization)
         return qs
@@ -907,6 +915,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 ).first()
                 generate_invoice(subscription, qs.filter(customer=customer))
                 subscription.handle_remove_plan()
+                print("subscription", subscription)
+                print("subscription status", subscription.status)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

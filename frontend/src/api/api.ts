@@ -95,6 +95,14 @@ export const instance = axios.create({
 
 const responseBody = (response: AxiosResponse) => response.data;
 
+//make a function that takes an object as input and if it finds a key with the name subscription_filters, it json encodes it, and then returns the whole object
+const encodeSubscriptionFilters = (obj: any) => {
+  if (obj.subscription_filters) {
+    obj.subscription_filters = JSON.stringify(obj.subscription_filters);
+  }
+  return obj;
+};
+
 const requests = {
   get: (url: string, params?: {}) =>
     instance.get(url, params).then(responseBody),
@@ -150,12 +158,15 @@ export const Customer = {
     requests.patch(
       `api/subscriptions/plans/`,
       post,
-      stringify(params, { encode: false })
+      encodeSubscriptionFilters(params)
     ),
   cancelSubscription: (
     post: CancelSubscriptionType
   ): Promise<CancelSubscriptionType> =>
-    requests.delete(`api/subscriptions/plans/`, post),
+    requests.delete(
+      `api/subscriptions/plans/`,
+      encodeSubscriptionFilters(post)
+    ),
   changeSubscriptionPlan: (
     post: ChangeSubscriptionPlanType,
     params?: {
@@ -164,7 +175,11 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<ChangeSubscriptionPlanType> =>
-    requests.patch(`api/subscriptions/plans/`, post, params),
+    requests.patch(
+      `api/subscriptions/plans/`,
+      post,
+      encodeSubscriptionFilters(params)
+    ),
   turnSubscriptionAutoRenewOff: (
     post: TurnSubscriptionAutoRenewOffType,
     params?: {
@@ -176,7 +191,7 @@ export const Customer = {
     requests.patch(
       `api/subscriptions/plans/`,
       post,
-      stringify(params, { encode: false })
+      encodeSubscriptionFilters(params)
     ),
 };
 
