@@ -439,7 +439,7 @@ export const PaymentProcessorIntegration = {
 
 export const Invoices = {
   changeStatus: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
-    return requests.patch(`api/invoices/${data.invoice_id}/`, {
+    return requests.patch(`api/invoices/${data.invoice_number}/`, {
       payment_status: data.payment_status,
     });
   },

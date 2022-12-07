@@ -62,9 +62,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       ),
     },
     {
-      title: "Invoice ID",
-      dataIndex: "invoice_id",
-      key: "invoice_id",
+      title: "Invoice #",
+      dataIndex: "invoice_number",
+      key: "invoice_number",
     },
     {
       title: "Amount",
