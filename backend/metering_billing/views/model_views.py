@@ -52,7 +52,6 @@ from metering_billing.utils.enums import (
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, ValidationError
-
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -680,20 +679,39 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         # need for: list, update_plans, cancel_plans
         if self.action == "list":
             args = []
-            serializer = SubscriptionStatusFilterSerializer(self.request.query_params)
+            serializer = SubscriptionStatusFilterSerializer(
+                data=self.request.query_params
+            )
             serializer.is_valid(raise_exception=True)
             args.append(Q(status__in=serializer.validated_data["status"]))
-            if serializer.validated_data.get("customer_id"):
+            if serializer.validated_data.get("customer"):
                 args.append(
-                    Q(customer__customer_id=serializer.validated_data["customer_id"])
+                    Q(customer__customer_id=serializer.validated_data["customer"])
                 )
-
+            qs = Subscription.objects.filter(
+                *args,
+                organization=organization,
+            ).select_related("customer")
+        elif self.action in ["update_plans", "cancel_plans"]:
+            params = self.request.query_params.copy()
+            dict_params = params.dict()
+            raw_filters = params.pop("subscription_filters", None)
+            if raw_filters:
+                if isinstance(raw_filters, list):
+                    raw_filters = raw_filters[0]
+                parsed_params = json.loads(raw_filters)
+                dict_params["subscription_filters"] = parsed_params
+            serializer = SubscriptionRecordFilterSerializer(data=dict_params)
+            serializer.is_valid(raise_exception=True)
+            args = []
+            args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
+            args.append(Q(customer=serializer.validated_data["customer"]))
+            if serializer.validated_data.get("plan_id"):
+                args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
+            organization = parse_organization(self.request)
+            args.append(Q(organization=organization))
             qs = (
-                Subscription.objects.filter(
-                    *args,
-                    organization=organization,
-                )
-                .select_related("customer")
+                SubscriptionRecord.objects.filter(*args)
                 .select_related("billing_plan")
                 .prefetch_related(
                     Prefetch(
@@ -708,25 +726,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     )
                 )
             )
-        elif self.action in ["update_plans", "cancel_plans"]:
-            params = self.request.query_params.copy()
-            dict_params = params.dict()
-            raw_filters = params.pop("subscription_filters", None)
-            if raw_filters:
-                if isinstance(raw_filters, list):
-                    raw_filters = raw_filters[0]
-                parsed_params = json.loads(raw_filters)
-                dict_params["subscription_filters"] = parsed_params
-            serializer = SubscriptionRecordFilterSerializer(data=dict_params)
-            serializer.is_valid(raise_exception=False)
-            args = []
-            args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
-            args.append(Q(customer=serializer.validated_data["customer"]))
-            if serializer.validated_data.get("plan_id"):
-                args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
-            organization = parse_organization(self.request)
-            args.append(Q(organization=organization))
-            qs = SubscriptionRecord.objects.filter(*args)
             if serializer.validated_data.get("subscription_filters"):
                 for filter in serializer.validated_data["subscription_filters"]:
                     m2m, _ = CategoricalFilter.objects.get_or_create(
@@ -1017,7 +1016,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = InvoiceSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "patch", "head"]
-    lookup_field = "invoice_id"
+    lookup_field = "invoice_number"
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
         "retrieve": [IsAuthenticated | HasUserAPIKey],

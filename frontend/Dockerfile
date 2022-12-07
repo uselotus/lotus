@@ -6,6 +6,9 @@ WORKDIR /frontend
 COPY package*.json yarn.lock tsconfig.json \
     vite.config.ts tsconfig.node.json postcss.config.cjs\
     tailwind.config.cjs ./
+RUN apk add --no-cache \
+    chromium \
+    && rm -rf /var/cache/apk/* /tmp/*
 RUN yarn config set network-timeout 300000 && \
     yarn install --frozen-lockfile
 # Bundle app source

@@ -1460,6 +1460,7 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
     )
 
     def validate(self, data):
+        data = super().validate(data)
         # check that the customer ID matches an existing customer
         try:
             data["customer"] = Customer.objects.get(customer_id=data["customer_id"])
@@ -1505,6 +1506,17 @@ class SubscriptionStatusFilterSerializer(serializers.Serializer):
         required=False,
         default=[SUBSCRIPTION_STATUS.ACTIVE],
     )
+
+    def validate(self, data):
+        # check that the customer ID matches an existing customer
+        data = super().validate(data)
+        try:
+            data["customer"] = Customer.objects.get(customer_id=data["customer_id"])
+        except Customer.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Customer with customer_id {data['customer_id']} does not exist"
+            )
+        return data
 
 
 class ExperimentalToActiveRequestSerializer(serializers.Serializer):
@@ -1702,6 +1714,7 @@ class InvoiceUpdateSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
+        print("RTYUIHBNJOLK<L:", "validated_data", validated_data)
         instance.payment_status = validated_data.get(
             "payment_status", instance.payment_status
         )
@@ -1829,7 +1842,7 @@ class DraftInvoiceSerializer(InvoiceSerializer):
         for associated_subscription_record in associated_subscription_records:
             line_items = obj.line_items.filter(
                 associated_subscription_record=associated_subscription_record
-            )
+            ).order_by("name", "start_date", "subtotal")
             sr = line_items[0].associated_subscription_record
             grouped_line_item_dict = {
                 "plan_name": sr.billing_plan.plan.plan_name,
