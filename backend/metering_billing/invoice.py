@@ -43,7 +43,7 @@ def generate_invoice(
     charge_next_plan=False,
     generate_next_subscription_record=False,
     issue_date=None,
-):
+):  # NOTE: CHARGE_NEXT_PLAN needs to be true to generate next subscription record
     """
     Generate an invoice for a subscription.
     """
@@ -149,7 +149,7 @@ def generate_invoice(
             next_bp = billing_plan
         if generate_next_subscription_record:
             if (
-                subscription_record.end_date <= subscription_record.end_date
+                subscription.end_date >= subscription_record.end_date
                 and subscription_record.auto_renew
             ):
                 subrec_dict = {
@@ -169,8 +169,8 @@ def generate_invoice(
             else:
                 next_subscription_record = None
         else:
-            next_subscription_record = None
-        if charge_next_plan:
+            next_subscription_record = subscription_record
+        if charge_next_plan and next_subscription_record is not None:
             if (
                 next_bp.flat_fee_billing_type == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
                 and next_bp.flat_rate > 0
@@ -186,10 +186,8 @@ def generate_invoice(
                     subtotal=next_bp.flat_rate,
                     billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                     invoice=invoice,
+                    associated_subscription_record=next_subscription_record,
                 )
-                if next_subscription_record:
-                    ili.associated_subscription_record = next_subscription_record
-                    ili.save()
 
         for subscription_record in subscription_record_check_discount:
             plan_version = subscription_record.billing_plan

@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from metering_billing.demos import setup_demo_3
+from metering_billing.demos import setup_demo_3, setup_paas_demo
 
 
 class Command(BaseCommand):
@@ -12,3 +12,4 @@ class Command(BaseCommand):
             email="demo3@demo3.com",
             password="demo3",
         )
+        setup_paas_demo()
