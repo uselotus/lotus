@@ -81,7 +81,6 @@ class PLAN_DURATION(models.TextChoices):
 
 
 class USAGE_BILLING_FREQUENCY(models.TextChoices):
-    WEEKLY = ("weekly", _("Weekly"))
     MONTHLY = ("monthly", _("Monthly"))
     QUARTERLY = ("quarterly", _("Quarterly"))
     END_OF_PERIOD = ("end_of_period", _("End of Period"))
@@ -188,3 +187,22 @@ class ORGANIZATION_STATUS(models.TextChoices):
 
 class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
     INVOICE_CREATED = ("invoice.created", _("invoice.created"))
+
+
+class FLAT_FEE_BEHAVIOR(models.TextChoices):
+    REFUND = ("refund", _("Refund"))
+    PRORATE = ("prorate", _("Prorate"))
+    CHARGE_FULL = ("charge_full", _("Charge Full"))
+
+
+class INVOICING_BEHAVIOR(models.TextChoices):
+    ADD_TO_NEXT_INVOICE = ("add_to_next_invoice", _("Add to Next Invoice"))
+    INVOICE_NOW = ("invoice_now", _("Invoice Now"))
+
+
+class CHARGEABLE_ITEM_TYPE(models.TextChoices):
+    USAGE_CHARGE = ("usage_charge", _("Usage Charge"))
+    RECURRING_CHARGE = ("recurring_charge", _("Recurring Charge"))
+    ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
+    PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
+    CUSTOMER_ADJUSTMENT = ("customer_adjustment", _("Customer Adjustment"))

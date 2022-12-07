@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useEffect, useState, version } from "react";
+import React, { FC, Fragment, useEffect, useState, version } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
@@ -191,13 +191,17 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
               </div>
             </div>
             <div className="flex items-center planInfo py-2 mt-2">
-              <div className="pr-2 infoLabel">
-                Components Billing Frequency:
-              </div>
-              <div className="infoValue">
-                {" "}
-                {selectedVersion.usage_billing_frequency}
-              </div>
+              {selectedVersion?.usage_billing_frequency ? (
+                <Fragment>
+                  <div className="pr-2 infoLabel">
+                    Components Billing Frequency:
+                  </div>
+                  <div className="infoValue">
+                    {" "}
+                    {selectedVersion.usage_billing_frequency}
+                  </div>
+                </Fragment>
+              ) : null}
             </div>
           </div>
         </div>
@@ -223,12 +227,12 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           </div>
         </div>
 
-        <div className="px-4 flex justify-start align-middle ">
+        {/* <div className="px-4 flex justify-start align-middle ">
           <div className="pb-5 font-main font-bold">Transition To:</div>
           <div className="mb-5 px-4 font-main font-bold self-center">
             {selectedVersion.transition_to || "------"}
           </div>
-        </div>
+        </div> */}
 
         {/* <div className="px-4 py-4 flex items-center justify-between">
           <div className="pb-5 pt-3 font-main font-bold text-[20px]">

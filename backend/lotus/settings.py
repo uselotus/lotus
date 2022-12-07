@@ -465,6 +465,8 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "metering_billing.custom_exception_handler.custom_exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
+
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Lotus API",
     "DESCRIPTION": (
@@ -488,6 +490,9 @@ SPECTACULAR_SETTINGS = {
             "TokenAuth": [],
         }
     ],
+    "PREPROCESSING_HOOKS": [
+        "metering_billing.openapi_hooks.remove_subscription_delete"
+    ],
     "ENUM_NAME_OVERRIDES": {
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
         "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
@@ -506,6 +511,7 @@ SPECTACULAR_SETTINGS = {
         "OrganizationUserStatus": "metering_billing.utils.enums.ORGANIZATION_STATUS.choices",
     },
 }
+
 REST_KNOX = {
     "TOKEN_TTL": timedelta(hours=2),
     "AUTO_REFRESH": True,

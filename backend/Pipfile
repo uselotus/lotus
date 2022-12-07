@@ -49,6 +49,7 @@ kafka-python = "*"
 kafka-helper = "*"
 cronitor = "*"
 svix = "*"
+drf-nested-routers = "*"
 
 [dev-packages]
 platformdirs = "*"
