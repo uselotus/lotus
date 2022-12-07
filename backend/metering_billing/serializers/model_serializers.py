@@ -1720,20 +1720,29 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
             "quantity",
             "subtotal",
             "billing_type",
-            "plan_version_id",
             "metadata",
+            "plan_version_id",
+            "plan_name",
+            "subscription_filters",
         )
 
     plan_version_id = serializers.CharField(
-        source="associated_plan_version.plan_version_id", read_only=True
+        source="associated_subscription_record.billing_plan.plan_version_id",
+        read_only=True,
     )
+    plan_name = serializers.CharField(
+        source="associated_subscription_record.billing_plan.plan.plan_name",
+        read_only=True,
+    )
+    subscription_filters = SubscriptionRecordFilterSerializer(source = "associated_subscription_record.filters", many=True, read_only=True)
+
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = (
-            "invoice_id",
+            "invoice_number",
             "cost_due",
             "pricing_unit",
             "issue_date",
@@ -1745,6 +1754,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "line_items",
             "customer",
             "subscription",
+            "due_date",
         )
 
     cost_due = serializers.DecimalField(
@@ -1773,8 +1783,7 @@ class DraftInvoiceSerializer(InvoiceSerializer):
             set(InvoiceSerializer.Meta.fields)
             - set(
                 [
-                    "invoice_id",
-                    "issue_date",
+                    "invoice_number",
                     "external_payment_obj_id",
                     "external_payment_obj_type",
                 ]

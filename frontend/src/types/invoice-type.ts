@@ -17,7 +17,7 @@ export interface DraftInvoiceType {
 }
 export interface DraftInvoiceType2 {
   line_items: LineItem[];
-  cost_due: string;
+  cost_due: number;
   customer: CustomerType;
   pricing_unit: {
     code: string;
@@ -56,18 +56,19 @@ interface InvoiceOrganization {
   company_name: string;
 }
 
-interface LineItem {
+export interface LineItem {
   name: string;
   start_date: string;
   end_date: string;
   quantity: number;
-  subtotal: string;
+  subtotal: number;
   billing_type: string;
   plan_version_id: string;
-  metadata: any;
+  metadata?: any;
+  subscription_filters?: { property_name: string; value: string }[];
 }
 
 export interface MarkInvoiceStatusAsPaid {
-  invoice_id: string;
+  invoice_number: string;
   payment_status: "paid" | "unpaid" | "voided";
 }

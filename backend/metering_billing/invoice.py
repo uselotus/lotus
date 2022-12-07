@@ -234,7 +234,7 @@ def generate_invoice(
                 organization=organization,
                 customer=customer,
                 amount=-subtotal,
-                description=f"Balance increase from invoice {invoice.invoice_id} generated on {issue_date_fmt}",
+                description=f"Balance increase from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
                 created=issue_date,
                 effective_at=issue_date,
                 status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
@@ -246,7 +246,7 @@ def generate_invoice(
             leftover = CustomerBalanceAdjustment.draw_down_amount(
                 customer,
                 balance_adjustment,
-                description=f"Balance decrease from invoice {invoice.invoice_id} generated on {issue_date_fmt}",
+                description=f"Balance decrease from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
             )
             InvoiceLineItem.objects.create(
                 name=f"{subscription.subscription_id} Customer Balance Adjustment",

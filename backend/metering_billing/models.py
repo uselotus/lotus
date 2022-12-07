@@ -1052,9 +1052,8 @@ class Invoice(models.Model):
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
-    invoice_id = models.CharField(
-        max_length=100, null=False, blank=True, default=invoice_uuid, unique=True
-    )
+    due_date = models.DateTimeField(max_length=100, null=True, blank=True)
+    invoice_number = models.CharField(max_length=12, null=False, blank=True)
     external_payment_obj_id = models.CharField(max_length=200, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
@@ -1074,7 +1073,7 @@ class Invoice(models.Model):
     history = HistoricalRecords()
 
     def __str__(self):
-        return str(self.invoice_id)
+        return str(self.invoice_number)
 
     def save(self, *args, **kwargs):
         if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due > 0:
@@ -1091,6 +1090,22 @@ class Invoice(models.Model):
             )
         if not self.pricing_unit:
             self.pricing_unit = self.organization.default_currency
+
+        ### Generate invoice number
+        today = datetime.date.today()
+        today_string = today.strftime("%y%m%d")
+        next_invoice_number = "000001"
+        last_invoice = (
+            Invoice.objects.filter(
+                invoice_number__startswith=today_string, organization=self.organization
+            )
+            .order_by("invoice_number")
+            .last()
+        )
+        if last_invoice:
+            last_invoice_number = int(last_invoice.invoice_number[6:])
+            next_invoice_number = "{0:06d}".format(last_invoice_number + 1)
+        self.invoice_number = today_string + "-" + next_invoice_number
         super().save(*args, **kwargs)
 
 
