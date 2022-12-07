@@ -34,7 +34,10 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     BACKTEST_KPI,
+    EVENT_TYPE,
     FLAT_FEE_BILLING_TYPE,
+    METRIC_AGGREGATION,
+    METRIC_GRANULARITY,
     METRIC_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
@@ -514,6 +517,130 @@ def setup_demo_3(company_name, username, email, password):
     )
     run_backtest.delay(backtest.backtest_id)
     return user
+
+
+def setup_paas_demo(
+    company_name="paas", username="paas", email="paas@paas.com", password="paas"
+):
+    try:
+        Organization.objects.get(company_name=company_name).delete()
+        print("Deleted existing organization, replacing")
+    except Organization.DoesNotExist:
+        print("creating from scratch")
+    try:
+        user = User.objects.get(username=username, email=email)
+    except:
+        user = User.objects.create_user(
+            username=username, email=email, password=password
+        )
+    if user.organization is None:
+        organization, _ = Organization.objects.get_or_create(company_name=company_name)
+        user.organization = organization
+        user.save()
+    organization = user.organization
+    big_customers = []
+    for _ in range(1):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="BigCompany " + str(uuid.uuid4())[:6],
+        )
+        big_customers.append(customer)
+    medium_customers = []
+    for _ in range(2):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="MediumCompany " + str(uuid.uuid4())[:6],
+        )
+        medium_customers.append(customer)
+    small_customers = []
+    for _ in range(5):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="SmallCompany " + str(uuid.uuid4())[:6],
+        )
+        small_customers.append(customer)
+    (
+        valnodes,
+        rpcnodes,
+        ixnodes,
+        evixnodes,
+        tntxns,
+        mntxns,
+        tntxns_rate,
+        mntxns_rate,
+    ) = baker.make(
+        Metric,
+        organization=organization,
+        event_name=itertools.cycle(
+            [
+                "num_validators_change",
+                "rpc_nodes_change",
+                "indexer_nodes_change",
+                "testnet_transaction",
+                "mainnet_transaction",
+                "testnet_transaction",
+                "mainnet_transaction",
+            ]
+        ),
+        property_name=itertools.cycle(["change"] * 4 + [""] * 4),
+        usage_aggregation_type=itertools.cycle(
+            [METRIC_AGGREGATION.MAX] * 4 + [METRIC_AGGREGATION.COUNT] * 4
+        ),
+        billable_metric_name=itertools.cycle(
+            [
+                "Validator Nodes",
+                "RPC Nodes",
+                "Indexer Nodes",
+                "Event Indexer Nodes",
+                "Testnet Transactions",
+                "Mainnet Transactions",
+                "Ratelimit Testnet Transactions",
+                "Ratelimit Mainnet Transactions",
+            ]
+        ),
+        metric_type=itertools.cycle(
+            [METRIC_TYPE.STATEFUL] * 4
+            + [METRIC_TYPE.COUNTER] * 2
+            + [METRIC_TYPE.RATE] * 2
+        ),
+        event_type=itertools.cycle([EVENT_TYPE.DELTA] * 4 + [None] * 4),
+        billable_aggregation_type=itertools.cycle(
+            [None] * 6 + [METRIC_AGGREGATION.MAX] * 2
+        ),
+        granularity=itertools.cycle(
+            [METRIC_GRANULARITY.MONTH] * 4 + [None] * 2 + [METRIC_GRANULARITY.HOUR] * 2
+        ),
+        _quantity=8,
+    )
+    plan = Plan.objects.create(
+        plan_name="Basic Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    basic_plan = PlanVersion.objects.create(
+        organization=organization,
+        description="Basic Plan with access to testnet",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=125,
+    )
+    tntxns, mntxns, tntxns_rate, mntxns_rate
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=tntxns,
+        free_units=None,
+        max_units=2000,
+        cost_per_batch=0.05,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan, billable_metric=tntxns_rate, free_units=50
+    )
+    plan.display_version = free_bp
+    plan.save()
 
 
 def create_pc_and_tiers(
