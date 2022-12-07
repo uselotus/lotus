@@ -6,18 +6,18 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0104_remove_historicalinvoice_invoice_id_and_more'),
+        ("metering_billing", "0104_remove_historicalinvoice_invoice_id_and_more"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='historicalinvoice',
-            old_name='pricing_unit',
-            new_name='currency',
+            model_name="historicalinvoice",
+            old_name="pricing_unit",
+            new_name="currency",
         ),
         migrations.RenameField(
-            model_name='invoice',
-            old_name='pricing_unit',
-            new_name='currency',
+            model_name="invoice",
+            old_name="pricing_unit",
+            new_name="currency",
         ),
     ]

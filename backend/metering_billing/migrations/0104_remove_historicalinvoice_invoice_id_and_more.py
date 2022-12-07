@@ -6,36 +6,39 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('metering_billing', '0103_alter_historicalplanversion_usage_billing_frequency_and_more'),
+        (
+            "metering_billing",
+            "0103_alter_historicalplanversion_usage_billing_frequency_and_more",
+        ),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='historicalinvoice',
-            name='invoice_id',
+            model_name="historicalinvoice",
+            name="invoice_id",
         ),
         migrations.RemoveField(
-            model_name='invoice',
-            name='invoice_id',
+            model_name="invoice",
+            name="invoice_id",
         ),
         migrations.AddField(
-            model_name='historicalinvoice',
-            name='due_date',
+            model_name="historicalinvoice",
+            name="due_date",
             field=models.DateTimeField(blank=True, max_length=100, null=True),
         ),
         migrations.AddField(
-            model_name='historicalinvoice',
-            name='invoice_number',
+            model_name="historicalinvoice",
+            name="invoice_number",
             field=models.CharField(blank=True, max_length=13),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='due_date',
+            model_name="invoice",
+            name="due_date",
             field=models.DateTimeField(blank=True, max_length=100, null=True),
         ),
         migrations.AddField(
-            model_name='invoice',
-            name='invoice_number',
+            model_name="invoice",
+            name="invoice_number",
             field=models.CharField(blank=True, max_length=13),
         ),
     ]
