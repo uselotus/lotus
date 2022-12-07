@@ -1093,8 +1093,8 @@ class Invoice(models.Model):
             self.currency = self.organization.default_currency
 
         ### Generate invoice number
-        if self.invoice_number is None or self.invoice_number == "":
-            today = datetime.date.today()
+        if not self.pk and self.status != INVOICE_STATUS.DRAFT:
+            today = now_utc().date()
             today_string = today.strftime("%y%m%d")
             next_invoice_number = "000001"
             last_invoice = (

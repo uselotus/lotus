@@ -852,18 +852,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     found = True
                 else:
                     i += 1
-            # next_billing_date = end_date + relativedelta(
-            #     days=1, hour=0, minute=0, second=0, microsecond=0
-            # )
-            # done = False
-            # i = 0
-            # while not done:
-            #     next_billing_date = end_date - i * relativedelta(months=num_months)
-            #     if next_billing_date < now_utc() or next_billing_date < start_date:
-            #         done = True
-            #         i -= 1
-            #     else:
-            #         i += 1
             serializer.validated_data[
                 "next_billing_date"
             ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)

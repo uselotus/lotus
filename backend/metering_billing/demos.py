@@ -627,7 +627,6 @@ def setup_paas_demo(
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=125,
     )
-    tntxns, mntxns, tntxns_rate, mntxns_rate
     create_pc_and_tiers(
         plan_version=basic_plan,
         billable_metric=tntxns,
@@ -639,7 +638,78 @@ def setup_paas_demo(
     create_pc_and_tiers(
         plan_version=basic_plan, billable_metric=tntxns_rate, free_units=50
     )
-    plan.display_version = free_bp
+    plan.display_version = basic_plan
+    plan.save()
+    plan = Plan.objects.create(
+        plan_name="Professional Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    basic_plan = PlanVersion.objects.create(
+        organization=organization,
+        description="Customizable Professional Pla",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=0,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=valnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=rpcnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=ixnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=evixnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=tntxns,
+        free_units=None,
+        max_units=5000,
+        cost_per_batch=0.05,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan, billable_metric=tntxns_rate, free_units=50
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=mntxns,
+        free_units=None,
+        max_units=5000,
+        cost_per_batch=0.25,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan, billable_metric=mntxns_rate, free_units=100
+    )
+    plan.display_version = basic_plan
     plan.save()
 
 
