@@ -1036,8 +1036,9 @@ class Feature(models.Model):
     class Meta:
         unique_together = ("organization", "feature_name")
 
-    def __str__(self):
-        return str(self.feature_name)
+
+def __str__(self):
+    return str(self.feature_name)
 
 
 class Invoice(models.Model):

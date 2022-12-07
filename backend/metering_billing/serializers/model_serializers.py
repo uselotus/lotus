@@ -1739,6 +1739,17 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
     )
 
 
+class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
+    class Meta(InvoiceLineItemSerializer.Meta):
+        fields = set(InvoiceLineItemSerializer.Meta.fields) - set(
+            [
+                "plan_version_id",
+                "plan_name",
+                "subscription_filters",
+            ]
+        )
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
@@ -1777,6 +1788,15 @@ class InvoiceListFilterSerializer(serializers.Serializer):
     )
 
 
+class GroupedLineItemSerializer(serializers.Serializer):
+    plan_name = serializers.CharField()
+    subscription_filters = SubscriptionRecordFilterSerializer(many=True)
+    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
+    start_date = serializers.DateTimeField()
+    end_date = serializers.DateTimeField()
+    sub_items = LightweightInvoiceLineItemSerializer(many=True)
+
+
 class DraftInvoiceSerializer(InvoiceSerializer):
     class Meta(InvoiceSerializer.Meta):
         model = Invoice
@@ -1794,6 +1814,33 @@ class DraftInvoiceSerializer(InvoiceSerializer):
     payment_status = serializers.ChoiceField(
         choices=[INVOICE_STATUS.DRAFT], required=True
     )
+    line_items = serializers.SerializerMethodField()
+
+    def get_line_items(self, obj) -> GroupedLineItemSerializer(many=True):
+        associated_subscription_records = obj.line_items.values(
+            "associated_subscription_record"
+        ).distinct()
+        srs = []
+        for associated_subscription_record in associated_subscription_records:
+            line_items = obj.line_items.filter(
+                associated_subscription_record=associated_subscription_record
+            )
+            sr = line_items[0].associated_subscription_record
+            grouped_line_item_dict = {
+                "plan_name": sr.billing_plan.plan.plan_name,
+                "subscription_filters": SubscriptionRecordFilterSerializer(
+                    sr.filters, many=True
+                ).data,
+                "subtotal": line_items.aggregate(Sum("subtotal"))["subtotal__sum"] or 0,
+                "start_date": sr.start_date,
+                "end_date": sr.end_date,
+                "sub_items": LightweightInvoiceLineItemSerializer(
+                    line_items, many=True
+                ).data,
+            }
+            srs.append(grouped_line_item_dict)
+
+        return GroupedLineItemSerializer(srs, many=True).data
 
 
 class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
