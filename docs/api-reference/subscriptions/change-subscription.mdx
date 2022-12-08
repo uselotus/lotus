@@ -29,9 +29,11 @@ lotus.change_subscription_plan(
 
 ```ts Typescript
 await lotus.changeSubscription({
-  subscriptionId: "subscription_123",
-  planId: "plan_123",
-  replaceImmediatelyType: "change_subscription_plan",
+  customerId: "cust_234";
+  planId: "plan_234";
+  subscriptionFilters: [{property_name: "project_id", value: "3234123"}];
+  replacePlanId: "plan_235";
+  replacePlanInvoicingBehavior: "add_to_next_invoice";
 });
 ```
 
