@@ -1281,20 +1281,8 @@ class RateHandler(MetricHandler):
             group_by=group_by,
             proration=proration,
             filters=filters,
-        )
-
-        return_dict = {}
-        unique_groupby_props = ["customer_name"] + group_by
-        for row in per_customer:
-            tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
-            usage_qty = row["new_usage_qty"]
-            if unique_tup not in return_dict:
-                return_dict[unique_tup] = {}
-            if max(return_dict[unique_tup].values(), default=0) < usage_qty:
-                return_dict[unique_tup] = {tc_trunc: usage_qty}
-
-        return return_dict
+        ).get(customer.customer_name, {})
+        return per_customer
 
     @staticmethod
     def _allowed_usage_aggregation_types():
