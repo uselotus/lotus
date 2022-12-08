@@ -88,7 +88,7 @@ export const DeveloperTab = () => {
     </Menu>
   );
 
-  const { isLoading, data: webhookData } = useQuery("webhook_urls", () =>
+  const { isLoading, data: webhookData, refetch } = useQuery("webhook_urls", () =>
     Webhook.getEndpoints()
   );
 
@@ -105,6 +105,7 @@ export const DeveloperTab = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries("webhook_urls");
+        refetch()
         setWebhookUrl("");
         setWebhookName("");
         setIsInvoiceGenerated(false);
@@ -119,26 +120,36 @@ export const DeveloperTab = () => {
     }
   );
 
-  const handleAddUrl = () => {
-    if (isValidHttpUrl(webhookUrl)) {
-      let triggers: string[] = [];
-      if (isInvoiceGenerated) {
-        triggers.push("invoice.created");
-      }
-      if (isInvoicePaid) {
-        triggers.push("invoice.paid");
-      }
+    const handleAddUrl = () => {
+        if(!isValidHttpUrl(`https://${webhookUrl}`)) {
+            toast.error("Please enter a valid URL");
+            return
+        }
 
-      let endpointPost: WebhookEndpointCreate = {
-        name: webhookName,
-        webhook_url: new URL(webhookUrl),
-        triggers_in: triggers,
-      };
-      createWebhookMutation.mutate(endpointPost);
-    } else {
-      toast.error("Please enter a valid URL starting with https://");
-    }
-  };
+        if(!webhookName) {
+            toast.error("Please enter webhook name");
+            return
+        }
+
+        if(!isInvoiceGenerated && !isInvoicePaid) {
+            toast.error("Please select at-least one trigger");
+            return
+        }
+
+        let triggers: string[] = [];
+        if (isInvoiceGenerated) {
+            triggers.push("invoice.created");
+        }
+        if (isInvoicePaid) {
+            triggers.push("invoice.paid");
+        }
+        let endpointPost: WebhookEndpointCreate = {
+            name: webhookName,
+            webhook_url: new URL(`https://${webhookUrl}`),
+            triggers_in: triggers,
+        };
+        createWebhookMutation.mutate(endpointPost);
+    };
 
   const handleDeleteUrl = (id: string | undefined) => {
     if (id) {
@@ -147,6 +158,7 @@ export const DeveloperTab = () => {
           toast.success("Webhook URL deleted successfully");
           queryClient.invalidateQueries("webhook_urls");
           setWebhookSelected(undefined);
+          refetch()
         })
         .catch((err) => {
           toast.error("Error deleting webhook URL");
@@ -269,6 +281,7 @@ export const DeveloperTab = () => {
           ></Input>
           <p className="text-lg font-main">Endpoint URL:</p>
           <Input
+            addonBefore="https://"
             value={webhookUrl}
             onChange={(e) => setWebhookUrl(e.target.value)}
           ></Input>
