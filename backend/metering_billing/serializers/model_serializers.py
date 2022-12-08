@@ -1714,7 +1714,6 @@ class InvoiceUpdateSerializer(serializers.ModelSerializer):
         return data
 
     def update(self, instance, validated_data):
-        print("RTYUIHBNJOLK<L:", "validated_data", validated_data)
         instance.payment_status = validated_data.get(
             "payment_status", instance.payment_status
         )
@@ -1750,20 +1749,6 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
     subscription_filters = SubscriptionCategoricalFilterSerializer(
         source="associated_subscription_record.filters", many=True, read_only=True
     )
-
-
-class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
-    class Meta(InvoiceLineItemSerializer.Meta):
-        fields = tuple(
-            set(InvoiceLineItemSerializer.Meta.fields)
-            - set(
-                [
-                    "plan_version_id",
-                    "plan_name",
-                    "subscription_filters",
-                ]
-            )
-        )
 
 
 class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
