@@ -9,7 +9,11 @@ from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
-from metering_billing.exceptions import DuplicateCustomerID, DuplicateMetric
+from metering_billing.exceptions import (
+    DuplicateCustomerID,
+    DuplicateMetric,
+    DuplicateWebhookEndpoint,
+)
 from metering_billing.models import (
     Backtest,
     Customer,
@@ -144,6 +148,9 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             serializer.save(organization=parse_organization(self.request))
         except ValueError as e:
             raise APIException(e)
+        except IntegrityError as e:
+            print("should be caught here")
+            raise DuplicateWebhookEndpoint
 
     def perform_destroy(self, instance):
         if SVIX_API_KEY != "":

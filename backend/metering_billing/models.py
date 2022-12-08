@@ -40,6 +40,7 @@ from metering_billing.utils import (
     webhook_secret_uuid,
 )
 from metering_billing.utils.enums import *
+from metering_billing.webhooks import invoice_paid_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 from svix.api import (
@@ -68,6 +69,7 @@ class Organization(models.Model):
     default_currency = models.ForeignKey(
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
+    webhooks_provisioned = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     def __str__(self):
@@ -81,13 +83,18 @@ class Organization(models.Model):
                 )
         if not self.default_currency:
             self.default_currency = PricingUnit.objects.filter(code="USD").first()
-        new = not self.pk
         super(Organization, self).save(*args, **kwargs)
-        if SVIX_API_KEY != "" and new:
+
+    def provision_webhooks(self):
+        if SVIX_API_KEY != "":
+            print("provisioning webhooks")
             svix = Svix(SVIX_API_KEY)
             svix_app = svix.application.create(
                 ApplicationIn(uid=self.organization_id, name=self.company_name)
             )
+            self.webhooks_provisioned = True
+            print("webhooks provisioned")
+        self.save()
 
     @property
     def users(self):
@@ -1113,7 +1120,11 @@ class Invoice(models.Model):
             self.invoice_number = today_string + "-" + next_invoice_number
             # if not self.due_date:
             #     self.due_date = self.issue_date + datetime.timedelta(days=1)
+        paid_before = self.payment_status == INVOICE_STATUS.PAID
         super().save(*args, **kwargs)
+        paid_after = self.payment_status == INVOICE_STATUS.PAID
+        if not paid_before and paid_after:
+            invoice_paid_webhook(self, self.organization)
 
 
 class InvoiceLineItem(models.Model):

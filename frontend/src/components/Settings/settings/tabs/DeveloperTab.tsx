@@ -41,6 +41,7 @@ export const DeveloperTab = () => {
   const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [webhookSelected, setWebhookSelected] = useState<WebhookEndpoint>();
   const [isInvoiceGenerated, setIsInvoiceGenerated] = useState<boolean>(false);
+  const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
   const closeModal = () => {
     setVisible(false);
     setApiKey("");
@@ -87,12 +88,9 @@ export const DeveloperTab = () => {
     </Menu>
   );
 
-  const {
-    status: alertStatus,
-    error: webhookError,
-    data: webhookData,
-    isLoading,
-  } = useQuery<any>("urls", Webhook.getEndpoints);
+  const { isLoading, data: webhookData } = useQuery("webhook_urls", () =>
+    Webhook.getEndpoints()
+  );
 
   const getKey = () => {
     APIToken.newAPIToken().then((data) => {
@@ -101,13 +99,34 @@ export const DeveloperTab = () => {
     setVisible(true);
   };
 
+  const createWebhookMutation = useMutation(
+    (endpointPost: WebhookEndpointCreate) =>
+      Webhook.createEndpoint(endpointPost),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("webhook_urls");
+        setWebhookUrl("");
+        setWebhookName("");
+        setIsInvoiceGenerated(false);
+        setIsInvoicePaid(false);
+        toast.success("Webhook URL added successfully");
+        setVisibleWebhook(false);
+        setWebhookSelected(undefined);
+      },
+      onError: (error) => {
+        toast.error(error.response.data.detail);
+      },
+    }
+  );
+
   const handleAddUrl = () => {
     if (isValidHttpUrl(webhookUrl)) {
-      let triggers: string[];
+      let triggers: string[] = [];
       if (isInvoiceGenerated) {
-        triggers = ["invoice.created"];
-      } else {
-        triggers = [];
+        triggers.push("invoice.created");
+      }
+      if (isInvoicePaid) {
+        triggers.push("invoice.paid");
       }
 
       let endpointPost: WebhookEndpointCreate = {
@@ -115,19 +134,7 @@ export const DeveloperTab = () => {
         webhook_url: new URL(webhookUrl),
         triggers_in: triggers,
       };
-      Webhook.createEndpoint(endpointPost)
-        .then((data: WebhookEndpoint) => {
-          setWebhookUrl("");
-          setWebhookName("");
-          setIsInvoiceGenerated(false);
-          toast.success("Webhook URL added successfully");
-          queryClient.invalidateQueries("urls");
-          setVisibleWebhook(false);
-          setWebhookSelected(undefined);
-        })
-        .catch((error) => {
-          toast.error(error.response.data.non_field_errors[0]);
-        });
+      createWebhookMutation.mutate(endpointPost);
     } else {
       toast.error("Please enter a valid URL starting with https://");
     }
@@ -137,12 +144,12 @@ export const DeveloperTab = () => {
     if (id) {
       Webhook.deleteEndpoint(id)
         .then((data) => {
-          message.success("Webhook URL deleted successfully");
-          queryClient.invalidateQueries("urls");
+          toast.success("Webhook URL deleted successfully");
+          queryClient.invalidateQueries("webhook_urls");
           setWebhookSelected(undefined);
         })
         .catch((err) => {
-          message.error("Error deleting webhook URL");
+          toast.error("Error deleting webhook URL");
         });
     }
   };
@@ -244,7 +251,12 @@ export const DeveloperTab = () => {
         title="Webhook URL"
         onCancel={closeWebhookModal}
         footer={
-          <Button key="Confirm URL" onClick={handleAddUrl} type="primary">
+          <Button
+            key="Confirm URL"
+            onClick={handleAddUrl}
+            type="primary"
+            loading={createWebhookMutation.isLoading}
+          >
             Confirm
           </Button>
         }
@@ -261,12 +273,18 @@ export const DeveloperTab = () => {
             onChange={(e) => setWebhookUrl(e.target.value)}
           ></Input>
           <p className="text-lg font-main">Events Subscribed To:</p>
-          <div className="grid grid-cols-auto">
+          <div className="grid grid-cols-2">
             <Checkbox
               onChange={(e) => setIsInvoiceGenerated(e.target.checked)}
               value={isInvoiceGenerated}
             >
               <p className="text-lg font-main">invoice.created</p>
+            </Checkbox>
+            <Checkbox
+              onChange={(e) => setIsInvoicePaid(e.target.checked)}
+              value={isInvoicePaid}
+            >
+              <p className="text-lg font-main">invoice.paid</p>
             </Checkbox>
           </div>
         </div>
