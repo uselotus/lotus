@@ -15,6 +15,12 @@ class NoMatchingAPIKey(APIException):
     default_code = "API Key not known"
 
 
+class DuplicateWebhookEndpoint(APIException):
+    status_code = 409
+    default_detail = "Webhook endpoint already exists"
+    default_code = "Webhook endpoint already exists"
+
+
 class RepeatedEventIdempotency(APIException):
     status_code = 409
     default_detail = "Idempotency key already exists"
