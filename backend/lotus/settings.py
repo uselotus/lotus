@@ -582,3 +582,11 @@ if SVIX_API_KEY != "":
                 name="invoice.created",
             )
         )
+    if "invoice.paid" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is marked as paid",
+                archived=False,
+                name="invoice.paid",
+            )
+        )
