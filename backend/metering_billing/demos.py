@@ -323,7 +323,7 @@ def setup_demo_3(company_name, username, email, password):
         cost_per_batch=10,
         metric_units_per_batch=1,
     )
-    plan.display_version = bp_10_compute_seats
+    plan.display_version = bp_50_compute_seats
     plan.save()
     six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
     for cust_set_name, cust_set in [
