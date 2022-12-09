@@ -2,12 +2,6 @@
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
-    extend: {
-      fontFamily: {
-        // add new font family
-        main: ["Satoshi", "sans-serif"],
-      },
-    },
     colors: {
       // custom color palette
       primary: "#441151",
