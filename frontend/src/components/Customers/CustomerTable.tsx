@@ -7,7 +7,7 @@ import {
   CustomerTableItem,
   CustomerTotal,
 } from "../../types/customer-type";
-import { Button, Tag } from "antd";
+import {Button, Input, Tag} from "antd";
 import { CreateCustomerState } from "./CreateCustomerForm";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Plan } from "../../api/api";
@@ -15,16 +15,80 @@ import { PlanType } from "../../types/plan-type";
 import CustomerDetail from "./CustomerDetail";
 import { useNavigate } from "react-router-dom";
 
-const columns: ProColumns<CustomerTableItem>[] = [
-  {
-    width: 10,
-  },
+function getHighlightedText(text:string, highlight:string) {
+    // Split text on highlight term, include term itself into parts, ignore case
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return <span>{parts.map(part => part.toLowerCase() === highlight.toLowerCase() ? <span className="highlightText">{part}</span> : part)}</span>;
+}
+
+interface Props {
+  customerArray: CustomerPlus[];
+  totals: CustomerTotal[] | undefined;
+}
+
+const defaultCustomerState: CreateCustomerState = {
+  title: "Create a Customer",
+  name: "",
+  customer_id: "",
+  subscriptions: [],
+  total_amount_due: 0,
+  email: "",
+};
+
+const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
+  const [customerVisible, setCustomerVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [customerState, setCustomerState] =
+    useState<CreateCustomerState>(defaultCustomerState);
+  const [tableData, setTableData] = useState<CustomerTableItem[]>();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (customerArray !== undefined) {
+      const dataInstance: CustomerTableItem[] = [];
+      if (totals !== undefined) {
+        for (let i = 0; i < customerArray.length; i++) {
+          const entry: CustomerTableItem = {
+            ...customerArray[i],
+            ...totals[i],
+          };
+          dataInstance.push(entry);
+        }
+      } else {
+        for (let i = 0; i < customerArray.length; i++) {
+          const entry: CustomerTableItem = {
+            ...customerArray[i],
+            total_amount_due: 0.0,
+          };
+          dataInstance.push(entry);
+        }
+      }
+      setTableData(dataInstance);
+    }
+  }, [customerArray, totals]);
+
+  const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
+    ["plan_list"],
+    () =>
+      Plan.getPlans().then((res) => {
+        return res;
+      })
+  );
+
+  const columns: ProColumns<CustomerTableItem>[] = [
   {
     title: "Customer ID",
     width: 120,
     dataIndex: "customer_id",
     align: "left",
     ellipsis: true,
+    render: (_, record) => {
+        if(searchQuery) {
+            return getHighlightedText(record.customer_id, searchQuery)
+        }
+        return record.customer_id
+    }
   },
   {
     title: "Name",
@@ -32,6 +96,12 @@ const columns: ProColumns<CustomerTableItem>[] = [
     dataIndex: "customer_name",
     align: "left",
     search: { transform: (value: any) => value },
+    render: (_, record) => {
+          if (searchQuery) {
+              return getHighlightedText(record.customer_name, searchQuery)
+          }
+          return record.customer_name
+    }
   },
   {
     title: "Plans",
@@ -81,60 +151,6 @@ const columns: ProColumns<CustomerTableItem>[] = [
   },
 ];
 
-interface Props {
-  customerArray: CustomerPlus[];
-  totals: CustomerTotal[] | undefined;
-}
-
-const defaultCustomerState: CreateCustomerState = {
-  title: "Create a Customer",
-  name: "",
-  customer_id: "",
-  subscriptions: [],
-  total_amount_due: 0,
-  email: "",
-};
-
-const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
-  const [customerVisible, setCustomerVisible] = useState(false);
-  const [customerState, setCustomerState] =
-    useState<CreateCustomerState>(defaultCustomerState);
-  const [tableData, setTableData] = useState<CustomerTableItem[]>();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (customerArray !== undefined) {
-      const dataInstance: CustomerTableItem[] = [];
-      if (totals !== undefined) {
-        for (let i = 0; i < customerArray.length; i++) {
-          const entry: CustomerTableItem = {
-            ...customerArray[i],
-            ...totals[i],
-          };
-          dataInstance.push(entry);
-        }
-      } else {
-        for (let i = 0; i < customerArray.length; i++) {
-          const entry: CustomerTableItem = {
-            ...customerArray[i],
-            total_amount_due: 0.0,
-          };
-          dataInstance.push(entry);
-        }
-      }
-      setTableData(dataInstance);
-    }
-  }, [customerArray, totals]);
-
-  const { data, isLoading }: UseQueryResult<PlanType[]> = useQuery<PlanType[]>(
-    ["plan_list"],
-    () =>
-      Plan.getPlans().then((res) => {
-        return res;
-      })
-  );
-
   const onDetailCancel = () => {
     queryClient.invalidateQueries(["customer_list"]);
     queryClient.invalidateQueries(["customer_totals"]);
@@ -160,11 +176,27 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
     });
   };
 
+  const getFilteredTableData = (data: CustomerTableItem[]) => {
+      if(!searchQuery) {
+          return data
+      }
+      return data.filter(item =>
+          item.customer_id.toLowerCase().includes(searchQuery.toLowerCase())
+          || item.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+  }
+
   return (
+  <>
+    <Input className="customer-search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+           placeholder="Search Customer"/>
     <div className="border-2 border-solid rounded border-[#EAEAEB]">
+
       <ProTable
         columns={columns}
-        dataSource={tableData}
+        dataSource={getFilteredTableData(tableData)}
         rowKey="customer_id"
         onRow={(record, rowIndex) => {
           return {
@@ -195,6 +227,7 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
         />
       )}
     </div>
+   </>
   );
 };
 

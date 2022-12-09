@@ -180,6 +180,16 @@ a {
   width: 500px;
 }
 
+.customer-search {
+    margin-bottom: 20px !important;
+    width: 400px !important;
+}
+
+.highlightText {
+    background: #cca43b4f;
+    border-radius: 4px;
+}
+
 /**
  * @license
  *
