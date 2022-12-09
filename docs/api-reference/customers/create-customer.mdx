@@ -13,8 +13,7 @@ A `Create Customer` call requires
 Optionally you can submit:
 
 - `name` a name for your customer
-- `payment_provider` choices are ["stripe"]
-- `payment_provider_id` associated id for your customers payment provider
+- payment_provider and payment_provider_id - either both must be present, or neither may be present. payment_provider choices are ["stripe"]
 - `properties` any additional metadata related to your customer
 
 <CodeGroup>

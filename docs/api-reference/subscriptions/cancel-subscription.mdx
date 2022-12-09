@@ -5,17 +5,42 @@ the arguments passed to the call."
 openapi: "DELETE /api/subscriptions/plans/"
 ---
 
+A Cancel Subscription call requires either a `customer_id` or a `plan_id`. You can provide one, the other, or both. If you don't provide one of the parameters, the call will cancel all subscriptions matching the other parameter.
+
+Optionally you can provide the following parameters:
+
+- `subscription_filters` a list of dictionaries containing property_name and value keys for filtering subscriptions to cancel.
+- `flat_fee_behavior` choices are ["refund", "prorate", "charge_full"]
+- `bill_usage` a boolean indicating whether to bill for usage up to the end of the subscription
+- `invoicing_behavior_on_cancel` choices are ["add_to_next_invoice", "invoice_now"]
+
 <CodeGroup>
 
 ```py Python
 lotus.cancel_subscription(
-  subscription_id='subscription_4',
-  turn_off_auto_renew=True
+    customer_id='cust_0569173e-e665-4369',
+    subscription_filters=[
+        {
+            "property_name": "status",
+            "value": "active",
+        },
+    ],
+    flat_fee_behavior='prorate',
+    bill_usage=True,
+    invoicing_behavior_on_cancel='add_to_next_invoice',
 )
 
 lotus.cancel_subscription(
-  subscription_id='subscription_4',
-  replace_immediately_type='end_current_subscription_and_bill'
+    plan_id='plan_A',
+    subscription_filters=[
+        {
+            "property_name": "created_date",
+            "value": "2020-08-15",
+        },
+    ],
+    flat_fee_behavior='charge_full',
+    bill_usage=False,
+    invoicing_behavior_on_cancel='invoice_now',
 )
 ```
 

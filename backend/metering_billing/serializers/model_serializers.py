@@ -1510,18 +1510,21 @@ class SubscriptionStatusFilterSerializer(serializers.Serializer):
     status = serializers.MultipleChoiceField(
         choices=SUBSCRIPTION_STATUS.choices,
         required=False,
-        default=[SUBSCRIPTION_STATUS.ACTIVE],
+        default={SUBSCRIPTION_STATUS.ACTIVE},
     )
 
     def validate(self, data):
         # check that the customer ID matches an existing customer
         data = super().validate(data)
-        try:
-            data["customer"] = Customer.objects.get(customer_id=data["customer_id"])
-        except Customer.DoesNotExist:
-            raise serializers.ValidationError(
-                f"Customer with customer_id {data['customer_id']} does not exist"
-            )
+        if data.get("customer_id"):
+            try:
+                data["customer"] = Customer.objects.get(customer_id=data["customer_id"])
+            except Customer.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Customer with customer_id {data['customer_id']} does not exist"
+                )
+        if len(data.get("status")) == 0:
+            data["status"] = {SUBSCRIPTION_STATUS.ACTIVE}
         return data
 
 

@@ -134,7 +134,6 @@
           "group": "Plans",
           "pages": [
             "api-reference/plans/retrieve-plan",
-            "api-reference/plans/change-plan",
             "api-reference/plans/list-plans"
           ]
         },

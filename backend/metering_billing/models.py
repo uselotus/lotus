@@ -286,7 +286,7 @@ class Customer(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "customer_id")
+        unique_together = (("organization", "customer_id"), ("organization", "email"))
 
     def __str__(self) -> str:
         return str(self.customer_name) + " " + str(self.customer_id)
@@ -719,7 +719,6 @@ class Metric(models.Model):
                 group_by = component.separate_by
                 usage = handler.get_current_usage(subscription, group_by=group_by)
                 break
-
         return usage
 
     def get_earned_usage_per_day(
