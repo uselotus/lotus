@@ -371,6 +371,10 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
     return end_date
 
 
+def event_uuid():
+    return "event_" + str(uuid.uuid4().hex)
+
+
 def product_uuid():
     return "prod_" + str(uuid.uuid4().hex)
 

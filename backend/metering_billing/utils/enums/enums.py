@@ -196,6 +196,14 @@ class FLAT_FEE_BEHAVIOR(models.TextChoices):
     CHARGE_FULL = ("charge_full", _("Charge Full"))
 
 
+class USAGE_BEHAVIOR(models.TextChoices):
+    TRANSFER_TO_NEW_SUBSCRIPTION = (
+        "transfer_to_new_subscription",
+        _("Transfer to New Subscription"),
+    )
+    KEEP_SEPARATE = ("keep_separate", _("Keep Separate"))
+
+
 class INVOICING_BEHAVIOR(models.TextChoices):
     ADD_TO_NEXT_INVOICE = ("add_to_next_invoice", _("Add to Next Invoice"))
     INVOICE_NOW = ("invoice_now", _("Invoice Now"))

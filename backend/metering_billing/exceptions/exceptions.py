@@ -35,7 +35,7 @@ class UserNoOrganization(APIException):
 
 class DuplicateCustomerID(APIException):
     status_code = 409
-    default_detail = "Customer ID already exists"
+    default_detail = "Customer with that customer_id already exists"
     default_code = "Customer ID already exists"
 
 
@@ -45,7 +45,19 @@ class DuplicateMetric(APIException):
     default_code = "Metric already exists"
 
 
-class OverlappingSubscription(APIException):
+class SwitchPlanDurationMismatch(APIException):
     status_code = 409
-    default_detail = "Subscription overlaps with another subscription with the same billing plan and customer"
-    default_code = "Subscription overlaps with another subscription with the same billing plan and customer"
+    default_detail = "Switch plan duration does not match current plan duration"
+    default_code = "Switch plan duration mismatch"
+
+
+class SwitchPlanSamePlanException(APIException):
+    status_code = 409
+    default_detail = "Switch plan is the same as current plan"
+    default_code = "Switch plan same as current plan"
+
+
+class SubscriptionNotFoundException(APIException):
+    status_code = 404
+    default_detail = "Subscription with given customer_id and plan_id not found"
+    default_code = "Subscription not found"
