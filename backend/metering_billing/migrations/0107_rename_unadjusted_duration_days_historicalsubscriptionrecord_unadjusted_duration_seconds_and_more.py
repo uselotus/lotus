@@ -3,16 +3,6 @@
 from django.db import migrations, models
 
 
-def delete_dups(apps, schema_editor):
-    Customer = apps.get_model("metering_billing", "Customer")
-    for row in Customer.objects.all().order_by("pk"):
-        org = row.organization
-        email = row.email
-        pk = row.pk
-        others = Customer.objects.filter(organization=org, email=email).exclude(pk=pk)
-        others.delete()
-
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -42,13 +32,5 @@ class Migration(migrations.Migration):
             model_name="subscriptionrecord",
             name="usage_start_date",
             field=models.DateTimeField(blank=True, null=True),
-        ),
-        migrations.RunPython(delete_dups, reverse_code=migrations.RunPython.noop),
-        migrations.AlterUniqueTogether(
-            name="customer",
-            unique_together={
-                ("organization", "customer_id"),
-                ("organization", "email"),
-            },
         ),
     ]
