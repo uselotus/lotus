@@ -23,7 +23,7 @@ git clone https://github.com/uselotus/lotus.git && cd lotus
 5. Build and run the Docker Image!
 
 ```bash
-docker-compose -f docker-compose.prod.yaml up --build
+docker-compose -f docker-compose.prod.yaml --env-file env/.env.prod up --build
 ```
 
 You should now be able to access the homepage at

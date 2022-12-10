@@ -103,13 +103,15 @@ def generate_invoice(
                         ili.save()
         # flat fee calculation for current plan
         if subscription_record.flat_fee_behavior is not FLAT_FEE_BEHAVIOR.REFUND:
-            start = convert_to_date(subscription_record.start_date)
-            end = convert_to_date(subscription_record.end_date)
-            if subscription_record.flat_fee_behavior is FLAT_FEE_BEHAVIOR.PRORATE:
+            start = subscription_record.start_date
+            end = subscription_record.end_date
+            if subscription_record.flat_fee_behavior == FLAT_FEE_BEHAVIOR.PRORATE:
                 proration_factor = (
                     end - start
-                ).days / subscription_record.unadjusted_duration_days
-                flat_fee_due = billing_plan.flat_rate * proration_factor
+                ).total_seconds() / subscription_record.unadjusted_duration_seconds
+                flat_fee_due = billing_plan.flat_rate * convert_to_decimal(
+                    proration_factor
+                )
             else:
                 flat_fee_due = billing_plan.flat_rate
             if abs(float(amt_already_billed) - float(flat_fee_due)) < 0.01:
@@ -124,7 +126,7 @@ def generate_invoice(
                     quantity=None,
                     subtotal=flat_fee_due,
                     billing_type=billing_plan.flat_fee_billing_type,
-                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
+                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
                     associated_subscription_record=subscription_record,
                 )
@@ -136,7 +138,7 @@ def generate_invoice(
                         quantity=None,
                         subtotal=-amt_already_billed,
                         billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
-                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
+                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                         invoice=invoice,
                         associated_subscription_record=subscription_record,
                     )
@@ -185,6 +187,7 @@ def generate_invoice(
                     quantity=None,
                     subtotal=next_bp.flat_rate,
                     billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
                     associated_subscription_record=next_subscription_record,
                 )

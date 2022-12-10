@@ -21,7 +21,7 @@ from .serializer_utils import (
     SlugRelatedFieldWithOrganizationOrNull,
 )
 
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class OrganizationUserSerializer(serializers.ModelSerializer):
@@ -207,7 +207,7 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
     )
 
     def validate(self, attrs):
-        if SVIX_API_KEY == "":
+        if SVIX_CONNECTOR is None:
             raise serializers.ValidationError(
                 "Webhook endpoints are not supported in this environment"
             )
@@ -1430,6 +1430,7 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
         fields = (
             "replace_plan_id",
             "replace_plan_invoicing_behavior",
+            "replace_plan_usage_behavior",
             "turn_off_auto_renew",
             "end_date",
         )
@@ -1447,6 +1448,10 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
         default=INVOICING_BEHAVIOR.INVOICE_NOW,
         required=False,
     )
+    replace_plan_usage_behavior = serializers.ChoiceField(
+        choices=USAGE_BEHAVIOR.choices,
+        default=USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
+    )
     turn_off_auto_renew = serializers.BooleanField(required=False)
     end_date = serializers.DateTimeField(required=False)
 
@@ -1460,7 +1465,7 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=True)
-    plan_id = serializers.CharField(required=False)
+    plan_id = serializers.CharField(required=True)
     subscription_filters = serializers.ListField(
         child=SubscriptionCategoricalFilterSerializer(), required=False
     )
@@ -1483,6 +1488,10 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
                     f"Plan with plan_id {data['plan_id']} does not exist"
                 )
         return data
+
+
+class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerializer):
+    plan_id = serializers.CharField(required=False)
 
 
 class SubscriptionRecordCancelSerializer(serializers.Serializer):

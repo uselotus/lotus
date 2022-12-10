@@ -1,3 +1,4 @@
+import copy
 import json
 
 import lotus_python
@@ -13,6 +14,9 @@ from metering_billing.exceptions import (
     DuplicateCustomerID,
     DuplicateMetric,
     DuplicateWebhookEndpoint,
+    SubscriptionNotFoundException,
+    SwitchPlanDurationMismatch,
+    SwitchPlanSamePlanException,
 )
 from metering_billing.models import (
     Backtest,
@@ -62,7 +66,7 @@ from rest_framework.response import Response
 from svix.api import MessageIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class CustomPagination(CursorPagination):
@@ -153,8 +157,8 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             raise DuplicateWebhookEndpoint
 
     def perform_destroy(self, instance):
-        if SVIX_API_KEY != "":
-            svix = Svix(SVIX_API_KEY)
+        if SVIX_CONNECTOR is not None:
+            svix = SVIX_CONNECTOR
             svix.endpoint.delete(
                 instance.organization.organization_id,
                 instance.webhook_endpoint_id,
@@ -708,7 +712,10 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     raw_filters = raw_filters[0]
                 parsed_params = json.loads(raw_filters)
                 dict_params["subscription_filters"] = parsed_params
-            serializer = SubscriptionRecordFilterSerializer(data=dict_params)
+            if self.action == "update_plans":
+                serializer = SubscriptionRecordFilterSerializer(data=dict_params)
+            elif self.action == "cancel_plans":
+                serializer = SubscriptionRecordFilterSerializerDelete(data=dict_params)
             serializer.is_valid(raise_exception=True)
             args = []
             args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
@@ -875,7 +882,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     @plans.mapping.delete
     @extend_schema(
         parameters=[
-            SubscriptionRecordFilterSerializer,
+            SubscriptionRecordFilterSerializerDelete,
             SubscriptionRecordCancelSerializer,
         ],
     )
@@ -920,16 +927,32 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def update_plans(self, request, *args, **kwargs):
         qs = self.get_queryset()
+        original_qs = list(copy.copy(qs).values_list("pk", flat=True))
+        if qs.count() == 0:
+            raise SubscriptionNotFoundException
+        plan_to_replace = qs.first().billing_plan
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         replace_billing_plan = serializer.validated_data.get("billing_plan")
+        if replace_billing_plan:
+            if replace_billing_plan == plan_to_replace:
+                raise SwitchPlanSamePlanException
+            elif (
+                replace_billing_plan.plan.plan_duration
+                != plan_to_replace.plan.plan_duration
+            ):
+                raise SwitchPlanDurationMismatch
         replace_plan_billing_behavior = serializer.validated_data.get(
             "replace_plan_invoicing_behavior"
+        )
+        replace_plan_usage_behavior = serializer.validated_data.get(
+            "replace_plan_usage_behavior"
         )
         turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
         end_date = serializer.validated_data.get("end_date")
         if replace_billing_plan:
             now = now_utc()
+            keep_separate = replace_plan_usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
             for subscription_record in qs:
                 sr = SubscriptionRecord.objects.create(
                     organization=subscription_record.organization,
@@ -939,37 +962,43 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     end_date=subscription_record.end_date,
                     next_billing_date=subscription_record.next_billing_date,
                     last_billing_date=subscription_record.last_billing_date,
+                    usage_start_date=now
+                    if keep_separate
+                    else subscription_record.usage_start_date,
                     status=SUBSCRIPTION_STATUS.ACTIVE,
                     auto_renew=subscription_record.auto_renew,
                     fully_billed=False,
-                    unadjusted_duration_days=subscription_record.unadjusted_duration_days,
+                    unadjusted_duration_seconds=subscription_record.unadjusted_duration_seconds,
                 )
                 for filter in subscription_record.filters.all():
                     sr.filters.add(filter)
-            qs.update(
-                flat_fee_behavior=FLAT_FEE_BEHAVIOR.PRORATE,
-                invoice_usage_charges=False,
-                auto_renew=False,
-                end_date=now,
-                status=SUBSCRIPTION_STATUS.ENDED,
-                fully_billed=replace_plan_billing_behavior
-                == INVOICING_BEHAVIOR.INVOICE_NOW,
-            )
-            customer_ids = qs.values_list("customer", flat=True).distinct()
-            customer_set = Customer.objects.filter(id__in=customer_ids)
+                subscription_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
+                subscription_record.invoice_usage_charges = keep_separate
+                subscription_record.auto_renew = False
+                subscription_record.end_date = now
+                subscription_record.status = SUBSCRIPTION_STATUS.ENDED
+                subscription_record.fully_billed = (
+                    replace_plan_billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
+                )
+                subscription_record.save()
+            customer = list(qs)[0].customer
+            subscription = Subscription.objects.filter(
+                organization=customer.organization,
+                customer=customer,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+            ).first()
+            new_qs = SubscriptionRecord.objects.filter(pk__in=original_qs)
             if replace_plan_billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-                for customer in customer_set:
-                    subscription = Subscription.objects.filter(
-                        organization=customer.organization,
-                        customer=customer,
-                        status=SUBSCRIPTION_STATUS.ACTIVE,
-                    ).first()
-                    generate_invoice(subscription, qs.filter(customer=customer))
+                invoice = generate_invoice(subscription, new_qs)
         else:
+            update_dict = {}
             if turn_off_auto_renew:
-                qs.update(auto_renew=False)
+                update_dict["auto_renew"] = False
             if end_date:
-                qs.update(end_date=end_date, next_billing_date=end_date)
+                update_dict["end_date"] = end_date
+                update_dict["next_billing_date"] = end_date
+            if len(update_dict) > 0:
+                qs.update(**update_dict)
 
         return Response(status=status.HTTP_200_OK)
 

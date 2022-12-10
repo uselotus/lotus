@@ -24,6 +24,7 @@ from metering_billing.utils import (
     customer_uuid,
     date_as_min_dt,
     dates_bwn_two_dts,
+    event_uuid,
     get_granularity_ratio,
     invoice_uuid,
     metric_uuid,
@@ -53,7 +54,7 @@ from svix.api import (
 from svix.internal.openapi_client.models.http_error import HttpError
 
 META = settings.META
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class Organization(models.Model):
@@ -86,9 +87,9 @@ class Organization(models.Model):
         super(Organization, self).save(*args, **kwargs)
 
     def provision_webhooks(self):
-        if SVIX_API_KEY != "":
+        if SVIX_CONNECTOR is not None:
             print("provisioning webhooks")
-            svix = Svix(SVIX_API_KEY)
+            svix = SVIX_CONNECTOR
             svix_app = svix.application.create(
                 ApplicationIn(uid=self.organization_id, name=self.company_name)
             )
@@ -129,9 +130,9 @@ class WebhookEndpoint(models.Model):
         new = not self.pk
         triggers = kwargs.pop("triggers", [])
         super(WebhookEndpoint, self).save(*args, **kwargs)
-        if SVIX_API_KEY != "":
+        if SVIX_CONNECTOR is not None:
             try:
-                svix = Svix(SVIX_API_KEY)
+                svix = SVIX_CONNECTOR
                 if new:
                     endpoint_create_dict = {
                         "uid": self.webhook_endpoint_id,
@@ -587,7 +588,7 @@ class Event(models.Model):
     event_name = models.CharField(max_length=200, null=False)
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id = models.CharField(max_length=255)
+    idempotency_id = models.CharField(max_length=255, default=event_uuid)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]
@@ -854,7 +855,7 @@ class PlanComponent(models.Model):
         self, subscription_record
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
         periods = []
-        start_date = subscription_record.start_date
+        start_date = subscription_record.usage_start_date
         end_date = start_date
         now = now_utc()
         while end_date < subscription_record.end_date:
@@ -951,7 +952,7 @@ class PlanComponent(models.Model):
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
         billable_metric = self.billable_metric
         periods = []
-        start_date = subscription.start_date
+        start_date = subscription.usage_start_date
         end_date = start_date
         results = {}
         for period in periods_bwn_twodates(
@@ -1681,11 +1682,12 @@ class SubscriptionRecord(models.Model):
         related_name="subscription_records",
         related_query_name="subscription_record",
     )
+    usage_start_date = models.DateTimeField(null=True, blank=True)
     start_date = models.DateTimeField()
     next_billing_date = models.DateTimeField(null=True, blank=True)
     last_billing_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField()
-    unadjusted_duration_days = models.IntegerField(null=True, blank=True)
+    unadjusted_duration_seconds = models.IntegerField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_STATUS.choices,
@@ -1725,16 +1727,14 @@ class SubscriptionRecord(models.Model):
                 day_anchor=day_anchor,
                 month_anchor=month_anchor,
             )
-        if not self.unadjusted_duration_days:
-            scheduled_end_date = convert_to_date(
-                calculate_end_date(
-                    self.billing_plan.plan.plan_duration,
-                    self.start_date,
-                )
+        if not self.unadjusted_duration_seconds:
+            scheduled_end_date = calculate_end_date(
+                self.billing_plan.plan.plan_duration,
+                self.start_date,
             )
-            self.unadjusted_duration_days = (
-                scheduled_end_date - convert_to_date(self.start_date)
-            ).days
+            self.unadjusted_duration_seconds = (
+                scheduled_end_date - self.start_date
+            ).total_seconds()
         if not self.next_billing_date or self.next_billing_date < now:
             if self.billing_plan.usage_billing_frequency in [
                 USAGE_BILLING_FREQUENCY.END_OF_PERIOD,
@@ -1758,6 +1758,8 @@ class SubscriptionRecord(models.Model):
                         self.end_date,
                         self.start_date + relativedelta(months=num_months),
                     )
+        if not self.usage_start_date:
+            self.usage_start_date = self.start_date
         super(SubscriptionRecord, self).save(*args, **kwargs)
 
     def get_filters_dictionary(self):
@@ -1827,7 +1829,7 @@ class SubscriptionRecord(models.Model):
             start_date=now,
             end_date=self.end_date,
             auto_renew=self.auto_renew,
-            unadjusted_duration_days=self.unadjusted_duration_days,
+            unadjusted_duration_seconds=self.unadjusted_duration_seconds,
         )
         self.end_date = now
         self.auto_renew = False
@@ -1841,7 +1843,11 @@ class SubscriptionRecord(models.Model):
             period = convert_to_date(period)
             return_dict[period] = Decimal(0)
             return_dict[period] += convert_to_decimal(
-                self.billing_plan.flat_rate / self.unadjusted_duration_days
+                self.billing_plan.flat_rate
+                / self.unadjusted_duration_seconds
+                * 60
+                * 60
+                * 24
             )
         for component in self.billing_plan.plan_components.all():
             rev_per_day = component.calculate_earned_revenue_per_day(self)
