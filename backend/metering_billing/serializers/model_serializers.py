@@ -21,7 +21,7 @@ from .serializer_utils import (
     SlugRelatedFieldWithOrganizationOrNull,
 )
 
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class OrganizationUserSerializer(serializers.ModelSerializer):
@@ -207,7 +207,7 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
     )
 
     def validate(self, attrs):
-        if SVIX_API_KEY == "":
+        if SVIX_CONNECTOR is None:
             raise serializers.ValidationError(
                 "Webhook endpoints are not supported in this environment"
             )

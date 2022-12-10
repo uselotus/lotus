@@ -9,17 +9,19 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+import datetime
 import logging
 import os
 import re
 import ssl
-from datetime import timedelta
+from datetime import timedelta, timezone
 from json import loads
 from pathlib import Path
 from urllib.parse import urlparse
 
 import dj_database_url
 import django_heroku
+import jwt
 import kafka_helper
 import posthog
 import sentry_sdk
@@ -29,7 +31,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
-from svix.api import EventTypeIn, Svix
+from svix.api import EventTypeIn, Svix, SvixAsync, SvixOptions
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -73,8 +75,7 @@ DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
-
-
+SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
 # Optional Observalility Services
 CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
 
@@ -571,6 +572,30 @@ django_heroku.settings(locals(), logging=False)
 # create svix events
 if SVIX_API_KEY != "":
     svix = Svix(SVIX_API_KEY)
+elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
+    try:
+        dt = datetime.datetime.now(timezone.utc)
+        utc_time = dt.replace(tzinfo=timezone.utc)
+        utc_timestamp = utc_time.timestamp()
+        payload = {
+            "iat": utc_timestamp,
+            "exp": 2980500639,
+            "nbf": utc_timestamp,
+            "iss": "svix-server",
+            "sub": "org_23rb8YdGqMT0qIzpgGwdXfHirMu",
+        }
+        encoded = jwt.encode(payload, SVIX_JWT_SECRET, algorithm="HS256")
+        SVIX_API_KEY = encoded
+        hostname, _, ips = socket.gethostbyname_ex("svix-server")
+        svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
+    except Exception as e:
+        svix = None
+else:
+    svix = None
+SVIX_CONNECTOR = svix
+
+if SVIX_CONNECTOR is not None:
+    svix = SVIX_CONNECTOR
     list_response_event_type_out = [x.name for x in svix.event_type.list().data]
     if "invoice.created" not in list_response_event_type_out:
         event_type_out = svix.event_type.create(

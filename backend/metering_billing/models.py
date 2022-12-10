@@ -54,7 +54,7 @@ from svix.api import (
 from svix.internal.openapi_client.models.http_error import HttpError
 
 META = settings.META
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class Organization(models.Model):
@@ -87,9 +87,9 @@ class Organization(models.Model):
         super(Organization, self).save(*args, **kwargs)
 
     def provision_webhooks(self):
-        if SVIX_API_KEY != "":
+        if SVIX_CONNECTOR is not None:
             print("provisioning webhooks")
-            svix = Svix(SVIX_API_KEY)
+            svix = SVIX_CONNECTOR
             svix_app = svix.application.create(
                 ApplicationIn(uid=self.organization_id, name=self.company_name)
             )
@@ -130,9 +130,9 @@ class WebhookEndpoint(models.Model):
         new = not self.pk
         triggers = kwargs.pop("triggers", [])
         super(WebhookEndpoint, self).save(*args, **kwargs)
-        if SVIX_API_KEY != "":
+        if SVIX_CONNECTOR is not None:
             try:
-                svix = Svix(SVIX_API_KEY)
+                svix = SVIX_CONNECTOR
                 if new:
                     endpoint_create_dict = {
                         "uid": self.webhook_endpoint_id,
