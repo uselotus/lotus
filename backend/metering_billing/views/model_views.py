@@ -66,7 +66,7 @@ from rest_framework.response import Response
 from svix.api import MessageIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class CustomPagination(CursorPagination):
@@ -157,8 +157,8 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             raise DuplicateWebhookEndpoint
 
     def perform_destroy(self, instance):
-        if SVIX_API_KEY != "":
-            svix = Svix(SVIX_API_KEY)
+        if SVIX_CONNECTOR is not None:
+            svix = SVIX_CONNECTOR
             svix.endpoint.delete(
                 instance.organization.organization_id,
                 instance.webhook_endpoint_id,

@@ -50,6 +50,7 @@ kafka-helper = "*"
 cronitor = "*"
 svix = "*"
 drf-nested-routers = "*"
+pyjwt = "*"
 
 [dev-packages]
 platformdirs = "*"
