@@ -9,7 +9,7 @@ def delete_dups(apps, schema_editor):
         org = row.organization
         email = row.email
         pk = row.pk
-        others = Customer.objects.filter(organizaiton=org, email=email).exclude(pk=pk)
+        others = Customer.objects.filter(organization=org, email=email).exclude(pk=pk)
         others.delete()
 
 
