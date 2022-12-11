@@ -80,14 +80,16 @@ export const DeveloperTab = () => {
   );
   const apiKeyMenu = (
     <Menu>
-      <Menu.Item
-        key="2"
-        onClick={() => handleDeleteKey(apiKeySelected?.prefix)}
-      >
-        <div className="planMenuArchiveIcon">
-          <div className="archiveLabel">Delete Key</div>
-        </div>
-      </Menu.Item>
+      <div>
+        <Menu.Item
+          key="2"
+          onClick={() => handleDeleteKey(apiKeySelected?.prefix)}
+        >
+          <div className="planMenuArchiveIcon">
+            <div className="archiveLabel">Delete Key</div>
+          </div>
+        </Menu.Item>
+      </div>
       <Menu.Item key="2" onClick={() => handleRollKey(apiKeySelected?.prefix)}>
         <div className="planMenuArchiveIcon">
           <div className="archiveLabel">Roll Key</div>
@@ -97,15 +99,15 @@ export const DeveloperTab = () => {
   );
 
   const {
-    isLoading:isLoadingWebhook,
+    isLoading: isLoadingWebhook,
     data: webhookData,
     refetch: refetchWebhook,
   } = useQuery("webhook_urls", () => Webhook.getEndpoints());
 
-  const {
-    data: apiKeyData,
-    refetch: refetchAPIKey,
-  } = useQuery("api_keys", () => APIKey.getKeys());
+  const { data: apiKeyData, refetch: refetchAPIKey } = useQuery(
+    "api_keys",
+    () => APIKey.getKeys()
+  );
 
   const createWebhookMutation = useMutation(
     (endpointPost: WebhookEndpointCreate) =>
@@ -233,6 +235,9 @@ export const DeveloperTab = () => {
           queryClient.invalidateQueries("api_keys");
           setApiKeySelected(undefined);
           refetchAPIKey();
+          setVisibleAPIKey(false);
+          setApiKey(data.key);
+          setVisible(true);
         })
         .catch((err) => {
           toast.error("Error rolling API Key");
@@ -271,7 +276,7 @@ export const DeveloperTab = () => {
               dataIndex: "prefix",
               key: "prefix",
               render: (prefix: string) => {
-                return <div>{prefix}...</div>;
+                return <div>{prefix}•••</div>;
               },
             },
             {
@@ -478,7 +483,7 @@ export const DeveloperTab = () => {
             Your new key is:{" "}
             {apiKey ? <Input value={apiKey} readOnly /> : "Loading..."}
           </p>
-          <p></p>
+          <p> Your API Key will only show once! Make sure to keep it safe.</p>
         </div>
       </Modal>
     </div>
