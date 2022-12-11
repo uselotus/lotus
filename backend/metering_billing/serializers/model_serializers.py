@@ -100,6 +100,30 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return users_data + invited_users_data
 
 
+class APITokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = APIToken
+        fields = ("name", "prefix", "expiry_date", "created")
+
+    extra_kwargs = {"prefix": {"read_only": True}, "created": {"read_only": True}}
+
+    def validate(self, attrs):
+        super().validate(attrs)
+        now = now_utc()
+        if attrs.get("expiry_date") and attrs["expiry_date"] < now:
+            raise serializers.ValidationError("Expiry date cannot be in the past")
+        return attrs
+
+    def create(self, validated_data):
+        api_key, key = APIToken.objects.create_key(**validated_data)
+        num_matching_prefix = APIToken.objects.filter(prefix=api_key.prefix).count()
+        while num_matching_prefix > 1:
+            api_key.delete()
+            api_key, key = APIToken.objects.create_key(**validated_data)
+            num_matching_prefix = APIToken.objects.filter(prefix=api_key.prefix).count()
+        return api_key, key
+
+
 class OrganizationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization

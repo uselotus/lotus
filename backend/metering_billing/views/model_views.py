@@ -6,6 +6,7 @@ import posthog
 from actstream import action
 from actstream.models import Action
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -118,6 +119,101 @@ class PermissionPolicyMixin:
             pass
 
         super().check_permissions(request)
+
+
+class APITokenViewSet(
+    PermissionPolicyMixin,
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    API endpoint that allows API Tokens to be viewed or edited.
+    """
+
+    serializer_class = APITokenSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "head", "delete"]
+    lookup_field = "prefix"
+
+    def get_queryset(self):
+        organization = parse_organization(self.request)
+        return APIToken.objects.filter(organization=organization)
+
+    def get_serializer_context(self):
+        context = super(APITokenViewSet, self).get_serializer_context()
+        organization = parse_organization(self.request)
+        context.update({"organization": organization})
+        return context
+
+    def perform_create(self, serializer):
+        organization = parse_organization(self.request)
+        api_key, key = serializer.save(organization=organization)
+        return api_key, key
+
+    @extend_schema(
+        request=APITokenSerializer,
+        responses=inline_serializer(
+            "APITokenCreateResponse",
+            {"api_key": APITokenSerializer(), "key": serializers.CharField()},
+        ),
+    )
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        api_key, key = self.perform_create(serializer)
+        expiry_date = api_key.expiry_date
+        timeout = (
+            60 * 60 * 24
+            if expiry_date is None
+            else (expiry_date - now_utc()).total_seconds()
+        )
+        cache.set(api_key.prefix, api_key.organization.pk, timeout)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {"api_key": serializer.data, "key": key},
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
+
+    def perform_destroy(self, instance):
+        cache.delete(instance.prefix)
+        return super().perform_destroy(instance)
+
+    @extend_schema(
+        request=None,
+        responses=inline_serializer(
+            "APITokenRollResponse",
+            {"api_key": APITokenSerializer(), "key": serializers.CharField()},
+        ),
+    )
+    @action(detail=True, methods=["post"])
+    def roll(self, request, prefix):
+        api_token = self.get_object()
+        data = {
+            "name": api_token.name,
+            "expiry_date": api_token.expiry_date,
+        }
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        api_key, key = self.perform_create(serializer)
+        api_key.created = api_token.created
+        api_key.save()
+        self.perform_destroy(api_token)
+        expiry_date = api_key.expiry_date
+        timeout = (
+            60 * 60 * 24
+            if expiry_date is None
+            else (expiry_date - now_utc()).total_seconds()
+        )
+        cache.set(api_key.prefix, api_key.organization.pk, timeout)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            {"api_key": serializer.data, "key": key},
+            status=status.HTTP_201_CREATED,
+            headers=headers,
+        )
 
 
 class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

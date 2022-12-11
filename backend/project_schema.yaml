@@ -132,6 +132,454 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedActionList'
           description: ''
+  /api/api_tokens/:
+    get:
+      operationId: api_tokens_list
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      tags:
+      - api_tokens
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTokensListErrorResponse400'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse401'
+              examples:
+                AuthenticationFailed:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: authentication_failed
+                      detail: Incorrect authentication credentials.
+                      attr: null
+                NotAuthenticated:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: not_authenticated
+                      detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '405':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse405'
+              examples:
+                MethodNotAllowed:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: method_not_allowed
+                      detail: Method "get" not allowed.
+                      attr: null
+          description: ''
+        '406':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse406'
+              examples:
+                NotAcceptable:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: not_acceptable
+                      detail: Could not satisfy the request Accept header.
+                      attr: null
+          description: ''
+        '415':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse415'
+              examples:
+                UnsupportedMediaType:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: unsupported_media_type
+                      detail: Unsupported media type "application/json" in request.
+                      attr: null
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse500'
+              examples:
+                APIException:
+                  value:
+                  - type: server_error
+                    errors:
+                    - code: error
+                      detail: A server error occurred.
+                      attr: null
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/APIToken'
+          description: ''
+    post:
+      operationId: api_tokens_create
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      tags:
+      - api_tokens
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/APIToken'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/APIToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/APIToken'
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTokensCreateErrorResponse400'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse401'
+              examples:
+                AuthenticationFailed:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: authentication_failed
+                      detail: Incorrect authentication credentials.
+                      attr: null
+                NotAuthenticated:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_authenticated
+                      detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '405':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse405'
+              examples:
+                MethodNotAllowed:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: method_not_allowed
+                      detail: Method "get" not allowed.
+                      attr: null
+          description: ''
+        '406':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse406'
+              examples:
+                NotAcceptable:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_acceptable
+                      detail: Could not satisfy the request Accept header.
+                      attr: null
+          description: ''
+        '415':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse415'
+              examples:
+                UnsupportedMediaType:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: unsupported_media_type
+                      detail: Unsupported media type "application/json" in request.
+                      attr: null
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse500'
+              examples:
+                APIException:
+                  value:
+                    type: server_error
+                    errors:
+                    - code: error
+                      detail: A server error occurred.
+                      attr: null
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APITokenCreateResponse'
+          description: ''
+  /api/api_tokens/{prefix}/:
+    delete:
+      operationId: api_tokens_destroy
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      parameters:
+      - in: path
+        name: prefix
+        schema:
+          type: string
+        required: true
+      tags:
+      - api_tokens
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTokensDestroyErrorResponse400'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse401'
+              examples:
+                AuthenticationFailed:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: authentication_failed
+                      detail: Incorrect authentication credentials.
+                      attr: null
+                NotAuthenticated:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_authenticated
+                      detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse404'
+              examples:
+                NotFound:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_found
+                      detail: Not found.
+                      attr: null
+          description: ''
+        '405':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse405'
+              examples:
+                MethodNotAllowed:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: method_not_allowed
+                      detail: Method "get" not allowed.
+                      attr: null
+          description: ''
+        '406':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse406'
+              examples:
+                NotAcceptable:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_acceptable
+                      detail: Could not satisfy the request Accept header.
+                      attr: null
+          description: ''
+        '415':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse415'
+              examples:
+                UnsupportedMediaType:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: unsupported_media_type
+                      detail: Unsupported media type "application/json" in request.
+                      attr: null
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse500'
+              examples:
+                APIException:
+                  value:
+                    type: server_error
+                    errors:
+                    - code: error
+                      detail: A server error occurred.
+                      attr: null
+          description: ''
+        '204':
+          description: No response body
+  /api/api_tokens/{prefix}/roll/:
+    post:
+      operationId: api_tokens_roll_create
+      description: API endpoint that allows API Tokens to be viewed or edited.
+      parameters:
+      - in: path
+        name: prefix
+        schema:
+          type: string
+        required: true
+      tags:
+      - api_tokens
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTokensRollCreateErrorResponse400'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse401'
+              examples:
+                AuthenticationFailed:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: authentication_failed
+                      detail: Incorrect authentication credentials.
+                      attr: null
+                NotAuthenticated:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_authenticated
+                      detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse404'
+              examples:
+                NotFound:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_found
+                      detail: Not found.
+                      attr: null
+          description: ''
+        '405':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse405'
+              examples:
+                MethodNotAllowed:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: method_not_allowed
+                      detail: Method "get" not allowed.
+                      attr: null
+          description: ''
+        '406':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse406'
+              examples:
+                NotAcceptable:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: not_acceptable
+                      detail: Could not satisfy the request Accept header.
+                      attr: null
+          description: ''
+        '415':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse415'
+              examples:
+                UnsupportedMediaType:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: unsupported_media_type
+                      detail: Unsupported media type "application/json" in request.
+                      attr: null
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse500'
+              examples:
+                APIException:
+                  value:
+                    type: server_error
+                    errors:
+                    - code: error
+                      detail: A server error occurred.
+                      attr: null
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APITokenRollResponse'
+          description: ''
   /api/backtests/:
     get:
       operationId: backtests_list
@@ -3300,8 +3748,8 @@ paths:
             - paid
             type: string
           default:
-          - unpaid
           - paid
+          - unpaid
       tags:
       - invoices
       security:
@@ -9554,6 +10002,50 @@ components:
           type: string
       required:
       - api_key
+    APIToken:
+      type: object
+      properties:
+        name:
+          type: string
+          description: A free-form name for the API key. Need not be unique. 50 characters
+            max.
+          maxLength: 50
+        prefix:
+          type: string
+          readOnly: true
+        expiry_date:
+          type: string
+          format: date-time
+          nullable: true
+          title: Expires
+          description: Once API key expires, clients cannot use it anymore.
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created
+      - prefix
+    APITokenCreateResponse:
+      type: object
+      properties:
+        api_key:
+          $ref: '#/components/schemas/APIToken'
+        key:
+          type: string
+      required:
+      - api_key
+      - key
+    APITokenRollResponse:
+      type: object
+      properties:
+        api_key:
+          $ref: '#/components/schemas/APIToken'
+        key:
+          type: string
+      required:
+      - api_key
+      - key
     Action:
       type: object
       description: DRF serializer for :class:`~activity.models.Action`.
@@ -9611,6 +10103,118 @@ components:
           type: number
           format: double
           nullable: true
+    ApiTokensCreateError:
+      oneOf:
+      - $ref: '#/components/schemas/ApiTokensCreateNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/ApiTokensCreateNameErrorComponent'
+      - $ref: '#/components/schemas/ApiTokensCreateExpiryDateErrorComponent'
+      discriminator:
+        propertyName: attr
+        mapping:
+          non_field_errors: '#/components/schemas/ApiTokensCreateNonFieldErrorsErrorComponent'
+          name: '#/components/schemas/ApiTokensCreateNameErrorComponent'
+          expiry_date: '#/components/schemas/ApiTokensCreateExpiryDateErrorComponent'
+    ApiTokensCreateErrorResponse400:
+      oneOf:
+      - $ref: '#/components/schemas/ApiTokensCreateValidationError'
+      - $ref: '#/components/schemas/ParseErrorResponse'
+      discriminator:
+        propertyName: type
+        mapping:
+          validation_error: '#/components/schemas/ApiTokensCreateValidationError'
+          client_error: '#/components/schemas/ParseErrorResponse'
+    ApiTokensCreateExpiryDateErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - expiry_date
+          type: string
+        code:
+          enum:
+          - date
+          - invalid
+          - make_aware
+          - overflow
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    ApiTokensCreateNameErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - name
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    ApiTokensCreateNonFieldErrorsErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - non_field_errors
+          type: string
+        code:
+          enum:
+          - invalid
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    ApiTokensCreateValidationError:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/ValidationErrorEnum'
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiTokensCreateError'
+      required:
+      - errors
+      - type
+    ApiTokensDestroyErrorResponse400:
+      oneOf:
+      - $ref: '#/components/schemas/ParseErrorResponse'
+      discriminator:
+        propertyName: type
+        mapping:
+          client_error: '#/components/schemas/ParseErrorResponse'
+    ApiTokensListErrorResponse400:
+      oneOf:
+      - $ref: '#/components/schemas/ParseErrorResponse'
+      discriminator:
+        propertyName: type
+        mapping:
+          client_error: '#/components/schemas/ParseErrorResponse'
+    ApiTokensRollCreateErrorResponse400:
+      oneOf:
+      - $ref: '#/components/schemas/ParseErrorResponse'
+      discriminator:
+        propertyName: type
+        mapping:
+          client_error: '#/components/schemas/ParseErrorResponse'
     BacktestCreate:
       type: object
       properties:
@@ -11008,26 +11612,17 @@ components:
     DraftInvoice:
       type: object
       properties:
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
+        org_connected_to_cust_payment_provider:
+          type: boolean
         currency:
           $ref: '#/components/schemas/PricingUnit'
-        cust_connected_to_payment_provider:
-          type: boolean
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
-        issue_date:
-          type: string
-          format: date-time
-        subscription:
-          allOf:
-          - $ref: '#/components/schemas/SubscriptionRecordDetail'
-          readOnly: true
+        payment_status:
+          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
         cost_due:
           type: number
           format: double
@@ -11035,14 +11630,23 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        org_connected_to_cust_payment_provider:
+        subscription:
+          allOf:
+          - $ref: '#/components/schemas/SubscriptionRecordDetail'
+          readOnly: true
+        cust_connected_to_payment_provider:
           type: boolean
-        payment_status:
-          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
         customer:
           allOf:
           - $ref: '#/components/schemas/Customer'
           readOnly: true
+        issue_date:
+          type: string
+          format: date-time
       required:
       - cost_due
       - currency
@@ -11752,81 +12356,22 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
-        source:
-          $ref: '#/components/schemas/PaymentProvidersEnum'
         external_plan_id:
           type: string
           maxLength: 100
+        source:
+          $ref: '#/components/schemas/PaymentProvidersEnum'
       required:
       - external_plan_id
       - source
     InitialPlanVersion:
       type: object
       properties:
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        usage_billing_frequency:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          nullable: true
-        plan_name:
-          type: string
-          readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
         day_anchor:
           type: integer
           maximum: 31
           minimum: 1
           nullable: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersionStatusEnum'
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        created_by:
-          type: string
-          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -11834,10 +12379,69 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        created_by:
+          type: string
+          readOnly: true
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        version_id:
+          type: string
+          readOnly: true
+        version:
+          type: integer
+          readOnly: true
+        transition_to:
+          type: string
+          nullable: true
+          readOnly: true
+        plan_name:
+          type: string
+          readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        usage_billing_frequency:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          nullable: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
         description:
           type: string
           nullable: true
           maxLength: 200
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PlanVersionStatusEnum'
+          readOnly: true
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -12066,7 +12670,17 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        end_date:
+        billing_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        metadata:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        start_date:
           type: string
           format: date-time
         name:
@@ -12080,6 +12694,9 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           nullable: true
+        end_date:
+          type: string
+          format: date-time
         subtotal:
           type: number
           format: double
@@ -12087,19 +12704,6 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        metadata:
-          type: object
-          additionalProperties: {}
-          nullable: true
-        billing_type:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
-        start_date:
-          type: string
-          format: date-time
       required:
       - name
     LoginFailure:
@@ -13666,55 +14270,55 @@ components:
     PlanDetail:
       type: object
       properties:
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
-        num_versions:
-          type: integer
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/PlanStatusEnum'
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        product_id:
-          type: string
-          nullable: true
-        plan_name:
-          type: string
-          maxLength: 100
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
         created_on:
           type: string
           format: date-time
+          readOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/ShortCustomer'
+          readOnly: true
+        product_id:
+          type: string
+          nullable: true
+        num_versions:
+          type: integer
+          readOnly: true
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
+        status:
+          $ref: '#/components/schemas/PlanStatusEnum'
+        plan_id:
+          type: string
+          maxLength: 100
+        created_by:
+          type: string
           readOnly: true
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        created_by:
-          type: string
-          readOnly: true
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/ShortCustomer'
-          readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -16385,10 +16989,23 @@ components:
       - $ref: '#/components/schemas/PlansCreateStatusErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -16424,21 +17041,8 @@ components:
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateParentPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateTargetCustomerIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateExternalLinksINDEXPlanIdErrorComponent'
@@ -16515,10 +17119,23 @@ components:
           status: '#/components/schemas/PlansCreateStatusErrorComponent'
           initial_external_links.non_field_errors: '#/components/schemas/PlansCreateInitialExternalLinksNonFieldErrorsErrorComponent'
           initial_external_links.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialExternalLinksINDEXNonFieldErrorsErrorComponent'
-          initial_external_links.INDEX.source: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
           initial_external_links.INDEX.external_plan_id: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
+          initial_external_links.INDEX.source: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
           initial_version.non_field_errors: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
+          initial_version.day_anchor: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
+          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
+          initial_version.flat_fee_billing_type: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
+          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+          initial_version.price_adjustment.non_field_errors: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
+          initial_version.price_adjustment.price_adjustment_name: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
+          initial_version.price_adjustment.price_adjustment_description: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
+          initial_version.price_adjustment.price_adjustment_type: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
+          initial_version.price_adjustment.price_adjustment_amount: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
           initial_version.usage_billing_frequency: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+          initial_version.month_anchor: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
           initial_version.components.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.billable_metric_name: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -16554,21 +17171,8 @@ components:
           initial_version.components.INDEX.separate_by: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
           initial_version.components.INDEX.separate_by.INDEX: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
           initial_version.components.INDEX.proration_granularity: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
-          initial_version.price_adjustment.non_field_errors: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
-          initial_version.price_adjustment.price_adjustment_name: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
-          initial_version.price_adjustment.price_adjustment_description: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
-          initial_version.price_adjustment.price_adjustment_type: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
-          initial_version.price_adjustment.price_adjustment_amount: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
-          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
-          initial_version.month_anchor: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
-          initial_version.day_anchor: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
-          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
-          initial_version.flat_fee_billing_type: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
           initial_version.description: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
+          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
           parent_plan_id: '#/components/schemas/PlansCreateParentPlanIdErrorComponent'
           target_customer_id: '#/components/schemas/PlansCreateTargetCustomerIdErrorComponent'
           external_links.INDEX.plan_id: '#/components/schemas/PlansCreateExternalLinksINDEXPlanIdErrorComponent'
@@ -18887,33 +19491,33 @@ components:
     SubscriptionRecordDetail:
       type: object
       properties:
-        end_date:
-          type: string
-          format: date-time
-        customer_id:
-          type: string
-          writeOnly: true
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
-        auto_renew:
-          type: boolean
         plan_detail:
           allOf:
           - $ref: '#/components/schemas/PlanVersion'
           readOnly: true
+        customer_id:
+          type: string
+          writeOnly: true
+        start_date:
+          type: string
+          format: date-time
+        auto_renew:
+          type: boolean
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
-        start_date:
+        plan_id:
+          type: string
+          writeOnly: true
+        status:
+          $ref: '#/components/schemas/SubscriptionStatusEnum'
+        end_date:
           type: string
           format: date-time
         is_new:
           type: boolean
-        plan_id:
-          type: string
-          writeOnly: true
       required:
       - customer_id
       - plan_detail

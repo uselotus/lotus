@@ -3,6 +3,16 @@
 from django.db import migrations, models
 
 
+def delete_dups(apps, schema_editor):
+    Customer = apps.get_model("metering_billing", "Customer")
+    for row in Customer.objects.all().order_by("pk"):
+        org = row.organization
+        email = row.email
+        pk = row.pk
+        others = Customer.objects.filter(organizaiton=org, email=email).exclude(pk=pk)
+        others.delete()
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
