@@ -71,10 +71,10 @@ const AppRoutes: FC = () => {
             <Route path="/customers" element={<ViewCustomers />} />
             <Route path="/metrics" element={<ViewMetrics />} />
             <Route path="/customers-create" element={<CreatePlan />} />
-            <Route
+            {/* <Route
               path="/customers-create-credit/:customerId"
               element={<CreateCredit />}
-            />
+            /> */}
             <Route
               path="/settings/:tab"
               element={getSettingsTab(<SettingsPage />)}

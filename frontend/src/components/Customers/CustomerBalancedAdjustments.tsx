@@ -1,5 +1,5 @@
 import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
-import { FC, useState } from "react";
+import { FC, useState, useEffect } from "react";
 // @ts-ignore
 import React from "react";
 import { BalanceAdjustments } from "../../types/invoice-type";
@@ -7,19 +7,12 @@ import { BalanceAdjustments } from "../../types/invoice-type";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  UseQueryResult,
-} from "react-query";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
 import { BalanceAdjustment, Plan } from "../../api/api";
-import LoadingSpinner from "../LoadingSpinner";
 import { MoreOutlined } from "@ant-design/icons";
-import { InitialExternalLinks } from "../../types/plan-type";
 import { toast } from "react-toastify";
 import { ColumnsType } from "antd/es/table";
-import { TableRowSelection } from "antd/es/table/interface";
+import CreateCredit from "../../pages/CreateBalanceAdjustment";
 
 interface Props {
   customerId: string;
@@ -35,6 +28,8 @@ const defaultView = "grouped";
 const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   const [selectedView, setSelectedView] = useState(defaultView);
   const [selectedCurrency, setSelectedCurrency] = useState("All");
+  const [showCreateCredit, setShowCreateCredit] = useState(false);
+  const [transformedData, setTransformedData] = useState<DataType[]>([]);
 
   const { data, isLoading, refetch }: UseQueryResult<BalanceAdjustments[]> =
     useQuery<BalanceAdjustments[]>(["balance_adjustments", customerId], () =>
@@ -148,12 +143,12 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
     ),
   };
 
-  const getTableData = () => {
+  useEffect(() => {
     if (selectedView === views[0]) {
       const parentAdjustments = data?.filter(
         (item) => !item.parent_adjustment_id
       );
-      return parentAdjustments.map((parentAdjustment) => {
+      const newData = parentAdjustments.map((parentAdjustment) => {
         const childAdjustments = data?.filter(
           (item) => item.parent_adjustment_id === parentAdjustment.adjustment_id
         );
@@ -171,9 +166,11 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           };
         }
       });
+      setTransformedData(newData);
+    } else {
+      setTransformedData(data);
     }
-    return data;
-  };
+  }, [data, selectedView]);
 
   const getTableColumns = () => {
     if (selectedView === views[0]) {
@@ -225,24 +222,46 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
             />
           </div>
         </div>
-        <Button
-          type="primary"
-          className="mr-4"
-          size="large"
-          disabled={true}
-          onClick={() => navigate("/customers-create-credit/" + customerId)}
-        >
-          Create Credit
-        </Button>
+        {!showCreateCredit ? (
+          <Button
+            type="primary"
+            className="mr-4"
+            size="large"
+            disabled={false}
+            onClick={() => setShowCreateCredit(true)}
+          >
+            Create Credit
+          </Button>
+        ) : (
+          <Button
+            type="default"
+            className="mr-4"
+            size="large"
+            disabled={false}
+            onClick={() => setShowCreateCredit(false)}
+          >
+            Close Create Credit
+          </Button>
+        )}
       </div>
+      {showCreateCredit && (
+        <CreateCredit
+          customerId={customerId}
+          onSubmit={() => {
+            setShowCreateCredit(false);
+            refetch();
+          }}
+        />
+      )}
+
       {!!data?.length ? (
         <Table
           rowKey={(record) => record.adjustment_id}
           columns={getTableColumns()}
           dataSource={
             selectedCurrency === "All"
-              ? getTableData()
-              : getTableData().filter(
+              ? transformedData
+              : transformedData.filter(
                   (v) => v.pricing_unit.code === selectedCurrency
                 )
           }
