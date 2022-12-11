@@ -1167,7 +1167,6 @@ class APIToken(AbstractAPIKey):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="org_api_keys"
     )
-    name = models.CharField(max_length=200, default="latest_token")
 
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"

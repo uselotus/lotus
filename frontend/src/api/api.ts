@@ -11,6 +11,11 @@ import {
   WebhookEndpointUpdate,
 } from "../types/webhook-type";
 import {
+  APIKeyType,
+  APIKeyCreate,
+  APIKeyCreateResponse,
+} from "../types/apikey-type";
+import {
   PlanType,
   CreatePlanType,
   UpdatePlanType,
@@ -258,6 +263,16 @@ export const Webhook = {
     wh_id: number,
     post: WebhookEndpointUpdate
   ): Promise<WebhookEndpoint> => requests.patch(`api/webhooks/${wh_id}/`, post),
+};
+
+export const APIKey = {
+  getKeys: (): Promise<APIKeyType[]> => requests.get("api/api_tokens/"),
+  createKey: (post: APIKeyCreate): Promise<APIKeyCreateResponse> =>
+    requests.post("api/api_tokens/", post),
+  deleteKey: (prefix: string): Promise<any> =>
+    requests.delete(`api/api_tokens/${prefix}/`),
+  rollKey: (prefix: string): Promise<APIKeyCreateResponse> =>
+    requests.post(`api/api_tokens/${prefix}/roll/`, {}),
 };
 
 export const Authentication = {
