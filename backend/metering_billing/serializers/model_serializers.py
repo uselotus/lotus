@@ -117,7 +117,7 @@ class APITokenSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         api_key, key = APIToken.objects.create_key(**validated_data)
         num_matching_prefix = APIToken.objects.filter(prefix=api_key.prefix).count()
-        while num_matching_prefix >= 1:
+        while num_matching_prefix > 1:
             api_key.delete()
             api_key, key = APIToken.objects.create_key(**validated_data)
             num_matching_prefix = APIToken.objects.filter(prefix=api_key.prefix).count()

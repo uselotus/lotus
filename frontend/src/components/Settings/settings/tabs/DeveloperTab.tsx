@@ -97,15 +97,14 @@ export const DeveloperTab = () => {
   );
 
   const {
-    isLoadingWebhook,
+    isLoading:isLoadingWebhook,
     data: webhookData,
-    refetchWebhook,
+    refetch: refetchWebhook,
   } = useQuery("webhook_urls", () => Webhook.getEndpoints());
 
   const {
-    isLoadingAPIKey,
     data: apiKeyData,
-    refetchAPIKey,
+    refetch: refetchAPIKey,
   } = useQuery("api_keys", () => APIKey.getKeys());
 
   const createWebhookMutation = useMutation(
@@ -188,10 +187,11 @@ export const DeveloperTab = () => {
     let endpointPost: APIKeyCreate = {
       name: apiKeyName,
     };
-    // if expiry date is a datetime parseable string, includ it in endpointPost
+    // if expiry date is a datetime parseable string, include it in endpointPost
     if (apiKeyExpire !== undefined && apiKeyExpire !== "") {
       endpointPost["expiry_date"] = apiKeyExpire;
     }
+
     createAPIKeyMutation.mutate(endpointPost);
   };
 
@@ -444,17 +444,19 @@ export const DeveloperTab = () => {
         }
       >
         <div className="flex flex-col space-y-8">
-          <p className="text-lg font-main">API Key Name:</p>
+          <span className="text-lg font-main">API Key Name:</span>
 
           <Input
             value={apiKeyName}
+            className="mt-0"
             onChange={(e) => setAPIKeyName(e.target.value)}
           ></Input>
         </div>
-        <div className="flex flex-col space-y-8">
-          <p className="text-lg font-main">Expiry Date + Time:</p>
+        <div className="flex flex-col mt-10 space-y-8">
+          <span className="text-lg font-main">Expiry Date + Time:</span>
           <DatePicker
             showTime
+            className="mt-0"
             onChange={(date, dateString) => setAPIKeyExpire(dateString)}
           />
         </div>
