@@ -85,7 +85,7 @@ Best if you want to keep your data local or want full control and extensibility.
 4. Rename `env/.env.prod.example` to `env/.env.prod`. Make sure you don't commit your secret environment variables anywhere!
 5. Build and run the Docker Image!
    ```sh
-   docker-compose -f docker-compose.prod.yaml up --build
+   docker-compose -f docker-compose.prod.yaml --env-file env/.env.prod up --build
    ```
    You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
 
@@ -147,10 +147,8 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 Email Us: founders@uselotus.io
 
-
 Message Us on Slack: <a href="https://join.slack.com/t/lotus-community/shared_invite/zt-1ghi61p9j-ADYbp3tEL~N16AxQr2mlzA"><img src="https://img.shields.io/badge/slack-lotus-E01E5A.svg?logo=slack&labelColor=2EB67D" alt="Join Lotus on Slack"></a>
 
 Or visit www.uselotus.io
 
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
-

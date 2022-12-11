@@ -9,17 +9,19 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+import datetime
 import logging
 import os
 import re
 import ssl
-from datetime import timedelta
+from datetime import timedelta, timezone
 from json import loads
 from pathlib import Path
 from urllib.parse import urlparse
 
 import dj_database_url
 import django_heroku
+import jwt
 import kafka_helper
 import posthog
 import sentry_sdk
@@ -29,6 +31,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
+from svix.api import EventTypeIn, Svix, SvixAsync, SvixOptions
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,11 +70,12 @@ STRIPE_SECRET_KEY = (
     STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
 )
 # Get it from the section in the Stripe dashboard where you added the webhook endpoint
-DJSTRIPE_WEBHOOK_SECRET = config("WEBHOOK_SECRET", default="whsec_")
+DJSTRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
-
-
+# Webhooks for Svix
+SVIX_API_KEY = config("SVIX_API_KEY", default="")
+SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
 # Optional Observalility Services
 CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
 
@@ -111,6 +115,7 @@ else:
     ALLOWED_HOSTS = [
         "*uselotus.io",
     ]
+
 
 # Application definition
 
@@ -161,7 +166,8 @@ else:
 EMAIL_DOMAIN = os.environ.get("MAILGUN_DOMAIN")
 EMAIL_USERNAME = "noreply"
 DEFAULT_FROM_EMAIL = f"{EMAIL_USERNAME}@{EMAIL_DOMAIN}"
-SERVER_EMAIL = "you@uselotus.io"  # ditto (default from-email for Django errors)
+# ditto (default from-email for Django errors)
+SERVER_EMAIL = "you@uselotus.io"
 
 if PROFILER_ENABLED:
     INSTALLED_APPS.append("silk")
@@ -198,11 +204,6 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
-            "libraries": {
-                "render_vite_bundle": (
-                    "metering_billing.template_tags.render_vite_bundle"
-                ),
-            },
         },
     },
 ]
@@ -280,7 +281,7 @@ def key_deserializer(key):
 # Kafka/Redpanda Settings
 KAFKA_PREFIX = config("KAFKA_PREFIX", default="")
 KAFKA_EVENTS_TOPIC = KAFKA_PREFIX + config("EVENTS_TOPIC", default="test-topic")
-if type(KAFKA_EVENTS_TOPIC) == bytes:
+if type(KAFKA_EVENTS_TOPIC) is bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
@@ -320,8 +321,6 @@ if KAFKA_HOST:
 
     PRODUCER_CONFIG = producer_config
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
-    # print(PRODUCER.__dict__["_sender"].__dict__)
-    # print("PRODUCER PRODUCER STARTUP")
     ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
     existing_topics = ADMIN_CLIENT.list_topics()
@@ -465,6 +464,8 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "metering_billing.custom_exception_handler.custom_exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
+
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Lotus API",
     "DESCRIPTION": (
@@ -488,7 +489,28 @@ SPECTACULAR_SETTINGS = {
             "TokenAuth": [],
         }
     ],
+    "PREPROCESSING_HOOKS": [
+        "metering_billing.openapi_hooks.remove_subscription_delete"
+    ],
+    "ENUM_NAME_OVERRIDES": {
+        "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
+        "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
+        "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
+        "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
+        "SubscriptionStatusEnum": "metering_billing.utils.enums.SUBSCRIPTION_STATUS.choices",
+        "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",
+        "PlanStatusEnum": "metering_billing.utils.enums.PLAN_STATUS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "ProductStatusEnum": "metering_billing.utils.enums.PRODUCT_STATUS.choices",
+        "InvoiceStatusEnum": "metering_billing.utils.enums.INVOICE_STATUS.choices",
+        "FailureStatusEnum": ["eror"],
+        "SuccessStatusEnum": ["success"],
+        "TrackEventSuccessEnum": ["all", "some"],
+        "TrackEventFailureEnum": ["none"],
+        "OrganizationUserStatus": "metering_billing.utils.enums.ORGANIZATION_STATUS.choices",
+    },
 }
+
 REST_KNOX = {
     "TOKEN_TTL": timedelta(hours=2),
     "AUTO_REFRESH": True,
@@ -499,12 +521,13 @@ REST_KNOX = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOWED_ORIGIN_REGEXES = [
-        r"^https://\w+\.uselotus\.io$",
-    ]
+# if DEBUG:
+#     CORS_ALLOW_ALL_ORIGINS = True
+# else:
+#     CORS_ALLOWED_ORIGIN_REGEXES = [
+#         r"^https://\w+\.uselotus\.io$",
+#     ]
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
@@ -545,3 +568,48 @@ LOTUS_API_KEY = config("LOTUS_API_KEY", default=None)
 META = LOTUS_API_KEY and LOTUS_HOST
 # Heroku
 django_heroku.settings(locals(), logging=False)
+
+# create svix events
+if SVIX_API_KEY != "":
+    svix = Svix(SVIX_API_KEY)
+elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
+    try:
+        dt = datetime.datetime.now(timezone.utc)
+        utc_time = dt.replace(tzinfo=timezone.utc)
+        utc_timestamp = utc_time.timestamp()
+        payload = {
+            "iat": utc_timestamp,
+            "exp": 2980500639,
+            "nbf": utc_timestamp,
+            "iss": "svix-server",
+            "sub": "org_23rb8YdGqMT0qIzpgGwdXfHirMu",
+        }
+        encoded = jwt.encode(payload, SVIX_JWT_SECRET, algorithm="HS256")
+        SVIX_API_KEY = encoded
+        hostname, _, ips = socket.gethostbyname_ex("svix-server")
+        svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
+    except Exception as e:
+        svix = None
+else:
+    svix = None
+SVIX_CONNECTOR = svix
+
+if SVIX_CONNECTOR is not None:
+    svix = SVIX_CONNECTOR
+    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+    if "invoice.created" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is created",
+                archived=False,
+                name="invoice.created",
+            )
+        )
+    if "invoice.paid" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is marked as paid",
+                archived=False,
+                name="invoice.paid",
+            )
+        )

@@ -11,7 +11,7 @@ export const Paper = (props: Props | any) => {
         "py-4 px-8 rounded-lg",
         props.color === "white" ? "bg-[#FFFFFF]" : "bg-[#FAFAFA]",
         props.className,
-        props.border ? "border-2 border-solid rounded border-[#EAEAEB]" : "",
+        props.border ? "border-2 border-solid border-[#EAEAEB]" : "",
       ].join(" ")}
     />
   );

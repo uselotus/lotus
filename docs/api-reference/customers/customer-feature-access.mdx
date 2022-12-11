@@ -1,0 +1,31 @@
+---
+openapi: "GET /api/customer_feature_access/"
+title: Get Feature Access
+---
+
+Returns whether a customer has access to a boolean feature under the current subscriptions.
+
+A `Get Feature Access` call requires
+
+- customer_id the id you defined in your backend for the corresponding customer and the same id that you passed into Lotus when creating the customer
+- `feature_name` name of the feature you want to check access for.
+
+<CodeGroup>
+
+```py Python
+lotus.get_customer_feature_access(
+  customer_id= "cust_0569173ee6654369",
+  feature_name="premium_support",
+)
+```
+
+```ts Typescript
+await lotus.getCustomerFeatureAccess({
+  customerId: "cust_0569173ee6654369",
+  featureName: "slack_integration",
+});
+```
+
+</CodeGroup>
+
+---

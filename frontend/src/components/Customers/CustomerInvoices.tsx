@@ -62,9 +62,9 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       ),
     },
     {
-      title: "Invoice ID",
-      dataIndex: "invoice_id",
-      key: "invoice_id",
+      title: "Invoice #",
+      dataIndex: "invoice_number",
+      key: "invoice_number",
     },
     {
       title: "Amount",
@@ -79,7 +79,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
       dataIndex: "issue_date",
       key: "issue_date",
       render: (issue_date: string) => (
-        <span>{dayjs(issue_date).format("YYYY/MM/DD HH:mm")}</span>
+        <span>{dayjs(issue_date).format("YYYY/MM/DD")}</span>
       ),
     },
     {
@@ -102,11 +102,16 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
               <Dropdown
                 overlay={
                   <Menu>
+                    <Menu.Item key="1">
+                      <div className="archiveLabel">
+                        Download Invoice Information
+                      </div>
+                    </Menu.Item>
                     <Menu.Item
-                      key="1"
+                      key="2"
                       onClick={() => {
                         changeStatus.mutate({
-                          invoice_id: record.invoice_id,
+                          invoice_number: record.invoice_number,
                           payment_status:
                             record.payment_status === "unpaid"
                               ? "paid"
@@ -150,7 +155,13 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
         <Table
           columns={columns}
           dataSource={invoices}
-          pagination={{ pageSize: 10 }}
+          pagination={{
+            showTotal: (total, range) => (
+              <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
+            ),
+            pageSize: 6,
+          }}
+          showSorterTooltip={false}
         />
       ) : (
         <p>No invoices found</p>

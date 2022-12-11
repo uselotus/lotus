@@ -53,13 +53,19 @@ class METRIC_TYPE(models.TextChoices):
     RATE = ("rate", _("Rate"))
 
 
+class CUSTOMER_BALANCE_ADJUSTMENT_STATUS(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    INACTIVE = ("inactive", _("Inactive"))
+
+
 class METRIC_GRANULARITY(models.TextChoices):
+    SECOND = ("seconds", _("Second"))
     MINUTE = ("minutes", _("Minute"))
     HOUR = ("hours", _("Hour"))
     DAY = ("days", _("Day"))
-    WEEK = ("weeks", _("Week"))
     MONTH = ("months", _("Month"))
     QUARTER = ("quarters", _("Quarter"))
+    YEAR = ("years", _("Year"))
     TOTAL = ("total", _("Total"))
 
 
@@ -75,7 +81,6 @@ class PLAN_DURATION(models.TextChoices):
 
 
 class USAGE_BILLING_FREQUENCY(models.TextChoices):
-    WEEKLY = ("weekly", _("Weekly"))
     MONTHLY = ("monthly", _("Monthly"))
     QUARTERLY = ("quarterly", _("Quarterly"))
     END_OF_PERIOD = ("end_of_period", _("End of Period"))
@@ -143,7 +148,12 @@ class BACKTEST_STATUS(models.TextChoices):
 
 class PRODUCT_STATUS(models.TextChoices):
     ACTIVE = ("active", _("Active"))
-    DEPRECATED = ("deprecated", _("Deprecated"))
+    ARCHIVED = ("archived", _("Archived"))
+
+
+class METRIC_STATUS(models.TextChoices):
+    ACTIVE = ("active", _("Active"))
+    ARCHIVED = ("archived", _("Archived"))
 
 
 class MAKE_PLAN_VERSION_ACTIVE_TYPE(models.TextChoices):
@@ -168,3 +178,40 @@ class REPLACE_IMMEDIATELY_TYPE(models.TextChoices):
         "change_subscription_plan",
         _("Change Subscription Plan"),
     )
+
+
+class ORGANIZATION_STATUS(models.TextChoices):
+    ACTIVE = ("Active", _("Active"))
+    INVITED = ("Invited", _("Invited"))
+
+
+class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
+    INVOICE_CREATED = ("invoice.created", _("invoice.created"))
+    INVOICE_PAID = ("invoice.paid", _("invoice.paid"))
+
+
+class FLAT_FEE_BEHAVIOR(models.TextChoices):
+    REFUND = ("refund", _("Refund"))
+    PRORATE = ("prorate", _("Prorate"))
+    CHARGE_FULL = ("charge_full", _("Charge Full"))
+
+
+class USAGE_BEHAVIOR(models.TextChoices):
+    TRANSFER_TO_NEW_SUBSCRIPTION = (
+        "transfer_to_new_subscription",
+        _("Transfer to New Subscription"),
+    )
+    KEEP_SEPARATE = ("keep_separate", _("Keep Separate"))
+
+
+class INVOICING_BEHAVIOR(models.TextChoices):
+    ADD_TO_NEXT_INVOICE = ("add_to_next_invoice", _("Add to Next Invoice"))
+    INVOICE_NOW = ("invoice_now", _("Invoice Now"))
+
+
+class CHARGEABLE_ITEM_TYPE(models.TextChoices):
+    USAGE_CHARGE = ("usage_charge", _("Usage Charge"))
+    RECURRING_CHARGE = ("recurring_charge", _("Recurring Charge"))
+    ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
+    PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
+    CUSTOMER_ADJUSTMENT = ("customer_adjustment", _("Customer Adjustment"))

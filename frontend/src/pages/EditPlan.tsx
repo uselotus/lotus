@@ -39,6 +39,11 @@ import VersionActiveForm from "../components/Plans/VersionActiveForm";
 interface CustomizedState {
   plan: PlanType;
 }
+const durationConversion = {
+  monthly: "Month",
+  quarterly: "Quarter",
+  yearly: "Year",
+};
 
 interface Props {
   type: "backtest" | "version" | "custom";
@@ -92,6 +97,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         return {
           metric: component.billable_metric.billable_metric_name,
           tiers: component.tiers,
+          separate_by: component.separate_by,
+          proration_granularity: component.proration_granularity,
           id: component.billable_metric.billable_metric_name,
         };
       }
@@ -257,6 +264,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     form.submit();
   };
 
+  /// Submit Pricing Plan Http Request
   const submitPricingPlan = () => {
     form
       .validateFields()
@@ -268,6 +276,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             const usagecomponent: CreateComponent = {
               billable_metric_name: components[i].metric,
               tiers: components[i].tiers,
+              separate_by: components[i].separate_by,
+              proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
           }
@@ -285,6 +295,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           features: planFeatures,
           usage_billing_frequency: values.usage_billing_frequency,
         };
+        if (values.align_plan == "calendar_aligned") {
+          if (values.plan_duration === "yearly") {
+            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
+          }
+          if (values.plan_duration === "monthly") {
+            initialPlanVersion["day_anchor"] = 1;
+          }
+          if (values.plan_duration === "quarterly") {
+            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
+          }
+        }
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
@@ -323,6 +346,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             make_active: activeVersion,
             make_active_type: activeVersionType,
           };
+          if (values.align_plan == "calendar_aligned") {
+            if (values.plan_duration === "yearly") {
+              newVersion["day_anchor"] = 1;
+              newVersion["month_anchor"] = 1;
+            }
+            if (values.plan_duration === "monthly") {
+              newVersion["day_anchor"] = 1;
+            }
+            if (values.plan_duration === "quarterly") {
+              newVersion["day_anchor"] = 1;
+              newVersion["month_anchor"] = 1;
+            }
+          }
           if (
             values.price_adjustment_type !== undefined &&
             values.price_adjustment_type !== "none"
@@ -399,7 +435,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             flat_rate: plan.versions[versionIndex].flat_rate,
             pay_in_advance: plan.versions[versionIndex].flat_fee_billing_type,
             usage_billing_frequency:
-              plan.versions[versionIndex].usage_billing_frequency,
+              plan.versions[versionIndex].usage_billing_frequency ||
+              plan.plan_duration,
             plan_duration: plan.plan_duration,
             flat_fee_billing_type:
               plan.versions[versionIndex].flat_fee_billing_type,
@@ -409,6 +446,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             price_adjustment_type:
               plan.versions[versionIndex].price_adjustment
                 ?.price_adjustment_type || "none",
+            align_plan:
+              plan.versions[versionIndex].day_anchor !== undefined
+                ? "calendar_aligned"
+                : "subscription_aligned",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -418,7 +459,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           labelAlign="left"
         >
           <Row gutter={[24, 24]}>
-            <Col span={12}>
+            <Col span={10}>
               <Row gutter={[24, 24]}>
                 <Col span="24">
                   <Card title="Plan Information">
@@ -470,6 +511,30 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         <Radio value="yearly">Yearly</Radio>
                       </Radio.Group>
                     </Form.Item>
+                    <Form.Item
+                      label="When To Bill"
+                      name="align_plan"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please Select One",
+                        },
+                      ]}
+                    >
+                      <Radio.Group>
+                        <Radio value="calendar_aligned">
+                          Start of Every{" "}
+                          {
+                            durationConversion[
+                              form.getFieldValue("plan_duration")
+                            ]
+                          }
+                        </Radio>
+                        <Radio value="subscription_aligned">
+                          Start of Subscription
+                        </Radio>
+                      </Radio.Group>
+                    </Form.Item>
 
                     <Form.Item name="flat_rate" label="Base Cost">
                       <InputNumber
@@ -512,10 +577,15 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                 </Col>
               </Row>
             </Col>
-
-            <Col span={12}>
+            <Col span={14}>
               <Card
                 title="Added Components"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 className="h-full"
                 extra={[
                   <Button
@@ -538,11 +608,11 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                <div className="absolute inset-x-0 bottom-0 justify-center">
+                <div className="inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
-                      label="Usage Billing Frequency"
+                      label="Billing Frequency"
                       name="usage_billing_frequency"
                       shouldUpdate={(prevValues, currentValues) =>
                         prevValues.plan_duration !== currentValues.plan_duration
@@ -568,6 +638,12 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               <Card
                 className="w-full my-5"
                 title="Added Features"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
                 extra={[
                   <Button htmlType="button" onClick={showFeatureModal}>
                     Add Feature
@@ -589,7 +665,16 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               </Card>
             </Col>
             <Col span="24">
-              <Card className="w-6/12 mb-20" title="Discount">
+              <Card
+                className="w-6/12 mb-20"
+                title="Discount"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
+              >
                 <div className="grid grid-cols-2">
                   <Form.Item
                     wrapperCol={{ span: 20 }}

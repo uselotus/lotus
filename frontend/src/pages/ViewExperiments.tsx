@@ -41,6 +41,7 @@ const ViewExperiments: FC = () => {
           size="large"
           key={"create-plan"}
           type="primary"
+          disabled={true}
         >
           Create Experiment
         </Button>,

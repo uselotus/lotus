@@ -19,24 +19,26 @@ import {
   CancelSubscriptionType,
 } from "../../types/subscription-type";
 //import the Customer type from the api.ts file
-import { Customer, Plan } from "../../api/api";
 import dayjs from "dayjs";
 
-import { CustomerDetailSubscription } from "../../types/customer-type";
+import {
+  CustomerDetailSubscription,
+  DetailPlan,
+} from "../../types/customer-type";
+import DraftInvoice from "./DraftInvoice";
+import { Link } from "react-router-dom";
+import qs from "qs";
 
 interface Props {
   customer_id: string;
-  subscriptions: CustomerDetailSubscription[];
+  subscription: CustomerDetailSubscription;
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
-    subscription_id: string,
+    params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => void;
-  onCancel: (subscription_id: string, props: CancelSubscriptionType) => void;
-  onPlanChange: (
-    subscription_id: string,
-    props: ChangeSubscriptionPlanType
-  ) => void;
+  onCancel: (props: CancelSubscriptionType) => void;
+  onPlanChange: (params: object, props: ChangeSubscriptionPlanType) => void;
   onCreate: (props: CreateSubscriptionType) => void;
 }
 
@@ -64,7 +66,7 @@ interface ChangeOption {
 
 const SubscriptionView: FC<Props> = ({
   customer_id,
-  subscriptions,
+  subscription,
   plans,
   onCancel,
   onAutoRenewOff,
@@ -78,28 +80,53 @@ const SubscriptionView: FC<Props> = ({
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
 
+  const [subscriptionPlans, setSubscriptionPlans] = useState<DetailPlan[]>(
+    subscription?.plans || []
+  );
+
+  useEffect(() => {
+    if (subscription) {
+      setSubscriptionPlans(subscription.plans);
+    }
+  }, [subscription]);
+
   const selectPlan = (plan_id: string) => {
     setSelectedPlan(plan_id);
   };
 
-  const cancelAndBill = () => {
-    onCancel(subscriptions[0].subscription_id, {
-      status: "ended",
-      replace_immediately_type: "end_current_subscription_and_bill",
+  const cancelAndBill = (plan_id, subscription_filters) => {
+    onCancel({
+      bill_usage: true,
+      flat_fee_behavior: "charge_full",
+      invoicing_behavior_on_cancel: "invoice_now",
+      plan_id: plan_id,
+      subscription_filters: subscription_filters,
+      customer_id: customer_id,
     });
   };
 
-  const cancelAndDontBill = () => {
-    onCancel(subscriptions[0].subscription_id, {
-      status: "ended",
-      replace_immediately_type: "end_current_subscription_dont_bill",
+  const cancelAndDontBill = (plan_id, subscription_filters) => {
+    onCancel({
+      customer_id: customer_id,
+      plan_id: plan_id,
+      subscription_filters: subscription_filters,
+      bill_usage: false,
+      flat_fee_behavior: "refund",
+      invoicing_behavior_on_cancel: "invoice_now",
     });
   };
 
-  const turnAutoRenewOff = () => {
-    onAutoRenewOff(subscriptions[0].subscription_id, {
-      auto_renew: false,
-    });
+  const turnAutoRenewOff = (plan_id, subscription_filters) => {
+    onAutoRenewOff(
+      {
+        plan_id: plan_id,
+        subscription_filters: subscription_filters,
+        customer_id: customer_id,
+      },
+      {
+        turn_off_auto_renew: true,
+      }
+    );
   };
 
   useEffect(() => {
@@ -125,69 +152,76 @@ const SubscriptionView: FC<Props> = ({
     }
   }, [plans]);
 
-  const cancelMenu = (
+  const cancelMenu = (plan_id: string, subscription_filters?: object[]) => (
     <Menu
       items={[
         {
-          label: <div onClick={() => cancelAndBill()}>Cancel and Bill Now</div>,
-          key: "0",
-        },
-        {
           label: (
-            <div onClick={() => cancelAndDontBill()}>
-              Cancel Without Billing
+            <div onClick={() => cancelAndBill(plan_id, subscription_filters)}>
+              Cancel and Bill Now
             </div>
           ),
-          key: "1",
+          key: "0",
         },
+        // {
+        //   label: (
+        //     <div
+        //       onClick={() => cancelAndDontBill(plan_id, subscription_filters)}
+        //     >
+        //       Cancel Without Billing & Refund
+        //     </div>
+        //   ),
+        //   key: "1",
+        // },
         {
-          label: <div onClick={() => turnAutoRenewOff()}>Cancel Renewal</div>,
+          label: (
+            <div
+              onClick={() => turnAutoRenewOff(plan_id, subscription_filters)}
+            >
+              Cancel Renewal
+            </div>
+          ),
           key: "2",
         },
       ]}
     />
   );
 
-  const plansWithSwitchOptions = planList?.reduce((acc, plan) => {
-    if (plan.label !== subscriptions[0]?.billing_plan_name) {
-      acc.push({
-        label: plan.label,
-        value: plan.value,
-        children: [
-          {
-            label:
-              "End current subscription and bill + start new subscription with selected plan",
-            value: "end_current_subscription_and_bill",
-          },
-          {
-            label:
-              "End current subscription and don't bill + start new subscription with selected plan",
-            value: "end_current_subscription_dont_bill",
-          },
-          {
-            label: "Switch plan mid-subscription",
-            value: "change_subscription_plan",
-          },
-        ],
-      } as PlanOption);
-    }
-    return acc;
-  }, [] as PlanOption[]);
+  const plansWithSwitchOptions = (plan_id: string) =>
+    planList?.reduce((acc, plan) => {
+      if (plan.value !== plan_id) {
+        acc.push({
+          label: plan.label,
+          value: plan.value,
+        } as PlanOption);
+      }
+      return acc;
+    }, [] as PlanOption[]);
 
-  const onChange = (value: string[], selectedOptions: PlanOption[]) => {
-    onPlanChange(subscriptions[0].subscription_id, {
-      plan_id: selectedOptions[0].value,
-      replace_immediately_type: value[1] as
-        | "change_subscription_plan"
-        | "end_current_subscription_and_bill"
-        | "end_current_subscription_dont_bill",
-    });
+  const onChange = (
+    value: any,
+    selectedOptions: PlanOption[],
+    plan_id: string,
+    subscription_filters: object[]
+  ) => {
+    onPlanChange(
+      {
+        plan_id: plan_id,
+        customer_id: customer_id,
+        subscription_filters: subscription_filters,
+      },
+      {
+        replace_plan_id: selectedOptions[0].value,
+      }
+    );
   };
 
-  const switchMenu = (
+  const switchMenu = (plan_id: string, subscription_filters: object[]) => (
     <Cascader
-      options={plansWithSwitchOptions}
-      onChange={onChange}
+      options={plansWithSwitchOptions(plan_id)}
+      onChange={(value, selectedOptions) =>
+        onChange(value, selectedOptions, plan_id, subscription_filters)
+      }
       expandTrigger="hover"
       placeholder="Please select"
       showSearch={{ filter }}
@@ -209,8 +243,7 @@ const SubscriptionView: FC<Props> = ({
     }
     form.resetFields();
   };
-
-  if (subscriptions.length === 0) {
+  if (subscription === null) {
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
@@ -245,54 +278,82 @@ const SubscriptionView: FC<Props> = ({
   }
   return (
     <div className="mt-auto">
-      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plan</h2>
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
       <div className="flex flex-col justify-center">
         <List>
-          {subscriptions.map((subscription) => (
-            <List.Item>
-              <Card className=" bg-grey3 w-full">
-                <div className="grid grid-cols-3 items-stretch">
-                  <h2 className="font-main font-bold">
-                    {subscription.billing_plan_name}
-                  </h2>
-                  <div className="flex flex-col justify-center space-y-3">
-                    <p>
-                      <b>Subscription ID: </b> {subscription.subscription_id}
-                    </p>
-                    <p>
-                      <b>Start Date:</b>{" "}
-                      {dayjs(subscription.start_date).format(
-                        "YYYY/MM/DD HH:mm"
-                      )}{" "}
-                      UTC
-                    </p>
-                    <p>
-                      <b>End Date:</b>{" "}
-                      {dayjs(subscription.end_date).format("YYYY/MM/DD HH:mm")}{" "}
-                      UTC
-                    </p>
-                    <p>
-                      <b>Renews:</b>{" "}
-                      {subscription.auto_renew ? (
-                        <Tag color="green">Yes</Tag>
-                      ) : (
-                        <Tag color="red">No</Tag>
-                      )}
-                    </p>
+          {subscriptionPlans.map((subPlan) => (
+            <Fragment key={subPlan.plan_detail.version_id}>
+              <List.Item>
+                <Card className=" bg-grey3 w-full">
+                  <div className="grid grid-cols-2 items-stretch">
+                    <div>
+                      <Link to={"../plans/" + subPlan.plan_detail.plan_id}>
+                        {" "}
+                        <h2 className="font-main font-bold hover:underline">
+                          {subPlan.plan_detail.plan_name}
+                        </h2>
+                      </Link>
+                      <b>Subscription Filters: </b>{" "}
+                      {subPlan.subscription_filters &&
+                      subPlan.subscription_filters.length > 0
+                        ? subPlan.subscription_filters?.map((filter) => (
+                            <div>
+                              {filter["property_name"]}: {filter["value"]}
+                            </div>
+                          ))
+                        : "None"}
+                    </div>
+
+                    <div className="grid grid-cols-2 justify-center space-y-3">
+                      <p className=""></p>
+                      <p>
+                        <b>Start Date:</b>{" "}
+                        {dayjs(subPlan.start_date).format("YYYY/MM/DD HH:mm")}{" "}
+                      </p>
+
+                      <p>
+                        <b>Renews:</b>{" "}
+                        {subPlan.auto_renew ? (
+                          <Tag color="green">Yes</Tag>
+                        ) : (
+                          <Tag color="red">No</Tag>
+                        )}
+                      </p>
+                      <p>
+                        <b>End Date:</b>{" "}
+                        {dayjs(subPlan.end_date).format("YYYY/MM/DD HH:mm")}{" "}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            </List.Item>
+                  <div className="grid grid-cols-2 w-full space-x-5 mt-12">
+                    <Dropdown
+                      overlay={switchMenu(
+                        subPlan.plan_detail.plan_id,
+                        subPlan.subscription_filters
+                      )}
+                      trigger={["click"]}
+                      className="w-6/12 justify-self-center"
+                    >
+                      <Button>Switch Plan</Button>
+                    </Dropdown>
+                    <Dropdown
+                      overlay={cancelMenu(
+                        subPlan.plan_detail.plan_id,
+                        subPlan.subscription_filters
+                      )}
+                      trigger={["click"]}
+                      className="w-6/12 justify-self-center"
+                    >
+                      <Button>Cancel Subscriptions</Button>
+                    </Dropdown>
+                  </div>
+                </Card>
+              </List.Item>
+            </Fragment>
           ))}
         </List>
-        <div className="grid grid-cols-2 w-full space-x-5 my-6">
-          <Dropdown overlay={switchMenu} trigger={["click"]}>
-            <Button>Switch Plan</Button>
-          </Dropdown>
-          <Dropdown overlay={cancelMenu} trigger={["click"]}>
-            <Button>Cancel Subscription</Button>
-          </Dropdown>
-        </div>
+
+        <DraftInvoice customer_id={customer_id} />
       </div>
     </div>
   );

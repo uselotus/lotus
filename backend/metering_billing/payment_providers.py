@@ -238,9 +238,7 @@ class StripeConnector(PaymentProvider):
                 external_payment_obj_id=stripe_invoice.id
             ).exists():
                 continue
-            cost_due = Money(
-                Decimal(stripe_invoice.amount_due) / 100, stripe_invoice.currency
-            )
+            cost_due = Decimal(stripe_invoice.amount_due) / 100
             invoice_kwargs = {
                 "customer": customer,
                 "cost_due": cost_due,
@@ -322,7 +320,7 @@ class StripeConnector(PaymentProvider):
             #     "enabled": True,
             # },
             "description": "Invoice from {}".format(customer.organization.company_name),
-            "currency": invoice.cost_due.currency,
+            "currency": invoice.currency.code.lower(),
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
@@ -333,23 +331,32 @@ class StripeConnector(PaymentProvider):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
-        for line_item in invoice.inv_line_items.all():
+        for line_item in invoice.line_items.all().order_by(
+            F("associated_subscription_record").desc(nulls_last=True)
+        ):
             name = line_item.name
-            amount = line_item.subtotal.amount
+            amount = line_item.subtotal
             customer = stripe_customer_id
-            currency = line_item.subtotal.currency
             period = {
                 "start": int(line_item.start_date.timestamp()),
                 "end": int(line_item.end_date.timestamp()),
             }
             tax_behavior = "exclusive"
+            sr = line_item.associated_subscription_record
+            metadata = {
+                "plan_name": sr.billing_plan.plan.plan_name,
+            }
+            filters = sr.filters.all()
+            for f in filters:
+                metadata[f.property_name] = f.comparison_value[0]
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),
                 "customer": customer,
-                "currency": currency,
                 "period": period,
+                "currency": invoice.currency.code.lower(),
                 "tax_behavior": tax_behavior,
+                "metadata": metadata,
             }
             stripe.InvoiceItem.create(**inv_dict)
         stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
@@ -457,9 +464,9 @@ class StripeConnector(PaymentProvider):
             except Customer.DoesNotExist:
                 continue
             sub_items = subscription["items"]
-            item_ids = set([x["price"]["id"] for x in sub_items["data"]]) | set(
+            item_ids = {x["price"]["id"] for x in sub_items["data"]} | {
                 [x["price"]["product"] for x in sub_items["data"]]
-            )
+            }
             matching_plans = list(filter(lambda x: x[1] & item_ids, lotus_plans))
             # if no plans match any of the items, don't transfer
             if len(matching_plans) == 0:

@@ -26,7 +26,6 @@ web/static/CACHE
 stats
 Dockerfile*
 static/
-frontend/
 staticfiles/
 
 #react

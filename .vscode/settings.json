@@ -1,27 +1,22 @@
 {
-  "python.linting.pylintEnabled": true,
-  "python.linting.enabled": false,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.defaultFormatter": null,
   "[typescript]": {
+    "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter"
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.python"
   },
-  "editor.formatOnSave": true,
+  "isort.args": ["--profile", "black", "--filter-files"],
+  "python.formatting.provider": "black",
   "python.testing.pytestArgs": ["${workspaceFolder}/metering_billing"],
   "python.unitTest.unittestEnabled": false,
   "python.unitTest.nosetestsEnabled": false,
   "python.unitTest.pyTestEnabled": true,
-  "[properties]": {
-    "editor.defaultFormatter": "foxundermoon.shell-format"
+  "python.linting.pylintEnabled": false,
+  "python.linting.enabled": false,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "zenMode.centerLayout": false,
-  "zenMode.fullScreen": false,
-  "zenMode.hideActivityBar": false,
-  "zenMode.hideLineNumbers": false,
-  "zenMode.hideStatusBar": false,
-  "zenMode.hideTabs": false,
-  "zenMode.restore": false,
-  "zenMode.silentNotifications": false
 }

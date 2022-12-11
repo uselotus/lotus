@@ -1,0 +1,27 @@
+---
+openapi: "GET /api/plans/{plan_id}/"
+---
+
+Retrieves a [plan_detail](/api-reference/plans/plan-object) object.
+
+A `Retrieve Plan` call requires
+
+- `plan_id` the plan id
+
+<CodeGroup>
+
+```py Python
+lotus.get_plan(
+    plan_id='plan_0569173e-e665-4369',
+)
+```
+
+```ts Typescript
+await lotus.retrievePlan({
+  planId: "plan_0569173e-e665-4369", // required
+}); // Will return a promise
+```
+
+</CodeGroup>
+
+---

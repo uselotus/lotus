@@ -48,6 +48,9 @@ lotus-python = ">=0.1.1"
 kafka-python = "*"
 kafka-helper = "*"
 cronitor = "*"
+svix = "*"
+drf-nested-routers = "*"
+pyjwt = "*"
 
 [dev-packages]
 platformdirs = "*"

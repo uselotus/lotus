@@ -1,0 +1,30 @@
+---
+title: "Managing Feature Access"
+---
+
+While pricing is the obvious variable to tweak, packaging is potentially even
+more important to iterate on and match the evolving customer segments your SaaS
+serves.
+
+Lotus is built to enable the management of packaging as well as pricing
+and can plug into your product's code to accomplish this.
+
+Since Lotus acts as a source of truth for your pricing plans, you can pull
+information about what features a customer currently has access to.
+
+By storing the feature and usage entitlements of each customer in Lotus, you are now free
+to change packaging in one place without completely overhauling custom code in
+your application.
+
+You can implement this core capability programmatically by following this
+([guide](/api-reference/customers/get-customer-access)).
+
+You can check if a customer has access to both:
+
+- Components: Checking if a customer has access to free units as part of their
+  current plan or checking the max limit on their units.
+- Features: Checking if a customer has access to a boolean feature like a
+  certain integration or page in the application.
+
+This feature access is meant to augment existing authorization infrastructure so
+that entitlements can change flexibly as you change your plans in Lotus.

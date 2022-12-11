@@ -106,6 +106,12 @@ const DemoSignup: React.FC = () => {
               <Card
                 title={"Create Lotus Demo Account"}
                 className="flex flex-col"
+                style={{
+                  borderRadius: "0.5rem",
+                  borderWidth: "2px",
+                  borderColor: "#EAEAEB",
+                  borderStyle: "solid",
+                }}
               >
                 {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
                 <Form onFinish={handleSignUp} name="create_organization">

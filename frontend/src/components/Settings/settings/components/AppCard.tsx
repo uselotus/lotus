@@ -26,6 +26,7 @@ export const AppCard = ({
         style={{
           boxShadow: "0 2px 4px 0 #a8a8a833",
         }}
+        hoverable={true}
         title={<Avatar shape="square" src={icon} />}
         size="small"
         extra={
@@ -59,11 +60,13 @@ export const AppCard = ({
           description={description}
         />
         <div className="separator pt-4" />
-        <div className="flex justify-end pt-4">
-          <Link to={title.toLowerCase()}>
-            <h3 className="text-darkgold">View Integration</h3>
-          </Link>
-        </div>
+        {connected && (
+          <div className="flex justify-end pt-4">
+            <Link to={title.toLowerCase()}>
+              <h3 className="text-darkgold">View Integration</h3>
+            </Link>
+          </div>
+        )}
       </Card>
     </div>
   );

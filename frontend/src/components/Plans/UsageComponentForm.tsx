@@ -1,7 +1,14 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  Fragment,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Button,
   Checkbox,
+  Collapse,
   Form,
   Input,
   InputNumber,
@@ -20,6 +27,8 @@ import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
 
 const { Option } = Select;
+const { Panel } = Collapse;
+
 const EditableContext = React.createContext<FormInstance<any> | null>(null);
 type EditableTableProps = Parameters<typeof Table>[0];
 
@@ -34,7 +43,6 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
       if (tier.range_end !== undefined && tier.range_start >= tier.range_end) {
         return { isValid: false, message: "Range is not valid" };
       }
-
       currentStart = tier.range_start;
       currentEnd = tier.range_end;
 
@@ -240,12 +248,17 @@ function UsageComponentForm({
 }: Props) {
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
-  const [isCharge, setIsCharge] = useState(
-    editComponentItem?.free_metric_units !== undefined ? true : false
+  const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
+  const [separateByProperties, setSeparateByProperties] = useState<string[]>(
+    editComponentItem?.separate_by ?? []
   );
-  const [isLimit, setIsLimit] = useState(
-    editComponentItem?.max_metric_units ? true : false
+  const [metricStateful, setMetricStateful] = useState<boolean>(false);
+  const selectedMetricName = Form.useWatch("metric", form);
+
+  const [prorationGranularity, setProrationGranularity] = useState<string>(
+    editComponentItem?.proration_granularity ?? "total"
   );
+
   const initalData = editComponentItem ?? null;
   const [errorMessage, setErrorMessage] = useState("");
   const buttonRef = useRef<HTMLButtonElement | undefined>(undefined!);
@@ -262,6 +275,42 @@ function UsageComponentForm({
     editComponentItem?.tiers[0]?.range_end ?? 0
   );
 
+  /// Ouput accepted proration grandularities for a given metric
+  /// with a given period
+  const generateValidProrationGranularity = () => {
+    const all_proration_granularity = [
+      "seconds",
+      "minutes",
+      "hours",
+      "days",
+      "months",
+    ];
+    const currentMetric = metricObjects.find(
+      (metric) => metric.billable_metric_name === form.getFieldValue("metric")
+    );
+
+    var valid_granularities: string[] = [];
+    if (currentMetric) {
+      for (var i = 0; i < all_proration_granularity.length; i++) {
+        if (currentMetric.granularity === all_proration_granularity[i]) {
+          valid_granularities.push(all_proration_granularity[i]);
+          break;
+        } else {
+          valid_granularities.push(all_proration_granularity[i]);
+        }
+      }
+    }
+    return valid_granularities;
+  };
+
+  useEffect(() => {
+    setMetricStateful(
+      metricObjects.find(
+        (metric) => metric.billable_metric_name === selectedMetricName
+      )?.metric_type === "stateful"
+    );
+  }, [selectedMetricName]);
+
   useEffect(() => {
     Metrics.getMetrics().then((res) => {
       const data = res;
@@ -271,8 +320,13 @@ function UsageComponentForm({
           if (typeof data[i].billable_metric_name !== undefined) {
             metricList.push(data[i].billable_metric_name as unknown as string);
           }
+
+          if (editComponentItem?.metric === data[i].billable_metric_name) {
+            setMetricStateful(data[i].metric_type === "stateful");
+          }
         }
         setMetrics(metricList);
+        setMetricObjects(data);
       }
     });
   }, []);
@@ -345,7 +399,7 @@ function UsageComponentForm({
 
       editable: true,
       render: (text: any, record: Tier) => {
-        if (record.range_end === undefined || record.range_end === "") {
+        if (record.range_end === undefined || record.range_end === null) {
           return "∞";
         } else {
           return record.range_end;
@@ -458,7 +512,9 @@ function UsageComponentForm({
             ) {
               handleComponentAdd({
                 metric: values.metric,
+                separate_by: separateByProperties,
                 tiers: currentTiers,
+                proration_granularity: prorationGranularity,
               });
 
               form.submit();
@@ -535,6 +591,63 @@ function UsageComponentForm({
         {errorMessage !== "" && (
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
+        <div className="mt-8 mb-12">
+          <Collapse
+            className="col-span-full bg-white py-8 rounded"
+            defaultActiveKey={"1"}
+          >
+            <Panel header="Advanced Settings" key="1">
+              {/* <div className="mb-8">
+                (Optional) Separate Reporting Based on Distinct Property Value
+              </div>
+
+              <div className="grid grid-flow-col items-center mb-8">
+                <p>Property:</p>
+                <Input
+                  onChange={(e) => {
+                    setSeparateByProperties([e.target.value]);
+                  }}
+                  value={separateByProperties[0]}
+                ></Input>
+              </div>
+              {separateByProperties &&
+                separateByProperties[0] !== "" &&
+                separateByProperties[0] !== undefined && (
+                  <p className=" text-darkgold mb-8">
+                    Important: Only events that contain the property with name{" "}
+                    {separateByProperties} will be counted under this metric.
+                  </p>
+                )} */}
+
+              {metricStateful === true && (
+                <Fragment>
+                  <div className="separator mb-8"></div>
+                  <div className="grid grid-flow-col items-center mb-4">
+                    <p>Proration Granularity:</p>
+                    <Select
+                      onChange={(value) => {
+                        setProrationGranularity(value);
+                      }}
+                      value={prorationGranularity}
+                    >
+                      {generateValidProrationGranularity().map(
+                        (granularity) => (
+                          <Option value={granularity}>{granularity}</Option>
+                        )
+                      )}
+                      <Option value="total">none</Option>
+                    </Select>
+                  </div>
+                  {prorationGranularity === "total" && (
+                    <p className=" text-darkgold mb-4">
+                      Proration will not be applied to this component.
+                    </p>
+                  )}
+                </Fragment>
+              )}
+            </Panel>
+          </Collapse>
+        </div>
       </Form>
     </Modal>
   );

@@ -39,6 +39,8 @@ export interface CreatePlanVersionType {
   price_adjustment?: PriceAdjustment;
   make_active?: boolean;
   make_active_type?: string;
+  day_anchor?: number;
+  month_anchor?: number;
 }
 
 export interface CreatePlanExternalLinkType extends InitialExternalLinks {
@@ -65,6 +67,7 @@ export interface PlanVersionType
   transition_to: string;
   active_subscriptions: number;
   features: FeatureType[];
+  plan_name?: string;
   usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
 }
 
@@ -106,6 +109,8 @@ export interface CreateVersionType {
   make_active: boolean;
   make_active_type?: string;
   replace_immediately_type?: string;
+  day_archor?: number;
+  month_anchor?: number;
 }
 
 export interface CreateComponent extends Omit<Component, "billable_metric"> {
@@ -115,6 +120,8 @@ export interface CreateComponent extends Omit<Component, "billable_metric"> {
 export interface Component {
   billable_metric: MetricType;
   tiers: Tier[];
+  separate_by: string[];
+  proration_granularity: string;
   id?: number;
 }
 

@@ -1,0 +1,59 @@
+---
+title: "Ingesting Usage"
+description: "Much like many product analytics software, Lotus integrates into your backend
+and tracks usage events when you recognize them."
+---
+
+Using our SDKs or native API calls, Lotus ingests events that then can be
+matched to billable metrics and associated with pricing plans. After sending a
+usage event to Lotus, you no longer have to worry about that event being tracked
+or computed for billing later down the line.
+
+## Setup
+
+For every billable metric you define, you need to put a track event API or SDK
+call in your backend with the associated.
+
+Events are defined as the following:
+
+```json
+{
+    "event_name": string, // [required], name of the type of event, defined in your billable metrics
+    "idempotency_id": string,//[required], unique id of the specific event instance
+    "properties": object, //[optional] dictionary of extra information
+    "customer_id": string, //[required] customer associated with the event
+    "time_created": string, //[required] timestamp when the event occured
+}
+```
+
+The `event_name` should correspond to what the event is and match what you
+define in your metrics.
+
+The `time_created` is an ISO 8601 format date in UTC (no timezone offset).
+
+The `idempotency_id` is a unique identifier for the specific event being passed
+in. Passing in a unique id allows Lotus to make sure no double counting occurs.
+
+The `properties` object is how you can extend your event information. In your
+metrics, you can define properties to filter or aggregate over.
+
+_Therefore, you should include as many important characteristics in your
+properties as possible._
+
+The `customer_id` is the id you defined in your backend for the corresponding
+customer and the same id that you passed into Lotus when creating the customer.
+
+## Segment Integration (Contact Us)
+
+The segment integration allows companies who are already metering and tracking
+customer usage through Segment to route and transform their data into Lotus
+without bothering to add our sdk calls in addition to the current analytics.js
+you have.
+
+Our Segment integration is not public yet. However, if you are using Lotus
+Cloud, reach out to our team if you are interested.
+
+## Events Debugger
+
+In order to be sure Lotus is collecting your events correctly, you can use the
+debugger in the Metrics Tab.

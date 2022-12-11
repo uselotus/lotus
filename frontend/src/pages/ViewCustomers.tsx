@@ -1,4 +1,5 @@
-import React, { FC, useEffect, useState } from "react";
+// @ts-ignore
+import React, { FC, useState } from "react";
 import CustomerTable from "../components/Customers/CustomerTable";
 import {
   CustomerPlus,
@@ -74,6 +75,7 @@ const ViewCustomers: FC = () => {
       email: state.email,
       payment_provider: state.payment_provider,
       payment_provider_id: state.payment_provider_id,
+      default_currency_code: state.default_currency_code,
     };
     mutation.mutate(customerInstance);
     onCancel();

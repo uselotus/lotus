@@ -72,7 +72,11 @@ def add_customers_to_org():
 
     def do_add_customers_to_org(organization, n):
         customer_set = baker.make(
-            Customer, _quantity=n, organization=organization, customer_id=uuid.uuid4
+            Customer,
+            _quantity=n,
+            organization=organization,
+            customer_id=uuid.uuid4,
+            customer_name="test_customer",
         )
         return customer_set
 
@@ -162,17 +166,70 @@ def get_billable_metrics_in_org():
 
 @pytest.fixture
 def add_subscription_to_org():
-    from metering_billing.models import Subscription
+    from metering_billing.models import Subscription, SubscriptionRecord
+    from metering_billing.utils import calculate_end_date
 
-    def do_add_subscription_to_org(organization, billing_plan, customer):
-        sub = Subscription.objects.create(
+    def do_add_subscription_to_org(
+        organization,
+        billing_plan,
+        customer,
+        start_date=None,
+        day_anchor=None,
+        month_anchor=None,
+        end_date=None,
+    ):
+        duration = billing_plan.plan.plan_duration
+        start_date = start_date if start_date else now_utc()
+        day_anchor = day_anchor if day_anchor else start_date.day
+        month_anchor = (
+            month_anchor
+            if month_anchor
+            else (
+                start_date.month
+                if duration in [PLAN_DURATION.QUARTERLY, PLAN_DURATION.YEARLY]
+                else None
+            )
+        )
+        end_date = end_date
+        if not end_date:
+            end_date = calculate_end_date(
+                duration,
+                start_date,
+                day_anchor=day_anchor,
+                month_anchor=month_anchor,
+            )
+        subscription = Subscription.objects.create(
             organization=organization,
-            billing_plan=billing_plan,
             customer=customer,
-            start_date=now_utc(),
+            billing_cadence=duration,
+            start_date=start_date,
+            end_date=end_date,
             status=SUBSCRIPTION_STATUS.ACTIVE,
         )
-        return sub
+        subscription.handle_attach_plan(
+            plan_day_anchor=day_anchor,
+            plan_month_anchor=month_anchor,
+            plan_start_date=start_date,
+            plan_duration=duration,
+        )
+
+        subscription_record = SubscriptionRecord.objects.create(
+            organization=organization,
+            customer=customer,
+            billing_plan=billing_plan,
+            start_date=start_date,
+            auto_renew=True,
+            is_new=True,
+        )
+        now = now_utc()
+        if subscription_record.start_date > now:
+            subscription_record.status = SUBSCRIPTION_STATUS.NOT_STARTED
+        elif subscription_record.end_date < now:
+            subscription_record.status = SUBSCRIPTION_STATUS.ENDED
+        else:
+            subscription_record.status = SUBSCRIPTION_STATUS.ACTIVE
+        subscription_record.save()
+        return subscription, subscription_record
 
     return do_add_subscription_to_org
 
@@ -185,6 +242,16 @@ def get_subscriptions_in_org():
         return Subscription.objects.filter(organization=organization)
 
     return do_get_subscriptions_in_org
+
+
+@pytest.fixture
+def get_subscription_records_in_org():
+    from metering_billing.models import SubscriptionRecord
+
+    def do_get_subscription_records_in_org(organization):
+        return SubscriptionRecord.objects.filter(organization=organization)
+
+    return do_get_subscription_records_in_org
 
 
 @pytest.fixture
