@@ -43,12 +43,4 @@ class Migration(migrations.Migration):
             name="usage_start_date",
             field=models.DateTimeField(blank=True, null=True),
         ),
-        migrations.RunPython(delete_dups, reverse_code=migrations.RunPython.noop),
-        migrations.AlterUniqueTogether(
-            name="customer",
-            unique_together={
-                ("organization", "customer_id"),
-                ("organization", "email"),
-            },
-        ),
     ]
