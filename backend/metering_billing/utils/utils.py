@@ -8,6 +8,7 @@ import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
+from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     PLAN_DURATION,
@@ -28,7 +29,7 @@ def convert_to_date(value):
     elif isinstance(value, datetime.date):
         return value
     else:
-        raise Exception(f"can't convert type {type(value)} into date")
+        raise ServerError(f"can't convert type {type(value)} into date")
 
 
 def convert_to_datetime(value, date_behavior="min"):
@@ -42,7 +43,7 @@ def convert_to_datetime(value, date_behavior="min"):
         elif date_behavior == "max":
             return date_as_max_dt(value)
     else:
-        raise Exception(f"can't convert type {type(value)} into date")
+        raise ServerError(f"can't convert type {type(value)} into date")
 
 
 def make_all_decimals_floats(data):

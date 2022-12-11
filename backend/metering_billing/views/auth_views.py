@@ -11,6 +11,7 @@ from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
 from metering_billing.demos import setup_demo_3
+from metering_billing.exceptions.exceptions import InvalidRequest
 from metering_billing.models import Organization, OrganizationInviteToken, User
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.model_serializers import *
@@ -142,7 +143,9 @@ class ResetPasswordView(APIView):
         token = request.data.get("token", None)
 
         if not (user_id and raw_password and token):
-            raise JsonResponse(status=status.HTTP_400_BAD_REQUEST)
+            raise InvalidRequest(
+                "Request must have the following parameters: (userId, password, token)"
+            )
 
         user = user_service.reset_password(
             user_id=user_id, raw_password=raw_password, token=token

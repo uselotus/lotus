@@ -11,7 +11,7 @@ from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import (
-    DuplicateCustomerID,
+    DuplicateCustomer,
     DuplicateMetric,
     DuplicateWebhookEndpoint,
     SubscriptionNotFoundException,
@@ -151,10 +151,9 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         try:
             serializer.save(organization=parse_organization(self.request))
         except ValueError as e:
-            raise APIException(e)
+            raise ServerError(e)
         except IntegrityError as e:
-            print("should be caught here")
-            raise DuplicateWebhookEndpoint
+            raise DuplicateWebhookEndpoint("Webhook endpoint already exists")
 
     def perform_destroy(self, instance):
         if SVIX_CONNECTOR is not None:
@@ -292,7 +291,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         try:
             serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
-            raise DuplicateCustomerID
+            cause = e.__cause__
+            if "unique_email" in str(cause):
+                raise DuplicateCustomer("Customer email already exists")
+            elif "unique_customer_id" in str(cause):
+                raise DuplicateCustomer("Customer ID already exists")
+            raise ServerError("Unknown error: " + str(cause))
 
     def get_serializer_context(self):
         context = super(CustomerViewSet, self).get_serializer_context()
@@ -391,13 +395,18 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         try:
             instance = serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
-            raise DuplicateMetric
-        # if self.request.user.is_authenticated:
-        #     action.send(
-        #         self.request.user,
-        #         verb="created",
-        #         action_object=instance,
-        #     )
+            cause = e.__cause__
+            if "unique_org_metric_id" in str(cause):
+                error_message = "Metric ID already exists for this organization. This usually happens if you try to specify an ID instead of letting the Lotus backend handle ID creation."
+                raise DuplicateMetric(error_message)
+            elif "unique_org_billable_metric_name" in str(cause):
+                error_message = "Metric name already exists for this organization. Please choose a different name."
+                raise DuplicateMetric(error_message)
+            elif "unique_org_event_name_metric_type_and_other_fields" in str(cause):
+                error_message = "A metric with the same name, type, and other fields already exists for this organization. Please choose a different name or type, or change the other fields."
+                raise DuplicateMetric(error_message)
+            else:
+                raise ServerError(f"Unknown error occurred while creating metric: {e}")
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -929,19 +938,23 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = self.get_queryset()
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         if qs.count() == 0:
-            raise SubscriptionNotFoundException
+            raise SubscriptionNotFoundException(
+                "Subscription matching the given filters not found"
+            )
         plan_to_replace = qs.first().billing_plan
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         replace_billing_plan = serializer.validated_data.get("billing_plan")
         if replace_billing_plan:
             if replace_billing_plan == plan_to_replace:
-                raise SwitchPlanSamePlanException
+                raise SwitchPlanSamePlanException("Cannot switch to the same plan")
             elif (
                 replace_billing_plan.plan.plan_duration
                 != plan_to_replace.plan.plan_duration
             ):
-                raise SwitchPlanDurationMismatch
+                raise SwitchPlanDurationMismatch(
+                    "Cannot switch to a plan with a different duration"
+                )
         replace_plan_billing_behavior = serializer.validated_data.get(
             "replace_plan_invoicing_behavior"
         )
