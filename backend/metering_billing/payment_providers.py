@@ -220,7 +220,7 @@ class StripeConnector(PaymentProvider):
     def import_payment_objects(self, organization):
         stripe.api_key = self.secret_key
         imported_invoices = {}
-        for customer in organization.org_customers.all():
+        for customer in organization.customers.all():
             if PAYMENT_PROVIDERS.STRIPE in customer.integrations:
                 invoices = self._import_payment_objects_for_customer(customer)
                 imported_invoices[customer.customer_id] = invoices
