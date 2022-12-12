@@ -1008,7 +1008,6 @@ class StatefulHandler(MetricHandler):
     def _allowed_usage_aggregation_types():
         return [
             METRIC_AGGREGATION.MAX,
-            METRIC_AGGREGATION.LATEST,
         ]
 
 

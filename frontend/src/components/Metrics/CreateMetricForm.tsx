@@ -377,7 +377,6 @@ const CreateMetricForm = (props: {
                 >
                   <Select defaultValue={"max"}>
                     <Option value="max">max</Option>
-                    <Option value="latest">latest</Option>
                   </Select>
                 </Form.Item>
                 <Form.Item
