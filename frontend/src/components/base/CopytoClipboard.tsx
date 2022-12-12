@@ -1,41 +1,45 @@
 // @ts-ignore
-import React, { useState } from "react";
-import { CopyOutlined } from "@ant-design/icons";
+import React, {useState} from "react";
+import {CheckCircleOutlined, CopyOutlined} from "@ant-design/icons";
 import "./CopytoClipboard.css";
-import { Tag } from "antd";
+import {Tag, Tooltip} from "antd";
 
 interface CopyTextProps {
-  textToCopy: string;
+    textToCopy: string;
 }
 
-const CopyText: React.FC<CopyTextProps> = ({ textToCopy }) => {
-  const [copySuccess, setCopySuccess] = useState(false);
+const CopyText: React.FC<CopyTextProps> = ({textToCopy}) => {
+    const [copySuccess, setCopySuccess] = useState(false);
 
-  const copyToClipBoard = async (copyMe) => {
-    try {
-      await navigator.clipboard.writeText(copyMe);
-      setCopySuccess(true);
-      setInterval(() => {
-        setCopySuccess(false);
-      }, 3000);
-    } catch (err) {
-      setCopySuccess(false);
-    }
-  };
+    const copyToClipBoard = async (copyMe) => {
+        try {
+            await navigator.clipboard.writeText(copyMe);
+            setCopySuccess(true);
+            setTimeout(() => {
+                setCopySuccess(false);
+            }, 3000);
+        } catch (err) {
+            setCopySuccess(false);
+        }
+    };
 
-  return (
-    <div className="flex">
-      <div className="copyText" onClick={() => copyToClipBoard(textToCopy)}>
-        <span className="text-to-copy">{textToCopy}</span>
-        <CopyOutlined />
-      </div>
-      {!!copySuccess && (
-        <Tag className="copiedTag" color="green">
-          Copied
-        </Tag>
-      )}
-    </div>
-  );
+    return (
+        <div className="flex">
+            <div className="copyText" onClick={() => copyToClipBoard(textToCopy)}>
+                <Tooltip
+                    placement="right"
+                    title={copySuccess ?
+                        <div className="copiedTag">
+                        <CheckCircleOutlined className="checkedIcon"/> Copied
+                       </div> :
+                        <div>Click to Copy <CopyOutlined/></div>}
+                >
+                    <span className="text-to-copy font-menlo">{textToCopy}</span>
+                </Tooltip>
+            </div>
+        </div>
+
+    );
 };
 
 export default CopyText;

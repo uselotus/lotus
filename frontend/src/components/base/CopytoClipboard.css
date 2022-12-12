@@ -1,15 +1,20 @@
 .copyText {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px;
-  cursor: pointer;
-}
-
-.text-to-copy {
-    padding-right:10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
 }
 
 .copiedTag {
-    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+}
+
+.checkedIcon {
+    color: white;
+    border-radius: 5px;
+    background: green;
+    margin-right: 6px;
 }

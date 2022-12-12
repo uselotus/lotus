@@ -191,7 +191,7 @@ function CustomerDetail(props: {
         <div className="flex justify-between flex-col max-w mx-3">
           <div className="text-left	">
             <h1 className="mb-4">{data?.customer_name}</h1>
-            <div className="flex flex-row">
+            <div className="flex flex-row items-center">
               <div className="plansDetailLabel">ID:&nbsp; </div>
               <div className="plansDetailValue font-menlo">
                   <CopyText textToCopy={data?.customer_id}/>

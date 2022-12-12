@@ -14,11 +14,15 @@
     font-family: 'Satoshi Regular';
     font-style: normal;
     font-weight: normal;
-    src: local('Satoshi Regular'), url('../fonts/Satoshi-Regular.woff') format('woff');
+    src: local('Satoshi'), url('../fonts/Satoshi-Regular.woff') format('woff');
 }
 
 .font-menlo {
     font-family: Menlo, serif;
+}
+
+.font-satoshi {
+    font-family: Satoshi, serif;
 }
 
 
