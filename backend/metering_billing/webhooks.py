@@ -10,14 +10,14 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
 from svix.api import MessageIn, Svix
 
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 def invoice_created_webhook(invoice, organization):
     from metering_billing.models import WebhookEndpoint
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
-    if SVIX_API_KEY != "":
+    if SVIX_CONNECTOR is not None:
         endpoints = (
             WebhookEndpoint.objects.filter(organization=organization)
             .prefetch_related("triggers")
@@ -25,7 +25,7 @@ def invoice_created_webhook(invoice, organization):
             .distinct()
         )
         if endpoints.count() > 0:
-            svix = Svix(SVIX_API_KEY)
+            svix = SVIX_CONNECTOR
             now = str(now_utc())
             invoice_data = InvoiceSerializer(invoice).data
             invoice_data = make_all_decimals_floats(invoice_data)
@@ -52,7 +52,7 @@ def invoice_paid_webhook(invoice, organization):
     from metering_billing.models import WebhookEndpoint
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
-    if SVIX_API_KEY != "":
+    if SVIX_CONNECTOR is not None:
         endpoints = (
             WebhookEndpoint.objects.filter(organization=organization)
             .prefetch_related("triggers")
@@ -60,7 +60,7 @@ def invoice_paid_webhook(invoice, organization):
             .distinct()
         )
         if endpoints.count() > 0:
-            svix = Svix(SVIX_API_KEY)
+            svix = SVIX_CONNECTOR
             now = str(now_utc())
             invoice_data = InvoiceSerializer(invoice).data
             invoice_data = make_all_decimals_floats(invoice_data)

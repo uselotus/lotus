@@ -46,7 +46,6 @@
       "icon": "newspaper",
       "url": "https://www.uselotus.io/blog"
     },
-   
     {
       "name": "Github",
       "icon": "github",
@@ -91,7 +90,7 @@
     },
     {
       "group": "Other",
-      "pages": ["webhooks/webhooks", "experimentation/backtests","idempotency"]
+      "pages": ["webhooks/webhooks", "experimentation/backtests", "idempotency", "errors/error-responses"]
     },
     {
       "group": "API Reference",

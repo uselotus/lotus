@@ -22,6 +22,7 @@ from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, track
 from metering_billing.views.model_views import (
     ActionViewSet,
+    APITokenViewSet,
     BacktestViewSet,
     CustomerBalanceAdjustmentViewSet,
     CustomerViewSet,
@@ -102,6 +103,7 @@ router.register(
     CustomerBalanceAdjustmentViewSet,
     basename="balance_adjustment",
 )
+router.register(r"api_tokens", APITokenViewSet, basename="api_token")
 
 urlpatterns = [
     path("admin/", admin.site.urls),

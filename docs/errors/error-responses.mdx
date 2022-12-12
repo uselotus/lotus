@@ -1,0 +1,44 @@
+---
+title: "Error Responses"
+---
+
+Lotus follows [RFC 7807](https://tools.ietf.org/html/rfc7807) for error responses. The response body will contain a JSON object with the following fields:
+
+| Field    | Description                                                              |
+| -------- | ------------------------------------------------------------------------ |
+| `type`   | A URI reference that identifies the problem type.                        |
+| `title`  | A short, human-readable summary of the problem type.                     |
+| `detail` | A human-readable explanation specific to this occurrence of the problem. |
+
+Lotus errors broadly fall into three categories:
+
+### Validation Error
+
+A validation error occurs when a request is rejected because it does not conform to the API's schema. For example, if a required field is missing, or if a field is of the wrong type. If a request contains multiple validation errors, the response body will contain an array of error objects under the key `validation_errors`.
+
+### Client Error
+
+A client error occurs when a request is rejected because it is invalid. For example, if you try to create a resource with an ID that already exists, or don't have sufficient permissions to access the resource.
+
+A non exhaustive list of client errors:
+
+| HTTP Code | Error Title                 | Description                                                                                                             |
+| --------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 401       | authentication_failure      | Request has an invalid API Key or other authentication mechanism                                                        |
+| 400       | duplicate_resource          | You attempted to create a resource that either already exists exactlky as is, or violates db constraints.               |
+| 404       | resource_not_found          | The requested resource does not exist.                                                                                  |
+| 400       | external_connection_invalid | You specified a connection with an outside resource (like Stripe) that is invalid.                                      |
+| 400       | invalid_state               | The requested action is not allowed in the current state of the resource. This is usually a busienss logic restriciton. |
+| 400       | invalid_request             | The request is invalid. Check the `detail` for more information.                                                        |
+
+### Server Error
+
+A server error occurs when the server is unable to process the request. For example, if the server is down, or if there is a bug in the server's code. It has been reported to the Lotus team and we are investigating!
+
+A non exhaustive list of server errors:
+
+| HTTP Code | Error Title                | Description                                                                                                                                                                                                           |
+| --------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 500       | server_error               | Something went wrong on our end. We're looking into it!                                                                                                                                                               |
+| 500       | external_connection_failed | One of the external services we rely on (Stripe, webhooks service, etc.) is not working as expected. We're looking into it!                                                                                           |
+| 500       | aggregation_engine_failure | Something went wrong with our aggregation engine. Though this is usually a Lotus server-side error, there are some cases where invalid clienbt input can trigger this error. Check the `detail` for more information. |

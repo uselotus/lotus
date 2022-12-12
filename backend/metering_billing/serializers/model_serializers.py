@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateMetric
+from metering_billing.exceptions import DuplicateMetric, ServerError
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -21,7 +21,7 @@ from .serializer_utils import (
     SlugRelatedFieldWithOrganizationOrNull,
 )
 
-SVIX_API_KEY = settings.SVIX_API_KEY
+SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class OrganizationUserSerializer(serializers.ModelSerializer):
@@ -98,6 +98,30 @@ class OrganizationSerializer(serializers.ModelSerializer):
             for x in invited_users_data
         ]
         return users_data + invited_users_data
+
+
+class APITokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = APIToken
+        fields = ("name", "prefix", "expiry_date", "created")
+
+    extra_kwargs = {"prefix": {"read_only": True}, "created": {"read_only": True}}
+
+    def validate(self, attrs):
+        super().validate(attrs)
+        now = now_utc()
+        if attrs.get("expiry_date") and attrs["expiry_date"] < now:
+            raise serializers.ValidationError("Expiry date cannot be in the past")
+        return attrs
+
+    def create(self, validated_data):
+        api_key, key = APIToken.objects.create_key(**validated_data)
+        num_matching_prefix = APIToken.objects.filter(prefix=api_key.prefix).count()
+        while num_matching_prefix > 1:
+            api_key.delete()
+            api_key, key = APIToken.objects.create_key(**validated_data)
+            num_matching_prefix = APIToken.objects.filter(prefix=api_key.prefix).count()
+        return api_key, key
 
 
 class OrganizationUpdateSerializer(serializers.ModelSerializer):
@@ -207,7 +231,7 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
     )
 
     def validate(self, attrs):
-        if SVIX_API_KEY == "":
+        if SVIX_CONNECTOR is None:
             raise serializers.ValidationError(
                 "Webhook endpoints are not supported in this environment"
             )
@@ -330,16 +354,16 @@ class CustomerSerializer(serializers.ModelSerializer):
         payment_provider = data.get("payment_provider", None)
         payment_provider_id = data.get("payment_provider_id", None)
         if payment_provider or payment_provider_id:
-            # if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
-            #     self.context["organization"]
-            # ):
-            #     raise serializers.ValidationError(
-            #         "Specified payment provider not connected to organization"
-            #     )
-            # if payment_provider and not payment_provider_id:
-            #     raise serializers.ValidationError(
-            #         "Payment provider ID required when payment provider is specified"
-            #     )
+            if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
+                self.context["organization"]
+            ):
+                raise serializers.ValidationError(
+                    "Specified payment provider not connected to organization"
+                )
+            if payment_provider and not payment_provider_id:
+                raise serializers.ValidationError(
+                    "Payment provider ID required when payment provider is specified"
+                )
             if payment_provider_id and not payment_provider:
                 raise serializers.ValidationError(
                     "Payment provider required when payment provider ID is specified"
@@ -487,6 +511,7 @@ class MetricSerializer(serializers.ModelSerializer):
             "usage_aggregation_type": {"required": True},
             "event_name": {"required": True},
             "metric_id": {"read_only": True},
+            "billable_metric_name": {"required": True},
         }
 
     numeric_filters = NumericFilterSerializer(
@@ -511,26 +536,12 @@ class MetricSerializer(serializers.ModelSerializer):
         data = METRIC_HANDLER_MAP[metric_type].validate_data(data)
         return data
 
-    def custom_name(self, validated_data) -> str:
-        name = validated_data.get("billable_metric_name", None)
-        if name in [None, "", " "]:
-            name = f"[{validated_data['metric_type'][:4]}]"
-            name += " " + validated_data["usage_aggregation_type"] + " of"
-            if validated_data["property_name"] not in ["", " ", None]:
-                name += " " + validated_data["property_name"] + " of"
-            name += " " + validated_data["event_name"]
-            validated_data["billable_metric_name"] = name[:200]
-        return name
-
     def create(self, validated_data):
         # edit custom name and pop filters + properties
-        validated_data["billable_metric_name"] = self.custom_name(validated_data)
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
-        bm, created = Metric.objects.get_or_create(**validated_data)
-        if not created:
-            raise DuplicateMetric
+        bm = Metric.objects.create(**validated_data)
 
         # get filters
         for num_filter in num_filter_data:
@@ -1222,7 +1233,7 @@ class PlanSerializer(serializers.ModelSerializer):
             return plan
         except Exception as e:
             plan.delete()
-            raise e
+            raise ServerError(e)
 
 
 class PlanUpdateSerializer(serializers.ModelSerializer):
@@ -1430,6 +1441,7 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
         fields = (
             "replace_plan_id",
             "replace_plan_invoicing_behavior",
+            "replace_plan_usage_behavior",
             "turn_off_auto_renew",
             "end_date",
         )
@@ -1447,6 +1459,10 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
         default=INVOICING_BEHAVIOR.INVOICE_NOW,
         required=False,
     )
+    replace_plan_usage_behavior = serializers.ChoiceField(
+        choices=USAGE_BEHAVIOR.choices,
+        default=USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
+    )
     turn_off_auto_renew = serializers.BooleanField(required=False)
     end_date = serializers.DateTimeField(required=False)
 
@@ -1460,7 +1476,7 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=True)
-    plan_id = serializers.CharField(required=False)
+    plan_id = serializers.CharField(required=True)
     subscription_filters = serializers.ListField(
         child=SubscriptionCategoricalFilterSerializer(), required=False
     )
@@ -1483,6 +1499,10 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
                     f"Plan with plan_id {data['plan_id']} does not exist"
                 )
         return data
+
+
+class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerializer):
+    plan_id = serializers.CharField(required=False)
 
 
 class SubscriptionRecordCancelSerializer(serializers.Serializer):

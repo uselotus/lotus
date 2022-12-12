@@ -111,7 +111,7 @@ class TestGetCustomers:
         payload = {}
         response = setup_dict["client"].get(reverse("customer-list"), payload)
 
-        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.fixture
@@ -200,7 +200,7 @@ class TestInsertCustomer:
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
 
@@ -222,7 +222,7 @@ class TestInsertCustomer:
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
 

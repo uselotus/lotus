@@ -9,6 +9,24 @@ services:
     env_file:
       - ./env/.env.prod
 
+  svix-server:
+    image: svix/svix-server
+    environment:
+      WAIT_FOR: "true"
+      SVIX_REDIS_DSN: redis://redis
+      SVIX_DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db
+    env_file:
+      - ./env/.env.dev
+    ports:
+      - "8071:8071"
+    depends_on:
+    - db
+    - redis
+    links: 
+    - db
+    - redis
+    restart: on-failure
+
   redpanda:
     image: docker.redpanda.com/vectorized/redpanda:v22.2.2
     command:
