@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateMetric
+from metering_billing.exceptions import DuplicateMetric, ServerError
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -354,16 +354,16 @@ class CustomerSerializer(serializers.ModelSerializer):
         payment_provider = data.get("payment_provider", None)
         payment_provider_id = data.get("payment_provider_id", None)
         if payment_provider or payment_provider_id:
-            # if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
-            #     self.context["organization"]
-            # ):
-            #     raise serializers.ValidationError(
-            #         "Specified payment provider not connected to organization"
-            #     )
-            # if payment_provider and not payment_provider_id:
-            #     raise serializers.ValidationError(
-            #         "Payment provider ID required when payment provider is specified"
-            #     )
+            if not PAYMENT_PROVIDER_MAP[payment_provider].organization_connected(
+                self.context["organization"]
+            ):
+                raise serializers.ValidationError(
+                    "Specified payment provider not connected to organization"
+                )
+            if payment_provider and not payment_provider_id:
+                raise serializers.ValidationError(
+                    "Payment provider ID required when payment provider is specified"
+                )
             if payment_provider_id and not payment_provider:
                 raise serializers.ValidationError(
                     "Payment provider required when payment provider ID is specified"
@@ -511,6 +511,7 @@ class MetricSerializer(serializers.ModelSerializer):
             "usage_aggregation_type": {"required": True},
             "event_name": {"required": True},
             "metric_id": {"read_only": True},
+            "billable_metric_name": {"required": True},
         }
 
     numeric_filters = NumericFilterSerializer(
@@ -535,26 +536,12 @@ class MetricSerializer(serializers.ModelSerializer):
         data = METRIC_HANDLER_MAP[metric_type].validate_data(data)
         return data
 
-    def custom_name(self, validated_data) -> str:
-        name = validated_data.get("billable_metric_name", None)
-        if name in [None, "", " "]:
-            name = f"[{validated_data['metric_type'][:4]}]"
-            name += " " + validated_data["usage_aggregation_type"] + " of"
-            if validated_data["property_name"] not in ["", " ", None]:
-                name += " " + validated_data["property_name"] + " of"
-            name += " " + validated_data["event_name"]
-            validated_data["billable_metric_name"] = name[:200]
-        return name
-
     def create(self, validated_data):
         # edit custom name and pop filters + properties
-        validated_data["billable_metric_name"] = self.custom_name(validated_data)
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
 
-        bm, created = Metric.objects.get_or_create(**validated_data)
-        if not created:
-            raise DuplicateMetric
+        bm = Metric.objects.create(**validated_data)
 
         # get filters
         for num_filter in num_filter_data:
@@ -1246,7 +1233,7 @@ class PlanSerializer(serializers.ModelSerializer):
             return plan
         except Exception as e:
             plan.delete()
-            raise e
+            raise ServerError(e)
 
 
 class PlanUpdateSerializer(serializers.ModelSerializer):

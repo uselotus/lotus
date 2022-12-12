@@ -14,6 +14,11 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, Q, Sum
 from django.db.models.constraints import UniqueConstraint
+from metering_billing.exceptions.exceptions import (
+    ExternalConnectionFailure,
+    ExternalConnectionInvalid,
+    NotEditable,
+)
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
@@ -79,7 +84,7 @@ class Organization(models.Model):
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
             if k not in PAYMENT_PROVIDERS:
-                raise ValueError(
+                raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         if not self.default_currency:
@@ -212,7 +217,10 @@ class WebhookEndpoint(models.Model):
                     "endpoint data": list_response_endpoint_out,
                 }
                 self.delete()
-                raise ValueError(dictionary)
+
+                raise ExternalConnectionFailure(
+                    "Webhooks service failed to connect. Did not provision webhook endpoint."
+                )
 
 
 class WebhookTrigger(models.Model):
@@ -287,7 +295,12 @@ class Customer(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = (("organization", "customer_id"), ("organization", "email"))
+        constraints = [
+            UniqueConstraint(fields=["organization", "email"], name="unique_email"),
+            UniqueConstraint(
+                fields=["organization", "customer_id"], name="unique_customer_id"
+            ),
+        ]
 
     def __str__(self) -> str:
         return str(self.customer_name) + " " + str(self.customer_id)
@@ -295,12 +308,14 @@ class Customer(models.Model):
     def save(self, *args, **kwargs):
         for k, v in self.integrations.items():
             if k not in PAYMENT_PROVIDERS:
-                raise ValueError(
+                raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
             id = v.get("id")
             if id is None:
-                raise ValueError(f"Payment provider {k} id was not provided")
+                raise ExternalConnectionInvalid(
+                    f"Payment provider {k} id was not provided"
+                )
         if not self.default_currency:
             self.default_currency = self.organization.default_currency
         super(Customer, self).save(*args, **kwargs)
@@ -460,8 +475,8 @@ class CustomerBalanceAdjustment(models.Model):
                 or prev_parent_adjustment != new_parent_adjustment
                 or prev_expires_at != new_expires_at
             ):
-                raise ValidationError(
-                    "Cannot update any fields other than status and description"
+                raise NotEditable(
+                    "Cannot update any fields in a balance adjustment other than status and description"
                 )
         if self.amount < 0:
             assert (
@@ -673,7 +688,29 @@ class Metric(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "metric_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "metric_id"], name="unique_org_metric_id"
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "billable_metric_name"],
+                name="unique_org_billable_metric_name",
+            ),
+            models.UniqueConstraint(
+                fields=[
+                    "organization",
+                    "billable_metric_name",
+                    "event_name",
+                    "metric_type",
+                    "usage_aggregation_type",
+                    "billable_aggregation_type",
+                    "property_name",
+                    "granularity",
+                    "is_cost_metric",
+                ],
+                name="unique_org_event_name_metric_type_and_other_fields",
+            ),
+        ]
 
     def __str__(self):
         return self.billable_metric_name
@@ -1586,6 +1623,11 @@ class Subscription(models.Model):
             day_anchor=self.day_anchor,
             month_anchor=self.month_anchor,
         )
+        print("[SUB] billing cadence", self.billing_cadence)
+        print("[SUB] start date", self.start_date)
+        print("[SUB] day anchor", self.day_anchor)
+        print("[SUB] month anchor", self.month_anchor)
+        print("[SUB] end date", new_end_date)
         self.end_date = new_end_date
         self.save()
 

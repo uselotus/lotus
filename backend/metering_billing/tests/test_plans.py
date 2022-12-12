@@ -100,7 +100,6 @@ class TestCreatePlan:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert plan_before == plan_after
-        assert "initial_version" in response.data
 
     def test_plan_with_repeated_id_fails(
         self,
@@ -120,7 +119,6 @@ class TestCreatePlan:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert plan_before == plan_after
-        assert "plan_id" in response.data
 
 
 @pytest.mark.django_db(transaction=True)

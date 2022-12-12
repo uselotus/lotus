@@ -22,6 +22,10 @@ from django.db.models import (
     Window,
 )
 from django.db.models.functions import Cast, Trunc
+from metering_billing.exceptions.exceptions import (
+    AggregationEngineFailure,
+    MetricValidationFailed,
+)
 from metering_billing.utils import (
     convert_to_date,
     date_as_min_dt,
@@ -236,7 +240,7 @@ class CounterHandler(MetricHandler):
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
         if billable_metric.metric_type != METRIC_TYPE.COUNTER:
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
             )
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
@@ -253,7 +257,7 @@ class CounterHandler(MetricHandler):
             self.usage_aggregation_type
             not in CounterHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
 
@@ -359,11 +363,6 @@ class CounterHandler(MetricHandler):
             group_by=group_by,
             filters=filters,
         )
-        if not (
-            subscription_record.customer.customer_name in per_customer
-            or len(per_customer) == 0
-        ):
-            raise AssertionError
         return per_customer
 
     def get_earned_usage_per_day(
@@ -490,16 +489,18 @@ class CounterHandler(MetricHandler):
 
         # now validate
         if metric_type != METRIC_TYPE.COUNTER:
-            raise AssertionError
+            raise MetricValidationFailed(
+                "Metric type must be COUNTER for CounterHandler"
+            )
         if usg_agg_type not in CounterHandler._allowed_usage_aggregation_types():
-            raise AssertionError(
+            raise MetricValidationFailed(
                 "[METRIC TYPE: COUNTER] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
             )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             if property_name is None:
-                raise AssertionError(
+                raise MetricValidationFailed(
                     "[METRIC TYPE: COUNTER] Must specify property name unless using COUNT aggregation"
                 )
         else:
@@ -534,7 +535,7 @@ class StatefulHandler(MetricHandler):
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
         if billable_metric.metric_type != METRIC_TYPE.STATEFUL:
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
             )
         self.event_type = billable_metric.event_type
@@ -553,7 +554,7 @@ class StatefulHandler(MetricHandler):
             self.usage_aggregation_type
             not in StatefulHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
 
@@ -574,24 +575,32 @@ class StatefulHandler(MetricHandler):
 
         # now validate
         if metric_type != METRIC_TYPE.STATEFUL:
-            raise AssertionError
+            raise MetricValidationFailed(
+                "Metric type must be CONTINUOUS for ContinuousHandler"
+            )
         if usg_agg_type not in StatefulHandler._allowed_usage_aggregation_types():
-            raise AssertionError(
-                "[METRIC TYPE: STATEFUL] Usage aggregation type {} is not allowed.".format(
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
             )
         if not granularity:
-            raise AssertionError("[METRIC TYPE: STATEFUL] Must specify granularity")
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Must specify granularity"
+            )
         if bill_agg_type:
             print(
-                "[METRIC TYPE: STATEFUL] Billable aggregation type not allowed. Making null."
+                "[METRIC TYPE: CONTINUOUS] Billable aggregation type not allowed. Making null."
             )
             data.pop("billable_aggregation_type", None)
         if not event_type:
-            raise AssertionError("[METRIC TYPE: STATEFUL] Must specify event type.")
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Must specify event type."
+            )
         if not property_name:
-            raise AssertionError("[METRIC TYPE: STATEFUL] Must specify property name.")
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Must specify property name."
+            )
         return data
 
     def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
@@ -1013,7 +1022,7 @@ class RateHandler(MetricHandler):
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
         if billable_metric.metric_type != METRIC_TYPE.RATE:
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable metric of type {billable_metric.metric_type} can't be handled by a RateHandler."
             )
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
@@ -1032,14 +1041,14 @@ class RateHandler(MetricHandler):
             self.usage_aggregation_type
             not in RateHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
         if (
             self.billable_aggregation_type
             not in RateHandler._allowed_billable_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable aggregation type {self.billable_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
 
@@ -1060,22 +1069,22 @@ class RateHandler(MetricHandler):
 
         # now validate
         if metric_type != METRIC_TYPE.RATE:
-            raise AssertionError
+            raise MetricValidationFailed("Metric type must be RATE for a RateHandler.")
         if usg_agg_type not in RateHandler._allowed_usage_aggregation_types():
-            raise AssertionError(
+            raise MetricValidationFailed(
                 "[METRIC TYPE: RATE] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
             )
         if bill_agg_type not in RateHandler._allowed_billable_aggregation_types():
-            raise AssertionError(
+            raise MetricValidationFailed(
                 "[METRIC TYPE: RATE] Billable aggregation type {} is not allowed.".format(
                     bill_agg_type
                 )
             )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             if property_name is None:
-                raise AssertionError(
+                raise MetricValidationFailed(
                     "[METRIC TYPE: RATE] Must specify property name unless using COUNT aggregation"
                 )
         else:
@@ -1085,7 +1094,7 @@ class RateHandler(MetricHandler):
                 )
                 data.pop("property_name", None)
         if not granularity:
-            raise AssertionError("[METRIC TYPE: RATE] Must specify granularity")
+            raise MetricValidationFailed("[METRIC TYPE: RATE] Must specify granularity")
         if event_type:
             print("[METRIC TYPE: RATE] Event type not allowed. Making null.")
             data.pop("event_type", None)

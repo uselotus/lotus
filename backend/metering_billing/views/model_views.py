@@ -12,9 +12,10 @@ from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import (
-    DuplicateCustomerID,
+    DuplicateCustomer,
     DuplicateMetric,
     DuplicateWebhookEndpoint,
+    MethodNotAllowed,
     SubscriptionNotFoundException,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
@@ -247,10 +248,9 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         try:
             serializer.save(organization=parse_organization(self.request))
         except ValueError as e:
-            raise APIException(e)
+            raise ServerError(e)
         except IntegrityError as e:
-            print("should be caught here")
-            raise DuplicateWebhookEndpoint
+            raise DuplicateWebhookEndpoint("Webhook endpoint already exists")
 
     def perform_destroy(self, instance):
         if SVIX_CONNECTOR is not None:
@@ -388,7 +388,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         try:
             serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
-            raise DuplicateCustomerID
+            cause = e.__cause__
+            if "unique_email" in str(cause):
+                raise DuplicateCustomer("Customer email already exists")
+            elif "unique_customer_id" in str(cause):
+                raise DuplicateCustomer("Customer ID already exists")
+            raise ServerError("Unknown error: " + str(cause))
 
     def get_serializer_context(self):
         context = super(CustomerViewSet, self).get_serializer_context()
@@ -487,13 +492,18 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         try:
             instance = serializer.save(organization=parse_organization(self.request))
         except IntegrityError as e:
-            raise DuplicateMetric
-        # if self.request.user.is_authenticated:
-        #     action.send(
-        #         self.request.user,
-        #         verb="created",
-        #         action_object=instance,
-        #     )
+            cause = e.__cause__
+            if "unique_org_metric_id" in str(cause):
+                error_message = "Metric ID already exists for this organization. This usually happens if you try to specify an ID instead of letting the Lotus backend handle ID creation."
+                raise DuplicateMetric(error_message)
+            elif "unique_org_billable_metric_name" in str(cause):
+                error_message = "Metric name already exists for this organization. Please choose a different name."
+                raise DuplicateMetric(error_message)
+            elif "unique_org_event_name_metric_type_and_other_fields" in str(cause):
+                error_message = "A metric with the same name, type, and other fields already exists for this organization. Please choose a different name or type, or change the other fields."
+                raise DuplicateMetric(error_message)
+            else:
+                raise ServerError(f"Unknown error occurred while creating metric: {e}")
 
 
 class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -756,8 +766,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     lookup_field = "subscription_id"
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "delete": [IsAuthenticated | HasUserAPIKey],
         "plans": [IsAuthenticated | HasUserAPIKey],
         "update_plans": [IsAuthenticated | HasUserAPIKey],
         "cancel_plans": [IsAuthenticated | HasUserAPIKey],
@@ -776,8 +784,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return SubscriptionRecordUpdateSerializer
         elif self.action == "cancel_plans":
             return SubscriptionRecordCancelSerializer
-        elif self.action == "delete":
-            return SubscriptionCancelSerializer
         else:
             return SubscriptionSerializer
 
@@ -855,48 +861,49 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request)
 
-    @extend_schema(
-        parameters=[SubscriptionCancelSerializer],
-    )
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request)
+        raise MethodNotAllowed(
+            "Cannot use the cancel method on a specific subscription. Please use the /susbcriptions/plans endpoint, WITHOUT specifying a specific plan, to cancel a customer's subscription and all associated plans."
+        )
 
-    def perform_destroy(self, instance):
-        serializer = self.get_serializer(data=self.request.query_params)
-        serializer.is_valid(raise_exception=True)
-        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
-        bill_usage = serializer.validated_data["bill_usage"]
-        subscription = instance
-        customer = subscription.customer
-        subscription_records = customer.subscription_records.filter(
-            organization=subscription.organization,
-            next_billing_date__range=(
-                subscription.start_date,
-                subscription.end_date,
-            ),
-            fully_billed=False,
-        )
-        now = now_utc()
-        subscription_records.update(
-            flat_fee_behavior=flat_fee_behavior,
-            invoice_usage_charges=bill_usage,
-            auto_renew=False,
-            end_date=now,
-            status=SUBSCRIPTION_STATUS.ENDED,
-            fully_billed=True,
-        )
-        subscription.status = SUBSCRIPTION_STATUS.ENDED
-        subscription.end_date = now
-        subscription.save()
-        generate_invoice(subscription, subscription_records)
+    # def perform_destroy(self, instance):
+    #     serializer = self.get_serializer(data=self.request.query_params)
+    #     serializer.is_valid(raise_exception=True)
+    #     flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
+    #     bill_usage = serializer.validated_data["bill_usage"]
+    #     subscription = instance
+    #     customer = subscription.customer
+    #     subscription_records = customer.subscription_records.filter(
+    #         organization=subscription.organization,
+    #         next_billing_date__range=(
+    #             subscription.start_date,
+    #             subscription.end_date,
+    #         ),
+    #         fully_billed=False,
+    #     )
+    #     now = now_utc()
+    #     subscription_records.update(
+    #         flat_fee_behavior=flat_fee_behavior,
+    #         invoice_usage_charges=bill_usage,
+    #         auto_renew=False,
+    #         end_date=now,
+    #         status=SUBSCRIPTION_STATUS.ENDED,
+    #         fully_billed=True,
+    #     )
+    #     subscription.status = SUBSCRIPTION_STATUS.ENDED
+    #     subscription.end_date = now
+    #     subscription.save()
+    #     generate_invoice(subscription, subscription_records)
 
     def create(self, request, *args, **kwargs):
-        # not allowed to create subscriptions directly, return a 405
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed(
+            "Cannot use the create method on the subscription endpoint. Please use the /susbcriptions/plans endpoint to attach a plan and create a subscription."
+        )
 
     def update(self, request, *args, **kwargs):
-        # not allowed to update subscriptions directly, return a 405
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed(
+            "Cannot use the update method on the subscription endpoint. Please use the /susbcriptions/plans endpoint to update a plan and subscription."
+        )
 
     # ad hoc methods
     @action(detail=False, methods=["post"])
@@ -958,7 +965,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 elif tentative_nbd > end_date:
                     tentative_nbd = end_date
                     break
-                months_btwn = relativedelta(tentative_nbd, start_date).months
+                months_btwn = relativedelta(end_date, tentative_nbd).months
                 if months_btwn % num_months == 0:
                     found = True
                 else:
@@ -1025,19 +1032,23 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = self.get_queryset()
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         if qs.count() == 0:
-            raise SubscriptionNotFoundException
+            raise SubscriptionNotFoundException(
+                "Subscription matching the given filters not found"
+            )
         plan_to_replace = qs.first().billing_plan
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         replace_billing_plan = serializer.validated_data.get("billing_plan")
         if replace_billing_plan:
             if replace_billing_plan == plan_to_replace:
-                raise SwitchPlanSamePlanException
+                raise SwitchPlanSamePlanException("Cannot switch to the same plan")
             elif (
                 replace_billing_plan.plan.plan_duration
                 != plan_to_replace.plan.plan_duration
             ):
-                raise SwitchPlanDurationMismatch
+                raise SwitchPlanDurationMismatch(
+                    "Cannot switch to a plan with a different duration"
+                )
         replace_plan_billing_behavior = serializer.validated_data.get(
             "replace_plan_invoicing_behavior"
         )
@@ -1125,20 +1136,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             #         )
 
         return response
-
-
-# def perform_create(self, serializer):
-#     if serializer.validated_data["start_date"] <= now_utc():
-#         serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
-#     instance = serializer.save(organization=parse_organization(self.request))
-
-#     if self.request.user.is_authenticated:
-#         action.send(
-#             self.request.user,
-#             verb="subscribed",
-#             action_object=instance.customer,
-#             target=instance.billing_plan,
-#         )
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

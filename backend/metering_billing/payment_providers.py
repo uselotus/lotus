@@ -11,6 +11,7 @@ from dateutil import parser
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
 from djmoney.money import Money
+from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
     SinglePaymentProviderSerializer,
@@ -422,7 +423,7 @@ class StripeConnector(PaymentProvider):
             )
         else:
             if not self.self_hosted:
-                raise Exception(
+                raise ExternalConnectionInvalid(
                     "Organization does not have a Stripe ID. Cannot transfer subscriptions."
                 )
 

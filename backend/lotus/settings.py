@@ -140,6 +140,7 @@ INSTALLED_APPS = [
     "metering_billing",
     "actstream",
     "djstripe",
+    "drf_standardized_errors",
 ]
 
 SITE_ID = 1
@@ -460,11 +461,38 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
     ],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "metering_billing.custom_exception_handler.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_standardized_errors.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
 
+DRF_STANDARDIZED_ERRORS = {
+    # class responsible for handling the exceptions. Can be subclassed to change
+    # which exceptions are handled by default, to update which exceptions are
+    # reported to error monitoring tools (like Sentry), ...
+    "EXCEPTION_HANDLER_CLASS": "metering_billing.exceptions.handler.CustomHandler",
+    # class responsible for generating error response output. Can be subclassed
+    # to change the format of the error response.
+    "EXCEPTION_FORMATTER_CLASS": "metering_billing.exceptions.handler.RFC7807Formatter",
+    # enable the standardized errors when DEBUG=True for unhandled exceptions.
+    # By default, this is set to False so you're able to view the traceback in
+    # the terminal and get more information about the exception.
+    "ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": False,
+    # The below settings are for OpenAPI 3 schema generation
+    # ONLY the responses that correspond to these status codes will appear
+    # in the API schema.
+    "ALLOWED_ERROR_STATUS_CODES": [
+        "400",
+        "401",
+        "403",
+        "404",
+        "405",
+        "406",
+        "415",
+        "429",
+        "500",
+    ],
+}
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Lotus API",
@@ -492,6 +520,9 @@ SPECTACULAR_SETTINGS = {
     "PREPROCESSING_HOOKS": [
         "metering_billing.openapi_hooks.remove_subscription_delete"
     ],
+    "POSTPROCESSING_HOOKS": [
+        "drf_standardized_errors.openapi_hooks.postprocess_schema_enums"
+    ],
     "ENUM_NAME_OVERRIDES": {
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
         "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
@@ -508,6 +539,17 @@ SPECTACULAR_SETTINGS = {
         "TrackEventSuccessEnum": ["all", "some"],
         "TrackEventFailureEnum": ["none"],
         "OrganizationUserStatus": "metering_billing.utils.enums.ORGANIZATION_STATUS.choices",
+        "ValidationErrorEnum": "drf_standardized_errors.openapi_serializers.ValidationErrorEnum.values",
+        "ClientErrorEnum": "drf_standardized_errors.openapi_serializers.ClientErrorEnum.values",
+        "ServerErrorEnum": "drf_standardized_errors.openapi_serializers.ServerErrorEnum.values",
+        "ErrorCode401Enum": "drf_standardized_errors.openapi_serializers.ErrorCode401Enum.values",
+        "ErrorCode403Enum": "drf_standardized_errors.openapi_serializers.ErrorCode403Enum.values",
+        "ErrorCode404Enum": "drf_standardized_errors.openapi_serializers.ErrorCode404Enum.values",
+        "ErrorCode405Enum": "drf_standardized_errors.openapi_serializers.ErrorCode405Enum.values",
+        "ErrorCode406Enum": "drf_standardized_errors.openapi_serializers.ErrorCode406Enum.values",
+        "ErrorCode415Enum": "drf_standardized_errors.openapi_serializers.ErrorCode415Enum.values",
+        "ErrorCode429Enum": "drf_standardized_errors.openapi_serializers.ErrorCode429Enum.values",
+        "ErrorCode500Enum": "drf_standardized_errors.openapi_serializers.ErrorCode500Enum.values",
     },
 }
 

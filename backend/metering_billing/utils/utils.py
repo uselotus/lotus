@@ -8,6 +8,7 @@ import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
+from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     PLAN_DURATION,
@@ -28,7 +29,7 @@ def convert_to_date(value):
     elif isinstance(value, datetime.date):
         return value
     else:
-        raise Exception(f"can't convert type {type(value)} into date")
+        raise ServerError(f"can't convert type {type(value)} into date")
 
 
 def convert_to_datetime(value, date_behavior="min"):
@@ -42,7 +43,7 @@ def convert_to_datetime(value, date_behavior="min"):
         elif date_behavior == "max":
             return date_as_max_dt(value)
     else:
-        raise Exception(f"can't convert type {type(value)} into date")
+        raise ServerError(f"can't convert type {type(value)} into date")
 
 
 def make_all_decimals_floats(data):
@@ -289,6 +290,7 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1)
             )
+            print("original end date: ", end_date)
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
                 rd.days > 0
@@ -297,12 +299,25 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 or rd.seconds > 0
                 or rd.microseconds > 0
             ):  # went too far
+                i = 12
                 while rd.months >= 3:
-                    end_date = date_as_max_dt(end_date + relativedelta(months=-3))
+                    end_date = date_as_max_dt(
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                    )
                     rd = relativedelta(end_date, start_date)
+                    i -= 1
             elif end_date < start_date:
-                while end_date < start_date:
-                    end_date = date_as_max_dt(end_date + relativedelta(months=3))
+                print("aha")
+                old_end_date = end_date
+                rd = relativedelta(end_date, old_end_date)
+                i = 0
+                while not (rd.months % 3 == 0 and rd.months > 0):
+                    end_date = date_as_max_dt(
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                    )
+                    rd = relativedelta(end_date, old_end_date)
+                    i += 1
+                print("new end date: ", end_date)
         elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, days=-1)

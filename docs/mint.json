@@ -90,7 +90,7 @@
     },
     {
       "group": "Other",
-      "pages": ["webhooks/webhooks", "experimentation/backtests","idempotency"]
+      "pages": ["webhooks/webhooks", "experimentation/backtests", "idempotency", "errors/error-responses"]
     },
     {
       "group": "API Reference",
