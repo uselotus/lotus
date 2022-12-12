@@ -290,6 +290,7 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1)
             )
+            print("original end date: ", end_date)
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
                 rd.days > 0
@@ -298,12 +299,25 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                 or rd.seconds > 0
                 or rd.microseconds > 0
             ):  # went too far
+                i = 12
                 while rd.months >= 3:
-                    end_date = date_as_max_dt(end_date + relativedelta(months=-3))
+                    end_date = date_as_max_dt(
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                    )
                     rd = relativedelta(end_date, start_date)
+                    i -= 1
             elif end_date < start_date:
-                while end_date < start_date:
-                    end_date = date_as_max_dt(end_date + relativedelta(months=3))
+                print("aha")
+                old_end_date = end_date
+                rd = relativedelta(end_date, old_end_date)
+                i = 0
+                while not (rd.months % 3 == 0 and rd.months > 0):
+                    end_date = date_as_max_dt(
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                    )
+                    rd = relativedelta(end_date, old_end_date)
+                    i += 1
+                print("new end date: ", end_date)
         elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, days=-1)

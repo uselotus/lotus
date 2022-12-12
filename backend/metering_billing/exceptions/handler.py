@@ -33,6 +33,12 @@ class RFC7807Formatter(ExceptionFormatter):
             "detail": error.detail,
             "title": error.code,
         }
-        if len(error_response.errors) > 1:
-            return_d["validation_errors"] = error_response.errors
+        if (
+            len(error_response.errors) > 1
+            or error_response.type == ErrorType.VALIDATION_ERROR
+        ):
+            return_d["validation_errors"] = [
+                {"code": x.code, "detail": x.detail, "attr": x.attr}
+                for x in error_response.errors
+            ]
         return return_d

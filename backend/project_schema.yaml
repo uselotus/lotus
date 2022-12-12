@@ -3748,8 +3748,8 @@ paths:
             - paid
             type: string
           default:
-          - paid
           - unpaid
+          - paid
       tags:
       - invoices
       security:
@@ -7846,284 +7846,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/Subscription'
           description: ''
-  /api/subscriptions/{subscription_id}/:
-    get:
-      operationId: subscriptions_retrieve
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: path
-        name: subscription_id
-        schema:
-          type: string
-        required: true
-      tags:
-      - subscriptions
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionsRetrieveErrorResponse400'
-          description: ''
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse401'
-              examples:
-                AuthenticationFailed:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: authentication_failed
-                      detail: Incorrect authentication credentials.
-                      attr: null
-                NotAuthenticated:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: not_authenticated
-                      detail: Authentication credentials were not provided.
-                      attr: null
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse403'
-              examples:
-                PermissionDenied:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: permission_denied
-                      detail: You do not have permission to perform this action.
-                      attr: null
-          description: ''
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse404'
-              examples:
-                NotFound:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: not_found
-                      detail: Not found.
-                      attr: null
-          description: ''
-        '405':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse405'
-              examples:
-                MethodNotAllowed:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: method_not_allowed
-                      detail: Method "get" not allowed.
-                      attr: null
-          description: ''
-        '406':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse406'
-              examples:
-                NotAcceptable:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: not_acceptable
-                      detail: Could not satisfy the request Accept header.
-                      attr: null
-          description: ''
-        '415':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse415'
-              examples:
-                UnsupportedMediaType:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: unsupported_media_type
-                      detail: Unsupported media type "application/json" in request.
-                      attr: null
-          description: ''
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse500'
-              examples:
-                APIException:
-                  value:
-                    type: server_error
-                    errors:
-                    - code: error
-                      detail: A server error occurred.
-                      attr: null
-          description: ''
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-          description: ''
-    delete:
-      operationId: subscriptions_destroy
-      description: A simple ViewSet for viewing and editing Subscriptions.
-      parameters:
-      - in: query
-        name: bill_usage
-        schema:
-          type: boolean
-          default: false
-      - in: query
-        name: flat_fee_behavior
-        schema:
-          enum:
-          - refund
-          - prorate
-          - charge_full
-          type: string
-          default: charge_full
-          minLength: 1
-      - in: path
-        name: subscription_id
-        schema:
-          type: string
-        required: true
-      tags:
-      - subscriptions
-      security:
-      - knoxTokenAuth: []
-      - OrganizationApiKeyAuth: []
-        TokenAuth: []
-      responses:
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionsDestroyErrorResponse400'
-          description: ''
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse401'
-              examples:
-                AuthenticationFailed:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: authentication_failed
-                      detail: Incorrect authentication credentials.
-                      attr: null
-                NotAuthenticated:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: not_authenticated
-                      detail: Authentication credentials were not provided.
-                      attr: null
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse403'
-              examples:
-                PermissionDenied:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: permission_denied
-                      detail: You do not have permission to perform this action.
-                      attr: null
-          description: ''
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse404'
-              examples:
-                NotFound:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: not_found
-                      detail: Not found.
-                      attr: null
-          description: ''
-        '405':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse405'
-              examples:
-                MethodNotAllowed:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: method_not_allowed
-                      detail: Method "get" not allowed.
-                      attr: null
-          description: ''
-        '406':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse406'
-              examples:
-                NotAcceptable:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: not_acceptable
-                      detail: Could not satisfy the request Accept header.
-                      attr: null
-          description: ''
-        '415':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse415'
-              examples:
-                UnsupportedMediaType:
-                  value:
-                    type: client_error
-                    errors:
-                    - code: unsupported_media_type
-                      detail: Unsupported media type "application/json" in request.
-                      attr: null
-          description: ''
-        '500':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse500'
-              examples:
-                APIException:
-                  value:
-                    type: server_error
-                    errors:
-                    - code: error
-                      detail: A server error occurred.
-                      attr: null
-          description: ''
-        '204':
-          description: No response body
   /api/subscriptions/plans/:
     post:
       operationId: subscriptions_plans_create
@@ -11612,15 +11334,6 @@ components:
     DraftInvoice:
       type: object
       properties:
-        org_connected_to_cust_payment_provider:
-          type: boolean
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
         payment_status:
           $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
         cost_due:
@@ -11630,23 +11343,32 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        cust_connected_to_payment_provider:
+          type: boolean
         subscription:
           allOf:
           - $ref: '#/components/schemas/SubscriptionRecordDetail'
           readOnly: true
-        cust_connected_to_payment_provider:
-          type: boolean
-        due_date:
+        issue_date:
           type: string
           format: date-time
-          nullable: true
         customer:
           allOf:
           - $ref: '#/components/schemas/Customer'
           readOnly: true
-        issue_date:
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        due_date:
           type: string
           format: date-time
+          nullable: true
+        org_connected_to_cust_payment_provider:
+          type: boolean
       required:
       - cost_due
       - currency
@@ -12356,22 +12078,43 @@ components:
     InitialExternalPlanLink:
       type: object
       properties:
+        source:
+          $ref: '#/components/schemas/PaymentProvidersEnum'
         external_plan_id:
           type: string
           maxLength: 100
-        source:
-          $ref: '#/components/schemas/PaymentProvidersEnum'
       required:
       - external_plan_id
       - source
     InitialPlanVersion:
       type: object
       properties:
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
+        transition_to:
+          type: string
           nullable: true
+          readOnly: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        usage_billing_frequency:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        version_id:
+          type: string
+          readOnly: true
         flat_rate:
           type: number
           format: double
@@ -12379,69 +12122,48 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        created_by:
-          type: string
-          readOnly: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        version:
-          type: integer
-          readOnly: true
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
         plan_name:
           type: string
           readOnly: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        usage_billing_frequency:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
         month_anchor:
           type: integer
           maximum: 12
           minimum: 1
           nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        description:
+        created_on:
           type: string
-          nullable: true
-          maxLength: 200
-        active_subscriptions:
-          type: integer
+          format: date-time
           readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/PlanVersionStatusEnum'
           readOnly: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        transition_to_plan_id:
+        created_by:
           type: string
-          writeOnly: true
+          readOnly: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          nullable: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        version:
+          type: integer
+          readOnly: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
       required:
       - active_subscriptions
       - created_by
@@ -12670,22 +12392,32 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
+        name:
+          type: string
+          maxLength: 200
+        metadata:
+          type: object
+          additionalProperties: {}
+          nullable: true
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         billing_type:
           nullable: true
           oneOf:
           - $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
-        metadata:
-          type: object
-          additionalProperties: {}
-          nullable: true
+        end_date:
+          type: string
+          format: date-time
         start_date:
           type: string
           format: date-time
-        name:
-          type: string
-          maxLength: 200
         quantity:
           type: number
           format: double
@@ -12694,16 +12426,6 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           nullable: true
-        end_date:
-          type: string
-          format: date-time
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
       required:
       - name
     LoginFailure:
@@ -14270,55 +13992,55 @@ components:
     PlanDetail:
       type: object
       properties:
-        external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/ExternalPlanLink'
-          readOnly: true
-        plan_duration:
-          $ref: '#/components/schemas/PlanDurationEnum'
         created_on:
           type: string
           format: date-time
           readOnly: true
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/ShortCustomer'
-          readOnly: true
-        product_id:
-          type: string
-          nullable: true
-        num_versions:
-          type: integer
-          readOnly: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
-        active_subscriptions:
-          type: integer
-          readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
         status:
           $ref: '#/components/schemas/PlanStatusEnum'
         plan_id:
           type: string
           maxLength: 100
-        created_by:
-          type: string
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
         versions:
           type: array
           items:
             $ref: '#/components/schemas/PlanVersion'
           readOnly: true
+        product_id:
+          type: string
+          nullable: true
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/ShortCustomer'
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        plan_duration:
+          $ref: '#/components/schemas/PlanDurationEnum'
+        num_versions:
+          type: integer
+          readOnly: true
+        external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalPlanLink'
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
       required:
       - active_subscriptions
       - created_by
@@ -16989,23 +16711,16 @@ components:
       - $ref: '#/components/schemas/PlansCreateStatusErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -17041,8 +16756,15 @@ components:
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
       - $ref: '#/components/schemas/PlansCreateParentPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateTargetCustomerIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateExternalLinksINDEXPlanIdErrorComponent'
@@ -17119,23 +16841,16 @@ components:
           status: '#/components/schemas/PlansCreateStatusErrorComponent'
           initial_external_links.non_field_errors: '#/components/schemas/PlansCreateInitialExternalLinksNonFieldErrorsErrorComponent'
           initial_external_links.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialExternalLinksINDEXNonFieldErrorsErrorComponent'
-          initial_external_links.INDEX.external_plan_id: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
           initial_external_links.INDEX.source: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
+          initial_external_links.INDEX.external_plan_id: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
           initial_version.non_field_errors: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
-          initial_version.day_anchor: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
-          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
-          initial_version.flat_fee_billing_type: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
-          initial_version.price_adjustment.non_field_errors: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
-          initial_version.price_adjustment.price_adjustment_name: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
-          initial_version.price_adjustment.price_adjustment_description: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
-          initial_version.price_adjustment.price_adjustment_type: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
-          initial_version.price_adjustment.price_adjustment_amount: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
+          initial_version.description: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
           initial_version.usage_billing_frequency: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
+          initial_version.flat_fee_billing_type: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
+          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
           initial_version.month_anchor: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
+          initial_version.day_anchor: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
           initial_version.components.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.billable_metric_name: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -17171,8 +16886,15 @@ components:
           initial_version.components.INDEX.separate_by: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
           initial_version.components.INDEX.separate_by.INDEX: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
           initial_version.components.INDEX.proration_granularity: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
-          initial_version.description: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
-          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
+          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+          initial_version.price_adjustment.non_field_errors: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
+          initial_version.price_adjustment.price_adjustment_name: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
+          initial_version.price_adjustment.price_adjustment_description: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
+          initial_version.price_adjustment.price_adjustment_type: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
+          initial_version.price_adjustment.price_adjustment_amount: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
           parent_plan_id: '#/components/schemas/PlansCreateParentPlanIdErrorComponent'
           target_customer_id: '#/components/schemas/PlansCreateTargetCustomerIdErrorComponent'
           external_links.INDEX.plan_id: '#/components/schemas/PlansCreateExternalLinksINDEXPlanIdErrorComponent'
@@ -19491,6 +19213,18 @@ components:
     SubscriptionRecordDetail:
       type: object
       properties:
+        is_new:
+          type: boolean
+        plan_id:
+          type: string
+          writeOnly: true
+        status:
+          $ref: '#/components/schemas/SubscriptionStatusEnum'
+        end_date:
+          type: string
+          format: date-time
+        auto_renew:
+          type: boolean
         plan_detail:
           allOf:
           - $ref: '#/components/schemas/PlanVersion'
@@ -19501,23 +19235,11 @@ components:
         start_date:
           type: string
           format: date-time
-        auto_renew:
-          type: boolean
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
-        plan_id:
-          type: string
-          writeOnly: true
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
-        end_date:
-          type: string
-          format: date-time
-        is_new:
-          type: boolean
       required:
       - customer_id
       - plan_detail
@@ -19549,13 +19271,6 @@ components:
       - ended
       - not_started
       type: string
-    SubscriptionsDestroyErrorResponse400:
-      oneOf:
-      - $ref: '#/components/schemas/ParseErrorResponse'
-      discriminator:
-        propertyName: type
-        mapping:
-          client_error: '#/components/schemas/ParseErrorResponse'
     SubscriptionsListErrorResponse400:
       oneOf:
       - $ref: '#/components/schemas/ParseErrorResponse'
@@ -20003,13 +19718,6 @@ components:
       required:
       - errors
       - type
-    SubscriptionsRetrieveErrorResponse400:
-      oneOf:
-      - $ref: '#/components/schemas/ParseErrorResponse'
-      discriminator:
-        propertyName: type
-        mapping:
-          client_error: '#/components/schemas/ParseErrorResponse'
     SuccessStatusEnum:
       enum:
       - success

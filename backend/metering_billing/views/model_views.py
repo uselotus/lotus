@@ -15,6 +15,7 @@ from metering_billing.exceptions import (
     DuplicateCustomer,
     DuplicateMetric,
     DuplicateWebhookEndpoint,
+    MethodNotAllowed,
     SubscriptionNotFoundException,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
@@ -765,8 +766,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     lookup_field = "subscription_id"
     permission_classes_per_method = {
         "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "delete": [IsAuthenticated | HasUserAPIKey],
         "plans": [IsAuthenticated | HasUserAPIKey],
         "update_plans": [IsAuthenticated | HasUserAPIKey],
         "cancel_plans": [IsAuthenticated | HasUserAPIKey],
@@ -785,8 +784,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return SubscriptionRecordUpdateSerializer
         elif self.action == "cancel_plans":
             return SubscriptionRecordCancelSerializer
-        elif self.action == "delete":
-            return SubscriptionCancelSerializer
         else:
             return SubscriptionSerializer
 
@@ -864,48 +861,49 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request)
 
-    @extend_schema(
-        parameters=[SubscriptionCancelSerializer],
-    )
     def destroy(self, request, *args, **kwargs):
-        return super().destroy(request)
+        raise MethodNotAllowed(
+            "Cannot use the cancel method on a specific subscription. Please use the /susbcriptions/plans endpoint, WITHOUT specifying a specific plan, to cancel a customer's subscription and all associated plans."
+        )
 
-    def perform_destroy(self, instance):
-        serializer = self.get_serializer(data=self.request.query_params)
-        serializer.is_valid(raise_exception=True)
-        flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
-        bill_usage = serializer.validated_data["bill_usage"]
-        subscription = instance
-        customer = subscription.customer
-        subscription_records = customer.subscription_records.filter(
-            organization=subscription.organization,
-            next_billing_date__range=(
-                subscription.start_date,
-                subscription.end_date,
-            ),
-            fully_billed=False,
-        )
-        now = now_utc()
-        subscription_records.update(
-            flat_fee_behavior=flat_fee_behavior,
-            invoice_usage_charges=bill_usage,
-            auto_renew=False,
-            end_date=now,
-            status=SUBSCRIPTION_STATUS.ENDED,
-            fully_billed=True,
-        )
-        subscription.status = SUBSCRIPTION_STATUS.ENDED
-        subscription.end_date = now
-        subscription.save()
-        generate_invoice(subscription, subscription_records)
+    # def perform_destroy(self, instance):
+    #     serializer = self.get_serializer(data=self.request.query_params)
+    #     serializer.is_valid(raise_exception=True)
+    #     flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
+    #     bill_usage = serializer.validated_data["bill_usage"]
+    #     subscription = instance
+    #     customer = subscription.customer
+    #     subscription_records = customer.subscription_records.filter(
+    #         organization=subscription.organization,
+    #         next_billing_date__range=(
+    #             subscription.start_date,
+    #             subscription.end_date,
+    #         ),
+    #         fully_billed=False,
+    #     )
+    #     now = now_utc()
+    #     subscription_records.update(
+    #         flat_fee_behavior=flat_fee_behavior,
+    #         invoice_usage_charges=bill_usage,
+    #         auto_renew=False,
+    #         end_date=now,
+    #         status=SUBSCRIPTION_STATUS.ENDED,
+    #         fully_billed=True,
+    #     )
+    #     subscription.status = SUBSCRIPTION_STATUS.ENDED
+    #     subscription.end_date = now
+    #     subscription.save()
+    #     generate_invoice(subscription, subscription_records)
 
     def create(self, request, *args, **kwargs):
-        # not allowed to create subscriptions directly, return a 405
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed(
+            "Cannot use the create method on the subscription endpoint. Please use the /susbcriptions/plans endpoint to attach a plan and create a subscription."
+        )
 
     def update(self, request, *args, **kwargs):
-        # not allowed to update subscriptions directly, return a 405
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        raise MethodNotAllowed(
+            "Cannot use the update method on the subscription endpoint. Please use the /susbcriptions/plans endpoint to update a plan and subscription."
+        )
 
     # ad hoc methods
     @action(detail=False, methods=["post"])
@@ -967,7 +965,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 elif tentative_nbd > end_date:
                     tentative_nbd = end_date
                     break
-                months_btwn = relativedelta(tentative_nbd, start_date).months
+                months_btwn = relativedelta(end_date, tentative_nbd).months
                 if months_btwn % num_months == 0:
                     found = True
                 else:
@@ -1138,20 +1136,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             #         )
 
         return response
-
-
-# def perform_create(self, serializer):
-#     if serializer.validated_data["start_date"] <= now_utc():
-#         serializer.validated_data["status"] = SUBSCRIPTION_STATUS.ACTIVE
-#     instance = serializer.save(organization=parse_organization(self.request))
-
-#     if self.request.user.is_authenticated:
-#         action.send(
-#             self.request.user,
-#             verb="subscribed",
-#             action_object=instance.customer,
-#             target=instance.billing_plan,
-#         )
 
 
 class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):

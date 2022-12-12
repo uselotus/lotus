@@ -98,6 +98,7 @@ def insert_billable_metric_payload():
         "property_name": "test_property",
         "usage_aggregation_type": METRIC_AGGREGATION.SUM,
         "metric_type": METRIC_TYPE.COUNTER,
+        "billable_metric_name": "test_billable_metric",
     }
     return payload
 
@@ -110,7 +111,6 @@ class TestInsertMetric:
         insert_billable_metric_payload,
         get_billable_metrics_in_org,
     ):
-        # covers num_billable_metrics_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -175,7 +175,7 @@ class TestInsertMetric:
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert (
             len(get_billable_metrics_in_org(setup_dict["org"])) == num_billable_metrics
         )
@@ -201,7 +201,6 @@ class TestInsertMetric:
             **{
                 **payload,
                 "organization": setup_dict["org"],
-                "billable_metric_name": "[coun] sum of test_property of test_event",
             }
         )
         response = setup_dict["client"].post(
@@ -209,7 +208,7 @@ class TestInsertMetric:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert (
             len(get_billable_metrics_in_org(setup_dict["org"]))
             == num_billable_metrics + 1

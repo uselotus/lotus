@@ -1623,6 +1623,11 @@ class Subscription(models.Model):
             day_anchor=self.day_anchor,
             month_anchor=self.month_anchor,
         )
+        print("[SUB] billing cadence", self.billing_cadence)
+        print("[SUB] start date", self.start_date)
+        print("[SUB] day anchor", self.day_anchor)
+        print("[SUB] month anchor", self.month_anchor)
+        print("[SUB] end date", new_end_date)
         self.end_date = new_end_date
         self.save()
 

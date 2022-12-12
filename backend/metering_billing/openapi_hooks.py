@@ -3,7 +3,7 @@ def remove_subscription_delete(endpoints):
     to_remove = []
     for (path, path_regex, method, callback) in endpoints:
         if (path == r"/api/subscriptions/" and method == "POST") or (
-            path == r"/api/subscriptions/{subscription_id}/" and method == "PATCH"
+            path == r"/api/subscriptions/{subscription_id}/"
         ):
             to_remove.append((path, path_regex, method, callback))
     for item in to_remove:
