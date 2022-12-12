@@ -198,3 +198,9 @@ a {
 .pos-relative {
     position: relative !important
 }
+
+.apiKeyCopyClass {
+    border: 0.5px solid #0000008f;
+    border-radius: 6px;
+    box-shadow: 0 0 3px rgba(33, 33, 33, 0.2);
+}

@@ -22,6 +22,7 @@ import {
   WebhookEndpointCreate,
   WebhookEndpointUpdate,
 } from "../../../../types/webhook-type";
+import CopyText from "../../../base/CopytoClipboard";
 
 function isValidHttpUrl(string) {
   let url;
@@ -205,6 +206,8 @@ export const DeveloperTab = () => {
               title: "Webhook Secret",
               dataIndex: "webhook_secret",
               key: "webhook_secret",
+              render: (webhook_secret: string, record) => (<CopyText textToCopy={webhook_secret}/>),
+
             },
             {
               title: "Triggers",
@@ -305,10 +308,10 @@ export const DeveloperTab = () => {
           <p className="text-lg font-main">
             Your previous key has been revoked
           </p>
-          <p className="text-lg font-main">
+          <div className="text-lg font-main">
             Your new key is:{" "}
-            {apiKey ? <Input value={apiKey} readOnly /> : "Loading..."}
-          </p>
+            {apiKey ?  <CopyText className="apiKeyCopyClass" textToCopy={apiKey}/> : "Loading..."}
+          </div>
           <p></p>
         </div>
       </Modal>

@@ -2,13 +2,14 @@
 import React, {useState} from "react";
 import {CheckCircleOutlined, CopyOutlined} from "@ant-design/icons";
 import "./CopytoClipboard.css";
-import {Tag, Tooltip} from "antd";
+import { Tooltip} from "antd";
 
 interface CopyTextProps {
     textToCopy: string;
+    className?:string
 }
 
-const CopyText: React.FC<CopyTextProps> = ({textToCopy}) => {
+const CopyText: React.FC<CopyTextProps> = ({textToCopy, className}) => {
     const [copySuccess, setCopySuccess] = useState(false);
 
     const copyToClipBoard = async (copyMe) => {
@@ -24,7 +25,7 @@ const CopyText: React.FC<CopyTextProps> = ({textToCopy}) => {
     };
 
     return (
-        <div className="flex">
+        <div className={`${className} flex`}>
             <div className="copyText" onClick={() => copyToClipBoard(textToCopy)}>
                 <Tooltip
                     placement="right"

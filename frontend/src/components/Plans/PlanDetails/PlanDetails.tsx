@@ -15,6 +15,7 @@ import {
 import LoadingSpinner from "../../LoadingSpinner";
 import LinkExternalIds from "../LinkExternalIds";
 import { toast } from "react-toastify";
+import CopyText from "../../base/CopytoClipboard";
 
 type PlanDetailParams = {
   planId: string;
@@ -144,7 +145,7 @@ const PlanDetails: FC = () => {
           <div className="mx-10">
             <div className="planDetails">
               <div className="pr-1 planDetailsLabel">Plan Id:</div>
-              <div className="planDetailsValue"> {plan.plan_id}</div>
+              <div className="planDetailsValue"> <CopyText textToCopy={plan.plan_id}/></div>
             </div>
             <div className="planDetails">
               <div className="pr-1 planDetailsLabel">Plan Duration:</div>
