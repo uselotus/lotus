@@ -72,6 +72,7 @@ class Organization(models.Model):
         choices=PAYMENT_PLANS.choices,
         default=PAYMENT_PLANS.SELF_HOSTED_FREE,
     )
+    is_demo = models.BooleanField(default=False)
     default_currency = models.ForeignKey(
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
@@ -102,10 +103,6 @@ class Organization(models.Model):
             print("webhooks provisioned")
         self.save()
 
-    @property
-    def users(self):
-        return self.org_users
-
 
 class WebhookEndpointManager(models.Manager):
     def create_with_triggers(self, *args, **kwargs):
@@ -120,7 +117,7 @@ class WebhookEndpoint(models.Model):
         default=webhook_endpoint_uuid, max_length=100, unique=True
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_alerts"
+        Organization, on_delete=models.CASCADE, related_name="webhook_endpoints"
     )
     name = models.CharField(max_length=100, default=" ")
     webhook_url = models.CharField(max_length=300)
@@ -238,7 +235,7 @@ class User(AbstractUser):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name="org_users",
+        related_name="users",
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
@@ -252,7 +249,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100, null=False, blank=False)
     description = models.TextField(null=True, blank=True)
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_products"
+        Organization, on_delete=models.CASCADE, related_name="products"
     )
     product_id = models.CharField(default=product_uuid, max_length=100, unique=True)
     status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
@@ -279,7 +276,7 @@ class Customer(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="org_customers"
+        Organization, on_delete=models.CASCADE, null=False, related_name="customers"
     )
     customer_name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(max_length=100, blank=True, null=True)
@@ -632,7 +629,7 @@ class Metric(models.Model):
         Organization,
         on_delete=models.CASCADE,
         null=False,
-        related_name="org_billable_metrics",
+        related_name="billable_metrics",
     )
     event_name = models.CharField(max_length=200)
     metric_type = models.CharField(
@@ -1073,7 +1070,7 @@ class PlanComponent(models.Model):
 
 class Feature(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="org_features"
+        Organization, on_delete=models.CASCADE, null=False, related_name="features"
     )
     feature_name = models.CharField(max_length=200, null=False)
     feature_description = models.CharField(max_length=200, blank=True, null=True)
@@ -1091,7 +1088,11 @@ class Invoice(models.Model):
         decimal_places=10, max_digits=20, default=Decimal(0.0)
     )
     currency = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
@@ -1105,14 +1106,14 @@ class Invoice(models.Model):
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
+        Organization, on_delete=models.SET_NULL, null=True, related_name="invoices"
     )
     customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
+        Customer, on_delete=models.SET_NULL, null=True, related_name="invoices"
     )
     subscription = models.ForeignKey(
         "Subscription",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="invoices",
     )
@@ -1202,7 +1203,7 @@ class InvoiceLineItem(models.Model):
 
 class APIToken(AbstractAPIKey):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_api_keys"
+        Organization, on_delete=models.CASCADE, related_name="api_keys"
     )
 
     class Meta(AbstractAPIKey.Meta):
@@ -1220,7 +1221,7 @@ class OrganizationInviteToken(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="org_invite_token",
+        related_name="invite_token",
     )
     email = models.EmailField()
     token = models.CharField(max_length=250, default=uuid.uuid4)
@@ -1232,7 +1233,7 @@ class PlanVersion(models.Model):
         Organization,
         on_delete=models.CASCADE,
         null=False,
-        related_name="org_plan_versions",
+        related_name="plan_versions",
     )
     description = models.CharField(max_length=200, null=True, blank=True)
     version = models.PositiveSmallIntegerField()
@@ -1314,7 +1315,7 @@ class PlanVersion(models.Model):
 
 class PriceAdjustment(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_price_adjustments"
+        Organization, on_delete=models.CASCADE, related_name="price_adjustments"
     )
     price_adjustment_name = models.CharField(max_length=200, null=False)
     price_adjustment_description = models.CharField(
@@ -1349,7 +1350,7 @@ class PriceAdjustment(models.Model):
 
 class Plan(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_plans"
+        Organization, on_delete=models.CASCADE, related_name="plans"
     )
     plan_name = models.CharField(max_length=100, null=False, blank=False)
     plan_duration = models.CharField(choices=PLAN_DURATION.choices, max_length=40)
@@ -1525,7 +1526,7 @@ class ExternalPlanLink(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="org_external_plan_links",
+        related_name="external_plan_links",
     )
     plan = models.ForeignKey(
         Plan, on_delete=models.CASCADE, related_name="external_links"
@@ -1623,11 +1624,6 @@ class Subscription(models.Model):
             day_anchor=self.day_anchor,
             month_anchor=self.month_anchor,
         )
-        print("[SUB] billing cadence", self.billing_cadence)
-        print("[SUB] start date", self.start_date)
-        print("[SUB] day anchor", self.day_anchor)
-        print("[SUB] month anchor", self.month_anchor)
-        print("[SUB] end date", new_end_date)
         self.end_date = new_end_date
         self.save()
 
@@ -1908,7 +1904,7 @@ class Backtest(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="org_backtests"
+        Organization, on_delete=models.CASCADE, null=False, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
     backtest_id = models.CharField(
@@ -1953,7 +1949,7 @@ class OrganizationSetting(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_settings"
+        Organization, on_delete=models.CASCADE, related_name="settings"
     )
     setting_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
     setting_name = models.CharField(max_length=100, null=False, blank=False)

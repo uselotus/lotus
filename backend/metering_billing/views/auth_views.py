@@ -316,6 +316,8 @@ class DemoRegisterView(LoginViewMixin, APIView):
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
         user = setup_demo_3(company_name, username, email, password)
+        user.organization.is_demo = True
+        user.organization.save()
 
         posthog.capture(
             username,

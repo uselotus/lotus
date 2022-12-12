@@ -1062,11 +1062,6 @@ class TestSubscriptionAndSubscriptionRecord:
             date = new_sub_record.start_date + relativedelta(
                 months=i, day=sub.day_anchor, days=-1
             )
-            print(
-                date.date(),
-                new_sub_record.next_billing_date.date(),
-                sub.end_date.date(),
-            )
             if date.date() == new_sub_record.next_billing_date.date():
                 next_billing_date_correct_day = True
             if date.date() == sub.end_date.date():
