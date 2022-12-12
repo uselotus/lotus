@@ -74,6 +74,9 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         SubscriptionRecord.objects.filter(organization=organization).delete()
         Backtest.objects.filter(organization=organization).delete()
         PricingUnit.objects.filter(organization=organization).delete()
+        if user is None:
+            organization.delete()
+            return
     organization = user.organization
     big_customers = []
     for _ in range(1):
