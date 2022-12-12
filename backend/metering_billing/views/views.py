@@ -9,6 +9,7 @@ from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
+from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, Customer, Metric, SubscriptionRecord
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -146,9 +147,8 @@ class CostAnalysisView(APIView):
                 organization=organization, customer_id=customer_id
             )
         except Customer.DoesNotExist:
-            return Response(
-                {"error": "Customer not found"},
-                status=status.HTTP_404_NOT_FOUND,
+            raise NotFoundException(
+                f"Customer with customer_id: {customer_id} not found"
             )
         per_day_dict = {}
         for period in periods_bwn_twodates(

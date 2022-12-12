@@ -57,9 +57,9 @@ class SwitchPlanSamePlanException(APIException):
     default_code = "invalid_state"
 
 
-class SubscriptionNotFoundException(APIException):
+class NotFoundException(APIException):
     status_code = 404
-    default_detail = "Subscription with given customer_id and plan_id not found"
+    default_detail = "Resource was not found"
     default_code = "resource_not_found"
 
 

@@ -16,7 +16,7 @@ from metering_billing.exceptions import (
     DuplicateMetric,
     DuplicateWebhookEndpoint,
     MethodNotAllowed,
-    SubscriptionNotFoundException,
+    NotFoundException,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
 )
@@ -1032,9 +1032,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = self.get_queryset()
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         if qs.count() == 0:
-            raise SubscriptionNotFoundException(
-                "Subscription matching the given filters not found"
-            )
+            raise NotFoundException("Subscription matching the given filters not found")
         plan_to_replace = qs.first().billing_plan
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

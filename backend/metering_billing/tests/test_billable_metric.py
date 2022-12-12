@@ -1,3 +1,4 @@
+import itertools
 import json
 from datetime import timedelta
 from decimal import Decimal
@@ -24,9 +25,12 @@ from metering_billing.utils.enums import (
     EVENT_TYPE,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
+    METRIC_STATUS,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PLAN_DURATION,
+    PLAN_STATUS,
+    PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
     SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
@@ -215,6 +219,101 @@ class TestInsertMetric:
         )
         assert (
             len(get_billable_metrics_in_org(setup_dict["org2"])) == num_billable_metrics
+        )
+
+
+@pytest.mark.django_db(transaction=True)
+class TestArchiveMetric:
+    def test_cant_archive_with_active_plan_version(
+        self,
+        billable_metric_test_common_setup,
+        insert_billable_metric_payload,
+        get_billable_metrics_in_org,
+        add_product_to_org,
+        add_plan_to_product,
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+        org = setup_dict["org"]
+
+        metric_set = baker.make(
+            Metric,
+            organization=org,
+            event_name="email_sent",
+            property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),
+            usage_aggregation_type=itertools.cycle(["sum", "max", "count"]),
+            billable_metric_name=itertools.cycle(
+                ["count_chars", "peak_bandwith", "email_sent"]
+            ),
+            _quantity=3,
+        )
+        setup_dict["metrics"] = metric_set
+        product = add_product_to_org(org)
+        setup_dict["product"] = product
+        plan = add_plan_to_product(product)
+        setup_dict["plan"] = plan
+        billing_plan = baker.make(
+            PlanVersion,
+            organization=org,
+            description="test_plan for testing",
+            flat_rate=30.0,
+            plan=plan,
+        )
+        plan.display_version = billing_plan
+        plan.save()
+        for i, (fmu, cpb, mupb) in enumerate(
+            zip([50, 0, 1], [5, 0.05, 2], [100, 1, 1])
+        ):
+            pc = PlanComponent.objects.create(
+                plan_version=billing_plan,
+                billable_metric=metric_set[i],
+            )
+            start = 0
+            if fmu > 0:
+                PriceTier.objects.create(
+                    plan_component=pc,
+                    type=PRICE_TIER_TYPE.FREE,
+                    range_start=0,
+                    range_end=fmu,
+                )
+                start = fmu
+            PriceTier.objects.create(
+                plan_component=pc,
+                type=PRICE_TIER_TYPE.PER_UNIT,
+                range_start=start,
+                cost_per_batch=cpb,
+                metric_units_per_batch=mupb,
+            )
+        setup_dict["billing_plan"] = billing_plan
+
+        payload = {"status": METRIC_STATUS.ARCHIVED}
+        response = setup_dict["client"].patch(
+            reverse("metric-detail", kwargs={"metric_id": metric_set[0].metric_id}),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert (
+            response.data["type"]
+            == "https://docs.uselotus.io/errors/error-responses#validation-error"
+        )
+        billing_plan.status = PLAN_VERSION_STATUS.ARCHIVED
+        billing_plan.save()
+
+        response = setup_dict["client"].patch(
+            reverse("metric-detail", kwargs={"metric_id": metric_set[0].metric_id}),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert (
+            Metric.objects.get(metric_id=metric_set[0].metric_id).status
+            == METRIC_STATUS.ARCHIVED
         )
 
 
