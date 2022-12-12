@@ -601,6 +601,7 @@ class Event(models.Model):
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
     idempotency_id = models.CharField(max_length=255, default=event_uuid)
+    inserted_at = models.DateTimeField(default=now_utc)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]
