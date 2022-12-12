@@ -11,9 +11,11 @@ import {
   Dropdown,
   Checkbox,
 } from "antd";
+import dayjs from "dayjs";
 import React, { useState } from "react";
 import { useQuery, useMutation, QueryClient } from "react-query";
-import { Webhook, APIToken } from "../../../../api/api";
+import { DatePicker } from "antd";
+import { Webhook, APIKey } from "../../../../api/api";
 import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { Paper } from "../../../base/Paper";
 import { toast } from "react-toastify";
@@ -22,6 +24,11 @@ import {
   WebhookEndpointCreate,
   WebhookEndpointUpdate,
 } from "../../../../types/webhook-type";
+import {
+  APIKeyType,
+  APIKeyCreate,
+  APIKeyCreateResponse,
+} from "../../../../types/apikey-type";
 
 function isValidHttpUrl(string) {
   let url;
@@ -35,11 +42,15 @@ function isValidHttpUrl(string) {
 export const DeveloperTab = () => {
   const [visible, setVisible] = useState<boolean>(false);
   const [visibleWebhook, setVisibleWebhook] = useState<boolean>(false);
+  const [visibleAPIKey, setVisibleAPIKey] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>("");
   const queryClient = new QueryClient();
   const [webhookName, setWebhookName] = useState<string>("");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
+  const [apiKeyName, setAPIKeyName] = useState<string>("");
+  const [apiKeyExpire, setAPIKeyExpire] = useState<string>("");
   const [webhookSelected, setWebhookSelected] = useState<WebhookEndpoint>();
+  const [apiKeySelected, setApiKeySelected] = useState<APIKeyType>();
   const [isInvoiceGenerated, setIsInvoiceGenerated] = useState<boolean>(false);
   const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
   const closeModal = () => {
@@ -50,33 +61,13 @@ export const DeveloperTab = () => {
   const closeWebhookModal = () => {
     setVisibleWebhook(false);
   };
+
+  const closeAPIKeyModal = () => {
+    setVisibleAPIKey(false);
+  };
+
   const webhookMenu = (
     <Menu>
-      {/* <Menu.Item
-        key="1"
-        onClick={() => {
-          setWebhookUrl(webhookSelected?.webhook_url || "");
-          setWebhookName(webhookSelected?.name || "");
-
-          if (
-            webhookSelected?.triggers &&
-            webhookSelected?.triggers.length > 0 &&
-            webhookSelected?.triggers[0]["trigger_name"] === "invoice.created"
-          ) {
-            setIsInvoiceGenerated(true);
-          } else {
-            setIsInvoiceGenerated(false);
-          }
-
-          setWebhookName(webhookSelected?.name || "");
-
-          setVisibleWebhook(true);
-        }}
-      >
-        <div className="planMenuArchiveIcon">
-          <div className=" text-black">Edit</div>
-        </div>
-      </Menu.Item> */}
       <Menu.Item
         key="2"
         onClick={() => handleDeleteUrl(webhookSelected?.webhook_endpoint_id)}
@@ -87,17 +78,36 @@ export const DeveloperTab = () => {
       </Menu.Item>
     </Menu>
   );
-
-  const { isLoading, data: webhookData, refetch } = useQuery("webhook_urls", () =>
-    Webhook.getEndpoints()
+  const apiKeyMenu = (
+    <Menu>
+      <div>
+        <Menu.Item
+          key="2"
+          onClick={() => handleDeleteKey(apiKeySelected?.prefix)}
+        >
+          <div className="planMenuArchiveIcon">
+            <div className="archiveLabel">Delete Key</div>
+          </div>
+        </Menu.Item>
+      </div>
+      <Menu.Item key="2" onClick={() => handleRollKey(apiKeySelected?.prefix)}>
+        <div className="planMenuArchiveIcon">
+          <div className="archiveLabel">Roll Key</div>
+        </div>
+      </Menu.Item>
+    </Menu>
   );
 
-  const getKey = () => {
-    APIToken.newAPIToken().then((data) => {
-      setApiKey(data.api_key);
-    });
-    setVisible(true);
-  };
+  const {
+    isLoading: isLoadingWebhook,
+    data: webhookData,
+    refetch: refetchWebhook,
+  } = useQuery("webhook_urls", () => Webhook.getEndpoints());
+
+  const { data: apiKeyData, refetch: refetchAPIKey } = useQuery(
+    "api_keys",
+    () => APIKey.getKeys()
+  );
 
   const createWebhookMutation = useMutation(
     (endpointPost: WebhookEndpointCreate) =>
@@ -105,7 +115,7 @@ export const DeveloperTab = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries("webhook_urls");
-        refetch()
+        refetchWebhook();
         setWebhookUrl("");
         setWebhookName("");
         setIsInvoiceGenerated(false);
@@ -120,36 +130,72 @@ export const DeveloperTab = () => {
     }
   );
 
-    const handleAddUrl = () => {
-        if(!isValidHttpUrl(`https://${webhookUrl}`)) {
-            toast.error("Please enter a valid URL");
-            return
-        }
+  const createAPIKeyMutation = useMutation(
+    (apiKey: APIKeyCreate) => APIKey.createKey(apiKey),
+    {
+      onSuccess: (record: APIKeyCreateResponse) => {
+        queryClient.invalidateQueries("api_keys");
+        refetchAPIKey();
+        setAPIKeyName("");
+        toast.success("API Key added successfully");
+        setVisibleAPIKey(false);
+        setApiKeySelected(undefined);
+        setApiKey(record.key);
+        setVisible(true);
+      },
+      onError: (error) => {
+        toast.error(error.response.data.detail);
+      },
+    }
+  );
 
-        if(!webhookName) {
-            toast.error("Please enter webhook name");
-            return
-        }
+  const handleAddUrl = () => {
+    if (!isValidHttpUrl(`https://${webhookUrl}`)) {
+      toast.error("Please enter a valid URL");
+      return;
+    }
 
-        if(!isInvoiceGenerated && !isInvoicePaid) {
-            toast.error("Please select at-least one trigger");
-            return
-        }
+    if (!webhookName) {
+      toast.error("Please enter webhook name");
+      return;
+    }
 
-        let triggers: string[] = [];
-        if (isInvoiceGenerated) {
-            triggers.push("invoice.created");
-        }
-        if (isInvoicePaid) {
-            triggers.push("invoice.paid");
-        }
-        let endpointPost: WebhookEndpointCreate = {
-            name: webhookName,
-            webhook_url: new URL(`https://${webhookUrl}`),
-            triggers_in: triggers,
-        };
-        createWebhookMutation.mutate(endpointPost);
+    if (!isInvoiceGenerated && !isInvoicePaid) {
+      toast.error("Please select at-least one trigger");
+      return;
+    }
+
+    let triggers: string[] = [];
+    if (isInvoiceGenerated) {
+      triggers.push("invoice.created");
+    }
+    if (isInvoicePaid) {
+      triggers.push("invoice.paid");
+    }
+    let endpointPost: WebhookEndpointCreate = {
+      name: webhookName,
+      webhook_url: new URL(`https://${webhookUrl}`),
+      triggers_in: triggers,
     };
+    createWebhookMutation.mutate(endpointPost);
+  };
+
+  const handleAddAPIKey = () => {
+    if (!apiKeyName) {
+      toast.error("Please enter API Key name");
+      return;
+    }
+
+    let endpointPost: APIKeyCreate = {
+      name: apiKeyName,
+    };
+    // if expiry date is a datetime parseable string, include it in endpointPost
+    if (apiKeyExpire !== undefined && apiKeyExpire !== "") {
+      endpointPost["expiry_date"] = apiKeyExpire;
+    }
+
+    createAPIKeyMutation.mutate(endpointPost);
+  };
 
   const handleDeleteUrl = (id: string | undefined) => {
     if (id) {
@@ -158,7 +204,7 @@ export const DeveloperTab = () => {
           toast.success("Webhook URL deleted successfully");
           queryClient.invalidateQueries("webhook_urls");
           setWebhookSelected(undefined);
-          refetch()
+          refetchWebhook();
         })
         .catch((err) => {
           toast.error("Error deleting webhook URL");
@@ -166,22 +212,106 @@ export const DeveloperTab = () => {
     }
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  const handleDeleteKey = (id: string | undefined) => {
+    if (id) {
+      APIKey.deleteKey(id)
+        .then((data) => {
+          toast.success("API Key deleted successfully");
+          queryClient.invalidateQueries("api_keys");
+          setApiKeySelected(undefined);
+          refetchAPIKey();
+        })
+        .catch((err) => {
+          toast.error("Error deleting API Key");
+        });
+    }
+  };
+
+  const handleRollKey = (id: string | undefined) => {
+    if (id) {
+      APIKey.rollKey(id)
+        .then((data) => {
+          toast.success("API Key rolled successfully");
+          queryClient.invalidateQueries("api_keys");
+          setApiKeySelected(undefined);
+          refetchAPIKey();
+          setVisibleAPIKey(false);
+          setApiKey(data.key);
+          setVisible(true);
+        })
+        .catch((err) => {
+          toast.error("Error rolling API Key");
+        });
+    }
+  };
+
+  if (isLoadingWebhook) return <div>Loading...</div>;
   return (
     <div>
-      <div>
+      <div className="mt-10 flex flex-row justify-between w-full mb-8">
         <Typography.Title level={2}>API Keys</Typography.Title>
-        <Typography.Paragraph>
-          Requesting a new API key will revoke your existing key! Store your key
-          safely.
-        </Typography.Paragraph>
-        <Popconfirm
-          title="Are you sure to want to revoke your existing key?"
-          onConfirm={getKey}
-          okText="Yes"
+        <Button
+          type="primary"
+          onClick={() => {
+            setAPIKeyName("");
+            setAPIKeyExpire("");
+            setVisibleAPIKey(true);
+          }}
         >
-          <Button type="primary">Revoke API Key</Button>
-        </Popconfirm>
+          Add API Key
+        </Button>
+      </div>
+      <div className="border-2 border-solid rounded border-[#EAEAEB]">
+        <Table
+          dataSource={apiKeyData}
+          pagination={false}
+          columns={[
+            {
+              title: "Name",
+              dataIndex: "name",
+              key: "name",
+            },
+            {
+              title: "Key",
+              dataIndex: "prefix",
+              key: "prefix",
+              render: (prefix: string) => {
+                return <div>{prefix}•••</div>;
+              },
+            },
+            {
+              title: "Expiry Date",
+              dataIndex: "expiry_date",
+              key: "expiry_date",
+            },
+            {
+              title: "Created At",
+              dataIndex: "created",
+              key: "created",
+              render: (created: string) => {
+                return <div>{dayjs(created).format("DD MMM YYYY, hh:mm")}</div>;
+              },
+            },
+            {
+              key: "action",
+              width: 100,
+              render: (text: any, record: any) => (
+                <Dropdown overlay={apiKeyMenu} trigger={["click"]}>
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={(e) => {
+                      setApiKeySelected(record);
+                      e.preventDefault();
+                    }}
+                  >
+                    <MoreOutlined />
+                  </Button>
+                </Dropdown>
+              ),
+            },
+          ]}
+        />
       </div>
       <Divider />
       <div className="mt-10 flex flex-row justify-between w-full mb-8">
@@ -304,6 +434,40 @@ export const DeveloperTab = () => {
       </Modal>
 
       <Modal
+        visible={visibleAPIKey}
+        title="Create API Key"
+        onCancel={closeAPIKeyModal}
+        footer={
+          <Button
+            key="Confirm Key"
+            onClick={handleAddAPIKey}
+            type="primary"
+            loading={createAPIKeyMutation.isLoading}
+          >
+            Confirm
+          </Button>
+        }
+      >
+        <div className="flex flex-col space-y-8">
+          <span className="text-lg font-main">API Key Name:</span>
+
+          <Input
+            value={apiKeyName}
+            className="mt-0"
+            onChange={(e) => setAPIKeyName(e.target.value)}
+          ></Input>
+        </div>
+        <div className="flex flex-col mt-10 space-y-8">
+          <span className="text-lg font-main">Expiry Date + Time:</span>
+          <DatePicker
+            showTime
+            className="mt-0"
+            onChange={(date, dateString) => setAPIKeyExpire(dateString)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
         visible={visible}
         title="New API Key"
         onCancel={closeModal}
@@ -316,13 +480,10 @@ export const DeveloperTab = () => {
         <div className="flex flex-col">
           <p className="text-2xl font-main"></p>
           <p className="text-lg font-main">
-            Your previous key has been revoked
-          </p>
-          <p className="text-lg font-main">
             Your new key is:{" "}
             {apiKey ? <Input value={apiKey} readOnly /> : "Loading..."}
           </p>
-          <p></p>
+          <p> Your API Key will only show once! Make sure to keep it safe.</p>
         </div>
       </Modal>
     </div>

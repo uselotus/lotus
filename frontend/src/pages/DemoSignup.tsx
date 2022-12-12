@@ -8,6 +8,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
+import { ErrorResponse } from "../types/error-response-types";
 
 const cookies = new Cookies();
 

@@ -190,6 +190,10 @@ a {
     border-radius: 4px;
 }
 
+.mt-0 {
+    margin-top: 0 !important;
+}
+
 /**
  * @license
  *

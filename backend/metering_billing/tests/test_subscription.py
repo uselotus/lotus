@@ -218,7 +218,7 @@ class TestCreateSubscription:
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
 
 
@@ -495,7 +495,7 @@ class TestUpdateSub:
             content_type="application/json",
         )
         after_invoices = Invoice.objects.all().count()
-        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_switch_plan_transfers_usage_by_default(
         self, subscription_test_common_setup
@@ -1056,7 +1056,18 @@ class TestSubscriptionAndSubscriptionRecord:
             SubscriptionRecord.objects.all().order_by("-start_date").first()
         )
         assert sub.start_date == new_sub_record.start_date
-        assert sub.end_date.day == new_sub_record.next_billing_date.day
+        next_billing_date_correct_day = False
+        sub_end_correct_day = False
+        for i in range(13):
+            date = new_sub_record.start_date + relativedelta(
+                months=i, day=sub.day_anchor, days=-1
+            )
+            if date.date() == new_sub_record.next_billing_date.date():
+                next_billing_date_correct_day = True
+            if date.date() == sub.end_date.date():
+                sub_end_correct_day = True
+        assert next_billing_date_correct_day
+        assert sub_end_correct_day
         assert sub.end_date != new_sub_record.end_date  # cuz its quarterly
         assert sub.billing_cadence != new_sub_record.billing_plan.plan.plan_duration
         assert (

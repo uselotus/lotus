@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2deeca258909a8a1322c2b48779a0307dfa7367e8bfc8812cad011e7f0c4ef6b"
+            "sha256": "79658dc2079bf67f13a1eeebef25d296c4e69f649e384740c4a19d1fbc656b2e"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -204,7 +204,7 @@
                 "sha256:a0713dc7a1de3f06bc0df5a9567ad19ead2d3d5689b434768a6145bff77c0667",
                 "sha256:f184f0d851d96b6d29297354ed981b7dd71df7ff500d82fa6d11f0856bee8035"
             ],
-            "markers": "python_version < '4' and python_full_version >= '3.6.2'",
+            "markers": "python_full_version >= '3.6.2' and python_full_version < '4.0.0'",
             "version": "==0.3.0"
         },
         "click-plugins": {
@@ -450,7 +450,7 @@
                 "sha256:15746ed367a5a32eda76cfa2886eeec1de8cda79f519b7c5e12f87ed7cdbd663",
                 "sha256:199f211082eeac7e83563929b8ce41399c1c0f00dfc2f36bc00bea381027eaaa"
             ],
-            "markers": "python_version >= '3.7' and python_version < '4'",
+            "markers": "python_version >= '3.7' and python_full_version < '4.0.0'",
             "version": "==5.0"
         },
         "django-vite": {
@@ -492,6 +492,17 @@
             ],
             "index": "pypi",
             "version": "==0.24.2"
+        },
+        "drf-standardized-errors": {
+            "extras": [
+                "openapi"
+            ],
+            "hashes": [
+                "sha256:7ad7e3dc01daed616ec726f2ec2ba7896fdbeeffa1f14e85d3a89a3caa049f36",
+                "sha256:8dade786622d2dd53efe4fbadbb313f582e270227ed64080268960604c571e76"
+            ],
+            "index": "pypi",
+            "version": "==0.12.3"
         },
         "faker": {
             "hashes": [
@@ -892,7 +903,7 @@
                 "sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983",
                 "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"
             ],
-            "markers": "python_version >= '3.7' and python_version < '4'",
+            "markers": "python_version >= '3.7' and python_full_version < '4.0.0'",
             "version": "==2.28.1"
         },
         "requests-oauthlib": {
@@ -1846,11 +1857,11 @@
         },
         "pathspec": {
             "hashes": [
-                "sha256:88c2606f2c1e818b978540f73ecc908e13999c6c3a383daf3705652ae79807a5",
-                "sha256:8f6bf73e5758fd365ef5d58ce09ac7c27d2833a8d7da51712eac6e27e35141b0"
+                "sha256:3c95343af8b756205e2aba76e843ba9520a24dd84f68c22b9f93251507509dd6",
+                "sha256:56200de4077d9d0791465aa9095a01d421861e405b5096955051deefd697d6f6"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==0.10.2"
+            "version": "==0.10.3"
         },
         "platformdirs": {
             "hashes": [
@@ -2021,7 +2032,7 @@
                 "sha256:7c5599b102feddaa661c826c56ab4fee28bfd17f5abca1ebbe3e7f19d7c97983",
                 "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"
             ],
-            "markers": "python_version >= '3.7' and python_version < '4'",
+            "markers": "python_version >= '3.7' and python_full_version < '4.0.0'",
             "version": "==2.28.1"
         },
         "roundrobin": {

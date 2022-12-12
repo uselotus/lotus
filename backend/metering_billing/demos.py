@@ -9,21 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
-    Backtest,
-    BacktestSubstitution,
-    Customer,
-    Event,
-    Metric,
-    Organization,
-    Plan,
-    PlanComponent,
-    PlanVersion,
-    PriceTier,
-    Subscription,
-    SubscriptionRecord,
-    User,
-)
+from metering_billing.models import *
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
     calculate_end_date,
@@ -48,22 +34,49 @@ from metering_billing.utils.enums import (
 from model_bakery import baker
 
 
-def setup_demo_3(company_name, username, email, password):
-    try:
-        Organization.objects.get(company_name=company_name).delete()
-        print("Deleted existing organization, replacing")
-    except Organization.DoesNotExist:
-        print("creating from scratch")
-    try:
-        user = User.objects.get(username=username, email=email)
-    except:
-        user = User.objects.create_user(
-            username=username, email=email, password=password
-        )
-    if user.organization is None:
-        organization, _ = Organization.objects.get_or_create(company_name=company_name)
-        user.organization = organization
-        user.save()
+def setup_demo_3(company_name, username=None, email=None, password=None, mode="create"):
+    if mode == "create":
+        try:
+            Organization.objects.get(company_name=company_name).delete()
+            print("Deleted existing organization, replacing")
+        except Organization.DoesNotExist:
+            print("creating from scratch")
+        try:
+            user = User.objects.get(username=username, email=email)
+        except:
+            user = User.objects.create_user(
+                username=username, email=email, password=password
+            )
+        if user.organization is None:
+            organization, _ = Organization.objects.get_or_create(
+                company_name=company_name
+            )
+            user.organization = organization
+            user.save()
+    elif mode == "regenerate":
+        organization = Organization.objects.get(company_name=company_name)
+        user = organization.users.all().first()
+        WebhookEndpoint.objects.filter(organization=organization).delete()
+        Subscription.objects.filter(organization=organization).delete()
+        PlanVersion.objects.filter(organization=organization).delete()
+        Plan.objects.filter(organization=organization).delete()
+        Customer.objects.filter(organization=organization).delete()
+        Event.objects.filter(organization=organization).delete()
+        Metric.objects.filter(organization=organization).delete()
+        Product.objects.filter(organization=organization).delete()
+        CustomerBalanceAdjustment.objects.filter(organization=organization).delete()
+        Feature.objects.filter(organization=organization).delete()
+        Invoice.objects.filter(organization=organization).delete()
+        APIToken.objects.filter(organization=organization).delete()
+        OrganizationInviteToken.objects.filter(organization=organization).delete()
+        PriceAdjustment.objects.filter(organization=organization).delete()
+        ExternalPlanLink.objects.filter(organization=organization).delete()
+        SubscriptionRecord.objects.filter(organization=organization).delete()
+        Backtest.objects.filter(organization=organization).delete()
+        PricingUnit.objects.filter(organization=organization).delete()
+        if user is None:
+            organization.delete()
+            return
     organization = user.organization
     big_customers = []
     for _ in range(1):

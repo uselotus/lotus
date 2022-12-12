@@ -14,6 +14,11 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, Q, Sum
 from django.db.models.constraints import UniqueConstraint
+from metering_billing.exceptions.exceptions import (
+    ExternalConnectionFailure,
+    ExternalConnectionInvalid,
+    NotEditable,
+)
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
@@ -67,6 +72,7 @@ class Organization(models.Model):
         choices=PAYMENT_PLANS.choices,
         default=PAYMENT_PLANS.SELF_HOSTED_FREE,
     )
+    is_demo = models.BooleanField(default=False)
     default_currency = models.ForeignKey(
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
@@ -79,7 +85,7 @@ class Organization(models.Model):
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
             if k not in PAYMENT_PROVIDERS:
-                raise ValueError(
+                raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         if not self.default_currency:
@@ -97,10 +103,6 @@ class Organization(models.Model):
             print("webhooks provisioned")
         self.save()
 
-    @property
-    def users(self):
-        return self.org_users
-
 
 class WebhookEndpointManager(models.Manager):
     def create_with_triggers(self, *args, **kwargs):
@@ -115,7 +117,7 @@ class WebhookEndpoint(models.Model):
         default=webhook_endpoint_uuid, max_length=100, unique=True
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_alerts"
+        Organization, on_delete=models.CASCADE, related_name="webhook_endpoints"
     )
     name = models.CharField(max_length=100, default=" ")
     webhook_url = models.CharField(max_length=300)
@@ -212,7 +214,10 @@ class WebhookEndpoint(models.Model):
                     "endpoint data": list_response_endpoint_out,
                 }
                 self.delete()
-                raise ValueError(dictionary)
+
+                raise ExternalConnectionFailure(
+                    "Webhooks service failed to connect. Did not provision webhook endpoint."
+                )
 
 
 class WebhookTrigger(models.Model):
@@ -230,7 +235,7 @@ class User(AbstractUser):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name="org_users",
+        related_name="users",
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
@@ -244,7 +249,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100, null=False, blank=False)
     description = models.TextField(null=True, blank=True)
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_products"
+        Organization, on_delete=models.CASCADE, related_name="products"
     )
     product_id = models.CharField(default=product_uuid, max_length=100, unique=True)
     status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
@@ -271,7 +276,7 @@ class Customer(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="org_customers"
+        Organization, on_delete=models.CASCADE, null=False, related_name="customers"
     )
     customer_name = models.CharField(max_length=100, null=True, blank=True)
     email = models.EmailField(max_length=100, blank=True, null=True)
@@ -287,7 +292,12 @@ class Customer(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = (("organization", "customer_id"), ("organization", "email"))
+        constraints = [
+            UniqueConstraint(fields=["organization", "email"], name="unique_email"),
+            UniqueConstraint(
+                fields=["organization", "customer_id"], name="unique_customer_id"
+            ),
+        ]
 
     def __str__(self) -> str:
         return str(self.customer_name) + " " + str(self.customer_id)
@@ -295,12 +305,14 @@ class Customer(models.Model):
     def save(self, *args, **kwargs):
         for k, v in self.integrations.items():
             if k not in PAYMENT_PROVIDERS:
-                raise ValueError(
+                raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
             id = v.get("id")
             if id is None:
-                raise ValueError(f"Payment provider {k} id was not provided")
+                raise ExternalConnectionInvalid(
+                    f"Payment provider {k} id was not provided"
+                )
         if not self.default_currency:
             self.default_currency = self.organization.default_currency
         super(Customer, self).save(*args, **kwargs)
@@ -460,8 +472,8 @@ class CustomerBalanceAdjustment(models.Model):
                 or prev_parent_adjustment != new_parent_adjustment
                 or prev_expires_at != new_expires_at
             ):
-                raise ValidationError(
-                    "Cannot update any fields other than status and description"
+                raise NotEditable(
+                    "Cannot update any fields in a balance adjustment other than status and description"
                 )
         if self.amount < 0:
             assert (
@@ -589,6 +601,7 @@ class Event(models.Model):
     time_created = models.DateTimeField()
     properties = models.JSONField(default=dict, blank=True, null=True)
     idempotency_id = models.CharField(max_length=255, default=event_uuid)
+    inserted_at = models.DateTimeField(default=now_utc)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]
@@ -617,7 +630,7 @@ class Metric(models.Model):
         Organization,
         on_delete=models.CASCADE,
         null=False,
-        related_name="org_billable_metrics",
+        related_name="billable_metrics",
     )
     event_name = models.CharField(max_length=200)
     metric_type = models.CharField(
@@ -673,7 +686,29 @@ class Metric(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "metric_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "metric_id"], name="unique_org_metric_id"
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "billable_metric_name"],
+                name="unique_org_billable_metric_name",
+            ),
+            models.UniqueConstraint(
+                fields=[
+                    "organization",
+                    "billable_metric_name",
+                    "event_name",
+                    "metric_type",
+                    "usage_aggregation_type",
+                    "billable_aggregation_type",
+                    "property_name",
+                    "granularity",
+                    "is_cost_metric",
+                ],
+                name="unique_org_event_name_metric_type_and_other_fields",
+            ),
+        ]
 
     def __str__(self):
         return self.billable_metric_name
@@ -1036,7 +1071,7 @@ class PlanComponent(models.Model):
 
 class Feature(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="org_features"
+        Organization, on_delete=models.CASCADE, null=False, related_name="features"
     )
     feature_name = models.CharField(max_length=200, null=False)
     feature_description = models.CharField(max_length=200, blank=True, null=True)
@@ -1054,7 +1089,11 @@ class Invoice(models.Model):
         decimal_places=10, max_digits=20, default=Decimal(0.0)
     )
     currency = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
@@ -1068,14 +1107,14 @@ class Invoice(models.Model):
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, related_name="invoices"
+        Organization, on_delete=models.SET_NULL, null=True, related_name="invoices"
     )
     customer = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
+        Customer, on_delete=models.SET_NULL, null=True, related_name="invoices"
     )
     subscription = models.ForeignKey(
         "Subscription",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="invoices",
     )
@@ -1165,9 +1204,8 @@ class InvoiceLineItem(models.Model):
 
 class APIToken(AbstractAPIKey):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_api_keys"
+        Organization, on_delete=models.CASCADE, related_name="api_keys"
     )
-    name = models.CharField(max_length=200, default="latest_token")
 
     class Meta(AbstractAPIKey.Meta):
         verbose_name = "API Token"
@@ -1184,7 +1222,7 @@ class OrganizationInviteToken(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="org_invite_token",
+        related_name="invite_token",
     )
     email = models.EmailField()
     token = models.CharField(max_length=250, default=uuid.uuid4)
@@ -1196,7 +1234,7 @@ class PlanVersion(models.Model):
         Organization,
         on_delete=models.CASCADE,
         null=False,
-        related_name="org_plan_versions",
+        related_name="plan_versions",
     )
     description = models.CharField(max_length=200, null=True, blank=True)
     version = models.PositiveSmallIntegerField()
@@ -1278,7 +1316,7 @@ class PlanVersion(models.Model):
 
 class PriceAdjustment(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_price_adjustments"
+        Organization, on_delete=models.CASCADE, related_name="price_adjustments"
     )
     price_adjustment_name = models.CharField(max_length=200, null=False)
     price_adjustment_description = models.CharField(
@@ -1313,7 +1351,7 @@ class PriceAdjustment(models.Model):
 
 class Plan(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_plans"
+        Organization, on_delete=models.CASCADE, related_name="plans"
     )
     plan_name = models.CharField(max_length=100, null=False, blank=False)
     plan_duration = models.CharField(choices=PLAN_DURATION.choices, max_length=40)
@@ -1489,7 +1527,7 @@ class ExternalPlanLink(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="org_external_plan_links",
+        related_name="external_plan_links",
     )
     plan = models.ForeignKey(
         Plan, on_delete=models.CASCADE, related_name="external_links"
@@ -1867,7 +1905,7 @@ class Backtest(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="org_backtests"
+        Organization, on_delete=models.CASCADE, null=False, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
     backtest_id = models.CharField(
@@ -1912,7 +1950,7 @@ class OrganizationSetting(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="org_settings"
+        Organization, on_delete=models.CASCADE, related_name="settings"
     )
     setting_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
     setting_name = models.CharField(max_length=100, null=False, blank=False)
