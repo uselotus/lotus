@@ -14,7 +14,6 @@ from django.db.models import (
     F,
     FloatField,
     Max,
-    Min,
     OuterRef,
     Q,
     Subquery,
@@ -23,6 +22,10 @@ from django.db.models import (
     Window,
 )
 from django.db.models.functions import Cast, Trunc
+from metering_billing.exceptions.exceptions import (
+    AggregationEngineFailure,
+    MetricValidationFailed,
+)
 from metering_billing.utils import (
     convert_to_date,
     date_as_min_dt,
@@ -42,8 +45,8 @@ from metering_billing.utils.enums import (
 Metric = apps.get_app_config("metering_billing").get_model(model_name="Metric")
 Customer = apps.get_app_config("metering_billing").get_model(model_name="Customer")
 Event = apps.get_app_config("metering_billing").get_model(model_name="Event")
-Subscription = apps.get_app_config("metering_billing").get_model(
-    model_name="Subscription"
+SubscriptionRecord = apps.get_app_config("metering_billing").get_model(
+    model_name="SubscriptionRecord"
 )
 
 
@@ -62,6 +65,7 @@ class MetricHandler(abc.ABC):
         customer: Optional[Customer],
         group_by: Optional[list[str]],
         proration: Optional[METRIC_GRANULARITY],
+        filters: Optional[dict[str, str]],
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         """This method will be used to calculate the usage at the given results_granularity. This is purely how much has been used and will typically be used in dahsboarding to show usage of the metric. You should be able to handle any aggregation type returned in the allowed_usage_aggregation_types method.
 
@@ -74,7 +78,7 @@ class MetricHandler(abc.ABC):
     @abc.abstractmethod
     def get_current_usage(
         self,
-        subscription: Subscription,
+        subscription: SubscriptionRecord,
         group_by: list[str] = [],
     ) -> float:
         """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Stateful with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
@@ -95,8 +99,10 @@ class MetricHandler(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         """This method will be used to build the filter args for the get_usage and get_earned_usage_per_day methods. You should build the filter args for the Event model, and return them as a dictionary. You should also handle the case where customer is None, which means that you should return the usage for all customers."""
+        if filters is None:
+            filters = {}
         now = now_utc()
         filter_kwargs = {
             "organization": self.organization,
@@ -128,6 +134,8 @@ class MetricHandler(abc.ABC):
             d = {f"properties__{f.property_name}__in": f.comparison_value}
             q = Q(**d) if f.operator == CATEGORICAL_FILTER_OPERATORS.ISIN else ~Q(**d)
             filter_args.append(q)
+        for filter_name, filter_value in filters.items():
+            filter_args.append(Q(**{f"properties__{filter_name}": filter_value}))
         return filter_args, filter_kwargs
 
     @abc.abstractmethod
@@ -232,7 +240,7 @@ class CounterHandler(MetricHandler):
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
         if billable_metric.metric_type != METRIC_TYPE.COUNTER:
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
             )
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
@@ -249,7 +257,7 @@ class CounterHandler(MetricHandler):
             self.usage_aggregation_type
             not in CounterHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
 
@@ -263,10 +271,12 @@ class CounterHandler(MetricHandler):
             METRIC_AGGREGATION.MAX,
         ]
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         if group_by is None:
             group_by = []
-        return super()._build_filter_kwargs(start, end, customer, group_by)
+        if filters is None:
+            filters = {}
+        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
 
     def _build_pre_groupby_annotation_kwargs(self, group_by=None):
         if group_by is None:
@@ -290,11 +300,12 @@ class CounterHandler(MetricHandler):
         customer=None,
         group_by=None,
         proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -341,30 +352,28 @@ class CounterHandler(MetricHandler):
             return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
         return return_dict
 
-    def get_current_usage(self, subscription, group_by=None):
+    def get_current_usage(self, subscription_record, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         per_customer = self.get_usage(
-            start=subscription.start_date,
-            end=subscription.end_date,
+            start=subscription_record.start_date,
+            end=subscription_record.end_date,
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            customer=subscription.customer,
+            customer=subscription_record.customer,
             group_by=group_by,
+            filters=filters,
         )
-        if not (
-            subscription.customer.customer_name in per_customer
-            or len(per_customer) == 0
-        ):
-            raise AssertionError
         return per_customer
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
+        self, start, end, customer, group_by=None, proration=None, filters=None
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -480,16 +489,18 @@ class CounterHandler(MetricHandler):
 
         # now validate
         if metric_type != METRIC_TYPE.COUNTER:
-            raise AssertionError
+            raise MetricValidationFailed(
+                "Metric type must be COUNTER for CounterHandler"
+            )
         if usg_agg_type not in CounterHandler._allowed_usage_aggregation_types():
-            raise AssertionError(
+            raise MetricValidationFailed(
                 "[METRIC TYPE: COUNTER] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
             )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             if property_name is None:
-                raise AssertionError(
+                raise MetricValidationFailed(
                     "[METRIC TYPE: COUNTER] Must specify property name unless using COUNT aggregation"
                 )
         else:
@@ -524,7 +535,7 @@ class StatefulHandler(MetricHandler):
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
         if billable_metric.metric_type != METRIC_TYPE.STATEFUL:
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
             )
         self.event_type = billable_metric.event_type
@@ -543,7 +554,7 @@ class StatefulHandler(MetricHandler):
             self.usage_aggregation_type
             not in StatefulHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
 
@@ -564,30 +575,40 @@ class StatefulHandler(MetricHandler):
 
         # now validate
         if metric_type != METRIC_TYPE.STATEFUL:
-            raise AssertionError
+            raise MetricValidationFailed(
+                "Metric type must be CONTINUOUS for ContinuousHandler"
+            )
         if usg_agg_type not in StatefulHandler._allowed_usage_aggregation_types():
-            raise AssertionError(
-                "[METRIC TYPE: STATEFUL] Usage aggregation type {} is not allowed.".format(
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
             )
         if not granularity:
-            raise AssertionError("[METRIC TYPE: STATEFUL] Must specify granularity")
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Must specify granularity"
+            )
         if bill_agg_type:
             print(
-                "[METRIC TYPE: STATEFUL] Billable aggregation type not allowed. Making null."
+                "[METRIC TYPE: CONTINUOUS] Billable aggregation type not allowed. Making null."
             )
             data.pop("billable_aggregation_type", None)
         if not event_type:
-            raise AssertionError("[METRIC TYPE: STATEFUL] Must specify event type.")
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Must specify event type."
+            )
         if not property_name:
-            raise AssertionError("[METRIC TYPE: STATEFUL] Must specify property name.")
+            raise MetricValidationFailed(
+                "[METRIC TYPE: CONTINUOUS] Must specify property name."
+            )
         return data
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         if group_by is None:
             group_by = []
-        return super()._build_filter_kwargs(start, end, customer, group_by)
+        if filters is None:
+            filters = {}
+        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
 
     def _build_pre_groupby_annotation_kwargs(self, group_by=None):
         if group_by is None:
@@ -611,11 +632,14 @@ class StatefulHandler(MetricHandler):
         customer=None,
         group_by=None,
         proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -860,7 +884,7 @@ class StatefulHandler(MetricHandler):
             usage_dict = new_usage_dict
         return usage_dict
 
-    def get_current_usage(self, subscription, group_by=None):
+    def get_current_usage(self, subscription_record, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         cur_usg_agg = self.usage_aggregation_type
@@ -869,10 +893,11 @@ class StatefulHandler(MetricHandler):
         self.granularity = METRIC_GRANULARITY.TOTAL
         usg = self.get_usage(
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            start=subscription.start_date,
-            end=subscription.end_date,
-            customer=subscription.customer,
+            start=subscription_record.start_date,
+            end=subscription_record.end_date,
+            customer=subscription_record.customer,
             group_by=group_by,
+            filters=filters,
         )
         self.usage_aggregation_type = cur_usg_agg
         self.granularity = cur_granularity
@@ -880,7 +905,13 @@ class StatefulHandler(MetricHandler):
         return usg
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
+        self,
+        start,
+        end,
+        customer,
+        group_by=None,
+        proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
@@ -891,6 +922,7 @@ class StatefulHandler(MetricHandler):
             customer=customer,
             group_by=group_by,
             proration=proration,
+            filters=filters,
         )
         longer_than_daily = [
             METRIC_GRANULARITY.TOTAL,
@@ -934,6 +966,7 @@ class StatefulHandler(MetricHandler):
                     customer=customer,
                     group_by=group_by,
                     proration=METRIC_GRANULARITY.DAY,
+                    filters=filters,
                 ).get(customer.customer_name, {})
                 for unique_customer_tuple, unique_usage in customer_usage.items():
                     daily_per_unique = daily_per_customer.get(unique_customer_tuple, {})
@@ -975,7 +1008,6 @@ class StatefulHandler(MetricHandler):
     def _allowed_usage_aggregation_types():
         return [
             METRIC_AGGREGATION.MAX,
-            METRIC_AGGREGATION.LATEST,
         ]
 
 
@@ -989,7 +1021,7 @@ class RateHandler(MetricHandler):
         self.event_name = billable_metric.event_name
         self.billable_metric = billable_metric
         if billable_metric.metric_type != METRIC_TYPE.RATE:
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable metric of type {billable_metric.metric_type} can't be handled by a RateHandler."
             )
         self.usage_aggregation_type = billable_metric.usage_aggregation_type
@@ -1008,14 +1040,14 @@ class RateHandler(MetricHandler):
             self.usage_aggregation_type
             not in RateHandler._allowed_usage_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
         if (
             self.billable_aggregation_type
             not in RateHandler._allowed_billable_aggregation_types()
         ):
-            raise AssertionError(
+            raise AggregationEngineFailure(
                 f"Billable aggregation type {self.billable_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
             )
 
@@ -1036,22 +1068,22 @@ class RateHandler(MetricHandler):
 
         # now validate
         if metric_type != METRIC_TYPE.RATE:
-            raise AssertionError
+            raise MetricValidationFailed("Metric type must be RATE for a RateHandler.")
         if usg_agg_type not in RateHandler._allowed_usage_aggregation_types():
-            raise AssertionError(
+            raise MetricValidationFailed(
                 "[METRIC TYPE: RATE] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
             )
         if bill_agg_type not in RateHandler._allowed_billable_aggregation_types():
-            raise AssertionError(
+            raise MetricValidationFailed(
                 "[METRIC TYPE: RATE] Billable aggregation type {} is not allowed.".format(
                     bill_agg_type
                 )
             )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             if property_name is None:
-                raise AssertionError(
+                raise MetricValidationFailed(
                     "[METRIC TYPE: RATE] Must specify property name unless using COUNT aggregation"
                 )
         else:
@@ -1061,7 +1093,7 @@ class RateHandler(MetricHandler):
                 )
                 data.pop("property_name", None)
         if not granularity:
-            raise AssertionError("[METRIC TYPE: RATE] Must specify granularity")
+            raise MetricValidationFailed("[METRIC TYPE: RATE] Must specify granularity")
         if event_type:
             print("[METRIC TYPE: RATE] Event type not allowed. Making null.")
             data.pop("event_type", None)
@@ -1079,10 +1111,12 @@ class RateHandler(MetricHandler):
             start = None
         return start, end
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None):
+    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
         if group_by is None:
             group_by = []
-        return super()._build_filter_kwargs(start, end, customer, group_by)
+        if filters is None:
+            filters = {}
+        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
 
     def _build_pre_groupby_annotation_kwargs(self, group_by=None):
         if group_by is None:
@@ -1098,20 +1132,20 @@ class RateHandler(MetricHandler):
             customer, results_granularity, start, group_by, proration
         )
 
-    def get_current_usage(self, subscription, group_by=None):
+    def get_current_usage(self, subscription_record, group_by=None, filters=None):
         if group_by is None:
             group_by = []
         start, end = self._get_current_query_start_end()
-        start = start if start else subscription.start_date
+        start = start if start else subscription_record.start_date
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, subscription.customer, group_by
+            start, end, subscription_record.customer, group_by, filters
         )
-        filter_kwargs["time_created__gt"] = subscription.start_date
+        filter_kwargs["time_created__gt"] = subscription_record.start_date
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
         )
         groupby_kwargs = self._build_groupby_kwargs(
-            subscription.customer,
+            subscription_record.customer,
             results_granularity=None,
             start=start,
             group_by=group_by,
@@ -1164,11 +1198,14 @@ class RateHandler(MetricHandler):
         customer=None,
         group_by=None,
         proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by
+            start, end, customer, group_by, filters
         )
         pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
             group_by
@@ -1232,10 +1269,18 @@ class RateHandler(MetricHandler):
         return return_dict
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
+        self,
+        start,
+        end,
+        customer,
+        group_by=None,
+        proration=None,
+        filters=None,
     ):
         if group_by is None:
             group_by = []
+        if filters is None:
+            filters = {}
         per_customer = self.get_usage(
             start=start,
             end=end,
@@ -1243,20 +1288,9 @@ class RateHandler(MetricHandler):
             customer=customer,
             group_by=group_by,
             proration=proration,
-        )
-
-        return_dict = {}
-        unique_groupby_props = ["customer_name"] + group_by
-        for row in per_customer:
-            tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
-            usage_qty = row["new_usage_qty"]
-            if unique_tup not in return_dict:
-                return_dict[unique_tup] = {}
-            if max(return_dict[unique_tup].values(), default=0) < usage_qty:
-                return_dict[unique_tup] = {tc_trunc: usage_qty}
-
-        return return_dict
+            filters=filters,
+        ).get(customer.customer_name, {})
+        return per_customer
 
     @staticmethod
     def _allowed_usage_aggregation_types():

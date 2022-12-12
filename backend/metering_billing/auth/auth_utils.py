@@ -18,7 +18,7 @@ def get_organization_from_key(key):
     try:
         api_key = APIToken.objects.get_from_key(key)
     except:
-        raise NoMatchingAPIKey
+        raise NoMatchingAPIKey("API Key starting with {} not known".format(key[:5]))
     organization = api_key.organization
     return organization
 
@@ -26,7 +26,9 @@ def get_organization_from_key(key):
 def get_user_org_or_raise_no_org(request):
     organization_user = request.user.organization
     if organization_user is None:
-        raise UserNoOrganization()
+        raise UserNoOrganization(
+            "User does not have an organization. This is unexpected behavior, please contact support."
+        )
     return organization_user
 
 
@@ -37,7 +39,9 @@ def parse_organization(request):
         organization_api_token = get_organization_from_key(api_key)
         organization_user = get_user_org_or_raise_no_org(request)
         if organization_user.pk != organization_api_token.pk:
-            raise OrganizationMismatch()
+            raise OrganizationMismatch(
+                "Organization for API key and session did not match"
+            )
         return organization_api_token
     elif api_key is not None:
         return get_organization_from_key(api_key)
@@ -76,8 +80,6 @@ def fast_api_key_validation_and_cache(request):
         except:
             return HttpResponseBadRequest("Invalid API key"), False
         organization_pk = api_key.organization.pk
-        if type(organization_pk) is not int:
-            raise AssertionError("Organization PK must be an integer")
         expiry_date = api_key.expiry_date
         timeout = (
             60 * 60 * 24

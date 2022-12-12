@@ -1,6 +1,7 @@
 ---
 openapi: "POST /api/subscriptions/plans/"
-hideApiMarker: true
+title: Create Subscription
+description: Add a plan to a customer's subscription
 ---
 
 A subscription associates one of your customers with one of your billing plans.
@@ -14,17 +15,15 @@ A `Create Subscription` call requires
 Optionally you can submit:
 
 - `end_date` the date the subscription ends. This should be a string in YYYY-MM-DD format of the date in UTC time. If you don't set it (recommended), we will use the information in the billing plan to automatically calculate this.
-- `subscription_id` a unique identifier for the subscription. If you don't pass in a subscription_id, we will generate one for you. You will need the subscription_id to update or cancel the subscription. You can either store it yourself or look for it in the subscriptions page in the Lotus app.
 - `is_new` a boolean indicating whether this is a new subscription or an existing subscription that you're updating/renewing. If you don't pass in this field, we will assume it's a new subscription.
 - `auto-renew` a boolean indicating whether the subscription should auto-renew. If you don't pass in this field, we will assume it's true.
 
 <CodeGroup>
 ```py Python
 lotus.create_subscription(
-  customer_id='cust_0569173e-e665-4369',
+  customer_id='cust_0569173ee6654369',
   plan_id='premium_plan_7ui9op',
   start_date='2020-01-01',
-  subscription_id='cust_0569_p_7ui9op_2020-01-01'
 )
 ```
 

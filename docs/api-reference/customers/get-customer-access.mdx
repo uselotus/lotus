@@ -1,31 +1,24 @@
 ---
 openapi: "GET /api/customer_metric_access/"
-hideApiMarker: true
 title: Get Metric Access
 ---
 
 Returns a the usage the customer has for their current subscriptions.
 
-Checks whether a customer has access to a specific feature or enough usage in their plan to register an event. This is useful if you want to gate access to certain features in your app based on usage.
+Checks whether a customer has access to metrics with this event name, and returns both the current usage of that metric and the limits (free, total) for the metric. This is useful if you want to gate access to certain features in your app based on usage.
 
 <CodeGroup>
 
 ```py Python
-lotus.check_customer_access(
-  customer_id= "cust_0569173e-e665-4369",
+lotus.get_customer_metric_access(
+  customer_id= "cust_0569173ee6654369",
   event_name='api_call',
-  event_limit_type='free'
-)
-
-lotus.check_customer_access(
-  customer_id= "cust_0569173e-e665-4369",
-  feature_name='slack_integration',
 )
 ```
 
 ```ts Typescript
 await lotus.getCustomerMetricAccess({
-  customerId: "cust_0569173e-e665-4369",
+  customerId: "cust_0569173ee6654369",
   eventName: "api_call",
 });
 ```

@@ -1,6 +1,5 @@
 ---
 openapi: "GET /api/plans/{plan_id}/"
-hideApiMarker: true
 ---
 
 Retrieves a [plan_detail](/api-reference/plans/plan-object) object.
@@ -12,7 +11,7 @@ A `Retrieve Plan` call requires
 <CodeGroup>
 
 ```py Python
-lotus.retrieve_plan(
+lotus.get_plan(
     plan_id='plan_0569173e-e665-4369',
 )
 ```

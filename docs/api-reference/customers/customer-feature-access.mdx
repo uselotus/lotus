@@ -1,37 +1,27 @@
 ---
 openapi: "GET /api/customer_feature_access/"
-hideApiMarker: true
 title: Get Feature Access
 ---
 
 Returns whether a customer has access to a boolean feature under the current subscriptions.
 
-A `Check Customer Access` call requires
+A `Get Feature Access` call requires
 
 - customer_id the id you defined in your backend for the corresponding customer and the same id that you passed into Lotus when creating the customer
-
-AND EITHER
-
 - `feature_name` name of the feature you want to check access for.
-
-OR
-
-- `event_name` name of the event you want to check access for. In the backend we'll check whether any of the plan components associated with the event have surpassed their limit.
-- `event_limit_type` the type of limit you want to check. Pass in free to check if the customer has access to free units, or total to see if the customer has access to the event_name at all.
 
 <CodeGroup>
 
 ```py Python
-lotus.check_customer_access(
-  customer_id= "cust_0569173e-e665-4369",
-  event_name='api_call',
-  event_limit_type='free'
+lotus.get_customer_feature_access(
+  customer_id= "cust_0569173ee6654369",
+  feature_name="premium_support",
 )
 ```
 
 ```ts Typescript
-await lotus.getCustomerAccess({
-  customerId: "cust_0569173e-e665-4369",
+await lotus.getCustomerFeatureAccess({
+  customerId: "cust_0569173ee6654369",
   featureName: "slack_integration",
 });
 ```

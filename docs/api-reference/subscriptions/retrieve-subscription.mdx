@@ -1,19 +1,18 @@
 ---
 openapi: "GET /api/subscriptions/{subscription_id}/"
-hideApiMarker: true
 ---
 
 Retrieves a [subscription](/api-reference/subscriptions/subscription-object) object.
 
 A `Retrieve Subscription` call requires
 
-- `subscription_id`
+- `customer_id`
 
 <CodeGroup>
 
 ```py Python
-lotus.retrieve_subscription(
-  subscription_id='sub_0569173e-e665-4369',
+lotus.get_subscription(
+  customer_id='cust_0569173ee6654369',
 )
 ```
 

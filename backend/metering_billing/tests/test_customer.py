@@ -111,7 +111,7 @@ class TestGetCustomers:
         payload = {}
         response = setup_dict["client"].get(reverse("customer-list"), payload)
 
-        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.fixture
@@ -158,7 +158,6 @@ class TestInsertCustomer:
             data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_customers_in_org(setup_dict["org"])) == 1
@@ -201,7 +200,7 @@ class TestInsertCustomer:
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_406_NOT_ACCEPTABLE
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
 
@@ -223,7 +222,7 @@ class TestInsertCustomer:
             content_type="application/json",
         )
 
-        assert response.status_code == status.HTTP_409_CONFLICT
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers
         assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
 

@@ -49,13 +49,13 @@ export const ComponentDisplay: FC<{
   deleteComponent: (any) => void;
 }> = ({ componentsData, handleComponentEdit, deleteComponent }) => {
   return (
-    <Row gutter={[12, 12]}>
+    <Row gutter={[12, 12]} className="overflow-y-auto max-h-[400px]">
       {componentsData.map((component: any, index: number) => (
         <Col span="24" key={index}>
-          <Paper>
+          <Paper border={true} className="items-stretch">
             <Descriptions
               title={component?.metric}
-              size="small"
+              className="text-[20px]"
               column={2}
               extra={[
                 <Button

@@ -9,22 +9,10 @@ from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import (
-    Backtest,
-    BacktestSubstitution,
-    Customer,
-    Event,
-    Metric,
-    Organization,
-    Plan,
-    PlanComponent,
-    PlanVersion,
-    PriceTier,
-    Subscription,
-    User,
-)
+from metering_billing.models import *
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
+    calculate_end_date,
     date_as_max_dt,
     date_as_min_dt,
     now_utc,
@@ -32,7 +20,10 @@ from metering_billing.utils import (
 )
 from metering_billing.utils.enums import (
     BACKTEST_KPI,
+    EVENT_TYPE,
     FLAT_FEE_BILLING_TYPE,
+    METRIC_AGGREGATION,
+    METRIC_GRANULARITY,
     METRIC_TYPE,
     PLAN_DURATION,
     PLAN_STATUS,
@@ -43,22 +34,49 @@ from metering_billing.utils.enums import (
 from model_bakery import baker
 
 
-def setup_demo_3(company_name, username, email, password):
-    try:
-        Organization.objects.get(company_name=company_name).delete()
-        print("Deleted existing organization, replacing")
-    except Organization.DoesNotExist:
-        print("creating from scratch")
-    try:
-        user = User.objects.get(username=username, email=email)
-    except:
-        user = User.objects.create_user(
-            username=username, email=email, password=password
-        )
-    if user.organization is None:
-        organization, _ = Organization.objects.get_or_create(company_name=company_name)
-        user.organization = organization
-        user.save()
+def setup_demo_3(company_name, username=None, email=None, password=None, mode="create"):
+    if mode == "create":
+        try:
+            Organization.objects.get(company_name=company_name).delete()
+            print("Deleted existing organization, replacing")
+        except Organization.DoesNotExist:
+            print("creating from scratch")
+        try:
+            user = User.objects.get(username=username, email=email)
+        except:
+            user = User.objects.create_user(
+                username=username, email=email, password=password
+            )
+        if user.organization is None:
+            organization, _ = Organization.objects.get_or_create(
+                company_name=company_name
+            )
+            user.organization = organization
+            user.save()
+    elif mode == "regenerate":
+        organization = Organization.objects.get(company_name=company_name)
+        user = organization.users.all().first()
+        WebhookEndpoint.objects.filter(organization=organization).delete()
+        Subscription.objects.filter(organization=organization).delete()
+        PlanVersion.objects.filter(organization=organization).delete()
+        Plan.objects.filter(organization=organization).delete()
+        Customer.objects.filter(organization=organization).delete()
+        Event.objects.filter(organization=organization).delete()
+        Metric.objects.filter(organization=organization).delete()
+        Product.objects.filter(organization=organization).delete()
+        CustomerBalanceAdjustment.objects.filter(organization=organization).delete()
+        Feature.objects.filter(organization=organization).delete()
+        Invoice.objects.filter(organization=organization).delete()
+        APIToken.objects.filter(organization=organization).delete()
+        OrganizationInviteToken.objects.filter(organization=organization).delete()
+        PriceAdjustment.objects.filter(organization=organization).delete()
+        ExternalPlanLink.objects.filter(organization=organization).delete()
+        SubscriptionRecord.objects.filter(organization=organization).delete()
+        Backtest.objects.filter(organization=organization).delete()
+        PricingUnit.objects.filter(organization=organization).delete()
+        if user is None:
+            organization.delete()
+            return
     organization = user.organization
     big_customers = []
     for _ in range(1):
@@ -318,7 +336,7 @@ def setup_demo_3(company_name, username, email, password):
         cost_per_batch=10,
         metric_units_per_batch=1,
     )
-    plan.display_version = bp_10_compute_seats
+    plan.display_version = bp_50_compute_seats
     plan.save()
     six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
     for cust_set_name, cust_set in [
@@ -393,12 +411,11 @@ def setup_demo_3(company_name, username, email, password):
                     )
                     ct_mean, ct_sd = 0.065, 0.01
 
-                sub = Subscription.objects.create(
+                sub, sr = make_subscription_and_subscription_record(
                     organization=organization,
                     customer=customer,
-                    billing_plan=plan,
+                    plan=plan,
                     start_date=sub_start,
-                    status="ended",
                     is_new=months == 0,
                 )
                 tot_word_limit = float(
@@ -475,24 +492,25 @@ def setup_demo_3(company_name, username, email, password):
                 if months == 0:
                     run_generate_invoice.delay(
                         sub.pk,
+                        [sr.pk],
                         issue_date=sub.start_date,
-                        flat_fee_cutoff_date=None,
-                        include_usage=False,
                     )
-                else:
-                    sub.flat_fee_already_billed = sub.billing_plan.flat_rate
-                    sub.save()
                 if months != 5:
-                    cur_replace_with = sub.billing_plan.replace_with
-                    sub.billing_plan.replace_with = next_plan
-                    sub.save()
+                    cur_replace_with = sr.billing_plan.replace_with
+                    sr.billing_plan.replace_with = next_plan
+                    sr.save()
                     run_generate_invoice.delay(
-                        sub.pk, issue_date=sub.end_date, charge_next_plan=True
+                        sub.pk, [sr.pk], issue_date=sub.end_date, charge_next_plan=True
                     )
-                    sub.billing_plan.replace_with = cur_replace_with
-                    sub.save()
+                    sr.billing_plan.replace_with = cur_replace_with
+                    sr.save()
     now = now_utc()
     Subscription.objects.filter(
+        organization=organization,
+        status=SUBSCRIPTION_STATUS.ENDED,
+        end_date__gt=now,
+    ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
+    SubscriptionRecord.objects.filter(
         organization=organization,
         status=SUBSCRIPTION_STATUS.ENDED,
         end_date__gt=now,
@@ -512,6 +530,205 @@ def setup_demo_3(company_name, username, email, password):
     )
     run_backtest.delay(backtest.backtest_id)
     return user
+
+
+def setup_paas_demo(
+    company_name="paas", username="paas", email="paas@paas.com", password="paas"
+):
+    try:
+        Organization.objects.get(company_name=company_name).delete()
+        print("Deleted existing organization, replacing")
+    except Organization.DoesNotExist:
+        print("creating from scratch")
+    try:
+        user = User.objects.get(username=username, email=email)
+    except:
+        user = User.objects.create_user(
+            username=username, email=email, password=password
+        )
+    if user.organization is None:
+        organization, _ = Organization.objects.get_or_create(company_name=company_name)
+        user.organization = organization
+        user.save()
+    organization = user.organization
+    big_customers = []
+    for _ in range(1):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="BigCompany " + str(uuid.uuid4())[:6],
+        )
+        big_customers.append(customer)
+    medium_customers = []
+    for _ in range(2):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="MediumCompany " + str(uuid.uuid4())[:6],
+        )
+        medium_customers.append(customer)
+    small_customers = []
+    for _ in range(5):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="SmallCompany " + str(uuid.uuid4())[:6],
+        )
+        small_customers.append(customer)
+    (
+        valnodes,
+        rpcnodes,
+        ixnodes,
+        evixnodes,
+        tntxns,
+        mntxns,
+        tntxns_rate,
+        mntxns_rate,
+    ) = baker.make(
+        Metric,
+        organization=organization,
+        event_name=itertools.cycle(
+            [
+                "num_validators_change",
+                "rpc_nodes_change",
+                "indexer_nodes_change",
+                "event_indexer_nodes_change",
+                "testnet_transaction",
+                "mainnet_transaction",
+                "testnet_transaction",
+                "mainnet_transaction",
+            ]
+        ),
+        property_name=itertools.cycle(["change"] * 4 + [""] * 4),
+        usage_aggregation_type=itertools.cycle(
+            [METRIC_AGGREGATION.MAX] * 4 + [METRIC_AGGREGATION.COUNT] * 4
+        ),
+        billable_metric_name=itertools.cycle(
+            [
+                "Validator Nodes",
+                "RPC Nodes",
+                "Indexer Nodes",
+                "Event Indexer Nodes",
+                "Testnet Transactions",
+                "Mainnet Transactions",
+                "Ratelimit Testnet Transactions",
+                "Ratelimit Mainnet Transactions",
+            ]
+        ),
+        metric_type=itertools.cycle(
+            [METRIC_TYPE.STATEFUL] * 4
+            + [METRIC_TYPE.COUNTER] * 2
+            + [METRIC_TYPE.RATE] * 2
+        ),
+        event_type=itertools.cycle([EVENT_TYPE.DELTA] * 4 + [None] * 4),
+        billable_aggregation_type=itertools.cycle(
+            [None] * 6 + [METRIC_AGGREGATION.MAX] * 2
+        ),
+        granularity=itertools.cycle(
+            [METRIC_GRANULARITY.MONTH] * 4 + [None] * 2 + [METRIC_GRANULARITY.HOUR] * 2
+        ),
+        _quantity=8,
+    )
+    plan = Plan.objects.create(
+        plan_name="Basic Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    basic_plan = PlanVersion.objects.create(
+        organization=organization,
+        description="Basic Plan with access to testnet",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=125,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan,
+        billable_metric=tntxns,
+        free_units=None,
+        max_units=2000,
+        cost_per_batch=0.05,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=basic_plan, billable_metric=tntxns_rate, free_units=50
+    )
+    plan.display_version = basic_plan
+    plan.save()
+    plan = Plan.objects.create(
+        plan_name="Professional Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    professional_plan = PlanVersion.objects.create(
+        organization=organization,
+        description="Customizable Professional Pla",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=0,
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan,
+        billable_metric=valnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan,
+        billable_metric=rpcnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan,
+        billable_metric=ixnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan,
+        billable_metric=evixnodes,
+        free_units=2,
+        max_units=10,
+        cost_per_batch=200,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan,
+        billable_metric=tntxns,
+        free_units=None,
+        max_units=5000,
+        cost_per_batch=0.05,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan, billable_metric=tntxns_rate, free_units=50
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan,
+        billable_metric=mntxns,
+        free_units=None,
+        max_units=5000,
+        cost_per_batch=0.25,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        plan_version=professional_plan, billable_metric=mntxns_rate, free_units=100
+    )
+    plan.display_version = professional_plan
+    plan.save()
+    for component in professional_plan.plan_components.all():
+        if component.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+            component.proration_granularity = METRIC_GRANULARITY.MINUTE
+            component.save()
 
 
 def create_pc_and_tiers(
@@ -579,3 +796,36 @@ def gaussian_users(n, mean=3, sd=1, mx=None):
         yield {
             "qty": int(max(qty, 1)),
         }
+
+
+def make_subscription_and_subscription_record(
+    organization,
+    customer,
+    plan,
+    start_date,
+    is_new,
+):
+    end_date = calculate_end_date(
+        plan.plan.plan_duration,
+        start_date,
+    )
+    sub = Subscription.objects.create(
+        organization=organization,
+        customer=customer,
+        start_date=start_date,
+        end_date=end_date,
+        status=SUBSCRIPTION_STATUS.ACTIVE,
+    )
+    sub.handle_attach_plan(
+        plan.day_anchor, plan.month_anchor, start_date, plan.plan.plan_duration
+    )
+    sr = SubscriptionRecord.objects.create(
+        organization=organization,
+        customer=customer,
+        billing_plan=plan,
+        start_date=start_date,
+        status=SUBSCRIPTION_STATUS.ENDED,
+    )
+    sub.status = SUBSCRIPTION_STATUS.ENDED
+    sub.save()
+    return sub, sr

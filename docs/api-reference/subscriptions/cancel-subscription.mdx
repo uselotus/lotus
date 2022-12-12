@@ -5,48 +5,54 @@ the arguments passed to the call."
 openapi: "DELETE /api/subscriptions/plans/"
 ---
 
-A `Cancel Subscription` call requires
+A Cancel Subscription call requires either a `customer_id` or a `plan_id`. You can provide one, the other, or both. If you don't provide one of the parameters, the call will cancel all subscriptions matching the other parameter.
 
-- `subscription_id` the unique ID of the subscription you want to cancel. You
-  can find the subscription uid in the subscription page in Lotus.
+Optionally you can provide the following parameters:
 
-Additionally, you must submit:
-
-- `turn_off_auto_renew` a boolean indicating whether the subscription
-  auto-renewal should be turned off. A common cancellation mechanism is to
-  continue billing for the current period, but not renew the subscription.
-
-OR
-
-- `replace_immediately_type` in case you want the subscription cancelled
-  immediately. This can take on a value of end_current_subscription_and_bill or
-  end_current_subscription_and_dont_bill. The former will end the subscription
-  immediately and bill the customer for the current period. The latter will end
-  the subscription immediately and not bill the customer for the current period.
+- `subscription_filters` a list of dictionaries containing property_name and value keys for filtering subscriptions to cancel.
+- `flat_fee_behavior` choices are ["refund", "prorate", "charge_full"]
+- `bill_usage` a boolean indicating whether to bill for usage up to the end of the subscription
+- `invoicing_behavior_on_cancel` choices are ["add_to_next_invoice", "invoice_now"]
 
 <CodeGroup>
 
 ```py Python
 lotus.cancel_subscription(
-  subscription_id='subscription_4',
-  turn_off_auto_renew=True
+    customer_id='cust_0569173e-e665-4369',
+    subscription_filters=[
+        {
+            "property_name": "status",
+            "value": "active",
+        },
+    ],
+    flat_fee_behavior='prorate',
+    bill_usage=True,
+    invoicing_behavior_on_cancel='add_to_next_invoice',
 )
 
 lotus.cancel_subscription(
-  subscription_id='subscription_4',
-  replace_immediately_type='end_current_subscription_and_bill'
+    plan_id='plan_A',
+    subscription_filters=[
+        {
+            "property_name": "created_date",
+            "value": "2020-08-15",
+        },
+    ],
+    flat_fee_behavior='charge_full',
+    bill_usage=False,
+    invoicing_behavior_on_cancel='invoice_now',
 )
 ```
 
 ```ts Typescript
-await lotus.cancelSubscription({
-  subscriptionId: "subscription_123",
-  turnOffAutoRenew: true,
-});
 
 await lotus.cancelSubscription({
-  subscriptionId: "subscription_123",
-  replaceImmediatelyType: "end_current_subscription_and_bill",
+  planId: "plan234234"
+  billUsage: "false";
+  customerId: string;
+  invoicingBehaviorOnCancel?: "add_to_next_invoice";
+  flatFeeBehavior:"prorate";
+  subscriptionFilters?: [{property_name:project_id, value:23414}];
 });
 ```
 

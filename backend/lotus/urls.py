@@ -22,6 +22,7 @@ from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, track
 from metering_billing.views.model_views import (
     ActionViewSet,
+    APITokenViewSet,
     BacktestViewSet,
     CustomerBalanceAdjustmentViewSet,
     CustomerViewSet,
@@ -43,13 +44,15 @@ from metering_billing.views.model_views import (
 from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,
     APIKeyCreate,
+    ConfirmIdemsReceivedView,
     CostAnalysisView,
     CustomerBatchCreateView,
     CustomersSummaryView,
     CustomersWithRevenueView,
     DraftInvoiceView,
     ExperimentalToActiveView,
-    GetCustomerAccessView,
+    GetCustomerEventAccessView,
+    GetCustomerFeatureAccessView,
     ImportCustomersView,
     ImportPaymentObjectsView,
     PeriodMetricRevenueView,
@@ -59,6 +62,7 @@ from metering_billing.views.views import (  # MergeCustomersView,
     TransferSubscriptionsView,
 )
 from rest_framework import routers
+from rest_framework_nested import routers
 
 DEBUG = settings.DEBUG
 ON_HEROKU = settings.ON_HEROKU
@@ -67,6 +71,12 @@ PROFILER_ENABLED = settings.PROFILER_ENABLED
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
 router.register(r"customers", CustomerViewSet, basename="customer")
+
+# customers_router = routers.NestedSimpleRouter(router, r"customers", lookup="")
+# customers_router.register(
+#     r"plans", SubscriptionRecordViewSet, basename="customer-plans"
+# )
+
 router.register(r"metrics", MetricViewSet, basename="metric")
 router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
@@ -93,7 +103,7 @@ router.register(
     CustomerBalanceAdjustmentViewSet,
     basename="balance_adjustment",
 )
-
+router.register(r"api_tokens", APITokenViewSet, basename="api_token")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -137,9 +147,14 @@ urlpatterns = [
     path("api/new_api_key/", APIKeyCreate.as_view(), name="new_api_key"),
     path("api/draft_invoice/", DraftInvoiceView.as_view(), name="draft_invoice"),
     path(
-        "api/customer_access/",
-        GetCustomerAccessView.as_view(),
-        name="customer_access",
+        "api/customer_metric_access/",
+        GetCustomerEventAccessView.as_view(),
+        name="customer_metric_access",
+    ),
+    path(
+        "api/customer_feature_access/",
+        GetCustomerFeatureAccessView.as_view(),
+        name="customer_feature_access",
     ),
     path(
         "api/batch_create_customers/",
@@ -175,6 +190,11 @@ urlpatterns = [
     path("api/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
     path("api/session/", auth_views.SessionView.as_view(), name="api-session"),
     path("api/register/", auth_views.RegisterView.as_view(), name="register"),
+    path(
+        "api/verify_idems_received/",
+        ConfirmIdemsReceivedView.as_view(),
+        name="verify_idems_received",
+    ),
     path(
         "api/demo_register/",
         auth_views.DemoRegisterView.as_view(),

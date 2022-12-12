@@ -13,6 +13,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  
+  redis:
+    image: redis:7-alpine
+    command: redis-server
+    env_file:
+      - ./env/.env.dev
 
   redpanda:
     image: docker.redpanda.com/vectorized/redpanda:v22.2.2
@@ -31,6 +37,24 @@ services:
       - 9092:9092
       - 9644:9644
       - 29092:29092
+
+  svix-server:
+    image: svix/svix-server
+    environment:
+      WAIT_FOR: "true"
+      SVIX_REDIS_DSN: redis://redis
+      SVIX_DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db
+    env_file:
+      - ./env/.env.dev
+    ports:
+      - "8071:8071"
+    depends_on:
+    - db
+    - redis
+    links: 
+    - db
+    - redis
+    restart: on-failure
 
   backend: &backend
     env_file:
@@ -74,12 +98,6 @@ services:
     stdin_open: true
     depends_on:
       - backend
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server
-    env_file:
-      - ./env/.env.dev
 
   celery:
     env_file:

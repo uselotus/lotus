@@ -8,6 +8,7 @@ import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
+from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     PLAN_DURATION,
@@ -28,7 +29,7 @@ def convert_to_date(value):
     elif isinstance(value, datetime.date):
         return value
     else:
-        raise Exception(f"can't convert type {type(value)} into date")
+        raise ServerError(f"can't convert type {type(value)} into date")
 
 
 def convert_to_datetime(value, date_behavior="min"):
@@ -42,7 +43,7 @@ def convert_to_datetime(value, date_behavior="min"):
         elif date_behavior == "max":
             return date_as_max_dt(value)
     else:
-        raise Exception(f"can't convert type {type(value)} into date")
+        raise ServerError(f"can't convert type {type(value)} into date")
 
 
 def make_all_decimals_floats(data):
@@ -196,28 +197,197 @@ def now_utc_ts():
     return str(now_utc().timestamp())
 
 
-def calculate_end_date(interval, start_date, clip_to_period_end=False):
+def get_granularity_ratio(metric_granularity, proration_granularity, start_date):
+    if (
+        proration_granularity == METRIC_GRANULARITY.TOTAL
+        or proration_granularity is None
+    ):
+        return 1
+    granularity_dict = {
+        METRIC_GRANULARITY.SECOND: {
+            METRIC_GRANULARITY.SECOND: 1,
+        },
+        METRIC_GRANULARITY.MINUTE: {
+            METRIC_GRANULARITY.SECOND: 60,
+            METRIC_GRANULARITY.MINUTE: 1,
+        },
+        METRIC_GRANULARITY.HOUR: {
+            METRIC_GRANULARITY.SECOND: 60 * 60,
+            METRIC_GRANULARITY.MINUTE: 60,
+            METRIC_GRANULARITY.HOUR: 1,
+        },
+        METRIC_GRANULARITY.DAY: {
+            METRIC_GRANULARITY.SECOND: 24 * 60 * 60,
+            METRIC_GRANULARITY.MINUTE: 24 * 60,
+            METRIC_GRANULARITY.HOUR: 24,
+            METRIC_GRANULARITY.DAY: 1,
+        },
+    }
+    plus_month = start_date + relativedelta(months=1)
+    days_in_month = (plus_month - start_date).days
+    granularity_dict[METRIC_GRANULARITY.MONTH] = {
+        METRIC_GRANULARITY.SECOND: days_in_month * 24 * 60 * 60,
+        METRIC_GRANULARITY.MINUTE: days_in_month * 24 * 60,
+        METRIC_GRANULARITY.HOUR: days_in_month * 24,
+        METRIC_GRANULARITY.DAY: days_in_month,
+        METRIC_GRANULARITY.MONTH: 1,
+    }
+    plus_quarter = start_date + relativedelta(months=3)
+    days_in_quarter = (plus_quarter - start_date).days
+    granularity_dict[METRIC_GRANULARITY.QUARTER] = {
+        METRIC_GRANULARITY.SECOND: days_in_quarter * 24 * 60 * 60,
+        METRIC_GRANULARITY.MINUTE: days_in_quarter * 24 * 60,
+        METRIC_GRANULARITY.HOUR: days_in_quarter * 24,
+        METRIC_GRANULARITY.DAY: days_in_quarter,
+        METRIC_GRANULARITY.MONTH: 3,
+        METRIC_GRANULARITY.QUARTER: 1,
+    }
+    plus_year = start_date + relativedelta(years=1)
+    days_in_year = (plus_year - start_date).days
+    granularity_dict[METRIC_GRANULARITY.YEAR] = {
+        METRIC_GRANULARITY.SECOND: days_in_year * 24 * 60 * 60,
+        METRIC_GRANULARITY.MINUTE: days_in_year * 24 * 60,
+        METRIC_GRANULARITY.HOUR: days_in_year * 24,
+        METRIC_GRANULARITY.DAY: days_in_year,
+        METRIC_GRANULARITY.MONTH: 12,
+        METRIC_GRANULARITY.QUARTER: 4,
+        METRIC_GRANULARITY.YEAR: 1,
+    }
+    return granularity_dict[metric_granularity][proration_granularity]
+
+
+def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None):
     if interval == PLAN_DURATION.MONTHLY:
-        end_date = start_date + relativedelta(months=+1)
-        normalize_rd = relativedelta(day=1, hour=0, minute=0, second=0, microsecond=0)
+        end_date = date_as_max_dt(start_date + relativedelta(months=+1, days=-1))
+        if day_anchor:
+            tentative_end_date = date_as_max_dt(
+                start_date + relativedelta(day=day_anchor, days=-1)
+            )
+            if tentative_end_date > start_date:
+                end_date = tentative_end_date
+            else:
+                end_date = date_as_max_dt(
+                    start_date + relativedelta(months=1, day=day_anchor, days=-1)
+                )
     elif interval == PLAN_DURATION.QUARTERLY:
-        end_date = start_date + relativedelta(months=+3)
-        normalize_rd = relativedelta(
-            month=(end_date.month - 1) // 3 * 4,
-            day=1,
-            hour=0,
-            minute=0,
-            second=0,
-            microsecond=0,
-        )
+        end_date = date_as_max_dt(start_date + relativedelta(months=+3, days=-1))
+        if day_anchor and not month_anchor:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(months=3, day=day_anchor, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.months >= 3 and (
+                rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):  # went too far
+                end_date = date_as_max_dt(
+                    start_date + relativedelta(months=2, day=day_anchor, days=-1)
+                )
+        elif day_anchor and month_anchor:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1)
+            )
+            print("original end date: ", end_date)
+            rd = relativedelta(end_date, start_date)
+            if rd.months >= 3 and (
+                rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):  # went too far
+                i = 12
+                while rd.months >= 3:
+                    end_date = date_as_max_dt(
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                    )
+                    rd = relativedelta(end_date, start_date)
+                    i -= 1
+            elif end_date < start_date:
+                print("aha")
+                old_end_date = end_date
+                rd = relativedelta(end_date, old_end_date)
+                i = 0
+                while not (rd.months % 3 == 0 and rd.months > 0):
+                    end_date = date_as_max_dt(
+                        start_date + relativedelta(months=i, day=day_anchor, days=-1)
+                    )
+                    rd = relativedelta(end_date, old_end_date)
+                    i += 1
+                print("new end date: ", end_date)
+        elif month_anchor and not day_anchor:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(month=month_anchor, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.months >= 3 and (
+                rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                while rd.months >= 3:
+                    end_date = date_as_max_dt(end_date + relativedelta(months=-3))
+                    rd = relativedelta(end_date, start_date)
+            elif end_date < start_date:
+                while end_date < start_date:
+                    end_date = date_as_max_dt(end_date + relativedelta(months=3))
     elif interval == PLAN_DURATION.YEARLY:
-        end_date = start_date + relativedelta(years=+1)
-        normalize_rd = relativedelta(
-            month=1, day=1, hour=0, minute=0, second=0, microsecond=0
-        )
-    if clip_to_period_end:
-        end_date = end_date + normalize_rd
+        end_date = date_as_max_dt(start_date + relativedelta(years=+1, days=-1))
+        if day_anchor and not month_anchor:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(years=1, day=day_anchor, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.years >= 1 and (
+                rd.months > 0
+                or rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                end_date = date_as_max_dt(
+                    start_date + relativedelta(months=11, day=day_anchor, days=-1)
+                )
+        elif day_anchor and month_anchor:
+            end_date = date_as_max_dt(
+                start_date
+                + relativedelta(years=1, month=month_anchor, day=day_anchor, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.years >= 1 and (
+                rd.months > 0
+                or rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                end_date = end_date + relativedelta(years=-1)
+        elif month_anchor and not day_anchor:
+            end_date = date_as_max_dt(
+                start_date + relativedelta(years=1, month=month_anchor, days=-1)
+            )
+            rd = relativedelta(end_date, start_date)
+            if rd.years >= 1 and (
+                rd.months > 0
+                or rd.days > 0
+                or rd.hours > 0
+                or rd.minutes > 0
+                or rd.seconds > 0
+                or rd.microseconds > 0
+            ):
+                end_date = end_date + relativedelta(years=-1)
     return end_date
+
+
+def event_uuid():
+    return "event_" + str(uuid.uuid4().hex)
 
 
 def product_uuid():
@@ -242,6 +412,10 @@ def plan_uuid():
 
 def subscription_uuid():
     return "subs_" + str(uuid.uuid4().hex)
+
+
+def subscription_record_uuid():
+    return "subsrec_" + str(uuid.uuid4().hex)
 
 
 def backtest_uuid():

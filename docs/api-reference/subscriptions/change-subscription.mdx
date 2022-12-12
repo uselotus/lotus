@@ -1,37 +1,48 @@
 ---
 title: "Switch Subscription Plan"
 openapi: "PATCH /api/subscriptions/plans/"
-hideApiMarker: true
+description: "Upgrade or Downgrad or cancel autorenew for a subscription plan"
 ---
 
-The `Change Subscription Plan` call allows you to change the plan associated with a subscription. This often happens when a customer upgrades or downgrades their plan. A `Change Subscription Plan` call requires:
+A Update Subscription call requires
 
-- `subscription_id` the unique ID of the subscription you want to change. You can find the subscription id in the subscription page in Lotus.
+- `customer_id` which uniquely identifies your customer in your backend. This is
+  the same id you'll pass into track_event calls to identify the customer, in
+  addition to other calls, so make sure it's available to you.
+- `plan_id` the id of the plan that you would like to update.
+  Optionally you can submit:
 
-- `plan_id` the unique ID of the plan you want to change to. You can find the plan id in the plan page in Lotus.
-
-- `replace_immediately_type` which specifies the behavior of the change. This can take on a value of:
-  - `end_current_subscription_and_bill`,
-  - `end_current_subscription_and_dont_bill`, or
-  - `change_subscription_plan`.
-
-The first two options will end the subscription and start a new one with the new plan, whereas the third option will make a mid-subscription switch to the new plan.
+- `subscription_filters` any filters that you want to apply to the subscription (e.g., `{"property_name": "status", "value": "active"}`) `replace_plan_id` the id of the plan that you would like to replace the current plan with.
+- `replace_plan_invocing_behavior` choices are ["add_to_next_invoice", "invoice_now"]. Specifies the behavior when replacing the plan (e.g., "add_to_next_invoice" means to add the cost of the new plan to the next invoice)
+- `turn_off_auto_renew` a boolean indicating whether to turn off auto-renew for the subscription
+- `end_date` the date that you want the subscription to end
 
 <CodeGroup>
 
 ```py Python
-lotus.change_subscription_plan(
-  subscription_id='subscription_4',
+lotus.update_subscription(
+  customer_id='cust_0569173e-e665-4369',
   plan_id="plan_123",
-  replace_immediately_type="end_current_subscription_and_dont_bill"
+  replace_plan_id="plan_456",
+  replace_plan_invocing_behavior="add_to_next_invoice",
+  turn_off_auto_renew=True
+)
+
+lotus.update_subscription(
+  customer_id='cust_0569173e-e665-4369',
+  plan_id="plan_123",
+  subscription_filters=[{"property_name": "status", "value": "active"}],
+  end_date=datetime.date(2022, 12, 8),
 )
 ```
 
 ```ts Typescript
 await lotus.changeSubscription({
-  subscriptionId: "subscription_123",
-  planId: "plan_123",
-  replaceImmediatelyType: "change_subscription_plan",
+  customerId: "cust_234";
+  planId: "plan_234";
+  subscriptionFilters: [{property_name: "project_id", value: "3234123"}];
+  replacePlanId: "plan_235";
+  replacePlanInvoicingBehavior: "add_to_next_invoice";
 });
 ```
 

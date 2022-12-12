@@ -39,6 +39,11 @@ import VersionActiveForm from "../components/Plans/VersionActiveForm";
 interface CustomizedState {
   plan: PlanType;
 }
+const durationConversion = {
+  monthly: "Month",
+  quarterly: "Quarter",
+  yearly: "Year",
+};
 
 interface Props {
   type: "backtest" | "version" | "custom";
@@ -259,6 +264,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     form.submit();
   };
 
+  /// Submit Pricing Plan Http Request
   const submitPricingPlan = () => {
     form
       .validateFields()
@@ -289,6 +295,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           features: planFeatures,
           usage_billing_frequency: values.usage_billing_frequency,
         };
+        if (values.align_plan == "calendar_aligned") {
+          if (values.plan_duration === "yearly") {
+            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
+          }
+          if (values.plan_duration === "monthly") {
+            initialPlanVersion["day_anchor"] = 1;
+          }
+          if (values.plan_duration === "quarterly") {
+            initialPlanVersion["day_anchor"] = 1;
+            initialPlanVersion["month_anchor"] = 1;
+          }
+        }
         if (
           values.price_adjustment_type !== undefined &&
           values.price_adjustment_type !== "none"
@@ -327,6 +346,19 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             make_active: activeVersion,
             make_active_type: activeVersionType,
           };
+          if (values.align_plan == "calendar_aligned") {
+            if (values.plan_duration === "yearly") {
+              newVersion["day_anchor"] = 1;
+              newVersion["month_anchor"] = 1;
+            }
+            if (values.plan_duration === "monthly") {
+              newVersion["day_anchor"] = 1;
+            }
+            if (values.plan_duration === "quarterly") {
+              newVersion["day_anchor"] = 1;
+              newVersion["month_anchor"] = 1;
+            }
+          }
           if (
             values.price_adjustment_type !== undefined &&
             values.price_adjustment_type !== "none"
@@ -403,7 +435,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             flat_rate: plan.versions[versionIndex].flat_rate,
             pay_in_advance: plan.versions[versionIndex].flat_fee_billing_type,
             usage_billing_frequency:
-              plan.versions[versionIndex].usage_billing_frequency,
+              plan.versions[versionIndex].usage_billing_frequency ||
+              plan.plan_duration,
             plan_duration: plan.plan_duration,
             flat_fee_billing_type:
               plan.versions[versionIndex].flat_fee_billing_type,
@@ -413,6 +446,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             price_adjustment_type:
               plan.versions[versionIndex].price_adjustment
                 ?.price_adjustment_type || "none",
+            align_plan:
+              plan.versions[versionIndex].day_anchor !== undefined
+                ? "calendar_aligned"
+                : "subscription_aligned",
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -472,6 +509,30 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                         <Radio value="monthly">Monthly</Radio>
                         <Radio value="quarterly">Quarterly</Radio>
                         <Radio value="yearly">Yearly</Radio>
+                      </Radio.Group>
+                    </Form.Item>
+                    <Form.Item
+                      label="When To Bill"
+                      name="align_plan"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please Select One",
+                        },
+                      ]}
+                    >
+                      <Radio.Group>
+                        <Radio value="calendar_aligned">
+                          Start of Every{" "}
+                          {
+                            durationConversion[
+                              form.getFieldValue("plan_duration")
+                            ]
+                          }
+                        </Radio>
+                        <Radio value="subscription_aligned">
+                          Start of Subscription
+                        </Radio>
                       </Radio.Group>
                     </Form.Item>
 
@@ -547,11 +608,11 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     deleteComponent={deleteComponent}
                   />
                 </Form.Item>
-                <div className="absolute inset-x-0 bottom-0 justify-center">
+                <div className="inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
-                      label="Usage Billing Frequency"
+                      label="Billing Frequency"
                       name="usage_billing_frequency"
                       shouldUpdate={(prevValues, currentValues) =>
                         prevValues.plan_duration !== currentValues.plan_duration

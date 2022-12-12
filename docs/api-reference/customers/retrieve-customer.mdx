@@ -1,7 +1,6 @@
 ---
 title: "Retrieve a customer"
 openapi: "GET /api/customers/{customer_id}/"
-hideApiMarker: true
 ---
 
 Retrieves a [customer_detail](/api-reference/customers/customer-object) object.
@@ -12,14 +11,14 @@ A Retrieve `Customer` call requires
 
 <CodeGroup>
 ```py Python
-lotus.retrieve_customer(
-  customer_id='cust_0569173e-e665-4369',
+lotus.get_customer(
+  customer_id='cust_0569173ee6654369',
 )
 ```
 
 ```ts Typescript
 await lotus.getCustomerDetail({
-  customerId: "cust_0569173e-e665-4369",
+  customerId: "cust_0569173ee6654369",
 });
 ```
 

@@ -99,7 +99,13 @@ const PlanDetails: FC = () => {
 
   return (
     <Fragment>
-      {isLoading && <LoadingSpinner />}
+      {isLoading && (
+        <div className="flex h-full">
+          <div className="m-auto">
+            <LoadingSpinner />
+          </div>
+        </div>
+      )}
       {isError && (
         <div className="flex flex-col items-center justify-center h-full">
           <h2 className="mb-5">Could Not Load Plan</h2>

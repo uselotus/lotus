@@ -170,14 +170,28 @@ a {
 }
 
 .mr-2 {
-    margin-right: 0.5rem;
+  margin-right: 0.5rem;
 }
 
 .customer-detail-card {
   background: #d3d3d33d;
-  padding: 10px 20px;
+  padding: 20px 20px;
   border-radius: 10px;
   width: 500px;
+}
+
+.customer-search {
+    margin-bottom: 20px !important;
+    width: 400px !important;
+}
+
+.highlightText {
+    background: #cca43b4f;
+    border-radius: 4px;
+}
+
+.mt-0 {
+    margin-top: 0 !important;
 }
 
 /**

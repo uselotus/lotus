@@ -1,21 +1,24 @@
+from metering_billing.serializers.model_serializers import (
+    SubscriptionCategoricalFilterSerializer,
+)
 from rest_framework import serializers
 
 
-class GetCustomerAccessRequestSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(required=True)
-    event_name = serializers.CharField(required=False)
-    feature_name = serializers.CharField(required=False)
+class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
+    customer_id = serializers.CharField()
+    event_name = serializers.CharField()
+    metric_id = serializers.CharField(required=False)
+    subscription_filters = serializers.ListField(
+        child=SubscriptionCategoricalFilterSerializer(), required=False
+    )
 
-    def validate(self, data):
-        if not data.get("event_name") and not data.get("feature_name"):
-            raise serializers.ValidationError(
-                "Must provide either event_name or feature_name"
-            )
-        if data.get("event_name") and data.get("feature_name"):
-            raise serializers.ValidationError(
-                "Cannot provide both event_name and feature_name"
-            )
-        return data
+
+class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
+    customer_id = serializers.CharField()
+    feature_name = serializers.CharField()
+    subscription_filters = serializers.ListField(
+        child=SubscriptionCategoricalFilterSerializer(), required=False
+    )
 
 
 class CancelSubscriptionRequestSerializer(serializers.Serializer):
@@ -64,3 +67,4 @@ class EventPreviewRequestSerializer(serializers.Serializer):
 
 class DraftInvoiceRequestSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=True)
+    include_next_period = serializers.BooleanField(default=True)

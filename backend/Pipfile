@@ -49,6 +49,9 @@ kafka-python = "*"
 kafka-helper = "*"
 cronitor = "*"
 svix = "*"
+drf-nested-routers = "*"
+pyjwt = "*"
+drf-standardized-errors = {extras = ["openapi"], version = "*"}
 
 [dev-packages]
 platformdirs = "*"

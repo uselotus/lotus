@@ -9,17 +9,19 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+import datetime
 import logging
 import os
 import re
 import ssl
-from datetime import timedelta
+from datetime import timedelta, timezone
 from json import loads
 from pathlib import Path
 from urllib.parse import urlparse
 
 import dj_database_url
 import django_heroku
+import jwt
 import kafka_helper
 import posthog
 import sentry_sdk
@@ -29,7 +31,7 @@ from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
-from svix.api import EventTypeIn, Svix
+from svix.api import EventTypeIn, Svix, SvixAsync, SvixOptions
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -68,13 +70,12 @@ STRIPE_SECRET_KEY = (
     STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
 )
 # Get it from the section in the Stripe dashboard where you added the webhook endpoint
-DJSTRIPE_WEBHOOK_SECRET = config("DJSTRIPE_WEBHOOK_SECRET", default="whsec_")
+DJSTRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
 DJSTRIPE_USE_NATIVE_JSONFIELD = True
 DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
-
-
+SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
 # Optional Observalility Services
 CRONITOR_API_KEY = config("CRONITOR_API_KEY", default="")
 
@@ -139,6 +140,7 @@ INSTALLED_APPS = [
     "metering_billing",
     "actstream",
     "djstripe",
+    "drf_standardized_errors",
 ]
 
 SITE_ID = 1
@@ -320,8 +322,6 @@ if KAFKA_HOST:
 
     PRODUCER_CONFIG = producer_config
     CONSUMER = KafkaConsumer(KAFKA_EVENTS_TOPIC, **consumer_config)
-    # print(PRODUCER.__dict__["_sender"].__dict__)
-    # print("PRODUCER PRODUCER STARTUP")
     ADMIN_CLIENT = KafkaAdminClient(**admin_client_config)
 
     existing_topics = ADMIN_CLIENT.list_topics()
@@ -461,10 +461,39 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
     ],
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "metering_billing.custom_exception_handler.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_standardized_errors.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
+
+DRF_STANDARDIZED_ERRORS = {
+    # class responsible for handling the exceptions. Can be subclassed to change
+    # which exceptions are handled by default, to update which exceptions are
+    # reported to error monitoring tools (like Sentry), ...
+    "EXCEPTION_HANDLER_CLASS": "metering_billing.exceptions.handler.CustomHandler",
+    # class responsible for generating error response output. Can be subclassed
+    # to change the format of the error response.
+    "EXCEPTION_FORMATTER_CLASS": "metering_billing.exceptions.handler.RFC7807Formatter",
+    # enable the standardized errors when DEBUG=True for unhandled exceptions.
+    # By default, this is set to False so you're able to view the traceback in
+    # the terminal and get more information about the exception.
+    "ENABLE_IN_DEBUG_FOR_UNHANDLED_EXCEPTIONS": False,
+    # The below settings are for OpenAPI 3 schema generation
+    # ONLY the responses that correspond to these status codes will appear
+    # in the API schema.
+    "ALLOWED_ERROR_STATUS_CODES": [
+        "400",
+        "401",
+        "403",
+        "404",
+        "405",
+        "406",
+        "415",
+        "429",
+        "500",
+    ],
+}
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Lotus API",
     "DESCRIPTION": (
@@ -488,6 +517,12 @@ SPECTACULAR_SETTINGS = {
             "TokenAuth": [],
         }
     ],
+    "PREPROCESSING_HOOKS": [
+        "metering_billing.openapi_hooks.remove_subscription_delete"
+    ],
+    "POSTPROCESSING_HOOKS": [
+        "drf_standardized_errors.openapi_hooks.postprocess_schema_enums"
+    ],
     "ENUM_NAME_OVERRIDES": {
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
         "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
@@ -504,8 +539,20 @@ SPECTACULAR_SETTINGS = {
         "TrackEventSuccessEnum": ["all", "some"],
         "TrackEventFailureEnum": ["none"],
         "OrganizationUserStatus": "metering_billing.utils.enums.ORGANIZATION_STATUS.choices",
+        "ValidationErrorEnum": "drf_standardized_errors.openapi_serializers.ValidationErrorEnum.values",
+        "ClientErrorEnum": "drf_standardized_errors.openapi_serializers.ClientErrorEnum.values",
+        "ServerErrorEnum": "drf_standardized_errors.openapi_serializers.ServerErrorEnum.values",
+        "ErrorCode401Enum": "drf_standardized_errors.openapi_serializers.ErrorCode401Enum.values",
+        "ErrorCode403Enum": "drf_standardized_errors.openapi_serializers.ErrorCode403Enum.values",
+        "ErrorCode404Enum": "drf_standardized_errors.openapi_serializers.ErrorCode404Enum.values",
+        "ErrorCode405Enum": "drf_standardized_errors.openapi_serializers.ErrorCode405Enum.values",
+        "ErrorCode406Enum": "drf_standardized_errors.openapi_serializers.ErrorCode406Enum.values",
+        "ErrorCode415Enum": "drf_standardized_errors.openapi_serializers.ErrorCode415Enum.values",
+        "ErrorCode429Enum": "drf_standardized_errors.openapi_serializers.ErrorCode429Enum.values",
+        "ErrorCode500Enum": "drf_standardized_errors.openapi_serializers.ErrorCode500Enum.values",
     },
 }
+
 REST_KNOX = {
     "TOKEN_TTL": timedelta(hours=2),
     "AUTO_REFRESH": True,
@@ -567,6 +614,30 @@ django_heroku.settings(locals(), logging=False)
 # create svix events
 if SVIX_API_KEY != "":
     svix = Svix(SVIX_API_KEY)
+elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
+    try:
+        dt = datetime.datetime.now(timezone.utc)
+        utc_time = dt.replace(tzinfo=timezone.utc)
+        utc_timestamp = utc_time.timestamp()
+        payload = {
+            "iat": utc_timestamp,
+            "exp": 2980500639,
+            "nbf": utc_timestamp,
+            "iss": "svix-server",
+            "sub": "org_23rb8YdGqMT0qIzpgGwdXfHirMu",
+        }
+        encoded = jwt.encode(payload, SVIX_JWT_SECRET, algorithm="HS256")
+        SVIX_API_KEY = encoded
+        hostname, _, ips = socket.gethostbyname_ex("svix-server")
+        svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
+    except Exception as e:
+        svix = None
+else:
+    svix = None
+SVIX_CONNECTOR = svix
+
+if SVIX_CONNECTOR is not None:
+    svix = SVIX_CONNECTOR
     list_response_event_type_out = [x.name for x in svix.event_type.list().data]
     if "invoice.created" not in list_response_event_type_out:
         event_type_out = svix.event_type.create(
@@ -574,5 +645,13 @@ if SVIX_API_KEY != "":
                 description="Invoice is created",
                 archived=False,
                 name="invoice.created",
+            )
+        )
+    if "invoice.paid" not in list_response_event_type_out:
+        event_type_out = svix.event_type.create(
+            EventTypeIn(
+                description="Invoice is marked as paid",
+                archived=False,
+                name="invoice.paid",
             )
         )

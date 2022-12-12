@@ -11,6 +11,7 @@ from dateutil import parser
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
 from djmoney.money import Money
+from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
     SinglePaymentProviderSerializer,
@@ -219,7 +220,7 @@ class StripeConnector(PaymentProvider):
     def import_payment_objects(self, organization):
         stripe.api_key = self.secret_key
         imported_invoices = {}
-        for customer in organization.org_customers.all():
+        for customer in organization.customers.all():
             if PAYMENT_PROVIDERS.STRIPE in customer.integrations:
                 invoices = self._import_payment_objects_for_customer(customer)
                 imported_invoices[customer.customer_id] = invoices
@@ -320,7 +321,7 @@ class StripeConnector(PaymentProvider):
             #     "enabled": True,
             # },
             "description": "Invoice from {}".format(customer.organization.company_name),
-            "currency": invoice.pricing_unit.code.lower(),
+            "currency": invoice.currency.code.lower(),
         }
         if not self.self_hosted:
             org_stripe_acct = customer.organization.payment_provider_ids.get(
@@ -331,7 +332,9 @@ class StripeConnector(PaymentProvider):
             ), "Organization does not have a Stripe account ID"
             invoice_kwargs["stripe_account"] = org_stripe_acct
 
-        for line_item in invoice.inv_line_items.all():
+        for line_item in invoice.line_items.all().order_by(
+            F("associated_subscription_record").desc(nulls_last=True)
+        ):
             name = line_item.name
             amount = line_item.subtotal
             customer = stripe_customer_id
@@ -340,13 +343,21 @@ class StripeConnector(PaymentProvider):
                 "end": int(line_item.end_date.timestamp()),
             }
             tax_behavior = "exclusive"
+            sr = line_item.associated_subscription_record
+            metadata = {
+                "plan_name": sr.billing_plan.plan.plan_name,
+            }
+            filters = sr.filters.all()
+            for f in filters:
+                metadata[f.property_name] = f.comparison_value[0]
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),
                 "customer": customer,
                 "period": period,
-                "currency": invoice.pricing_unit.code.lower(),
+                "currency": invoice.currency.code.lower(),
                 "tax_behavior": tax_behavior,
+                "metadata": metadata,
             }
             stripe.InvoiceItem.create(**inv_dict)
         stripe_invoice = stripe.Invoice.create(**invoice_kwargs)
@@ -412,7 +423,7 @@ class StripeConnector(PaymentProvider):
             )
         else:
             if not self.self_hosted:
-                raise Exception(
+                raise ExternalConnectionInvalid(
                     "Organization does not have a Stripe ID. Cannot transfer subscriptions."
                 )
 
