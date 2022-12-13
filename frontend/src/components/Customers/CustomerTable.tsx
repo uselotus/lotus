@@ -7,7 +7,7 @@ import {
   CustomerTableItem,
   CustomerTotal,
 } from "../../types/customer-type";
-import {Button, Input, Tag} from "antd";
+import { Button, Input, Tag } from "antd";
 import { CreateCustomerState } from "./CreateCustomerForm";
 import { useQuery, UseQueryResult, useQueryClient } from "react-query";
 import { Plan } from "../../api/api";
@@ -15,10 +15,20 @@ import { PlanType } from "../../types/plan-type";
 import CustomerDetail from "./CustomerDetail";
 import { useNavigate } from "react-router-dom";
 
-function getHighlightedText(text:string, highlight:string) {
-    // Split text on highlight term, include term itself into parts, ignore case
-    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
-    return <span>{parts.map(part => part.toLowerCase() === highlight.toLowerCase() ? <span className="highlightText">{part}</span> : part)}</span>;
+function getHighlightedText(text: string, highlight: string) {
+  // Split text on highlight term, include term itself into parts, ignore case
+  const parts = text.split(new RegExp(`(${highlight})`, "gi"));
+  return (
+    <span>
+      {parts.map((part) =>
+        part.toLowerCase() === highlight.toLowerCase() ? (
+          <span className="highlightText">{part}</span>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
 }
 
 interface Props {
@@ -77,79 +87,82 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   );
 
   const columns: ProColumns<CustomerTableItem>[] = [
-  {
-    title: "Customer ID",
-    width: 120,
-    dataIndex: "customer_id",
-    align: "left",
-    ellipsis: true,
-    render: (_, record) => {
-        if(searchQuery) {
-            return getHighlightedText(record.customer_id, searchQuery)
+    {
+      width: 10,
+    },
+    {
+      title: "Customer ID",
+      width: 120,
+      dataIndex: "customer_id",
+      align: "left",
+      ellipsis: true,
+      render: (_, record) => {
+        if (searchQuery) {
+          return getHighlightedText(record.customer_id, searchQuery);
         }
-        return record.customer_id
-    }
-  },
-  {
-    title: "Name",
-    width: 120,
-    dataIndex: "customer_name",
-    align: "left",
-    search: { transform: (value: any) => value },
-    render: (_, record) => {
-          if (searchQuery) {
-              return getHighlightedText(record.customer_name, searchQuery)
-          }
-          return record.customer_name
-    }
-  },
-  {
-    title: "Plans",
-    width: 180,
-    dataIndex: "subscriptions",
-    render: (_, record) => (
-      <div>
-        {record.subscriptions.map((sub) => (
-          <div>
-            <Tag color={"default"}>{sub.billing_plan_name}</Tag>
-            <Tag color={"default"}>v{sub.plan_version}</Tag>{" "}
-          </div>
-        ))}
-      </div>
-    ),
-  },
-  {
-    title: "Outstanding Revenue",
-    width: 60,
-    sorter: (a, b) => a.total_amount_due - b.total_amount_due,
-
-    render: (_, record) => (
-      <div className="self-center">
-        {record.total_amount_due !== undefined ? (
-          <div>${record.total_amount_due.toFixed(2)}</div>
-        ) : (
-          <div>${0.0}</div>
-        )}
-      </div>
-    ),
-    dataIndex: "total_amount_due",
-  },
-  {
-    title: "Subscription Renews",
-    width: 60,
-    render: (_, record) => (
-      <div>
-        {record.subscriptions[0] !== undefined &&
-          (record.subscriptions[0].auto_renew ? (
-            <Tag color={"green"}>Renews</Tag>
-          ) : (
-            <Tag color={"red"}>Ends</Tag>
+        return record.customer_id;
+      },
+    },
+    {
+      title: "Name",
+      width: 120,
+      dataIndex: "customer_name",
+      align: "left",
+      search: { transform: (value: any) => value },
+      render: (_, record) => {
+        if (searchQuery) {
+          return getHighlightedText(record.customer_name, searchQuery);
+        }
+        return record.customer_name;
+      },
+    },
+    {
+      title: "Plans",
+      width: 180,
+      dataIndex: "subscriptions",
+      render: (_, record) => (
+        <div>
+          {record.subscriptions.map((sub) => (
+            <div>
+              <Tag color={"default"}>{sub.billing_plan_name}</Tag>
+              <Tag color={"default"}>v{sub.plan_version}</Tag>{" "}
+            </div>
           ))}
-      </div>
-    ),
-    dataIndex: "auto_renew",
-  },
-];
+        </div>
+      ),
+    },
+    {
+      title: "Outstanding Revenue",
+      width: 60,
+      sorter: (a, b) => a.total_amount_due - b.total_amount_due,
+
+      render: (_, record) => (
+        <div className="self-center">
+          {record.total_amount_due !== undefined ? (
+            <div>${record.total_amount_due.toFixed(2)}</div>
+          ) : (
+            <div>${0.0}</div>
+          )}
+        </div>
+      ),
+      dataIndex: "total_amount_due",
+    },
+    {
+      title: "Subscription Renews",
+      width: 60,
+      render: (_, record) => (
+        <div>
+          {record.subscriptions[0] !== undefined &&
+            (record.subscriptions[0].auto_renew ? (
+              <Tag color={"green"}>Renews</Tag>
+            ) : (
+              <Tag color={"red"}>Ends</Tag>
+            ))}
+        </div>
+      ),
+      dataIndex: "auto_renew",
+    },
+  ];
 
   const onDetailCancel = () => {
     queryClient.invalidateQueries(["customer_list"]);
@@ -177,57 +190,59 @@ const CustomerTable: FC<Props> = ({ customerArray, totals }) => {
   };
 
   const getFilteredTableData = (data: CustomerTableItem[]) => {
-      if(!searchQuery) {
-          return data
-      }
-      return data.filter(item =>
-          item.customer_id.toLowerCase().includes(searchQuery.toLowerCase())
-          || item.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-  }
+    if (!searchQuery) {
+      return data;
+    }
+    return data.filter(
+      (item) =>
+        item.customer_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.customer_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
 
   return (
-  <>
-    <Input className="customer-search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-           placeholder="Search Customer"/>
-    <div className="border-2 border-solid rounded border-[#EAEAEB]">
-
-      <ProTable
-        columns={columns}
-        dataSource={getFilteredTableData(tableData)}
-        rowKey="customer_id"
-        onRow={(record, rowIndex) => {
-          return {
-            onClick: (event) => {
-              rowModal(record);
-            }, // click row
-          };
-        }}
-        toolBarRender={false}
-        search={false}
-        pagination={{
-          showTotal: (total, range) => (
-            <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
-          ),
-          pageSize: 10,
-        }}
-        options={false}
+    <>
+      <Input
+        className="customer-search"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search Customer"
       />
-
-      {customerVisible && (
-        <CustomerDetail
-          key={customerState.customer_id}
-          visible={customerVisible}
-          onCancel={onDetailCancel}
-          changePlan={changePlan}
-          plans={data}
-          customer_id={customerState.customer_id}
+      <div className="border-2 border-solid rounded border-[#EAEAEB]">
+        <ProTable
+          columns={columns}
+          dataSource={getFilteredTableData(tableData)}
+          rowKey="customer_id"
+          onRow={(record, rowIndex) => {
+            return {
+              onClick: (event) => {
+                rowModal(record);
+              }, // click row
+            };
+          }}
+          toolBarRender={false}
+          search={false}
+          pagination={{
+            showTotal: (total, range) => (
+              <div>{`${range[0]}-${range[1]} of ${total} total items`}</div>
+            ),
+            pageSize: 10,
+          }}
+          options={false}
         />
-      )}
-    </div>
-   </>
+
+        {customerVisible && (
+          <CustomerDetail
+            key={customerState.customer_id}
+            visible={customerVisible}
+            onCancel={onDetailCancel}
+            changePlan={changePlan}
+            plans={data}
+            customer_id={customerState.customer_id}
+          />
+        )}
+      </div>
+    </>
   );
 };
 

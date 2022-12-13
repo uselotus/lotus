@@ -3748,8 +3748,8 @@ paths:
             - paid
             type: string
           default:
-          - unpaid
           - paid
+          - unpaid
       tags:
       - invoices
       security:
@@ -11334,8 +11334,10 @@ components:
     DraftInvoice:
       type: object
       properties:
-        payment_status:
-          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
         cost_due:
           type: number
           format: double
@@ -11345,8 +11347,6 @@ components:
           exclusiveMinimum: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
-        cust_connected_to_payment_provider:
-          type: boolean
         subscription:
           allOf:
           - $ref: '#/components/schemas/SubscriptionRecordDetail'
@@ -11354,15 +11354,15 @@ components:
         issue_date:
           type: string
           format: date-time
-        customer:
-          allOf:
-          - $ref: '#/components/schemas/Customer'
-          readOnly: true
+        cust_connected_to_payment_provider:
+          type: boolean
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
+        payment_status:
+          $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
         due_date:
           type: string
           format: date-time
@@ -12093,52 +12093,17 @@ components:
           type: string
           nullable: true
           readOnly: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        usage_billing_frequency:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
         transition_to_plan_id:
           type: string
           writeOnly: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-        version_id:
-          type: string
-          readOnly: true
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        plan_name:
-          type: string
-          readOnly: true
         month_anchor:
           type: integer
           maximum: 12
           minimum: 1
           nullable: true
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        status:
-          allOf:
-          - $ref: '#/components/schemas/PlanVersionStatusEnum'
-          readOnly: true
-        created_by:
+        version_id:
           type: string
           readOnly: true
         day_anchor:
@@ -12146,24 +12111,59 @@ components:
           maximum: 31
           minimum: 1
           nullable: true
-        active_subscriptions:
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        usage_billing_frequency:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PlanVersionStatusEnum'
+          readOnly: true
+        plan_name:
+          type: string
+          readOnly: true
+        version:
           type: integer
+          readOnly: true
+        created_by:
+          type: string
           readOnly: true
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        version:
+        replace_with:
           type: integer
+          nullable: true
           readOnly: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustment'
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
+        active_subscriptions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -12392,13 +12392,12 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        name:
-          type: string
-          maxLength: 200
-        metadata:
-          type: object
-          additionalProperties: {}
+        billing_type:
           nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
         subtotal:
           type: number
           format: double
@@ -12406,18 +12405,12 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        billing_type:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
         end_date:
           type: string
           format: date-time
-        start_date:
+        name:
           type: string
-          format: date-time
+          maxLength: 200
         quantity:
           type: number
           format: double
@@ -12425,6 +12418,13 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: {}
           nullable: true
       required:
       - name
@@ -13992,55 +13992,55 @@ components:
     PlanDetail:
       type: object
       properties:
-        created_on:
-          type: string
-          format: date-time
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/PlanStatusEnum'
-        plan_id:
-          type: string
-          maxLength: 100
-        parent_plan:
-          allOf:
-          - $ref: '#/components/schemas/PlanNameAndID'
-          readOnly: true
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
-          readOnly: true
         product_id:
           type: string
           nullable: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/ShortCustomer'
-          readOnly: true
+        status:
+          $ref: '#/components/schemas/PlanStatusEnum'
+        plan_name:
+          type: string
+          maxLength: 100
         created_by:
           type: string
           readOnly: true
         plan_duration:
           $ref: '#/components/schemas/PlanDurationEnum'
-        num_versions:
-          type: integer
-          readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        parent_plan:
+          allOf:
+          - $ref: '#/components/schemas/PlanNameAndID'
+          readOnly: true
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/ShortCustomer'
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
+        created_on:
+          type: string
+          format: date-time
+          readOnly: true
         active_subscriptions:
           type: integer
           readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
+        num_versions:
+          type: integer
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
@@ -16714,13 +16714,17 @@ components:
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -16756,10 +16760,6 @@ components:
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
@@ -16844,13 +16844,17 @@ components:
           initial_external_links.INDEX.source: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
           initial_external_links.INDEX.external_plan_id: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
           initial_version.non_field_errors: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
-          initial_version.description: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
-          initial_version.usage_billing_frequency: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
-          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
           initial_version.flat_fee_billing_type: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
+          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
           initial_version.month_anchor: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
           initial_version.day_anchor: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
+          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+          initial_version.usage_billing_frequency: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
+          initial_version.description: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
           initial_version.components.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.billable_metric_name: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -16886,10 +16890,6 @@ components:
           initial_version.components.INDEX.separate_by: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
           initial_version.components.INDEX.separate_by.INDEX: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
           initial_version.components.INDEX.proration_granularity: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
-          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
           initial_version.price_adjustment.non_field_errors: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
           initial_version.price_adjustment.price_adjustment_name: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
           initial_version.price_adjustment.price_adjustment_description: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
@@ -19213,23 +19213,21 @@ components:
     SubscriptionRecordDetail:
       type: object
       properties:
-        is_new:
-          type: boolean
-        plan_id:
-          type: string
-          writeOnly: true
         status:
           $ref: '#/components/schemas/SubscriptionStatusEnum'
-        end_date:
-          type: string
-          format: date-time
-        auto_renew:
-          type: boolean
         plan_detail:
           allOf:
           - $ref: '#/components/schemas/PlanVersion'
           readOnly: true
         customer_id:
+          type: string
+          writeOnly: true
+        is_new:
+          type: boolean
+        end_date:
+          type: string
+          format: date-time
+        plan_id:
           type: string
           writeOnly: true
         start_date:
@@ -19240,6 +19238,8 @@ components:
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
+        auto_renew:
+          type: boolean
       required:
       - customer_id
       - plan_detail
