@@ -57,7 +57,7 @@ class PricingUnitSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         super().validate(attrs)
         code_exists = PricingUnit.objects.filter(
-            Q(organization=self.context["organization"]) | Q(organization__isnull=True),
+            Q(organization=self.context["organization"]),
             code=attrs["code"],
         ).exists()
         if code_exists:
@@ -469,7 +469,9 @@ class MetricUpdateSerializer(serializers.ModelSerializer):
             all_active_plan_versions = PlanVersion.objects.filter(
                 ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
                 organization=self.context["organization"],
-                plan__in=Plan.objects.filter(status=PLAN_STATUS.ACTIVE),
+                plan__in=Plan.objects.filter(
+                    organization=self.context["organization"], status=PLAN_STATUS.ACTIVE
+                ),
             ).prefetch_related("plan_components", "plan_components__billable_metric")
             for plan_version in all_active_plan_versions:
                 for component in plan_version.plan_components.all():
@@ -548,15 +550,23 @@ class MetricSerializer(serializers.ModelSerializer):
         # get filters
         for num_filter in num_filter_data:
             try:
-                nf, _ = NumericFilter.objects.get_or_create(**num_filter)
+                nf, _ = NumericFilter.objects.get_or_create(
+                    **num_filter, organization=bm.organization
+                )
             except NumericFilter.MultipleObjectsReturned:
-                nf = NumericFilter.objects.filter(**num_filter).first()
+                nf = NumericFilter.objects.filter(
+                    **num_filter, organization=bm.organization
+                ).first()
             bm.numeric_filters.add(nf)
         for cat_filter in cat_filter_data:
             try:
-                cf, _ = CategoricalFilter.objects.get_or_create(**cat_filter)
+                cf, _ = CategoricalFilter.objects.get_or_create(
+                    **cat_filter, organization=bm.organization
+                )
             except CategoricalFilter.MultipleObjectsReturned:
-                cf = CategoricalFilter.objects.filter(**cat_filter).first()
+                cf = CategoricalFilter.objects.filter(
+                    **cat_filter, organization=bm.organization
+                ).first()
             bm.categorical_filters.add(cf)
         bm.save()
 
@@ -1026,8 +1036,6 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         billing_plan = PlanVersion.objects.create(**validated_data)
         if transition_to_plan:
             billing_plan.transition_to = transition_to_plan
-        # elif transition_to_plan_version:
-        #     billing_plan.transition_to = transition_to_plan_version
         org = billing_plan.organization
         for component in components:
             component.plan_version = billing_plan

@@ -8,12 +8,7 @@ services:
       - ./pgdata_dev:/var/lib/postgresql/data
     env_file:
       - ./env/.env.dev
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lotus"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-  
+
   redis:
     image: redis:7-alpine
     command: redis-server

@@ -97,6 +97,7 @@ def generate_invoice(
                         chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
                         invoice=invoice,
                         associated_subscription_record=subscription_record,
+                        organization=organization,
                     )
                     if "unique_identifier" in subperiod:
                         ili.metadata = subperiod["unique_identifier"]
@@ -129,6 +130,7 @@ def generate_invoice(
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
                     associated_subscription_record=subscription_record,
+                    organization=organization,
                 )
                 if amt_already_billed > 0:
                     InvoiceLineItem.objects.create(
@@ -141,6 +143,7 @@ def generate_invoice(
                         chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                         invoice=invoice,
                         associated_subscription_record=subscription_record,
+                        organization=organization,
                     )
         # next plan flat fee calculation
         if billing_plan.transition_to:
@@ -190,6 +193,7 @@ def generate_invoice(
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
                     invoice=invoice,
                     associated_subscription_record=next_subscription_record,
+                    organization=organization,
                 )
 
         for subscription_record in subscription_record_check_discount:
@@ -215,6 +219,7 @@ def generate_invoice(
                     chargeable_item_type=CHARGEABLE_ITEM_TYPE.PLAN_ADJUSTMENT,
                     invoice=invoice,
                     associated_subscription_record=subscription_record,
+                    organization=organization,
                 )
 
     subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
@@ -228,6 +233,7 @@ def generate_invoice(
             billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
             chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
             invoice=invoice,
+            organization=organization,
         )
         if not draft:
             CustomerBalanceAdjustment.objects.create(
@@ -248,16 +254,18 @@ def generate_invoice(
                 balance_adjustment,
                 description=f"Balance decrease from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
             )
-            InvoiceLineItem.objects.create(
-                name=f"{subscription.subscription_id} Customer Balance Adjustment",
-                start_date=issue_date,
-                end_date=issue_date,
-                quantity=None,
-                subtotal=-balance_adjustment + leftover,
-                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
-                invoice=invoice,
-            )
+            if -balance_adjustment + leftover != 0:
+                InvoiceLineItem.objects.create(
+                    name=f"{subscription.subscription_id} Customer Balance Adjustment",
+                    start_date=issue_date,
+                    end_date=issue_date,
+                    quantity=None,
+                    subtotal=-balance_adjustment + leftover,
+                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
+                    invoice=invoice,
+                    organization=organization,
+                )
 
     invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if abs(invoice.cost_due) < 0.01 and not draft:

@@ -236,7 +236,8 @@ class StripeConnector(PaymentProvider):
         lotus_invoices = []
         for stripe_invoice in invoices.auto_paging_iter():
             if Invoice.objects.filter(
-                external_payment_obj_id=stripe_invoice.id
+                organization=customer.organization,
+                external_payment_obj_id=stripe_invoice.id,
             ).exists():
                 continue
             cost_due = Decimal(stripe_invoice.amount_due) / 100
@@ -436,7 +437,7 @@ class StripeConnector(PaymentProvider):
                 Prefetch(
                     "external_links",
                     queryset=ExternalPlanLink.objects.filter(
-                        source=PAYMENT_PROVIDERS.STRIPE
+                        organization=organization, source=PAYMENT_PROVIDERS.STRIPE
                     ),
                 )
             )

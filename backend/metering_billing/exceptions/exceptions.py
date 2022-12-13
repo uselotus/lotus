@@ -21,6 +21,12 @@ class NoMatchingAPIKey(APIException):
     default_code = "api_key_not_known"
 
 
+class NoAPIKeyProvided(APIException):
+    status_code = 401
+    default_detail = "No API key provided"
+    default_code = "no_api_key_provided"
+
+
 class DuplicateWebhookEndpoint(APIException):
     status_code = 400
     default_detail = "Webhook endpoint already exists"
