@@ -183,14 +183,6 @@ class EventSerializer(serializers.ModelSerializer):
         write_only=True,
         source="customer",
     )
-    customer = serializers.SerializerMethodField()
-
-    def get_customer(self, obj) -> str:
-        try:
-            ret = obj.customer.customer_id
-        except:
-            ret = obj.cust_id
-        return ret
 
 
 class WebhookTriggerSerializer(serializers.ModelSerializer):

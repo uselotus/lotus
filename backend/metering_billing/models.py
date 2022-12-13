@@ -597,10 +597,25 @@ class Event(models.Model):
         Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     cust_id = models.CharField(max_length=50, null=True, blank=True)
-    event_name = models.CharField(max_length=200, null=False)
-    time_created = models.DateTimeField()
-    properties = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id = models.CharField(max_length=255, default=event_uuid)
+    event_name = models.CharField(
+        max_length=200,
+        null=False,
+        help_text="String name of the event, corresponds to definition in metrics",
+    )
+    time_created = models.DateTimeField(
+        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+    )
+    properties = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
+    )
+    idempotency_id = models.CharField(
+        max_length=255,
+        default=event_uuid,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
+    )
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]
