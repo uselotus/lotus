@@ -278,16 +278,37 @@ class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="customers"
     )
-    customer_name = models.CharField(max_length=100, null=True, blank=True)
-    email = models.EmailField(max_length=100, blank=True, null=True)
-    customer_id = models.CharField(max_length=50, default=customer_uuid)
+    customer_name = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="The display name of the customer",
+    )
+    email = models.EmailField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
+    )
+    customer_id = models.CharField(
+        max_length=50,
+        default=customer_uuid,
+        help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
+    )
     payment_provider = models.CharField(
         blank=True, null=True, choices=PAYMENT_PROVIDERS.choices, max_length=40
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
-    properties = models.JSONField(default=dict, blank=True, null=True)
+    properties = models.JSONField(
+        default=dict, blank=True, null=True, help_text="Extra metadata for the customer"
+    )
     default_currency = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        help_text="The currency the customer will be invoiced in",
     )
     history = HistoricalRecords()
 

@@ -182,6 +182,11 @@ class EventSerializer(serializers.ModelSerializer):
         queryset=Customer.objects.all(),
         write_only=True,
         source="customer",
+        help_text="The id of the customer that this event is associated with, usually the customer id in your backend",
+    )
+    idempotency_id = serializers.CharField(
+        required=True,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
     )
 
 
@@ -329,15 +334,22 @@ class CustomerSerializer(serializers.ModelSerializer):
         }
 
     payment_provider_id = serializers.CharField(
-        required=False, allow_null=True, write_only=True
+        required=False,
+        allow_null=True,
+        write_only=True,
+        help_text="The customer ID in the payment provider",
     )
-    email = serializers.EmailField(required=True)
+    email = serializers.EmailField(
+        required=True,
+        help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
+    )
     default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         required=False,
         source="default_currency",
         write_only=True,
+        help_text="The currency code this customer will be invoiced in. Codes are 3 letters, e.g. 'USD'.",
     )
 
     def validate(self, data):
@@ -421,7 +433,9 @@ class SubscriptionCategoricalFilterSerializer(CategoricalFilterSerializer):
         fields = ("value", "property_name")
 
     value = serializers.CharField()
-    property_name = serializers.CharField()
+    property_name = serializers.CharField(
+        help_text="The string name of the property to filter on. Example: 'product_id'"
+    )
 
     def create(self, validated_data):
         comparison_value = validated_data.pop("value")
@@ -1293,12 +1307,22 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
             "status",
         )
 
-    start_date = serializers.DateTimeField()
-    end_date = serializers.DateTimeField(required=False)
-    auto_renew = serializers.BooleanField(required=False)
+    start_date = serializers.DateTimeField(
+        help_text="The date the subscription starts. This should be a string in YYYY-MM-DD format of the date in UTC time."
+    )
+    end_date = serializers.DateTimeField(
+        required=False,
+        help_text="The date the subscription ends. This should be a string in YYYY-MM-DD format of the date in UTC time. If you don’t set it (recommended), we will use the information in the billing plan to automatically calculate this.",
+    )
+    auto_renew = serializers.BooleanField(
+        required=False,
+        help_text="Should the subscription automatically renew? defaults to true",
+    )
     is_new = serializers.BooleanField(required=False)
     subscription_filters = SubscriptionCategoricalFilterSerializer(
-        many=True, required=False
+        many=True,
+        required=False,
+        help_text="Add filter key, value pairs that define which events will be applied to this plan subscription",
     )
 
     # WRITE ONLY
@@ -1308,6 +1332,7 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         source="customer",
         queryset=Customer.objects.all(),
         write_only=True,
+        help_text="The id provided when creating the customer",
     )
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
@@ -1315,6 +1340,7 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         source="billing_plan.plan",
         queryset=Plan.objects.all(),
         write_only=True,
+        help_text="The Lotus plan_id, found in the billing plan object",
     )
 
     def validate(self, data):
@@ -1500,11 +1526,16 @@ class SubscriptionRecordCancelSerializer(serializers.Serializer):
     flat_fee_behavior = serializers.ChoiceField(
         choices=FLAT_FEE_BEHAVIOR.choices,
         default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+        help_text="",
     )
-    bill_usage = serializers.BooleanField(default=False)
+    bill_usage = serializers.BooleanField(
+        default=False,
+        help_text="If true, current usage will be billed on the invoice. If false, current unbilled usage will be dropped from the invoice. Defaults to false.",
+    )
     invoicing_behavior_on_cancel = serializers.ChoiceField(
         choices=INVOICING_BEHAVIOR.choices,
         default=INVOICING_BEHAVIOR.INVOICE_NOW,
+        help_text="",
     )
 
 
