@@ -637,6 +637,7 @@ class Event(models.Model):
         default=event_uuid,
         help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
     )
+    inserted_at = models.DateTimeField(default=now_utc)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]

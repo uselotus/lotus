@@ -469,19 +469,21 @@ class MetricUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         data = super().validate(data)
+        active_plan_versions_with_metric = []
         if data.get("status") == METRIC_STATUS.ARCHIVED:
             all_active_plan_versions = PlanVersion.objects.filter(
+                ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
                 organization=self.context["organization"],
                 plan__in=Plan.objects.filter(status=PLAN_STATUS.ACTIVE),
             ).prefetch_related("plan_components", "plan_components__billable_metric")
             for plan_version in all_active_plan_versions:
-                if plan_version.num_active_subs() == 0:
-                    continue
                 for component in plan_version.plan_components.all():
                     if component.billable_metric == self.instance:
-                        raise serializers.ValidationError(
-                            "Cannot archive metric that is used in active plan"
-                        )
+                        active_plan_versions_with_metric.append(str(plan_version))
+        if len(active_plan_versions_with_metric) > 0:
+            raise serializers.ValidationError(
+                f"Cannot archive metric. It is currently used in the following plan versions: {', '.join(active_plan_versions_with_metric)}"
+            )
         return data
 
     def update(self, instance, validated_data):

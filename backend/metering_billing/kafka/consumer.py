@@ -5,6 +5,7 @@ import posthog
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Q
 from metering_billing.models import Customer, Event
 from metering_billing.utils import now_utc
 
@@ -58,32 +59,34 @@ def write_batch_events_to_db(events_list, org_pk):
         organization=organization, customer_id=customer_id
     ).first()
     ##put events in correct object format
+    now = now_utc()
     event_obj_list = [
-        Event(**{**event, "customer": customer_pk}) for event in events_list
+        Event(**{**event, "customer": customer_pk, "inserted_at": now})
+        for event in events_list
     ]
     ## check idempotency
-    now = now_utc()
-    now_minus_45_days = now - relativedelta(days=7)
+    now_minus_45_days = now - relativedelta(days=45)
+    now_minus_7_days = now - relativedelta(days=7)
     idem_ids = [x.idempotency_id for x in event_obj_list]
     repeat_idem = Event.objects.filter(
+        Q(time_created__gte=now_minus_45_days) | Q(inserted_at__gte=now_minus_7_days),
         organization_id=organization,
         idempotency_id__in=idem_ids,
-        time_created__gte=now_minus_45_days,
     ).exists()
     events_to_insert = []
     if repeat_idem:
         # if we have a repeat idempotency, filter thru the events and remove repeats
         for event in event_obj_list:
             event_idem_exists = Event.objects.filter(
-                organization=organization,
-                idempotency_id=event.idempotency_id,
-                time_created__gte=now_minus_45_days,
+                Q(time_created__gte=now_minus_45_days)
+                | Q(inserted_at__gte=now_minus_7_days),
+                organization_id=organization,
+                idempotency_id__in=idem_ids,
             ).exists()
             if not event_idem_exists:
                 events_to_insert.append(event)
     else:
         events_to_insert = event_obj_list
-
     ## now insert events
     events = Event.objects.bulk_create(events_to_insert)
     ## posthog + cache invalidation
