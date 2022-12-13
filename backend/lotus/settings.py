@@ -286,7 +286,7 @@ if type(KAFKA_EVENTS_TOPIC) is bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
-KAFKA_HOST = config("KAFKA_URL", default="redpanda:29092")
+KAFKA_HOST = config("KAFKA_URL", default="127.0.0.1:9092")
 if KAFKA_HOST:
     if "," not in KAFKA_HOST:
         KAFKA_HOST = KAFKA_HOST

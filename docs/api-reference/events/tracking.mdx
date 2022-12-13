@@ -7,17 +7,6 @@ It's used to capture any event that you might want to bill on at any point."
 
 You can track absolutely anything, and with the extensible and customizable properties field, you can add as much information as you want.
 
-A `Track Event` call requires array of objects
-
-- `event_name` should correspond to what the event is and match what you define in your metrics.
-- `customer_id` the id you defined in your backend for the corresponding customer and the same id that you passed into Lotus when creating the customer
-
-Optionally you can submit
-
-- `properties`, which can be a dict with any information you'd like to add. In your metrics you can define properties to filer or aggregate over.
-- `idempotency_id` is a unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. If you don't pass in an idempotency_id, we will generate one for you using UUID4.
-- `time_created` is the time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome. If you don't pass in a time_created, we will use the time that the event was created by the Lotus SDK.
-
 <CodeGroup>
 ```python Python
 lotus.track_event(

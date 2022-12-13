@@ -278,16 +278,37 @@ class Customer(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=False, related_name="customers"
     )
-    customer_name = models.CharField(max_length=100, null=True, blank=True)
-    email = models.EmailField(max_length=100, blank=True, null=True)
-    customer_id = models.CharField(max_length=50, default=customer_uuid)
+    customer_name = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="The display name of the customer",
+    )
+    email = models.EmailField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
+    )
+    customer_id = models.CharField(
+        max_length=50,
+        default=customer_uuid,
+        help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
+    )
     payment_provider = models.CharField(
         blank=True, null=True, choices=PAYMENT_PROVIDERS.choices, max_length=40
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
-    properties = models.JSONField(default=dict, blank=True, null=True)
+    properties = models.JSONField(
+        default=dict, blank=True, null=True, help_text="Extra metadata for the customer"
+    )
     default_currency = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.CASCADE,
+        related_name="+",
+        null=True,
+        blank=True,
+        help_text="The currency the customer will be invoiced in",
     )
     history = HistoricalRecords()
 
@@ -597,10 +618,25 @@ class Event(models.Model):
         Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     cust_id = models.CharField(max_length=50, null=True, blank=True)
-    event_name = models.CharField(max_length=200, null=False)
-    time_created = models.DateTimeField()
-    properties = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id = models.CharField(max_length=255, default=event_uuid)
+    event_name = models.CharField(
+        max_length=200,
+        null=False,
+        help_text="String name of the event, corresponds to definition in metrics",
+    )
+    time_created = models.DateTimeField(
+        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+    )
+    properties = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
+    )
+    idempotency_id = models.CharField(
+        max_length=255,
+        default=event_uuid,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
+    )
     inserted_at = models.DateTimeField(default=now_utc)
 
     class Meta:

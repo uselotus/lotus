@@ -123,7 +123,6 @@
           "group": "Subscriptions",
           "pages": [
             "api-reference/subscriptions/create-subscription",
-            "api-reference/subscriptions/retrieve-subscription",
             "api-reference/subscriptions/cancel-subscription",
             "api-reference/subscriptions/change-subscription",
             "api-reference/subscriptions/list-subscriptions"
