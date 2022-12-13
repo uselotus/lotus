@@ -45,7 +45,7 @@ const CreateCredit = ({ customerId, onSubmit }) => {
         });
         form.resetFields();
         queryClient.invalidateQueries(["customer_list"]);
-        navigate("/customers");
+        queryClient.invalidateQueries(["balance_adjustments"]);
       },
       onError: () => {
         toast.error("Failed to create Credit", {
@@ -54,10 +54,6 @@ const CreateCredit = ({ customerId, onSubmit }) => {
       },
     }
   );
-
-  const goBackPage = () => {
-    navigate(-1);
-  };
 
   const submit = () => {
     form
@@ -72,7 +68,6 @@ const CreateCredit = ({ customerId, onSubmit }) => {
           effective_at: values.effective_at,
           expires_at: values.expires_at,
         });
-        queryClient.invalidateQueries(["balance_adjustments", customerId]);
         onSubmit();
       })
       .catch((info) => {});

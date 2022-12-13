@@ -7,7 +7,12 @@ import { BalanceAdjustments } from "../../types/invoice-type";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import { useMutation, useQuery, UseQueryResult } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  UseQueryResult,
+  useQueryClient,
+} from "react-query";
 import { BalanceAdjustment, Plan } from "../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
@@ -144,31 +149,34 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   };
 
   useEffect(() => {
-    if (selectedView === views[0]) {
-      const parentAdjustments = data?.filter(
-        (item) => !item.parent_adjustment_id
-      );
-      const newData = parentAdjustments.map((parentAdjustment) => {
-        const childAdjustments = data?.filter(
-          (item) => item.parent_adjustment_id === parentAdjustment.adjustment_id
+    if (data) {
+      if (selectedView === views[0]) {
+        const parentAdjustments = data.filter(
+          (item) => !item.parent_adjustment_id
         );
-        if (childAdjustments.length) {
-          return {
-            ...parentAdjustment,
-            children: data?.filter(
-              (item) =>
-                item.parent_adjustment_id === parentAdjustment.adjustment_id
-            ),
-          };
-        } else {
-          return {
-            ...parentAdjustment,
-          };
-        }
-      });
-      setTransformedData(newData);
-    } else {
-      setTransformedData(data);
+        const newData = parentAdjustments.map((parentAdjustment) => {
+          const childAdjustments = data?.filter(
+            (item) =>
+              item.parent_adjustment_id === parentAdjustment.adjustment_id
+          );
+          if (childAdjustments.length) {
+            return {
+              ...parentAdjustment,
+              children: data?.filter(
+                (item) =>
+                  item.parent_adjustment_id === parentAdjustment.adjustment_id
+              ),
+            };
+          } else {
+            return {
+              ...parentAdjustment,
+            };
+          }
+        });
+        setTransformedData(newData);
+      } else {
+        setTransformedData(data);
+      }
     }
   }, [data, selectedView]);
 
@@ -249,7 +257,6 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           customerId={customerId}
           onSubmit={() => {
             setShowCreateCredit(false);
-            refetch();
           }}
         />
       )}
