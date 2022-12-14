@@ -183,6 +183,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "metering_billing.middleware.OrganizationInsertMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
 ]
 
@@ -456,7 +457,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "metering_billing.permissions.HasUserAPIKey",
+        "metering_billing.permissions.ValidOrganization",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",

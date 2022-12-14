@@ -41,7 +41,7 @@ from metering_billing.models import (
     WebhookEndpoint,
     WebhookTrigger,
 )
-from metering_billing.permissions import HasUserAPIKey
+from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.backtest_serializers import (
     BacktestCreateSerializer,
     BacktestDetailSerializer,
@@ -134,7 +134,7 @@ class APITokenViewSet(
     """
 
     serializer_class = APITokenSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "head", "delete"]
     lookup_field = "prefix"
 
@@ -223,15 +223,15 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
 
     serializer_class = WebhookEndpointSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "head", "delete", "patch"]
     lookup_field = "webhook_endpoint_id"
     permission_classes_per_method = {
-        "create": [IsAuthenticated],
-        "list": [IsAuthenticated],
-        "retrieve": [IsAuthenticated],
-        "destroy": [IsAuthenticated],
-        "partial_update": [IsAuthenticated],
+        "create": [IsAuthenticated & ValidOrganization],
+        "list": [IsAuthenticated & ValidOrganization],
+        "retrieve": [IsAuthenticated & ValidOrganization],
+        "destroy": [IsAuthenticated & ValidOrganization],
+        "partial_update": [IsAuthenticated & ValidOrganization],
     }
 
     def get_queryset(self):
@@ -298,7 +298,7 @@ class EventViewSet(
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     pagination_class = CursorSetPagination
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = [
         "get",
         "head",
@@ -326,7 +326,7 @@ class UserViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
 
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "head"]
 
     def get_queryset(self):
@@ -348,15 +348,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Customers.
     """
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
     lookup_field = "customer_id"
     http_method_names = ["get", "post", "head", "patch"]
-    permission_classes_per_method = {
-        "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "create": [IsAuthenticated | HasUserAPIKey],
-        "partial_update": [IsAuthenticated | HasUserAPIKey],
-    }
 
     def get_queryset(self):
         organization = parse_organization(self.request)
@@ -442,14 +435,11 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Billable Metrics.
     """
 
-    permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "head", "patch"]
     lookup_field = "metric_id"
     permission_classes_per_method = {
-        "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "create": [IsAuthenticated | HasUserAPIKey],
-        "partial_update": [IsAuthenticated],
+        "create": [IsAuthenticated & ValidOrganization],
+        "partial_update": [IsAuthenticated & ValidOrganization],
     }
 
     def get_queryset(self):
@@ -512,13 +502,10 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
 
     serializer_class = FeatureSerializer
-    permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "head"]
     permission_classes_per_method = {
-        "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "create": [IsAuthenticated | HasUserAPIKey],
-        "destroy": [IsAuthenticated],
+        "create": [IsAuthenticated & ValidOrganization],
+        "destroy": [IsAuthenticated & ValidOrganization],
     }
 
     def get_queryset(self):
@@ -559,7 +546,6 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing PlanVersions.
     """
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
     serializer_class = PlanVersionSerializer
     lookup_field = "version_id"
     http_method_names = [
@@ -568,8 +554,8 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "patch",
     ]
     permission_classes_per_method = {
-        "create": [IsAuthenticated | HasUserAPIKey],
-        "partial_update": [IsAuthenticated],
+        "create": [IsAuthenticated & ValidOrganization],
+        "partial_update": [IsAuthenticated & ValidOrganization],
     }
 
     def get_serializer_class(self):
@@ -658,15 +644,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
 
     serializer_class = PlanSerializer
-    permission_classes = [IsAuthenticated]
     lookup_field = "plan_id"
     http_method_names = ["get", "post", "patch", "head"]
     queryset = Plan.objects.all()
     permission_classes_per_method = {
-        "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "create": [IsAuthenticated],
-        "partial_update": [IsAuthenticated],
+        "create": [IsAuthenticated & ValidOrganization],
+        "partial_update": [IsAuthenticated & ValidOrganization],
     }
 
     def get_queryset(self):
@@ -761,15 +744,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Subscriptions.
     """
 
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
     http_method_names = ["get", "head", "patch", "post", "delete"]
     lookup_field = "subscription_id"
-    permission_classes_per_method = {
-        "list": [IsAuthenticated | HasUserAPIKey],
-        "plans": [IsAuthenticated | HasUserAPIKey],
-        "update_plans": [IsAuthenticated | HasUserAPIKey],
-        "cancel_plans": [IsAuthenticated | HasUserAPIKey],
-    }
 
     def get_serializer_context(self):
         context = super(SubscriptionViewSet, self).get_serializer_context()
@@ -991,6 +967,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def cancel_plans(self, request, *args, **kwargs):
         qs = self.get_queryset()
+        organization = parse_organization(self.request)
         serializer = self.get_serializer(data=self.request.query_params)
         serializer.is_valid(raise_exception=True)
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
@@ -1009,9 +986,11 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             status=SUBSCRIPTION_STATUS.ENDED,
             fully_billed=invoicing_behavior_on_cancel == INVOICING_BEHAVIOR.INVOICE_NOW,
         )
-        qs = SubscriptionRecord.objects.filter(pk__in=qs_pks)
+        qs = SubscriptionRecord.objects.filter(pk__in=qs_pks, organization=organization)
         customer_ids = qs.values_list("customer", flat=True).distinct()
-        customer_set = Customer.objects.filter(id__in=customer_ids)
+        customer_set = Customer.objects.filter(
+            id__in=customer_ids, organization=organization
+        )
         if invoicing_behavior_on_cancel == INVOICING_BEHAVIOR.INVOICE_NOW:
             for customer in customer_set:
                 subscription = Subscription.objects.filter(
@@ -1030,6 +1009,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def update_plans(self, request, *args, **kwargs):
         qs = self.get_queryset()
+        organization = parse_organization(self.request)
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         if qs.count() == 0:
             raise NotFoundException("Subscription matching the given filters not found")
@@ -1092,7 +1072,9 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 customer=customer,
                 status=SUBSCRIPTION_STATUS.ACTIVE,
             ).first()
-            new_qs = SubscriptionRecord.objects.filter(pk__in=original_qs)
+            new_qs = SubscriptionRecord.objects.filter(
+                pk__in=original_qs, organization=organization
+            )
             if replace_plan_billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
                 invoice = generate_invoice(subscription, new_qs)
         else:
@@ -1142,13 +1124,10 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     """
 
     serializer_class = InvoiceSerializer
-    permission_classes = [IsAuthenticated]
     http_method_names = ["get", "patch", "head"]
     lookup_field = "invoice_number"
     permission_classes_per_method = {
-        "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "partial_update": [IsAuthenticated],
+        "partial_update": [IsAuthenticated & ValidOrganization],
     }
 
     def get_queryset(self):
@@ -1212,7 +1191,6 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing Backtests.
     """
 
-    permission_classes = [IsAuthenticated]
     lookup_field = "backtest_id"
     http_method_names = [
         "get",
@@ -1220,10 +1198,8 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "head",
     ]
     permission_classes_per_method = {
-        "list": [IsAuthenticated | HasUserAPIKey],
-        "retrieve": [IsAuthenticated | HasUserAPIKey],
-        "create": [IsAuthenticated | HasUserAPIKey],
-        "destroy": [IsAuthenticated],
+        "create": [IsAuthenticated & ValidOrganization],
+        "destroy": [IsAuthenticated & ValidOrganization],
     }
 
     def get_serializer_class(self):
@@ -1275,7 +1251,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
     lookup_field = "product_id"
     http_method_names = [
         "get",
@@ -1328,7 +1303,7 @@ class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
     pagination_class = ActionCursorSetPagination
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = [
         "get",
         "head",
@@ -1355,7 +1330,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ExternalPlanLinkSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     lookup_field = "external_plan_id"
     http_method_names = ["post", "head", "delete"]
 
@@ -1414,7 +1389,7 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = OrganizationSettingSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "head", "patch"]
     lookup_field = "setting_id"
 
@@ -1437,14 +1412,12 @@ class PricingUnitViewSet(
     """
 
     serializer_class = PricingUnitSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "head"]
 
     def get_queryset(self):
         organization = parse_organization(self.request)
-        return PricingUnit.objects.filter(
-            Q(organization=organization) | Q(organization__isnull=True)
-        )
+        return PricingUnit.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
         serializer.save(organization=parse_organization(self.request))
@@ -1466,11 +1439,11 @@ class OrganizationViewSet(
     A simple ViewSet for viewing and editing OrganizationSettings.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "patch", "head"]
     permission_classes_per_method = {
-        "list": [IsAuthenticated],
-        "partial_update": [IsAuthenticated],
+        "list": [IsAuthenticated & ValidOrganization],
+        "partial_update": [IsAuthenticated & ValidOrganization],
     }
     lookup_field = "organization_id"
 
@@ -1506,13 +1479,13 @@ class CustomerBalanceAdjustmentViewSet(
     A simple ViewSet meant only for creating CustomerBalanceAdjustments.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "post", "delete", "head"]
     serializer_class = CustomerBalanceAdjustmentSerializer
     permission_classes_per_method = {
-        "list": [IsAuthenticated],
-        "create": [IsAuthenticated],
-        "destroy": [IsAuthenticated],
+        "list": [IsAuthenticated & ValidOrganization],
+        "create": [IsAuthenticated & ValidOrganization],
+        "destroy": [IsAuthenticated & ValidOrganization],
     }
     lookup_field = "adjustment_id"
 

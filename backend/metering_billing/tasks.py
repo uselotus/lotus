@@ -83,6 +83,7 @@ def calculate_invoice():
         num_subscription_records_active = SubscriptionRecord.objects.filter(
             Q(end_date__gte=old_subscription.end_date),
             status=SUBSCRIPTION_STATUS.ACTIVE,
+            organization=old_subscription.organization,
         ).count()
         if num_subscription_records_active > 0:
             sub = Subscription.objects.create(
@@ -105,6 +106,7 @@ def calculate_invoice():
             issue_date__lt=now,
             payment_status=INVOICE_STATUS.DRAFT,
             subscription=old_subscription,
+            organization=old_subscription.organization,
         ).delete()
 
 
@@ -439,6 +441,6 @@ def run_backtest(backtest_id):
 def run_generate_invoice(subscription_pk, subscription_record_pk_set, **kwargs):
     subscription = Subscription.objects.get(pk=subscription_pk)
     subscription_record_set = SubscriptionRecord.objects.filter(
-        pk__in=subscription_record_pk_set
+        pk__in=subscription_record_pk_set, organization=subscription.organization
     )
     generate_invoice(subscription, subscription_record_set, **kwargs)

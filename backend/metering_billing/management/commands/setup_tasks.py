@@ -40,7 +40,3 @@ class Command(BaseCommand):
             task="metering_billing.tasks.update_invoice_status",
             defaults={"interval": every_15_mins, "crontab": None},
         )
-
-        PeriodicTask.objects.filter(
-            name="Check cached events and flush",
-        ).delete()

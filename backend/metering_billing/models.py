@@ -77,6 +77,7 @@ class Organization(models.Model):
         "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     webhooks_provisioned = models.BooleanField(default=False)
+    currencies_provisioned = models.IntegerField(default=0)
     history = HistoricalRecords()
 
     def __str__(self):
@@ -88,9 +89,14 @@ class Organization(models.Model):
                 raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
-        if not self.default_currency:
-            self.default_currency = PricingUnit.objects.filter(code="USD").first()
+        new = self.pk is None
         super(Organization, self).save(*args, **kwargs)
+        if new:
+            self.provision_currencies()
+        if not self.default_currency:
+            self.default_currency = PricingUnit.objects.get(
+                organization=self, code="USD"
+            )
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
@@ -100,8 +106,20 @@ class Organization(models.Model):
                 ApplicationIn(uid=self.organization_id, name=self.company_name)
             )
             self.webhooks_provisioned = True
-            print("webhooks provisioned")
         self.save()
+
+    def provision_currencies(self):
+        if SUPPORTED_CURRENCIES_VERSION != self.currencies_provisioned:
+            for name, code, symbol in SUPPORTED_CURRENCIES:
+                PricingUnit.objects.get_or_create(
+                    organization=self, code=code, name=name, symbol=symbol
+                )
+            PricingUnit.objects.filter(
+                ~Q(code__in=[code for _, code, _ in SUPPORTED_CURRENCIES]),
+                organization=self,
+            ).delete()
+            self.currencies_provisioned = SUPPORTED_CURRENCIES_VERSION
+            self.save()
 
 
 class WebhookEndpointManager(models.Manager):
@@ -221,6 +239,12 @@ class WebhookEndpoint(models.Model):
 
 
 class WebhookTrigger(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="webhook_triggers",
+        null=True,
+    )
     webhook_endpoint = models.ForeignKey(
         WebhookEndpoint, on_delete=models.CASCADE, related_name="triggers"
     )
@@ -276,7 +300,7 @@ class Customer(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="customers"
+        Organization, on_delete=models.CASCADE, related_name="customers"
     )
     customer_name = models.CharField(
         max_length=100,
@@ -361,7 +385,9 @@ class Customer(models.Model):
 
     def get_billing_plan_names(self) -> str:
         subscription_set = Subscription.objects.filter(
-            customer=self, status=SUBSCRIPTION_STATUS.ACTIVE
+            organization=self.organization,
+            customer=self,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         if subscription_set is None:
             return "None"
@@ -555,6 +581,7 @@ class CustomerBalanceAdjustment(models.Model):
         now = now_utc()
         adjs = CustomerBalanceAdjustment.objects.filter(
             Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            organization=customer.organization,
             customer=customer,
             pricing_unit=pricing_unit,
             amount__gt=0,
@@ -591,6 +618,7 @@ class CustomerBalanceAdjustment(models.Model):
         now = now_utc()
         adjs = CustomerBalanceAdjustment.objects.filter(
             Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            organization=customer.organization,
             customer=customer,
             pricing_unit=pricing_unit,
             amount__gt=0,
@@ -647,12 +675,24 @@ class Event(models.Model):
 
 
 class NumericFilter(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="numeric_filters",
+        null=True,
+    )
     property_name = models.CharField(max_length=100)
     operator = models.CharField(max_length=10, choices=NUMERIC_FILTER_OPERATORS.choices)
     comparison_value = models.FloatField()
 
 
 class CategoricalFilter(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="categorical_filters",
+        null=True,
+    )
     property_name = models.CharField(max_length=100)
     operator = models.CharField(
         max_length=10, choices=CATEGORICAL_FILTER_OPERATORS.choices
@@ -661,11 +701,9 @@ class CategoricalFilter(models.Model):
 
 
 class Metric(models.Model):
-    # meta
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        null=False,
         related_name="billable_metrics",
     )
     event_name = models.CharField(max_length=200)
@@ -814,6 +852,9 @@ class UsageRevenueSummary(TypedDict):
 
 
 class PriceTier(models.Model):
+    organization = models.ForeignKey(
+        "Organization", on_delete=models.CASCADE, related_name="price_tiers", null=True
+    )
     plan_component = models.ForeignKey(
         "PlanComponent",
         on_delete=models.CASCADE,
@@ -878,6 +919,12 @@ class PriceTier(models.Model):
 
 
 class PlanComponent(models.Model):
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="plan_components",
+        null=True,
+    )
     billable_metric = models.ForeignKey(
         Metric,
         on_delete=models.CASCADE,
@@ -1107,7 +1154,7 @@ class PlanComponent(models.Model):
 
 class Feature(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="features"
+        Organization, on_delete=models.CASCADE, related_name="features"
     )
     feature_name = models.CharField(max_length=200, null=False)
     feature_description = models.CharField(max_length=200, blank=True, null=True)
@@ -1115,9 +1162,8 @@ class Feature(models.Model):
     class Meta:
         unique_together = ("organization", "feature_name")
 
-
-def __str__(self):
-    return str(self.feature_name)
+    def __str__(self):
+        return str(self.feature_name)
 
 
 class Invoice(models.Model):
@@ -1143,14 +1189,14 @@ class Invoice(models.Model):
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.SET_NULL, null=True, related_name="invoices"
+        Organization, on_delete=models.CASCADE, related_name="invoices", null=True
     )
     customer = models.ForeignKey(
-        Customer, on_delete=models.SET_NULL, null=True, related_name="invoices"
+        Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
     subscription = models.ForeignKey(
         "Subscription",
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         related_name="invoices",
     )
@@ -1203,6 +1249,12 @@ class Invoice(models.Model):
 
 
 class InvoiceLineItem(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="invoice_line_items",
+        null=True,
+    )
     name = models.CharField(max_length=200)
     start_date = models.DateTimeField(max_length=100, default=now_utc)
     end_date = models.DateTimeField(max_length=100, default=now_utc)
@@ -1269,7 +1321,6 @@ class PlanVersion(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        null=False,
         related_name="plan_versions",
     )
     description = models.CharField(max_length=200, null=True, blank=True)
@@ -1580,10 +1631,7 @@ class ExternalPlanLink(models.Model):
 
 class Subscription(models.Model):
     organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name="subscriptions",
-        null=True,
+        Organization, on_delete=models.CASCADE, related_name="subscriptions", null=True
     )
     day_anchor = models.SmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(31)],
@@ -1740,7 +1788,6 @@ class SubscriptionRecord(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        null=False,
         related_name="subscription_records",
     )
     customer = models.ForeignKey(
@@ -1941,7 +1988,7 @@ class Backtest(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="backtests"
+        Organization, on_delete=models.CASCADE, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
     backtest_id = models.CharField(
@@ -1965,6 +2012,12 @@ class BacktestSubstitution(models.Model):
     This model is used to substitute a backtest for a live trading session.
     """
 
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="backtest_substitutions",
+        null=True,
+    )
     backtest = models.ForeignKey(
         Backtest, on_delete=models.CASCADE, related_name="backtest_substitutions"
     )
@@ -2045,10 +2098,23 @@ class PricingUnit(models.Model):
         return ret
 
     class Meta:
-        unique_together = ("organization", "code")
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "code"], name="unique_code_per_org"
+            ),
+            UniqueConstraint(
+                fields=["organization", "name"], name="unique_name_per_org"
+            ),
+        ]
 
 
 class CustomPricingUnitConversion(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="custom_pricing_unit_conversions",
+        null=True,
+    )
     plan_version = models.ForeignKey(
         PlanVersion, on_delete=models.CASCADE, related_name="pricing_unit_conversions"
     )

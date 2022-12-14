@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema
 from metering_billing.auth import parse_organization
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostRequestSerializer,
     PaymentProviderPostResponseSerializer,
@@ -13,7 +14,7 @@ from rest_framework.views import APIView
 
 
 class PaymentProviderView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         responses={200: SinglePaymentProviderSerializer(many=True)},

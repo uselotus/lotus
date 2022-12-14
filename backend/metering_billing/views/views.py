@@ -13,7 +13,7 @@ from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, Customer, Metric, SubscriptionRecord
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.permissions import HasUserAPIKey
+from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.backtest_serializers import *
 from metering_billing.serializers.model_serializers import *
@@ -43,7 +43,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -125,7 +125,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class CostAnalysisView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[CostAnalysisRequestSerializer],
@@ -237,7 +237,7 @@ class CostAnalysisView(APIView):
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -287,7 +287,7 @@ class PeriodSubscriptionsView(APIView):
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -388,7 +388,7 @@ class PeriodMetricUsageView(APIView):
 
 
 class APIKeyCreate(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         responses={
@@ -427,7 +427,7 @@ class APIKeyCreate(APIView):
 
 
 class SettingsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     def get(self, request, format=None):
         """
@@ -440,7 +440,7 @@ class SettingsView(APIView):
 
 
 class CustomersSummaryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         responses={200: CustomerSummarySerializer(many=True)},
@@ -470,7 +470,7 @@ class CustomersSummaryView(APIView):
 
 class CustomersWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         responses={200: CustomerWithRevenueSerializer(many=True)},
@@ -779,7 +779,7 @@ class GetCustomerFeatureAccessView(APIView):
 
 
 class ImportCustomersView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -825,7 +825,7 @@ class ImportCustomersView(APIView):
 
 
 class ImportPaymentObjectsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -872,7 +872,7 @@ class ImportPaymentObjectsView(APIView):
 
 
 class TransferSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -920,7 +920,7 @@ class TransferSubscriptionsView(APIView):
 
 
 class ExperimentalToActiveView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=ExperimentalToActiveRequestSerializer(),
@@ -966,7 +966,7 @@ class ExperimentalToActiveView(APIView):
 
 
 class PlansByNumCustomersView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
