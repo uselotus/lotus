@@ -17,12 +17,7 @@ from metering_billing.serializers.payment_provider_serializers import (
     SinglePaymentProviderSerializer,
 )
 from metering_billing.utils import decimal_to_cents, now_utc
-from metering_billing.utils.enums import (
-    INVOICE_STATUS,
-    PAYMENT_PROVIDERS,
-    PLAN_STATUS,
-    SUBSCRIPTION_STATUS,
-)
+from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS, PLAN_STATUS
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
@@ -485,7 +480,6 @@ class StripeConnector(PaymentProvider):
                 }
                 if end_now:
                     subscription_kwargs["start_date"] = now_utc()
-                    subscription_kwargs["status"] = SUBSCRIPTION_STATUS.ACTIVE
                     stripe.Subscription.delete(
                         subscription.id,
                         prorate=True,
@@ -499,7 +493,6 @@ class StripeConnector(PaymentProvider):
                     ).replace(
                         tzinfo=pytz.utc
                     )
-                    subscription_kwargs["status"] = SUBSCRIPTION_STATUS.NOT_STARTED
                     stripe.Subscription.modify(
                         subscription.id,
                         cancel_at_period_end=True,

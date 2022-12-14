@@ -129,8 +129,7 @@ class TestGenerateInvoice:
     def test_generate_invoice(self, draft_invoice_test_common_setup):
         setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
 
-        active_subscriptions = Subscription.objects.filter(
-            status="active",
+        active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -143,8 +142,7 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        after_active_subscriptions = Subscription.objects.filter(
-            status="active",
+        after_active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -160,8 +158,7 @@ class TestGenerateInvoice:
     ):
         setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
 
-        active_subscriptions = Subscription.objects.filter(
-            status="active",
+        active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )

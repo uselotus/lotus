@@ -21,11 +21,7 @@ from metering_billing.models import (
 )
 from metering_billing.tasks import calculate_invoice, update_invoice_status
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
-    INVOICE_STATUS,
-    PAYMENT_PROVIDERS,
-    SUBSCRIPTION_STATUS,
-)
+from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
 from model_bakery import baker
 from rest_framework.test import APIClient
 
@@ -214,7 +210,7 @@ class TestStripeIntegration:
         assert (
             Subscription.objects.filter(
                 organization=setup_dict["org"],
-                status=SUBSCRIPTION_STATUS.NOT_STARTED,
+                start_date__gte=now_utc(),
                 billing_plan=setup_dict["plan"].display_version,
             ).count()
             == 1
@@ -227,18 +223,19 @@ class TestStripeIntegration:
         # now lets test out the replace now
         Subscription.objects.filter(
             organization=setup_dict["org"],
-            status=SUBSCRIPTION_STATUS.NOT_STARTED,
+            start_date__gte=now_utc(),
             billing_plan=setup_dict["plan"].display_version,
         ).delete()
         stripe_connector.transfer_subscriptions(setup_dict["org"], end_now=True)
         time.sleep(10)
         stripe_sub = stripe.Subscription.retrieve(stripe_sub.id)
         assert (
-            Subscription.objects.filter(
+            Subscription.objects.active()
+            .filter(
                 organization=setup_dict["org"],
-                status=SUBSCRIPTION_STATUS.ACTIVE,
                 billing_plan=setup_dict["plan"].display_version,
-            ).count()
+            )
+            .count()
             == 1
         )
         assert stripe_sub.status == "canceled"

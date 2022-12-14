@@ -189,7 +189,7 @@ def periods_bwn_twodates(
         )
         end_time = end_time + normalize_rd if truncate_to_granularity else end_time
         ret = start_time
-        while ret < end_time:
+        while ret <= end_time:
             yield ret
             ret = start_time + k * rd
             k += 1
@@ -263,6 +263,7 @@ def get_granularity_ratio(metric_granularity, proration_granularity, start_date)
         METRIC_GRANULARITY.QUARTER: 4,
         METRIC_GRANULARITY.YEAR: 1,
     }
+    print(start_date, metric_granularity, proration_granularity)
     return granularity_dict[metric_granularity][proration_granularity]
 
 

@@ -478,6 +478,7 @@ class MetricUpdateSerializer(serializers.ModelSerializer):
                     organization=self.context["organization"], status=PLAN_STATUS.ACTIVE
                 ),
             ).prefetch_related("plan_components", "plan_components__billable_metric")
+            print("all_active_plan_versions", all_active_plan_versions)
             for plan_version in all_active_plan_versions:
                 for component in plan_version.plan_components.all():
                     if component.billable_metric == self.instance:
@@ -1314,7 +1315,6 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
             "auto_renew",
             "is_new",
             "subscription_filters",
-            "status",
         )
 
     start_date = serializers.DateTimeField(
@@ -1368,11 +1368,6 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         # try:
         filters = validated_data.pop("subscription_filters", [])
         now = now_utc()
-        validated_data["status"] = (
-            SUBSCRIPTION_STATUS.NOT_STARTED
-            if validated_data["start_date"] > now
-            else SUBSCRIPTION_STATUS.ACTIVE
-        )
         sub_record = super().create(validated_data)
         for filter_data in filters:
             sub_cat_filter_dict = {
@@ -1559,11 +1554,9 @@ class SubscriptionCancelSerializer(serializers.Serializer):
 
 class SubscriptionStatusFilterSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=False)
-    status = serializers.MultipleChoiceField(
-        choices=SUBSCRIPTION_STATUS.choices,
-        required=False,
-        default={SUBSCRIPTION_STATUS.ACTIVE},
-    )
+    active_only = serializers.BooleanField(required=False, default=True)
+    range_start = serializers.DateTimeField(required=False)
+    range_end = serializers.DateTimeField(required=False)
 
     def validate(self, data):
         # check that the customer ID matches an existing customer
@@ -1575,8 +1568,6 @@ class SubscriptionStatusFilterSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     f"Customer with customer_id {data['customer_id']} does not exist"
                 )
-        if len(data.get("status")) == 0:
-            data["status"] = {SUBSCRIPTION_STATUS.ACTIVE}
         return data
 
 

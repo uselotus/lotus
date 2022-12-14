@@ -798,6 +798,7 @@ class StatefulHandler(MetricHandler):
                 truncate_to_granularity=truncate_to_granularity,
             )
         )
+        print("plan_periods", len(plan_periods))
         now = now_utc()
         plan_periods = [x for x in plan_periods if x <= end and x <= now]
         # for each period, get the events and calculate the usage

@@ -772,12 +772,23 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 data=self.request.query_params
             )
             serializer.is_valid(raise_exception=True)
-            args.append(Q(status__in=serializer.validated_data["status"]))
+            active_only = serializer.validated_data.get("active_only")
+            range_start = serializer.validated_data.get("range_start")
+            range_end = serializer.validated_data.get("range_end")
+            if range_start:
+                args.append(Q(end_date__gte=range_start))
+            if range_end:
+                args.append(Q(start_date__lte=range_end))
+            range_end = serializer.validated_data.get("range_end")
             if serializer.validated_data.get("customer"):
                 args.append(
                     Q(customer__customer_id=serializer.validated_data["customer"])
                 )
-            qs = Subscription.objects.filter(
+            if active_only:
+                qs = Subscription.objects.active()
+            else:
+                qs = Subscription.objects.all()
+            qs = qs.filter(
                 *args,
                 organization=organization,
             ).select_related("customer")
@@ -790,6 +801,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     raw_filters = raw_filters[0]
                 parsed_params = json.loads(raw_filters)
                 dict_params["subscription_filters"] = parsed_params
+            print(dict_params)
             if self.action == "update_plans":
                 serializer = SubscriptionRecordFilterSerializer(data=dict_params)
             elif self.action == "cancel_plans":
@@ -802,6 +814,8 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
             organization = parse_organization(self.request)
             args.append(Q(organization=organization))
+            print("args", args)
+            print(SubscriptionRecord.objects.first().__dict__)
             qs = (
                 SubscriptionRecord.objects.filter(*args)
                 .select_related("billing_plan")
@@ -828,7 +842,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     )
                     qs = qs.filter(filters=m2m)
         else:
-            qs = Subscription.objects.filter(organization=organization)
+            qs = Subscription.objects.active().filter(organization=organization)
         return qs
 
     @extend_schema(
@@ -841,35 +855,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         raise MethodNotAllowed(
             "Cannot use the cancel method on a specific subscription. Please use the /susbcriptions/plans endpoint, WITHOUT specifying a specific plan, to cancel a customer's subscription and all associated plans."
         )
-
-    # def perform_destroy(self, instance):
-    #     serializer = self.get_serializer(data=self.request.query_params)
-    #     serializer.is_valid(raise_exception=True)
-    #     flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
-    #     bill_usage = serializer.validated_data["bill_usage"]
-    #     subscription = instance
-    #     customer = subscription.customer
-    #     subscription_records = customer.subscription_records.filter(
-    #         organization=subscription.organization,
-    #         next_billing_date__range=(
-    #             subscription.start_date,
-    #             subscription.end_date,
-    #         ),
-    #         fully_billed=False,
-    #     )
-    #     now = now_utc()
-    #     subscription_records.update(
-    #         flat_fee_behavior=flat_fee_behavior,
-    #         invoice_usage_charges=bill_usage,
-    #         auto_renew=False,
-    #         end_date=now,
-    #         status=SUBSCRIPTION_STATUS.ENDED,
-    #         fully_billed=True,
-    #     )
-    #     subscription.status = SUBSCRIPTION_STATUS.ENDED
-    #     subscription.end_date = now
-    #     subscription.save()
-    #     generate_invoice(subscription, subscription_records)
 
     def create(self, request, *args, **kwargs):
         raise MethodNotAllowed(
@@ -891,11 +876,14 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         plan_name = serializer.validated_data["billing_plan"].plan.plan_name
 
         # check to see if subscription exists
-        subscription = Subscription.objects.filter(
-            organization=organization,
-            status__in=[SUBSCRIPTION_STATUS.ACTIVE],
-            customer=serializer.validated_data["customer"],
-        ).first()
+        subscription = (
+            Subscription.objects.active()
+            .filter(
+                organization=organization,
+                customer=serializer.validated_data["customer"],
+            )
+            .first()
+        )
         duration = serializer.validated_data["billing_plan"].plan.plan_duration
         billing_freq = serializer.validated_data["billing_plan"].usage_billing_frequency
         start_date = serializer.validated_data["start_date"]
@@ -907,7 +895,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 customer=serializer.validated_data["customer"],
                 start_date=start_date,
                 end_date=start_date,
-                status=SUBSCRIPTION_STATUS.ACTIVE,
             )
         subscription.handle_attach_plan(
             plan_day_anchor=plan_day_anchor,
@@ -949,7 +936,9 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             serializer.validated_data[
                 "next_billing_date"
             ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
-        subscription_record = serializer.save(organization=organization)
+        subscription_record = serializer.save(
+            organization=organization, status="active"
+        )
 
         # now we can actually create the subscription record
         response = self.get_serializer(subscription_record).data
@@ -993,11 +982,14 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         )
         if invoicing_behavior_on_cancel == INVOICING_BEHAVIOR.INVOICE_NOW:
             for customer in customer_set:
-                subscription = Subscription.objects.filter(
-                    organization=customer.organization,
-                    customer=customer,
-                    status=SUBSCRIPTION_STATUS.ACTIVE,
-                ).first()
+                subscription = (
+                    Subscription.objects.active()
+                    .filter(
+                        organization=customer.organization,
+                        customer=customer,
+                    )
+                    .first()
+                )
                 generate_invoice(subscription, qs.filter(customer=customer))
                 subscription.handle_remove_plan()
 
@@ -1067,11 +1059,14 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 )
                 subscription_record.save()
             customer = list(qs)[0].customer
-            subscription = Subscription.objects.filter(
-                organization=customer.organization,
-                customer=customer,
-                status=SUBSCRIPTION_STATUS.ACTIVE,
-            ).first()
+            subscription = (
+                Subscription.objects.active()
+                .filter(
+                    organization=customer.organization,
+                    customer=customer,
+                )
+                .first()
+            )
             new_qs = SubscriptionRecord.objects.filter(
                 pk__in=original_qs, organization=organization
             )

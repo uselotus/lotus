@@ -236,3 +236,10 @@ SUPPORTED_CURRENCIES = [
     ("Danish Krone", "DKK", "kr"),
 ]
 SUPPORTED_CURRENCIES_VERSION = 1
+
+
+class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
+    INVOICE = (1, _("Invoice"))
+    RECEIPT = (2, _("Receipt"))
+    ADJUSTMENT = (3, _("Adjustment"))
+    REVERSAL = (4, _("Reversal"))

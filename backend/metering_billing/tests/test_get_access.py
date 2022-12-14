@@ -19,6 +19,7 @@ from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     METRIC_TYPE,
     PRICE_TIER_TYPE,
+    SUBSCRIPTION_STATUS,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -309,7 +310,7 @@ class TestGetAccess:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         event1 = Event.objects.create(
@@ -668,7 +669,7 @@ class TestGetAccessWithSeparateBy:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         for groupby_dim_1 in ["dim_1", "dim_2"]:
@@ -774,7 +775,7 @@ class TestGetAccessWithSeparateBy:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         for groupby_dim_1 in ["dim_1", "dim_2"]:
