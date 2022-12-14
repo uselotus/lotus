@@ -25,8 +25,16 @@ class ValidOrganization(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return request.organization is not None
+        print("ValidOrganization", request.organization)
+        org = request.organization
+        if org is None and request.user.is_authenticated:
+            org = request.user.organization
+        return org is not None
 
     def has_object_permission(self, request, view, obj):
         # Instance must have an attribute named `owner`.
-        return obj.organization == request.organization
+        print("ValidOrganization object", request.organization)
+        org = request.organization
+        if org is None and request.user.is_authenticated:
+            org = request.user.organization
+        return obj.organization == org

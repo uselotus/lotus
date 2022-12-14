@@ -1301,6 +1301,7 @@ class TestRegressions:
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
 
         after_subscriptions_len = Subscription.objects.all().count()
         after_subscription_records_len = SubscriptionRecord.objects.all().count()
