@@ -74,7 +74,11 @@ class Organization(models.Model):
     )
     is_demo = models.BooleanField(default=False)
     default_currency = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
@@ -328,7 +332,7 @@ class Customer(models.Model):
     )
     default_currency = models.ForeignKey(
         "PricingUnit",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="+",
         null=True,
         blank=True,
@@ -452,7 +456,11 @@ class CustomerBalanceAdjustment(models.Model):
     )
     amount = models.DecimalField(decimal_places=10, max_digits=20)
     pricing_unit = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     description = models.TextField(null=True, blank=True)
     created = models.DateTimeField(default=now_utc)
@@ -628,7 +636,7 @@ class Event(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="+"
+        Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
     )
     customer = models.ForeignKey(
         Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
@@ -936,7 +944,7 @@ class PlanComponent(models.Model):
     )
     pricing_unit = models.ForeignKey(
         "PricingUnit",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="+",
         null=True,
         blank=True,
@@ -1184,7 +1192,7 @@ class Invoice(models.Model):
     )
     subscription = models.ForeignKey(
         "Subscription",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="invoices",
     )
@@ -1253,7 +1261,11 @@ class InvoiceLineItem(models.Model):
         decimal_places=10, max_digits=20, default=Decimal(0.0)
     )
     pricing_unit = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
@@ -1266,7 +1278,7 @@ class InvoiceLineItem(models.Model):
     )
     associated_subscription_record = models.ForeignKey(
         "SubscriptionRecord",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="line_items",
     )
@@ -1322,11 +1334,11 @@ class PlanVersion(models.Model):
     plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
     status = models.CharField(max_length=40, choices=PLAN_VERSION_STATUS.choices)
     replace_with = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     transition_to = models.ForeignKey(
         "Plan",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="transition_from",
@@ -1336,7 +1348,7 @@ class PlanVersion(models.Model):
     )
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
-        "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
+        "PriceAdjustment", on_delete=models.SET_NULL, null=True, blank=True
     )
     day_anchor = models.SmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(31)],
@@ -1351,14 +1363,18 @@ class PlanVersion(models.Model):
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="created_plan_versions",
         null=True,
         blank=True,
     )
     version_id = models.CharField(max_length=250, default=plan_version_uuid)
     pricing_unit = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     history = HistoricalRecords()
 
@@ -1431,7 +1447,11 @@ class Plan(models.Model):
     plan_name = models.CharField(max_length=100, null=False, blank=False)
     plan_duration = models.CharField(choices=PLAN_DURATION.choices, max_length=40)
     display_version = models.ForeignKey(
-        "PlanVersion", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PlanVersion",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     parent_product = models.ForeignKey(
         Product,
@@ -1447,21 +1467,21 @@ class Plan(models.Model):
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="created_plans",
         null=True,
         blank=True,
     )
     parent_plan = models.ForeignKey(
         "self",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="child_plans",
     )
     target_customer = models.ForeignKey(
         Customer,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="custom_plans",
