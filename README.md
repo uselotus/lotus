@@ -26,7 +26,9 @@
 ![Lotus Logo](./design_resources/Logo1.1-total-black.png#gh-dark-mode-only)
 ![Lotus Logo](./design_resources/Lotus-Horizontal-Logo-RGB-Black-Medium.svg#gh-light-mode-only)
 
-# Lotus: Pricing & Packaging Infrastructure For Any Model
+# Lotus: Pricing & Packaging Infrastructure For Any Business Model
+
+## Usage-Based, Per-Seat, Bespoke Enterprise Plans And More
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <p align="center">
@@ -74,7 +76,7 @@ Sign up for our `beta` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typef
 
 Best if you want to keep your data local or want full control and extensibility.
 
-#### :computer: Local Hobby Instance
+#### :computer: Local Instance
 
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 2. Clone the repo and navigate to the project
@@ -87,7 +89,11 @@ Best if you want to keep your data local or want full control and extensibility.
    ```sh
    docker-compose -f docker-compose.prod.yaml --env-file env/.env.prod up --build
    ```
-   You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined.
+   You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined or the default which is:
+   ```py
+   username: change_me
+   password: change_me
+   ```
 
 Easy deployment options for AWS, GCP, and Azure are on the roadmap. If you have any questions, feel free to reach out to us.
 
@@ -113,9 +119,17 @@ To set up Lotus for development locally, please refer to our guide [here](https:
 
 Pricing your SaaS product is never easy, and often isn't directly related to the value you provide. Lotus was built to help you solve those problems and maintain the flexibility you need as you grow. Pricing is an underappreciated but hugely important lever for growth, and pushing it to the side can be a huge mistake. As companies evolve their pricing models, maintaining and scaling a pricing and billing stack can take significant engineering hours. With Lotus, you can go through the pricing deployment, monitoring, and experimentation cycle blazingly fast, while integrating with your existing payments, customer management, and data solutions.
 
+Tech Stack:
+- React Typescript
+- Postgres (Timescaledb)
+- Redpanda
+- Redis
+- Python (Django/Fast API)
+- Celery (background jobs)
+
 ### Features
 
-- **Flexible and Extensible Pricing Schemes** - Create custom pricing schemes for your SaaS, PaaS, IaaS, or any other acronym you come up with. A variety of models are supported out of the box, but with our fully extensible framework, creating exactly what you need is easy.
+- **Usage-Based Pricing and Flexible Prorations** - Create custom pricing schemes for your SaaS, PaaS, IaaS, or any other acronym you come up with. A variety of models are supported out of the box, but with our fully extensible framework, creating exactly what you need is easy.
 
 - **Sensible, Intuitive Plan Management** - Forget about keeping track of subscriptions, plans, versioning, deployments, and everything that gets in the way of your product. Lotus simplifies plan management for you and your engineering team, so you can focus on what matters.
 

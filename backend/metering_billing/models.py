@@ -1739,7 +1739,6 @@ class Subscription(models.Model):
     subscription_id = models.CharField(
         max_length=100, null=False, blank=True, default=subscription_uuid
     )
-    history = HistoricalRecords()
     objects = SubscriptionManager()
 
     def get_anchors(self):
