@@ -97,7 +97,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:latest
+        image: timescale/timescaledb:latest-pg14
         env:
           POSTGRES_USER: lotus
           POSTGRES_PASSWORD: lotus
