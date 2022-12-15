@@ -412,14 +412,15 @@ class Customer(models.Model):
         total = 0
         sub, sub_records = self.get_subscription_and_records()
         if sub is not None and sub_records is not None:
-            inv = generate_invoice(
+            invs = generate_invoice(
                 sub,
                 sub_records,
                 draft=True,
                 charge_next_plan=True,
             )
-            total += inv.cost_due
-            inv.delete()
+            total += sum([inv.cost_due for inv in invs])
+            for inv in invs:
+                inv.delete()
         return total
 
     def get_currency_balance(self, currency):

@@ -130,7 +130,7 @@ class TestStripeIntegration:
             end_date=now_utc() - timedelta(days=5),
             status="ended",
         )
-        invoice = generate_invoice(subscription)
+        invoice = generate_invoice(subscription)[0]
         assert invoice.payment_status == INVOICE_STATUS.UNPAID
         assert invoice.external_payment_obj_type == PAYMENT_PROVIDERS.STRIPE
         try:

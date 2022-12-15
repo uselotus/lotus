@@ -1068,7 +1068,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 pk__in=original_qs, organization=organization
             )
             if replace_plan_billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
-                invoice = generate_invoice(subscription, new_qs)
+                generate_invoice(subscription, new_qs)
         else:
             update_dict = {}
             if turn_off_auto_renew:
