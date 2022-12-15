@@ -4,28 +4,14 @@ import { Paper } from "../base/Paper";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { CreateComponent, Tier } from "../../types/plan-type";
 import "./ComponentDisplay.css";
+import { PricingUnit } from "../../types/pricing-unit-type";
 
-const dummy_components: CreateComponent[] = [
-  {
-    billable_metric_name: "API calls",
-    tiers: [
-      {
-        cost_per_batch: 0.01,
-        metric_units_per_batch: 1000,
-        type: "per_unit",
-        range_start: 0,
-        range_end: 100000,
-      },
-    ],
-  },
-];
-
-const renderCost = (record: Tier) => {
+const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
   switch (record.type) {
     case "per_unit":
       return (
         <span>
-          {"$"}
+          {pricing_unit.symbol}
           {record.cost_per_batch} per {record.metric_units_per_batch} Unit
         </span>
       );
@@ -33,7 +19,7 @@ const renderCost = (record: Tier) => {
     case "flat":
       return (
         <span>
-          {"$"}
+          {pricing_unit.symbol}
           {record.cost_per_batch}{" "}
         </span>
       );
@@ -47,7 +33,13 @@ export const ComponentDisplay: FC<{
   componentsData: CreateComponent[];
   handleComponentEdit: (any) => void;
   deleteComponent: (any) => void;
-}> = ({ componentsData, handleComponentEdit, deleteComponent }) => {
+  pricing_unit: PricingUnit;
+}> = ({
+  componentsData,
+  handleComponentEdit,
+  deleteComponent,
+  pricing_unit,
+}) => {
   return (
     <Row gutter={[12, 12]} className="overflow-y-auto max-h-[400px]">
       {componentsData.map((component: any, index: number) => (
@@ -102,8 +94,8 @@ export const ComponentDisplay: FC<{
                   align: "left",
                   dataIndex: "cost_per_batch",
                   key: "cost_per_batch",
-                  render: (value: any, record: any) => (
-                    <div>{renderCost(record)}</div>
+                  render: (value: any, record: Tier) => (
+                    <div>{renderCost(record, pricing_unit)}</div>
                   ),
                 },
               ]}

@@ -1402,6 +1402,8 @@ class PlanVersion(models.Model):
             if version_usage_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
                 version_usage_billing_frequency = USAGE_BILLING_FREQUENCY.END_OF_PERIOD
         self.usage_billing_frequency = version_usage_billing_frequency
+        if not self.pricing_unit:
+            self.pricing_unit = self.organization.pricing_unit
         super().save(*args, **kwargs)
 
 
@@ -1858,7 +1860,7 @@ class SubscriptionRecord(models.Model):
 
     def save(self, *args, **kwargs):
         now = now_utc()
-        subscription = self.customer.subscriptions.active().first()
+        subscription = self.customer.subscriptions.active(self.start_date).first()
         if not self.end_date:
             day_anchor, month_anchor = subscription.get_anchors()
             self.end_date = calculate_end_date(
@@ -2171,4 +2173,4 @@ class AccountsReceivableTransaction(models.Model):
     )
     due = models.DateTimeField(null=True)
     amount = models.DecimalField(max_digits=20, decimal_places=10)
-    related_txns = models.ManyToManyField("self", related_name="related_txns")
+    related_txns = models.ManyToManyField("self")

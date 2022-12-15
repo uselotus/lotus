@@ -1,4 +1,4 @@
-import {PricingUnit} from "./pricing-unit-type";
+import { PricingUnit } from "./pricing-unit-type";
 
 export interface CreateOrgAccountType {
   username: string;
@@ -21,8 +21,9 @@ export interface OrganizationType {
   payment_plan: string;
   payment_provider_ids: object;
   users: UserType[];
-  default_currency?:PricingUnit
-  organization_id:string
+  default_currency: PricingUnit;
+  available_currencies: PricingUnit[];
+  organization_id: string;
 }
 
 export interface ActionUserType extends UserType {

@@ -145,21 +145,24 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
         <div className="separator" />
         <div className="px-4 py-2">
           <div className="planDetails">
-            <div className="infoLabel">{selectedVersion.description}</div>
+            <div className="infoLabel">{selectedVersion?.description}</div>
           </div>
         </div>
 
         <div className="flex items-center px-4 py-2">
           <div className="w-2/5">
             <div className="flex items-baseline py-2">
-              <div className="planCost">${selectedVersion.flat_rate}</div>
+              <div className="planCost">
+                {selectedVersion?.currency.symbol}
+                {selectedVersion?.flat_rate}
+              </div>
               <div className="pl-2 infoLabel">Recurring price</div>
             </div>
             <div className="py-2">
               <div className="flex activeSubscriptions">
                 <div className="pr-1">
                   Total Active Subscriptions:{" "}
-                  {selectedVersion.active_subscriptions}
+                  {selectedVersion?.active_subscriptions}
                 </div>
               </div>
             </div>
@@ -170,7 +173,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
               <div className="pr-2 infoLabel">Date Created:</div>
               <div className="infoValue">
                 {" "}
-                {dayjs(selectedVersion.created_on).format("YYYY/MM/DD")}
+                {dayjs(selectedVersion?.created_on).format("YYYY/MM/DD")}
               </div>
             </div>
             <div className="flex items-center planInfo py-2 mt-2">

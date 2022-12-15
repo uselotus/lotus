@@ -53,7 +53,13 @@ const GeneralTab: FC = () => {
 
   const { data, isLoading, isError } = useQuery(["organization"], () =>
     Organization.get().then((res) => {
-      setCurrentCurrency(res[0].default_currency.code);
+      //if the default currency is null, then don't set it, otherwise setCurrentCurrency
+      if (
+        res[0].default_currency !== undefined &&
+        res[0].default_currency !== null
+      ) {
+        setCurrentCurrency(res[0].default_currency.code);
+      }
       return res[0];
     })
   );
@@ -117,7 +123,8 @@ const GeneralTab: FC = () => {
         </p>
         <p className=" text-[16px]">
           <b className="">Default Organization Currency:</b>{" "}
-          {data ? (
+          {data?.default_currency !== undefined &&
+          data?.default_currency !== null ? (
             <Tag>
               {data.default_currency?.name +
                 " " +

@@ -23,7 +23,7 @@ import {
   CreateInitialVersionType,
   CreatePlanVersionType,
 } from "../types/plan-type";
-import { Plan } from "../api/api";
+import { Organization, Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { ArrowLeftOutlined } from "@ant-design/icons";
@@ -35,6 +35,7 @@ import ComponentDisplay from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import TargetCustomerForm from "../components/Plans/TargetCustomerForm";
 import VersionActiveForm from "../components/Plans/VersionActiveForm";
+import { PricingUnit } from "../types/pricing-unit-type";
 
 interface CustomizedState {
   plan: PlanType;
@@ -60,6 +61,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     useState<boolean>(false);
   const [activeVersion, setActiveVersion] = useState<boolean>(false);
   const [activeVersionType, setActiveVersionType] = useState<string>();
+  const [allCurrencies, setAllCurrencies] = useState<PricingUnit[]>([]);
   const navigate = useNavigate();
   const [componentsData, setComponentsData] = useState<any>([]);
   const [form] = Form.useForm();
@@ -77,6 +79,13 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
   const [priceAdjustmentType, setPriceAdjustmentType] = useState<string>(
     plan.versions[versionIndex].price_adjustment?.price_adjustment_type ??
       "none"
+  );
+  const [selectedCurrency, setSelectedCurrency] = useState<PricingUnit>(
+    plan.versions[versionIndex].currency ?? {
+      symbol: "",
+      code: "",
+      name: "",
+    }
   );
 
   const queryClient = useQueryClient();
@@ -100,11 +109,23 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           separate_by: component.separate_by,
           proration_granularity: component.proration_granularity,
           id: component.billable_metric.billable_metric_name,
+          pricing_unit: component.pricing_unit,
         };
       }
     );
     setComponentsData(initialComponents);
   }, [plan.versions[versionIndex].components]);
+
+  useEffect(() => {
+    if (!allCurrencies?.length) {
+      Organization.get().then((res) => {
+        setAllCurrencies(res[0].available_currencies);
+        form.setFieldsValue({
+          plan_currency: selectedCurrency.code,
+        });
+      });
+    }
+  }, []);
 
   const mutation = useMutation(
     (data: CreatePlanVersionType) => Plan.createVersion(data),
@@ -294,6 +315,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           components: usagecomponentslist,
           features: planFeatures,
           usage_billing_frequency: values.usage_billing_frequency,
+          currency_code: values.plan_currency,
         };
         if (values.align_plan == "calendar_aligned") {
           if (values.plan_duration === "yearly") {
@@ -345,6 +367,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             usage_billing_frequency: values.usage_billing_frequency,
             make_active: activeVersion,
             make_active_type: activeVersionType,
+            currency_code: values.plan_currency,
           };
           if (values.align_plan == "calendar_aligned") {
             if (values.plan_duration === "yearly") {
@@ -450,6 +473,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
               plan.versions[versionIndex].day_anchor !== undefined
                 ? "calendar_aligned"
                 : "subscription_aligned",
+            plan_currency: selectedCurrency,
           }}
           onFinish={submitPricingPlan}
           onFinishFailed={onFinishFailed}
@@ -538,7 +562,9 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
 
                     <Form.Item name="flat_rate" label="Base Cost">
                       <InputNumber
-                        addonBefore="$"
+                        addonBefore={
+                          selectedCurrency ? selectedCurrency.symbol : "-"
+                        }
                         defaultValue={0}
                         precision={2}
                       />
@@ -569,6 +595,29 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                             {plan.plan_id === item.plan_id
                               ? "Self"
                               : item.plan_name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="plan_currency" label="Plan Currency">
+                      <Select
+                        disabled={type === "version" ? true : false}
+                        onChange={(value) => {
+                          const selectedCurrency = allCurrencies.find(
+                            (currency) => currency.code === value
+                          );
+                          if (selectedCurrency) {
+                            setSelectedCurrency(selectedCurrency);
+                          }
+                        }}
+                        value={selectedCurrency?.symbol}
+                      >
+                        {allCurrencies.map((currency) => (
+                          <Select.Option
+                            key={currency.code}
+                            value={currency.code}
+                          >
+                            {currency.name} {currency.symbol}
                           </Select.Option>
                         ))}
                       </Select>
@@ -606,6 +655,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     componentsData={componentsData}
                     handleComponentEdit={handleComponentEdit}
                     deleteComponent={deleteComponent}
+                    pricing_unit={selectedCurrency}
                   />
                 </Form.Item>
                 <div className="inset-x-0 bottom-0 justify-center">
@@ -719,9 +769,10 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                           priceAdjustmentType === "percentage" ? "%" : null
                         }
                         addonBefore={
-                          priceAdjustmentType === "fixed" ||
-                          priceAdjustmentType === "price_override"
-                            ? "$"
+                          (priceAdjustmentType === "fixed" ||
+                            priceAdjustmentType === "price_override") &&
+                          selectedCurrency
+                            ? selectedCurrency.symbol
                             : null
                         }
                       />
@@ -740,6 +791,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             handleComponentAdd={handleComponentAdd}
             editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
+            currency={selectedCurrency}
           />
         )}
         {featureVisible && (

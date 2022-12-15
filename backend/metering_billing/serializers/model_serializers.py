@@ -78,10 +78,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "payment_provider_ids",
             "users",
             "default_currency",
+            "available_currencies",
         )
 
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
+    available_currencies = serializers.SerializerMethodField()
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(organization=obj)
@@ -98,6 +100,11 @@ class OrganizationSerializer(serializers.ModelSerializer):
             for x in invited_users_data
         ]
         return users_data + invited_users_data
+
+    def get_available_currencies(self, obj) -> PricingUnitSerializer(many=True):
+        return PricingUnitSerializer(
+            PricingUnit.objects.filter(organization=obj), many=True
+        ).data
 
 
 class APITokenSerializer(serializers.ModelSerializer):
@@ -478,7 +485,6 @@ class MetricUpdateSerializer(serializers.ModelSerializer):
                     organization=self.context["organization"], status=PLAN_STATUS.ACTIVE
                 ),
             ).prefetch_related("plan_components", "plan_components__billable_metric")
-            print("all_active_plan_versions", all_active_plan_versions)
             for plan_version in all_active_plan_versions:
                 for component in plan_version.plan_components.all():
                     if component.billable_metric == self.instance:
@@ -681,8 +687,9 @@ class PlanComponentSerializer(serializers.ModelSerializer):
             "tiers",
             "separate_by",
             "proration_granularity",
+            "pricing_unit",
         )
-        read_only_fields = ["billable_metric"]
+        read_only_fields = ["billable_metric", "pricing_unit"]
 
     separate_by = serializers.ListField(child=serializers.CharField(), required=False)
     proration_granularity = serializers.ChoiceField(
@@ -693,6 +700,7 @@ class PlanComponentSerializer(serializers.ModelSerializer):
 
     # READ-ONLY
     billable_metric = MetricSerializer(read_only=True)
+    pricing_unit = PricingUnitSerializer(read_only=True)
 
     # WRITE-ONLY
     billable_metric_name = SlugRelatedFieldWithOrganization(
@@ -912,7 +920,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "make_active_type",
             "replace_immediately_type",
             "transition_to_plan_id",
-            # "transition_to_plan_version_id",
+            "currency_code",
             # read-only
             "version",
             "version_id",
@@ -923,6 +931,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "replace_with",
             "transition_to",
             "plan_name",
+            "currency",
         )
         read_only_fields = (
             "version",
@@ -934,6 +943,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "replace_with",
             "transition_to",
             "plan_name",
+            "currency",
         )
         extra_kwargs = {
             "make_active_type": {"write_only": True},
@@ -966,12 +976,19 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        write_only=True,
+        required=True,
+    )
     # READ-ONLY
     active_subscriptions = serializers.IntegerField(read_only=True)
     created_by = serializers.SerializerMethodField(read_only=True)
     replace_with = serializers.SerializerMethodField(read_only=True)
     transition_to = serializers.SerializerMethodField(read_only=True)
     plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
+    currency = PricingUnitSerializer(read_only=True, source="pricing_unit")
 
     def get_created_by(self, obj) -> str:
         if obj.created_by != None:
@@ -1018,9 +1035,15 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        pricing_unit = validated_data.pop("currency_code")
         components_data = validated_data.pop("plan_components", [])
         if len(components_data) > 0:
-            components = PlanComponentSerializer(many=True).create(components_data)
+            components = PlanComponentSerializer(many=True).create(
+                [
+                    {**component_data, "pricing_unit": pricing_unit}
+                    for component_data in components_data
+                ]
+            )
             assert type(components[0]) is PlanComponent
         else:
             components = []
@@ -1030,6 +1053,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         make_active_type = validated_data.pop("make_active_type", None)
         replace_immediately_type = validated_data.pop("replace_immediately_type", None)
         transition_to_plan = validated_data.get("transition_to_plan_id", None)
+
         validated_data["version"] = len(validated_data["plan"].versions.all()) + 1
         if "status" not in validated_data:
             validated_data["status"] = (
@@ -1039,7 +1063,9 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             )
         if transition_to_plan:
             validated_data.pop("transition_to_plan_id")
-        billing_plan = PlanVersion.objects.create(**validated_data)
+        billing_plan = PlanVersion.objects.create(
+            **validated_data, pricing_unit=pricing_unit
+        )
         if transition_to_plan:
             billing_plan.transition_to = transition_to_plan
         org = billing_plan.organization
