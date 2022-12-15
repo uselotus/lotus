@@ -108,11 +108,11 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
               )}
             </p>
             <p>
-              <b>Currency: </b> {"$"}
+              <b>Currency: </b> {invoiceData.invoice.currency.symbol}
             </p>
             <p>
               <b>Total Cost Due: </b>
-              {"$"}
+              {invoiceData.invoice.currency.symbol}
               {invoiceData.invoice.cost_due.toFixed(2)}
             </p>
           </div>

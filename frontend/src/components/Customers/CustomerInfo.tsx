@@ -154,7 +154,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             )} */}
           </p>
           <p>
-            <b>Amount Due On Next Invoice:</b> {"$"}
+            <b>Amount Due On Next Invoice:</b> {data?.default_currency?.symbol}
             {data.next_amount_due.toFixed(2)}
           </p>
         </div>
