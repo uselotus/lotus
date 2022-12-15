@@ -28,6 +28,8 @@
 
 # Lotus: Pricing & Packaging Infrastructure For Any Business Model
 
+## Usage-Based, Per-Seat, Bespoke Enterprise Plans And More
+
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 <p align="center">
    <a href='http://makeapullrequest.com'><img alt='PRs Welcome' src='https://img.shields.io/badge/PRs-welcome-43AF11.svg?style=shields'/></a>
@@ -127,7 +129,7 @@ Tech Stack:
 
 ### Features
 
-- **Flexible and Extensible Pricing Schemes** - Create custom pricing schemes for your SaaS, PaaS, IaaS, or any other acronym you come up with. A variety of models are supported out of the box, but with our fully extensible framework, creating exactly what you need is easy.
+- **Usage-Based Pricing and Flexible Prorations** - Create custom pricing schemes for your SaaS, PaaS, IaaS, or any other acronym you come up with. A variety of models are supported out of the box, but with our fully extensible framework, creating exactly what you need is easy.
 
 - **Sensible, Intuitive Plan Management** - Forget about keeping track of subscriptions, plans, versioning, deployments, and everything that gets in the way of your product. Lotus simplifies plan management for you and your engineering team, so you can focus on what matters.
 
