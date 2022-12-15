@@ -301,7 +301,6 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1)
             )
-            print("original end date: ", end_date)
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
                 rd.days > 0
@@ -318,7 +317,6 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                     rd = relativedelta(end_date, start_date)
                     i -= 1
             elif end_date < start_date:
-                print("aha")
                 old_end_date = end_date
                 rd = relativedelta(end_date, old_end_date)
                 i = 0
@@ -328,7 +326,6 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                     )
                     rd = relativedelta(end_date, old_end_date)
                     i += 1
-                print("new end date: ", end_date)
         elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, days=-1)

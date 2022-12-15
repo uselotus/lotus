@@ -627,6 +627,58 @@ class CustomerBalanceAdjustment(models.Model):
 
 
 class Event(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
+    cust_id = models.CharField(max_length=50, null=True, blank=True)
+    event_name = models.CharField(
+        max_length=100,
+        null=False,
+        help_text="String name of the event, corresponds to definition in metrics",
+    )
+    time_created = models.DateTimeField(
+        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+    )
+    properties = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
+    )
+    idempotency_id = models.CharField(
+        max_length=255,
+        default=event_uuid,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
+        primary_key=True,
+    )
+    inserted_at = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        managed = False
+        db_table = "metering_billing_usageevent"
+        unique_together = ("idempotency_id", "time_created")
+        indexes = [
+            models.Index(
+                fields=["organization", "event_name", "customer", "time_created"]
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            str(self.event_name)[:6]
+            + "-"
+            + str(self.customer.customer_name)[:6]
+            + "-"
+            + str(self.time_created)[:10]
+            + "-"
+            + str(self.idempotency_id)[:6]
+        )
+
+
+class OldEvent(models.Model):
     """
     Event object. An explanation of the Event's fields follows:
     event_name: The type of event that occurred.
