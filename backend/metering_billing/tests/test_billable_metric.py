@@ -1408,14 +1408,10 @@ class TestCalculateMetricProrationForStateful:
         )
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        print("data: ", data)
         per_day = data["per_day"]
         date_where_billable_events_happened = (
             time_created + relativedelta(days=2)
         ).date()
-        print(
-            "date_where_billable_events_happened: ", date_where_billable_events_happened
-        )
         for day in per_day:
             if day["date"] == str(date_where_billable_events_happened):
                 assert abs(day["revenue"] - float(calculated_amt)) < 0.01

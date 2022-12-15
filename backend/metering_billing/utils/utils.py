@@ -263,7 +263,6 @@ def get_granularity_ratio(metric_granularity, proration_granularity, start_date)
         METRIC_GRANULARITY.QUARTER: 4,
         METRIC_GRANULARITY.YEAR: 1,
     }
-    print(start_date, metric_granularity, proration_granularity)
     return granularity_dict[metric_granularity][proration_granularity]
 
 

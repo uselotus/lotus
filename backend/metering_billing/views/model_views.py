@@ -801,7 +801,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                     raw_filters = raw_filters[0]
                 parsed_params = json.loads(raw_filters)
                 dict_params["subscription_filters"] = parsed_params
-            print(dict_params)
             if self.action == "update_plans":
                 serializer = SubscriptionRecordFilterSerializer(data=dict_params)
             elif self.action == "cancel_plans":
@@ -814,8 +813,6 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
             organization = parse_organization(self.request)
             args.append(Q(organization=organization))
-            print("args", args)
-            print(SubscriptionRecord.objects.first().__dict__)
             qs = (
                 SubscriptionRecord.objects.filter(*args)
                 .select_related("billing_plan")

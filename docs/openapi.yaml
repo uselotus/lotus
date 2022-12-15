@@ -56,6 +56,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -170,6 +184,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -282,6 +310,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -386,6 +428,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -504,6 +560,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -616,6 +686,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -731,6 +815,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -835,6 +933,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -958,6 +1070,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -1071,6 +1197,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -1175,6 +1315,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -1429,6 +1583,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -1774,6 +1942,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -1874,6 +2056,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -2753,6 +2949,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -2870,6 +3080,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -2990,6 +3214,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -3104,6 +3342,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -3212,6 +3464,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -3327,6 +3593,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -3432,6 +3712,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -3553,6 +3847,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -3664,6 +3972,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -3752,8 +4074,8 @@ paths:
             - paid
             type: string
           default:
-          - unpaid
           - paid
+          - unpaid
       tags:
       - invoices
       security:
@@ -3786,6 +4108,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -3894,6 +4230,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -4024,6 +4374,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -4348,6 +4712,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -4461,6 +4839,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -4565,6 +4957,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -4697,6 +5103,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -4811,6 +5231,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -4910,6 +5344,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -5004,6 +5452,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -5112,6 +5574,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -5244,6 +5720,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -5356,6 +5846,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -5477,6 +5981,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -5590,6 +6108,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -5700,6 +6232,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -5827,6 +6373,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -5942,6 +6502,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -6066,6 +6640,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -6439,6 +7027,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -6552,6 +7154,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -6656,6 +7272,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -6788,6 +7418,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -6901,6 +7545,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -6999,6 +7657,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -7114,6 +7786,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -7212,6 +7898,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '405':
@@ -7327,6 +8027,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -7431,6 +8145,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -7722,22 +8450,25 @@ paths:
       description: A simple ViewSet for viewing and editing Subscriptions.
       parameters:
       - in: query
+        name: active_only
+        schema:
+          type: boolean
+          default: true
+      - in: query
         name: customer_id
         schema:
           type: string
           minLength: 1
       - in: query
-        name: status
+        name: range_end
         schema:
-          type: array
-          items:
-            enum:
-            - active
-            - ended
-            - not_started
-            type: string
-          default:
-          - active
+          type: string
+          format: date-time
+      - in: query
+        name: range_start
+        schema:
+          type: string
+          format: date-time
       tags:
       - subscriptions
       security:
@@ -8425,6 +9156,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -8722,6 +9467,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -8835,6 +9594,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -8940,6 +9713,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -9181,6 +9968,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                  - type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -9294,6 +10095,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '405':
           content:
             application/json:
@@ -9398,6 +10213,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -9530,6 +10359,20 @@ paths:
                       detail: Authentication credentials were not provided.
                       attr: null
           description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
+                      attr: null
+          description: ''
         '404':
           content:
             application/json:
@@ -9647,6 +10490,20 @@ paths:
                     errors:
                     - code: not_authenticated
                       detail: Authentication credentials were not provided.
+                      attr: null
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse403'
+              examples:
+                PermissionDenied:
+                  value:
+                    type: client_error
+                    errors:
+                    - code: permission_denied
+                      detail: You do not have permission to perform this action.
                       attr: null
           description: ''
         '404':
@@ -11359,10 +12216,6 @@ components:
     DraftInvoice:
       type: object
       properties:
-        cust_connected_to_payment_provider:
-          type: boolean
-        org_connected_to_cust_payment_provider:
-          type: boolean
         cost_due:
           type: number
           format: double
@@ -11373,6 +12226,12 @@ components:
         issue_date:
           type: string
           format: date-time
+        org_connected_to_cust_payment_provider:
+          type: boolean
+        subscription:
+          allOf:
+          - $ref: '#/components/schemas/SubscriptionRecordDetail'
+          readOnly: true
         line_items:
           type: array
           items:
@@ -11380,19 +12239,17 @@ components:
           readOnly: true
         payment_status:
           $ref: '#/components/schemas/DraftInvoicePaymentStatusEnum'
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        cust_connected_to_payment_provider:
+          type: boolean
         currency:
           $ref: '#/components/schemas/PricingUnit'
         customer:
           allOf:
           - $ref: '#/components/schemas/Customer'
-          readOnly: true
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
-        subscription:
-          allOf:
-          - $ref: '#/components/schemas/SubscriptionRecordDetail'
           readOnly: true
       required:
       - cost_due
@@ -11634,7 +12491,7 @@ components:
         event_name:
           type: string
           description: String name of the event, corresponds to definition in metrics
-          maxLength: 200
+          maxLength: 100
         properties:
           type: object
           additionalProperties: {}
@@ -11656,7 +12513,6 @@ components:
             after 7 days
         customer_id:
           type: string
-          writeOnly: true
           description: The id of the customer that this event is associated with,
             usually the customer id in your backend
       required:
@@ -12123,8 +12979,28 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        flat_fee_billing_type:
-          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        transition_to:
+          type: string
+          nullable: true
+          readOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponent'
+          nullable: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
         created_by:
           type: string
           readOnly: true
@@ -12133,75 +13009,64 @@ components:
           items:
             $ref: '#/components/schemas/Feature'
           nullable: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        day_anchor:
+        replace_with:
           type: integer
-          maximum: 31
+          nullable: true
+          readOnly: true
+        month_anchor:
+          type: integer
+          maximum: 12
           minimum: 1
           nullable: true
+        flat_fee_billing_type:
+          $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+        active_subscriptions:
+          type: integer
+          readOnly: true
+        currency_code:
+          type: string
+          writeOnly: true
         usage_billing_frequency:
           nullable: true
           oneOf:
           - $ref: '#/components/schemas/UsageBillingFrequencyEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
+        version:
+          type: integer
+          readOnly: true
+        plan_name:
+          type: string
+          readOnly: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          nullable: true
+        version_id:
+          type: string
+          readOnly: true
         created_on:
           type: string
           format: date-time
           readOnly: true
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          nullable: true
-        plan_name:
-          type: string
-          readOnly: true
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
-        version_id:
-          type: string
-          readOnly: true
-        description:
-          type: string
-          nullable: true
-          maxLength: 200
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponent'
-          nullable: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        active_subscriptions:
-          type: integer
+        currency:
+          allOf:
+          - $ref: '#/components/schemas/PricingUnit'
           readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/PlanVersionStatusEnum'
           readOnly: true
-        version:
-          type: integer
-          readOnly: true
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
       required:
       - active_subscriptions
       - created_by
       - created_on
+      - currency
+      - currency_code
       - flat_fee_billing_type
       - plan_name
       - replace_with
@@ -12426,6 +13291,18 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
+        end_date:
+          type: string
+          format: date-time
+        billing_type:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        name:
+          type: string
+          maxLength: 200
         subtotal:
           type: number
           format: double
@@ -12433,6 +13310,9 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        start_date:
+          type: string
+          format: date-time
         quantity:
           type: number
           format: double
@@ -12445,21 +13325,6 @@ components:
           type: object
           additionalProperties: {}
           nullable: true
-        billing_type:
-          nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/FlatFeeBillingTypeEnum'
-          - $ref: '#/components/schemas/BlankEnum'
-          - $ref: '#/components/schemas/NullEnum'
-        start_date:
-          type: string
-          format: date-time
-        end_date:
-          type: string
-          format: date-time
-        name:
-          type: string
-          maxLength: 200
       required:
       - name
     LoginFailure:
@@ -13276,7 +14141,13 @@ components:
           readOnly: true
         default_currency:
           $ref: '#/components/schemas/PricingUnit'
+        available_currencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/PricingUnit'
+          readOnly: true
       required:
+      - available_currencies
       - company_name
       - default_currency
       - users
@@ -14019,62 +14890,67 @@ components:
           allOf:
           - $ref: '#/components/schemas/MetricGranularityEnum'
           default: total
+        pricing_unit:
+          allOf:
+          - $ref: '#/components/schemas/PricingUnit'
+          readOnly: true
       required:
       - billable_metric
       - billable_metric_name
+      - pricing_unit
       - tiers
     PlanDetail:
       type: object
       properties:
-        num_versions:
+        target_customer:
+          allOf:
+          - $ref: '#/components/schemas/ShortCustomer'
+          readOnly: true
+        active_subscriptions:
           type: integer
+          readOnly: true
+        plan_name:
+          type: string
+          maxLength: 100
+        initial_external_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/InitialExternalPlanLink'
+          writeOnly: true
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
+        created_by:
+          type: string
+          readOnly: true
+        plan_id:
+          type: string
+          maxLength: 100
+        created_on:
+          type: string
+          format: date-time
           readOnly: true
         external_links:
           type: array
           items:
             $ref: '#/components/schemas/ExternalPlanLink'
           readOnly: true
-        initial_external_links:
-          type: array
-          items:
-            $ref: '#/components/schemas/InitialExternalPlanLink'
-          writeOnly: true
-        target_customer:
-          allOf:
-          - $ref: '#/components/schemas/ShortCustomer'
-          readOnly: true
-        status:
-          $ref: '#/components/schemas/PlanStatusEnum'
-        active_subscriptions:
+        num_versions:
           type: integer
           readOnly: true
         plan_duration:
           $ref: '#/components/schemas/PlanDurationEnum'
-        product_id:
-          type: string
-          nullable: true
-        created_by:
-          type: string
-          readOnly: true
-        plan_name:
-          type: string
-          maxLength: 100
         parent_plan:
           allOf:
           - $ref: '#/components/schemas/PlanNameAndID'
           readOnly: true
-        created_on:
+        product_id:
           type: string
-          format: date-time
-          readOnly: true
-        versions:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanVersion'
-          readOnly: true
-        plan_id:
-          type: string
-          maxLength: 100
+          nullable: true
+        status:
+          $ref: '#/components/schemas/PlanStatusEnum'
       required:
       - active_subscriptions
       - created_by
@@ -14194,6 +15070,9 @@ components:
         transition_to_plan_id:
           type: string
           writeOnly: true
+        currency_code:
+          type: string
+          writeOnly: true
         version:
           type: integer
           readOnly: true
@@ -14225,10 +15104,16 @@ components:
         plan_name:
           type: string
           readOnly: true
+        currency:
+          allOf:
+          - $ref: '#/components/schemas/PricingUnit'
+          readOnly: true
       required:
       - active_subscriptions
       - created_by
       - created_on
+      - currency
+      - currency_code
       - flat_fee_billing_type
       - make_active
       - plan_name
@@ -14704,6 +15589,75 @@ components:
       - attr
       - code
       - detail
+    PlanVersionsCreateComponentsINDEXPricingUnitCodeErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - components.INDEX.pricing_unit.code
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlanVersionsCreateComponentsINDEXPricingUnitNameErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - components.INDEX.pricing_unit.name
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlanVersionsCreateComponentsINDEXPricingUnitSymbolErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - components.INDEX.pricing_unit.symbol
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
     PlanVersionsCreateComponentsINDEXProrationGranularityErrorComponent:
       type: object
       properties:
@@ -14939,6 +15893,72 @@ components:
       - attr
       - code
       - detail
+    PlanVersionsCreateCurrencyCodeErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - currency_code
+          type: string
+        code:
+          enum:
+          - does_not_exist
+          - invalid
+          - 'null'
+          - required
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlanVersionsCreateCurrencyNameErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - currency.name
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlanVersionsCreateCurrencySymbolErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - currency.symbol
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
     PlanVersionsCreateDayAnchorErrorComponent:
       type: object
       properties:
@@ -15021,6 +16041,9 @@ components:
       - $ref: '#/components/schemas/PlanVersionsCreateComponentsINDEXSeparateByErrorComponent'
       - $ref: '#/components/schemas/PlanVersionsCreateComponentsINDEXSeparateByINDEXErrorComponent'
       - $ref: '#/components/schemas/PlanVersionsCreateComponentsINDEXProrationGranularityErrorComponent'
+      - $ref: '#/components/schemas/PlanVersionsCreateComponentsINDEXPricingUnitCodeErrorComponent'
+      - $ref: '#/components/schemas/PlanVersionsCreateComponentsINDEXPricingUnitNameErrorComponent'
+      - $ref: '#/components/schemas/PlanVersionsCreateComponentsINDEXPricingUnitSymbolErrorComponent'
       - $ref: '#/components/schemas/PlanVersionsCreateFeaturesNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlanVersionsCreateFeaturesINDEXNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlanVersionsCreateFeaturesINDEXFeatureNameErrorComponent'
@@ -15037,6 +16060,10 @@ components:
       - $ref: '#/components/schemas/PlanVersionsCreateMakeActiveTypeErrorComponent'
       - $ref: '#/components/schemas/PlanVersionsCreateReplaceImmediatelyTypeErrorComponent'
       - $ref: '#/components/schemas/PlanVersionsCreateTransitionToPlanIdErrorComponent'
+      - $ref: '#/components/schemas/PlanVersionsCreateCurrencyCodeErrorComponent'
+      - $ref: '#/components/schemas/PlanVersionsCreateCurrencyCodeErrorComponent'
+      - $ref: '#/components/schemas/PlanVersionsCreateCurrencyNameErrorComponent'
+      - $ref: '#/components/schemas/PlanVersionsCreateCurrencySymbolErrorComponent'
       discriminator:
         propertyName: attr
         mapping:
@@ -15080,6 +16107,9 @@ components:
           components.INDEX.separate_by: '#/components/schemas/PlanVersionsCreateComponentsINDEXSeparateByErrorComponent'
           components.INDEX.separate_by.INDEX: '#/components/schemas/PlanVersionsCreateComponentsINDEXSeparateByINDEXErrorComponent'
           components.INDEX.proration_granularity: '#/components/schemas/PlanVersionsCreateComponentsINDEXProrationGranularityErrorComponent'
+          components.INDEX.pricing_unit.code: '#/components/schemas/PlanVersionsCreateComponentsINDEXPricingUnitCodeErrorComponent'
+          components.INDEX.pricing_unit.name: '#/components/schemas/PlanVersionsCreateComponentsINDEXPricingUnitNameErrorComponent'
+          components.INDEX.pricing_unit.symbol: '#/components/schemas/PlanVersionsCreateComponentsINDEXPricingUnitSymbolErrorComponent'
           features.non_field_errors: '#/components/schemas/PlanVersionsCreateFeaturesNonFieldErrorsErrorComponent'
           features.INDEX.non_field_errors: '#/components/schemas/PlanVersionsCreateFeaturesINDEXNonFieldErrorsErrorComponent'
           features.INDEX.feature_name: '#/components/schemas/PlanVersionsCreateFeaturesINDEXFeatureNameErrorComponent'
@@ -15096,6 +16126,10 @@ components:
           make_active_type: '#/components/schemas/PlanVersionsCreateMakeActiveTypeErrorComponent'
           replace_immediately_type: '#/components/schemas/PlanVersionsCreateReplaceImmediatelyTypeErrorComponent'
           transition_to_plan_id: '#/components/schemas/PlanVersionsCreateTransitionToPlanIdErrorComponent'
+          currency_code: '#/components/schemas/PlanVersionsCreateCurrencyCodeErrorComponent'
+          currency.code: '#/components/schemas/PlanVersionsCreateCurrencyCodeErrorComponent'
+          currency.name: '#/components/schemas/PlanVersionsCreateCurrencyNameErrorComponent'
+          currency.symbol: '#/components/schemas/PlanVersionsCreateCurrencySymbolErrorComponent'
     PlanVersionsCreateErrorResponse400:
       oneOf:
       - $ref: '#/components/schemas/PlanVersionsCreateValidationError'
@@ -16111,6 +17145,75 @@ components:
       - attr
       - code
       - detail
+    PlansCreateDisplayVersionComponentsINDEXPricingUnitCodeErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - display_version.components.INDEX.pricing_unit.code
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateDisplayVersionComponentsINDEXPricingUnitNameErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - display_version.components.INDEX.pricing_unit.name
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateDisplayVersionComponentsINDEXPricingUnitSymbolErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - display_version.components.INDEX.pricing_unit.symbol
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
     PlansCreateDisplayVersionComponentsINDEXProrationGranularityErrorComponent:
       type: object
       properties:
@@ -16339,6 +17442,72 @@ components:
         code:
           enum:
           - not_a_list
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateDisplayVersionCurrencyCodeErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - display_version.currency_code
+          type: string
+        code:
+          enum:
+          - does_not_exist
+          - invalid
+          - 'null'
+          - required
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateDisplayVersionCurrencyNameErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - display_version.currency.name
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateDisplayVersionCurrencySymbolErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - display_version.currency.symbol
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
           type: string
         detail:
           type: string
@@ -16748,22 +17917,12 @@ components:
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
-      - $ref: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -16799,6 +17958,23 @@ components:
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
       - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXPricingUnitCodeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXPricingUnitNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXPricingUnitSymbolErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionCurrencyCodeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionCurrencyCodeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionCurrencyNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionCurrencySymbolErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateParentPlanIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateTargetCustomerIdErrorComponent'
       - $ref: '#/components/schemas/PlansCreateExternalLinksINDEXPlanIdErrorComponent'
@@ -16848,6 +18024,9 @@ components:
       - $ref: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXSeparateByErrorComponent'
       - $ref: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXSeparateByINDEXErrorComponent'
       - $ref: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXProrationGranularityErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXPricingUnitCodeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXPricingUnitNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXPricingUnitSymbolErrorComponent'
       - $ref: '#/components/schemas/PlansCreateDisplayVersionFeaturesNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateDisplayVersionFeaturesINDEXNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/PlansCreateDisplayVersionFeaturesINDEXFeatureNameErrorComponent'
@@ -16864,6 +18043,10 @@ components:
       - $ref: '#/components/schemas/PlansCreateDisplayVersionMakeActiveTypeErrorComponent'
       - $ref: '#/components/schemas/PlansCreateDisplayVersionReplaceImmediatelyTypeErrorComponent'
       - $ref: '#/components/schemas/PlansCreateDisplayVersionTransitionToPlanIdErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateDisplayVersionCurrencyCodeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateDisplayVersionCurrencyCodeErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateDisplayVersionCurrencyNameErrorComponent'
+      - $ref: '#/components/schemas/PlansCreateDisplayVersionCurrencySymbolErrorComponent'
       discriminator:
         propertyName: attr
         mapping:
@@ -16878,22 +18061,12 @@ components:
           initial_external_links.INDEX.external_plan_id: '#/components/schemas/PlansCreateInitialExternalLinksINDEXExternalPlanIdErrorComponent'
           initial_external_links.INDEX.source: '#/components/schemas/PlansCreateInitialExternalLinksINDEXSourceErrorComponent'
           initial_version.non_field_errors: '#/components/schemas/PlansCreateInitialVersionNonFieldErrorsErrorComponent'
-          initial_version.flat_fee_billing_type: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
-          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
-          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
-          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
-          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
-          initial_version.day_anchor: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
-          initial_version.usage_billing_frequency: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
-          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
           initial_version.price_adjustment.non_field_errors: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentNonFieldErrorsErrorComponent'
           initial_version.price_adjustment.price_adjustment_name: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentNameErrorComponent'
           initial_version.price_adjustment.price_adjustment_description: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentDescriptionErrorComponent'
           initial_version.price_adjustment.price_adjustment_type: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentTypeErrorComponent'
           initial_version.price_adjustment.price_adjustment_amount: '#/components/schemas/PlansCreateInitialVersionPriceAdjustmentPriceAdjustmentAmountErrorComponent'
-          initial_version.month_anchor: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
-          initial_version.description: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
+          initial_version.flat_rate: '#/components/schemas/PlansCreateInitialVersionFlatRateErrorComponent'
           initial_version.components.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXNonFieldErrorsErrorComponent'
           initial_version.components.INDEX.billable_metric_name: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXBillableMetricNameErrorComponent'
@@ -16929,6 +18102,23 @@ components:
           initial_version.components.INDEX.separate_by: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByErrorComponent'
           initial_version.components.INDEX.separate_by.INDEX: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXSeparateByINDEXErrorComponent'
           initial_version.components.INDEX.proration_granularity: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent'
+          initial_version.components.INDEX.pricing_unit.code: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXPricingUnitCodeErrorComponent'
+          initial_version.components.INDEX.pricing_unit.name: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXPricingUnitNameErrorComponent'
+          initial_version.components.INDEX.pricing_unit.symbol: '#/components/schemas/PlansCreateInitialVersionComponentsINDEXPricingUnitSymbolErrorComponent'
+          initial_version.description: '#/components/schemas/PlansCreateInitialVersionDescriptionErrorComponent'
+          initial_version.features.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXNonFieldErrorsErrorComponent'
+          initial_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureNameErrorComponent'
+          initial_version.features.INDEX.feature_description: '#/components/schemas/PlansCreateInitialVersionFeaturesINDEXFeatureDescriptionErrorComponent'
+          initial_version.month_anchor: '#/components/schemas/PlansCreateInitialVersionMonthAnchorErrorComponent'
+          initial_version.flat_fee_billing_type: '#/components/schemas/PlansCreateInitialVersionFlatFeeBillingTypeErrorComponent'
+          initial_version.currency_code: '#/components/schemas/PlansCreateInitialVersionCurrencyCodeErrorComponent'
+          initial_version.usage_billing_frequency: '#/components/schemas/PlansCreateInitialVersionUsageBillingFrequencyErrorComponent'
+          initial_version.day_anchor: '#/components/schemas/PlansCreateInitialVersionDayAnchorErrorComponent'
+          initial_version.currency.code: '#/components/schemas/PlansCreateInitialVersionCurrencyCodeErrorComponent'
+          initial_version.currency.name: '#/components/schemas/PlansCreateInitialVersionCurrencyNameErrorComponent'
+          initial_version.currency.symbol: '#/components/schemas/PlansCreateInitialVersionCurrencySymbolErrorComponent'
+          initial_version.transition_to_plan_id: '#/components/schemas/PlansCreateInitialVersionTransitionToPlanIdErrorComponent'
           parent_plan_id: '#/components/schemas/PlansCreateParentPlanIdErrorComponent'
           target_customer_id: '#/components/schemas/PlansCreateTargetCustomerIdErrorComponent'
           external_links.INDEX.plan_id: '#/components/schemas/PlansCreateExternalLinksINDEXPlanIdErrorComponent'
@@ -16978,6 +18168,9 @@ components:
           display_version.components.INDEX.separate_by: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXSeparateByErrorComponent'
           display_version.components.INDEX.separate_by.INDEX: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXSeparateByINDEXErrorComponent'
           display_version.components.INDEX.proration_granularity: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXProrationGranularityErrorComponent'
+          display_version.components.INDEX.pricing_unit.code: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXPricingUnitCodeErrorComponent'
+          display_version.components.INDEX.pricing_unit.name: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXPricingUnitNameErrorComponent'
+          display_version.components.INDEX.pricing_unit.symbol: '#/components/schemas/PlansCreateDisplayVersionComponentsINDEXPricingUnitSymbolErrorComponent'
           display_version.features.non_field_errors: '#/components/schemas/PlansCreateDisplayVersionFeaturesNonFieldErrorsErrorComponent'
           display_version.features.INDEX.non_field_errors: '#/components/schemas/PlansCreateDisplayVersionFeaturesINDEXNonFieldErrorsErrorComponent'
           display_version.features.INDEX.feature_name: '#/components/schemas/PlansCreateDisplayVersionFeaturesINDEXFeatureNameErrorComponent'
@@ -16994,6 +18187,10 @@ components:
           display_version.make_active_type: '#/components/schemas/PlansCreateDisplayVersionMakeActiveTypeErrorComponent'
           display_version.replace_immediately_type: '#/components/schemas/PlansCreateDisplayVersionReplaceImmediatelyTypeErrorComponent'
           display_version.transition_to_plan_id: '#/components/schemas/PlansCreateDisplayVersionTransitionToPlanIdErrorComponent'
+          display_version.currency_code: '#/components/schemas/PlansCreateDisplayVersionCurrencyCodeErrorComponent'
+          display_version.currency.code: '#/components/schemas/PlansCreateDisplayVersionCurrencyCodeErrorComponent'
+          display_version.currency.name: '#/components/schemas/PlansCreateDisplayVersionCurrencyNameErrorComponent'
+          display_version.currency.symbol: '#/components/schemas/PlansCreateDisplayVersionCurrencySymbolErrorComponent'
     PlansCreateErrorResponse400:
       oneOf:
       - $ref: '#/components/schemas/PlansCreateValidationError'
@@ -17583,6 +18780,75 @@ components:
       - attr
       - code
       - detail
+    PlansCreateInitialVersionComponentsINDEXPricingUnitCodeErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - initial_version.components.INDEX.pricing_unit.code
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateInitialVersionComponentsINDEXPricingUnitNameErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - initial_version.components.INDEX.pricing_unit.name
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateInitialVersionComponentsINDEXPricingUnitSymbolErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - initial_version.components.INDEX.pricing_unit.symbol
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
     PlansCreateInitialVersionComponentsINDEXProrationGranularityErrorComponent:
       type: object
       properties:
@@ -17811,6 +19077,72 @@ components:
         code:
           enum:
           - not_a_list
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateInitialVersionCurrencyCodeErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - initial_version.currency_code
+          type: string
+        code:
+          enum:
+          - does_not_exist
+          - invalid
+          - 'null'
+          - required
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateInitialVersionCurrencyNameErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - initial_version.currency.name
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
+          type: string
+        detail:
+          type: string
+      required:
+      - attr
+      - code
+      - detail
+    PlansCreateInitialVersionCurrencySymbolErrorComponent:
+      type: object
+      properties:
+        attr:
+          enum:
+          - initial_version.currency.symbol
+          type: string
+        code:
+          enum:
+          - blank
+          - invalid
+          - max_length
+          - 'null'
+          - null_characters_not_allowed
+          - required
+          - surrogate_characters_not_allowed
           type: string
         detail:
           type: string
@@ -19181,8 +20513,6 @@ components:
         end_date:
           type: string
           format: date-time
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
         plans:
           type: array
           items:
@@ -19255,8 +20585,6 @@ components:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           description: Add filter key, value pairs that define which events will be
             applied to this plan subscription
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
       required:
       - customer_id
       - plan_id
@@ -19264,11 +20592,13 @@ components:
     SubscriptionRecordDetail:
       type: object
       properties:
-        status:
-          $ref: '#/components/schemas/SubscriptionStatusEnum'
-        auto_renew:
-          type: boolean
-          description: Should the subscription automatically renew? defaults to true
+        end_date:
+          type: string
+          format: date-time
+          description: The date the subscription ends. This should be a string in
+            YYYY-MM-DD format of the date in UTC time. If you don’t set it (recommended),
+            we will use the information in the billing plan to automatically calculate
+            this.
         customer_id:
           type: string
           writeOnly: true
@@ -19278,28 +20608,24 @@ components:
           format: date-time
           description: The date the subscription starts. This should be a string in
             YYYY-MM-DD format of the date in UTC time.
+        plan_id:
+          type: string
+          writeOnly: true
+          description: The Lotus plan_id, found in the billing plan object
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
           readOnly: true
-        is_new:
-          type: boolean
-        plan_id:
-          type: string
-          writeOnly: true
-          description: The Lotus plan_id, found in the billing plan object
         plan_detail:
           allOf:
           - $ref: '#/components/schemas/PlanVersion'
           readOnly: true
-        end_date:
-          type: string
-          format: date-time
-          description: The date the subscription ends. This should be a string in
-            YYYY-MM-DD format of the date in UTC time. If you don’t set it (recommended),
-            we will use the information in the billing plan to automatically calculate
-            this.
+        is_new:
+          type: boolean
+        auto_renew:
+          type: boolean
+          description: Should the subscription automatically renew? defaults to true
       required:
       - customer_id
       - plan_detail
@@ -19325,12 +20651,6 @@ components:
         end_date:
           type: string
           format: date-time
-    SubscriptionStatusEnum:
-      enum:
-      - active
-      - ended
-      - not_started
-      type: string
     SubscriptionsListErrorResponse400:
       oneOf:
       - $ref: '#/components/schemas/ParseErrorResponse'
@@ -19410,7 +20730,6 @@ components:
       - $ref: '#/components/schemas/SubscriptionsPlansCreateSubscriptionFiltersINDEXNonFieldErrorsErrorComponent'
       - $ref: '#/components/schemas/SubscriptionsPlansCreateSubscriptionFiltersINDEXValueErrorComponent'
       - $ref: '#/components/schemas/SubscriptionsPlansCreateSubscriptionFiltersINDEXPropertyNameErrorComponent'
-      - $ref: '#/components/schemas/SubscriptionsPlansCreateStatusErrorComponent'
       discriminator:
         propertyName: attr
         mapping:
@@ -19425,7 +20744,6 @@ components:
           subscription_filters.INDEX.non_field_errors: '#/components/schemas/SubscriptionsPlansCreateSubscriptionFiltersINDEXNonFieldErrorsErrorComponent'
           subscription_filters.INDEX.value: '#/components/schemas/SubscriptionsPlansCreateSubscriptionFiltersINDEXValueErrorComponent'
           subscription_filters.INDEX.property_name: '#/components/schemas/SubscriptionsPlansCreateSubscriptionFiltersINDEXPropertyNameErrorComponent'
-          status: '#/components/schemas/SubscriptionsPlansCreateStatusErrorComponent'
     SubscriptionsPlansCreateErrorResponse400:
       oneOf:
       - $ref: '#/components/schemas/SubscriptionsPlansCreateValidationError'
@@ -19505,24 +20823,6 @@ components:
           - 'null'
           - overflow
           - required
-          type: string
-        detail:
-          type: string
-      required:
-      - attr
-      - code
-      - detail
-    SubscriptionsPlansCreateStatusErrorComponent:
-      type: object
-      properties:
-        attr:
-          enum:
-          - status
-          type: string
-        code:
-          enum:
-          - invalid_choice
-          - 'null'
           type: string
         detail:
           type: string

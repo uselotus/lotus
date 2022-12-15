@@ -298,10 +298,7 @@ class SubscriptionCustomerSummarySerializer(serializers.ModelSerializer):
 class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer):
     class Meta(SubscriptionCustomerSummarySerializer.Meta):
         model = SubscriptionRecord
-        fields = SubscriptionCustomerSummarySerializer.Meta.fields + (
-            "start_date",
-            "status",
-        )
+        fields = SubscriptionCustomerSummarySerializer.Meta.fields + ("start_date",)
 
 
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
@@ -1453,7 +1450,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "billing_cadence",
             "start_date",
             "end_date",
-            "status",
             "plans",
         )
 
@@ -2001,7 +1997,7 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     default_currency = PricingUnitSerializer()
 
     def get_subscription(self, obj) -> SubscriptionSerializer:
-        sub_obj = obj.subscriptions.filter(status=SUBSCRIPTION_STATUS.ACTIVE).first()
+        sub_obj = obj.subscriptions.active().first()
         if sub_obj is None:
             return None
         else:

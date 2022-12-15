@@ -176,7 +176,6 @@ class TestGetAccess:
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        print(response.json())
         response = response.json()
         assert len(response) == 1
         assert (
@@ -581,7 +580,6 @@ class TestGetAccessWithSeparateBy:
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
         response = response.json()[0]
-        print(response)
         assert response["event_name"] == setup_dict["allow_limit_metrics"][0].event_name
         assert len(response["usage_per_metric"]) == 4
         for r in response["usage_per_metric"]:

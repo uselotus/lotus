@@ -171,7 +171,6 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        print(response.data)
         before_cost = response.data["invoice"]["cost_due"]
         pct_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],
