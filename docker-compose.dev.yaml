@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:14-alpine
+    image: timescale/timescaledb:latest-pg14
     restart: on-failure
     ports:
       - 5432:5432

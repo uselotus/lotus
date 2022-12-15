@@ -21,7 +21,6 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
     );
 
   const expandedRowRender = (record, index) => {
-    console.log("record", record);
     const columns: TableColumnsType<LineItem> = [
       {
         title: "Item",
@@ -56,7 +55,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         dataIndex: "subtotal",
         render: (_, record) => (
           <div className="flex flex-col">
-            {invoiceData?.invoice.currency.symbol}
+            {"$"}
             {record.subtotal.toFixed(2)}
           </div>
         ),
@@ -109,11 +108,11 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
               )}
             </p>
             <p>
-              <b>Currency: </b> {invoiceData.invoice.currency.code}
+              <b>Currency: </b> {"$"}
             </p>
             <p>
               <b>Total Cost Due: </b>
-              {invoiceData.invoice.currency.symbol}
+              {"$"}
               {invoiceData.invoice.cost_due.toFixed(2)}
             </p>
           </div>
@@ -148,7 +147,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
                 dataIndex: "subtotal",
                 render: (_, record) => (
                   <div className="flex flex-col">
-                    {invoiceData.invoice.currency.symbol}
+                    {"$"}
                     {record.subtotal.toFixed(2)}
                   </div>
                 ),

@@ -180,7 +180,6 @@ class EventSerializer(serializers.ModelSerializer):
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
         queryset=Customer.objects.all(),
-        write_only=True,
         source="customer",
         help_text="The id of the customer that this event is associated with, usually the customer id in your backend",
     )

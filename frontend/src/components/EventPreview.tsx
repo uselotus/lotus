@@ -121,7 +121,7 @@ const EventPreview: FC = () => {
                     </div>
                     <div className="flex align-middle text-[16px]">
                       <p className="leading-[24px]">customer_id: </p>
-                      <p className="infoValue"> {event.customer}</p>
+                      <p className="infoValue"> {event.customer_id}</p>
                     </div>
                   </div>
                 }
