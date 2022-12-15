@@ -19,7 +19,7 @@ from django.contrib import admin
 from django.urls import path, re_path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
-from metering_billing.views import auth_views, organization_views, track
+from metering_billing.views import auth_views, organization_views, track, webhook_views
 from metering_billing.views.model_views import (
     ActionViewSet,
     APITokenViewSet,
@@ -62,7 +62,6 @@ from metering_billing.views.views import (  # MergeCustomersView,
     TransferSubscriptionsView,
 )
 from rest_framework import routers
-from rest_framework_nested import routers
 
 DEBUG = settings.DEBUG
 ON_HEROKU = settings.ON_HEROKU
@@ -71,12 +70,6 @@ PROFILER_ENABLED = settings.PROFILER_ENABLED
 router = routers.DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
 router.register(r"customers", CustomerViewSet, basename="customer")
-
-# customers_router = routers.NestedSimpleRouter(router, r"customers", lookup="")
-# customers_router.register(
-#     r"plans", SubscriptionRecordViewSet, basename="customer-plans"
-# )
-
 router.register(r"metrics", MetricViewSet, basename="metric")
 router.register(r"subscriptions", SubscriptionViewSet, basename="subscription")
 router.register(r"invoices", InvoiceViewSet, basename="invoice")
@@ -215,7 +208,9 @@ urlpatterns = [
         organization_views.InviteView.as_view(),
         name="invite-to-organization",
     ),
-    path("stripe/", include("djstripe.urls", namespace="djstripe")),
+    path(
+        "stripe/webhook/", webhook_views.stripe_webhook_endpoint, name="stripe-webhook"
+    ),
 ]
 
 if PROFILER_ENABLED:

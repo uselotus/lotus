@@ -121,3 +121,9 @@ class MethodNotAllowed(APIException):
     status_code = 405
     default_detail = "Method not allowed"
     default_code = "method_not_allowed"
+
+
+class StripeWebhookFailure(APIException):
+    status_code = 400
+    default_detail = "Stripe webhook invalid"
+    default_code = "stripe_webhook_invalid"
