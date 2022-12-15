@@ -116,10 +116,11 @@ class Organization(models.Model):
         if SUPPORTED_CURRENCIES_VERSION != self.currencies_provisioned:
             for name, code, symbol in SUPPORTED_CURRENCIES:
                 PricingUnit.objects.get_or_create(
-                    organization=self, code=code, name=name, symbol=symbol
+                    organization=self, code=code, name=name, symbol=symbol, custom=False
                 )
             PricingUnit.objects.filter(
                 ~Q(code__in=[code for _, code, _ in SUPPORTED_CURRENCIES]),
+                custom=False,
                 organization=self,
             ).delete()
             self.currencies_provisioned = SUPPORTED_CURRENCIES_VERSION
@@ -2163,6 +2164,7 @@ class PricingUnit(models.Model):
     code = models.CharField(max_length=10, null=False, blank=False)
     name = models.CharField(max_length=100, null=False, blank=False)
     symbol = models.CharField(max_length=10, null=False, blank=False)
+    custom = models.BooleanField(default=False)
 
     def __str__(self):
         ret = f"{self.code}"
