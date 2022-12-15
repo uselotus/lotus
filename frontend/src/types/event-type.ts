@@ -10,5 +10,5 @@ export interface EventPreviewType {
   properties?: object;
   idempotency_id: string;
   time_created: string;
-  customer: string;
+  customer_id: string;
 }

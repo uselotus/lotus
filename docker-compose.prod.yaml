@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:14-alpine
+    image: timescale/timescaledb:latest-pg14
     restart: on-failure
     expose:
       - 5432
@@ -8,7 +8,7 @@ services:
       - ./pgdata_prod:/var/lib/postgresql/data
     env_file:
       - ./env/.env.prod
-
+  
   svix-server:
     image: svix/svix-server
     environment:
