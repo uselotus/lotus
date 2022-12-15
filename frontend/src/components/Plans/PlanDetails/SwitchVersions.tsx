@@ -23,15 +23,16 @@ interface SwitchVersionProps {
 //function that takes in a string and returns a string based on the cases of the string equals percentage, flat, or override
 function getPriceAdjustmentEnding(
   type: string | undefined,
-  amount: number | undefined
+  amount: number | undefined,
+  code: string,
 ) {
   switch (type) {
     case "percentage":
       return amount + "%";
     case "fixed":
-      return "$ " + amount;
+      return `${code} ${amount}`;
     case "price_override":
-      return "$ " + amount;
+      return `${code} ${amount}`;
     default:
       return "No Adjustment";
   }
@@ -225,7 +226,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           <div className="mb-5 mt-3 px-4 font-main font-bold text-[20px] self-center">
             {getPriceAdjustmentEnding(
               selectedVersion.price_adjustment?.price_adjustment_type,
-              selectedVersion.price_adjustment?.price_adjustment_amount
+              selectedVersion.price_adjustment?.price_adjustment_amount,
+              selectedVersion.currency.symbol,
             )}
           </div>
         </div>
