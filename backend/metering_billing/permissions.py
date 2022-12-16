@@ -28,6 +28,7 @@ class ValidOrganization(permissions.BasePermission):
         org = request.organization
         if org is None and request.user.is_authenticated:
             org = request.user.organization
+            request.organization = org
         return org is not None
 
     def has_object_permission(self, request, view, obj):
