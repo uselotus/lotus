@@ -35,7 +35,6 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from model_bakery import baker
-from pytest_mock import mocker
 from rest_framework import status
 from rest_framework.test import APIClient
 
