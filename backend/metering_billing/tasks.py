@@ -40,6 +40,7 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
+    SUBSCRIPTION_STATUS,
 )
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
@@ -78,13 +79,11 @@ def calculate_invoice():
                 "Error generating invoice for subscription {}".format(old_subscription)
             )
             continue
-        num_subscription_records_active = (
-            SubscriptionRecord.objects.active()
-            .filter(
-                organization=old_subscription.organization,
-            )
-            .count()
-        )
+        num_subscription_records_active = SubscriptionRecord.objects.filter(
+            organization=old_subscription.organization,
+            status=SUBSCRIPTION_STATUS.ACTIVE,
+            end_date__gte=old_subscription.end_date,
+        ).count()
         if num_subscription_records_active > 0:
             sub = Subscription.objects.create(
                 organization=old_subscription.organization,
