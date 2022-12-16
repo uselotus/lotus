@@ -3,16 +3,18 @@ import React, { FC } from "react";
 import "./PlanDetails.css";
 import { Table } from "antd";
 import { Component, Tier } from "../../../types/plan-type";
+import { PricingUnit } from "../../../types/pricing-unit-type";
 
 interface PlanComponentsProps {
   components?: Component[];
 }
-const renderCost = (record: Tier) => {
+const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
+  console.log("RENDERING", record, pricing_unit);
   switch (record.type) {
     case "per_unit":
       return (
         <span>
-          {"$"}
+          {pricing_unit.symbol}
           {record.cost_per_batch} per {record.metric_units_per_batch} Unit
         </span>
       );
@@ -20,7 +22,7 @@ const renderCost = (record: Tier) => {
     case "flat":
       return (
         <span>
-          {"$"}
+          {pricing_unit.symbol}
           {record.cost_per_batch}{" "}
         </span>
       );
@@ -73,7 +75,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
                       dataIndex: "cost_per_batch",
                       key: "cost_per_batch",
                       render: (value: any, record: any) => (
-                        <div>{renderCost(record)}</div>
+                        <div>{renderCost(record, component.pricing_unit)}</div>
                       ),
                     },
                   ]}

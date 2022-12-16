@@ -32,10 +32,10 @@ const tabItems = [
     key: "developer-settings",
     tab: "Developer Settings",
   },
-  {
-    key: "create-pricing-units",
-    tab: "Create Pricing Units",
-  },
+  // {
+  //   key: "create-pricing-units",
+  //   tab: "Create Pricing Units",
+  // },
   // {
   //   key: "billing",
   //   tab: "Billing",
@@ -67,7 +67,7 @@ const SettingsPage: FC = () => {
       case "Developer Settings":
         return <DeveloperTab />;
       case "Create Pricing Units":
-         return <CreatePricingUnit/>;
+        return <CreatePricingUnit />;
       default:
         return <GeneralTab />;
     }

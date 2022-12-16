@@ -40,7 +40,6 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
-    SUBSCRIPTION_STATUS,
 )
 
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
@@ -58,7 +57,6 @@ def calculate_invoice():
     subs_to_bill = list(
         Subscription.objects.filter(
             Q(end_date__lt=now_minus_30),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
     )
 
@@ -80,11 +78,13 @@ def calculate_invoice():
                 "Error generating invoice for subscription {}".format(old_subscription)
             )
             continue
-        num_subscription_records_active = SubscriptionRecord.objects.filter(
-            Q(end_date__gte=old_subscription.end_date),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            organization=old_subscription.organization,
-        ).count()
+        num_subscription_records_active = (
+            SubscriptionRecord.objects.active()
+            .filter(
+                organization=old_subscription.organization,
+            )
+            .count()
+        )
         if num_subscription_records_active > 0:
             sub = Subscription.objects.create(
                 organization=old_subscription.organization,
@@ -96,12 +96,9 @@ def calculate_invoice():
                     old_subscription.end_date + relativedelta(days=+1)
                 ),
                 end_date=old_subscription.get_new_sub_end_date(),
-                status=SUBSCRIPTION_STATUS.ACTIVE,
             )
             sub.handle_remove_plan()
         # End the old subscription and delete draft invoices
-        old_subscription.status = SUBSCRIPTION_STATUS.ENDED
-        old_subscription.save()
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=INVOICE_STATUS.DRAFT,
@@ -120,17 +117,6 @@ def zero_out_expired_balance_adjustments():
     )
     for ba in expired_balance_adjustments:
         ba.zero_out(reason="expired")
-
-
-@shared_task
-def start_subscriptions():
-    now = now_utc()
-    starting_subscriptions = Subscription.objects.filter(
-        status=SUBSCRIPTION_STATUS.NOT_STARTED, start_date__lt=now, end_date__gt=now
-    )
-    for new_subscription in starting_subscriptions:
-        new_subscription.status = SUBSCRIPTION_STATUS.ACTIVE
-        new_subscription.save()
 
 
 @shared_task

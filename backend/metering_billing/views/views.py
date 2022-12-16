@@ -505,7 +505,7 @@ class DraftInvoiceView(APIView):
         responses={
             200: inline_serializer(
                 name="DraftInvoiceResponse",
-                fields={"invoice": DraftInvoiceSerializer(required=False)},
+                fields={"invoice": DraftInvoiceSerializer(required=False, many=True)},
             )
         },
     )
@@ -536,7 +536,7 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
             )
-            invoice = generate_invoice(
+            invoices = generate_invoice(
                 sub,
                 sub_records,
                 draft=True,
@@ -544,7 +544,7 @@ class DraftInvoiceView(APIView):
                     "include_next_period", True
                 ),
             )
-            serializer = DraftInvoiceSerializer(invoice).data
+            serializer = DraftInvoiceSerializer(invoices, many=True).data
             try:
                 username = self.request.user.username
             except:
@@ -558,8 +558,9 @@ class DraftInvoiceView(APIView):
                 event="draft_invoice",
                 properties={"organization": organization.company_name},
             )
-            invoice.delete()
-            response = {"invoice": serializer}
+            for invoice in invoices:
+                invoice.delete()
+            response = {"invoices": serializer}
         return Response(response, status=status.HTTP_200_OK)
 
 

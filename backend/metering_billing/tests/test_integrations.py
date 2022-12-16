@@ -18,14 +18,11 @@ from metering_billing.models import (
     Invoice,
     Organization,
     Subscription,
+    SubscriptionRecord,
 )
 from metering_billing.tasks import calculate_invoice, update_invoice_status
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import (
-    INVOICE_STATUS,
-    PAYMENT_PROVIDERS,
-    SUBSCRIPTION_STATUS,
-)
+from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
 from model_bakery import baker
 from rest_framework.test import APIClient
 
@@ -129,12 +126,18 @@ class TestStripeIntegration:
         subscription = Subscription.objects.create(
             organization=setup_dict["org"],
             customer=new_cust,
+            start_date=now_utc() - timedelta(days=35),
+            end_date=now_utc() - timedelta(days=5),
+        )
+        subscription_record = SubscriptionRecord.objects.create(
+            organization=setup_dict["org"],
+            customer=new_cust,
             billing_plan=setup_dict["plan_version"],
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
             status="ended",
         )
-        invoice = generate_invoice(subscription)
+        invoice = generate_invoice(subscription, subscription_record)[0]
         assert invoice.payment_status == INVOICE_STATUS.UNPAID
         assert invoice.external_payment_obj_type == PAYMENT_PROVIDERS.STRIPE
         try:
@@ -212,9 +215,9 @@ class TestStripeIntegration:
         stripe_sub = stripe.Subscription.retrieve(stripe_sub.id)
         assert stripe_sub.cancel_at_period_end is True
         assert (
-            Subscription.objects.filter(
+            SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],
-                status=SUBSCRIPTION_STATUS.NOT_STARTED,
+                start_date__gte=now_utc(),
                 billing_plan=setup_dict["plan"].display_version,
             ).count()
             == 1
@@ -227,18 +230,19 @@ class TestStripeIntegration:
         # now lets test out the replace now
         Subscription.objects.filter(
             organization=setup_dict["org"],
-            status=SUBSCRIPTION_STATUS.NOT_STARTED,
+            start_date__gte=now_utc(),
             billing_plan=setup_dict["plan"].display_version,
         ).delete()
         stripe_connector.transfer_subscriptions(setup_dict["org"], end_now=True)
         time.sleep(10)
         stripe_sub = stripe.Subscription.retrieve(stripe_sub.id)
         assert (
-            Subscription.objects.filter(
+            Subscription.objects.active()
+            .filter(
                 organization=setup_dict["org"],
-                status=SUBSCRIPTION_STATUS.ACTIVE,
                 billing_plan=setup_dict["plan"].display_version,
-            ).count()
+            )
+            .count()
             == 1
         )
         assert stripe_sub.status == "canceled"

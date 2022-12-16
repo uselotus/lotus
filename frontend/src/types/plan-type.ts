@@ -1,5 +1,6 @@
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
+import { PricingUnit } from "./pricing-unit-type";
 
 export interface PlanType {
   plan_name: string;
@@ -41,6 +42,7 @@ export interface CreatePlanVersionType {
   make_active_type?: string;
   day_anchor?: number;
   month_anchor?: number;
+  currency_code?: string;
 }
 
 export interface CreatePlanExternalLinkType extends InitialExternalLinks {
@@ -53,7 +55,7 @@ export interface PriceAdjustment {
 }
 
 export interface PlanVersionType
-  extends Omit<CreatePlanVersionType, "components"> {
+  extends Omit<CreatePlanVersionType, "components" | "currency_code"> {
   description: string;
   plan_id: string;
   flat_fee_billing_type: string;
@@ -69,6 +71,7 @@ export interface PlanVersionType
   features: FeatureType[];
   plan_name?: string;
   usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
+  currency: PricingUnit;
 }
 
 export interface PlansByCustomerArray {
@@ -113,7 +116,8 @@ export interface CreateVersionType {
   month_anchor?: number;
 }
 
-export interface CreateComponent extends Omit<Component, "billable_metric"> {
+export interface CreateComponent
+  extends Omit<Component, "billable_metric" | "pricing_unit"> {
   billable_metric_name: string;
 }
 
@@ -123,6 +127,7 @@ export interface Component {
   separate_by: string[];
   proration_granularity: string;
   id?: number;
+  pricing_unit: PricingUnit;
 }
 
 export interface Tier {

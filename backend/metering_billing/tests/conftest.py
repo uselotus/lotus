@@ -204,7 +204,6 @@ def add_subscription_to_org():
             billing_cadence=duration,
             start_date=start_date,
             end_date=end_date,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         subscription.handle_attach_plan(
             plan_day_anchor=day_anchor,

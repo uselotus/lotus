@@ -42,9 +42,13 @@ def stripe_webhook_endpoint(request):
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
     except ValueError as e:
-        raise StripeWebhookFailure("Invalid payload: {}".format(e))
+        return Response(
+            "Invalid payload: {}".format(e), status=status.HTTP_400_BAD_REQUEST
+        )
     except stripe.error.SignatureVerificationError as e:
-        return StripeWebhookFailure("Invalid signature: {}".format(e))
+        return Response(
+            "Invalid signature: {}".format(e), status=status.HTTP_400_BAD_REQUEST
+        )
 
     # Handle the checkout.session.completed event
     if event["type"] == "invoice.paid":

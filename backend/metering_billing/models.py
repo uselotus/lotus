@@ -116,10 +116,11 @@ class Organization(models.Model):
         if SUPPORTED_CURRENCIES_VERSION != self.currencies_provisioned:
             for name, code, symbol in SUPPORTED_CURRENCIES:
                 PricingUnit.objects.get_or_create(
-                    organization=self, code=code, name=name, symbol=symbol
+                    organization=self, code=code, name=name, symbol=symbol, custom=False
                 )
             PricingUnit.objects.filter(
                 ~Q(code__in=[code for _, code, _ in SUPPORTED_CURRENCIES]),
+                custom=False,
                 organization=self,
             ).delete()
             self.currencies_provisioned = SUPPORTED_CURRENCIES_VERSION
@@ -372,9 +373,8 @@ class Customer(models.Model):
         ).update(customer=self)
 
     def get_subscription_and_records(self):
-        active_subscription = self.subscriptions.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).first()
+        now = now_utc()
+        active_subscription = self.subscriptions.active().first()
         if active_subscription:
             active_subscription_records = self.subscription_records.filter(
                 next_billing_date__range=(
@@ -387,21 +387,11 @@ class Customer(models.Model):
             active_subscription_records = None
         return active_subscription, active_subscription_records
 
-    def get_billing_plan_names(self) -> str:
-        subscription_set = Subscription.objects.filter(
-            organization=self.organization,
-            customer=self,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-        )
-        if subscription_set is None:
-            return "None"
-        return [str(sub.billing_plan) for sub in subscription_set]
-
     def get_usage_and_revenue(self):
         customer_subscriptions = (
-            Subscription.objects.filter(
+            Subscription.objects.active()
+            .filter(
                 customer=self,
-                status=SUBSCRIPTION_STATUS.ACTIVE,
                 organization=self.organization,
             )
             .prefetch_related("billing_plan__plan_components")
@@ -422,14 +412,15 @@ class Customer(models.Model):
         total = 0
         sub, sub_records = self.get_subscription_and_records()
         if sub is not None and sub_records is not None:
-            inv = generate_invoice(
+            invs = generate_invoice(
                 sub,
                 sub_records,
                 draft=True,
                 charge_next_plan=True,
             )
-            total += inv.cost_due
-            inv.delete()
+            total += sum([inv.cost_due for inv in invs])
+            for inv in invs:
+                inv.delete()
         return total
 
     def get_currency_balance(self, currency):
@@ -444,7 +435,6 @@ class Customer(models.Model):
     def get_outstanding_revenue(self):
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
-            .exclude(subscription__status=SUBSCRIPTION_STATUS.ACTIVE)
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
@@ -1081,7 +1071,7 @@ class PlanComponent(models.Model):
             proration_granularity = self.proration_granularity
 
             usage_normalization_factor = get_granularity_ratio(
-                metric_granularity, proration_granularity, start_date
+                metric_granularity, proration_granularity, period_start
             )
             # extract usage
             separated_usage = all_usage.get(
@@ -1179,7 +1169,7 @@ class PlanComponent(models.Model):
             proration_granularity = self.proration_granularity
 
             usage_normalization_factor = get_granularity_ratio(
-                metric_granularity, proration_granularity, start_date
+                metric_granularity, proration_granularity, period_start
             )
             # extract usage
             for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
@@ -1466,6 +1456,13 @@ class PlanVersion(models.Model):
             if version_usage_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
                 version_usage_billing_frequency = USAGE_BILLING_FREQUENCY.END_OF_PERIOD
         self.usage_billing_frequency = version_usage_billing_frequency
+        if not self.pricing_unit:
+            if self.organization.default_currency:
+                self.pricing_unit = self.organization.default_currency
+            else:
+                self.pricing_unit = PricingUnit.objects.get(
+                    organization=self.organization, code="USD"
+                )
         super().save(*args, **kwargs)
 
 
@@ -1676,7 +1673,6 @@ class Plan(models.Model):
                             organization=self.organization,
                             customer=sub.customer,
                             start_date=sub.end_date,
-                            status=SUBSCRIPTION_STATUS.ACTIVE,
                             auto_renew=True,
                             is_new=False,
                         )
@@ -1699,6 +1695,25 @@ class ExternalPlanLink(models.Model):
 
     class Meta:
         unique_together = ("organization", "source", "external_plan_id")
+
+
+class SubscriptionManager(models.Manager):
+    def active(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(
+            Q(start_date__lte=time) & (Q(end_date__gte=time) | Q(end_date__isnull=True))
+        )
+
+    def ended(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(end_date__lte=time)
+
+    def not_started(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(start_date__gt=time)
 
 
 class Subscription(models.Model):
@@ -1726,14 +1741,10 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    status = models.CharField(
-        max_length=20,
-        choices=SUBSCRIPTION_STATUS.choices,
-        default=SUBSCRIPTION_STATUS.NOT_STARTED,
-    )
     subscription_id = models.CharField(
         max_length=100, null=False, blank=True, default=subscription_uuid
     )
+    objects = SubscriptionManager()
 
     def get_anchors(self):
         return self.day_anchor, self.month_anchor
@@ -1797,7 +1808,6 @@ class Subscription(models.Model):
             self.day_anchor = None
             self.month_anchor = None
             self.end_date = now_utc()
-            self.status = SUBSCRIPTION_STATUS.ENDED
             self.save()
             return
         if active_subs_with_yearly_quarterly.count() == 0:
@@ -1908,9 +1918,7 @@ class SubscriptionRecord(models.Model):
 
     def save(self, *args, **kwargs):
         now = now_utc()
-        subscription = self.customer.subscriptions.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-        ).first()
+        subscription = self.customer.subscriptions.active(self.start_date).first()
         if not self.end_date:
             day_anchor, month_anchor = subscription.get_anchors()
             self.end_date = calculate_end_date(
@@ -2161,6 +2169,7 @@ class PricingUnit(models.Model):
     code = models.CharField(max_length=10, null=False, blank=False)
     name = models.CharField(max_length=100, null=False, blank=False)
     symbol = models.CharField(max_length=10, null=False, blank=False)
+    custom = models.BooleanField(default=False)
 
     def __str__(self):
         ret = f"{self.code}"
@@ -2195,3 +2204,32 @@ class CustomPricingUnitConversion(models.Model):
     from_qty = models.DecimalField(max_digits=20, decimal_places=10)
     to_unit = models.ForeignKey(PricingUnit, on_delete=models.CASCADE, related_name="+")
     to_qty = models.DecimalField(max_digits=20, decimal_places=10)
+
+
+class AccountsReceivableDebtor(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="+"
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="debtors"
+    )
+    currency = models.ForeignKey(
+        PricingUnit, on_delete=models.CASCADE, related_name="+"
+    )
+    created = models.DateTimeField(default=now_utc)
+
+
+class AccountsReceivableTransaction(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="+"
+    )
+    debtor = models.ForeignKey(
+        AccountsReceivableDebtor, on_delete=models.CASCADE, related_name="transactions"
+    )
+    timestamp = models.DateTimeField(default=now_utc)
+    transaction_type = models.PositiveSmallIntegerField(
+        ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES.choices,
+    )
+    due = models.DateTimeField(null=True)
+    amount = models.DecimalField(max_digits=20, decimal_places=10)
+    related_txns = models.ManyToManyField("self")

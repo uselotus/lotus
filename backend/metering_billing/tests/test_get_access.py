@@ -19,6 +19,7 @@ from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     METRIC_TYPE,
     PRICE_TIER_TYPE,
+    SUBSCRIPTION_STATUS,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -175,7 +176,6 @@ class TestGetAccess:
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        print(response.json())
         response = response.json()
         assert len(response) == 1
         assert (
@@ -309,7 +309,7 @@ class TestGetAccess:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         event1 = Event.objects.create(
@@ -580,7 +580,6 @@ class TestGetAccessWithSeparateBy:
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
         response = response.json()[0]
-        print(response)
         assert response["event_name"] == setup_dict["allow_limit_metrics"][0].event_name
         assert len(response["usage_per_metric"]) == 4
         for r in response["usage_per_metric"]:
@@ -668,7 +667,7 @@ class TestGetAccessWithSeparateBy:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         for groupby_dim_1 in ["dim_1", "dim_2"]:
@@ -774,7 +773,7 @@ class TestGetAccessWithSeparateBy:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status="active",
+            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         for groupby_dim_1 in ["dim_1", "dim_2"]:

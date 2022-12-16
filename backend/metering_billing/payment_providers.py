@@ -7,21 +7,19 @@ from urllib.parse import urlencode
 
 import pytz
 import stripe
-from dateutil import parser
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
-from djmoney.money import Money
 from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostResponseSerializer,
-    SinglePaymentProviderSerializer,
 )
-from metering_billing.utils import decimal_to_cents, now_utc
+from metering_billing.utils import calculate_end_date, date_as_max_dt, now_utc
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
-    SUBSCRIPTION_STATUS,
+    USAGE_BILLING_FREQUENCY,
 )
 from rest_framework import serializers, status
 from rest_framework.response import Response
@@ -155,7 +153,7 @@ class StripeConnector(PaymentProvider):
         """
         Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address), then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
         """
-        from metering_billing.models import Customer
+        from metering_billing.models import Customer, SubscriptionRecord
 
         stripe.api_key = self.secret_key
 
@@ -351,6 +349,7 @@ class StripeConnector(PaymentProvider):
             filters = sr.filters.all()
             for f in filters:
                 metadata[f.property_name] = f.comparison_value[0]
+                name += " - ({} : {})".format(f.property_name, f.comparison_value[0])
             inv_dict = {
                 "description": name,
                 "amount": int(amount * 100),
@@ -412,6 +411,7 @@ class StripeConnector(PaymentProvider):
             ExternalPlanLink,
             Plan,
             Subscription,
+            SubscriptionRecord,
         )
 
         stripe.api_key = self.secret_key
@@ -467,7 +467,7 @@ class StripeConnector(PaymentProvider):
                 continue
             sub_items = subscription["items"]
             item_ids = {x["price"]["id"] for x in sub_items["data"]} | {
-                [x["price"]["product"] for x in sub_items["data"]]
+                x["price"]["product"] for x in sub_items["data"]
             }
             matching_plans = list(filter(lambda x: x[1] & item_ids, lotus_plans))
             # if no plans match any of the items, don't transfer
@@ -476,7 +476,9 @@ class StripeConnector(PaymentProvider):
             # great, in this case we transfer the subscription
             elif len(matching_plans) == 1:
                 billing_plan = Plan.objects.get(id=matching_plans[0][0])
-                subscription_kwargs = {
+                subscription
+                # check to see if subscription exists
+                validated_data = {
                     "organization": organization,
                     "customer": customer,
                     "billing_plan": billing_plan.display_version,
@@ -484,27 +486,86 @@ class StripeConnector(PaymentProvider):
                     "is_new": False,
                 }
                 if end_now:
-                    subscription_kwargs["start_date"] = now_utc()
-                    subscription_kwargs["status"] = SUBSCRIPTION_STATUS.ACTIVE
+                    validated_data["start_date"] = now_utc()
                     stripe.Subscription.delete(
                         subscription.id,
                         prorate=True,
                         invoice_now=True,
                     )
                 else:
-                    subscription_kwargs[
-                        "start_date"
-                    ] = datetime.datetime.utcfromtimestamp(
+                    validated_data["start_date"] = datetime.datetime.utcfromtimestamp(
                         subscription.current_period_end
-                    ).replace(
-                        tzinfo=pytz.utc
-                    )
-                    subscription_kwargs["status"] = SUBSCRIPTION_STATUS.NOT_STARTED
+                    ).replace(tzinfo=pytz.utc)
                     stripe.Subscription.modify(
                         subscription.id,
                         cancel_at_period_end=True,
                     )
-                Subscription.objects.create(**subscription_kwargs)
+                subscription = (
+                    Subscription.objects.active()
+                    .filter(
+                        organization=organization,
+                        customer=validated_data["customer"],
+                    )
+                    .first()
+                )
+                duration = validated_data["billing_plan"].plan.plan_duration
+                billing_freq = validated_data["billing_plan"].usage_billing_frequency
+                start_date = validated_data["start_date"]
+                plan_day_anchor = validated_data["billing_plan"].day_anchor
+                plan_month_anchor = validated_data["billing_plan"].month_anchor
+                if subscription is None:
+                    subscription = Subscription.objects.create(
+                        organization=organization,
+                        customer=validated_data["customer"],
+                        start_date=start_date,
+                        end_date=start_date,
+                    )
+                subscription.handle_attach_plan(
+                    plan_day_anchor=plan_day_anchor,
+                    plan_month_anchor=plan_month_anchor,
+                    plan_start_date=start_date,
+                    plan_duration=duration,
+                    plan_billing_frequency=billing_freq,
+                )
+                day_anchor, month_anchor = subscription.get_anchors()
+                end_date = calculate_end_date(
+                    duration,
+                    start_date,
+                    day_anchor=day_anchor,
+                    month_anchor=month_anchor,
+                )
+                end_date = validated_data.get("end_date", end_date)
+                if billing_freq in [
+                    USAGE_BILLING_FREQUENCY.MONTHLY,
+                    USAGE_BILLING_FREQUENCY.QUARTERLY,
+                ]:
+                    found = False
+                    i = 0
+                    num_months = (
+                        1 if billing_freq == USAGE_BILLING_FREQUENCY.MONTHLY else 3
+                    )
+                    while not found:
+                        tentative_nbd = date_as_max_dt(
+                            start_date
+                            + relativedelta(months=i, day=day_anchor, days=-1)
+                        )
+                        if tentative_nbd <= start_date:
+                            i += 1
+                            continue
+                        elif tentative_nbd > end_date:
+                            tentative_nbd = end_date
+                            break
+                        months_btwn = relativedelta(end_date, tentative_nbd).months
+                        if months_btwn % num_months == 0:
+                            found = True
+                        else:
+                            i += 1
+                    validated_data[
+                        "next_billing_date"
+                    ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
+                subscription_record = SubscriptionRecord.objects.create(
+                    **validated_data
+                )
             else:  # error if multiple plans match
                 err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(
                     subscription

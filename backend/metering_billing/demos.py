@@ -29,7 +29,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
-    SUBSCRIPTION_STATUS,
 )
 from model_bakery import baker
 
@@ -545,11 +544,6 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
     now = now_utc()
-    Subscription.objects.filter(
-        organization=organization,
-        status=SUBSCRIPTION_STATUS.ENDED,
-        end_date__gt=now,
-    ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
     SubscriptionRecord.objects.filter(
         organization=organization,
         status=SUBSCRIPTION_STATUS.ENDED,
@@ -875,7 +869,6 @@ def make_subscription_and_subscription_record(
         customer=customer,
         start_date=start_date,
         end_date=end_date,
-        status=SUBSCRIPTION_STATUS.ACTIVE,
     )
     sub.handle_attach_plan(
         plan.day_anchor, plan.month_anchor, start_date, plan.plan.plan_duration

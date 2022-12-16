@@ -1,5 +1,6 @@
 import itertools
 import json
+import unittest.mock as mock
 from datetime import timedelta
 from decimal import Decimal
 
@@ -29,13 +30,12 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PLAN_DURATION,
-    PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
-    SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
 )
 from model_bakery import baker
+from pytest_mock import mocker
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -433,12 +433,22 @@ class TestCalculateMetric:
         )
         now = now_utc()
 
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"],
-            billing_plan,
-            customer,
-            now - relativedelta(days=46),
-        )
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=46),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=46),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=46),
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert usage_revenue_dict["revenue"] == Decimal(300)
@@ -509,9 +519,16 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"], billing_plan, customer, time_created
-        )
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"], billing_plan, customer, time_created
+            )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
@@ -607,12 +624,22 @@ class TestCalculateMetric:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"],
-            billing_plan,
-            customer,
-            now - relativedelta(days=31),
-        )
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=31),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=31),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=31),
+            )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
         assert usage_revenue_dict["revenue"] == Decimal(61)
@@ -681,9 +708,16 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"], billing_plan, customer, time_created
-        )
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"], billing_plan, customer, time_created
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
@@ -816,9 +850,16 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"], billing_plan, customer, time_created
-        )
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"], billing_plan, customer, time_created
+            )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
@@ -929,9 +970,16 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"], billing_plan, customer, time_created
-        )
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"], billing_plan, customer, time_created
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
@@ -1138,12 +1186,20 @@ class TestCalculateMetric:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"],
-            billing_plan,
-            customer,
-            now - relativedelta(days=31),
-        )
+        time_created = now - relativedelta(days=31)
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                time_created,
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
@@ -1231,9 +1287,16 @@ class TestCalculateMetric:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"], billing_plan, customer, time_created
-        )
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"], billing_plan, customer, time_created
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 2 (-1 free) unique + 8 combinations gives 800
@@ -1271,6 +1334,7 @@ class TestCalculateMetricProrationForStateful:
             time_created + relativedelta(days=2) + relativedelta(hour=0, minute=i)
             for i in range(6)
         ]
+        print(event_times)
         properties = (
             3 * [{"number": 8}]  # 55-56, 56-57, 57-58 at 8
             + 2 * [{"number": 9}]  # 58-59, 59-60 at 9
@@ -1314,12 +1378,20 @@ class TestCalculateMetricProrationForStateful:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"],
-            billing_plan,
-            customer,
-            now - relativedelta(days=46),
-        )
+        time_created = now - relativedelta(days=45)
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                time_created,
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         calculated_amt = (Decimal(87) - Decimal(60)) / Decimal(60) * Decimal(100)
@@ -1415,12 +1487,19 @@ class TestCalculateMetricProrationForStateful:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"],
-            billing_plan,
-            customer,
-            now - relativedelta(days=46),
-        )
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=46),
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         supposed_revenue = (Decimal(72) - Decimal(24)) / Decimal(24) * Decimal(100)
@@ -1523,12 +1602,20 @@ class TestCalculateMetricProrationForStateful:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"],
-            billing_plan,
-            customer,
-            now - relativedelta(months=4, days=23),
-        )
+        tc = now - relativedelta(months=4, days=23)
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=tc),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=tc,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                tc,
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert Decimal(100) > usage_revenue_dict["revenue"] > Decimal(0)
@@ -1554,106 +1641,6 @@ class TestCalculateMetricProrationForStateful:
             else:
                 assert day["revenue"] == 0
         assert data["total_revenue"] == float(usage_revenue_dict["revenue"])
-
-    # def test_metric_granularity_total_on_yearly_plan_proration_quarterly(
-    #     self, billable_metric_test_common_setup
-    # ):
-    #     num_billable_metrics = 0
-    #     setup_dict = billable_metric_test_common_setup(
-    #         num_billable_metrics=num_billable_metrics,
-    #         auth_method="session_auth",
-    #         user_org_and_api_key_org_different=False,
-    #     )
-    #     plan = setup_dict["plan"]
-    #     plan.plan_duration = PLAN_DURATION.YEARLY
-    #     plan.save()
-    #     billable_metric = Metric.objects.create(
-    #         organization=setup_dict["org"],
-    #         event_name="number_of_users",
-    #         property_name="number",
-    #         usage_aggregation_type=METRIC_AGGREGATION.MAX,
-    #         metric_type=METRIC_TYPE.STATEFUL,
-    #         granularity=METRIC_GRANULARITY.TOTAL,
-    #     )
-    #     time_created = now_utc() - relativedelta(months=5)
-    #     customer = baker.make(
-    #         Customer, organization=setup_dict["org"], customer_name="foo"
-    #     )
-    #     event_times = [time_created + relativedelta(days=i) for i in range(0, 4)]
-    #     properties = (
-    #         1 * [{"number": 4}]
-    #         + 1 * [{"number": 8}]
-    #         + 1 * [{"number": 12}]
-    #         + [{"number": 0}]
-    #     )  # 4 corresponds to 1 user-year, 8 to 2 user-years, 12 to 3 user-years.. so total will
-    #     # be 3 user-years, which is 200... we should make sure that we have 100 each day cuz
-    #     # that's how much we "earned" that day
-    #     baker.make(
-    #         Event,
-    #         event_name="number_of_users",
-    #         properties=iter(properties),
-    #         organization=setup_dict["org"],
-    #         time_created=iter(event_times),
-    #         customer=customer,
-    #         _quantity=4,
-    #     )
-    #     billing_plan = PlanVersion.objects.create(
-    #         organization=setup_dict["org"],
-    #         flat_rate=0,
-    #         version=1,
-    #         plan=setup_dict["plan"],
-    #     )
-    #     plan_component = PlanComponent.objects.create(
-    #         billable_metric=billable_metric,
-    #         plan_version=billing_plan,
-    #         proration_granularity=METRIC_GRANULARITY.QUARTER,
-    #     )
-    #     free_tier = PriceTier.objects.create(
-    #         plan_component=plan_component,
-    #         type=PRICE_TIER_TYPE.FREE,
-    #         range_start=0,
-    #         range_end=1,
-    #     )
-    #     paid_tier = PriceTier.objects.create(
-    #         plan_component=plan_component,
-    #         type=PRICE_TIER_TYPE.PER_UNIT,
-    #         range_start=1,
-    #         cost_per_batch=100,
-    #         metric_units_per_batch=1,
-    #     )
-    #     now = now_utc()
-    #     subscription = Subscription.objects.create(
-    #         organization=setup_dict["org"],
-    #         billing_plan=billing_plan,
-    #         customer=customer,
-    #         start_date=now - relativedelta(months=6, day=1, hour=0),
-    #         status=SUBSCRIPTION_STATUS.ACTIVE,
-    #     )
-
-    #     usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-    #     assert usage_revenue_dict["revenue"] == Decimal(200)
-
-    #     payload = {}
-    #     response = setup_dict["client"].get(
-    #         reverse("cost_analysis"),
-    #         {
-    #             "customer_id": customer.customer_id,
-    #             "start_date": subscription.start_date.date(),
-    #             "end_date": subscription.end_date.date(),
-    #         },
-    #     )
-    #     assert response.status_code == status.HTTP_200_OK
-    #     data = response.json()
-    #     per_day = data["per_day"]
-    #     amt_per_day = None
-    #     for day in per_day:
-    #         if day["revenue"] != 0 and not amt_per_day:
-    #             amt_per_day = day["revenue"]
-    #             assert amt_per_day == 100
-    #             assert amt_per_day == day["revenue"]
-    #         else:
-    #             assert day["revenue"] == 0 or day["revenue"] == amt_per_day
-    #     assert data["total_revenue"] == usage_revenue_dict["revenue"]
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1797,12 +1784,17 @@ class TestCalculateMetricWithFilters:
             metric_units_per_batch=1,
         )
         now = now_utc()
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"],
-            billing_plan,
-            customer,
-            now - relativedelta(days=46),
-        )
+        time_created = now - relativedelta(days=46)
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"], billing_plan, customer, time_created
+            )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert usage_revenue_dict["revenue"] == Decimal(300)
@@ -1831,7 +1823,7 @@ class TestCalculateMetricWithFilters:
         )
         billable_metric.categorical_filters.add(numeric_filter)
         billable_metric.save()
-        time_created = now_utc() - relativedelta(days=45)
+        time_created = now_utc() - relativedelta(days=31)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
@@ -1881,9 +1873,16 @@ class TestCalculateMetricWithFilters:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
-        subscription, subscription_record = add_subscription_to_org(
-            setup_dict["org"], billing_plan, customer, time_created
-        )
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"], billing_plan, customer, time_created
+            )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
@@ -1992,7 +1991,7 @@ class TestCalculateMetricWithFilters:
             setup_dict["org"],
             billing_plan,
             customer,
-            now - relativedelta(days=31),
+            now - relativedelta(days=21),
         )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
