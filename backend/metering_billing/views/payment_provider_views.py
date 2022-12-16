@@ -20,7 +20,7 @@ class PaymentProviderView(APIView):
         responses={200: SinglePaymentProviderSerializer(many=True)},
     )
     def get(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         response = []
         for payment_processor_name, pp_obj in PAYMENT_PROVIDER_MAP.items():
             pp_response = {
@@ -38,7 +38,7 @@ class PaymentProviderView(APIView):
         responses={200: PaymentProviderPostResponseSerializer},
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         # parse outer level request
         serializer = PaymentProviderPostRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

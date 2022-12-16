@@ -127,7 +127,7 @@ def draft_invoice_test_common_setup(
 @pytest.mark.django_db(transaction=True)
 class TestGenerateInvoice:
     def test_generate_invoice(self, draft_invoice_test_common_setup):
-        setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
+        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
 
         active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
@@ -140,7 +140,7 @@ class TestGenerateInvoice:
         ).count()
         payload = {"customer_id": setup_dict["customer"].customer_id}
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
-
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         after_active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
@@ -156,7 +156,7 @@ class TestGenerateInvoice:
     def test_generate_invoice_with_price_adjustments(
         self, draft_invoice_test_common_setup
     ):
-        setup_dict = draft_invoice_test_common_setup(auth_method="session_auth")
+        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
 
         active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],

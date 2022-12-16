@@ -228,7 +228,7 @@ class TestStripeIntegration:
         )
 
         # now lets test out the replace now
-        Subscription.objects.filter(
+        SubscriptionRecord.objects.filter(
             organization=setup_dict["org"],
             start_date__gte=now_utc(),
             billing_plan=setup_dict["plan"].display_version,
@@ -237,12 +237,10 @@ class TestStripeIntegration:
         time.sleep(10)
         stripe_sub = stripe.Subscription.retrieve(stripe_sub.id)
         assert (
-            Subscription.objects.active()
-            .filter(
+            SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],
                 billing_plan=setup_dict["plan"].display_version,
-            )
-            .count()
+            ).count()
             == 1
         )
         assert stripe_sub.status == "canceled"

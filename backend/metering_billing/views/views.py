@@ -53,7 +53,7 @@ class PeriodMetricRevenueView(APIView):
         """
         Returns the revenue for an organization in a given time period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = [
@@ -135,7 +135,8 @@ class CostAnalysisView(APIView):
         """
         Returns the revenue for an organization in a given time period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
+        organization = request.organization
         serializer = CostAnalysisRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         start_date, end_date, customer_id = [
@@ -244,7 +245,7 @@ class PeriodSubscriptionsView(APIView):
         responses={200: PeriodSubscriptionsResponseSerializer},
     )
     def get(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = [
@@ -297,7 +298,7 @@ class PeriodMetricUsageView(APIView):
         """
         Return current usage for a customer during a given billing period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         q_start, q_end, top_n = [
@@ -404,7 +405,7 @@ class APIKeyCreate(APIView):
         """
         Revokes the current API key and returns a new one.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         tk = APIToken.objects.filter(organization=organization).first()
         if tk:
             cache.delete(tk.prefix)
@@ -433,7 +434,7 @@ class SettingsView(APIView):
         """
         Get the current settings for the organization.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         return Response(
             {"organization": organization.company_name}, status=status.HTTP_200_OK
         )
@@ -449,7 +450,7 @@ class CustomersSummaryView(APIView):
         """
         Get the current settings for the organization.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",
@@ -479,17 +480,15 @@ class CustomersWithRevenueView(APIView):
         """
         Return current usage for a customer during a given billing period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         customers = Customer.objects.filter(organization=organization)
         cust = []
         for customer in customers:
             total_amount_due = customer.get_outstanding_revenue()
-            next_amount_due = customer.get_active_sub_drafts_revenue()
             serializer = CustomerWithRevenueSerializer(
                 customer,
                 context={
                     "total_amount_due": total_amount_due,
-                    "next_amount_due": next_amount_due,
                 },
             )
             cust.append(serializer.data)
@@ -513,7 +512,7 @@ class DraftInvoiceView(APIView):
         """
         Pagination-enabled endpoint for retrieving an organization's event stream.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = DraftInvoiceRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         try:
@@ -807,7 +806,7 @@ class ImportCustomersView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
@@ -853,7 +852,7 @@ class ImportPaymentObjectsView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
@@ -901,7 +900,7 @@ class TransferSubscriptionsView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
@@ -943,7 +942,7 @@ class ExperimentalToActiveView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = ExperimentalToActiveRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         billing_plan = serializer.validated_data["version_id"]
@@ -994,7 +993,7 @@ class PlansByNumCustomersView(APIView):
         },
     )
     def get(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         plans = (
             SubscriptionRecord.objects.filter(
                 organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
@@ -1048,7 +1047,7 @@ class CustomerBatchCreateView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = CustomerSerializer(
             data=request.data["customers"],
             many=True,
@@ -1140,7 +1139,7 @@ class ConfirmIdemsReceivedView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         if request.data.get("idempotency_ids") is None:
             return Response(
                 {

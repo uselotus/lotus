@@ -14,21 +14,6 @@ from rest_framework.views import APIView
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
-# class OrganizationView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request, format=None):
-#         """
-#         Get the current settings for the organization.
-#         """
-#         organization = parse_organization(request)
-#         OrganizationSerializer(organization).data
-#         team_members = organization.org_users.all().values_list("email", flat=True)
-#         return Response(
-#             {"organization": organization.company_name, "team_members": team_members},
-#             status=status.HTTP_200_OK,
-#         )
-
 
 class InviteView(APIView):
     permission_classes = [IsAuthenticated & ValidOrganization]
@@ -36,7 +21,7 @@ class InviteView(APIView):
     def post(self, request, *args, **kwargs):
         email = request.data.get("email", None)
         user = request.user
-        organization = parse_organization(request)
+        organization = request.organization
 
         token_object, created = OrganizationInviteToken.objects.get_or_create(
             organization=organization, email=email, defaults={"user": user}

@@ -97,22 +97,6 @@ class TestGetCustomers:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == num_customers
 
-    def test_user_org_and_api_key_different_reject_access(
-        self, customer_test_common_setup
-    ):
-        # covers user_org_and_api_key_org_different = true
-        num_customers = 3
-        setup_dict = customer_test_common_setup(
-            num_customers=num_customers,
-            auth_method="both",
-            user_org_and_api_key_org_different=True,
-        )
-
-        payload = {}
-        response = setup_dict["client"].get(reverse("customer-list"), payload)
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
 
 @pytest.fixture
 def insert_customer_payload():
@@ -182,27 +166,6 @@ class TestInsertCustomer:
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0
         assert len(get_customers_in_org(setup_dict["org"])) == num_customers + 1
-
-    def test_user_org_and_api_key_different_reject_creation(
-        self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
-    ):
-        # covers user_org_and_api_key_org_different = True
-        num_customers = 3
-        setup_dict = customer_test_common_setup(
-            num_customers=num_customers,
-            auth_method="both",
-            user_org_and_api_key_org_different=True,
-        )
-
-        response = setup_dict["client"].post(
-            reverse("customer-list"),
-            data=json.dumps(insert_customer_payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert len(get_customers_in_org(setup_dict["org"])) == num_customers
-        assert len(get_customers_in_org(setup_dict["org2"])) == num_customers
 
     def test_customer_id_already_exists_within_org_reject_creation(
         self, customer_test_common_setup, insert_customer_payload, get_customers_in_org
