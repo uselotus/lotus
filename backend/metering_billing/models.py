@@ -850,7 +850,7 @@ class Metric(models.Model):
         proration=None,
         filters=None,
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
-        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         if group_by is None:
             group_by = []
@@ -868,7 +868,7 @@ class Metric(models.Model):
         return usage
 
     def get_current_usage(self, subscription):
-        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         all_components = subscription.billing_plan.plan_components.all()
@@ -884,7 +884,7 @@ class Metric(models.Model):
     def get_earned_usage_per_day(
         self, start, end, customer, group_by=None, proration=None
     ):
-        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
         if group_by is None:
             group_by = []

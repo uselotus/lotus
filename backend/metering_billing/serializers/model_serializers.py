@@ -6,7 +6,7 @@ from actstream.models import Action
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric, ServerError
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *

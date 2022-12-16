@@ -1174,6 +1174,7 @@ class RateHandler(MetricHandler):
         q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
         q_gb = q_pre_gb_ann.values(*filter_args, **groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
+        print(q_post_gb_ann.query)
 
         return_dict = {}
         unique_groupby_props = ["customer_name"] + group_by
@@ -1252,7 +1253,7 @@ class RateHandler(MetricHandler):
 
         q_gb = rate_per_event.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(new_usage_qty=Max("usage_qty"))
-
+        print(q_post_gb_ann.query)
         return_dict = {}
         unique_groupby_props = ["customer_name"] + group_by
         for row in q_post_gb_ann:
