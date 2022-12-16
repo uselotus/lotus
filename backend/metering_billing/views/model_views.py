@@ -1,5 +1,6 @@
 import copy
 import json
+import time
 
 import lotus_python
 import posthog
@@ -7,7 +8,7 @@ from actstream import action
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, OuterRef, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
@@ -359,7 +360,8 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 Prefetch(
                     "subscription_records",
                     queryset=SubscriptionRecord.objects.filter(
-                        organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+                        organization=organization,
+                        status=SUBSCRIPTION_STATUS.ACTIVE,
                     ),
                 ),
                 Prefetch(

@@ -1017,6 +1017,8 @@ class PlanComponent(models.Model):
         if self.separate_by is None:
             self.separate_by = []
         assert isinstance(self.separate_by, list)
+        if not self.pricing_unit:
+            self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
 
     def calculate_total_revenue(
