@@ -140,17 +140,17 @@ class APITokenViewSet(
     lookup_field = "prefix"
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return APIToken.objects.filter(organization=organization)
 
     def get_serializer_context(self):
         context = super(APITokenViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
     def perform_create(self, serializer):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         api_key, key = serializer.save(organization=organization)
         return api_key, key
 
@@ -236,18 +236,18 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return WebhookEndpoint.objects.filter(organization=organization)
 
     def get_serializer_context(self):
         context = super(WebhookViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
     def perform_create(self, serializer):
         try:
-            serializer.save(organization=parse_organization(self.request))
+            serializer.save(organization=self.request.organization)
         except ValueError as e:
             raise ServerError(e)
         except IntegrityError as e:
@@ -269,7 +269,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -307,7 +307,7 @@ class EventViewSet(
 
     def get_queryset(self):
         now = now_utc()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return (
             super()
             .get_queryset()
@@ -316,7 +316,7 @@ class EventViewSet(
 
     def get_serializer_context(self):
         context = super(EventViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -331,17 +331,17 @@ class UserViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head"]
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return User.objects.filter(organization=organization)
 
     def get_serializer_context(self):
         context = super(UserViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        serializer.save(organization=self.request.organization)
 
 
 class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -353,23 +353,10 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head", "patch"]
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         qs = Customer.objects.filter(organization=organization)
         if self.action == "retrieve":
-            qs = qs.prefetch_related(
-                Prefetch(
-                    "subscription_records",
-                    queryset=SubscriptionRecord.objects.filter(
-                        organization=organization,
-                        status=SUBSCRIPTION_STATUS.ACTIVE,
-                    ),
-                ),
-                Prefetch(
-                    "subscription_records__billing_plan",
-                    queryset=PlanVersion.objects.filter(organization=organization),
-                    to_attr="billing_plans",
-                ),
-            )
+            qs = qs.prefetch_related("subscriptions", "invoices")
         return qs
 
     def get_serializer_class(self):
@@ -381,7 +368,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            serializer.save(organization=parse_organization(self.request))
+            serializer.save(organization=self.request.organization)
         except IntegrityError as e:
             cause = e.__cause__
             if "unique_email" in str(cause):
@@ -392,24 +379,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(CustomerViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
-        context.update({"organization": organization})
-        if self.action == "retrieve":
-            customer = self.get_object()
-            total_amount_due = customer.get_outstanding_revenue()
-            next_amount_due = customer.get_active_sub_drafts_revenue()
-            invoices = Invoice.objects.filter(
-                ~Q(payment_status=INVOICE_STATUS.DRAFT),
-                organization=organization,
-                customer=customer,
-            ).order_by("-issue_date")
-            context.update(
-                {
-                    "total_amount_due": total_amount_due,
-                    "invoices": invoices,
-                    "next_amount_due": next_amount_due,
-                }
-            )
+        context.update({"organization": self.request.organization})
         return context
 
     def dispatch(self, request, *args, **kwargs):
@@ -419,7 +389,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization or self.request.user.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -445,7 +415,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return Metric.objects.filter(
             organization=organization, status=METRIC_STATUS.ACTIVE
         )
@@ -457,7 +427,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(MetricViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -468,7 +438,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -482,7 +452,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         try:
-            instance = serializer.save(organization=parse_organization(self.request))
+            instance = serializer.save(organization=self.request.organization)
         except IntegrityError as e:
             cause = e.__cause__
             if "unique_org_metric_id" in str(cause):
@@ -511,12 +481,12 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return Feature.objects.filter(organization=organization)
 
     def get_serializer_context(self):
         context = super(FeatureViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -527,7 +497,7 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -540,7 +510,7 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        serializer.save(organization=self.request.organization)
 
 
 class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
@@ -566,7 +536,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return PlanVersionSerializer
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         qs = PlanVersion.objects.filter(
             organization=organization,
         )
@@ -574,7 +544,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(PlanVersionViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         if self.request.user.is_authenticated:
             user = self.request.user
         else:
@@ -589,7 +559,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -607,7 +577,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         else:
             user = None
         instance = serializer.save(
-            organization=parse_organization(self.request), created_by=user
+            organization=self.request.organization, created_by=user
         )
         # if user:
         #     action.send(
@@ -655,7 +625,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
         if self.action == "retrieve":
             qs = qs.prefetch_related(
@@ -683,7 +653,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -704,7 +674,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(PlanViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         if self.request.user.is_authenticated:
             user = self.request.user
         else:
@@ -718,7 +688,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         else:
             user = None
         instance = serializer.save(
-            organization=parse_organization(self.request), created_by=user
+            organization=self.request.organization, created_by=user
         )
         # if user:
         #     action.send(
@@ -751,7 +721,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(SubscriptionViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -766,7 +736,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return SubscriptionSerializer
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         # need for: list, update_plans, cancel_plans
         if self.action == "list":
             args = []
@@ -813,7 +783,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             args.append(Q(customer=serializer.validated_data["customer"]))
             if serializer.validated_data.get("plan_id"):
                 args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             args.append(Q(organization=organization))
             qs = (
                 SubscriptionRecord.objects.filter(*args)
@@ -869,7 +839,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["post"])
     def plans(self, request, *args, **kwargs):
         # run checks to make sure it's valid
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         plan_name = serializer.validated_data["billing_plan"].plan.plan_name
@@ -955,7 +925,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def cancel_plans(self, request, *args, **kwargs):
         qs = self.get_queryset()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         serializer = self.get_serializer(data=self.request.query_params)
         serializer.is_valid(raise_exception=True)
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
@@ -1000,7 +970,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def update_plans(self, request, *args, **kwargs):
         qs = self.get_queryset()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         if qs.count() == 0:
             raise NotFoundException("Subscription matching the given filters not found")
@@ -1090,7 +1060,7 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -1127,7 +1097,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         args = [
             ~Q(payment_status=INVOICE_STATUS.DRAFT),
-            Q(organization=parse_organization(self.request)),
+            Q(organization=self.request.organization),
         ]
         if self.action == "list":
             args = []
@@ -1150,7 +1120,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(InvoiceViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -1161,7 +1131,7 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -1205,11 +1175,11 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return BacktestCreateSerializer
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return Backtest.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
-        backtest_obj = serializer.save(organization=parse_organization(self.request))
+        backtest_obj = serializer.save(organization=self.request.organization)
         bt_id = backtest_obj.backtest_id
         run_backtest.delay(bt_id)
 
@@ -1220,7 +1190,7 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -1234,7 +1204,7 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(BacktestViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -1253,11 +1223,11 @@ class ProductViewSet(viewsets.ModelViewSet):
     ]
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return Product.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        serializer.save(organization=self.request.organization)
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
@@ -1266,7 +1236,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -1280,7 +1250,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super(ProductViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -1304,7 +1274,7 @@ class ActionViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     ]
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return (
             super()
             .get_queryset()
@@ -1329,7 +1299,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
     http_method_names = ["post", "head", "delete"]
 
     def get_queryset(self):
-        filter_kwargs = {"organization": parse_organization(self.request)}
+        filter_kwargs = {"organization": self.request.organization}
         source = self.request.query_params.get("source")
         if source:
             filter_kwargs["source"] = source
@@ -1342,7 +1312,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
                 username = self.request.user.username
             except:
                 username = None
-            organization = parse_organization(self.request)
+            organization = self.request.organization
             posthog.capture(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
@@ -1355,11 +1325,11 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):
         context = super(ExternalPlanLinkViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -1388,7 +1358,7 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
     lookup_field = "setting_id"
 
     def get_queryset(self):
-        filter_kwargs = {"organization": parse_organization(self.request)}
+        filter_kwargs = {"organization": self.request.organization}
         setting_name = self.request.query_params.get("setting_name")
         if setting_name:
             filter_kwargs["setting_name"] = setting_name
@@ -1410,15 +1380,15 @@ class PricingUnitViewSet(
     http_method_names = ["get", "post", "head"]
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return PricingUnit.objects.filter(organization=organization)
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        serializer.save(organization=self.request.organization)
 
     def get_serializer_context(self):
         context = super(PricingUnitViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -1442,7 +1412,7 @@ class OrganizationViewSet(
     lookup_field = "organization_id"
 
     def get_queryset(self):
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         return Organization.objects.filter(pk=organization.pk)
 
     def get_object(self):
@@ -1457,7 +1427,7 @@ class OrganizationViewSet(
 
     def get_serializer_context(self):
         context = super(OrganizationViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
@@ -1484,7 +1454,7 @@ class CustomerBalanceAdjustmentViewSet(
     lookup_field = "adjustment_id"
 
     def get_queryset(self):
-        filter_kwargs = {"organization": parse_organization(self.request)}
+        filter_kwargs = {"organization": self.request.organization}
         customer_id = self.request.query_params.get("customer_id")
         if customer_id:
             filter_kwargs["customer__customer_id"] = customer_id
@@ -1492,12 +1462,12 @@ class CustomerBalanceAdjustmentViewSet(
 
     def get_serializer_context(self):
         context = super(CustomerBalanceAdjustmentViewSet, self).get_serializer_context()
-        organization = parse_organization(self.request)
+        organization = self.request.organization
         context.update({"organization": organization})
         return context
 
     def perform_create(self, serializer):
-        serializer.save(organization=parse_organization(self.request))
+        serializer.save(organization=self.request.organization)
 
     @extend_schema(
         parameters=[

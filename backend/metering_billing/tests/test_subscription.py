@@ -202,26 +202,6 @@ class TestCreateSubscription:
             == num_subscription_records_before + 1
         )
 
-    def test_user_org_and_api_key_different_reject_creation(
-        self, subscription_test_common_setup, get_subscriptions_in_org
-    ):
-        # covers user_org_and_api_key_org_different = True
-        num_subscriptions = 1
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=num_subscriptions,
-            auth_method="both",
-            user_org_and_api_key_org_different=True,
-        )
-
-        response = setup_dict["client"].post(
-            reverse("subscription-plans"),
-            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
-
 
 @pytest.mark.django_db(transaction=True)
 class TestUpdateSub:

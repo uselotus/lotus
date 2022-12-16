@@ -19,6 +19,7 @@ from metering_billing.models import (
     PlanVersion,
     PriceTier,
     SubscriptionRecord,
+    User,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
@@ -30,6 +31,7 @@ from metering_billing.utils.enums import (
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
     PLAN_DURATION,
+    PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
     USAGE_CALC_GRANULARITY,
@@ -158,34 +160,6 @@ class TestInsertMetric:
             == num_billable_metrics + 1
         )
 
-    def test_user_org_and_api_key_different_reject_creation(
-        self,
-        billable_metric_test_common_setup,
-        insert_billable_metric_payload,
-        get_billable_metrics_in_org,
-    ):
-        # covers user_org_and_api_key_org_different = True
-        num_billable_metrics = 3
-        setup_dict = billable_metric_test_common_setup(
-            num_billable_metrics=num_billable_metrics,
-            auth_method="both",
-            user_org_and_api_key_org_different=True,
-        )
-
-        response = setup_dict["client"].post(
-            reverse("metric-list"),
-            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert (
-            len(get_billable_metrics_in_org(setup_dict["org"])) == num_billable_metrics
-        )
-        assert (
-            len(get_billable_metrics_in_org(setup_dict["org2"])) == num_billable_metrics
-        )
-
     def test_billable_metric_exists_reject_creation(
         self,
         billable_metric_test_common_setup,
@@ -261,6 +235,7 @@ class TestArchiveMetric:
             description="test_plan for testing",
             flat_rate=30.0,
             plan=plan,
+            status=PLAN_VERSION_STATUS.ACTIVE,
         )
         plan.display_version = billing_plan
         plan.save()
@@ -290,6 +265,15 @@ class TestArchiveMetric:
         setup_dict["billing_plan"] = billing_plan
 
         payload = {"status": METRIC_STATUS.ARCHIVED}
+        assert billing_plan.status == PLAN_VERSION_STATUS.ACTIVE
+        assert billing_plan.plan.status == PLAN_STATUS.ACTIVE
+        assert billing_plan.plan_components.count() == 3
+        all_pcs = billing_plan.plan_components.all()
+        assert (
+            all_pcs[0].billable_metric == metric_set[0]
+            or all_pcs[1].billable_metric == metric_set[0]
+            or all_pcs[2].billable_metric == metric_set[0]
+        )
         response = setup_dict["client"].patch(
             reverse("metric-detail", kwargs={"metric_id": metric_set[0].metric_id}),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
@@ -1310,7 +1294,7 @@ class TestCalculateMetricProrationForStateful:
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="session_auth",
+            auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
         billable_metric = Metric.objects.create(
@@ -1424,7 +1408,7 @@ class TestCalculateMetricProrationForStateful:
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="session_auth",
+            auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
         billable_metric = Metric.objects.create(
@@ -1531,7 +1515,7 @@ class TestCalculateMetricProrationForStateful:
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
-            auth_method="session_auth",
+            auth_method="api_key",
             user_org_and_api_key_org_different=False,
         )
         plan = setup_dict["plan"]

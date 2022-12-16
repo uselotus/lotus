@@ -304,18 +304,16 @@ class SubscriptionCustomerDetailSerializer(SubscriptionCustomerSummarySerializer
 class CustomerWithRevenueSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("customer_id", "total_amount_due", "next_amount_due")
+        fields = (
+            "customer_id",
+            "total_amount_due",
+        )
 
     total_amount_due = serializers.SerializerMethodField()
-    next_amount_due = serializers.SerializerMethodField()
 
     def get_total_amount_due(self, obj) -> float:
         total_amount_due = float(self.context.get("total_amount_due"))
         return total_amount_due
-
-    def get_next_amount_due(self, obj) -> float:
-        next_amount_due = float(self.context.get("next_amount_due"))
-        return next_amount_due
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -1441,6 +1439,30 @@ class SubscriptionRecordDetailSerializer(SubscriptionRecordSerializer):
     )
 
 
+class LightweightPlanVersionSerializer(PlanVersionSerializer):
+    class Meta(PlanVersionSerializer.Meta):
+        model = PlanVersion
+        fields = ("plan_id", "plan_name", "version_id")
+
+    plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
+    plan_id = serializers.CharField(read_only=True, source="plan.plan_id")
+
+
+class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):
+    class Meta(SubscriptionRecordSerializer.Meta):
+        model = SubscriptionRecord
+        fields = tuple(
+            set(SubscriptionRecordSerializer.Meta.fields).union(set(["plan_detail"]))
+        )
+
+    plan_detail = LightweightPlanVersionSerializer(
+        source="billing_plan", read_only=True
+    )
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        source="filters", many=True, read_only=True
+    )
+
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
@@ -1458,9 +1480,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     customer = ShortCustomerSerializer(read_only=True)
     plans = serializers.SerializerMethodField()
 
-    def get_plans(self, obj) -> SubscriptionRecordDetailSerializer(many=True):
-        sub_records = obj.get_subscription_records()
-        data = SubscriptionRecordDetailSerializer(sub_records, many=True).data
+    def get_plans(self, obj) -> LightweightSubscriptionRecordSerializer(many=True):
+        sub_records = obj.get_subscription_records().prefetch_related(
+            "billing_plan",
+            "filters",
+            "billing_plan__plan",
+            "billing_plan__pricing_unit",
+        )
+        data = LightweightSubscriptionRecordSerializer(sub_records, many=True).data
         return data
 
 
@@ -1869,6 +1896,20 @@ class InvoiceSerializer(serializers.ModelSerializer):
     line_items = InvoiceLineItemSerializer(many=True, read_only=True)
 
 
+class LightweightInvoiceSerializer(InvoiceSerializer):
+    class Meta(InvoiceSerializer.Meta):
+        fields = tuple(
+            set(InvoiceSerializer.Meta.fields)
+            - set(
+                [
+                    "line_items",
+                    "customer",
+                    "subscription",
+                ]
+            )
+        )
+
+
 class InvoiceListFilterSerializer(serializers.Serializer):
     customer_id = serializers.CharField(required=False)
     payment_status = serializers.MultipleChoiceField(
@@ -1986,7 +2027,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "customer_name",
             "invoices",
             "total_amount_due",
-            "next_amount_due",
             "subscription",
             "integrations",
             "default_currency",
@@ -1995,7 +2035,6 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     subscription = serializers.SerializerMethodField(allow_null=True)
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
-    next_amount_due = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
 
     def get_subscription(self, obj) -> SubscriptionSerializer:
@@ -2005,15 +2044,14 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
         else:
             return SubscriptionSerializer(sub_obj).data
 
-    def get_invoices(self, obj) -> InvoiceSerializer(many=True):
-        timeline = self.context.get("invoices")
-        timeline = InvoiceSerializer(timeline, many=True).data
+    def get_invoices(self, obj) -> LightweightInvoiceSerializer(many=True):
+        timeline = obj.invoices.filter(
+            ~Q(payment_status=INVOICE_STATUS.DRAFT),
+            organization=self.context.get("organization"),
+        ).order_by("-issue_date")
+        timeline = LightweightInvoiceSerializer(timeline, many=True).data
         return timeline
 
     def get_total_amount_due(self, obj) -> float:
-        total_amount_due = float(self.context.get("total_amount_due"))
+        total_amount_due = float(obj.get_outstanding_revenue())
         return total_amount_due
-
-    def get_next_amount_due(self, obj) -> float:
-        next_amount_due = float(self.context.get("next_amount_due"))
-        return next_amount_due
