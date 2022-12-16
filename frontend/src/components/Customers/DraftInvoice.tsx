@@ -20,7 +20,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
       }
     );
 
-  const expandedRowRender = (record, index) => {
+  const expandedRowRender = (invoice) => (record, index) => {
     const columns: TableColumnsType<LineItem> = [
       {
         title: "Item",
@@ -55,7 +55,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         dataIndex: "subtotal",
         render: (_, record) => (
           <div className="flex flex-col">
-            {"$"}
+            {invoice.currency.symbol}
             {record.subtotal.toFixed(2)}
           </div>
         ),
@@ -75,87 +75,71 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
     );
   };
 
-  //   const perPlanItems = useMemo(() => {
-  //     if (
-  //       invoiceData?.invoice &&
-  //       invoiceData?.invoice?.line_items &&
-  //       organizedlineItems
-  //     ) {
-  //         const planItems: object = {};
-
-  //       for (let i = 0; i < organizedlineItems.ke; i++) {
-  //         planItems[organizedlineItems[i].plan_name] = organizedlineItems[i];
-  //       }
-
-  //       return planItems;
-  //     } else {
-  //       return null;
-  //     }
-  //   }, [organizedlineItems]);
-
   return (
     <div>
-      {invoiceData?.invoice !== null && invoiceData?.invoice !== undefined && (
-        <div className="w-full space-y-8">
-          <h2 className="mb-2 pb-4 pt-4 font-bold text-main">
-            Draft Invoice View
-          </h2>
-          <div className="grid grid-cols-3">
-            <p>
-              <b>Issue Date: </b>
-              {dayjs(invoiceData.invoice.subscription.end_date).format(
-                "YYYY/MM/DD HH:mm"
-              )}
-            </p>
-            <p>
-              <b>Currency: </b> {invoiceData.invoice.currency.symbol}
-            </p>
-            <p>
-              <b>Total Cost Due: </b>
-              {invoiceData.invoice.currency.symbol}
-              {invoiceData.invoice.cost_due.toFixed(2)}
-            </p>
-          </div>
-          <Table
-            dataSource={invoiceData.invoice.line_items}
-            pagination={false}
-            expandable={{ expandedRowRender }}
-            columns={[
-              {
-                title: "Name",
-                dataIndex: "name",
-                key: "plan_name",
-                render: (_, record) => (
-                  <div className="flex flex-col">
-                    <p>{record.plan_name}</p>
-                    {record.subscription_filters && (
-                      <p>
-                        {record.subscription_filters.map((filter: any) => {
-                          return (
-                            <span>
-                              {filter.property_name} : {filter.value}
-                            </span>
-                          );
-                        })}
-                      </p>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                title: "Subtotal",
-                dataIndex: "subtotal",
-                render: (_, record) => (
-                  <div className="flex flex-col">
-                    {"$"}
-                    {record.subtotal.toFixed(2)}
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </div>
-      )}
+      <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Draft Invoice View</h2>
+      {invoiceData?.invoices !== null &&
+        invoiceData?.invoices !== undefined &&
+        invoiceData.invoices.map((invoice) => {
+          return (
+            <div className="w-full space-y-8">
+              <div className="grid grid-cols-3">
+                <p>
+                  <b>Issue Date: </b>
+                  {dayjs(invoice.subscription.end_date).format(
+                    "YYYY/MM/DD HH:mm"
+                  )}
+                </p>
+                <p>
+                  <b>Currency: </b> {invoice.currency.name}
+                </p>
+                <p>
+                  <b>Total Cost Due: </b>
+                  {invoice.currency.symbol}
+                  {invoice.cost_due.toFixed(2)}
+                </p>
+              </div>
+              <Table
+                dataSource={invoice.line_items}
+                pagination={false}
+                expandable={{ expandedRowRender: expandedRowRender(invoice) }}
+                columns={[
+                  {
+                    title: "Name",
+                    dataIndex: "name",
+                    key: "plan_name",
+                    render: (_, record) => (
+                      <div className="flex flex-col">
+                        <p>{record.plan_name}</p>
+                        {record.subscription_filters && (
+                          <p>
+                            {record.subscription_filters.map((filter: any) => {
+                              return (
+                                <span>
+                                  {filter.property_name} : {filter.value}
+                                </span>
+                              );
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    title: "Subtotal",
+                    dataIndex: "subtotal",
+                    render: (_, record) => (
+                      <div className="flex flex-col">
+                        {invoice.currency.symbol}
+                        {record.subtotal.toFixed(2)}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          );
+        })}
     </div>
   );
 };

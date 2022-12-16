@@ -1457,7 +1457,12 @@ class PlanVersion(models.Model):
                 version_usage_billing_frequency = USAGE_BILLING_FREQUENCY.END_OF_PERIOD
         self.usage_billing_frequency = version_usage_billing_frequency
         if not self.pricing_unit:
-            self.pricing_unit = self.organization.default_currency
+            if self.organization.default_currency:
+                self.pricing_unit = self.organization.default_currency
+            else:
+                self.pricing_unit = PricingUnit.objects.get(
+                    organization=self.organization, code="USD"
+                )
         super().save(*args, **kwargs)
 
 

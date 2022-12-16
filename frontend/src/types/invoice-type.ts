@@ -13,7 +13,7 @@ export interface InvoiceType {
 }
 
 export interface DraftInvoiceType {
-  invoice: DraftInvoiceType2;
+  invoices: DraftInvoiceType2[];
 }
 export interface DraftInvoiceType2 {
   line_items: ExternalLineItem[];

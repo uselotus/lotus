@@ -187,6 +187,7 @@ class TestCreateSubscription:
             get_subscription_records_in_org(setup_dict["org"])
         )
 
+        setup_dict["payload"]["start_date"] = now_utc()
         response = setup_dict["client"].post(
             reverse("subscription-plans"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),

@@ -71,7 +71,7 @@ class TestCreatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert "display_version" in response.data
         assert (

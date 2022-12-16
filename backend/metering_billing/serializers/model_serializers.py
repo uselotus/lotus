@@ -976,7 +976,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         write_only=True,
-        required=True,
+        required=False,
     )
     # READ-ONLY
     active_subscriptions = serializers.IntegerField(read_only=True)
@@ -1031,15 +1031,17 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        pricing_unit = validated_data.pop("currency_code")
+        pricing_unit = validated_data.pop("currency_code", None)
         components_data = validated_data.pop("plan_components", [])
         if len(components_data) > 0:
-            components = PlanComponentSerializer(many=True).create(
-                [
+            if pricing_unit is not None:
+                data = [
                     {**component_data, "pricing_unit": pricing_unit}
                     for component_data in components_data
                 ]
-            )
+            else:
+                data = components_data
+            components = PlanComponentSerializer(many=True).create(data)
             assert type(components[0]) is PlanComponent
         else:
             components = []
