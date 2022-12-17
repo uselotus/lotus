@@ -129,7 +129,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             <b>Customer Name:</b> {data.customer_name ?? "N/A"}
           </p>
           <p>
-            <b>Customer ID:</b> {<CopyText textToCopy={data.customer_id}/> ?? "N/A"}
+            <b>Customer ID:</b> {<span class="font-menlo">{data.customer_id}</span> ?? "N/A"}
           </p>
           <p>
             <b>Email:</b> {data.email ?? "N/A"}

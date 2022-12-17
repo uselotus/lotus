@@ -277,7 +277,7 @@ export const DeveloperTab = () => {
               dataIndex: "prefix",
               key: "prefix",
               render: (prefix: string) => {
-                return <div>{prefix}•••</div>;
+                return <div className="font-menlo">{prefix}•••</div>
               },
             },
             {
@@ -343,6 +343,9 @@ export const DeveloperTab = () => {
               title: "Webhook URL",
               dataIndex: "webhook_url",
               key: "webhook_url",
+             render: (webhook_url: string, record) => (
+                <CopyText textToCopy={webhook_url} />
+              ),
             },
             {
               title: "Webhook Secret",

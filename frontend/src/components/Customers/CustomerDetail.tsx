@@ -194,7 +194,7 @@ function CustomerDetail(props: {
             <div className="flex flex-row items-center">
               <div className="plansDetailLabel">ID:&nbsp; </div>
               <div className="plansDetailValue font-menlo">
-                  <CopyText textToCopy={data?.customer_id}/>
+                  <CopyText showIcon textToCopy={data?.customer_id}/>
               </div>
             </div>
           </div>

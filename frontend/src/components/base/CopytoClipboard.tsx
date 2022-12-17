@@ -6,10 +6,11 @@ import { Tooltip} from "antd";
 
 interface CopyTextProps {
     textToCopy: string;
-    className?:string
+    className?:string;
+    showIcon?:boolean;
 }
 
-const CopyText: React.FC<CopyTextProps> = ({textToCopy, className}) => {
+const CopyText: React.FC<CopyTextProps> = ({textToCopy, className,showIcon}) => {
     const [copySuccess, setCopySuccess] = useState(false);
 
     const copyToClipBoard = async (copyMe) => {
@@ -36,6 +37,7 @@ const CopyText: React.FC<CopyTextProps> = ({textToCopy, className}) => {
                         <div>Click to Copy <CopyOutlined/></div>}
                 >
                     <span className="text-to-copy font-menlo">{textToCopy}</span>
+                    {!!showIcon &&  <CopyOutlined/>}
                 </Tooltip>
             </div>
         </div>

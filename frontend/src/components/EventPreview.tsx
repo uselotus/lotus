@@ -122,7 +122,7 @@ const EventPreview: FC = () => {
                     </div>
                     <div className="flex align-middle text-[16px]">
                       <p className="leading-[24px]">customer_id: </p>
-                      <p className="infoValue"> <CopyText textToCopy={event.customer_id}/></p>
+                      <p className="infoValue"> <CopyText showIcon textToCopy={event.customer_id}/></p>
                     </div>
                   </div>
                 }
@@ -133,7 +133,7 @@ const EventPreview: FC = () => {
                   <div className="grid grid-cols-2">
                     <div className="flex align-middle text-[16px] ">
                       <p className="leading-[24px]">ID: </p>
-                      <p className="infoValue">  <CopyText textToCopy={event.idempotency_id}/></p>
+                      <p className="infoValue">  <CopyText showIcon textToCopy={event.idempotency_id}/></p>
                     </div>
 
                     <p className="text-[16px]">Properties: </p>

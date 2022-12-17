@@ -12,6 +12,10 @@
 
 }
 
+.text-to-copy {
+    margin:0 10px 0 5px;
+}
+
 .checkedIcon {
     color: white;
     border-radius: 5px;

@@ -147,7 +147,7 @@ const PlanDetails: FC = () => {
               <div className="pr-1 planDetailsLabel">Plan ID:</div>
               <div className="planDetailsValue">
                 {" "}
-                <CopyText textToCopy={plan.plan_id} />
+                <CopyText showIcon textToCopy={plan.plan_id} />
               </div>
             </div>
             <div className="planDetails">

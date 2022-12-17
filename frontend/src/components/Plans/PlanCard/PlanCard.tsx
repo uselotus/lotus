@@ -88,7 +88,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
 
         <div className="planDetails">
           <div className="pr-1 planDetailsLabel">Plan ID:</div>
-          <div className="planDetailsValue planIdOverflow"> <CopyText textToCopy={plan.plan_id}/></div>
+          <div className="planDetailsValue planIdOverflow font-menlo"> {plan.plan_id}</div>
         </div>
 
         <div className="planDetails">
