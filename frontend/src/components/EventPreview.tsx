@@ -9,6 +9,7 @@ import LoadingSpinner from "./LoadingSpinner";
 import dayjs from "dayjs";
 import "./EventPreview.css";
 import CustomPagination from "./CustomPagination/CustomPagination";
+import CopyText from "./base/CopytoClipboard";
 
 const { Panel } = Collapse;
 
@@ -121,7 +122,7 @@ const EventPreview: FC = () => {
                     </div>
                     <div className="flex align-middle text-[16px]">
                       <p className="leading-[24px]">customer_id: </p>
-                      <p className="infoValue"> {event.customer_id}</p>
+                      <p className="infoValue"> <CopyText showIcon textToCopy={event.customer_id}/></p>
                     </div>
                   </div>
                 }
@@ -132,7 +133,7 @@ const EventPreview: FC = () => {
                   <div className="grid grid-cols-2">
                     <div className="flex align-middle text-[16px] ">
                       <p className="leading-[24px]">ID: </p>
-                      <p className="infoValue"> {event.idempotency_id}</p>
+                      <p className="infoValue">  <CopyText showIcon textToCopy={event.idempotency_id}/></p>
                     </div>
 
                     <p className="text-[16px]">Properties: </p>

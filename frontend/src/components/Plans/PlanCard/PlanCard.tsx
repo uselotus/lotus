@@ -8,6 +8,7 @@ import { useMutation, useQueryClient } from "react-query";
 import { Plan } from "../../../api/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import CopyText from "../../base/CopytoClipboard";
 interface PlanCardProps {
   plan: PlanType;
 }
@@ -87,7 +88,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
 
         <div className="planDetails">
           <div className="pr-1 planDetailsLabel">Plan ID:</div>
-          <div className="planDetailsValue planIdOverflow"> {plan.plan_id}</div>
+          <div className="planDetailsValue planIdOverflow font-menlo"> {plan.plan_id}</div>
         </div>
 
         <div className="planDetails">

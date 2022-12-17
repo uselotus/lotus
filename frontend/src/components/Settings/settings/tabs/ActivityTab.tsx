@@ -6,6 +6,7 @@ import { Typography } from "antd";
 import { Organization } from "../../../../api/api";
 import LoadingSpinner from "../../../LoadingSpinner";
 import CustomPagination from "../../../CustomPagination/CustomPagination";
+import {ActionUserType} from "../../../../types/account-type";
 
 export default function ActivityStream() {
   const [cursor, setCursor] = useState<string>("");
@@ -89,13 +90,13 @@ export default function ActivityStream() {
       <div className="w-1/2 justify-center">
         <Paper border={true}>
           <ul role="list" className="divide-y divide-gray-200">
-            {activityItems?.results.map((activityItem) => (
+            {activityItems?.map((activityItem) => (
               <li key={activityItem.id} className="py-4">
                 <div className="flex space-x-3">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold">
-                        User<b> {activityItem.actor.string_repr}</b>
+                        User<b> {activityItem.actor?.string_repr}</b>
                       </h3>
                       <h3 className=" text-gray-500">
                         {dayjs(activityItem.timestamp).format(
@@ -105,12 +106,12 @@ export default function ActivityStream() {
                     </div>
                     <h3 className="m">
                       {activityItem.verb}{" "}
-                      <b>{activityItem.action_object.string_repr}</b> (
-                      {activityItem.action_object.object_type})
+                      <b>{activityItem.action_object?.string_repr}</b> (
+                      {activityItem.action_object?.object_type})
                       {activityItem?.target ? (
                         <h3 className="mt-1">
-                          on <b>{activityItem.target.string_repr}</b> (
-                          {activityItem?.target.object_type})
+                          on <b>{activityItem.target?.string_repr}</b> (
+                          {activityItem?.target?.object_type})
                         </h3>
                       ) : (
                         ""

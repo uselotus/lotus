@@ -24,6 +24,7 @@ import {
   WebhookEndpointCreate,
   WebhookEndpointUpdate,
 } from "../../../../types/webhook-type";
+import CopyText from "../../../base/CopytoClipboard";
 import {
   APIKeyType,
   APIKeyCreate,
@@ -125,7 +126,7 @@ export const DeveloperTab = () => {
         setWebhookSelected(undefined);
       },
       onError: (error) => {
-        toast.error(error.response.data.detail);
+        toast.error(error.response.title);
       },
     }
   );
@@ -144,7 +145,7 @@ export const DeveloperTab = () => {
         setVisible(true);
       },
       onError: (error) => {
-        toast.error(error.response.data.detail);
+        toast.error(error.response.title);
       },
     }
   );
@@ -276,7 +277,7 @@ export const DeveloperTab = () => {
               dataIndex: "prefix",
               key: "prefix",
               render: (prefix: string) => {
-                return <div>{prefix}•••</div>;
+                return <div className="font-menlo">{prefix}•••</div>
               },
             },
             {
@@ -342,11 +343,17 @@ export const DeveloperTab = () => {
               title: "Webhook URL",
               dataIndex: "webhook_url",
               key: "webhook_url",
+             render: (webhook_url: string, record) => (
+                <CopyText textToCopy={webhook_url} />
+              ),
             },
             {
               title: "Webhook Secret",
               dataIndex: "webhook_secret",
               key: "webhook_secret",
+              render: (webhook_secret: string, record) => (
+                <CopyText textToCopy={webhook_secret} />
+              ),
             },
             {
               title: "Triggers",

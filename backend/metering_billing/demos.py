@@ -89,21 +89,21 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
     for _ in range(1):
         customer = Customer.objects.create(
             organization=organization,
-            customer_name="BigCompany " + str(uuid.uuid4())[:6],
+            customer_name="BigCompany " + str(uuid.uuid4().hex)[:6],
         )
         big_customers.append(customer)
     medium_customers = []
     for _ in range(2):
         customer = Customer.objects.create(
             organization=organization,
-            customer_name="MediumCompany " + str(uuid.uuid4())[:6],
+            customer_name="MediumCompany " + str(uuid.uuid4().hex)[:6],
         )
         medium_customers.append(customer)
     small_customers = []
     for _ in range(5):
         customer = Customer.objects.create(
             organization=organization,
-            customer_name="SmallCompany " + str(uuid.uuid4())[:6],
+            customer_name="SmallCompany " + str(uuid.uuid4().hex)[:6],
         )
         small_customers.append(customer)
     calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
@@ -484,7 +484,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                         customer=customer,
                         event_name="generate_text",
                         time_created=tc,
-                        idempotency_id=uuid.uuid4(),
+                        idempotency_id=str(uuid.uuid4().hex),
                         properties={
                             "language": language,
                             "subsection": subsection,
@@ -497,7 +497,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                         customer=customer,
                         event_name="computation",
                         time_created=tc,
-                        idempotency_id=uuid.uuid4(),
+                        idempotency_id=str(uuid.uuid4().hex),
                         properties={
                             "cost": abs(compute_time * random.gauss(ct_mean, ct_sd)),
                         },
@@ -517,7 +517,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                     event_name="log_num_seats",
                     properties=gaussian_users(n, users_mean, users_sd, max_users),
                     time_created=random_date(sub.start_date, sub.end_date, n),
-                    idempotency_id=uuid.uuid4,
+                    idempotency_id=str(uuid.uuid4().hex),
                     _quantity=n,
                 )
 
@@ -590,21 +590,21 @@ def setup_paas_demo(
     for _ in range(1):
         customer = Customer.objects.create(
             organization=organization,
-            customer_name="BigCompany " + str(uuid.uuid4())[:6],
+            customer_name="BigCompany " + str(uuid.uuid4().hex)[:6],
         )
         big_customers.append(customer)
     medium_customers = []
     for _ in range(2):
         customer = Customer.objects.create(
             organization=organization,
-            customer_name="MediumCompany " + str(uuid.uuid4())[:6],
+            customer_name="MediumCompany " + str(uuid.uuid4().hex)[:6],
         )
         medium_customers.append(customer)
     small_customers = []
     for _ in range(5):
         customer = Customer.objects.create(
             organization=organization,
-            customer_name="SmallCompany " + str(uuid.uuid4())[:6],
+            customer_name="SmallCompany " + str(uuid.uuid4().hex)[:6],
         )
         small_customers.append(customer)
     (
