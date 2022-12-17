@@ -9,10 +9,11 @@ from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
+from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import APIToken, Customer, Metric, SubscriptionRecord
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.permissions import HasUserAPIKey
+from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.backtest_serializers import *
 from metering_billing.serializers.model_serializers import *
@@ -42,7 +43,7 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
 class PeriodMetricRevenueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
@@ -52,7 +53,7 @@ class PeriodMetricRevenueView(APIView):
         """
         Returns the revenue for an organization in a given time period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = [
@@ -124,7 +125,7 @@ class PeriodMetricRevenueView(APIView):
 
 
 class CostAnalysisView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[CostAnalysisRequestSerializer],
@@ -134,7 +135,8 @@ class CostAnalysisView(APIView):
         """
         Returns the revenue for an organization in a given time period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
+        organization = request.organization
         serializer = CostAnalysisRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         start_date, end_date, customer_id = [
@@ -146,9 +148,8 @@ class CostAnalysisView(APIView):
                 organization=organization, customer_id=customer_id
             )
         except Customer.DoesNotExist:
-            return Response(
-                {"error": "Customer not found"},
-                status=status.HTTP_404_NOT_FOUND,
+            raise NotFoundException(
+                f"Customer with customer_id: {customer_id} not found"
             )
         per_day_dict = {}
         for period in periods_bwn_twodates(
@@ -237,14 +238,14 @@ class CostAnalysisView(APIView):
 
 
 class PeriodSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[PeriodComparisonRequestSerializer],
         responses={200: PeriodSubscriptionsResponseSerializer},
     )
     def get(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = PeriodComparisonRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         p1_start, p1_end, p2_start, p2_end = [
@@ -287,7 +288,7 @@ class PeriodSubscriptionsView(APIView):
 
 class PeriodMetricUsageView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         parameters=[PeriodMetricUsageRequestSerializer],
@@ -297,7 +298,7 @@ class PeriodMetricUsageView(APIView):
         """
         Return current usage for a customer during a given billing period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = PeriodMetricUsageRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         q_start, q_end, top_n = [
@@ -388,7 +389,7 @@ class PeriodMetricUsageView(APIView):
 
 
 class APIKeyCreate(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         responses={
@@ -404,7 +405,7 @@ class APIKeyCreate(APIView):
         """
         Revokes the current API key and returns a new one.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         tk = APIToken.objects.filter(organization=organization).first()
         if tk:
             cache.delete(tk.prefix)
@@ -427,20 +428,20 @@ class APIKeyCreate(APIView):
 
 
 class SettingsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     def get(self, request, format=None):
         """
         Get the current settings for the organization.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         return Response(
             {"organization": organization.company_name}, status=status.HTTP_200_OK
         )
 
 
 class CustomersSummaryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         responses={200: CustomerSummarySerializer(many=True)},
@@ -449,7 +450,7 @@ class CustomersSummaryView(APIView):
         """
         Get the current settings for the organization.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",
@@ -470,7 +471,7 @@ class CustomersSummaryView(APIView):
 
 class CustomersWithRevenueView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         responses={200: CustomerWithRevenueSerializer(many=True)},
@@ -479,17 +480,15 @@ class CustomersWithRevenueView(APIView):
         """
         Return current usage for a customer during a given billing period.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         customers = Customer.objects.filter(organization=organization)
         cust = []
         for customer in customers:
             total_amount_due = customer.get_outstanding_revenue()
-            next_amount_due = customer.get_active_sub_drafts_revenue()
             serializer = CustomerWithRevenueSerializer(
                 customer,
                 context={
                     "total_amount_due": total_amount_due,
-                    "next_amount_due": next_amount_due,
                 },
             )
             cust.append(serializer.data)
@@ -505,7 +504,7 @@ class DraftInvoiceView(APIView):
         responses={
             200: inline_serializer(
                 name="DraftInvoiceResponse",
-                fields={"invoice": DraftInvoiceSerializer(required=False)},
+                fields={"invoice": DraftInvoiceSerializer(required=False, many=True)},
             )
         },
     )
@@ -513,7 +512,7 @@ class DraftInvoiceView(APIView):
         """
         Pagination-enabled endpoint for retrieving an organization's event stream.
         """
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = DraftInvoiceRequestSerializer(data=request.query_params)
         serializer.is_valid(raise_exception=True)
         try:
@@ -536,7 +535,7 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
             )
-            invoice = generate_invoice(
+            invoices = generate_invoice(
                 sub,
                 sub_records,
                 draft=True,
@@ -544,7 +543,7 @@ class DraftInvoiceView(APIView):
                     "include_next_period", True
                 ),
             )
-            serializer = DraftInvoiceSerializer(invoice).data
+            serializer = DraftInvoiceSerializer(invoices, many=True).data
             try:
                 username = self.request.user.username
             except:
@@ -558,8 +557,9 @@ class DraftInvoiceView(APIView):
                 event="draft_invoice",
                 properties={"organization": organization.company_name},
             )
-            invoice.delete()
-            response = {"invoice": serializer}
+            for invoice in invoices:
+                invoice.delete()
+            response = {"invoices": serializer}
         return Response(response, status=status.HTTP_200_OK)
 
 
@@ -779,7 +779,7 @@ class GetCustomerFeatureAccessView(APIView):
 
 
 class ImportCustomersView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -806,7 +806,7 @@ class ImportCustomersView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
@@ -825,7 +825,7 @@ class ImportCustomersView(APIView):
 
 
 class ImportPaymentObjectsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -852,7 +852,7 @@ class ImportPaymentObjectsView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
@@ -872,7 +872,7 @@ class ImportPaymentObjectsView(APIView):
 
 
 class TransferSubscriptionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -900,7 +900,7 @@ class TransferSubscriptionsView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         source = request.data["source"]
         if source not in [choice[0] for choice in PAYMENT_PROVIDERS.choices]:
             raise ExternalConnectionInvalid(f"Invalid source: {source}")
@@ -920,7 +920,7 @@ class TransferSubscriptionsView(APIView):
 
 
 class ExperimentalToActiveView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=ExperimentalToActiveRequestSerializer(),
@@ -942,7 +942,7 @@ class ExperimentalToActiveView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = ExperimentalToActiveRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         billing_plan = serializer.validated_data["version_id"]
@@ -966,7 +966,7 @@ class ExperimentalToActiveView(APIView):
 
 
 class PlansByNumCustomersView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
         request=inline_serializer(
@@ -993,7 +993,7 @@ class PlansByNumCustomersView(APIView):
         },
     )
     def get(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         plans = (
             SubscriptionRecord.objects.filter(
                 organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
@@ -1047,7 +1047,7 @@ class CustomerBatchCreateView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         serializer = CustomerSerializer(
             data=request.data["customers"],
             many=True,
@@ -1139,7 +1139,7 @@ class ConfirmIdemsReceivedView(APIView):
         },
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         if request.data.get("idempotency_ids") is None:
             return Response(
                 {

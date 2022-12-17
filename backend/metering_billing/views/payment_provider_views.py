@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema
 from metering_billing.auth import parse_organization
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.payment_provider_serializers import (
     PaymentProviderPostRequestSerializer,
     PaymentProviderPostResponseSerializer,
@@ -13,13 +14,13 @@ from rest_framework.views import APIView
 
 
 class PaymentProviderView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
         responses={200: SinglePaymentProviderSerializer(many=True)},
     )
     def get(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         response = []
         for payment_processor_name, pp_obj in PAYMENT_PROVIDER_MAP.items():
             pp_response = {
@@ -37,7 +38,7 @@ class PaymentProviderView(APIView):
         responses={200: PaymentProviderPostResponseSerializer},
     )
     def post(self, request, format=None):
-        organization = parse_organization(request)
+        organization = request.organization
         # parse outer level request
         serializer = PaymentProviderPostRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

@@ -1,7 +1,9 @@
 // @ts-ignore
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
+import { useQueryClient } from "react-query";
 import { Select, Tag } from "antd";
+import { DraftInvoiceType, LineItem } from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
@@ -15,6 +17,12 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     []
   );
   const [isEdit, setIsEdit] = React.useState(false);
+  const queryClient = useQueryClient();
+
+  let invoiceData: DraftInvoiceType | undefined = queryClient.getQueryData([
+    "draft_invoice",
+    data.customer_id,
+  ]);
 
   const updateCustomer = useMutation(
     (obj: { customer_id: string; default_currency_code: string }) =>
@@ -155,8 +163,8 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             )} */}
           </p>
           <p>
-            <b>Amount Due On Next Invoice:</b> {"$"}
-            {data.next_amount_due.toFixed(2)}
+            <b>Amount Due On Next Invoice:</b> {data?.default_currency?.symbol}
+            {invoiceData?.invoices[0].cost_due.toFixed(2)}
           </p>
         </div>
         <div className="grid grid-cols-2 justify-items-center  gap-8 py-4 border-2 border-solid rounded border-[#EAEAEB]">

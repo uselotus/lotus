@@ -61,18 +61,8 @@ SELF_HOSTED = config("SELF_HOSTED", default=False, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = config("PRODUCT_ANALYTICS_OPT_IN", default=True, cast=bool)
 PRODUCT_ANALYTICS_OPT_IN = True if not SELF_HOSTED else PRODUCT_ANALYTICS_OPT_IN
 # Stripe required
-STRIPE_LIVE_SECRET_KEY = config("STRIPE_LIVE_SECRET_KEY", default="sk_live_")
-STRIPE_TEST_SECRET_KEY = config("STRIPE_TEST_SECRET_KEY", default="sk_test_")
-STRIPE_LIVE_MODE = config(
-    "STRIPE_LIVE_MODE", default=(not DEBUG), cast=bool
-)  # Matches debug
-STRIPE_SECRET_KEY = (
-    STRIPE_LIVE_SECRET_KEY if STRIPE_LIVE_MODE else STRIPE_TEST_SECRET_KEY
-)
-# Get it from the section in the Stripe dashboard where you added the webhook endpoint
-DJSTRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
-DJSTRIPE_USE_NATIVE_JSONFIELD = True
-DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="whsec_")
 # Webhooks for Svix
 SVIX_API_KEY = config("SVIX_API_KEY", default="")
 SVIX_JWT_SECRET = config("SVIX_JWT_SECRET", default="")
@@ -128,7 +118,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "corsheaders",
-    "social_django",
     "djmoney",
     "django_extensions",
     "django_celery_beat",
@@ -139,7 +128,6 @@ INSTALLED_APPS = [
     "anymail",
     "metering_billing",
     "actstream",
-    "djstripe",
     "drf_standardized_errors",
 ]
 
@@ -183,6 +171,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "metering_billing.middleware.OrganizationInsertMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
 ]
 
@@ -286,7 +275,7 @@ if type(KAFKA_EVENTS_TOPIC) is bytes:
     KAFKA_EVENTS_TOPIC = KAFKA_EVENTS_TOPIC.decode("utf-8")
 KAFKA_NUM_PARTITIONS = config("NUM_PARTITIONS", default=10, cast=int)
 KAFKA_REPLICATION_FACTOR = config("REPLICATION_FACTOR", default=1, cast=int)
-KAFKA_HOST = config("KAFKA_URL", default="redpanda:29092")
+KAFKA_HOST = config("KAFKA_URL", default="127.0.0.1:9092")
 if KAFKA_HOST:
     if "," not in KAFKA_HOST:
         KAFKA_HOST = KAFKA_HOST
@@ -456,7 +445,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "metering_billing.permissions.HasUserAPIKey",
+        "metering_billing.permissions.ValidOrganization",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
@@ -528,7 +517,6 @@ SPECTACULAR_SETTINGS = {
         "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
         "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
-        "SubscriptionStatusEnum": "metering_billing.utils.enums.SUBSCRIPTION_STATUS.choices",
         "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",
         "PlanStatusEnum": "metering_billing.utils.enums.PLAN_STATUS.choices",
         "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",

@@ -3,10 +3,17 @@ import datetime
 import uuid
 from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
+from typing import Iterator, List, Sequence, Type
 
 import pytz
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
+from django.apps import apps
+from django.apps.registry import Apps
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.db import connection, transaction
+from django.db.models import Field, Model
 from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import ServerError
 from metering_billing.utils.enums import (
@@ -15,6 +22,9 @@ from metering_billing.utils.enums import (
     USAGE_CALC_GRANULARITY,
 )
 from numpy import isin
+
+ModelType = Type[Model]
+Fields = List[Field]
 
 
 def convert_to_decimal(value):
@@ -179,7 +189,7 @@ def periods_bwn_twodates(
         )
         end_time = end_time + normalize_rd if truncate_to_granularity else end_time
         ret = start_time
-        while ret < end_time:
+        while ret <= end_time:
             yield ret
             ret = start_time + k * rd
             k += 1
@@ -290,7 +300,6 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, day=day_anchor, days=-1)
             )
-            print("original end date: ", end_date)
             rd = relativedelta(end_date, start_date)
             if rd.months >= 3 and (
                 rd.days > 0
@@ -307,7 +316,6 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                     rd = relativedelta(end_date, start_date)
                     i -= 1
             elif end_date < start_date:
-                print("aha")
                 old_end_date = end_date
                 rd = relativedelta(end_date, old_end_date)
                 i = 0
@@ -317,7 +325,6 @@ def calculate_end_date(interval, start_date, day_anchor=None, month_anchor=None)
                     )
                     rd = relativedelta(end_date, old_end_date)
                     i += 1
-                print("new end date: ", end_date)
         elif month_anchor and not day_anchor:
             end_date = date_as_max_dt(
                 start_date + relativedelta(month=month_anchor, days=-1)

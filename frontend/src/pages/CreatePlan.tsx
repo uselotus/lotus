@@ -23,13 +23,15 @@ import {
   InitialExternalLinks,
   PlanType,
 } from "../types/plan-type";
-import { Plan } from "../api/api";
+import { Plan, Organization, PricingUnits } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import LinkExternalIds from "../components/Plans/LinkExternalIds";
 import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
+import { PricingUnit } from "../types/pricing-unit-type";
+import { formatTimeStr } from "antd/lib/statistic/utils";
 
 interface ComponentDisplay {
   metric: string;
@@ -49,6 +51,12 @@ const durationConversion = {
 const CreatePlan = () => {
   const [componentVisible, setcomponentVisible] = useState<boolean>();
   const [allPlans, setAllPlans] = useState<PlanType[]>([]);
+  const [allCurrencies, setAllCurrencies] = useState<PricingUnit[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState<PricingUnit>({
+    symbol: "",
+    code: "",
+    name: "",
+  });
   const [featureVisible, setFeatureVisible] = useState<boolean>(false);
   const [priceAdjustmentType, setPriceAdjustmentType] =
     useState<string>("none");
@@ -66,6 +74,20 @@ const CreatePlan = () => {
   useEffect(() => {
     if (!allPlans?.length) {
       Plan.getPlans().then((data) => setAllPlans(data));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!allCurrencies?.length) {
+      Organization.get().then((res) => {
+        setAllCurrencies(res[0].available_currencies);
+        setSelectedCurrency(res[0].default_currency);
+        if (res[0].default_currency) {
+          form.setFieldsValue({
+            plan_currency: res[0].default_currency.code,
+          });
+        }
+      });
     }
   }, []);
 
@@ -196,7 +218,6 @@ const CreatePlan = () => {
         if (values.usage_billing_frequency === "yearly") {
           values.usage_billing_frequency = "end_of_period";
         }
-
         const initialPlanVersion: CreateInitialVersionType = {
           description: values.description,
           flat_fee_billing_type: values.flat_fee_billing_type,
@@ -205,6 +226,7 @@ const CreatePlan = () => {
           components: usagecomponentslist,
           features: planFeatures,
           usage_billing_frequency: values.usage_billing_frequency,
+          currency_code: values.plan_currency,
         };
         if (
           values.price_adjustment_type !== undefined &&
@@ -386,7 +408,10 @@ const CreatePlan = () => {
 
                     <Form.Item name="flat_rate" label="Base Cost">
                       <InputNumber
-                        addonBefore="$"
+                        controls={false}
+                        addonBefore={
+                          selectedCurrency ? selectedCurrency.symbol : "-"
+                        }
                         defaultValue={0}
                         precision={2}
                       />
@@ -421,12 +446,34 @@ const CreatePlan = () => {
                     </Form.Item>
                     <Form.Item
                       name="initial_external_links"
-                      label="Link External ids"
+                      label="Link External IDs"
                     >
                       <LinkExternalIds
                         externalIds={[]}
                         setExternalLinks={setExternalLinks}
                       />
+                    </Form.Item>
+                    <Form.Item name="plan_currency" label="Plan Currency">
+                      <Select
+                        onChange={(value) => {
+                          const selectedCurrency = allCurrencies.find(
+                            (currency) => currency.code === value
+                          );
+                          if (selectedCurrency) {
+                            setSelectedCurrency(selectedCurrency);
+                          }
+                        }}
+                        value={selectedCurrency?.symbol}
+                      >
+                        {allCurrencies.map((currency) => (
+                          <Select.Option
+                            key={currency.code}
+                            value={currency.code}
+                          >
+                            {currency.name} {currency.symbol}
+                          </Select.Option>
+                        ))}
+                      </Select>
                     </Form.Item>
                   </Card>
                 </Col>
@@ -462,6 +509,7 @@ const CreatePlan = () => {
                     componentsData={componentsData}
                     handleComponentEdit={handleComponentEdit}
                     deleteComponent={deleteComponent}
+                    pricing_unit={selectedCurrency}
                   />
                 </Form.Item>
                 <div className="inset-x-0 bottom-0 justify-center self-end">
@@ -576,9 +624,10 @@ const CreatePlan = () => {
                           priceAdjustmentType === "percentage" ? "%" : null
                         }
                         addonBefore={
-                          priceAdjustmentType === "fixed" ||
-                          priceAdjustmentType === "price_override"
-                            ? "$"
+                          (priceAdjustmentType === "fixed" ||
+                            priceAdjustmentType === "price_override") &&
+                          selectedCurrency
+                            ? selectedCurrency.symbol
                             : null
                         }
                       />
@@ -598,6 +647,7 @@ const CreatePlan = () => {
             handleComponentAdd={handleComponentAdd}
             editComponentItem={editComponentItem}
             setEditComponentsItem={setEditComponentsItem}
+            currency={selectedCurrency}
           />
         )}
         {featureVisible && (

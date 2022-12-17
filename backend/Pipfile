@@ -35,7 +35,6 @@ django-redis = "*"
 posthog = "*"
 python-decouple = "*"
 celery = {extras = ["redis"], version = "*"}
-social-auth-app-django = "*"
 model-bakery = "*"
 django-simple-history = "<3.1.1"
 django-rest-knox = "*"
@@ -43,13 +42,11 @@ django-anymail = {extras = ["mailgun"], version = "*"}
 numpy = "*"
 pytz = "*"
 django-activity-stream = "*"
-dj-stripe = "*"
-lotus-python = ">=0.1.1"
+lotus-python = ">=0.2.0"
 kafka-python = "*"
 kafka-helper = "*"
 cronitor = "*"
 svix = "*"
-drf-nested-routers = "*"
 pyjwt = "*"
 drf-standardized-errors = {extras = ["openapi"], version = "*"}
 

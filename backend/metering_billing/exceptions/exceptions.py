@@ -21,6 +21,12 @@ class NoMatchingAPIKey(APIException):
     default_code = "api_key_not_known"
 
 
+class NoAPIKeyProvided(APIException):
+    status_code = 401
+    default_detail = "No API key provided"
+    default_code = "no_api_key_provided"
+
+
 class DuplicateWebhookEndpoint(APIException):
     status_code = 400
     default_detail = "Webhook endpoint already exists"
@@ -57,9 +63,9 @@ class SwitchPlanSamePlanException(APIException):
     default_code = "invalid_state"
 
 
-class SubscriptionNotFoundException(APIException):
+class NotFoundException(APIException):
     status_code = 404
-    default_detail = "Subscription with given customer_id and plan_id not found"
+    default_detail = "Resource was not found"
     default_code = "resource_not_found"
 
 
@@ -115,3 +121,9 @@ class MethodNotAllowed(APIException):
     status_code = 405
     default_detail = "Method not allowed"
     default_code = "method_not_allowed"
+
+
+class StripeWebhookFailure(APIException):
+    status_code = 400
+    default_detail = "Stripe webhook invalid"
+    default_code = "stripe_webhook_invalid"

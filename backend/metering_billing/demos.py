@@ -29,7 +29,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
-    SUBSCRIPTION_STATUS,
 )
 from model_bakery import baker
 
@@ -57,6 +56,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         organization = Organization.objects.get(company_name=company_name)
         user = organization.users.all().first()
         WebhookEndpoint.objects.filter(organization=organization).delete()
+        WebhookTrigger.objects.filter(organization=organization).delete()
         Subscription.objects.filter(organization=organization).delete()
         PlanVersion.objects.filter(organization=organization).delete()
         Plan.objects.filter(organization=organization).delete()
@@ -74,6 +74,16 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         SubscriptionRecord.objects.filter(organization=organization).delete()
         Backtest.objects.filter(organization=organization).delete()
         PricingUnit.objects.filter(organization=organization).delete()
+        NumericFilter.objects.filter(organization=organization).delete()
+        CategoricalFilter.objects.filter(organization=organization).delete()
+        PriceTier.objects.filter(organization=organization).delete()
+        PlanComponent.objects.filter(organization=organization).delete()
+        InvoiceLineItem.objects.filter(organization=organization).delete()
+        BacktestSubstitution.objects.filter(organization=organization).delete()
+        CustomPricingUnitConversion.objects.filter(organization=organization).delete()
+        if user is None:
+            organization.delete()
+            return
     organization = user.organization
     big_customers = []
     for _ in range(1):
@@ -159,9 +169,11 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
-        plan_version=free_bp, billable_metric=sum_words, free_units=2_000
+        organization, plan_version=free_bp, billable_metric=sum_words, free_units=2_000
     )
-    create_pc_and_tiers(plan_version=free_bp, billable_metric=num_seats, free_units=1)
+    create_pc_and_tiers(
+        organization, plan_version=free_bp, billable_metric=num_seats, free_units=1
+    )
     plan.display_version = free_bp
     plan.save()
     plan = Plan.objects.create(
@@ -181,9 +193,14 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
-        plan_version=bp_10_og, billable_metric=sum_words, free_units=10_000
+        organization,
+        plan_version=bp_10_og,
+        billable_metric=sum_words,
+        free_units=10_000,
     )
-    create_pc_and_tiers(plan_version=bp_10_og, billable_metric=num_seats, free_units=5)
+    create_pc_and_tiers(
+        organization, plan_version=bp_10_og, billable_metric=num_seats, free_units=5
+    )
     plan.display_version = bp_10_og
     plan.save()
     plan = Plan.objects.create(
@@ -203,9 +220,14 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
-        plan_version=bp_25_og, billable_metric=sum_words, free_units=25_000
+        organization,
+        plan_version=bp_25_og,
+        billable_metric=sum_words,
+        free_units=25_000,
     )
-    create_pc_and_tiers(plan_version=bp_25_og, billable_metric=num_seats, free_units=5)
+    create_pc_and_tiers(
+        organization, plan_version=bp_25_og, billable_metric=num_seats, free_units=5
+    )
     plan.display_version = bp_25_og
     plan.save()
     plan = Plan.objects.create(
@@ -225,9 +247,14 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
-        plan_version=bp_50_og, billable_metric=sum_words, free_units=50_000
+        organization,
+        plan_version=bp_50_og,
+        billable_metric=sum_words,
+        free_units=50_000,
     )
-    create_pc_and_tiers(plan_version=bp_50_og, billable_metric=num_seats, free_units=5)
+    create_pc_and_tiers(
+        organization, plan_version=bp_50_og, billable_metric=num_seats, free_units=5
+    )
     plan.display_version = bp_50_og
     plan.save()
     plan = Plan.objects.create(
@@ -247,9 +274,13 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
-        plan_version=bp_10_compute_seats, billable_metric=sum_words, free_units=10_000
+        organization,
+        plan_version=bp_10_compute_seats,
+        billable_metric=sum_words,
+        free_units=10_000,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=bp_10_compute_seats,
         billable_metric=sum_compute,
         free_units=75,
@@ -257,6 +288,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         metric_units_per_batch=10,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=bp_10_compute_seats,
         billable_metric=num_seats,
         free_units=None,
@@ -282,9 +314,13 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
-        plan_version=bp_25_compute_seats, billable_metric=sum_words, free_units=25_000
+        organization,
+        plan_version=bp_25_compute_seats,
+        billable_metric=sum_words,
+        free_units=25_000,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=bp_25_compute_seats,
         billable_metric=sum_compute,
         free_units=100,
@@ -292,6 +328,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         metric_units_per_batch=10,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=bp_25_compute_seats,
         billable_metric=num_seats,
         free_units=None,
@@ -317,9 +354,13 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
-        plan_version=bp_50_compute_seats, billable_metric=sum_words, free_units=50_000
+        organization,
+        plan_version=bp_50_compute_seats,
+        billable_metric=sum_words,
+        free_units=50_000,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=bp_50_compute_seats,
         billable_metric=sum_compute,
         free_units=200,
@@ -327,6 +368,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         metric_units_per_batch=10,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=bp_50_compute_seats,
         billable_metric=num_seats,
         free_units=None,
@@ -502,11 +544,6 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
     now = now_utc()
-    Subscription.objects.filter(
-        organization=organization,
-        status=SUBSCRIPTION_STATUS.ENDED,
-        end_date__gt=now,
-    ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
     SubscriptionRecord.objects.filter(
         organization=organization,
         status=SUBSCRIPTION_STATUS.ENDED,
@@ -524,6 +561,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         backtest=backtest,
         original_plan=bp_10_compute_seats,
         new_plan=bp_10_og,
+        organization=organization,
     )
     run_backtest.delay(backtest.backtest_id)
     return user
@@ -639,6 +677,7 @@ def setup_paas_demo(
         flat_rate=125,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=basic_plan,
         billable_metric=tntxns,
         free_units=None,
@@ -647,7 +686,10 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=basic_plan, billable_metric=tntxns_rate, free_units=50
+        organization,
+        plan_version=basic_plan,
+        billable_metric=tntxns_rate,
+        free_units=50,
     )
     plan.display_version = basic_plan
     plan.save()
@@ -667,6 +709,7 @@ def setup_paas_demo(
         flat_rate=0,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=professional_plan,
         billable_metric=valnodes,
         free_units=2,
@@ -675,6 +718,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=professional_plan,
         billable_metric=rpcnodes,
         free_units=2,
@@ -683,6 +727,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=professional_plan,
         billable_metric=ixnodes,
         free_units=2,
@@ -691,6 +736,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=professional_plan,
         billable_metric=evixnodes,
         free_units=2,
@@ -699,6 +745,7 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=professional_plan,
         billable_metric=tntxns,
         free_units=None,
@@ -707,9 +754,13 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=professional_plan, billable_metric=tntxns_rate, free_units=50
+        organization,
+        plan_version=professional_plan,
+        billable_metric=tntxns_rate,
+        free_units=50,
     )
     create_pc_and_tiers(
+        organization,
         plan_version=professional_plan,
         billable_metric=mntxns,
         free_units=None,
@@ -718,7 +769,10 @@ def setup_paas_demo(
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
-        plan_version=professional_plan, billable_metric=mntxns_rate, free_units=100
+        organization,
+        plan_version=professional_plan,
+        billable_metric=mntxns_rate,
+        free_units=100,
     )
     plan.display_version = professional_plan
     plan.save()
@@ -729,6 +783,7 @@ def setup_paas_demo(
 
 
 def create_pc_and_tiers(
+    organization,
     plan_version,
     billable_metric,
     max_units=None,
@@ -739,6 +794,7 @@ def create_pc_and_tiers(
     pc = PlanComponent.objects.create(
         plan_version=plan_version,
         billable_metric=billable_metric,
+        organization=organization,
     )
     range_start = 0
     if free_units is not None:
@@ -747,6 +803,7 @@ def create_pc_and_tiers(
             range_start=0,
             range_end=free_units,
             type=PRICE_TIER_TYPE.FREE,
+            organization=organization,
         )
         range_start = free_units
     if cost_per_batch is not None:
@@ -757,6 +814,7 @@ def create_pc_and_tiers(
             type=PRICE_TIER_TYPE.PER_UNIT,
             cost_per_batch=cost_per_batch,
             metric_units_per_batch=metric_units_per_batch,
+            organization=organization,
         )
 
 
@@ -811,7 +869,6 @@ def make_subscription_and_subscription_record(
         customer=customer,
         start_date=start_date,
         end_date=end_date,
-        status=SUBSCRIPTION_STATUS.ACTIVE,
     )
     sub.handle_attach_plan(
         plan.day_anchor, plan.month_anchor, start_date, plan.plan.plan_duration

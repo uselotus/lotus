@@ -74,9 +74,14 @@ class Organization(models.Model):
     )
     is_demo = models.BooleanField(default=False)
     default_currency = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     webhooks_provisioned = models.BooleanField(default=False)
+    currencies_provisioned = models.IntegerField(default=0)
     history = HistoricalRecords()
 
     def __str__(self):
@@ -88,9 +93,14 @@ class Organization(models.Model):
                 raise ExternalConnectionInvalid(
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
-        if not self.default_currency:
-            self.default_currency = PricingUnit.objects.filter(code="USD").first()
+        new = self.pk is None
         super(Organization, self).save(*args, **kwargs)
+        if new:
+            self.provision_currencies()
+        if not self.default_currency:
+            self.default_currency = PricingUnit.objects.get(
+                organization=self, code="USD"
+            )
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
@@ -100,8 +110,21 @@ class Organization(models.Model):
                 ApplicationIn(uid=self.organization_id, name=self.company_name)
             )
             self.webhooks_provisioned = True
-            print("webhooks provisioned")
         self.save()
+
+    def provision_currencies(self):
+        if SUPPORTED_CURRENCIES_VERSION != self.currencies_provisioned:
+            for name, code, symbol in SUPPORTED_CURRENCIES:
+                PricingUnit.objects.get_or_create(
+                    organization=self, code=code, name=name, symbol=symbol, custom=False
+                )
+            PricingUnit.objects.filter(
+                ~Q(code__in=[code for _, code, _ in SUPPORTED_CURRENCIES]),
+                custom=False,
+                organization=self,
+            ).delete()
+            self.currencies_provisioned = SUPPORTED_CURRENCIES_VERSION
+            self.save()
 
 
 class WebhookEndpointManager(models.Manager):
@@ -221,6 +244,12 @@ class WebhookEndpoint(models.Model):
 
 
 class WebhookTrigger(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="webhook_triggers",
+        null=True,
+    )
     webhook_endpoint = models.ForeignKey(
         WebhookEndpoint, on_delete=models.CASCADE, related_name="triggers"
     )
@@ -276,18 +305,39 @@ class Customer(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="customers"
+        Organization, on_delete=models.CASCADE, related_name="customers"
     )
-    customer_name = models.CharField(max_length=100, null=True, blank=True)
-    email = models.EmailField(max_length=100, blank=True, null=True)
-    customer_id = models.CharField(max_length=50, default=customer_uuid)
+    customer_name = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="The display name of the customer",
+    )
+    email = models.EmailField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
+    )
+    customer_id = models.CharField(
+        max_length=50,
+        default=customer_uuid,
+        help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
+    )
     payment_provider = models.CharField(
         blank=True, null=True, choices=PAYMENT_PROVIDERS.choices, max_length=40
     )
     integrations = models.JSONField(default=dict, blank=True, null=True)
-    properties = models.JSONField(default=dict, blank=True, null=True)
+    properties = models.JSONField(
+        default=dict, blank=True, null=True, help_text="Extra metadata for the customer"
+    )
     default_currency = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
+        help_text="The currency the customer will be invoiced in",
     )
     history = HistoricalRecords()
 
@@ -323,9 +373,8 @@ class Customer(models.Model):
         ).update(customer=self)
 
     def get_subscription_and_records(self):
-        active_subscription = self.subscriptions.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).first()
+        now = now_utc()
+        active_subscription = self.subscriptions.active().first()
         if active_subscription:
             active_subscription_records = self.subscription_records.filter(
                 next_billing_date__range=(
@@ -338,19 +387,11 @@ class Customer(models.Model):
             active_subscription_records = None
         return active_subscription, active_subscription_records
 
-    def get_billing_plan_names(self) -> str:
-        subscription_set = Subscription.objects.filter(
-            customer=self, status=SUBSCRIPTION_STATUS.ACTIVE
-        )
-        if subscription_set is None:
-            return "None"
-        return [str(sub.billing_plan) for sub in subscription_set]
-
     def get_usage_and_revenue(self):
         customer_subscriptions = (
-            Subscription.objects.filter(
+            Subscription.objects.active()
+            .filter(
                 customer=self,
-                status=SUBSCRIPTION_STATUS.ACTIVE,
                 organization=self.organization,
             )
             .prefetch_related("billing_plan__plan_components")
@@ -371,14 +412,15 @@ class Customer(models.Model):
         total = 0
         sub, sub_records = self.get_subscription_and_records()
         if sub is not None and sub_records is not None:
-            inv = generate_invoice(
+            invs = generate_invoice(
                 sub,
                 sub_records,
                 draft=True,
                 charge_next_plan=True,
             )
-            total += inv.cost_due
-            inv.delete()
+            total += sum([inv.cost_due for inv in invs])
+            for inv in invs:
+                inv.delete()
         return total
 
     def get_currency_balance(self, currency):
@@ -393,7 +435,6 @@ class Customer(models.Model):
     def get_outstanding_revenue(self):
         unpaid_invoice_amount_due = (
             self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
-            .exclude(subscription__status=SUBSCRIPTION_STATUS.ACTIVE)
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
@@ -417,7 +458,11 @@ class CustomerBalanceAdjustment(models.Model):
     )
     amount = models.DecimalField(decimal_places=10, max_digits=20)
     pricing_unit = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     description = models.TextField(null=True, blank=True)
     created = models.DateTimeField(default=now_utc)
@@ -534,6 +579,7 @@ class CustomerBalanceAdjustment(models.Model):
         now = now_utc()
         adjs = CustomerBalanceAdjustment.objects.filter(
             Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            organization=customer.organization,
             customer=customer,
             pricing_unit=pricing_unit,
             amount__gt=0,
@@ -570,6 +616,7 @@ class CustomerBalanceAdjustment(models.Model):
         now = now_utc()
         adjs = CustomerBalanceAdjustment.objects.filter(
             Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+            organization=customer.organization,
             customer=customer,
             pricing_unit=pricing_unit,
             amount__gt=0,
@@ -582,6 +629,58 @@ class CustomerBalanceAdjustment(models.Model):
 
 
 class Event(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
+    )
+    cust_id = models.CharField(max_length=50, null=True, blank=True)
+    event_name = models.CharField(
+        max_length=100,
+        null=False,
+        help_text="String name of the event, corresponds to definition in metrics",
+    )
+    time_created = models.DateTimeField(
+        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+    )
+    properties = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
+    )
+    idempotency_id = models.CharField(
+        max_length=255,
+        default=event_uuid,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
+        primary_key=True,
+    )
+    inserted_at = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        managed = False
+        db_table = "metering_billing_usageevent"
+        unique_together = ("idempotency_id", "time_created")
+        indexes = [
+            models.Index(
+                fields=["organization", "event_name", "customer", "time_created"]
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            str(self.event_name)[:6]
+            + "-"
+            + str(self.customer.customer_name)[:6]
+            + "-"
+            + str(self.time_created)[:10]
+            + "-"
+            + str(self.idempotency_id)[:6]
+        )
+
+
+class OldEvent(models.Model):
     """
     Event object. An explanation of the Event's fields follows:
     event_name: The type of event that occurred.
@@ -591,16 +690,32 @@ class Event(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, related_name="+"
+        Organization, on_delete=models.SET_NULL, related_name="+", null=True, blank=True
     )
     customer = models.ForeignKey(
         Customer, on_delete=models.CASCADE, related_name="+", null=True, blank=True
     )
     cust_id = models.CharField(max_length=50, null=True, blank=True)
-    event_name = models.CharField(max_length=200, null=False)
-    time_created = models.DateTimeField()
-    properties = models.JSONField(default=dict, blank=True, null=True)
-    idempotency_id = models.CharField(max_length=255, default=event_uuid)
+    event_name = models.CharField(
+        max_length=200,
+        null=False,
+        help_text="String name of the event, corresponds to definition in metrics",
+    )
+    time_created = models.DateTimeField(
+        help_text="The time that the event occured, represented as a datetime in ISO 8601 in the UTC timezome."
+    )
+    properties = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
+    )
+    idempotency_id = models.CharField(
+        max_length=255,
+        default=event_uuid,
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
+    )
+    inserted_at = models.DateTimeField(default=now_utc)
 
     class Meta:
         ordering = ["time_created", "idempotency_id"]
@@ -610,12 +725,24 @@ class Event(models.Model):
 
 
 class NumericFilter(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="numeric_filters",
+        null=True,
+    )
     property_name = models.CharField(max_length=100)
     operator = models.CharField(max_length=10, choices=NUMERIC_FILTER_OPERATORS.choices)
     comparison_value = models.FloatField()
 
 
 class CategoricalFilter(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="categorical_filters",
+        null=True,
+    )
     property_name = models.CharField(max_length=100)
     operator = models.CharField(
         max_length=10, choices=CATEGORICAL_FILTER_OPERATORS.choices
@@ -624,11 +751,9 @@ class CategoricalFilter(models.Model):
 
 
 class Metric(models.Model):
-    # meta
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        null=False,
         related_name="billable_metrics",
     )
     event_name = models.CharField(max_length=200)
@@ -777,6 +902,9 @@ class UsageRevenueSummary(TypedDict):
 
 
 class PriceTier(models.Model):
+    organization = models.ForeignKey(
+        "Organization", on_delete=models.CASCADE, related_name="price_tiers", null=True
+    )
     plan_component = models.ForeignKey(
         "PlanComponent",
         on_delete=models.CASCADE,
@@ -841,6 +969,12 @@ class PriceTier(models.Model):
 
 
 class PlanComponent(models.Model):
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        related_name="plan_components",
+        null=True,
+    )
     billable_metric = models.ForeignKey(
         Metric,
         on_delete=models.CASCADE,
@@ -864,7 +998,7 @@ class PlanComponent(models.Model):
     )
     pricing_unit = models.ForeignKey(
         "PricingUnit",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="+",
         null=True,
         blank=True,
@@ -883,6 +1017,8 @@ class PlanComponent(models.Model):
         if self.separate_by is None:
             self.separate_by = []
         assert isinstance(self.separate_by, list)
+        if not self.pricing_unit:
+            self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
 
     def calculate_total_revenue(
@@ -937,7 +1073,7 @@ class PlanComponent(models.Model):
             proration_granularity = self.proration_granularity
 
             usage_normalization_factor = get_granularity_ratio(
-                metric_granularity, proration_granularity, start_date
+                metric_granularity, proration_granularity, period_start
             )
             # extract usage
             separated_usage = all_usage.get(
@@ -1035,7 +1171,7 @@ class PlanComponent(models.Model):
             proration_granularity = self.proration_granularity
 
             usage_normalization_factor = get_granularity_ratio(
-                metric_granularity, proration_granularity, start_date
+                metric_granularity, proration_granularity, period_start
             )
             # extract usage
             for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
@@ -1070,7 +1206,7 @@ class PlanComponent(models.Model):
 
 class Feature(models.Model):
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="features"
+        Organization, on_delete=models.CASCADE, related_name="features"
     )
     feature_name = models.CharField(max_length=200, null=False)
     feature_description = models.CharField(max_length=200, blank=True, null=True)
@@ -1078,9 +1214,8 @@ class Feature(models.Model):
     class Meta:
         unique_together = ("organization", "feature_name")
 
-
-def __str__(self):
-    return str(self.feature_name)
+    def __str__(self):
+        return str(self.feature_name)
 
 
 class Invoice(models.Model):
@@ -1106,10 +1241,10 @@ class Invoice(models.Model):
         choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True, blank=True
     )
     organization = models.ForeignKey(
-        Organization, on_delete=models.SET_NULL, null=True, related_name="invoices"
+        Organization, on_delete=models.CASCADE, related_name="invoices", null=True
     )
     customer = models.ForeignKey(
-        Customer, on_delete=models.SET_NULL, null=True, related_name="invoices"
+        Customer, on_delete=models.CASCADE, null=True, related_name="invoices"
     )
     subscription = models.ForeignKey(
         "Subscription",
@@ -1166,6 +1301,12 @@ class Invoice(models.Model):
 
 
 class InvoiceLineItem(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="invoice_line_items",
+        null=True,
+    )
     name = models.CharField(max_length=200)
     start_date = models.DateTimeField(max_length=100, default=now_utc)
     end_date = models.DateTimeField(max_length=100, default=now_utc)
@@ -1176,7 +1317,11 @@ class InvoiceLineItem(models.Model):
         decimal_places=10, max_digits=20, default=Decimal(0.0)
     )
     pricing_unit = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     billing_type = models.CharField(
         max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, null=True, blank=True
@@ -1189,7 +1334,7 @@ class InvoiceLineItem(models.Model):
     )
     associated_subscription_record = models.ForeignKey(
         "SubscriptionRecord",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         related_name="line_items",
     )
@@ -1232,7 +1377,6 @@ class PlanVersion(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        null=False,
         related_name="plan_versions",
     )
     description = models.CharField(max_length=200, null=True, blank=True)
@@ -1246,11 +1390,11 @@ class PlanVersion(models.Model):
     plan = models.ForeignKey("Plan", on_delete=models.CASCADE, related_name="versions")
     status = models.CharField(max_length=40, choices=PLAN_VERSION_STATUS.choices)
     replace_with = models.ForeignKey(
-        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="+"
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     transition_to = models.ForeignKey(
         "Plan",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="transition_from",
@@ -1260,7 +1404,7 @@ class PlanVersion(models.Model):
     )
     features = models.ManyToManyField(Feature, blank=True)
     price_adjustment = models.ForeignKey(
-        "PriceAdjustment", on_delete=models.CASCADE, null=True, blank=True
+        "PriceAdjustment", on_delete=models.SET_NULL, null=True, blank=True
     )
     day_anchor = models.SmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(31)],
@@ -1275,14 +1419,18 @@ class PlanVersion(models.Model):
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="created_plan_versions",
         null=True,
         blank=True,
     )
     version_id = models.CharField(max_length=250, default=plan_version_uuid)
     pricing_unit = models.ForeignKey(
-        "PricingUnit", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     history = HistoricalRecords()
 
@@ -1310,6 +1458,13 @@ class PlanVersion(models.Model):
             if version_usage_billing_frequency == USAGE_BILLING_FREQUENCY.QUARTERLY:
                 version_usage_billing_frequency = USAGE_BILLING_FREQUENCY.END_OF_PERIOD
         self.usage_billing_frequency = version_usage_billing_frequency
+        if not self.pricing_unit:
+            if self.organization.default_currency:
+                self.pricing_unit = self.organization.default_currency
+            else:
+                self.pricing_unit = PricingUnit.objects.get(
+                    organization=self.organization, code="USD"
+                )
         super().save(*args, **kwargs)
 
 
@@ -1355,7 +1510,11 @@ class Plan(models.Model):
     plan_name = models.CharField(max_length=100, null=False, blank=False)
     plan_duration = models.CharField(choices=PLAN_DURATION.choices, max_length=40)
     display_version = models.ForeignKey(
-        "PlanVersion", on_delete=models.CASCADE, related_name="+", null=True, blank=True
+        "PlanVersion",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
     )
     parent_product = models.ForeignKey(
         Product,
@@ -1371,21 +1530,21 @@ class Plan(models.Model):
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="created_plans",
         null=True,
         blank=True,
     )
     parent_plan = models.ForeignKey(
         "self",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="child_plans",
     )
     target_customer = models.ForeignKey(
         Customer,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="custom_plans",
@@ -1516,7 +1675,6 @@ class Plan(models.Model):
                             organization=self.organization,
                             customer=sub.customer,
                             start_date=sub.end_date,
-                            status=SUBSCRIPTION_STATUS.ACTIVE,
                             auto_renew=True,
                             is_new=False,
                         )
@@ -1541,12 +1699,28 @@ class ExternalPlanLink(models.Model):
         unique_together = ("organization", "source", "external_plan_id")
 
 
+class SubscriptionManager(models.Manager):
+    def active(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(
+            Q(start_date__lte=time) & (Q(end_date__gte=time) | Q(end_date__isnull=True))
+        )
+
+    def ended(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(end_date__lte=time)
+
+    def not_started(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(start_date__gt=time)
+
+
 class Subscription(models.Model):
     organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name="subscriptions",
-        null=True,
+        Organization, on_delete=models.CASCADE, related_name="subscriptions", null=True
     )
     day_anchor = models.SmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(31)],
@@ -1569,15 +1743,10 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    status = models.CharField(
-        max_length=20,
-        choices=SUBSCRIPTION_STATUS.choices,
-        default=SUBSCRIPTION_STATUS.NOT_STARTED,
-    )
     subscription_id = models.CharField(
         max_length=100, null=False, blank=True, default=subscription_uuid
     )
-    history = HistoricalRecords()
+    objects = SubscriptionManager()
 
     def get_anchors(self):
         return self.day_anchor, self.month_anchor
@@ -1641,7 +1810,6 @@ class Subscription(models.Model):
             self.day_anchor = None
             self.month_anchor = None
             self.end_date = now_utc()
-            self.status = SUBSCRIPTION_STATUS.ENDED
             self.save()
             return
         if active_subs_with_yearly_quarterly.count() == 0:
@@ -1703,7 +1871,6 @@ class SubscriptionRecord(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        null=False,
         related_name="subscription_records",
     )
     customer = models.ForeignKey(
@@ -1753,9 +1920,7 @@ class SubscriptionRecord(models.Model):
 
     def save(self, *args, **kwargs):
         now = now_utc()
-        subscription = self.customer.subscriptions.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-        ).first()
+        subscription = self.customer.subscriptions.active(self.start_date).first()
         if not self.end_date:
             day_anchor, month_anchor = subscription.get_anchors()
             self.end_date = calculate_end_date(
@@ -1904,7 +2069,7 @@ class Backtest(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=False, related_name="backtests"
+        Organization, on_delete=models.CASCADE, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
     backtest_id = models.CharField(
@@ -1928,6 +2093,12 @@ class BacktestSubstitution(models.Model):
     This model is used to substitute a backtest for a live trading session.
     """
 
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="backtest_substitutions",
+        null=True,
+    )
     backtest = models.ForeignKey(
         Backtest, on_delete=models.CASCADE, related_name="backtest_substitutions"
     )
@@ -2000,6 +2171,7 @@ class PricingUnit(models.Model):
     code = models.CharField(max_length=10, null=False, blank=False)
     name = models.CharField(max_length=100, null=False, blank=False)
     symbol = models.CharField(max_length=10, null=False, blank=False)
+    custom = models.BooleanField(default=False)
 
     def __str__(self):
         ret = f"{self.code}"
@@ -2008,10 +2180,23 @@ class PricingUnit(models.Model):
         return ret
 
     class Meta:
-        unique_together = ("organization", "code")
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "code"], name="unique_code_per_org"
+            ),
+            UniqueConstraint(
+                fields=["organization", "name"], name="unique_name_per_org"
+            ),
+        ]
 
 
 class CustomPricingUnitConversion(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="custom_pricing_unit_conversions",
+        null=True,
+    )
     plan_version = models.ForeignKey(
         PlanVersion, on_delete=models.CASCADE, related_name="pricing_unit_conversions"
     )
@@ -2021,3 +2206,32 @@ class CustomPricingUnitConversion(models.Model):
     from_qty = models.DecimalField(max_digits=20, decimal_places=10)
     to_unit = models.ForeignKey(PricingUnit, on_delete=models.CASCADE, related_name="+")
     to_qty = models.DecimalField(max_digits=20, decimal_places=10)
+
+
+class AccountsReceivableDebtor(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="+"
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="debtors"
+    )
+    currency = models.ForeignKey(
+        PricingUnit, on_delete=models.CASCADE, related_name="+"
+    )
+    created = models.DateTimeField(default=now_utc)
+
+
+class AccountsReceivableTransaction(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="+"
+    )
+    debtor = models.ForeignKey(
+        AccountsReceivableDebtor, on_delete=models.CASCADE, related_name="transactions"
+    )
+    timestamp = models.DateTimeField(default=now_utc)
+    transaction_type = models.PositiveSmallIntegerField(
+        ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES.choices,
+    )
+    due = models.DateTimeField(null=True)
+    amount = models.DecimalField(max_digits=20, decimal_places=10)
+    related_txns = models.ManyToManyField("self")

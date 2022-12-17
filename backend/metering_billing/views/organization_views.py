@@ -3,6 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
 from metering_billing.auth import parse_organization
 from metering_billing.models import OrganizationInviteToken
+from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.model_serializers import *
 from metering_billing.utils import now_plus_day
 from rest_framework import mixins, status, viewsets
@@ -13,29 +14,14 @@ from rest_framework.views import APIView
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 
-# class OrganizationView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def get(self, request, format=None):
-#         """
-#         Get the current settings for the organization.
-#         """
-#         organization = parse_organization(request)
-#         OrganizationSerializer(organization).data
-#         team_members = organization.org_users.all().values_list("email", flat=True)
-#         return Response(
-#             {"organization": organization.company_name, "team_members": team_members},
-#             status=status.HTTP_200_OK,
-#         )
-
 
 class InviteView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated & ValidOrganization]
 
     def post(self, request, *args, **kwargs):
         email = request.data.get("email", None)
         user = request.user
-        organization = parse_organization(request)
+        organization = request.organization
 
         token_object, created = OrganizationInviteToken.objects.get_or_create(
             organization=organization, email=email, defaults={"user": user}

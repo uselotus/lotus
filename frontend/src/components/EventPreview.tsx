@@ -122,7 +122,7 @@ const EventPreview: FC = () => {
                     </div>
                     <div className="flex align-middle text-[16px]">
                       <p className="leading-[24px]">customer_id: </p>
-                      <p className="infoValue"> <CopyText textToCopy={event.customer}/></p>
+                      <p className="infoValue"> <CopyText textToCopy={event.customer_id}/></p>
                     </div>
                   </div>
                 }

@@ -21,7 +21,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:latest
+        image: timescale/timescaledb:latest-pg14
         env:
           POSTGRES_USER: lotus
           POSTGRES_PASSWORD: lotus
@@ -49,9 +49,6 @@ jobs:
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
-      DJSTRIPE_WEBHOOK_SECRET: ${{ secrets.DJSTRIPE_WEBHOOK_SECRET }}
       DEBUG: False
       KAFKA_URL: "localhost:9092"
 
@@ -97,7 +94,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:latest
+        image: timescale/timescaledb:latest-pg14
         env:
           POSTGRES_USER: lotus
           POSTGRES_PASSWORD: lotus
@@ -123,9 +120,6 @@ jobs:
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      STRIPE_LIVE_SECRET_KEY: ${{ secrets.STRIPE_LIVE_SECRET_KEY }}
-      STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
-      DJSTRIPE_WEBHOOK_SECRET: ${{ secrets.DJSTRIPE_WEBHOOK_SECRET }}
       DEBUG: False
       KAFKA_URL: "localhost:9092"
 

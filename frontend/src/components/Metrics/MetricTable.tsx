@@ -42,7 +42,6 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     numeric_filters: any[] | undefined,
     categorical_filters: any[] | undefined
   ) => {
-    console.log(numeric_filters, categorical_filters);
     if (numeric_filters !== undefined && categorical_filters === undefined) {
       filters = numeric_filters.map((filter) => {
         return {

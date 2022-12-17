@@ -25,6 +25,7 @@ import { MetricNameType, MetricType } from "../../types/metric-type";
 import type { InputRef } from "antd";
 import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
+import { PricingUnit } from "../../types/pricing-unit-type";
 
 const { Option } = Select;
 const { Panel } = Collapse;
@@ -238,6 +239,7 @@ type Props = {
   handleComponentAdd: (s: any) => void;
   editComponentItem: any;
   setEditComponentsItem: (s: any) => void;
+  currency: PricingUnit;
 };
 function UsageComponentForm({
   handleComponentAdd,
@@ -245,6 +247,7 @@ function UsageComponentForm({
   onCancel,
   editComponentItem,
   setEditComponentsItem,
+  currency,
 }: Props) {
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
@@ -414,7 +417,7 @@ function UsageComponentForm({
       align: "center",
     },
     {
-      title: "Amount ($)",
+      title: `Amount (${currency.symbol})`,
       dataIndex: "cost_per_batch",
       editable: true,
       align: "center",

@@ -215,3 +215,31 @@ class CHARGEABLE_ITEM_TYPE(models.TextChoices):
     ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
     PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
     CUSTOMER_ADJUSTMENT = ("customer_adjustment", _("Customer Adjustment"))
+
+
+SUPPORTED_CURRENCIES = [
+    ("US Dollar", "USD", "$"),
+    ("Euro", "EUR", "€"),
+    ("Pound", "GBP", "£"),
+    ("Yuan", "CNY", "¥"),
+    ("Australian Dollar", "AUD", "A$"),
+    ("Canadian Dollar", "CAD", "C$"),
+    ("Swiss Franc", "CHF", "CHF"),
+    ("Hong Kong Dollar", "HKD", "HK$"),
+    ("Singapore Dollar", "SGD", "S$"),
+    ("Swedish Krona", "SEK", "kr"),
+    ("Norwegian Krone", "NOK", "kr"),
+    ("New Zealand Dollar", "NZD", "NZ$"),
+    ("Mexican Peso", "MXN", "$"),
+    ("South African Rand", "ZAR", "R"),
+    ("Brazilian Real", "BRL", "R$"),
+    ("Danish Krone", "DKK", "kr"),
+]
+SUPPORTED_CURRENCIES_VERSION = 1
+
+
+class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
+    INVOICE = (1, _("Invoice"))
+    RECEIPT = (2, _("Receipt"))
+    ADJUSTMENT = (3, _("Adjustment"))
+    REVERSAL = (4, _("Reversal"))

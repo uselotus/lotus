@@ -187,6 +187,7 @@ class TestCreateSubscription:
             get_subscription_records_in_org(setup_dict["org"])
         )
 
+        setup_dict["payload"]["start_date"] = now_utc()
         response = setup_dict["client"].post(
             reverse("subscription-plans"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
@@ -201,26 +202,6 @@ class TestCreateSubscription:
             == num_subscription_records_before + 1
         )
 
-    def test_user_org_and_api_key_different_reject_creation(
-        self, subscription_test_common_setup, get_subscriptions_in_org
-    ):
-        # covers user_org_and_api_key_org_different = True
-        num_subscriptions = 1
-        setup_dict = subscription_test_common_setup(
-            num_subscriptions=num_subscriptions,
-            auth_method="both",
-            user_org_and_api_key_org_different=True,
-        )
-
-        response = setup_dict["client"].post(
-            reverse("subscription-plans"),
-            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
-
 
 @pytest.mark.django_db(transaction=True)
 class TestUpdateSub:
@@ -229,8 +210,7 @@ class TestUpdateSub:
             num_subscriptions=1, auth_method="session_auth"
         )
 
-        active_subscriptions = Subscription.objects.filter(
-            status="active",
+        active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -247,13 +227,11 @@ class TestUpdateSub:
             content_type="application/json",
         )
 
-        after_active_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        after_active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
-        after_canceled_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ENDED,
+        after_canceled_subscriptions = Subscription.objects.ended().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -271,7 +249,7 @@ class TestUpdateSub:
         )
 
         active_subscriptions = SubscriptionRecord.objects.filter(
-            status="active",
+            status=SUBSCRIPTION_STATUS.ACTIVE,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -311,8 +289,7 @@ class TestUpdateSub:
             num_subscriptions=1, auth_method="session_auth"
         )
 
-        active_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -335,11 +312,14 @@ class TestUpdateSub:
             "customer_id": setup_dict["customer"].customer_id,
             "plan_id": setup_dict["plan"].plan_id,
         }
-        before_canceled_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ENDED,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        ).count()
+        before_canceled_subscriptions = (
+            Subscription.objects.ended()
+            .filter(
+                organization=setup_dict["org"],
+                customer=setup_dict["customer"],
+            )
+            .count()
+        )
         response = setup_dict["client"].patch(
             reverse(
                 "subscription-plans",
@@ -350,16 +330,22 @@ class TestUpdateSub:
             content_type="application/json",
         )
 
-        after_active_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        ).count()
-        after_canceled_subscriptions = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ENDED,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-        ).count()
+        after_active_subscriptions = (
+            Subscription.objects.active()
+            .filter(
+                organization=setup_dict["org"],
+                customer=setup_dict["customer"],
+            )
+            .count()
+        )
+        after_canceled_subscriptions = (
+            Subscription.objects.ended()
+            .filter(
+                organization=setup_dict["org"],
+                customer=setup_dict["customer"],
+            )
+            .count()
+        )
         new_invoices_len = Invoice.objects.all().count()
 
         assert response.status_code == status.HTTP_200_OK
@@ -970,9 +956,7 @@ class TestSubscriptionAndSubscriptionRecord:
         ).day
         assert sub.month_anchor is not None
 
-        before_active_subs = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        before_active_subs = Subscription.objects.active().count()
         before_active_sub_records = SubscriptionRecord.objects.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         ).count()
@@ -987,9 +971,7 @@ class TestSubscriptionAndSubscriptionRecord:
             content_type="application/json",
         )
 
-        after_active_subs = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        after_active_subs = Subscription.objects.active().count()
         after_active_sub_records = SubscriptionRecord.objects.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         ).count()
@@ -1199,9 +1181,7 @@ class TestSubscriptionAndSubscriptionRecord:
         ).day
         assert sub.month_anchor is not None
 
-        before_active_subs = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        before_active_subs = Subscription.objects.active().count()
         before_active_sub_records = SubscriptionRecord.objects.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         ).count()
@@ -1217,16 +1197,12 @@ class TestSubscriptionAndSubscriptionRecord:
             content_type="application/json",
         )
 
-        after_active_subs = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        after_active_subs = Subscription.objects.active().count()
         after_active_sub_records = SubscriptionRecord.objects.filter(
             status=SUBSCRIPTION_STATUS.ACTIVE
         ).count()
         after_invoices = Invoice.objects.all().count()
-        active_sub = Subscription.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).first()
+        active_sub = Subscription.objects.active().first()
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert after_active_subs == 1
