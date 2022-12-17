@@ -243,3 +243,8 @@ class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
     RECEIPT = (2, _("Receipt"))
     ADJUSTMENT = (3, _("Adjustment"))
     REVERSAL = (4, _("Reversal"))
+
+
+class USAGE_BILLING_BEHAVIOR(models.TextChoices):
+    BILL_FULL = ("bill_full", _("Bill Full"))
+    BILL_NONE = ("bill_none", _("Bill None"))

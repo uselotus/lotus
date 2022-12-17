@@ -46,6 +46,7 @@ class PeriodMetricRevenueView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
+        request=PeriodComparisonRequestSerializer,
         parameters=[PeriodComparisonRequestSerializer],
         responses={200: PeriodMetricRevenueResponseSerializer},
     )
@@ -128,6 +129,7 @@ class CostAnalysisView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
+        request=CostAnalysisRequestSerializer,
         parameters=[CostAnalysisRequestSerializer],
         responses={200: CostAnalysisSerializer},
     )
@@ -241,6 +243,7 @@ class PeriodSubscriptionsView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
+        request=PeriodComparisonRequestSerializer,
         parameters=[PeriodComparisonRequestSerializer],
         responses={200: PeriodSubscriptionsResponseSerializer},
     )
@@ -291,6 +294,7 @@ class PeriodMetricUsageView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
+        request=PeriodMetricUsageRequestSerializer,
         parameters=[PeriodMetricUsageRequestSerializer],
         responses={200: PeriodMetricUsageResponseSerializer},
     )
@@ -388,45 +392,6 @@ class PeriodMetricUsageView(APIView):
         return Response(ret, status=status.HTTP_200_OK)
 
 
-class APIKeyCreate(APIView):
-    permission_classes = [IsAuthenticated | ValidOrganization]
-
-    @extend_schema(
-        responses={
-            200: inline_serializer(
-                name="APIKeyCreateSuccess",
-                fields={
-                    "api_key": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def get(self, request, format=None):
-        """
-        Revokes the current API key and returns a new one.
-        """
-        organization = request.organization
-        tk = APIToken.objects.filter(organization=organization).first()
-        if tk:
-            cache.delete(tk.prefix)
-            tk.delete()
-        api_key, key = APIToken.objects.create_key(
-            name="new_api_key", organization=organization
-        )
-        try:
-            username = self.request.user.username
-        except:
-            username = None
-        posthog.capture(
-            POSTHOG_PERSON
-            if POSTHOG_PERSON
-            else (username if username else organization.company_name + " (Unknown)"),
-            event="create_api_key",
-            properties={"organization": organization.company_name},
-        )
-        return Response({"api_key": key}, status=status.HTTP_200_OK)
-
-
 class SettingsView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
@@ -444,6 +409,7 @@ class CustomersSummaryView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
+        request=None,
         responses={200: CustomerSummarySerializer(many=True)},
     )
     def get(self, request, format=None):
@@ -474,6 +440,7 @@ class CustomersWithRevenueView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
+        request=None,
         responses={200: CustomerWithRevenueSerializer(many=True)},
     )
     def get(self, request, format=None):
@@ -500,6 +467,7 @@ class DraftInvoiceView(APIView):
     permission_classes = [IsAuthenticated | HasUserAPIKey]
 
     @extend_schema(
+        request=DraftInvoiceRequestSerializer,
         parameters=[DraftInvoiceRequestSerializer],
         responses={
             200: inline_serializer(
@@ -561,221 +529,6 @@ class DraftInvoiceView(APIView):
                 invoice.delete()
             response = {"invoices": serializer}
         return Response(response, status=status.HTTP_200_OK)
-
-
-class GetCustomerEventAccessView(APIView):
-    permission_classes = []
-    authentication_classes = []
-
-    @extend_schema(
-        parameters=[GetCustomerEventAccessRequestSerializer],
-        responses={
-            200: GetEventAccessSerializer(many=True),
-            400: inline_serializer(
-                name="GetCustomerEventAccessFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def get(self, request, format=None):
-        result, success = fast_api_key_validation_and_cache(request)
-        if not success:
-            return result
-        else:
-            organization_pk = result
-        serializer = GetCustomerEventAccessRequestSerializer(data=request.query_params)
-        serializer.is_valid(raise_exception=True)
-        # try:
-        #     username = self.request.user.username
-        # except:
-        #     username = None
-        # posthog.capture(
-        #     POSTHOG_PERSON
-        #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
-        #     event="get_access",
-        #     properties={"organization": organization.company_name},
-        # )
-        customer_id = serializer.validated_data["customer_id"]
-        try:
-            customer = Customer.objects.get(
-                organization_id=organization_pk, customer_id=customer_id
-            )
-        except Customer.DoesNotExist:
-            return Response(
-                {"status": "error", "detail": "Customer not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        event_name = serializer.validated_data.get("event_name")
-        subscriptions = SubscriptionRecord.objects.select_related(
-            "billing_plan"
-        ).filter(
-            organization_id=organization_pk,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            customer=customer,
-        )
-        subscription_filters = {
-            x["property_name"]: x["value"]
-            for x in serializer.validated_data.get("subscription_filters", [])
-        }
-        for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscriptions = subscriptions.filter(**{key: value})
-        metrics = []
-        subscriptions = subscriptions.prefetch_related(
-            "billing_plan__plan_components",
-            "billing_plan__plan_components__billable_metric",
-            "billing_plan__plan_components__tiers",
-            "filters",
-        )
-        for sub in subscriptions:
-            subscription_filters = {}
-            for filter in sub.filters.all():
-                subscription_filters[filter.property_name] = filter.comparison_value[0]
-            single_sub_dict = {
-                "event_name": event_name,
-                "plan_id": sub.billing_plan.plan_id,
-                "subscription_filters": subscription_filters,
-                "has_event": False,
-                "usage_per_metric": [],
-            }
-            for component in sub.billing_plan.plan_components.all():
-                metric = component.billable_metric
-                if metric.event_name == event_name:
-                    single_sub_dict["has_event"] = True
-                    metric_name = metric.billable_metric_name
-                    tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
-                    free_limit = (
-                        tiers[0].range_end
-                        if tiers[0].type == PRICE_TIER_TYPE.FREE
-                        else None
-                    )
-                    total_limit = tiers[-1].range_end
-                    metric_usage = metric.get_current_usage(sub)
-                    if metric_usage == {}:
-                        unique_tup_dict = {
-                            "metric_name": metric_name,
-                            "metric_usage": 0,
-                            "metric_free_limit": free_limit,
-                            "metric_total_limit": total_limit,
-                            "metric_id": metric.metric_id,
-                        }
-                        single_sub_dict["usage_per_metric"].append(unique_tup_dict)
-                        continue
-                    custom_metric_usage = metric_usage[customer.customer_name]
-                    for unique_tup, d in custom_metric_usage.items():
-                        i = iter(unique_tup)
-                        try:
-                            _ = next(i)  # i.next() in older versions
-                            groupby_vals = list(i)
-                        except:
-                            groupby_vals = []
-                        usage = list(d.values())[0]
-                        unique_tup_dict = {
-                            "metric_name": metric_name,
-                            "metric_usage": usage,
-                            "metric_free_limit": free_limit,
-                            "metric_total_limit": total_limit,
-                            "separate_by_properties": {},
-                        }
-                        if len(groupby_vals) > 0:
-                            unique_tup_dict["separate_by_properties"] = dict(
-                                zip(component.separate_by, groupby_vals)
-                            )
-                        single_sub_dict["usage_per_metric"].append(unique_tup_dict)
-            metrics.append(single_sub_dict)
-        return Response(
-            metrics,
-            status=status.HTTP_200_OK,
-        )
-
-
-class GetCustomerFeatureAccessView(APIView):
-    permission_classes = []
-    authentication_classes = []
-
-    @extend_schema(
-        parameters=[GetCustomerFeatureAccessRequestSerializer],
-        responses={
-            200: GetFeatureAccessSerializer(many=True),
-            400: inline_serializer(
-                name="GetCustomerFeatureAccessFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def get(self, request, format=None):
-        result, success = fast_api_key_validation_and_cache(request)
-        if not success:
-            return result
-        else:
-            organization_pk = result
-        serializer = GetCustomerFeatureAccessRequestSerializer(
-            data=request.query_params
-        )
-        serializer.is_valid(raise_exception=True)
-        # try:
-        #     username = self.request.user.username
-        # except:
-        #     username = None
-        # posthog.capture(
-        #     POSTHOG_PERSON
-        #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
-        #     event="get_access",
-        #     properties={"organization": organization.company_name},
-        # )
-        customer_id = serializer.validated_data["customer_id"]
-        try:
-            customer = Customer.objects.get(
-                organization_id=organization_pk, customer_id=customer_id
-            )
-        except Customer.DoesNotExist:
-            return Response(
-                {"status": "error", "detail": "Customer not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        feature_name = serializer.validated_data.get("feature_name")
-        subscriptions = SubscriptionRecord.objects.select_related(
-            "billing_plan"
-        ).filter(
-            organization_id=organization_pk,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            customer=customer,
-        )
-        subscription_filters = {
-            x["property_name"]: x["value"]
-            for x in serializer.validated_data.get("subscription_filters", [])
-        }
-        for key, value in subscription_filters.items():
-            key = f"properties__{key}"
-            subscriptions = subscriptions.filter(**{key: value})
-        features = []
-        subscriptions = subscriptions.prefetch_related("billing_plan__features")
-        for sub in subscriptions:
-            subscription_filters = {}
-            for filter in sub.filters.all():
-                subscription_filters[filter.property_name] = filter.comparison_value[0]
-            sub_dict = {
-                "feature_name": feature_name,
-                "plan_id": sub.billing_plan.plan_id,
-                "subscription_filters": subscription_filters,
-                "access": False,
-            }
-            for feature in sub.billing_plan.features.all():
-                if feature.feature_name == feature_name:
-                    sub_dict["access"] = True
-            features.append(sub_dict)
-        return Response(
-            features,
-            status=status.HTTP_200_OK,
-        )
 
 
 class ImportCustomersView(APIView):
@@ -1011,166 +764,6 @@ class PlansByNumCustomersView(APIView):
             {
                 "status": "success",
                 "results": plans,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-
-class CustomerBatchCreateView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=inline_serializer(
-            name="CustomerBatchCreateRequest",
-            fields={
-                "customers": CustomerSerializer(many=True),
-                "behavior_on_existing": serializers.ChoiceField(
-                    choices=["merge", "ignore", "overwrite"]
-                ),
-            },
-        ),
-        responses={
-            201: inline_serializer(
-                name="CustomerBatchCreateSuccess",
-                fields={
-                    "success": serializers.ChoiceField(choices=["all", "some"]),
-                    "failed_customers": serializers.DictField(required=False),
-                },
-            ),
-            400: inline_serializer(
-                name="CustomerBatchCreateFailure",
-                fields={
-                    "success": serializers.ChoiceField(choices=["none"]),
-                    "failed_customers": serializers.DictField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        organization = request.organization
-        serializer = CustomerSerializer(
-            data=request.data["customers"],
-            many=True,
-            context={"organization": organization},
-        )
-        serializer.is_valid(raise_exception=True)
-        failed_customers = {}
-        behavior = request.data.get("behavior_on_existing", "merge")
-        for customer in serializer.validated_data:
-            try:
-                match = Customer.objects.filter(
-                    Q(email=customer["email"]) | Q(customer_id=customer["customer_id"]),
-                    organization=organization,
-                )
-                if match.exists():
-                    match = match.first()
-                    if behavior == "ignore":
-                        pass
-                    else:
-                        if "customer_id" in customer:
-                            non_unique_id = Customer.objects.filter(
-                                ~Q(pk=match.pk), customer_id=customer["customer_id"]
-                            ).exists()
-                            if non_unique_id:
-                                failed_customers[
-                                    customer["customer_id"]
-                                ] = "customer_id already exists"
-                                continue
-                        CustomerSerializer().update(match, customer, behavior=behavior)
-                else:
-                    customer["organization"] = organization
-                    CustomerSerializer().create(customer)
-            except Exception as e:
-                identifier = customer.get("customer_id", customer.get("email"))
-                failed_customers[identifier] = str(e)
-
-        if len(failed_customers) == 0 or len(failed_customers) < len(
-            serializer.validated_data
-        ):
-            return Response(
-                {
-                    "success": "all" if len(failed_customers) == 0 else "some",
-                    "failed_customers": failed_customers,
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        return Response(
-            {
-                "success": "none",
-                "failed_customers": failed_customers,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-
-class ConfirmIdemsReceivedView(APIView):
-    permission_classes = [IsAuthenticated | HasUserAPIKey]
-
-    @extend_schema(
-        request=inline_serializer(
-            name="ConfirmIdemsReceivedRequest",
-            fields={
-                "idempotency_ids": serializers.ListField(
-                    child=serializers.CharField(), required=True
-                ),
-                "number_days_lookback": serializers.IntegerField(
-                    default=30, required=False
-                ),
-                "customer_id": serializers.CharField(required=False),
-            },
-        ),
-        responses={
-            200: inline_serializer(
-                name="ConfirmIdemsReceived",
-                fields={
-                    "status": serializers.ChoiceField(choices=["success"]),
-                    "ids_not_found": serializers.ListField(
-                        child=serializers.CharField(), required=True
-                    ),
-                },
-            ),
-            400: inline_serializer(
-                name="ConfirmIdemsReceivedFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["failure"]),
-                    "error": serializers.CharField(),
-                },
-            ),
-        },
-    )
-    def post(self, request, format=None):
-        organization = request.organization
-        if request.data.get("idempotency_ids") is None:
-            return Response(
-                {
-                    "status": "failure",
-                    "error": "idempotency_ids is required",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        if isinstance(request.data.get("idempotency_ids"), str):
-            idempotency_ids = {request.data.get("idempotency_ids")}
-        else:
-            idempotency_ids = list(set(request.data.get("idempotency_ids")))
-        number_days_lookback = request.data.get("number_days_lookback", 30)
-        now_minus_lookback = now_utc() - relativedelta(days=number_days_lookback)
-        num_batches_idems = len(idempotency_ids) // 1000 + 1
-        ids_not_found = []
-        for i in range(num_batches_idems):
-            idem_batch = set(idempotency_ids[i * 1000 : (i + 1) * 1000])
-            events = Event.objects.filter(
-                organization=organization,
-                time_created__gte=now_minus_lookback,
-                idempotency_id__in=idem_batch,
-            )
-            if request.data.get("customer_id"):
-                events = events.filter(customer_id=request.data.get("customer_id"))
-            events_set = set(events.values_list("idempotency_id", flat=True))
-            ids_not_found += list(idem_batch - events_set)
-        return Response(
-            {
-                "status": "success",
-                "ids_not_found": ids_not_found,
             },
             status=status.HTTP_200_OK,
         )

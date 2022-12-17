@@ -98,7 +98,7 @@ const SubscriptionView: FC<Props> = ({
     onCancel({
       bill_usage: true,
       flat_fee_behavior: "charge_full",
-      invoicing_behavior_on_cancel: "invoice_now",
+      invoicing_behavior: "invoice_now",
       plan_id: plan_id,
       subscription_filters: subscription_filters,
       customer_id: customer_id,
@@ -112,7 +112,7 @@ const SubscriptionView: FC<Props> = ({
       subscription_filters: subscription_filters,
       bill_usage: false,
       flat_fee_behavior: "refund",
-      invoicing_behavior_on_cancel: "invoice_now",
+      invoicing_behavior: "invoice_now",
     });
   };
 

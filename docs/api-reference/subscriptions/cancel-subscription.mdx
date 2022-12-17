@@ -12,7 +12,7 @@ Optionally you can provide the following parameters:
 - `subscription_filters` a list of dictionaries containing property_name and value keys for filtering subscriptions to cancel.
 - `flat_fee_behavior` choices are ["refund", "prorate", "charge_full"]
 - `bill_usage` a boolean indicating whether to bill for usage up to the end of the subscription
-- `invoicing_behavior_on_cancel` choices are ["add_to_next_invoice", "invoice_now"]
+- `invoicing_behavior` choices are ["add_to_next_invoice", "invoice_now"]
 
 <CodeGroup>
 
@@ -27,7 +27,7 @@ lotus.cancel_subscription(
     ],
     flat_fee_behavior='prorate',
     bill_usage=True,
-    invoicing_behavior_on_cancel='add_to_next_invoice',
+    invoicing_behavior='add_to_next_invoice',
 )
 
 lotus.cancel_subscription(
@@ -40,7 +40,7 @@ lotus.cancel_subscription(
     ],
     flat_fee_behavior='charge_full',
     bill_usage=False,
-    invoicing_behavior_on_cancel='invoice_now',
+    invoicing_behavior='invoice_now',
 )
 ```
 

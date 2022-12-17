@@ -38,7 +38,7 @@ export interface UpdateSubscriptionType {
 export interface CancelSubscriptionType {
   bill_usage: boolean;
   flat_fee_behavior: "refund" | "prorate" | "charge_full";
-  invoicing_behavior_on_cancel: "add_to_next_invoice" | "invoice_now";
+  invoicing_behavior: "add_to_next_invoice" | "invoice_now";
   customer_id?: string;
   plan_id?: string;
   subscription_filters?: {

@@ -126,6 +126,7 @@ INSTALLED_APPS = [
     "simple_history",
     "knox",
     "anymail",
+    "api",
     "metering_billing",
     "actstream",
     "drf_standardized_errors",

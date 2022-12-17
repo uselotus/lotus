@@ -491,6 +491,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                             "compute_time": compute_time,
                             "words": event_words,
                         },
+                        cust_id=customer.customer_id,
                     )
                     Event.objects.create(
                         organization=organization,
@@ -501,6 +502,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                         properties={
                             "cost": abs(compute_time * random.gauss(ct_mean, ct_sd)),
                         },
+                        cust_id=customer.customer_id,
                     )
                     word_count += event_words
                 max_users = max(

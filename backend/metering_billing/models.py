@@ -2166,7 +2166,11 @@ class PricingUnit(models.Model):
     """
 
     organization = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, null=True, blank=True
+        Organization,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="pricing_units",
     )
     code = models.CharField(max_length=10, null=False, blank=False)
     name = models.CharField(max_length=100, null=False, blank=False)

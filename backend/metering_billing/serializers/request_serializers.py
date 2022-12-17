@@ -4,23 +4,6 @@ from metering_billing.serializers.model_serializers import (
 from rest_framework import serializers
 
 
-class GetCustomerEventAccessRequestSerializer(serializers.Serializer):
-    customer_id = serializers.CharField()
-    event_name = serializers.CharField()
-    metric_id = serializers.CharField(required=False)
-    subscription_filters = serializers.ListField(
-        child=SubscriptionCategoricalFilterSerializer(), required=False
-    )
-
-
-class GetCustomerFeatureAccessRequestSerializer(serializers.Serializer):
-    customer_id = serializers.CharField()
-    feature_name = serializers.CharField()
-    subscription_filters = serializers.ListField(
-        child=SubscriptionCategoricalFilterSerializer(), required=False
-    )
-
-
 class CancelSubscriptionRequestSerializer(serializers.Serializer):
     subscription_id = serializers.CharField(required=True)
     bill_now = serializers.BooleanField(default=False)
@@ -59,10 +42,6 @@ class CostAnalysisRequestSerializer(PeriodRequestSerializer):
 # PERIOD METRIC USAGE SERIALIZERS GO HERE
 class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
     top_n_customers = serializers.IntegerField(required=False)
-
-
-class EventPreviewRequestSerializer(serializers.Serializer):
-    page = serializers.IntegerField(required=True)
 
 
 class DraftInvoiceRequestSerializer(serializers.Serializer):
