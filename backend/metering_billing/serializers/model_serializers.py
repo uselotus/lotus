@@ -1557,18 +1557,31 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
         data = super().validate(data)
         # check that the customer ID matches an existing customer
         try:
-            data["customer"] = Customer.objects.get(customer_id=data["customer_id"])
+            data["customer"] = Customer.objects.get(
+                customer_id=data["customer_id"],
+                organization=self.context["organization"],
+            )
         except Customer.DoesNotExist:
             raise serializers.ValidationError(
                 f"Customer with customer_id {data['customer_id']} does not exist"
             )
+        except Customer.MultipleObjectsReturned:
+            raise ServerError(
+                "Something went wrong with the database state. Please allow us to investigate!"
+            )
         # check that the plan ID matches an existing plan
         if data.get("plan_id"):
             try:
-                data["plan"] = Plan.objects.get(plan_id=data["plan_id"])
+                data["plan"] = Plan.objects.get(
+                    plan_id=data["plan_id"], organization=self.context["organization"]
+                )
             except Plan.DoesNotExist:
                 raise serializers.ValidationError(
                     f"Plan with plan_id {data['plan_id']} does not exist"
+                )
+            except Plan.MultipleObjectsReturned:
+                raise ServerError(
+                    "Something went wrong with the database state. Please allow us to investigate!"
                 )
         return data
 

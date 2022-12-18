@@ -28,6 +28,7 @@ from metering_billing.exceptions.exceptions import (
 )
 from metering_billing.utils import (
     convert_to_date,
+    convert_to_datetime,
     date_as_min_dt,
     now_utc,
     periods_bwn_twodates,
@@ -799,7 +800,11 @@ class StatefulHandler(MetricHandler):
             )
         )
         now = now_utc()
-        plan_periods = [x for x in plan_periods if x <= end and x <= now]
+        plan_periods = [
+            x
+            for x in plan_periods
+            if x <= convert_to_datetime(end, date_behavior="max") and x <= now
+        ]
         # for each period, get the events and calculate the usage
         usage_dict = {}
         for customer_name, cust_usages in period_usages.items():

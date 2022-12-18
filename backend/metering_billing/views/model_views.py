@@ -774,9 +774,13 @@ class SubscriptionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 parsed_params = json.loads(raw_filters)
                 dict_params["subscription_filters"] = parsed_params
             if self.action == "update_plans":
-                serializer = SubscriptionRecordFilterSerializer(data=dict_params)
+                serializer = SubscriptionRecordFilterSerializer(
+                    data=dict_params, context={"organization": organization}
+                )
             elif self.action == "cancel_plans":
-                serializer = SubscriptionRecordFilterSerializerDelete(data=dict_params)
+                serializer = SubscriptionRecordFilterSerializerDelete(
+                    data=dict_params, context={"organization": organization}
+                )
             serializer.is_valid(raise_exception=True)
             args = []
             args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
