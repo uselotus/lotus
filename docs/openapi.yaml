@@ -120,7 +120,6 @@ paths:
         name: customer_id
         schema:
           type: string
-          minLength: 1
         description: The customer_id of the customer you want to check access.
         required: true
       - in: query
@@ -133,13 +132,13 @@ paths:
       - in: query
         name: subscription_filters
         schema:
-          type: object
-          additionalProperties:
-            type: string
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
         description: The subscription filters that are applied to this plan's relationship
           with the customer. If your billing model does not have the ability multiple
-          plans or subscriptions per customer, this is likely nto relevant for you.
-        required: true
+          plans or subscriptions per customer, this is likely not relevant for you.
+          This must be passed in as a stringified JSON object.
       tags:
       - api
       security:
@@ -154,12 +153,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/GetFeatureAccess'
           description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetCustomerFeatureAccessFailure'
-          description: ''
   /api/customer_metric_access/:
     get:
       operationId: api_customer_metric_access_list
@@ -168,34 +161,33 @@ paths:
         name: customer_id
         schema:
           type: string
-          minLength: 1
         description: The customer_id of the customer you want to check access.
         required: true
       - in: query
         name: event_name
         schema:
           type: string
+          nullable: true
           minLength: 1
         description: The name of the event you are checking access for.
-        required: true
       - in: query
         name: metric_id
         schema:
           type: string
-          minLength: 1
-        description: The metric_id of the metric you are checking access for. If you
-          don't specify this, we will return the access for all metrics that use this
-          event.
+          nullable: true
+        description: The metric_id of the metric you are checking access for. Please
+          note that you must porovide exactly one of event_name and metric_id are
+          mutually; a validation error will be thrown if both or none are provided.
       - in: query
         name: subscription_filters
         schema:
-          type: object
-          additionalProperties:
-            type: string
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
         description: The subscription filters that are applied to this plan's relationship
           with the customer. If your billing model does not have the ability multiple
-          plans or subscriptions per customer, this is likely nto relevant for you.
-        required: true
+          plans or subscriptions per customer, this is likely not relevant for you.
+          This must be passed in as a stringified JSON object.
       tags:
       - api
       security:
@@ -209,12 +201,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/GetEventAccess'
-          description: ''
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetCustomerEventAccessFailure'
           description: ''
   /api/customers/:
     get:
@@ -3071,6 +3057,44 @@ components:
       - comparison_value
       - operator
       - property_name
+    ComponentUsage:
+      type: object
+      properties:
+        event_name:
+          type: string
+          description: The name of the event you are checking access for.
+        metric_name:
+          type: string
+          description: The name of the metric.
+        metric_id:
+          type: string
+          description: The metric_id of the metric. This metric_id can be found in
+            the Lotus frontend if you haven't seen it before.
+        metric_usage:
+          type: number
+          format: double
+          description: The current usage of the metric. Keep in mind the current usage
+            of the metric can be different from the billable usage of the metric.
+        metric_free_limit:
+          type: number
+          format: double
+          nullable: true
+          description: If you specified a free tier of usage for this metric, this
+            is the amount of usage that is free. Will be null if you did not specify
+            a free tier for this metric.
+        metric_total_limit:
+          type: number
+          format: double
+          nullable: true
+          description: The total limit of the metric. Will be null if you did not
+            specify a limit for this metric.
+      required:
+      - event_name
+      - metric_free_limit
+      - metric_id
+      - metric_name
+      - metric_total_limit
+      - metric_usage
     ConfirmIdemsReceived:
       type: object
       properties:
@@ -3282,21 +3306,11 @@ components:
       properties:
         customer_id:
           type: string
-          description: The id provided when creating the customer, we suggest matching
-            with your internal customer id in your backend
-          maxLength: 50
         email:
           type: string
           format: email
-          nullable: true
-          description: The primary email address of the customer, must be the same
-            as the email address used to create the customer in the payment provider
-          maxLength: 100
         customer_name:
           type: string
-          nullable: true
-          description: The display name of the customer
-          maxLength: 100
         invoices:
           type: array
           items:
@@ -3321,7 +3335,10 @@ components:
         default_currency:
           $ref: '#/components/schemas/PricingUnit'
       required:
+      - customer_id
+      - customer_name
       - default_currency
+      - email
       - integrations
       - invoices
       - subscriptions
@@ -3428,32 +3445,8 @@ components:
     DraftInvoice:
       type: object
       properties:
-        payment_status:
-          enum:
-          - draft
-          type: string
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
-        customer:
-          allOf:
-          - $ref: '#/components/schemas/ShortCustomer'
-          readOnly: true
         org_connected_to_cust_payment_provider:
           type: boolean
-        currency:
-          allOf:
-          - $ref: '#/components/schemas/PricingUnit'
-          readOnly: true
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
-        issue_date:
-          type: string
-          format: date-time
         cost_due:
           type: number
           format: double
@@ -3461,8 +3454,32 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        payment_status:
+          enum:
+          - draft
+          type: string
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/ShortCustomer'
+          readOnly: true
+        issue_date:
+          type: string
+          format: date-time
         cust_connected_to_payment_provider:
           type: boolean
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        currency:
+          allOf:
+          - $ref: '#/components/schemas/PricingUnit'
+          readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - cost_due
       - currency
@@ -3548,70 +3565,37 @@ components:
           maxLength: 200
       required:
       - feature_name
-    GetCustomerEventAccessFailure:
-      type: object
-      properties:
-        status:
-          enum:
-          - error
-          type: string
-        detail:
-          type: string
-      required:
-      - detail
-      - status
-    GetCustomerFeatureAccessFailure:
-      type: object
-      properties:
-        status:
-          enum:
-          - error
-          type: string
-        detail:
-          type: string
-      required:
-      - detail
-      - status
     GetEventAccess:
       type: object
       properties:
-        event_name:
-          type: string
-          description: The name of the event you are checking access for.
         plan_id:
           type: string
           description: The plan_id of the plan we are checking that has access to
             this feature.
         subscription_filters:
-          type: object
-          additionalProperties:
-            type: string
-          description: The subscription filters that are applied to this plan's relationship
-            with the customer. If your billing model does not have the ability multiple
-            plans or subscriptions per customer, this is likely nto relevant for you.
-        has_event:
-          type: boolean
-          description: Whether or not the plan has access to this event.
-        usage_per_metric:
           type: array
           items:
-            $ref: '#/components/schemas/MetricDetail'
-          description: The usage of each metric for this event. Since a plan can have
-            multiple metrics that rely on the same event, this is a list of all the
-            metrics that are used by this event. For example, you might have a metric
-            both for the total number of transactions and the rate of transactions.
-            If you are checking access for the 'transaction' event, this will return
-            the usage of both the 'total_transactions' and 'transaction_rate' metrics.
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+          description: The subscription filters that are applied to this plan's relationship
+            with the customer. If your billing model does not have the ability multiple
+            plans or subscriptions per customer, this is likely not relevant for you.
+        usage_per_component:
+          type: array
+          items:
+            $ref: '#/components/schemas/ComponentUsage'
+          description: 'The usage of each component of the plan the customer is on.
+            Only components that match the request will be included: If metric_id
+            is provided, this will be a list of length 1. If event_name is provided,
+            this will be a list of length 1 or more depending on how many components
+            of the customer''s plan use this event.'
       required:
-      - event_name
-      - has_event
       - plan_id
       - subscription_filters
-      - usage_per_metric
+      - usage_per_component
     GetFeatureAccess:
       type: object
       properties:
-        feature:
+        feature_name:
           type: string
           description: Name of the feature to check access for.
         plan_id:
@@ -3624,7 +3608,7 @@ components:
             type: string
           description: The subscription filters that are applied to this plan's relationship
             with the customer. If your billing model does not have the ability multiple
-            plans or subscriptions per customer, this is likely nto relevant for you.
+            plans or subscriptions per customer, this is likely not relevant for you.
         access:
           type: boolean
           description: Whether or not the plan has access to this feature. If your
@@ -3633,7 +3617,7 @@ components:
             access this feature.
       required:
       - access
-      - feature
+      - feature_name
       - plan_id
       - subscription_filters
     GroupedLineItem:
@@ -3758,48 +3742,9 @@ components:
     InitialPlanVersion:
       type: object
       properties:
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/Feature'
-          nullable: true
-        version:
-          type: integer
-          readOnly: true
-        currency_code:
-          type: string
-          writeOnly: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          nullable: true
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          type: string
-        currency:
-          allOf:
-          - $ref: '#/components/schemas/PricingUnit'
-          readOnly: true
         plan_name:
           type: string
           readOnly: true
-        replace_with:
-          type: integer
-          nullable: true
-          readOnly: true
-        transition_to_plan_id:
-          type: string
-          writeOnly: true
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
         usage_billing_frequency:
           enum:
           - monthly
@@ -3809,20 +3754,68 @@ components:
           - null
           type: string
           nullable: true
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          nullable: true
+        currency:
+          allOf:
+          - $ref: '#/components/schemas/PricingUnit'
+          readOnly: true
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        version:
+          type: integer
+          readOnly: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustment'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feature'
+          nullable: true
+        transition_to:
+          type: string
+          nullable: true
+          readOnly: true
         active_subscriptions:
           type: integer
           readOnly: true
-        description:
+        currency_code:
           type: string
-          nullable: true
-          maxLength: 200
+          writeOnly: true
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponent'
           nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustment'
+        replace_with:
+          type: integer
+          nullable: true
+          readOnly: true
+        transition_to_plan_id:
+          type: string
+          writeOnly: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 200
         status:
           enum:
           - active
@@ -3832,15 +3825,6 @@ components:
           - inactive
           type: string
           readOnly: true
-        transition_to:
-          type: string
-          nullable: true
-          readOnly: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          nullable: true
       required:
       - active_subscriptions
       - currency
@@ -3924,6 +3908,7 @@ components:
       - currency
       - customer
       - external_payment_obj_type
+      - invoice_number
       - line_items
       - payment_status
     InvoiceLineItem:
@@ -3990,6 +3975,13 @@ components:
     LightweightInvoice:
       type: object
       properties:
+        invoice_number:
+          type: string
+          maxLength: 13
+        external_payment_obj_id:
+          type: string
+          nullable: true
+          maxLength: 200
         payment_status:
           enum:
           - draft
@@ -3997,20 +3989,14 @@ components:
           - paid
           - unpaid
           type: string
-        invoice_number:
-          type: string
-          maxLength: 13
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
-        currency:
-          allOf:
-          - $ref: '#/components/schemas/PricingUnit'
-          readOnly: true
         issue_date:
           type: string
           format: date-time
+        external_payment_obj_type:
+          enum:
+          - stripe
+          type: string
+          readOnly: true
         cost_due:
           type: number
           format: double
@@ -4018,25 +4004,22 @@ components:
           minimum: -100000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          type: string
+        currency:
+          allOf:
+          - $ref: '#/components/schemas/PricingUnit'
           readOnly: true
-        external_payment_obj_id:
+        due_date:
           type: string
+          format: date-time
           nullable: true
-          maxLength: 200
       required:
       - cost_due
       - currency
+      - invoice_number
       - payment_status
     LightweightInvoiceLineItem:
       type: object
       properties:
-        end_date:
-          type: string
-          format: date-time
         subtotal:
           type: number
           format: double
@@ -4044,14 +4027,6 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - ''
-          - null
-          type: string
-          nullable: true
         quantity:
           type: number
           format: double
@@ -4060,6 +4035,14 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           nullable: true
+        billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - ''
+          - null
+          type: string
+          nullable: true
         name:
           type: string
           maxLength: 200
@@ -4067,6 +4050,9 @@ components:
           type: object
           additionalProperties: {}
           nullable: true
+        end_date:
+          type: string
+          format: date-time
         start_date:
           type: string
           format: date-time
@@ -4194,40 +4180,6 @@ components:
       - metric_id
       - metric_type
       - usage_aggregation_type
-    MetricDetail:
-      type: object
-      properties:
-        metric_name:
-          type: string
-          description: The name of the metric.
-        metric_id:
-          type: string
-          description: The metric_id of the metric. This metric_id can be found in
-            the Lotus frontend if you haven't seen it before.
-        metric_usage:
-          type: number
-          format: double
-          description: The current usage of the metric. Keep in mind the current usage
-            of the metric can be different from the billable usage of the metric.
-        metric_free_limit:
-          type: number
-          format: double
-          nullable: true
-          description: If you specified a free tier of usage for this metric, this
-            is the amount of usage that is free. Will be null if you did not specify
-            a free tier for this metric.
-        metric_total_limit:
-          type: number
-          format: double
-          nullable: true
-          description: The total limit of the metric. Will be null if you did not
-            specify a limit for this metric.
-      required:
-      - metric_free_limit
-      - metric_id
-      - metric_name
-      - metric_total_limit
-      - metric_usage
     MetricRevenue:
       type: object
       properties:

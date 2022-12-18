@@ -707,13 +707,6 @@ class GetCustomerEventAccessView(APIView):
         parameters=[GetCustomerEventAccessRequestSerializer],
         responses={
             200: GetEventAccessSerializer(many=True),
-            400: inline_serializer(
-                name="GetCustomerEventAccessFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
         },
     )
     def get(self, request, format=None):
@@ -722,7 +715,9 @@ class GetCustomerEventAccessView(APIView):
             return result
         else:
             organization_pk = result
-        serializer = GetCustomerEventAccessRequestSerializer(data=request.query_params)
+        serializer = GetCustomerEventAccessRequestSerializer(
+            data=request.query_params, context={"organization_pk": organization_pk}
+        )
         serializer.is_valid(raise_exception=True)
         # try:
         #     username = self.request.user.username
@@ -735,17 +730,9 @@ class GetCustomerEventAccessView(APIView):
         #     event="get_access",
         #     properties={"organization": organization.company_name},
         # )
-        customer_id = serializer.validated_data["customer_id"]
-        try:
-            customer = Customer.objects.get(
-                organization_id=organization_pk, customer_id=customer_id
-            )
-        except Customer.DoesNotExist:
-            return Response(
-                {"status": "error", "detail": "Customer not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
+        access_metric = serializer.validated_data.get("metric")
         subscriptions = SubscriptionRecord.objects.select_related(
             "billing_plan"
         ).filter(
@@ -772,16 +759,13 @@ class GetCustomerEventAccessView(APIView):
             for filter in sub.filters.all():
                 subscription_filters[filter.property_name] = filter.comparison_value[0]
             single_sub_dict = {
-                "event_name": event_name,
                 "plan_id": sub.billing_plan.plan_id,
                 "subscription_filters": subscription_filters,
-                "has_event": False,
-                "usage_per_metric": [],
+                "usage_per_component": [],
             }
             for component in sub.billing_plan.plan_components.all():
                 metric = component.billable_metric
-                if metric.event_name == event_name:
-                    single_sub_dict["has_event"] = True
+                if metric.event_name == event_name or access_metric == metric:
                     metric_name = metric.billable_metric_name
                     tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
                     free_limit = (
@@ -793,13 +777,14 @@ class GetCustomerEventAccessView(APIView):
                     metric_usage = metric.get_current_usage(sub)
                     if metric_usage == {}:
                         unique_tup_dict = {
+                            "event_name": metric.event_name,
                             "metric_name": metric_name,
                             "metric_usage": 0,
                             "metric_free_limit": free_limit,
                             "metric_total_limit": total_limit,
                             "metric_id": metric.metric_id,
                         }
-                        single_sub_dict["usage_per_metric"].append(unique_tup_dict)
+                        single_sub_dict["usage_per_component"].append(unique_tup_dict)
                         continue
                     custom_metric_usage = metric_usage[customer.customer_name]
                     for unique_tup, d in custom_metric_usage.items():
@@ -811,18 +796,20 @@ class GetCustomerEventAccessView(APIView):
                             groupby_vals = []
                         usage = list(d.values())[0]
                         unique_tup_dict = {
+                            "event_name": metric.event_name,
                             "metric_name": metric_name,
                             "metric_usage": usage,
                             "metric_free_limit": free_limit,
                             "metric_total_limit": total_limit,
-                            "separate_by_properties": {},
+                            "metric_id": metric.metric_id,
                         }
                         if len(groupby_vals) > 0:
                             unique_tup_dict["separate_by_properties"] = dict(
                                 zip(component.separate_by, groupby_vals)
                             )
-                        single_sub_dict["usage_per_metric"].append(unique_tup_dict)
+                        single_sub_dict["usage_per_component"].append(unique_tup_dict)
             metrics.append(single_sub_dict)
+        GetEventAccessSerializer(many=True).validate(metrics)
         return Response(
             metrics,
             status=status.HTTP_200_OK,
@@ -837,13 +824,6 @@ class GetCustomerFeatureAccessView(APIView):
         parameters=[GetCustomerFeatureAccessRequestSerializer],
         responses={
             200: GetFeatureAccessSerializer(many=True),
-            400: inline_serializer(
-                name="GetCustomerFeatureAccessFailure",
-                fields={
-                    "status": serializers.ChoiceField(choices=["error"]),
-                    "detail": serializers.CharField(),
-                },
-            ),
         },
     )
     def get(self, request, format=None):
@@ -853,7 +833,7 @@ class GetCustomerFeatureAccessView(APIView):
         else:
             organization_pk = result
         serializer = GetCustomerFeatureAccessRequestSerializer(
-            data=request.query_params
+            data=request.query_params, context={"organization_pk": organization_pk}
         )
         serializer.is_valid(raise_exception=True)
         # try:
@@ -867,16 +847,7 @@ class GetCustomerFeatureAccessView(APIView):
         #     event="get_access",
         #     properties={"organization": organization.company_name},
         # )
-        customer_id = serializer.validated_data["customer_id"]
-        try:
-            customer = Customer.objects.get(
-                organization_id=organization_pk, customer_id=customer_id
-            )
-        except Customer.DoesNotExist:
-            return Response(
-                {"status": "error", "detail": "Customer not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        customer = serializer.validated_data["customer"]
         feature_name = serializer.validated_data.get("feature_name")
         subscriptions = SubscriptionRecord.objects.select_related(
             "billing_plan"
@@ -908,6 +879,7 @@ class GetCustomerFeatureAccessView(APIView):
                 if feature.feature_name == feature_name:
                     sub_dict["access"] = True
             features.append(sub_dict)
+        GetFeatureAccessSerializer(many=True).validate(features)
         return Response(
             features,
             status=status.HTTP_200_OK,

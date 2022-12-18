@@ -14,7 +14,6 @@ from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
-    SlugRelatedFieldWithOrganizationOrNull,
 )
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import *
@@ -135,7 +134,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ("default_currency_code",)
 
-    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+    default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
 
@@ -156,7 +155,7 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
         model = Customer
         fields = ("default_currency_code",)
 
-    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+    default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
 

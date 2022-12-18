@@ -835,7 +835,7 @@ class Metric(models.Model):
         ]
 
     def __str__(self):
-        return self.billable_metric_name
+        return self.billable_metric_name or ""
 
     def get_aggregation_type(self):
         return self.aggregation_type

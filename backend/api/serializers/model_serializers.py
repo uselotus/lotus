@@ -8,7 +8,6 @@ from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
-    SlugRelatedFieldWithOrganizationOrNull,
 )
 from metering_billing.utils.enums import *
 from rest_framework import serializers
@@ -69,7 +68,7 @@ class CustomerSerializer(serializers.ModelSerializer):
         required=True,
         help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
     )
-    default_currency_code = SlugRelatedFieldWithOrganizationOrNull(
+    default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         required=False,
@@ -870,6 +869,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "customer",
             "due_date",
         )
+        extra_kwargs = {
+            "invoice_number": {"required": True},
+        }
 
     cost_due = serializers.DecimalField(
         max_digits=10,
@@ -946,7 +948,7 @@ class CustomerBalanceAdjustmentSerializer(serializers.ModelSerializer):
         required=True,
         source="customer",
     )
-    pricing_unit_code = SlugRelatedFieldWithOrganizationOrNull(
+    pricing_unit_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         required=True,
@@ -984,6 +986,9 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
             "default_currency",
         )
 
+    customer_id = serializers.CharField()
+    email = serializers.EmailField()
+    customer_name = serializers.CharField()
     subscriptions = serializers.SerializerMethodField()
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
