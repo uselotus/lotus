@@ -47,7 +47,6 @@ class CustomerSerializer(serializers.ModelSerializer):
             "payment_provider",
             "payment_provider_id",
             "properties",
-            "integrations",
             "default_currency_code",
         )
         extra_kwargs = {
@@ -58,12 +57,13 @@ class CustomerSerializer(serializers.ModelSerializer):
     payment_provider = serializers.ChoiceField(
         choices=PAYMENT_PROVIDERS.choices,
         required=False,
+        help_text="The payment provider this customer is associated with. Currently, only Stripe is supported.",
     )
     payment_provider_id = serializers.CharField(
         required=False,
         allow_null=True,
         write_only=True,
-        help_text="The customer ID in the payment provider",
+        help_text="The customer's ID in the specified payment provider. Please note that payment_provider and payment_provider_id are mutually necessary.",
     )
     email = serializers.EmailField(
         required=True,
@@ -433,15 +433,12 @@ class PlanSerializer(serializers.ModelSerializer):
         fields = (
             "plan_name",
             "plan_duration",
-            "product_id",
             "plan_id",
             "status",
             # read-only
             "external_links",
             "parent_plan",
             "target_customer",
-            "created_on",
-            "created_by",
             "display_version",
             "num_versions",
             "active_subscriptions",
@@ -459,29 +456,46 @@ class PlanSerializer(serializers.ModelSerializer):
             "target_customer_id": {"write_only": True},
         }
 
-    product_id = SlugRelatedFieldWithOrganization(
-        slug_field="product_id",
-        queryset=Product.objects.all(),
-        read_only=False,
-        source="parent_product",
-        required=False,
-        allow_null=True,
-    )
+    # product_id = SlugRelatedFieldWithOrganization(
+    #     slug_field="product_id",
+    #     queryset=Product.objects.all(),
+    #     read_only=False,
+    #     source="parent_product",
+    #     required=False,
+    #     allow_null=True,
+    # )
 
     # READ ONLY
-    parent_plan = PlanNameAndIDSerializer(read_only=True, required=False)
-    target_customer = ShortCustomerSerializer(read_only=True, required=False)
-    created_by = serializers.SerializerMethodField(read_only=True)
-    display_version = PlanVersionSerializer(read_only=True)
-    num_versions = serializers.SerializerMethodField(read_only=True)
-    active_subscriptions = serializers.SerializerMethodField(read_only=True)
-    external_links = InitialExternalPlanLinkSerializer(many=True, read_only=True)
+    parent_plan = PlanNameAndIDSerializer(
+        read_only=True,
+        required=False,
+        help_text="If you are using our plan templating feature to create a new plan, this field will be set to the plan that you are using as a template.",
+    )
+    target_customer = ShortCustomerSerializer(
+        read_only=True,
+        required=False,
+        help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
+    )
+    display_version = PlanVersionSerializer(
+        read_only=True,
+        help_text="The currently active version of the plan. Customers that get signed up for this plan will be assigned this version.",
+    )
+    num_versions = serializers.SerializerMethodField(
+        read_only=True, help_text="The number of versions that this plan has."
+    )
+    active_subscriptions = serializers.SerializerMethodField(
+        read_only=True,
+        help_text="The number of active subscriptions that this plan has across all versions.",
+    )
+    external_links = InitialExternalPlanLinkSerializer(
+        many=True, read_only=True, help_text="The external links that this plan has."
+    )
 
-    def get_created_by(self, obj) -> str:
-        if obj.created_by:
-            return obj.created_by.username
-        else:
-            return None
+    # def get_created_by(self, obj) -> str:
+    #     if obj.created_by:
+    #         return obj.created_by.username
+    #     else:
+    #         return None
 
     def get_num_versions(self, obj) -> int:
         return len(obj.version_numbers())
@@ -564,8 +578,15 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         help_text="The Lotus plan_id, found in the billing plan object",
     )
     # READ-ONLY
-    customer = ShortCustomerSerializer(read_only=True)
-    billing_plan = PlanNameAndIDSerializer(read_only=True, source="billing_plan.plan")
+    customer = ShortCustomerSerializer(
+        read_only=True,
+        help_text="The customer object associated with this subscription.",
+    )
+    billing_plan = PlanNameAndIDSerializer(
+        read_only=True,
+        source="billing_plan.plan",
+        help_text="The billing plan object associated with this subscription.",
+    )
 
     def validate(self, data):
         # extract the plan version from the plan
@@ -724,7 +745,7 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
         choices=INVOICING_BEHAVIOR.choices,
         default=INVOICING_BEHAVIOR.INVOICE_NOW,
         required=False,
-        help_text="The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do teh calculation.",
+        help_text="The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.",
     )
     replace_plan_usage_behavior = serializers.ChoiceField(
         choices=USAGE_BEHAVIOR.choices,
@@ -747,10 +768,17 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(required=True)
-    plan_id = serializers.CharField(required=True)
+    customer_id = serializers.CharField(
+        required=True,
+        help_text="Filter to a specific customer.",
+    )
+    plan_id = serializers.CharField(
+        required=True, help_text="Filter to a specific plan."
+    )
     subscription_filters = serializers.ListField(
-        child=SubscriptionCategoricalFilterSerializer(), required=False
+        child=SubscriptionCategoricalFilterSerializer(),
+        required=False,
+        help_text="Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'.",
     )
 
     def validate(self, data):
@@ -774,14 +802,17 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
 
 
 class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerializer):
-    plan_id = serializers.CharField(required=False)
+    plan_id = serializers.CharField(
+        required=False,
+        help_text="Filter to a specific plan. If not specified, all plans will be canceled.",
+    )
 
 
 class SubscriptionRecordCancelSerializer(serializers.Serializer):
     flat_fee_behavior = serializers.ChoiceField(
         choices=FLAT_FEE_BEHAVIOR.choices,
         default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
-        help_text="Can either charge the full amount of the flat fee, regardless of how long teh custoemr has been on the plan, prorate the fflat fee, or charge nothing for the flat fee. If the flat fee has already been invoiced (e.g. in advance payment on last subscription), and the reuslting charge is less than the amount already invoiced, the difference will be refunded as a credit. Defaults to charge full amount.",
+        help_text="Can either charge the full amount of the flat fee, regardless of how long the customer has been on the plan, prorate the fflat fee, or charge nothing for the flat fee. If the flat fee has already been invoiced (e.g. in advance payment on last subscription), and the reuslting charge is less than the amount already invoiced, the difference will be refunded as a credit. Defaults to charge full amount.",
     )
     usage_behavior = serializers.ChoiceField(
         choices=USAGE_BILLING_BEHAVIOR.choices,
@@ -795,18 +826,22 @@ class SubscriptionRecordCancelSerializer(serializers.Serializer):
     )
 
 
-class ListSubscriptionRecordFilter(serializers.Serializer):
-    customer_id = serializers.CharField(required=False)
-    status = serializers.ChoiceField(
-        choices=SUBSCRIPTION_STATUS.choices, required=False
-    )
+class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
+    subscription_filters = None
     status = serializers.MultipleChoiceField(
         choices=SUBSCRIPTION_STATUS.choices,
         required=False,
         default=[SUBSCRIPTION_STATUS.ACTIVE],
+        help_text="Filter to a specific set of subscription statuses. Defaults to active.",
     )
-    range_start = serializers.DateTimeField(required=False)
-    range_end = serializers.DateTimeField(required=False)
+    range_start = serializers.DateTimeField(
+        required=False,
+        help_text="If specified, will only return subscriptions with an end date after this date.",
+    )
+    range_end = serializers.DateTimeField(
+        required=False,
+        help_text="If specified, will only return subscriptions with a start date before this date.",
+    )
 
     def validate(self, data):
         # check that the customer ID matches an existing customer
@@ -913,11 +948,14 @@ class LightweightInvoiceSerializer(InvoiceSerializer):
 
 
 class InvoiceListFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(required=False)
+    customer_id = serializers.CharField(
+        required=False, help_text="A filter for invoices for a specific customer"
+    )
     payment_status = serializers.MultipleChoiceField(
         choices=[INVOICE_STATUS.UNPAID, INVOICE_STATUS.PAID],
         required=False,
-        default=[INVOICE_STATUS.UNPAID, INVOICE_STATUS.PAID],
+        default=[INVOICE_STATUS.PAID],
+        help_text="A filter for invoices with a specific payment status",
     )
 
 
@@ -994,6 +1032,12 @@ class CustomerDetailSerializer(serializers.ModelSerializer):
     invoices = serializers.SerializerMethodField()
     total_amount_due = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
+    integrations = serializers.SerializerMethodField(
+        help_text="A dictionary containing the customer's integrations. Keys are the integration type, and the value is a dictionary containing the integration's properties, which can vary by integration.",
+    )
+
+    def get_integrations(self, obj) -> dict:
+        return obj.integrations
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):
         sr_objs = obj.subscription_records.filter(

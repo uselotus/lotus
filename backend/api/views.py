@@ -440,7 +440,6 @@ class SubscriptionViewSet(
         customer_set = Customer.objects.filter(
             id__in=customer_ids, organization=organization
         )
-        print("invoicing behavior: ", invoicing_behavior)
         if invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
             for customer in customer_set:
                 subscription = (

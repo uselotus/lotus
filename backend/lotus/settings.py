@@ -451,7 +451,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
     ],
-    "DEFAULT_SCHEMA_CLASS": "drf_standardized_errors.openapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
@@ -508,10 +508,7 @@ SPECTACULAR_SETTINGS = {
         }
     ],
     "PREPROCESSING_HOOKS": [
-        "metering_billing.openapi_hooks.remove_subscription_delete"
-    ],
-    "POSTPROCESSING_HOOKS": [
-        "drf_standardized_errors.openapi_hooks.postprocess_schema_enums"
+        "metering_billing.openapi_hooks.remove_invalid_subscription_methods"
     ],
     "ENUM_NAME_OVERRIDES": {
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",

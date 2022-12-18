@@ -131,7 +131,7 @@ urlpatterns = [
         name="batch_create_customers",
     ),
     path(
-        "app/verify_idems_received/",
+        "api/verify_idems_received/",
         api_views.ConfirmIdemsReceivedView.as_view(),
         name="verify_idems_received",
     ),

@@ -653,7 +653,7 @@ class Event(models.Model):
     idempotency_id = models.CharField(
         max_length=255,
         default=event_uuid,
-        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
+        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
         primary_key=True,
     )
     inserted_at = models.DateTimeField(default=now_utc)
@@ -1507,14 +1507,19 @@ class Plan(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="plans"
     )
-    plan_name = models.CharField(max_length=100, null=False, blank=False)
-    plan_duration = models.CharField(choices=PLAN_DURATION.choices, max_length=40)
+    plan_name = models.CharField(
+        max_length=100, null=False, blank=False, help_text="Name of the plan"
+    )
+    plan_duration = models.CharField(
+        choices=PLAN_DURATION.choices, max_length=40, help_text="Duration of the plan"
+    )
     display_version = models.ForeignKey(
         "PlanVersion",
         on_delete=models.SET_NULL,
         related_name="+",
         null=True,
         blank=True,
+        help_text="The currently active version of the plan. Customers that get signed up for this plan will be assigned this version.",
     )
     parent_product = models.ForeignKey(
         Product,
@@ -1522,6 +1527,7 @@ class Plan(models.Model):
         related_name="product_plans",
         null=True,
         blank=True,
+        help_text="The product that this plan belongs to",
     )
     status = models.CharField(
         choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
@@ -1541,6 +1547,7 @@ class Plan(models.Model):
         null=True,
         blank=True,
         related_name="child_plans",
+        help_text="If you are using our plan templating feature to create a new plan, this field will be set to the plan that you are using as a template.",
     )
     target_customer = models.ForeignKey(
         Customer,
@@ -1548,6 +1555,7 @@ class Plan(models.Model):
         null=True,
         blank=True,
         related_name="custom_plans",
+        help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
 
     history = HistoricalRecords()

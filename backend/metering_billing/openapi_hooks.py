@@ -1,4 +1,4 @@
-def remove_subscription_delete(endpoints):
+def remove_invalid_subscription_methods(endpoints):
     # your modifications to the list of operations that are exposed in the schema
     to_remove = []
     for (path, path_regex, method, callback) in endpoints:
