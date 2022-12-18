@@ -172,7 +172,6 @@ class MetricSerializer(serializers.ModelSerializer):
             "billable_metric_name",
             "numeric_filters",
             "categorical_filters",
-            "properties",
             "is_cost_metric",
         )
         extra_kwargs = {
@@ -197,7 +196,6 @@ class MetricSerializer(serializers.ModelSerializer):
         choices=EVENT_TYPE.choices,
         required=False,
     )
-    properties = serializers.JSONField(allow_null=True, required=False)
 
     def validate(self, data):
         super().validate(data)
@@ -311,29 +309,17 @@ class PlanVersionSerializer(serializers.ModelSerializer):
             "features",
             "price_adjustment",
             "usage_billing_frequency",
-            "day_anchor",
-            "month_anchor",
             # read-only
             "version",
-            "version_id",
             "active_subscriptions",
-            "created_by",
-            "created_on",
             "status",
-            "replace_with",
-            "transition_to",
             "plan_name",
             "currency",
         )
         read_only_fields = (
             "version",
-            "version_id",
             "active_subscriptions",
-            "created_by",
-            "created_on",
             "status",
-            "replace_with",
-            "transition_to",
             "plan_name",
             "currency",
         )
@@ -350,11 +336,7 @@ class PlanVersionSerializer(serializers.ModelSerializer):
         required=False,
     )
 
-    # READ-ONLY
     active_subscriptions = serializers.IntegerField(read_only=True)
-    created_by = serializers.SerializerMethodField(read_only=True)
-    replace_with = serializers.SerializerMethodField(read_only=True)
-    transition_to = serializers.SerializerMethodField(read_only=True)
     plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
     currency = PricingUnitSerializer(read_only=True, source="pricing_unit")
 
@@ -433,10 +415,10 @@ class PlanSerializer(serializers.ModelSerializer):
         fields = (
             "plan_name",
             "plan_duration",
-            "plan_id",
-            "status",
             # read-only
+            "status",
             "external_links",
+            "plan_id",
             "parent_plan",
             "target_customer",
             "display_version",
@@ -450,30 +432,20 @@ class PlanSerializer(serializers.ModelSerializer):
             "created_by",
             "display_version",
         )
-        extra_kwargs = {
-            "initial_version": {"write_only": True},
-            "parent_plan_id": {"write_only": True},
-            "target_customer_id": {"write_only": True},
-        }
+        optional_fields = ["parent_plan", "target_customer"]
 
-    # product_id = SlugRelatedFieldWithOrganization(
-    #     slug_field="product_id",
-    #     queryset=Product.objects.all(),
-    #     read_only=False,
-    #     source="parent_product",
-    #     required=False,
-    #     allow_null=True,
-    # )
-
-    # READ ONLY
+    status = serializers.ChoiceField(choices=PLAN_STATUS.choices, read_only=True)
+    plan_id = serializers.CharField(read_only=True)
     parent_plan = PlanNameAndIDSerializer(
         read_only=True,
         required=False,
+        allow_null=True,
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the plan that you are using as a template.",
     )
     target_customer = ShortCustomerSerializer(
         read_only=True,
         required=False,
+        allow_null=True,
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
     display_version = PlanVersionSerializer(
@@ -491,12 +463,6 @@ class PlanSerializer(serializers.ModelSerializer):
         many=True, read_only=True, help_text="The external links that this plan has."
     )
 
-    # def get_created_by(self, obj) -> str:
-    #     if obj.created_by:
-    #         return obj.created_by.username
-    #     else:
-    #         return None
-
     def get_num_versions(self, obj) -> int:
         return len(obj.version_numbers())
 
@@ -504,27 +470,17 @@ class PlanSerializer(serializers.ModelSerializer):
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
 
 
-class PlanDetailSerializer(PlanSerializer):
-    class Meta(PlanSerializer.Meta):
-        model = Plan
-        fields = tuple(
-            set(PlanSerializer.Meta.fields).union(set(["versions"]))
-            - set(
-                [
-                    "display_version",
-                    "initial_version",
-                    "parent_plan_id",
-                    "target_customer_id",
-                ]
-            )
+class PlanNameIDVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanVersion
+        fields = (
+            "plan_name",
+            "plan_id",
+            "version",
         )
 
-    versions = serializers.SerializerMethodField()
-
-    def get_versions(self, obj) -> PlanVersionSerializer(many=True):
-        return PlanVersionSerializer(
-            obj.versions.all().order_by("version"), many=True
-        ).data
+    plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
+    plan_id = serializers.CharField(read_only=True, source="plan.plan_id")
 
 
 class SubscriptionRecordSerializer(serializers.ModelSerializer):
@@ -582,9 +538,8 @@ class SubscriptionRecordSerializer(serializers.ModelSerializer):
         read_only=True,
         help_text="The customer object associated with this subscription.",
     )
-    billing_plan = PlanNameAndIDSerializer(
+    billing_plan = PlanNameIDVersionSerializer(
         read_only=True,
-        source="billing_plan.plan",
         help_text="The billing plan object associated with this subscription.",
     )
 
@@ -726,8 +681,8 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
         model = SubscriptionRecord
         fields = (
             "replace_plan_id",
-            "replace_plan_invoicing_behavior",
-            "replace_plan_usage_behavior",
+            "invoicing_behavior",
+            "usage_behavior",
             "turn_off_auto_renew",
             "end_date",
         )
@@ -741,13 +696,13 @@ class SubscriptionRecordUpdateSerializer(serializers.ModelSerializer):
         required=False,
         help_text="The plan to replace the current plan with",
     )
-    replace_plan_invoicing_behavior = serializers.ChoiceField(
+    invoicing_behavior = serializers.ChoiceField(
         choices=INVOICING_BEHAVIOR.choices,
         default=INVOICING_BEHAVIOR.INVOICE_NOW,
         required=False,
         help_text="The invoicing behavior to use when replacing the plan. Invoice now will invoice the customer for the prorated difference of the old plan and the new plan, whereas add_to_next_invoice will wait until the end of the subscription to do the calculation.",
     )
-    replace_plan_usage_behavior = serializers.ChoiceField(
+    usage_behavior = serializers.ChoiceField(
         choices=USAGE_BEHAVIOR.choices,
         default=USAGE_BEHAVIOR.TRANSFER_TO_NEW_SUBSCRIPTION,
         help_text="The usage behavior to use when replacing the plan. Transfer to new subscription will transfer the usage from the old subscription to the new subscription, whereas reset_usage will reset the usage to 0 for the new subscription, while keeping the old usage on the old subscription and charging for that appropriately at the end of the month.",
@@ -834,6 +789,10 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
         default=[SUBSCRIPTION_STATUS.ACTIVE],
         help_text="Filter to a specific set of subscription statuses. Defaults to active.",
     )
+    plan_id = serializers.CharField(
+        required=False,
+        help_text="Filter to a specific plan. If not specified, all plans will be canceled.",
+    )
     range_start = serializers.DateTimeField(
         required=False,
         help_text="If specified, will only return subscriptions with an end date after this date.",
@@ -867,15 +826,10 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
             "subtotal",
             "billing_type",
             "metadata",
-            "plan_version_id",
             "plan_name",
             "subscription_filters",
         )
 
-    plan_version_id = serializers.CharField(
-        source="associated_subscription_record.billing_plan.plan_version_id",
-        read_only=True,
-    )
     plan_name = serializers.CharField(
         source="associated_subscription_record.billing_plan.plan.plan_name",
         read_only=True,
@@ -914,7 +868,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "external_payment_obj_type",
             "line_items",
             "customer",
-            "subscription",
             "due_date",
         )
 
@@ -923,8 +876,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         decimal_places=2,
     )
     currency = PricingUnitSerializer(read_only=True)
-    customer = CustomerSerializer(read_only=True)
-    subscription = SubscriptionRecordDetailSerializer(read_only=True)
+    customer = ShortCustomerSerializer(read_only=True)
     line_items = InvoiceLineItemSerializer(many=True, read_only=True)
     external_payment_obj_type = serializers.ChoiceField(
         choices=PAYMENT_PROVIDERS.choices, read_only=True, required=False
@@ -945,6 +897,10 @@ class LightweightInvoiceSerializer(InvoiceSerializer):
                 ]
             )
         )
+
+    external_payment_obj_type = serializers.ChoiceField(
+        choices=PAYMENT_PROVIDERS.choices, read_only=True, required=False
+    )
 
 
 class InvoiceListFilterSerializer(serializers.Serializer):

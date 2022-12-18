@@ -612,6 +612,8 @@ class PlanViewSet(api_views.PlanViewSet):
         serializer = super(PlanViewSet, self).get_serializer_class()
         if self.action == "partial_update":
             return PlanUpdateSerializer
+        elif self.action == "create":
+            return PlanSerializer
         return serializer
 
     def perform_create(self, serializer):

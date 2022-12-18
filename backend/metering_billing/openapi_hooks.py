@@ -9,3 +9,23 @@ def remove_invalid_subscription_methods(endpoints):
     for item in to_remove:
         endpoints.remove(item)
     return endpoints
+
+
+def remove_required_parent_plan_and_target_customer(result, **kwargs):
+    schemas = result.get("components", {}).get("schemas", {})
+    schemas["Plan"]["required"] = [
+        x
+        for x in schemas["Plan"]["required"]
+        if x not in ["parent_plan", "target_customer"]
+    ]
+    return result
+
+
+def remove_required_external_payment_obj_type(result, **kwargs):
+    schemas = result.get("components", {}).get("schemas", {})
+    schemas["LightweightInvoice"]["required"] = [
+        x
+        for x in schemas["LightweightInvoice"]["required"]
+        if x not in ["external_payment_obj_type"]
+    ]
+    return result

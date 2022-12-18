@@ -666,11 +666,24 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
 class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
     class Meta(api_serializers.PlanVersionSerializer.Meta):
         fields = api_serializers.PlanVersionSerializer.Meta.fields + (
+            "day_anchor",
+            "month_anchor",
             "make_active",
             "make_active_type",
             "replace_immediately_type",
             "transition_to_plan_id",
             "currency_code",
+            "replace_with",
+            "transition_to",
+            "replace_with",
+            "transition_to",
+        )
+        read_only_fields = (
+            api_serializers.PlanVersionSerializer.Meta.read_only_fields
+            + (
+                "replace_with",
+                "transition_to",
+            )
         )
         extra_kwargs = {
             "make_active_type": {"write_only": True},
@@ -680,6 +693,9 @@ class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
             "currency_code": {"write_only": True},
         }
 
+    # READ-ONLY
+    replace_with = serializers.SerializerMethodField(read_only=True)
+    transition_to = serializers.SerializerMethodField(read_only=True)
     # WRITE ONLY
     make_active = serializers.BooleanField(write_only=True)
     make_active_type = serializers.ChoiceField(
@@ -797,7 +813,7 @@ class InitialPlanVersionSerializer(PlanVersionSerializer):
             - set(
                 [
                     "plan_id",
-                    "replace_plan_version_id",
+                    "version_id",
                     "make_active",
                     "make_active_type",
                     "replace_immediately_type",
@@ -909,11 +925,6 @@ class PlanSerializer(api_serializers.PlanSerializer):
         except Exception as e:
             plan.delete()
             raise ServerError(e)
-
-
-class PlanDetailSerializer(api_serializers.PlanDetailSerializer):
-    class Meta(api_serializers.PlanDetailSerializer.Meta):
-        fields = api_serializers.PlanDetailSerializer.Meta.fields
 
 
 class PlanUpdateSerializer(serializers.ModelSerializer):

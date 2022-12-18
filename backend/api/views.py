@@ -190,11 +190,6 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         return response
 
-    def get_serializer_class(self):
-        if self.action == "retrieve":
-            return PlanDetailSerializer
-        return PlanSerializer
-
     def get_serializer_context(self):
         context = super(PlanViewSet, self).get_serializer_context()
         organization = self.request.organization
@@ -463,7 +458,7 @@ class SubscriptionViewSet(
         parameters=[SubscriptionRecordFilterSerializer],
         responses={200: SubscriptionRecordSerializer(many=True)},
     )
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], url_path="update")
     def edit(self, request, *args, **kwargs):
         qs = self.get_queryset()
         organization = self.request.organization
@@ -484,17 +479,13 @@ class SubscriptionViewSet(
                 raise SwitchPlanDurationMismatch(
                     "Cannot switch to a plan with a different duration"
                 )
-        replace_plan_billing_behavior = serializer.validated_data.get(
-            "replace_plan_invoicing_behavior"
-        )
-        replace_plan_usage_behavior = serializer.validated_data.get(
-            "replace_plan_usage_behavior"
-        )
+        billing_behavior = serializer.validated_data.get("invoicing_behavior")
+        usage_behavior = serializer.validated_data.get("usage_behavior")
         turn_off_auto_renew = serializer.validated_data.get("turn_off_auto_renew")
         end_date = serializer.validated_data.get("end_date")
         if replace_billing_plan:
             now = now_utc()
-            keep_separate = replace_plan_usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
+            keep_separate = usage_behavior == USAGE_BEHAVIOR.KEEP_SEPARATE
             for subscription_record in qs:
                 sr = SubscriptionRecord.objects.create(
                     organization=subscription_record.organization,
@@ -520,7 +511,7 @@ class SubscriptionViewSet(
                 subscription_record.end_date = now
                 subscription_record.status = SUBSCRIPTION_STATUS.ENDED
                 subscription_record.fully_billed = (
-                    replace_plan_billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
+                    billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
                 )
                 subscription_record.save()
             customer = list(qs)[0].customer
@@ -535,7 +526,7 @@ class SubscriptionViewSet(
             new_qs = SubscriptionRecord.objects.filter(
                 pk__in=original_qs, organization=organization
             )
-            if replace_plan_billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
+            if billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW:
                 generate_invoice(subscription, new_qs)
         else:
             update_dict = {}

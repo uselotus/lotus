@@ -510,6 +510,10 @@ SPECTACULAR_SETTINGS = {
     "PREPROCESSING_HOOKS": [
         "metering_billing.openapi_hooks.remove_invalid_subscription_methods"
     ],
+    "POSTPROCESSING_HOOKS": [
+        "metering_billing.openapi_hooks.remove_required_parent_plan_and_target_customer",
+        "metering_billing.openapi_hooks.remove_required_external_payment_obj_type",
+    ],
     "ENUM_NAME_OVERRIDES": {
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
         "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",

@@ -32,7 +32,7 @@ export interface UpdateSubscriptionType {
   replace_plan_id?: string;
   end_date?: string;
   turn_off_auto_renew?: boolean;
-  replace_plan_invocing_behavior?: string;
+  invocing_behavior?: string;
 }
 
 export interface CancelSubscriptionType {

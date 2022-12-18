@@ -655,7 +655,7 @@ class TestUpdateSub:
         new_plan.save()
         payload = {
             "replace_plan_id": new_plan.plan_id,
-            "replace_plan_usage_behavior": USAGE_BEHAVIOR.KEEP_SEPARATE,
+            "usage_behavior": USAGE_BEHAVIOR.KEEP_SEPARATE,
         }
         params = {
             "customer_id": setup_dict["customer"].customer_id,
@@ -1264,13 +1264,13 @@ class TestRegressions:
             "customer_id": setup_dict["customer"].customer_id,
         }
         response = setup_dict["client"].get(reverse("subscription-list"), payload)
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
-
         payload = {
             "customer_id": "1234567890-fcfghjkldscfvgbhjo",
         }
         response = setup_dict["client"].get(reverse("subscription-list"), payload)
-
+        print(response.data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_patch_subscription_cant_find_customer(
