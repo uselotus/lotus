@@ -43,12 +43,11 @@ from metering_billing.views.model_views import (
     WebhookViewSet,
 )
 from metering_billing.views.payment_provider_views import PaymentProviderView
-from metering_billing.views.views import (  # MergeCustomersView,
+from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
     CostAnalysisView,
     CustomersSummaryView,
     CustomersWithRevenueView,
     DraftInvoiceView,
-    ExperimentalToActiveView,
     ImportCustomersView,
     ImportPaymentObjectsView,
     PeriodMetricRevenueView,
@@ -193,11 +192,11 @@ urlpatterns = [
         PaymentProviderView.as_view(),
         name="payment_providers",
     ),
-    path(
-        "app/experimental_to_active/",
-        ExperimentalToActiveView.as_view(),
-        name="expertimental-to-active",
-    ),
+    # path(
+    #     "app/experimental_to_active/",
+    #     ExperimentalToActiveView.as_view(),
+    #     name="expertimental-to-active",
+    # ),
     path("app/login/", auth_views.LoginView.as_view(), name="api-login"),
     path("app/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
     path("app/session/", auth_views.SessionView.as_view(), name="api-session"),

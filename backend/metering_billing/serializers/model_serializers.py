@@ -709,12 +709,14 @@ class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
         queryset=Plan.objects.all(),
         write_only=True,
         required=False,
+        source="transition_to",
     )
     currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         write_only=True,
         required=False,
+        source="pricing_unit",
     )
 
     def validate(self, data):
@@ -1020,12 +1022,12 @@ class ListSubscriptionRecordFilter(api_serializers.ListSubscriptionRecordFilter)
     pass
 
 
-class ExperimentalToActiveRequestSerializer(serializers.Serializer):
-    version_id = SlugRelatedFieldWithOrganization(
-        queryset=PlanVersion.objects.filter(plan__status=PLAN_STATUS.EXPERIMENTAL),
-        slug_field="version_id",
-        read_only=False,
-    )
+# class ExperimentalToActiveRequestSerializer(serializers.Serializer):
+#     version_id = SlugRelatedFieldWithOrganization(
+#         queryset=PlanVersion.objects.filter(plan__status=PLAN_STATUS.EXPERIMENTAL),
+#         slug_field="version_id",
+#         read_only=False,
+#     )
 
 
 class SubscriptionActionSerializer(SubscriptionRecordSerializer):

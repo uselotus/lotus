@@ -429,7 +429,12 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 raise ServerError(f"Unknown error occurred while creating metric: {e}")
 
 
-class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+class FeatureViewSet(
+    PermissionPolicyMixin,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
+):
     """
     A simple ViewSet for viewing and editing Features.
     """
@@ -440,6 +445,7 @@ class FeatureViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "create": [IsAuthenticated & ValidOrganization],
         "destroy": [IsAuthenticated & ValidOrganization],
     }
+    queryset = Feature.objects.all()
 
     def get_queryset(self):
         organization = self.request.organization
@@ -792,6 +798,7 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated & ValidOrganization]
     lookup_field = "external_plan_id"
     http_method_names = ["post", "head", "delete"]
+    queryset = ExternalPlanLink.objects.all()
 
     def get_queryset(self):
         filter_kwargs = {"organization": self.request.organization}

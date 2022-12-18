@@ -515,6 +515,10 @@ SPECTACULAR_SETTINGS = {
         "metering_billing.openapi_hooks.remove_required_external_payment_obj_type",
     ],
     "ENUM_NAME_OVERRIDES": {
+        "numeric_filter_operators": "metering_billing.utils.enums.NUMERIC_FILTER_OPERATORS.choices",
+        "categorical_filter_operators": "metering_billing.utils.enums.CATEGORICAL_FILTER_OPERATORS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
         "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
