@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ant-design/plots": "1.2.1",
-    "@ant-design/pro-components": "1.1.16",
+    "@ant-design/pro-components": "1.1.25",
     "@elsdoerfer/react-arrow": "^1.0.4",
     "@radix-ui/react-popover": "1.0.0",
     "@radix-ui/react-separator": "1.0.0",
