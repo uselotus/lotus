@@ -40,7 +40,7 @@ const EventPreview: FC = () => {
     }
   }, [data]);
 
-  if ((isLoading || !data) && !cursor) {
+  if ((isLoading || !data) && !cursor.length) {
     return (
       <div className="align-center min-h-[100px]">
         <LoadingSpinner />
@@ -69,7 +69,7 @@ const EventPreview: FC = () => {
         queryClient.invalidateQueries(["preview_events", cursor]);
         return;
       case "START":
-        setCursor(null);
+        setCursor("");
         setCurrentPage(1);
         queryClient.invalidateQueries(["preview_events", null]);
         return;
@@ -106,9 +106,9 @@ const EventPreview: FC = () => {
             className="hover:bg-background"
             style={{ background: "#ffffff" }}
           >
-            {!data && !!cursor && (
+            {!data && !!cursor.length && (
               <div className="loadMoreSpinner">
-                <LoadingSpinner />.
+                <LoadingSpinner />
               </div>
             )}
 
