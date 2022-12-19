@@ -37,7 +37,7 @@
     "react-query": "3.39.2",
     "react-query-devtools": "2.6.3",
     "react-router-dom": "6.3.0",
-    "react-spinners": "0.13.4",
+    "react-spinners": "0.13.7",
     "react-toastify": "9.0.8",
     "sjcl": "^1.0.8",
     "universal-cookie": "4.0.4",
