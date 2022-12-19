@@ -3,7 +3,7 @@ export interface MetricType {
   property_name: string;
   usage_aggregation_type: string;
   billable_aggregation_type?: string;
-  metric_id: string;
+  metric_id?: string;
   billable_metric_name?: string;
   metric_type: "counter" | "stateful" | "rate";
   numeric_filters?: NumericFilterType[];
