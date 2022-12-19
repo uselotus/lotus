@@ -29,3 +29,30 @@ def remove_required_external_payment_obj_type(result, **kwargs):
         if x not in ["external_payment_obj_type"]
     ]
     return result
+
+
+def add_external_payment_obj_type_to_required(result, **kwargs):
+    schemas = result.get("components", {}).get("schemas", {})
+    if "external_payment_obj_type" not in schemas["LightweightInvoice"]["required"]:
+        schemas["LightweightInvoice"]["required"].append("external_payment_obj_type")
+    return result
+
+
+def add_external_payment_obj_type_to_required(result, **kwargs):
+    schemas = result.get("components", {}).get("schemas", {})
+    if "external_payment_obj_type" not in schemas["LightweightInvoice"]["required"]:
+        schemas["LightweightInvoice"]["required"].append("external_payment_obj_type")
+    return result
+
+
+def add_plan_id_parent_plan_target_customer_to_required(result, **kwargs):
+    schemas = result.get("components", {}).get("schemas", {})
+    if "plan_id" not in schemas["Plan"]["required"]:
+        schemas["Plan"]["required"].append("plan_id")
+    if "parent_plan" not in schemas["Plan"]["required"]:
+        schemas["Plan"]["required"].append("parent_plan")
+    if "target_customer" not in schemas["Plan"]["required"]:
+        schemas["Plan"]["required"].append("target_customer")
+    if "status" not in schemas["Plan"]["required"]:
+        schemas["Plan"]["required"].append("status")
+    return result

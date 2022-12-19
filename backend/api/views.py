@@ -117,8 +117,14 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == "create":
-            return CustomerSerializer
-        return CustomerDetailSerializer
+            return CustomerCreateSerializer
+        return CustomerSerializer
+
+    @extend_schema(
+        responses={200: CustomerSerializer()},
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         try:
@@ -1096,7 +1102,7 @@ def ingest_event(data: dict, customer_id: str, organization_pk: int) -> None:
             name="TrackEventSuccess",
             fields={
                 "success": serializers.ChoiceField(choices=["all", "some"]),
-                "failed_events": serializers.DictField(required=False),
+                "failed_events": serializers.DictField(),
             },
         ),
         400: inline_serializer(

@@ -501,6 +501,7 @@ SPECTACULAR_SETTINGS = {
             },
         }
     },
+    "COMPONENT_SPLIT_REQUEST": True,
     "SECURITY": [
         {
             "OrganizationApiKeyAuth": [],
@@ -513,6 +514,8 @@ SPECTACULAR_SETTINGS = {
     "POSTPROCESSING_HOOKS": [
         "metering_billing.openapi_hooks.remove_required_parent_plan_and_target_customer",
         "metering_billing.openapi_hooks.remove_required_external_payment_obj_type",
+        "metering_billing.openapi_hooks.add_external_payment_obj_type_to_required",
+        "metering_billing.openapi_hooks.add_plan_id_parent_plan_target_customer_to_required",
     ],
     "ENUM_NAME_OVERRIDES": {
         "numeric_filter_operators": "metering_billing.utils.enums.NUMERIC_FILTER_OPERATORS.choices",

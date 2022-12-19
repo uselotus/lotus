@@ -399,6 +399,44 @@ class MetricSerializer(api_serializers.MetricSerializer):
     class Meta(api_serializers.MetricSerializer.Meta):
         fields = api_serializers.MetricSerializer.Meta.fields
 
+    def validate(self, data):
+        super().validate(data)
+        metric_type = data["metric_type"]
+        data = METRIC_HANDLER_MAP[metric_type].validate_data(data)
+        return data
+
+    def create(self, validated_data):
+        # edit custom name and pop filters + properties
+        num_filter_data = validated_data.pop("numeric_filters", [])
+        cat_filter_data = validated_data.pop("categorical_filters", [])
+
+        bm = Metric.objects.create(**validated_data)
+
+        # get filters
+        for num_filter in num_filter_data:
+            try:
+                nf, _ = NumericFilter.objects.get_or_create(
+                    **num_filter, organization=bm.organization
+                )
+            except NumericFilter.MultipleObjectsReturned:
+                nf = NumericFilter.objects.filter(
+                    **num_filter, organization=bm.organization
+                ).first()
+            bm.numeric_filters.add(nf)
+        for cat_filter in cat_filter_data:
+            try:
+                cf, _ = CategoricalFilter.objects.get_or_create(
+                    **cat_filter, organization=bm.organization
+                )
+            except CategoricalFilter.MultipleObjectsReturned:
+                cf = CategoricalFilter.objects.filter(
+                    **cat_filter, organization=bm.organization
+                ).first()
+            bm.categorical_filters.add(cf)
+        bm.save()
+
+        return bm
+
 
 class ExternalPlanLinkSerializer(serializers.ModelSerializer):
     class Meta:
@@ -677,13 +715,6 @@ class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
             "replace_with",
             "transition_to",
         )
-        read_only_fields = (
-            api_serializers.PlanVersionSerializer.Meta.read_only_fields
-            + (
-                "replace_with",
-                "transition_to",
-            )
-        )
         extra_kwargs = {
             "make_active_type": {"write_only": True},
             "replace_immediately_type": {"write_only": True},
@@ -828,9 +859,9 @@ class PlanNameAndIDSerializer(api_serializers.PlanNameAndIDSerializer):
         fields = api_serializers.PlanNameAndIDSerializer.Meta.fields
 
 
-class ShortCustomerSerializer(api_serializers.ShortCustomerSerializer):
-    class Meta(api_serializers.ShortCustomerSerializer.Meta):
-        fields = api_serializers.ShortCustomerSerializer.Meta.fields
+class LightweightCustomerSerializer(api_serializers.LightweightCustomerSerializer):
+    class Meta(api_serializers.LightweightCustomerSerializer.Meta):
+        fields = api_serializers.LightweightCustomerSerializer.Meta.fields
 
 
 class PlanSerializer(api_serializers.PlanSerializer):
@@ -961,11 +992,9 @@ class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer)
         fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
 
 
-class SubscriptionRecordDetailSerializer(
-    api_serializers.SubscriptionRecordDetailSerializer
-):
-    class Meta(api_serializers.SubscriptionRecordDetailSerializer.Meta):
-        fields = api_serializers.SubscriptionRecordDetailSerializer.Meta.fields
+class SubscriptionRecordSerializer(api_serializers.SubscriptionRecordSerializer):
+    class Meta(api_serializers.SubscriptionRecordSerializer.Meta):
+        fields = api_serializers.SubscriptionRecordSerializer.Meta.fields
 
 
 class LightweightPlanVersionSerializer(
@@ -1282,8 +1311,3 @@ class CustomerBalanceAdjustmentSerializer(
 ):
     class Meta(api_serializers.CustomerBalanceAdjustmentSerializer.Meta):
         fields = api_serializers.CustomerBalanceAdjustmentSerializer.Meta.fields
-
-
-class CustomerDetailSerializer(api_serializers.CustomerDetailSerializer):
-    class Meta(api_serializers.CustomerDetailSerializer.Meta):
-        fields = api_serializers.CustomerDetailSerializer.Meta.fields
