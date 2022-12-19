@@ -64,13 +64,14 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 class Organization(models.Model):
     organization_id = models.CharField(default=organization_uuid, max_length=100)
-    company_name = models.CharField(max_length=100, blank=False)
+    company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
     payment_plan = models.CharField(
         max_length=40,
         choices=PAYMENT_PLANS.choices,
         default=PAYMENT_PLANS.SELF_HOSTED_FREE,
+        null=False,
     )
     is_demo = models.BooleanField(default=False)
     default_currency = models.ForeignKey(
@@ -137,12 +138,14 @@ class WebhookEndpointManager(models.Manager):
 
 class WebhookEndpoint(models.Model):
     webhook_endpoint_id = models.CharField(
-        default=webhook_endpoint_uuid, max_length=100, unique=True
+        default=webhook_endpoint_uuid,
+        max_length=100,
+        unique=True,
     )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="webhook_endpoints"
     )
-    name = models.CharField(max_length=100, blank=True)
+    name = models.CharField(max_length=100, blank=True, null=True)
     webhook_url = models.CharField(max_length=100)
     webhook_secret = models.CharField(max_length=100, default=webhook_secret_uuid)
 
@@ -311,6 +314,7 @@ class Customer(models.Model):
         max_length=100,
         blank=True,
         help_text="The display name of the customer",
+        null=True,
     )
     email = models.EmailField(
         max_length=100,
@@ -322,7 +326,7 @@ class Customer(models.Model):
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
     )
     payment_provider = models.CharField(
-        blank=True, choices=PAYMENT_PROVIDERS.choices, max_length=40
+        blank=True, choices=PAYMENT_PROVIDERS.choices, max_length=40, null=True
     )
     integrations = models.JSONField(default=dict, blank=True)
     properties = models.JSONField(
@@ -340,7 +344,7 @@ class Customer(models.Model):
 
     class Meta:
         constraints = [
-            UniqueConstraint(fields=["organization", "email"], name="unique_email"),
+            # UniqueConstraint(fields=["organization", "email"], name="unique_email"),
             UniqueConstraint(
                 fields=["organization", "customer_id"], name="unique_customer_id"
             ),
@@ -635,7 +639,6 @@ class Event(models.Model):
     cust_id = models.CharField(max_length=50, blank=True)
     event_name = models.CharField(
         max_length=100,
-        blank=False,
         help_text="String name of the event, corresponds to definition in metrics",
     )
     time_created = models.DateTimeField(
@@ -644,7 +647,6 @@ class Event(models.Model):
     properties = models.JSONField(
         default=dict,
         blank=True,
-        null=True,
         help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
     )
     idempotency_id = models.CharField(
@@ -763,13 +765,14 @@ class Metric(models.Model):
         help_text="The type of metric that this is. Please refer to our documentation for an explanation of the different types.",
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
-    billable_metric_name = models.CharField(max_length=50, blank=True)
-    metric_id = models.CharField(max_length=100, blank=True, default=metric_uuid)
+    billable_metric_name = models.CharField(max_length=50, blank=True, null=True)
+    metric_id = models.CharField(max_length=100, default=metric_uuid)
     event_type = models.CharField(
         max_length=20,
         choices=EVENT_TYPE.choices,
         default=EVENT_TYPE.TOTAL,
         blank=True,
+        null=True,
         help_text="Used only for metrics of type 'continuous'. Please refer to our documentation for an explanation of the different types.",
     )
     # metric type specific
@@ -784,6 +787,7 @@ class Metric(models.Model):
         choices=METRIC_AGGREGATION.choices,
         default=METRIC_AGGREGATION.SUM,
         blank=True,
+        null=True,
     )
     property_name = models.CharField(
         max_length=50,
@@ -796,6 +800,7 @@ class Metric(models.Model):
         default=METRIC_GRANULARITY.TOTAL,
         max_length=10,
         blank=True,
+        null=True,
         help_text="The granularity of the metric. Only applies to metrics of type 'continuous' or 'rate'.",
     )
     is_cost_metric = models.BooleanField(
@@ -945,6 +950,7 @@ class PriceTier(models.Model):
         max_length=20,
         default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
         blank=True,
+        null=True,
     )
 
     def calculate_revenue(self, usage: float, prev_tier_end=False):
@@ -1009,6 +1015,7 @@ class PlanComponent(models.Model):
         choices=COMPONENT_RESET_FREQUENCY.choices,
         max_length=10,
         blank=True,
+        null=True,
         default=COMPONENT_RESET_FREQUENCY.NONE,
     )
     pricing_unit = models.ForeignKey(
@@ -1224,7 +1231,7 @@ class Feature(models.Model):
         Organization, on_delete=models.CASCADE, related_name="features"
     )
     feature_name = models.CharField(max_length=50, blank=False)
-    feature_description = models.TextField(blank=True)
+    feature_description = models.TextField(blank=True, null=True)
 
     class Meta:
         unique_together = ("organization", "feature_name")
@@ -1251,12 +1258,14 @@ class Invoice(models.Model):
     invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
-    payment_status = models.CharField(max_length=40, choices=INVOICE_STATUS.choices)
+    payment_status = models.CharField(
+        max_length=40, choices=INVOICE_STATUS.choices, default=INVOICE_STATUS.UNPAID
+    )
     due_date = models.DateTimeField(max_length=100, null=True, blank=True)
-    invoice_number = models.CharField(max_length=13, blank=False)
-    external_payment_obj_id = models.CharField(max_length=100, blank=True)
+    invoice_number = models.CharField(max_length=13)
+    external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
     external_payment_obj_type = models.CharField(
-        choices=PAYMENT_PROVIDERS.choices, max_length=40, blank=True
+        choices=PAYMENT_PROVIDERS.choices, max_length=40, blank=True, null=True
     )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="invoices", null=True
@@ -1346,10 +1355,10 @@ class InvoiceLineItem(models.Model):
         blank=True,
     )
     billing_type = models.CharField(
-        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, blank=True
+        max_length=40, choices=FLAT_FEE_BILLING_TYPE.choices, blank=True, null=True
     )
     chargeable_item_type = models.CharField(
-        max_length=40, choices=CHARGEABLE_ITEM_TYPE.choices, blank=True
+        max_length=40, choices=CHARGEABLE_ITEM_TYPE.choices, blank=True, null=True
     )
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, null=True, related_name="line_items"
@@ -1497,8 +1506,8 @@ class PriceAdjustment(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="price_adjustments"
     )
-    price_adjustment_name = models.CharField(max_length=100, blank=False)
-    price_adjustment_description = models.TextField(blank=True)
+    price_adjustment_name = models.CharField(max_length=100)
+    price_adjustment_description = models.TextField(blank=True, null=True)
     price_adjustment_type = models.CharField(
         max_length=40, choices=PRICE_ADJUSTMENT_TYPE.choices
     )
@@ -1530,9 +1539,7 @@ class Plan(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="plans"
     )
-    plan_name = models.CharField(
-        max_length=100, blank=False, help_text="Name of the plan"
-    )
+    plan_name = models.CharField(max_length=100, help_text="Name of the plan")
     plan_duration = models.CharField(
         choices=PLAN_DURATION.choices, max_length=40, help_text="Duration of the plan"
     )
@@ -1770,13 +1777,12 @@ class Subscription(models.Model):
         related_name="subscriptions",
     )
     billing_cadence = models.CharField(
-        choices=PLAN_DURATION.choices, max_length=20, blank=False
+        choices=PLAN_DURATION.choices,
+        max_length=20,
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    subscription_id = models.CharField(
-        max_length=100, blank=True, default=subscription_uuid
-    )
+    subscription_id = models.CharField(max_length=100, default=subscription_uuid)
     objects = SubscriptionManager()
 
     def get_anchors(self):
@@ -1943,7 +1949,7 @@ class SubscriptionRecord(models.Model):
         help_text="Whether this subscription came from a renewal or from a first-time. Defaults to true on creation.",
     )
     subscription_record_id = models.CharField(
-        max_length=100, blank=True, default=subscription_record_uuid
+        max_length=100, default=subscription_record_uuid
     )
     filters = models.ManyToManyField(
         CategoricalFilter,
@@ -2122,11 +2128,9 @@ class Backtest(models.Model):
         Organization, on_delete=models.CASCADE, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
-    backtest_id = models.CharField(
-        max_length=100, blank=True, default=backtest_uuid, unique=True
-    )
+    backtest_id = models.CharField(max_length=100, default=backtest_uuid, unique=True)
     kpis = models.JSONField(default=list)
-    backtest_results = models.JSONField(default=dict, null=True, blank=True)
+    backtest_results = models.JSONField(default=dict, blank=True)
     status = models.CharField(
         choices=BACKTEST_STATUS.choices,
         default=BACKTEST_STATUS.RUNNING,
@@ -2173,9 +2177,13 @@ class OrganizationSetting(models.Model):
         Organization, on_delete=models.CASCADE, related_name="settings"
     )
     setting_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
-    setting_name = models.CharField(max_length=100, blank=False)
-    setting_value = models.CharField(max_length=100, blank=False)
-    setting_group = models.CharField(max_length=100, blank=True)
+    setting_name = models.CharField(
+        max_length=100,
+    )
+    setting_value = models.CharField(
+        max_length=100,
+    )
+    setting_group = models.CharField(max_length=100, blank=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
@@ -2222,9 +2230,9 @@ class PricingUnit(models.Model):
         blank=True,
         related_name="pricing_units",
     )
-    code = models.CharField(max_length=10, blank=False)
-    name = models.CharField(max_length=100, blank=False)
-    symbol = models.CharField(max_length=10, blank=False)
+    code = models.CharField(max_length=10)
+    name = models.CharField(max_length=100)
+    symbol = models.CharField(max_length=10)
     custom = models.BooleanField(default=False)
 
     def __str__(self):

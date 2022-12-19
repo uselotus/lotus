@@ -90,6 +90,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         customer = Customer.objects.create(
             organization=organization,
             customer_name="BigCompany " + str(uuid.uuid4())[:6],
+            email="BigCompany " + str(uuid.uuid4())[:6] + "@example.com",
         )
         big_customers.append(customer)
     medium_customers = []
@@ -97,6 +98,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         customer = Customer.objects.create(
             organization=organization,
             customer_name="MediumCompany " + str(uuid.uuid4())[:6],
+            email="MediumCompany " + str(uuid.uuid4())[:6] + "@example.com",
         )
         medium_customers.append(customer)
     small_customers = []
@@ -104,6 +106,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         customer = Customer.objects.create(
             organization=organization,
             customer_name="SmallCompany " + str(uuid.uuid4())[:6],
+            email="SmallCompany " + str(uuid.uuid4())[:6] + "@example.com",
         )
         small_customers.append(customer)
     calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
@@ -593,6 +596,7 @@ def setup_paas_demo(
         customer = Customer.objects.create(
             organization=organization,
             customer_name="BigCompany " + str(uuid.uuid4())[:6],
+            email="BigCompany " + str(uuid.uuid4())[:6] + "@example.com",
         )
         big_customers.append(customer)
     medium_customers = []
@@ -600,6 +604,7 @@ def setup_paas_demo(
         customer = Customer.objects.create(
             organization=organization,
             customer_name="MediumCompany " + str(uuid.uuid4())[:6],
+            email="MediumCompany " + str(uuid.uuid4())[:6] + "@example.com",
         )
         medium_customers.append(customer)
     small_customers = []
@@ -607,6 +612,7 @@ def setup_paas_demo(
         customer = Customer.objects.create(
             organization=organization,
             customer_name="SmallCompany " + str(uuid.uuid4())[:6],
+            email="SmallCompany " + str(uuid.uuid4())[:6] + "@example.com",
         )
         small_customers.append(customer)
     (
