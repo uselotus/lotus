@@ -41,8 +41,9 @@ await lotus.cancelSubscription({
   planId: "plan234234"
   billUsage: "false";
   customerId: string;
-  invoicingBehaviorOnCancel?: "add_to_next_invoice";
+  invoicingBehavior?: "add_to_next_invoice";
   flatFeeBehavior:"prorate";
+  usageBehavior:"bill_none"
   subscriptionFilters?: [{property_name:project_id, value:23414}];
 });
 ```

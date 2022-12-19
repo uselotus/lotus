@@ -1,10 +1,11 @@
 ---
 openapi: "GET /api/plans/{plan_id}/"
+title: Get Plan
 ---
 
 Retrieves a [plan_detail](/api-reference/plans/plan-object) object.
 
-A `Retrieve Plan` call requires
+A `Get Plan` call requires
 
 - `plan_id` the plan id
 
@@ -17,8 +18,8 @@ lotus.get_plan(
 ```
 
 ```ts Typescript
-await lotus.retrievePlan({
-  planId: "plan_0569173ee6654369", // required
+await lotus.getPlan({
+  planId: "plan_0569173ee6654369",
 }); // Will return a promise
 ```
 

@@ -24,12 +24,13 @@ lotus.update_subscription(
 ```
 
 ```ts Typescript
-await lotus.changeSubscription({
+await lotus.updateSubscription({
   customerId: "cust_234";
   planId: "plan_234";
   subscriptionFilters: [{property_name: "project_id", value: "3234123"}];
   replacePlanId: "plan_235";
-  replacePlanInvoicingBehavior: "add_to_next_invoice";
+  invoicingBehavior: "add_to_next_invoice";
+  usageBehavior: "transfer_to_new_subscription"
 });
 ```
 
