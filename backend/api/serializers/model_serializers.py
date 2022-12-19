@@ -25,7 +25,7 @@ class ConvertEmptyStringToSerializerMixin:
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data = self.recursive_convert_empty_string_to_none(data)
+        self.recursive_convert_empty_string_to_none(data)
         return data
 
 
@@ -152,6 +152,96 @@ class SubscriptionRecordSerializer(
     )
     customer = LightweightCustomerSerializer()
     billing_plan = LightweightPlanVersionSerializer()
+
+
+class SubscriptionRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "customer_id",
+            "plan_id",
+            "start_date",
+            "end_date",
+            "auto_renew",
+            "is_new",
+            "subscription_filters",
+        )
+        extra_kwargs = {
+            "start_date": {"write_only": True},
+            "end_date": {"write_only": True, "required": False},
+            "auto_renew": {"write_only": True},
+            "is_new": {"write_only": True},
+            "subscription_filters": {"write_only": True},
+            "customer_id": {"write_only": True},
+            "plan_id": {"write_only": True},
+        }
+
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True, required=False
+    )
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        source="customer",
+        queryset=Customer.objects.all(),
+        help_text="The id provided when creating the customer",
+    )
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        read_only=False,
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
+        help_text="The Lotus plan_id, found in the billing plan object",
+    )
+
+    def validate(self, data):
+        # extract the plan version from the plan
+        data["billing_plan"] = data["billing_plan"]["plan"].display_version
+        # check that if the plan is designed for a specific customer, that the customer is that customer
+        tc = data["billing_plan"].plan.target_customer
+        if tc is not None and tc != data["customer"]:
+            raise serializers.ValidationError(
+                f"This plan is for a customer with customer_id {tc.customer_id}, not {data['customer'].customer_id}"
+            )
+        return data
+
+    def create(self, validated_data):
+        # try:
+        filters = validated_data.pop("subscription_filters", [])
+        now = now_utc()
+        sub_record = super().create(validated_data)
+        for filter_data in filters:
+            sub_cat_filter_dict = {
+                "property_name": filter_data["property_name"],
+                "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
+                "comparison_value": [filter_data["value"]],
+            }
+            try:
+                cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
+            except CategoricalFilter.MultipleObjectsReturned:
+                cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
+            sub_record.filters.add(cf)
+        sub_record.save()
+        # new subscription means we need to create an invoice if its pay in advance
+        if (
+            sub_record.billing_plan.flat_fee_billing_type
+            == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+        ):
+            (
+                sub,
+                sub_records,
+            ) = sub_record.customer.get_subscription_and_records()
+            sub_records.filter(pk=sub_record.pk).update(
+                flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+                invoice_usage_charges=False,
+            )
+            generate_invoice(
+                sub,
+                sub_records.filter(pk=sub_record.pk),
+            )
+            sub_record.invoice_usage_charges = True
+            sub_record.flat_fee_behavior = FLAT_FEE_BEHAVIOR.PRORATE
+            sub_record.save()
+        return sub_record
 
 
 class InvoiceLineItemSerializer(

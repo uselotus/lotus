@@ -399,6 +399,47 @@ class MetricSerializer(api_serializers.MetricSerializer):
     class Meta(api_serializers.MetricSerializer.Meta):
         fields = api_serializers.MetricSerializer.Meta.fields
 
+
+class MetricCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Metric
+        fields = (
+            "metric_id",
+            "event_name",
+            "property_name",
+            "usage_aggregation_type",
+            "billable_aggregation_type",
+            "granularity",
+            "event_type",
+            "metric_type",
+            "billable_metric_name",
+            "properties",
+            "is_cost_metric",
+        )
+        extra_kwargs = {
+            "metric_id": {"write_only": True},
+            "event_name": {"write_only": True, "required": True},
+            "property_name": {"write_only": True},
+            "usage_aggregation_type": {"required": True, "write_only": True},
+            "billable_aggregation_type": {"write_only": True},
+            "granularity": {"write_only": True},
+            "event_type": {"write_only": True},
+            "metric_type": {"required": True, "write_only": True},
+            "billable_metric_name": {"write_only": True},
+            "properties": {"write_only": True},
+            "is_cost_metric": {"write_only": True},
+        }
+
+    # granularity = serializers.ChoiceField(
+    #     choices=METRIC_GRANULARITY.choices,
+    #     required=False,
+    # )
+    # event_type = serializers.ChoiceField(
+    #     choices=EVENT_TYPE.choices,
+    #     required=False,
+    # )
+    # properties = serializers.JSONField(allow_null=True, required=False)
+
     def validate(self, data):
         super().validate(data)
         metric_type = data["metric_type"]
@@ -702,51 +743,80 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
 
 class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
     class Meta(api_serializers.PlanVersionSerializer.Meta):
-        fields = api_serializers.PlanVersionSerializer.Meta.fields + (
+        fields = api_serializers.PlanVersionSerializer.Meta.fields
+        extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
+
+
+class PlanVersionCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanVersion
+        fields = (
+            "description",
+            "plan_id",
+            "flat_fee_billing_type",
+            "flat_rate",
+            "components",
+            "features",
+            "price_adjustment",
+            "usage_billing_frequency",
             "day_anchor",
             "month_anchor",
+            # write only
             "make_active",
             "make_active_type",
             "replace_immediately_type",
             "transition_to_plan_id",
             "currency_code",
-            "replace_with",
-            "transition_to",
-            "replace_with",
-            "transition_to",
         )
         extra_kwargs = {
+            "description": {"read_only": True},
+            "plan_id": {"read_only": True},
+            "flat_fee_billing_type": {"read_only": True},
+            "flat_rate": {"read_only": True},
+            "components": {"read_only": True},
+            "features": {"read_only": True},
+            "price_adjustment": {"read_only": True},
+            "usage_billing_frequency": {"read_only": True},
+            "day_anchor": {"read_only": True},
+            "month_anchor": {"read_only": True},
+            "make_active": {"write_only": True},
             "make_active_type": {"write_only": True},
             "replace_immediately_type": {"write_only": True},
             "transition_to_plan_id": {"write_only": True},
-            "make_active": {"write_only": True},
             "currency_code": {"write_only": True},
         }
 
-    # READ-ONLY
-    replace_with = serializers.SerializerMethodField(read_only=True)
-    transition_to = serializers.SerializerMethodField(read_only=True)
+    components = PlanComponentSerializer(
+        many=True, allow_null=True, required=False, source="plan_components"
+    )
+    features = FeatureSerializer(many=True, allow_null=True, required=False)
+    price_adjustment = PriceAdjustmentSerializer(required=False)
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.objects.all(),
+        source="plan",
+        required=False,
+    )
+
     # WRITE ONLY
-    make_active = serializers.BooleanField(write_only=True)
+    make_active = serializers.BooleanField()
     make_active_type = serializers.ChoiceField(
-        choices=MAKE_PLAN_VERSION_ACTIVE_TYPE.choices, required=False, write_only=True
+        choices=MAKE_PLAN_VERSION_ACTIVE_TYPE.choices,
+        required=False,
     )
     replace_immediately_type = serializers.ChoiceField(
-        choices=REPLACE_IMMEDIATELY_TYPE.choices, required=False, write_only=True
+        choices=REPLACE_IMMEDIATELY_TYPE.choices,
+        required=False,
     )
     transition_to_plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.objects.all(),
-        write_only=True,
         required=False,
-        source="transition_to",
     )
     currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
-        write_only=True,
         required=False,
-        source="pricing_unit",
     )
 
     def validate(self, data):
@@ -837,11 +907,11 @@ class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
         return billing_plan
 
 
-class InitialPlanVersionSerializer(PlanVersionSerializer):
-    class Meta(PlanVersionSerializer.Meta):
+class InitialPlanVersionSerializer(PlanVersionCreateSerializer):
+    class Meta(PlanVersionCreateSerializer.Meta):
         model = PlanVersion
         fields = tuple(
-            set(PlanVersionSerializer.Meta.fields)
+            set(PlanVersionCreateSerializer.Meta.fields)
             - set(
                 [
                     "plan_id",
@@ -866,36 +936,48 @@ class LightweightCustomerSerializer(api_serializers.LightweightCustomerSerialize
 
 class PlanSerializer(api_serializers.PlanSerializer):
     class Meta(api_serializers.PlanSerializer.Meta):
-        fields = api_serializers.PlanSerializer.Meta.fields + (
+        fields = api_serializers.PlanSerializer.Meta.fields
+
+
+class PlanCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = (
+            "plan_name",
+            "plan_duration",
+            "plan_id",
+            "status",
             "initial_external_links",
             "initial_version",
             "parent_plan_id",
             "target_customer_id",
         )
         extra_kwargs = {
+            "plan_name": {"write_only": True},
+            "plan_duration": {"write_only": True},
+            "plan_id": {"write_only": True},
+            "status": {"write_only": True},
+            "initial_external_links": {"write_only": True},
             "initial_version": {"write_only": True},
             "parent_plan_id": {"write_only": True},
             "target_customer_id": {"write_only": True},
-            "initial_external_links": {"write_only": True},
         }
 
-    initial_version = InitialPlanVersionSerializer(write_only=True)
+    initial_version = InitialPlanVersionSerializer()
     parent_plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
         queryset=Plan.objects.all(),
-        write_only=True,
         source="parent_plan",
         required=False,
     )
     target_customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
         queryset=Customer.objects.all(),
-        write_only=True,
         source="target_customer",
         required=False,
     )
     initial_external_links = InitialExternalPlanLinkSerializer(
-        many=True, required=False, write_only=True
+        many=True, required=False
     )
 
     def validate(self, data):

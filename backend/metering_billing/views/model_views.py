@@ -384,6 +384,8 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "partial_update":
             return MetricUpdateSerializer
+        elif self.action == "create":
+            return MetricCreateSerializer
         return MetricSerializer
 
     def get_serializer_context(self):
@@ -411,13 +413,22 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         return response
 
+    @extend_schema(responses=MetricSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        metric_data = MetricSerializer(instance).data
+        return Response(metric_data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
         try:
             instance = serializer.save(organization=self.request.organization)
+            return instance
         except IntegrityError as e:
             cause = e.__cause__
             if "unique_org_metric_id" in str(cause):
-                error_message = "Metric ID already exists for this organization. This usually happens if you try to specify an ID instead of letting the Lotus backend handle ID creation."
+                error_message = "Metric ID already exists for this organization. This usually happens if you try to sp ecify an ID instead of letting the Lotus backend handle ID creation."
                 raise DuplicateMetric(error_message)
             elif "unique_org_billable_metric_name" in str(cause):
                 error_message = "Metric name already exists for this organization. Please choose a different name."
@@ -501,6 +512,8 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == "partial_update":
             return PlanVersionUpdateSerializer
+        elif self.action == "create":
+            return PlanVersionCreateSerializer
         return PlanVersionSerializer
 
     def get_queryset(self):
@@ -539,6 +552,14 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         return response
 
+    @extend_schema(responses=PlanVersionSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        plan_version_data = PlanVersionSerializer(instance).data
+        return Response(plan_version_data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             user = self.request.user
@@ -554,6 +575,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         #         action_object=instance,
         #         target=instance.plan,
         #     )
+        return instance
 
     def perform_update(self, serializer):
         instance = serializer.save()
@@ -595,7 +617,7 @@ class PlanViewSet(api_views.PlanViewSet):
     def get_queryset(self):
         organization = self.request.organization
         qs = super(PlanViewSet, self).get_queryset()
-        if self.action == "retrieve":
+        if self.action == "retrieve" or self.action == "list":
             qs = qs.prefetch_related(
                 Prefetch(
                     "versions",
@@ -615,12 +637,19 @@ class PlanViewSet(api_views.PlanViewSet):
         return qs
 
     def get_serializer_class(self):
-        serializer = super(PlanViewSet, self).get_serializer_class()
         if self.action == "partial_update":
             return PlanUpdateSerializer
         elif self.action == "create":
-            return PlanSerializer
-        return serializer
+            return PlanCreateSerializer
+        return PlanSerializer
+
+    @extend_schema(responses=PlanSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        metric_data = PlanSerializer(instance).data
+        return Response(metric_data, status=status.HTTP_201_CREATED)
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -636,6 +665,7 @@ class PlanViewSet(api_views.PlanViewSet):
         #         verb="created",
         #         action_object=instance,
         #     )
+        return instance
 
     def perform_update(self, serializer):
         instance = serializer.save()

@@ -71,6 +71,7 @@ class TestCreatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert "display_version" in response.data
         assert (
@@ -110,6 +111,7 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         plan = Plan.objects.get(plan_id=response.data["plan_id"])
 
         # now add in the plan ID to the payload, and send a post request for the new version

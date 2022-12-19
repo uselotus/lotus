@@ -235,6 +235,8 @@ class SubscriptionViewSet(
             return SubscriptionRecordUpdateSerializer
         elif self.action == "cancel":
             return SubscriptionRecordCancelSerializer
+        elif self.action == "create":
+            return SubscriptionRecordCreateSerializer
         else:
             return SubscriptionRecordSerializer
 
@@ -330,6 +332,7 @@ class SubscriptionViewSet(
         )
 
     # ad hoc methods
+    @extend_schema(responses=SubscriptionRecordSerializer)
     @action(detail=False, methods=["post"])
     def add(self, request, *args, **kwargs):
         # run checks to make sure it's valid

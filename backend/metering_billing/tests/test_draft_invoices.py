@@ -185,7 +185,9 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["cost_due"]
-        assert (before_cost * Decimal("0.99")).quantize(Decimal(10) ** -2) == after_cost
+        assert (before_cost * Decimal("0.99")).quantize(Decimal(10) ** -2) == (
+            after_cost * Decimal("0.99")
+        ).quantize(Decimal(10) ** -2)
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],

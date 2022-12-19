@@ -128,7 +128,7 @@ class TestInsertMetric:
             data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
+        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1

@@ -821,10 +821,6 @@ class Metric(models.Model):
                 fields=["organization", "metric_id"], name="unique_org_metric_id"
             ),
             models.UniqueConstraint(
-                fields=["organization", "billable_metric_name"],
-                name="unique_org_billable_metric_name",
-            ),
-            models.UniqueConstraint(
                 fields=[
                     "organization",
                     "billable_metric_name",
