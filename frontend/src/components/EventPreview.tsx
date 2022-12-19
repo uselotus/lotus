@@ -42,7 +42,7 @@ const EventPreview: FC = () => {
 
   if ((isLoading || !data) && !cursor.length) {
     return (
-      <div className="align-center min-h-[100px]">
+      <div className="min-h-[100px] align-center">
         <LoadingSpinner />
       </div>
     );
