@@ -6,6 +6,7 @@ import "./Login.css";
 import { useMutation } from "react-query";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { QueryErrors } from "../types/error-response-types";
 
 interface ResetPasswordForm extends HTMLFormControlsCollection {
   email: string;
@@ -30,7 +31,7 @@ const ResetPassword: FC = () => {
       onSuccess: (response) => {
         setIsEmailSent(true);
       },
-      onError: (error) => {
+      onError: (error: QueryErrors) => {
         if (error.response.status === 403) {
           toast.error("Please login again.");
           window.location.reload();
