@@ -7,7 +7,7 @@ from django.db.models import Q
 
 
 def make_all_emails_nonnull(apps, schema_editor):
-    Customer = apps.get_model("metering_billing", "Email")
+    Customer = apps.get_model("metering_billing", "Customer")
     c_list = Customer.objects.filter(Q(email="") | Q(email__isnull=True))
     for c in c_list:
         c.email = f"{str(uuid.uuid4().hex)}@example.com"
