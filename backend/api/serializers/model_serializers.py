@@ -1112,15 +1112,6 @@ class InvoiceListFilterSerializer(serializers.Serializer):
     )
 
 
-class GroupedLineItemSerializer(serializers.Serializer):
-    plan_name = serializers.CharField()
-    subscription_filters = SubscriptionCategoricalFilterSerializer(many=True)
-    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
-    start_date = serializers.DateTimeField()
-    end_date = serializers.DateTimeField()
-    sub_items = LightweightInvoiceLineItemSerializer(many=True)
-
-
 class CustomerBalanceAdjustmentSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
 ):

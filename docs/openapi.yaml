@@ -3389,7 +3389,7 @@ components:
         customers:
           type: array
           items:
-            $ref: '#/components/schemas/CustomerRequest'
+            $ref: '#/components/schemas/CustomerCreateRequest'
         behavior_on_existing:
           enum:
           - merge
@@ -3417,6 +3417,7 @@ components:
       properties:
         customer_name:
           type: string
+          nullable: true
           description: The display name of the customer
           maxLength: 100
         customer_id:
@@ -3458,31 +3459,12 @@ components:
       required:
       - customer_id
       - email
-    CustomerRequest:
-      type: object
-      properties:
-        customer_id:
-          type: string
-          minLength: 1
-        email:
-          type: string
-          format: email
-          minLength: 1
-        customer_name:
-          type: string
-          minLength: 1
-        default_currency:
-          $ref: '#/components/schemas/PricingUnitRequest'
-      required:
-      - customer_id
-      - customer_name
-      - default_currency
-      - email
     CustomerSummary:
       type: object
       properties:
         customer_name:
           type: string
+          nullable: true
           description: The display name of the customer
           maxLength: 100
         customer_id:
@@ -3582,19 +3564,6 @@ components:
     DraftInvoice:
       type: object
       properties:
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
-        customer:
-          $ref: '#/components/schemas/LightweightCustomer'
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
         payment_status:
           enum:
           - draft
@@ -3602,12 +3571,25 @@ components:
         issue_date:
           type: string
           format: date-time
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - cost_due
       - currency
@@ -3642,7 +3624,6 @@ components:
         properties:
           type: object
           additionalProperties: {}
-          nullable: true
           description: Extra metadata on the event that can be filtered and queried
             on in the metrics. All key value pairs should have string keys and values
             can be either strings or numbers. Place subscription filters in this object
@@ -3678,7 +3659,6 @@ components:
         properties:
           type: object
           additionalProperties: {}
-          nullable: true
           description: Extra metadata on the event that can be filtered and queried
             on in the metrics. All key value pairs should have string keys and values
             can be either strings or numbers. Place subscription filters in this object
@@ -3745,6 +3725,7 @@ components:
           maxLength: 50
         feature_description:
           type: string
+          nullable: true
       required:
       - feature_description
       - feature_name
@@ -3757,6 +3738,7 @@ components:
           maxLength: 50
         feature_description:
           type: string
+          nullable: true
       required:
       - feature_description
       - feature_name
@@ -3951,6 +3933,8 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
         components:
           type: array
           items:
@@ -3967,8 +3951,6 @@ components:
         transition_to_plan_id:
           type: string
           minLength: 1
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
     InviteRequestRequest:
       type: object
       properties:
@@ -4071,7 +4053,9 @@ components:
           enum:
           - in_arrears
           - in_advance
+          - null
           type: string
+          nullable: true
         metadata:
           type: object
           additionalProperties: {}
@@ -4107,6 +4091,7 @@ components:
       properties:
         customer_name:
           type: string
+          nullable: true
           description: The display name of the customer
           maxLength: 100
         email:
@@ -4129,6 +4114,7 @@ components:
       properties:
         customer_name:
           type: string
+          nullable: true
           description: The display name of the customer
           maxLength: 100
         email:
@@ -4151,25 +4137,6 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - null
-          type: string
-          nullable: true
-        invoice_number:
-          type: string
-          maxLength: 13
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        external_payment_obj_id:
-          type: string
-          nullable: true
-          maxLength: 100
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
         payment_status:
           enum:
           - draft
@@ -4180,12 +4147,31 @@ components:
         issue_date:
           type: string
           format: date-time
+        invoice_number:
+          type: string
+          maxLength: 13
+        external_payment_obj_id:
+          type: string
+          nullable: true
+          maxLength: 100
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - null
+          type: string
+          nullable: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
       required:
       - cost_due
       - currency
@@ -4198,21 +4184,10 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date-time
-        billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          type: string
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-        name:
-          type: string
-          maxLength: 100
         end_date:
           type: string
           format: date-time
@@ -4230,8 +4205,21 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        name:
+          type: string
+          maxLength: 100
+        billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - null
+          type: string
+          nullable: true
         plan:
           type: string
+        start_date:
+          type: string
+          format: date-time
       required:
       - billing_type
       - end_date
@@ -4396,6 +4384,7 @@ components:
         metric_id:
           type: string
           writeOnly: true
+          minLength: 1
           maxLength: 100
         event_name:
           type: string
@@ -4433,8 +4422,10 @@ components:
           - latest
           - average
           - ''
+          - null
           type: string
           writeOnly: true
+          nullable: true
         granularity:
           enum:
           - seconds
@@ -4446,8 +4437,10 @@ components:
           - years
           - total
           - ''
+          - null
           type: string
           writeOnly: true
+          nullable: true
           description: The granularity of the metric. Only applies to metrics of type
             'continuous' or 'rate'.
         event_type:
@@ -4455,8 +4448,10 @@ components:
           - delta
           - total
           - ''
+          - null
           type: string
           writeOnly: true
+          nullable: true
           description: Used only for metrics of type 'continuous'. Please refer to
             our documentation for an explanation of the different types.
         metric_type:
@@ -4471,6 +4466,7 @@ components:
         billable_metric_name:
           type: string
           writeOnly: true
+          nullable: true
           maxLength: 50
         properties:
           type: object
@@ -4491,6 +4487,7 @@ components:
       properties:
         metric_id:
           type: string
+          minLength: 1
           maxLength: 100
         event_name:
           type: string
@@ -4586,6 +4583,7 @@ components:
       properties:
         billable_metric_name:
           type: string
+          nullable: true
           maxLength: 50
         status:
           enum:
@@ -4686,6 +4684,7 @@ components:
         setting_group:
           type: string
           readOnly: true
+          nullable: true
       required:
       - setting_group
       - setting_id
@@ -4769,6 +4768,7 @@ components:
       properties:
         billable_metric_name:
           type: string
+          nullable: true
           maxLength: 50
         status:
           enum:
@@ -4833,6 +4833,7 @@ components:
       properties:
         name:
           type: string
+          nullable: true
           maxLength: 100
         webhook_url:
           type: string
@@ -5068,6 +5069,7 @@ components:
           type: string
         billable_metric_name:
           type: string
+          nullable: true
           writeOnly: true
       required:
       - billable_metric_name
@@ -5313,6 +5315,7 @@ components:
           maxLength: 100
         price_adjustment_description:
           type: string
+          nullable: true
         price_adjustment_type:
           enum:
           - percentage
@@ -5340,6 +5343,7 @@ components:
           default: ''
         price_adjustment_description:
           type: string
+          nullable: true
         price_adjustment_type:
           enum:
           - percentage
@@ -6146,6 +6150,7 @@ components:
           readOnly: true
         name:
           type: string
+          nullable: true
           maxLength: 100
         webhook_url:
           type: string
@@ -6168,6 +6173,7 @@ components:
       properties:
         name:
           type: string
+          nullable: true
           maxLength: 100
         webhook_url:
           type: string

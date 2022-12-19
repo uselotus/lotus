@@ -246,9 +246,11 @@ class SubscriptionViewSet(
         qs = qs.filter(organization=organization)
         # need for: list, update_plans, cancel_plans
         if self.action == "list":
+            print("list")
             args = []
             serializer = ListSubscriptionRecordFilter(data=self.request.query_params)
             serializer.is_valid(raise_exception=True)
+            print("val data", serializer.validated_data)
             allowed_status = serializer.validated_data.get("status")
             if len(allowed_status) == 0:
                 allowed_status = [SUBSCRIPTION_STATUS.ACTIVE]
@@ -318,6 +320,7 @@ class SubscriptionViewSet(
                         operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
                     )
                     qs = qs.filter(filters=m2m)
+        print("qs", qs)
         return qs
 
     @extend_schema(
@@ -902,7 +905,7 @@ class CustomerBatchCreateView(APIView):
         request=inline_serializer(
             name="CustomerBatchCreateRequest",
             fields={
-                "customers": CustomerSerializer(many=True),
+                "customers": CustomerCreateSerializer(many=True),
                 "behavior_on_existing": serializers.ChoiceField(
                     choices=["merge", "ignore", "overwrite"]
                 ),
@@ -927,7 +930,7 @@ class CustomerBatchCreateView(APIView):
     )
     def post(self, request, format=None):
         organization = request.organization
-        serializer = CustomerSerializer(
+        serializer = CustomerCreateSerializer(
             data=request.data["customers"],
             many=True,
             context={"organization": organization},

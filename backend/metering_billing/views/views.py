@@ -512,19 +512,6 @@ class DraftInvoiceView(APIView):
                 ),
             )
             serializer = DraftInvoiceSerializer(invoices, many=True).data
-            try:
-                username = self.request.user.username
-            except:
-                username = None
-            posthog.capture(
-                POSTHOG_PERSON
-                if POSTHOG_PERSON
-                else (
-                    username if username else organization.company_name + " (Unknown)"
-                ),
-                event="draft_invoice",
-                properties={"organization": organization.company_name},
-            )
             for invoice in invoices:
                 invoice.delete()
             response = {"invoices": serializer}

@@ -52,6 +52,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
             )
             user.organization = organization
             user.save()
+            organization.save()
     elif mode == "regenerate":
         organization = Organization.objects.get(company_name=company_name)
         user = organization.users.all().first()
@@ -590,6 +591,7 @@ def setup_paas_demo(
         organization, _ = Organization.objects.get_or_create(company_name=company_name)
         user.organization = organization
         user.save()
+        organization.save()
     organization = user.organization
     big_customers = []
     for _ in range(1):

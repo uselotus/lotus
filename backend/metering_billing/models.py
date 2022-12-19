@@ -344,7 +344,7 @@ class Customer(models.Model):
 
     class Meta:
         constraints = [
-            # UniqueConstraint(fields=["organization", "email"], name="unique_email"),
+            UniqueConstraint(fields=["organization", "email"], name="unique_email"),
             UniqueConstraint(
                 fields=["organization", "customer_id"], name="unique_customer_id"
             ),
@@ -365,7 +365,15 @@ class Customer(models.Model):
                     f"Payment provider {k} id was not provided"
                 )
         if not self.default_currency:
-            self.default_currency = self.organization.default_currency
+            try:
+                self.default_currency = (
+                    self.organization.default_currency
+                    or PricingUnit.objects.get(
+                        code="USD", organization=self.organization
+                    )
+                )
+            except PricingUnit.DoesNotExist:
+                self.default_currency = None
         super(Customer, self).save(*args, **kwargs)
         Event.objects.filter(
             organization=self.organization,

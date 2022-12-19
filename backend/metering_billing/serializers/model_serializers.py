@@ -1340,8 +1340,13 @@ class InvoiceListFilterSerializer(api_serializers.InvoiceListFilterSerializer):
     pass
 
 
-class GroupedLineItemSerializer(api_serializers.GroupedLineItemSerializer):
-    pass
+class GroupedLineItemSerializer(serializers.Serializer):
+    plan_name = serializers.CharField()
+    subscription_filters = SubscriptionCategoricalFilterSerializer(many=True)
+    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
+    start_date = serializers.DateTimeField()
+    end_date = serializers.DateTimeField()
+    sub_items = LightweightInvoiceLineItemSerializer(many=True)
 
 
 class DraftInvoiceSerializer(InvoiceSerializer):
@@ -1384,8 +1389,8 @@ class DraftInvoiceSerializer(InvoiceSerializer):
                 "sub_items": line_items,
             }
             srs.append(grouped_line_item_dict)
-
-        return GroupedLineItemSerializer(srs, many=True).data
+        data = GroupedLineItemSerializer(srs, many=True).data
+        return data
 
 
 class CustomerBalanceAdjustmentSerializer(
