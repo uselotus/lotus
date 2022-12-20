@@ -177,6 +177,20 @@ class StripeConnector(PaymentProvider):
                 stripe_name = stripe_customer.name
                 stripe_name = stripe_name if stripe_name else "no_stripe_name"
                 stripe_currency = stripe_customer.currency
+                stripe_payment_methods = []
+                payment_methods = stripe.Customer.list_payment_methods(stripe_id)
+                for payment_method in payment_methods.auto_paging_iter():
+                    pm_dict = {
+                        "id": payment_method.id,
+                        "type": payment_method.type,
+                        "details": {},
+                    }
+                    if payment_method.type == "card":
+                        pm_dict["details"]["brand"] = payment_method.card.brand
+                        pm_dict["details"]["exp_month"] = payment_method.card.exp_month
+                        pm_dict["details"]["exp_year"] = payment_method.card.exp_year
+                        pm_dict["details"]["last4"] = payment_method.card.last4
+                    stripe_payment_methods.append(pm_dict)
                 customer = Customer.objects.filter(
                     Q(integrations__stripe__id=stripe_id)
                     | (Q(email=stripe_email) & Q(email__isnull=False)),
@@ -191,7 +205,9 @@ class StripeConnector(PaymentProvider):
                     cur_pp_dict["metadata"] = stripe_metadata
                     cur_pp_dict["name"] = stripe_name
                     cur_pp_dict["currency"] = stripe_currency
+                    cur_pp_dict["payment_methods"] = stripe_payment_methods
                     customer.integrations[PAYMENT_PROVIDERS.STRIPE] = cur_pp_dict
+                    customer.payment_provider = PAYMENT_PROVIDERS.STRIPE
                     customer.save()
                 else:
                     customer_kwargs = {
@@ -205,8 +221,10 @@ class StripeConnector(PaymentProvider):
                                 "metadata": stripe_metadata,
                                 "name": stripe_name,
                                 "currency": stripe_currency,
+                                "payment_methods": stripe_payment_methods,
                             }
                         },
+                        "payment_provider": PAYMENT_PROVIDERS.STRIPE,
                     }
                     customer = Customer.objects.create(**customer_kwargs)
                     num_cust_added += 1

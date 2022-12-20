@@ -2,7 +2,7 @@ import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from metering_billing.exceptions.exceptions import StripeWebhookFailure
-from metering_billing.models import Invoice
+from metering_billing.models import Customer, Invoice
 from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
 from rest_framework import status
 from rest_framework.decorators import (
@@ -25,6 +25,31 @@ def _invoice_paid_handler(event):
     if matching_invoice:
         matching_invoice.payment_status = INVOICE_STATUS.PAID
         matching_invoice.save()
+
+
+def _payment_method_refresh_handler(stripe_customer_id):
+    matching_customer = Customer.objects.filter(
+        integrations__stripe__id=stripe_customer_id
+    ).first()
+    if matching_customer:
+        integrations_dict = matching_customer.integrations
+        stripe_payment_methods = []
+        payment_methods = stripe.Customer.list_payment_methods(stripe_customer_id)
+        for payment_method in payment_methods.auto_paging_iter():
+            pm_dict = {
+                "id": payment_method.id,
+                "type": payment_method.type,
+                "details": {},
+            }
+            if payment_method.type == "card":
+                pm_dict["details"]["brand"] = payment_method.card.brand
+                pm_dict["details"]["exp_month"] = payment_method.card.exp_month
+                pm_dict["details"]["exp_year"] = payment_method.card.exp_year
+                pm_dict["details"]["last4"] = payment_method.card.last4
+            stripe_payment_methods.append(pm_dict)
+        integrations_dict[PAYMENT_PROVIDERS.STRIPE][
+            "payment_methods"
+        ] = stripe_payment_methods
 
 
 @api_view(http_method_names=["POST"])
@@ -53,6 +78,10 @@ def stripe_webhook_endpoint(request):
     # Handle the checkout.session.completed event
     if event["type"] == "invoice.paid":
         _invoice_paid_handler(event)
+    if event["type"].startswith("payment_method."):
+        payment_method = event["data"]["object"]
+        customer = payment_method["customer"]
+        _payment_method_refresh_handler(customer)
 
     # Passed signature verification
     return Response(status=status.HTTP_200_OK)
