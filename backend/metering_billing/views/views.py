@@ -496,8 +496,6 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
             )
-            print("incl", serializer.validated_data.get("include_next_period"))
-            print("sub_records", sub_records)
             invoices = generate_invoice(
                 sub,
                 sub_records,
