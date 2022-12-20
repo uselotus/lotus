@@ -13,11 +13,12 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, Q, Sum
-from django.db.models.constraints import UniqueConstraint
+from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
+    OverlappingPlans,
     ServerError,
 )
 from metering_billing.invoice import generate_invoice
@@ -64,7 +65,7 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class Organization(models.Model):
-    organization_id = models.CharField(default=organization_uuid, max_length=100)
+    organization_id = models.SlugField(default=organization_uuid, max_length=100)
     company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
@@ -138,7 +139,7 @@ class WebhookEndpointManager(models.Manager):
 
 
 class WebhookEndpoint(models.Model):
-    webhook_endpoint_id = models.CharField(
+    webhook_endpoint_id = models.SlugField(
         default=webhook_endpoint_uuid,
         max_length=100,
         unique=True,
@@ -148,7 +149,7 @@ class WebhookEndpoint(models.Model):
     )
     name = models.CharField(max_length=100, blank=True, null=True)
     webhook_url = models.CharField(max_length=100)
-    webhook_secret = models.CharField(max_length=100, default=webhook_secret_uuid)
+    webhook_secret = models.SlugField(max_length=100, default=webhook_secret_uuid)
 
     objects = WebhookEndpointManager()
 
@@ -284,7 +285,7 @@ class Product(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="products"
     )
-    product_id = models.CharField(default=product_uuid, max_length=100, unique=True)
+    product_id = models.SlugField(default=product_uuid, max_length=100, unique=True)
     status = models.CharField(choices=PRODUCT_STATUS.choices, max_length=40)
     history = HistoricalRecords()
 
@@ -321,7 +322,7 @@ class Customer(models.Model):
         max_length=100,
         help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
     )
-    customer_id = models.CharField(
+    customer_id = models.SlugField(
         max_length=50,
         default=customer_uuid,
         help_text="The id provided when creating the customer, we suggest matching with your internal customer id in your backend",
@@ -457,7 +458,7 @@ class CustomerBalanceAdjustment(models.Model):
     This model is used to store the customer balance adjustments.
     """
 
-    adjustment_id = models.CharField(
+    adjustment_id = models.SlugField(
         max_length=100, default=customer_balance_adjustment_uuid
     )
     organization = models.ForeignKey(
@@ -658,7 +659,7 @@ class Event(models.Model):
         blank=True,
         help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
     )
-    idempotency_id = models.CharField(
+    idempotency_id = models.SlugField(
         max_length=255,
         default=event_uuid,
         help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 45 days.",
@@ -718,7 +719,7 @@ class OldEvent(models.Model):
         null=True,
         help_text="Extra metadata on the event that can be filtered and queried on in the metrics. All key value pairs should have string keys and values can be either strings or numbers. Place subscription filters in this object to specify which subscription the event should be tracked under",
     )
-    idempotency_id = models.CharField(
+    idempotency_id = models.SlugField(
         max_length=255,
         default=event_uuid,
         help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
@@ -775,7 +776,7 @@ class Metric(models.Model):
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
     billable_metric_name = models.CharField(max_length=50, blank=True, null=True)
-    metric_id = models.CharField(max_length=100, default=metric_uuid)
+    metric_id = models.SlugField(max_length=100, default=metric_uuid)
     event_type = models.CharField(
         max_length=20,
         choices=EVENT_TYPE.choices,
@@ -1409,7 +1410,7 @@ class OrganizationInviteToken(models.Model):
         related_name="invite_token",
     )
     email = models.EmailField()
-    token = models.CharField(max_length=250, default=uuid.uuid4)
+    token = models.SlugField(max_length=250, default=uuid.uuid4)
     expire_at = models.DateTimeField(default=now_plus_day, null=False, blank=False)
 
 
@@ -1467,7 +1468,7 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.CharField(max_length=250, default=plan_version_uuid)
+    version_id = models.SlugField(max_length=250, default=plan_version_uuid)
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -1571,7 +1572,7 @@ class Plan(models.Model):
     status = models.CharField(
         choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
     )
-    plan_id = models.CharField(default=plan_uuid, max_length=100, unique=True)
+    plan_id = models.SlugField(default=plan_uuid, max_length=100, unique=True)
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
@@ -1791,7 +1792,7 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    subscription_id = models.CharField(max_length=100, default=subscription_uuid)
+    subscription_id = models.SlugField(max_length=100, default=subscription_uuid)
     objects = SubscriptionManager()
 
     def get_anchors(self):
@@ -1943,7 +1944,7 @@ class SubscriptionRecord(models.Model):
     end_date = models.DateTimeField(
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
-    unadjusted_duration_seconds = models.IntegerField(null=True, blank=True)
+    unadjusted_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=SUBSCRIPTION_STATUS.choices,
@@ -1957,7 +1958,7 @@ class SubscriptionRecord(models.Model):
         default=True,
         help_text="Whether this subscription came from a renewal or from a first-time. Defaults to true on creation.",
     )
-    subscription_record_id = models.CharField(
+    subscription_record_id = models.SlugField(
         max_length=100, default=subscription_record_uuid
     )
     filters = models.ManyToManyField(
@@ -1978,7 +1979,15 @@ class SubscriptionRecord(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "subscription_record_id")
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "subscription_record_id"],
+                name="unique_subscription_record_id",
+            ),
+            CheckConstraint(
+                check=Q(start_date__lte=F("end_date")), name="end_date_gte_start_date"
+            ),
+        ]
 
     def __str__(self):
         return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
@@ -1987,7 +1996,9 @@ class SubscriptionRecord(models.Model):
         now = now_utc()
         subscription = self.customer.subscriptions.active(self.start_date).first()
         if not subscription:
-            raise ServerError("Unexpected error: subscription date alignment engine failed.")
+            raise ServerError(
+                "Unexpected error: subscription date alignment engine failed."
+            )
         if not self.end_date:
             day_anchor, month_anchor = subscription.get_anchors()
             self.end_date = calculate_end_date(
@@ -2036,6 +2047,23 @@ class SubscriptionRecord(models.Model):
         else:
             self.status = SUBSCRIPTION_STATUS.ACTIVE
         super(SubscriptionRecord, self).save(*args, **kwargs)
+        overlapping_subscriptions = SubscriptionRecord.objects.filter(
+            Q(start_date__range=(self.start_date, self.end_date))
+            | Q(end_date__range=(self.start_date, self.end_date)),
+            organization=self.organization,
+            customer=self.customer,
+            billing_plan=self.billing_plan,
+        ).exclude(pk=self.pk)
+        for subscription in overlapping_subscriptions:
+            if set(subscription.filters.all()) == set(self.filters.all()):
+                self.delete()
+                raise OverlappingPlans(
+                    "Overlapping subscriptions with the same filters are not allowed"
+                )
+        for filter in self.filters.all():
+            if not filter.organization:
+                filter.organization = self.organization
+                filter.save()
 
     def get_filters_dictionary(self):
         filters_dict = {}
@@ -2145,7 +2173,7 @@ class Backtest(models.Model):
         Organization, on_delete=models.CASCADE, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
-    backtest_id = models.CharField(max_length=100, default=backtest_uuid, unique=True)
+    backtest_id = models.SlugField(max_length=100, default=backtest_uuid, unique=True)
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, blank=True)
     status = models.CharField(
@@ -2193,7 +2221,7 @@ class OrganizationSetting(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="settings"
     )
-    setting_id = models.CharField(default=uuid.uuid4, max_length=100, unique=True)
+    setting_id = models.SlugField(default=uuid.uuid4, max_length=100, unique=True)
     setting_name = models.CharField(
         max_length=100,
     )

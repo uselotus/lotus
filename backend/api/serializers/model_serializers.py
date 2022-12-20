@@ -817,10 +817,10 @@ class SubscriptionRecordCreateSerializer(
     def create(self, validated_data):
         # try:
         filters = validated_data.pop("subscription_filters", [])
-        now = now_utc()
         sub_record = super().create(validated_data)
         for filter_data in filters:
             sub_cat_filter_dict = {
+                "organization": sub_record.organization,
                 "property_name": filter_data["property_name"],
                 "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
                 "comparison_value": [filter_data["value"]],
