@@ -272,11 +272,14 @@ class SubscriptionViewSet(
             params = self.request.query_params.copy()
             dict_params = params.dict()
             raw_filters = params.pop("subscription_filters", None)
+            print("raw_filters", raw_filters)
             if raw_filters:
                 if isinstance(raw_filters, list):
                     raw_filters = raw_filters[0]
+                print("raw_filters2", raw_filters)
                 parsed_params = json.loads(raw_filters)
                 dict_params["subscription_filters"] = parsed_params
+            print("dict_params", dict_params)
             if self.action == "edit":
                 serializer = SubscriptionRecordFilterSerializer(data=dict_params)
             elif self.action == "cancel":

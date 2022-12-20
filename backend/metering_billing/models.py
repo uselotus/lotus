@@ -2026,6 +2026,12 @@ class SubscriptionRecord(models.Model):
                     )
         if not self.usage_start_date:
             self.usage_start_date = self.start_date
+        if self.end_date < now:
+            self.status = SUBSCRIPTION_STATUS.ENDED
+        elif self.start_date > now:
+            self.status = SUBSCRIPTION_STATUS.NOT_STARTED
+        else:
+            self.status = SUBSCRIPTION_STATUS.ACTIVE
         super(SubscriptionRecord, self).save(*args, **kwargs)
 
     def get_filters_dictionary(self):
