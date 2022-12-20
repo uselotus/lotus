@@ -175,11 +175,12 @@ def generate_invoice(
                             subscription_record.end_date + relativedelta(days=1)
                         ),
                         "is_new": False,
-                        "filters": subscription_record.filters,
                     }
                     next_subscription_record = SubscriptionRecord.objects.create(
                         **subrec_dict
                     )
+                    for f in subscription_record.filters.all():
+                        next_subscription_record.filters.add(f)
                     subscription_record_check_discount.append(next_subscription_record)
                 else:
                     next_subscription_record = None
@@ -205,9 +206,6 @@ def generate_invoice(
                         associated_subscription_record=next_subscription_record,
                         organization=organization,
                     )
-            print(
-                "subscription_record_check_discount", subscription_record_check_discount
-            )
             for subscription_record in subscription_record_check_discount:
                 plan_version = subscription_record.billing_plan
                 if plan_version.price_adjustment:

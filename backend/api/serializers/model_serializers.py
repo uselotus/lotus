@@ -992,7 +992,9 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
         # check that the customer ID matches an existing customer
         try:
             cust_id = data.pop("customer_id")
-            data["customer"] = Customer.objects.get(customer_id=cust_id)
+            data["customer"] = Customer.objects.get(
+                customer_id=cust_id, organization=self.context["organization"]
+            )
         except Customer.DoesNotExist:
             raise serializers.ValidationError(
                 f"Customer with customer_id {cust_id} does not exist"
@@ -1000,7 +1002,9 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
         # check that the plan ID matches an existing plan
         if data.get("plan_id"):
             try:
-                data["plan"] = Plan.objects.get(plan_id=data["plan_id"])
+                data["plan"] = Plan.objects.get(
+                    plan_id=data["plan_id"], organization=self.context["organization"]
+                )
             except Plan.DoesNotExist:
                 raise serializers.ValidationError(
                     f"Plan with plan_id {data['plan_id']} does not exist"
@@ -1059,7 +1063,10 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
         data = super().validate(data)
         if data.get("customer_id"):
             try:
-                data["customer"] = Customer.objects.get(customer_id=data["customer_id"])
+                data["customer"] = Customer.objects.get(
+                    customer_id=data["customer_id"],
+                    organization=self.context["organization"],
+                )
             except Customer.DoesNotExist:
                 raise serializers.ValidationError(
                     f"Customer with customer_id {data['customer_id']} does not exist"

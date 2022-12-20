@@ -18,6 +18,7 @@ from metering_billing.exceptions.exceptions import (
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
+    ServerError,
 )
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
@@ -1985,6 +1986,8 @@ class SubscriptionRecord(models.Model):
     def save(self, *args, **kwargs):
         now = now_utc()
         subscription = self.customer.subscriptions.active(self.start_date).first()
+        if not subscription:
+            raise ServerError("Unexpected error: subscription date alignment engine failed.")
         if not self.end_date:
             day_anchor, month_anchor = subscription.get_anchors()
             self.end_date = calculate_end_date(

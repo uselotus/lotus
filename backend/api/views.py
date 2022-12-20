@@ -69,7 +69,12 @@ from metering_billing.models import (
     SubscriptionRecord,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
-from metering_billing.utils import calculate_end_date, date_as_max_dt, now_utc
+from metering_billing.utils import (
+    calculate_end_date,
+    convert_to_datetime,
+    date_as_max_dt,
+    now_utc,
+)
 from metering_billing.utils.enums import *
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import (
@@ -259,9 +264,13 @@ class SubscriptionViewSet(
         qs = super().get_queryset()
         organization = self.request.organization
         qs = qs.filter(organization=organization)
+        context = self.get_serializer_context()
+        context["organization"] = organization
         if self.action == "list":
             args = []
-            serializer = ListSubscriptionRecordFilter(data=self.request.query_params)
+            serializer = ListSubscriptionRecordFilter(
+                data=self.request.query_params, context=context
+            )
             serializer.is_valid(raise_exception=True)
             allowed_status = serializer.validated_data.get("status")
             if len(allowed_status) == 0:
@@ -294,9 +303,13 @@ class SubscriptionViewSet(
             if "plan_id" in dict_params:
                 data["plan_id"] = dict_params["plan_id"]
             if self.action == "edit":
-                serializer = SubscriptionRecordFilterSerializer(data=data)
+                serializer = SubscriptionRecordFilterSerializer(
+                    data=data, context=context
+                )
             elif self.action == "cancel":
-                serializer = SubscriptionRecordFilterSerializerDelete(data=data)
+                serializer = SubscriptionRecordFilterSerializerDelete(
+                    data=data, context=context
+                )
             else:
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
@@ -365,7 +378,9 @@ class SubscriptionViewSet(
         )
         duration = serializer.validated_data["billing_plan"].plan.plan_duration
         billing_freq = serializer.validated_data["billing_plan"].usage_billing_frequency
-        start_date = serializer.validated_data["start_date"]
+        start_date = convert_to_datetime(
+            serializer.validated_data["start_date"], date_behavior="min"
+        )
         plan_day_anchor = serializer.validated_data["billing_plan"].day_anchor
         plan_month_anchor = serializer.validated_data["billing_plan"].month_anchor
         if subscription is None:
