@@ -2,6 +2,8 @@ import create from "zustand";
 type GlobalStoreState = {
   username: string;
   org: IOrg;
+  setUsername: (username: string) => void;
+  setOrgInfo: (org: IOrg) => void;
 };
 interface IOrg {
   company_name: string;
