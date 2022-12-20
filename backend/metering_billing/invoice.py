@@ -205,7 +205,9 @@ def generate_invoice(
                         associated_subscription_record=next_subscription_record,
                         organization=organization,
                     )
-
+            print(
+                "subscription_record_check_discount", subscription_record_check_discount
+            )
             for subscription_record in subscription_record_check_discount:
                 plan_version = subscription_record.billing_plan
                 if plan_version.price_adjustment:

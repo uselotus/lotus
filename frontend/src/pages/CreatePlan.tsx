@@ -178,8 +178,10 @@ const CreatePlan = () => {
     setcomponentVisible(true);
   };
 
-  const deleteComponent = (id: number) => {
-    setComponentsData(componentsData.filter((item) => item.id !== id));
+  const deleteComponent = (metric_id: string) => {
+    setComponentsData(
+      componentsData.filter((item) => item.metric_id !== metric_id)
+    );
   };
   const hideFeatureModal = () => {
     setFeatureVisible(false);
@@ -206,7 +208,7 @@ const CreatePlan = () => {
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              billable_metric_name: components[i].metric,
+              metric_id: components[i].metric_id,
               tiers: components[i].tiers,
               separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,

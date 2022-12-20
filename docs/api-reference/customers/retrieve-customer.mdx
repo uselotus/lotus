@@ -1,13 +1,10 @@
 ---
-title: "Retrieve a customer"
+title: "Get a customer"
 openapi: "GET /api/customers/{customer_id}/"
+description: ""
 ---
 
 Retrieves a [customer_detail](/api-reference/customers/customer-object) object.
-
-A Retrieve `Customer` call requires
-
-- `customer_id` the id you defined in your backend for the corresponding customer and the same id that you passed into Lotus when creating the customer
 
 <CodeGroup>
 ```py Python
@@ -17,7 +14,7 @@ lotus.get_customer(
 ```
 
 ```ts Typescript
-await lotus.getCustomerDetail({
+await lotus.getCustomer({
   customerId: "cust_0569173ee6654369",
 });
 ```

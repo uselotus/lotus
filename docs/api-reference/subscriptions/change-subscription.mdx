@@ -1,35 +1,22 @@
 ---
-title: "Switch Subscription Plan"
-openapi: "PATCH /api/subscriptions/plans/"
+title: "Edit a subscription"
+openapi: "POST /api/subscriptions/edit/"
 description: "Upgrade or Downgrad or cancel autorenew for a subscription plan"
 ---
-
-A Update Subscription call requires
-
-- `customer_id` which uniquely identifies your customer in your backend. This is
-  the same id you'll pass into track_event calls to identify the customer, in
-  addition to other calls, so make sure it's available to you.
-- `plan_id` the id of the plan that you would like to update.
-  Optionally you can submit:
-
-- `subscription_filters` any filters that you want to apply to the subscription (e.g., `{"property_name": "status", "value": "active"}`) `replace_plan_id` the id of the plan that you would like to replace the current plan with.
-- `replace_plan_invocing_behavior` choices are ["add_to_next_invoice", "invoice_now"]. Specifies the behavior when replacing the plan (e.g., "add_to_next_invoice" means to add the cost of the new plan to the next invoice)
-- `turn_off_auto_renew` a boolean indicating whether to turn off auto-renew for the subscription
-- `end_date` the date that you want the subscription to end
 
 <CodeGroup>
 
 ```py Python
 lotus.update_subscription(
-  customer_id='cust_0569173e-e665-4369',
+  customer_id='cust_0569173ee6654369',
   plan_id="plan_123",
   replace_plan_id="plan_456",
-  replace_plan_invocing_behavior="add_to_next_invoice",
+  invocing_behavior="add_to_next_invoice",
   turn_off_auto_renew=True
 )
 
 lotus.update_subscription(
-  customer_id='cust_0569173e-e665-4369',
+  customer_id='cust_0569173ee6654369',
   plan_id="plan_123",
   subscription_filters=[{"property_name": "status", "value": "active"}],
   end_date=datetime.date(2022, 12, 8),
@@ -37,12 +24,13 @@ lotus.update_subscription(
 ```
 
 ```ts Typescript
-await lotus.changeSubscription({
+await lotus.updateSubscription({
   customerId: "cust_234";
   planId: "plan_234";
   subscriptionFilters: [{property_name: "project_id", value: "3234123"}];
   replacePlanId: "plan_235";
-  replacePlanInvoicingBehavior: "add_to_next_invoice";
+  invoicingBehavior: "add_to_next_invoice";
+  usageBehavior: "transfer_to_new_subscription"
 });
 ```
 

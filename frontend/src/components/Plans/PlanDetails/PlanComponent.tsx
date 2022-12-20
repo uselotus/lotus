@@ -9,7 +9,6 @@ interface PlanComponentsProps {
   components?: Component[];
 }
 const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
-  console.log("RENDERING", record, pricing_unit);
   switch (record.type) {
     case "per_unit":
       return (
@@ -43,7 +42,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
           {components.map((component) => (
             <div className="pt-2 pb-4 bg-[#FAFAFA] mr-4 mb-2 px-8 border-2 border-solid border-[#EAEAEB]">
               <div className="planDetails planComponentMetricName text-[20px] text-[#1d1d1fd9]">
-                <div> {component.billable_metric.billable_metric_name}</div>
+                <div> {component.billable_metric.metric_name}</div>
               </div>
               <div>
                 <Table

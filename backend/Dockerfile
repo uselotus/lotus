@@ -13,6 +13,7 @@ RUN pipenv install --system --deploy --ignore-pipfile --dev
 # copy python files,
 COPY ./lotus/ ./lotus/
 COPY ./metering_billing/ ./metering_billing/
+COPY ./api/ ./api/
 COPY ./manage.py ./
 # ---------------------------------------
 # Development

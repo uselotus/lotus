@@ -14,7 +14,13 @@ Lotus errors broadly fall into three categories:
 
 ### Validation Error
 
-A validation error occurs when a request is rejected because it does not conform to the API's schema. For example, if a required field is missing, or if a field is of the wrong type. If a request contains multiple validation errors, the response body will contain an array of error objects under the key `validation_errors`.
+A validation error occurs when a request is rejected because it does not conform to the API's schema. For example, if a required field is missing, or if a field is of the wrong type. If a request contains multiple validation errors, the response body will contain an array of error objects under the key `validation_errors`. Every object in the array will have the following fields:
+
+| Field    | Description                                                         |
+| -------- | ------------------------------------------------------------------- |
+| `code`   | The type of validation error this is.                               |
+| `detail` | More information about what exactly what was wrong.                 |
+| `attr`   | Which attribute of the serialized representation raised this issue. |
 
 ### Client Error
 

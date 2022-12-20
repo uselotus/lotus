@@ -111,6 +111,23 @@ class LoginView(LoginViewMixin, APIView):
 
 
 class LogoutView(LogoutViewMixin):
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(
+                name="LogoutSuccess",
+                fields={
+                    "detail": serializers.CharField(),
+                },
+            ),
+            400: inline_serializer(
+                name="LogoutFailure",
+                fields={
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request, format=None):
         if not request.user.is_authenticated:
             return JsonResponse(
@@ -123,6 +140,17 @@ class InitResetPasswordView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=EmailSerializer,
+        responses={
+            200: inline_serializer(
+                name="InitResetPasswordSuccess",
+                fields={
+                    "email": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request, *args, **kwargs):
         serializer = EmailSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -136,6 +164,25 @@ class ResetPasswordView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="ResetPasswordRequest",
+            fields={
+                "userId": serializers.CharField(),
+                "password": serializers.CharField(),
+                "token": serializers.CharField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="ResetPasswordSuccess",
+                fields={
+                    "detail": serializers.CharField(),
+                    "token": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request, *args, **kwargs):
         """Verifies the token and resets the password."""
         user_id = request.data.get("userId", None)
@@ -165,6 +212,17 @@ class ResetPasswordView(APIView):
 class SessionView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=None,
+        responses={
+            200: inline_serializer(
+                name="SessionSuccess",
+                fields={
+                    "isAuthenticated": serializers.BooleanField(),
+                },
+            ),
+        },
+    )
     def get(self, request, *args, **kwargs):
         return JsonResponse({"isAuthenticated": True})
 

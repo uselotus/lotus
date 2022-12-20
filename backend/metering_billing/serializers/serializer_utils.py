@@ -10,11 +10,11 @@ class SlugRelatedFieldWithOrganization(serializers.SlugRelatedField):
         return queryset
 
 
-class SlugRelatedFieldWithOrganizationOrNull(serializers.SlugRelatedField):
+class SlugRelatedFieldWithOrganizationPK(serializers.SlugRelatedField):
     def get_queryset(self):
         queryset = self.queryset
-        org = self.context.get("organization", None)
-        queryset = queryset.filter(Q(organization=org) | Q(organization__isnull=True))
+        org = self.context.get("organization_pk", None)
+        queryset = queryset.filter(organization_id=org)
         return queryset
 
 
