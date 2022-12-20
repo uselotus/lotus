@@ -169,7 +169,7 @@ class TestGenerateInvoice:
             "include_next_period": False,
         }
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
-
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         before_cost = response.data["invoices"][0]["cost_due"]
         pct_price_adjustment = PriceAdjustment.objects.create(
@@ -185,9 +185,7 @@ class TestGenerateInvoice:
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["cost_due"]
-        assert (before_cost * Decimal("0.99")).quantize(Decimal(10) ** -2) == (
-            after_cost * Decimal("0.99")
-        ).quantize(Decimal(10) ** -2)
+        assert (before_cost * Decimal("0.99") - after_cost) < Decimal("0.01")
 
         fixed_price_adjustment = PriceAdjustment.objects.create(
             organization=setup_dict["org"],

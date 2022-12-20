@@ -970,10 +970,11 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
         data = super().validate(data)
         # check that the customer ID matches an existing customer
         try:
-            data["customer"] = Customer.objects.get(customer_id=data.pop("customer_id"))
+            cust_id = data.pop("customer_id")
+            data["customer"] = Customer.objects.get(customer_id=cust_id)
         except Customer.DoesNotExist:
             raise serializers.ValidationError(
-                f"Customer with customer_id {data['customer_id']} does not exist"
+                f"Customer with customer_id {cust_id} does not exist"
             )
         # check that the plan ID matches an existing plan
         if data.get("plan_id"):

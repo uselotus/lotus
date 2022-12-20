@@ -481,18 +481,11 @@ class DraftInvoiceView(APIView):
         Pagination-enabled endpoint for retrieving an organization's event stream.
         """
         organization = request.organization
-        serializer = DraftInvoiceRequestSerializer(data=request.query_params)
+        serializer = DraftInvoiceRequestSerializer(
+            data=request.query_params, context={"organization": organization}
+        )
         serializer.is_valid(raise_exception=True)
-        try:
-            customer = Customer.objects.get(
-                organization=organization,
-                customer_id=serializer.validated_data.get("customer_id"),
-            )
-        except:
-            return Response(
-                {"error": "Customer not found"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        customer = serializer.validated_data.get("customer")
         sub, sub_records = customer.get_subscription_and_records()
         response = {"invoice": None}
         if sub is None or sub_records is None:
@@ -503,6 +496,8 @@ class DraftInvoiceView(APIView):
                 "billing_plan__plan_components__billable_metric",
                 "billing_plan__plan_components__tiers",
             )
+            print("incl", serializer.validated_data.get("include_next_period"))
+            print("sub_records", sub_records)
             invoices = generate_invoice(
                 sub,
                 sub_records,

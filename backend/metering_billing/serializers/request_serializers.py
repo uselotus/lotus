@@ -1,5 +1,9 @@
+from metering_billing.models import Customer
 from metering_billing.serializers.model_serializers import (
     SubscriptionCategoricalFilterSerializer,
+)
+from metering_billing.serializers.serializer_utils import (
+    SlugRelatedFieldWithOrganization,
 )
 from rest_framework import serializers
 
@@ -45,5 +49,14 @@ class PeriodMetricUsageRequestSerializer(PeriodRequestSerializer):
 
 
 class DraftInvoiceRequestSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(required=True)
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+    )
     include_next_period = serializers.BooleanField(default=True)
+
+    def validate(self, data):
+        super().validate(data)
+        data["customer"] = data.pop("customer_id")
+        return data
