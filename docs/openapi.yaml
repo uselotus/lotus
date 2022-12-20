@@ -3094,37 +3094,17 @@ components:
       properties:
         property_name:
           type: string
-          maxLength: 100
+          readOnly: true
         operator:
           enum:
           - isin
           - isnotin
           type: string
+          readOnly: true
         comparison_value:
           type: array
           items:
             type: string
-      required:
-      - comparison_value
-      - operator
-      - property_name
-    CategoricalFilterRequest:
-      type: object
-      properties:
-        property_name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        operator:
-          enum:
-          - isin
-          - isnotin
-          type: string
-        comparison_value:
-          type: array
-          items:
-            type: string
-            minLength: 1
       required:
       - comparison_value
       - operator
@@ -3564,26 +3544,26 @@ components:
     DraftInvoice:
       type: object
       properties:
-        due_date:
+        issue_date:
           type: string
           format: date-time
-          nullable: true
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
-        issue_date:
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        due_date:
           type: string
           format: date-time
+          nullable: true
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
       required:
       - cost_due
       - currency
@@ -3925,24 +3905,65 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRequest'
-          nullable: true
+        transition_to_plan_id:
+          type: string
+          minLength: 1
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          writeOnly: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/FeatureRequest'
           nullable: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentRequest'
+          nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
         currency_code:
           type: string
           minLength: 1
-        transition_to_plan_id:
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        usage_billing_frequency:
+          enum:
+          - monthly
+          - quarterly
+          - end_of_period
+          - ''
+          - null
           type: string
-          minLength: 1
+          writeOnly: true
+          nullable: true
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+      required:
+      - flat_fee_billing_type
     InviteRequestRequest:
       type: object
       properties:
@@ -4083,45 +4104,20 @@ components:
       properties:
         customer_name:
           type: string
+          readOnly: true
           nullable: true
           description: The display name of the customer
-          maxLength: 100
         email:
           type: string
           format: email
+          readOnly: true
           description: The primary email address of the customer, must be the same
             as the email address used to create the customer in the payment provider
-          maxLength: 100
         customer_id:
           type: string
+          readOnly: true
           description: The id provided when creating the customer, we suggest matching
             with your internal customer id in your backend
-          maxLength: 50
-      required:
-      - customer_id
-      - customer_name
-      - email
-    LightweightCustomerRequest:
-      type: object
-      properties:
-        customer_name:
-          type: string
-          nullable: true
-          description: The display name of the customer
-          maxLength: 100
-        email:
-          type: string
-          format: email
-          minLength: 1
-          description: The primary email address of the customer, must be the same
-            as the email address used to create the customer in the payment provider
-          maxLength: 100
-        customer_id:
-          type: string
-          minLength: 1
-          description: The id provided when creating the customer, we suggest matching
-            with your internal customer id in your backend
-          maxLength: 50
       required:
       - customer_id
       - customer_name
@@ -4129,14 +4125,9 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        due_date:
+        issue_date:
           type: string
           format: date-time
-          nullable: true
-        external_payment_obj_id:
-          type: string
-          nullable: true
-          maxLength: 100
         invoice_number:
           type: string
           maxLength: 13
@@ -4146,17 +4137,6 @@ components:
           - null
           type: string
           nullable: true
-        issue_date:
-          type: string
-          format: date-time
-        cost_due:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         payment_status:
           enum:
           - draft
@@ -4164,6 +4144,22 @@ components:
           - paid
           - unpaid
           type: string
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        external_payment_obj_id:
+          type: string
+          nullable: true
+          maxLength: 100
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
       required:
       - cost_due
       - currency
@@ -4176,24 +4172,9 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - null
-          type: string
-          nullable: true
-        start_date:
-          type: string
-          format: date-time
         end_date:
           type: string
           format: date-time
-        plan:
-          type: string
-        name:
-          type: string
-          maxLength: 100
         subtotal:
           type: number
           format: double
@@ -4208,6 +4189,21 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
+        plan:
+          type: string
+        billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - null
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
+        name:
+          type: string
+          maxLength: 100
         subscription_filters:
           type: array
           items:
@@ -4226,14 +4222,11 @@ components:
       properties:
         plan_name:
           type: string
-          readOnly: true
         plan_id:
           type: string
-          readOnly: true
         version:
           type: integer
-          maximum: 32767
-          minimum: 0
+          readOnly: true
       required:
       - plan_id
       - plan_name
@@ -4241,12 +4234,15 @@ components:
     LightweightPlanVersionRequest:
       type: object
       properties:
-        version:
-          type: integer
-          maximum: 32767
-          minimum: 0
+        plan_name:
+          type: string
+          minLength: 1
+        plan_id:
+          type: string
+          minLength: 1
       required:
-      - version
+      - plan_id
+      - plan_name
     LoginFailure:
       type: object
       properties:
@@ -4298,18 +4294,18 @@ components:
       properties:
         metric_id:
           type: string
-          maxLength: 100
+          readOnly: true
         event_name:
           type: string
+          readOnly: true
           description: Name of the event that this metric is tracking.
-          maxLength: 50
         property_name:
           type: string
+          readOnly: true
           nullable: true
           description: The name of the property of the event that should be used for
             this metric. Doesn't apply if the metric is of type 'counter' with an
             aggregation of count.
-          maxLength: 50
         aggregation_type:
           type: string
         granularity:
@@ -4324,6 +4320,7 @@ components:
           - total
           - null
           type: string
+          readOnly: true
           nullable: true
           description: The granularity of the metric. Only applies to metrics of type
             'continuous' or 'rate'.
@@ -4333,6 +4330,7 @@ components:
           - total
           - null
           type: string
+          readOnly: true
           nullable: true
           description: Used only for metrics of type 'continuous'. Please refer to
             our documentation for an explanation of the different types.
@@ -4342,6 +4340,7 @@ components:
           - stateful
           - rate
           type: string
+          readOnly: true
           description: The type of metric that this is. Please refer to our documentation
             for an explanation of the different types.
         metric_name:
@@ -4356,6 +4355,7 @@ components:
             $ref: '#/components/schemas/CategoricalFilter'
         is_cost_metric:
           type: boolean
+          readOnly: true
           description: Whether or not this metric is a cost metric (used to track
             costs to your business).
       required:
@@ -4473,87 +4473,6 @@ components:
       - metric_name
       - metric_type
       - usage_aggregation_type
-    MetricRequest:
-      type: object
-      properties:
-        metric_id:
-          type: string
-          minLength: 1
-          maxLength: 100
-        event_name:
-          type: string
-          minLength: 1
-          description: Name of the event that this metric is tracking.
-          maxLength: 50
-        property_name:
-          type: string
-          nullable: true
-          description: The name of the property of the event that should be used for
-            this metric. Doesn't apply if the metric is of type 'counter' with an
-            aggregation of count.
-          maxLength: 50
-        aggregation_type:
-          type: string
-          minLength: 1
-        granularity:
-          enum:
-          - seconds
-          - minutes
-          - hours
-          - days
-          - months
-          - quarters
-          - years
-          - total
-          - null
-          type: string
-          nullable: true
-          description: The granularity of the metric. Only applies to metrics of type
-            'continuous' or 'rate'.
-        event_type:
-          enum:
-          - delta
-          - total
-          - null
-          type: string
-          nullable: true
-          description: Used only for metrics of type 'continuous'. Please refer to
-            our documentation for an explanation of the different types.
-        metric_type:
-          enum:
-          - counter
-          - stateful
-          - rate
-          type: string
-          description: The type of metric that this is. Please refer to our documentation
-            for an explanation of the different types.
-        metric_name:
-          type: string
-          minLength: 1
-        numeric_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/NumericFilterRequest'
-        categorical_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/CategoricalFilterRequest'
-        is_cost_metric:
-          type: boolean
-          description: Whether or not this metric is a cost metric (used to track
-            costs to your business).
-      required:
-      - aggregation_type
-      - categorical_filters
-      - event_name
-      - event_type
-      - granularity
-      - is_cost_metric
-      - metric_id
-      - metric_name
-      - metric_type
-      - numeric_filters
-      - property_name
     MetricRevenue:
       type: object
       properties:
@@ -4586,28 +4505,6 @@ components:
       properties:
         property_name:
           type: string
-          maxLength: 100
-        operator:
-          enum:
-          - gte
-          - gt
-          - eq
-          - lt
-          - lte
-          type: string
-        comparison_value:
-          type: number
-          format: double
-      required:
-      - comparison_value
-      - operator
-      - property_name
-    NumericFilterRequest:
-      type: object
-      properties:
-        property_name:
-          type: string
-          minLength: 1
           maxLength: 100
         operator:
           enum:
@@ -4998,6 +4895,11 @@ components:
           readOnly: true
           description: The number of active subscriptions that this plan has across
             all versions.
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanVersion'
+          readOnly: true
       required:
       - active_subscriptions
       - display_version
@@ -5007,15 +4909,14 @@ components:
       - plan_id
       - plan_name
       - status
+      - versions
       - parent_plan
       - target_customer
     PlanComponent:
       type: object
       properties:
         billable_metric:
-          allOf:
-          - $ref: '#/components/schemas/Metric'
-          readOnly: true
+          $ref: '#/components/schemas/Metric'
         tiers:
           type: array
           items:
@@ -5032,9 +4933,7 @@ components:
           - total
           type: string
         pricing_unit:
-          allOf:
-          - $ref: '#/components/schemas/PricingUnit'
-          readOnly: true
+          $ref: '#/components/schemas/PricingUnit'
       required:
       - billable_metric
       - pricing_unit
@@ -5043,10 +4942,6 @@ components:
     PlanComponentRequest:
       type: object
       properties:
-        tiers:
-          type: array
-          items:
-            $ref: '#/components/schemas/PriceTierRequest'
         proration_granularity:
           enum:
           - seconds
@@ -5058,14 +4953,17 @@ components:
           - years
           - total
           type: string
-        billable_metric_name:
+        tiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceTierCreateRequest'
+        metric_id:
           type: string
-          nullable: true
+          minLength: 1
           writeOnly: true
       required:
-      - billable_metric_name
+      - metric_id
       - proration_granularity
-      - tiers
     PlanCreateRequest:
       type: object
       properties:
@@ -5160,18 +5058,22 @@ components:
       properties:
         description:
           type: string
+          readOnly: true
           nullable: true
         flat_fee_billing_type:
           enum:
           - in_arrears
           - in_advance
           type: string
+          readOnly: true
         flat_rate:
           type: number
           format: double
           maximum: 10000000000
-          minimum: 0
+          minimum: -10000000000
           exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
         components:
           type: array
           items:
@@ -5189,14 +5091,13 @@ components:
           - monthly
           - quarterly
           - end_of_period
-          - ''
           - null
           type: string
+          readOnly: true
           nullable: true
         version:
           type: integer
-          maximum: 32767
-          minimum: 0
+          readOnly: true
         status:
           enum:
           - active
@@ -5205,6 +5106,7 @@ components:
           - archived
           - inactive
           type: string
+          readOnly: true
         plan_name:
           type: string
         currency:
@@ -5224,9 +5126,26 @@ components:
     PlanVersionCreateRequest:
       type: object
       properties:
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
         plan_id:
           type: string
           minLength: 1
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          writeOnly: true
         components:
           type: array
           items:
@@ -5239,6 +5158,28 @@ components:
           nullable: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustmentRequest'
+        usage_billing_frequency:
+          enum:
+          - monthly
+          - quarterly
+          - end_of_period
+          - ''
+          - null
+          type: string
+          writeOnly: true
+          nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
         make_active:
           type: boolean
         make_active_type:
@@ -5260,6 +5201,7 @@ components:
           type: string
           minLength: 1
       required:
+      - flat_fee_billing_type
       - make_active
     PlanVersionUpdate:
       type: object
@@ -5360,32 +5302,41 @@ components:
           - per_unit
           - free
           type: string
+          readOnly: true
         range_start:
           type: number
           format: double
           maximum: 10000000000
-          minimum: 0
+          minimum: -10000000000
           exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
         range_end:
           type: number
           format: double
           maximum: 10000000000
-          minimum: 0
+          minimum: -10000000000
           exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
           nullable: true
         cost_per_batch:
           type: number
           format: double
           maximum: 10000000000
-          minimum: 0
+          minimum: -10000000000
           exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
           nullable: true
         metric_units_per_batch:
           type: number
           format: double
           maximum: 10000000000
-          minimum: 0
+          minimum: -10000000000
           exclusiveMaximum: true
+          exclusiveMinimum: true
+          readOnly: true
           nullable: true
         batch_rounding_type:
           enum:
@@ -5395,6 +5346,7 @@ components:
           - no_rounding
           - null
           type: string
+          readOnly: true
           nullable: true
       required:
       - batch_rounding_type
@@ -5403,7 +5355,7 @@ components:
       - range_end
       - range_start
       - type
-    PriceTierRequest:
+    PriceTierCreateRequest:
       type: object
       properties:
         type:
@@ -5445,14 +5397,11 @@ components:
           - round_down
           - round_nearest
           - no_rounding
+          - ''
           - null
           type: string
           nullable: true
       required:
-      - batch_rounding_type
-      - cost_per_batch
-      - metric_units_per_batch
-      - range_end
       - range_start
       - type
     PricingUnit:
@@ -5930,8 +5879,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilterRequest'
-        customer:
-          $ref: '#/components/schemas/LightweightCustomerRequest'
         billing_plan:
           $ref: '#/components/schemas/LightweightPlanVersionRequest'
         fully_billed:
@@ -5940,7 +5887,6 @@ components:
       required:
       - auto_renew
       - billing_plan
-      - customer
       - end_date
       - fully_billed
       - is_new

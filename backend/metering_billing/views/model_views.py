@@ -13,35 +13,20 @@ from django.db.models import Count, OuterRef, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
-from metering_billing.exceptions import (
-    DuplicateCustomer,
-    DuplicateMetric,
-    DuplicateWebhookEndpoint,
-    MethodNotAllowed,
-    NotFoundException,
-    SwitchPlanDurationMismatch,
-    SwitchPlanSamePlanException,
-)
+from metering_billing.exceptions import DuplicateMetric, DuplicateWebhookEndpoint
 from metering_billing.models import (
     Backtest,
-    Customer,
-    CustomerBalanceAdjustment,
     Event,
     ExternalPlanLink,
     Feature,
-    Invoice,
     Metric,
     OrganizationSetting,
     Plan,
-    PlanComponent,
     PlanVersion,
-    PriceTier,
     PricingUnit,
     Product,
-    SubscriptionRecord,
     User,
     WebhookEndpoint,
-    WebhookTrigger,
 )
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.backtest_serializers import (
@@ -53,12 +38,9 @@ from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import run_backtest
 from metering_billing.utils import date_as_max_dt, now_utc, now_utc_ts
 from metering_billing.utils.enums import (
-    INVOICE_STATUS,
     METRIC_STATUS,
     PAYMENT_PROVIDERS,
-    PLAN_STATUS,
     PLAN_VERSION_STATUS,
-    REPLACE_IMMEDIATELY_TYPE,
     SUBSCRIPTION_STATUS,
 )
 from rest_framework import mixins, serializers, status, viewsets

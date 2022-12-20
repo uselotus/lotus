@@ -46,7 +46,7 @@ import {
   ChangeSubscriptionPlanType,
   TurnSubscriptionAutoRenewOffType,
 } from "../types/subscription-type";
-import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
+import { MetricUsage, MetricType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { DemoSignupProps } from "../pages/DemoSignup";
 import {
@@ -216,11 +216,11 @@ export const Plan = {
   createExternalLinks: (
     post: CreatePlanExternalLinkType
   ): Promise<InitialExternalLinks> =>
-    requests.post("app/external_plan_link/", post),
+    requests.post("app/external_plan_links/", post),
   //delete plan external links
   deleteExternalLinks: (post: InitialExternalLinks): Promise<any> =>
     requests.delete(
-      `app/external_plan_link/${post.external_plan_id}/?source=${post.source}`
+      `app/external_plan_links/${post.external_plan_id}/?source=${post.source}`
     ),
 
   //update plans methods

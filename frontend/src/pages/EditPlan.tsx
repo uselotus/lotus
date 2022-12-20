@@ -108,7 +108,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
           tiers: component.tiers,
           separate_by: component.separate_by,
           proration_granularity: component.proration_granularity,
-          id: component.billable_metric.metric_name,
+          id: component.billable_metric.metric_id,
           pricing_unit: component.pricing_unit,
         };
       }
@@ -210,7 +210,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
-
+    console.log("newData", newData);
     if (editComponentItem) {
       const index = componentsData.findIndex(
         (item) => item.id === editComponentItem.id
@@ -240,8 +240,8 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     setcomponentVisible(true);
   };
 
-  const deleteComponent = (name: string) => {
-    setComponentsData(componentsData.filter((item) => item.metric !== name));
+  const deleteComponent = (id: string) => {
+    setComponentsData(componentsData.filter((item) => item.id !== id));
   };
   const hideFeatureModal = () => {
     setFeatureVisible(false);
@@ -295,7 +295,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              metric_name: components[i].metric,
+              metric_id: components[i].id,
               tiers: components[i].tiers,
               separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,

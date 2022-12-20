@@ -119,7 +119,7 @@ export interface CreateVersionType {
 
 export interface CreateComponent
   extends Omit<Component, "billable_metric" | "pricing_unit"> {
-  metric_name: string;
+  metric_id: string;
 }
 
 export interface Component {
