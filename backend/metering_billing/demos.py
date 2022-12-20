@@ -90,36 +90,21 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
     for _ in range(1):
         customer = Customer.objects.create(
             organization=organization,
-<<<<<<< HEAD
-            customer_name="BigCompany " + str(uuid.uuid4())[:6],
-            email="BigCompany " + str(uuid.uuid4())[:6] + "@example.com",
-=======
             customer_name="BigCompany " + str(uuid.uuid4().hex)[:6],
->>>>>>> main
         )
         big_customers.append(customer)
     medium_customers = []
     for _ in range(2):
         customer = Customer.objects.create(
             organization=organization,
-<<<<<<< HEAD
-            customer_name="MediumCompany " + str(uuid.uuid4())[:6],
-            email="MediumCompany " + str(uuid.uuid4())[:6] + "@example.com",
-=======
             customer_name="MediumCompany " + str(uuid.uuid4().hex)[:6],
->>>>>>> main
         )
         medium_customers.append(customer)
     small_customers = []
     for _ in range(5):
         customer = Customer.objects.create(
             organization=organization,
-<<<<<<< HEAD
-            customer_name="SmallCompany " + str(uuid.uuid4())[:6],
-            email="SmallCompany " + str(uuid.uuid4())[:6] + "@example.com",
-=======
             customer_name="SmallCompany " + str(uuid.uuid4().hex)[:6],
->>>>>>> main
         )
         small_customers.append(customer)
     calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
@@ -609,36 +594,21 @@ def setup_paas_demo(
     for _ in range(1):
         customer = Customer.objects.create(
             organization=organization,
-<<<<<<< HEAD
-            customer_name="BigCompany " + str(uuid.uuid4())[:6],
-            email="BigCompany " + str(uuid.uuid4())[:6] + "@example.com",
-=======
             customer_name="BigCompany " + str(uuid.uuid4().hex)[:6],
->>>>>>> main
         )
         big_customers.append(customer)
     medium_customers = []
     for _ in range(2):
         customer = Customer.objects.create(
             organization=organization,
-<<<<<<< HEAD
-            customer_name="MediumCompany " + str(uuid.uuid4())[:6],
-            email="MediumCompany " + str(uuid.uuid4())[:6] + "@example.com",
-=======
             customer_name="MediumCompany " + str(uuid.uuid4().hex)[:6],
->>>>>>> main
         )
         medium_customers.append(customer)
     small_customers = []
     for _ in range(5):
         customer = Customer.objects.create(
             organization=organization,
-<<<<<<< HEAD
-            customer_name="SmallCompany " + str(uuid.uuid4())[:6],
-            email="SmallCompany " + str(uuid.uuid4())[:6] + "@example.com",
-=======
             customer_name="SmallCompany " + str(uuid.uuid4().hex)[:6],
->>>>>>> main
         )
         small_customers.append(customer)
     (
