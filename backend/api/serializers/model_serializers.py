@@ -338,9 +338,12 @@ class CustomerSerializer(
     def get_integrations(self, obj) -> CustomerIntegrationsSerializer:
         d = obj.integrations
         if PAYMENT_PROVIDERS.STRIPE in d:
-            d[PAYMENT_PROVIDERS.STRIPE] = self._format_stripe_integration(
-                d[PAYMENT_PROVIDERS.STRIPE]
-            )
+            try:
+                d[PAYMENT_PROVIDERS.STRIPE] = self._format_stripe_integration(
+                    d[PAYMENT_PROVIDERS.STRIPE]
+                )
+            except (KeyError, TypeError) as e:
+                d[PAYMENT_PROVIDERS.STRIPE] = None
         else:
             d[PAYMENT_PROVIDERS.STRIPE] = None
         return d
