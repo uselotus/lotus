@@ -35,7 +35,7 @@ from api.serializers.nonmodel_serializers import (
     GetEventAccessSerializer,
     GetFeatureAccessSerializer,
 )
-from dateutil import relativedelta
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Prefetch, Q

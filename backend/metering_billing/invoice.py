@@ -4,7 +4,7 @@ import datetime
 from decimal import Decimal
 
 import lotus_python
-from dateutil import relativedelta
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from djmoney.money import Money
