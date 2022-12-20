@@ -1,9 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 import {
-  CustomerPlus,
   CustomerType,
   CustomerTotal,
-  CustomerDetailType,
+  CustomerCreateType,
+  CustomerSummary,
 } from "../types/customer-type";
 import {
   WebhookEndpoint,
@@ -41,7 +41,8 @@ import {
   CreateSubscriptionType,
   UpdateSubscriptionType,
   SubscriptionType,
-  CancelSubscriptionType,
+  CancelSubscriptionQueryParams,
+  CancelSubscriptionBody,
   ChangeSubscriptionPlanType,
   TurnSubscriptionAutoRenewOffType,
 } from "../types/subscription-type";
@@ -114,8 +115,8 @@ const encodeSubscriptionFilters = (obj: any) => {
 const requests = {
   get: (url: string, params?: {}) =>
     instance.get(url, params).then(responseBody),
-  post: (url: string, body: {}, headers?: {}) =>
-    instance.post(url, body, headers).then(responseBody),
+  post: (url: string, body: {}, params?: {}) =>
+    instance.post(url, body, { params: params }).then(responseBody),
   patch: (url: string, body: {}, params?: {}) =>
     instance.patch(url, body, { params: params }).then(responseBody),
   delete: (url: string, params?: {}) =>
@@ -123,18 +124,18 @@ const requests = {
 };
 
 export const Customer = {
-  getCustomers: (): Promise<CustomerPlus[]> =>
+  getCustomers: (): Promise<CustomerSummary[]> =>
     requests.get("app/customer_summary/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
+  getCustomerDetail: (customer_id: string): Promise<CustomerType> =>
     requests.get(`app/customers/${customer_id}/`),
-  createCustomer: (post: CustomerType): Promise<CustomerType> =>
+  createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
     requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
     requests.get("app/customer_totals/"),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string
-  ): Promise<CustomerDetailType> =>
+  ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code: default_currency_code,
     }),
@@ -152,8 +153,7 @@ export const Customer = {
   },
   createSubscription: (
     post: CreateSubscriptionType
-  ): Promise<SubscriptionType> =>
-    requests.post("app/subscriptions/plans/", post),
+  ): Promise<SubscriptionType> => requests.post("app/subscriptions/add/", post),
   updateSubscription: (
     subscription_id: string,
     post: UpdateSubscriptionType,
@@ -163,18 +163,16 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<UpdateSubscriptionType> =>
-    requests.patch(
-      `app/subscriptions/plans/`,
+    requests.post(
+      `app/subscriptions/update/`,
       post,
       encodeSubscriptionFilters(params)
     ),
   cancelSubscription: (
-    post: CancelSubscriptionType
-  ): Promise<CancelSubscriptionType> =>
-    requests.delete(
-      `app/subscriptions/plans/`,
-      encodeSubscriptionFilters(post)
-    ),
+    params: CancelSubscriptionQueryParams,
+    post: CancelSubscriptionBody
+  ): Promise<SubscriptionType> =>
+    requests.post(`app/subscriptions/cancel/`, post, params),
   changeSubscriptionPlan: (
     post: ChangeSubscriptionPlanType,
     params?: {
@@ -182,9 +180,9 @@ export const Customer = {
       plan_id?: string;
       subscription_filters?: { property_name: string; value: string }[];
     }
-  ): Promise<ChangeSubscriptionPlanType> =>
-    requests.patch(
-      `app/subscriptions/plans/`,
+  ): Promise<SubscriptionType> =>
+    requests.post(
+      `app/subscriptions/update/`,
       post,
       encodeSubscriptionFilters(params)
     ),
@@ -195,9 +193,9 @@ export const Customer = {
       plan_id?: string;
       subscription_filters?: { property_name: string; value: string }[];
     }
-  ): Promise<TurnSubscriptionAutoRenewOffType> =>
-    requests.patch(
-      `app/subscriptions/plans/`,
+  ): Promise<SubscriptionType> =>
+    requests.post(
+      `app/subscriptions/update/`,
       post,
       encodeSubscriptionFilters(params)
     ),
@@ -339,7 +337,7 @@ export const Organization = {
   updateOrganization: (
     org_id: string,
     default_currency_code: string
-  ): Promise<CustomerDetailType> =>
+  ): Promise<OrganizationType> =>
     requests.patch(`app/organizations/${org_id}/`, {
       default_currency_code: default_currency_code,
     }),

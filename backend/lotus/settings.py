@@ -634,21 +634,24 @@ else:
 SVIX_CONNECTOR = svix
 
 if SVIX_CONNECTOR is not None:
-    svix = SVIX_CONNECTOR
-    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
-    if "invoice.created" not in list_response_event_type_out:
-        event_type_out = svix.event_type.create(
-            EventTypeIn(
-                description="Invoice is created",
-                archived=False,
-                name="invoice.created",
+    try:
+        svix = SVIX_CONNECTOR
+        list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+        if "invoice.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Invoice is created",
+                    archived=False,
+                    name="invoice.created",
+                )
             )
-        )
-    if "invoice.paid" not in list_response_event_type_out:
-        event_type_out = svix.event_type.create(
-            EventTypeIn(
-                description="Invoice is marked as paid",
-                archived=False,
-                name="invoice.paid",
+        if "invoice.paid" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Invoice is marked as paid",
+                    archived=False,
+                    name="invoice.paid",
+                )
             )
-        )
+    except:
+        SVIX_CONNECTOR = None

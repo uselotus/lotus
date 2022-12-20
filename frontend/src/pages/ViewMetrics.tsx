@@ -89,7 +89,7 @@ const ViewMetrics: FC = () => {
         state.metric_type === "stateful"
           ? state.granularity_2
           : state.granularity,
-      billable_metric_name: state.billable_metric_name,
+      metric_name: state.metric_name,
       metric_type: state.metric_type,
       billable_aggregation_type: state.billable_aggregation_type,
       //defaults for now

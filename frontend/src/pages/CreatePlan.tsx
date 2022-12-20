@@ -206,7 +206,7 @@ const CreatePlan = () => {
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              billable_metric_name: components[i].metric,
+              metric_name: components[i].metric,
               tiers: components[i].tiers,
               separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,

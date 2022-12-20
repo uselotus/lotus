@@ -86,9 +86,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
               <div className="grid grid-cols-3">
                 <p>
                   <b>Issue Date: </b>
-                  {dayjs(invoice.subscription.end_date).format(
-                    "YYYY/MM/DD HH:mm"
-                  )}
+                  {dayjs(invoice.due_date).format("YYYY/MM/DD HH:mm")}
                 </p>
                 <p>
                   <b>Currency: </b> {invoice.currency.name}

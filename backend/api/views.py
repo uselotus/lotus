@@ -235,7 +235,7 @@ class SubscriptionViewSet(
             return SubscriptionRecordUpdateSerializer
         elif self.action == "cancel":
             return SubscriptionRecordCancelSerializer
-        elif self.action == "create":
+        elif self.action == "add":
             return SubscriptionRecordCreateSerializer
         else:
             return SubscriptionRecordSerializer
@@ -246,11 +246,9 @@ class SubscriptionViewSet(
         qs = qs.filter(organization=organization)
         # need for: list, update_plans, cancel_plans
         if self.action == "list":
-            print("list")
             args = []
             serializer = ListSubscriptionRecordFilter(data=self.request.query_params)
             serializer.is_valid(raise_exception=True)
-            print("val data", serializer.validated_data)
             allowed_status = serializer.validated_data.get("status")
             if len(allowed_status) == 0:
                 allowed_status = [SUBSCRIPTION_STATUS.ACTIVE]
@@ -262,9 +260,7 @@ class SubscriptionViewSet(
                 args.append(Q(start_date__lte=range_end))
             range_end = serializer.validated_data.get("range_end")
             if serializer.validated_data.get("customer"):
-                args.append(
-                    Q(customer__customer_id=serializer.validated_data["customer"])
-                )
+                args.append(Q(customer=serializer.validated_data["customer"]))
             status_combo = []
             for status in allowed_status:
                 status_combo.append(Q(status=status))
@@ -320,7 +316,6 @@ class SubscriptionViewSet(
                         operator=CATEGORICAL_FILTER_OPERATORS.ISIN,
                     )
                     qs = qs.filter(filters=m2m)
-        print("qs", qs)
         return qs
 
     @extend_schema(
@@ -958,10 +953,12 @@ class CustomerBatchCreateView(APIView):
                                     customer["customer_id"]
                                 ] = "customer_id already exists"
                                 continue
-                        CustomerSerializer().update(match, customer, behavior=behavior)
+                        CustomerCreateSerializer().update(
+                            match, customer, behavior=behavior
+                        )
                 else:
                     customer["organization"] = organization
-                    CustomerSerializer().create(customer)
+                    CustomerCreateSerializer().create(customer)
             except Exception as e:
                 identifier = customer.get("customer_id", customer.get("email"))
                 failed_customers[identifier] = str(e)

@@ -482,13 +482,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordRequest'
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordRequest'
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordRequest'
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
         required: true
       security:
       - knoxTokenAuth: []
@@ -2382,13 +2382,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
+              $ref: '#/components/schemas/SubscriptionRecordRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
+              $ref: '#/components/schemas/SubscriptionRecordRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
+              $ref: '#/components/schemas/SubscriptionRecordRequest'
         required: true
       security:
       - knoxTokenAuth: []
@@ -2399,7 +2399,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SubscriptionRecordCreate'
+                $ref: '#/components/schemas/SubscriptionRecord'
           description: ''
   /app/subscriptions/add/:
     post:
@@ -2411,13 +2411,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordRequest'
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordRequest'
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/SubscriptionRecordRequest'
+              $ref: '#/components/schemas/SubscriptionRecordCreateRequest'
         required: true
       security:
       - knoxTokenAuth: []
@@ -3564,13 +3564,10 @@ components:
     DraftInvoice:
       type: object
       properties:
-        payment_status:
-          enum:
-          - draft
-          type: string
-        issue_date:
+        due_date:
           type: string
           format: date-time
+          nullable: true
         line_items:
           type: array
           items:
@@ -3578,26 +3575,21 @@ components:
           readOnly: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
-        customer:
-          $ref: '#/components/schemas/LightweightCustomer'
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
-        due_date:
+        issue_date:
           type: string
           format: date-time
-          nullable: true
       required:
       - cost_due
       - currency
-      - customer
       - due_date
       - issue_date
       - line_items
-      - payment_status
     DraftInvoiceResponse:
       type: object
       properties:
@@ -3933,24 +3925,24 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+        currency_code:
+          type: string
+          minLength: 1
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustmentRequest'
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRequest'
-          nullable: true
         features:
           type: array
           items:
             $ref: '#/components/schemas/FeatureRequest'
           nullable: true
-        currency_code:
-          type: string
-          minLength: 1
         transition_to_plan_id:
           type: string
           minLength: 1
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentRequest'
+          nullable: true
     InviteRequestRequest:
       type: object
       properties:
@@ -4137,6 +4129,18 @@ components:
     LightweightInvoice:
       type: object
       properties:
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - null
+          type: string
+          nullable: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         payment_status:
           enum:
           - draft
@@ -4144,34 +4148,22 @@ components:
           - paid
           - unpaid
           type: string
-        issue_date:
-          type: string
-          format: date-time
-        invoice_number:
-          type: string
-          maxLength: 13
-        external_payment_obj_id:
-          type: string
-          nullable: true
-          maxLength: 100
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - null
-          type: string
-          nullable: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
-        due_date:
+        invoice_number:
+          type: string
+          maxLength: 13
+        issue_date:
           type: string
           format: date-time
+        external_payment_obj_id:
+          type: string
           nullable: true
+          maxLength: 100
       required:
       - cost_due
       - currency
@@ -4184,30 +4176,6 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-        end_date:
-          type: string
-          format: date-time
-        quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          nullable: true
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
-        name:
-          type: string
-          maxLength: 100
         billing_type:
           enum:
           - in_arrears
@@ -4215,11 +4183,35 @@ components:
           - null
           type: string
           nullable: true
+        end_date:
+          type: string
+          format: date-time
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
         plan:
           type: string
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
         start_date:
           type: string
           format: date-time
+        name:
+          type: string
+          maxLength: 100
       required:
       - billing_type
       - end_date
@@ -4463,11 +4455,9 @@ components:
           writeOnly: true
           description: The type of metric that this is. Please refer to our documentation
             for an explanation of the different types.
-        billable_metric_name:
+        metric_name:
           type: string
-          writeOnly: true
-          nullable: true
-          maxLength: 50
+          minLength: 1
         properties:
           type: object
           additionalProperties: {}
@@ -4480,6 +4470,7 @@ components:
             costs to your business).
       required:
       - event_name
+      - metric_name
       - metric_type
       - usage_aggregation_type
     MetricRequest:
@@ -5802,19 +5793,44 @@ components:
     SubscriptionRecord:
       type: object
       properties:
-        customer_id:
+        start_date:
           type: string
-          description: The id provided when creating the customer
-        plan_id:
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        end_date:
           type: string
-          description: The Lotus plan_id, found in the billing plan object
+          format: date-time
+          description: The time the subscription starts. This will be a string in
+            yyyy-mm-dd HH:mm:ss format in UTC time.
+        auto_renew:
+          type: boolean
+          description: Whether the subscription automatically renews. Defaults to
+            true.
+        is_new:
+          type: boolean
+          description: Whether this subscription came from a renewal or from a first-time.
+            Defaults to true on creation.
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+        customer:
+          $ref: '#/components/schemas/LightweightCustomer'
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersion'
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
       required:
-      - customer_id
-      - plan_id
+      - auto_renew
+      - billing_plan
+      - customer
+      - end_date
+      - fully_billed
+      - is_new
+      - start_date
+      - subscription_filters
     SubscriptionRecordCancelRequest:
       type: object
       properties:
@@ -5848,47 +5864,6 @@ components:
           default: invoice_now
           description: Whether to invoice now or invoice at the end of the billing
             period. Defaults to invoice now.
-    SubscriptionRecordCreate:
-      type: object
-      properties:
-        start_date:
-          type: string
-          format: date-time
-          description: The date the subscription starts. This should be a string in
-            YYYY-MM-DD format of the date in UTC time.
-        end_date:
-          type: string
-          format: date-time
-          description: The date the subscription ends. This should be a string in
-            YYYY-MM-DD format of the date in UTC time. If you don’t set it (recommended),
-            we will use the information in the billing plan to automatically calculate
-            this.
-        auto_renew:
-          type: boolean
-          description: Whether the subscription automatically renews. Defaults to
-            true.
-        is_new:
-          type: boolean
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-          description: Add filter key, value pairs that define which events will be
-            applied to this plan subscription.
-        customer:
-          allOf:
-          - $ref: '#/components/schemas/LightweightCustomer'
-          readOnly: true
-          description: The customer object associated with this subscription.
-        billing_plan:
-          allOf:
-          - $ref: '#/components/schemas/LightweightPlanVersion'
-          readOnly: true
-          description: The billing plan object associated with this subscription.
-      required:
-      - billing_plan
-      - customer
-      - start_date
     SubscriptionRecordCreateRequest:
       type: object
       properties:
@@ -5933,44 +5908,44 @@ components:
     SubscriptionRecordRequest:
       type: object
       properties:
-        customer_id:
-          type: string
-          minLength: 1
-          description: The id provided when creating the customer
-        plan_id:
-          type: string
-          minLength: 1
-          description: The Lotus plan_id, found in the billing plan object
         start_date:
           type: string
           format: date-time
-          writeOnly: true
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
         end_date:
           type: string
           format: date-time
-          writeOnly: true
           description: The time the subscription starts. This will be a string in
             yyyy-mm-dd HH:mm:ss format in UTC time.
         auto_renew:
           type: boolean
-          writeOnly: true
           description: Whether the subscription automatically renews. Defaults to
             true.
         is_new:
           type: boolean
-          writeOnly: true
           description: Whether this subscription came from a renewal or from a first-time.
             Defaults to true on creation.
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilterRequest'
+        customer:
+          $ref: '#/components/schemas/LightweightCustomerRequest'
+        billing_plan:
+          $ref: '#/components/schemas/LightweightPlanVersionRequest'
+        fully_billed:
+          type: boolean
+          description: Whether the subscription has been fully billed and finalized.
       required:
-      - customer_id
-      - plan_id
+      - auto_renew
+      - billing_plan
+      - customer
+      - end_date
+      - fully_billed
+      - is_new
       - start_date
+      - subscription_filters
     SubscriptionRecordUpdateRequest:
       type: object
       properties:

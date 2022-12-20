@@ -6,7 +6,8 @@ import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
   ChangeSubscriptionPlanType,
-  CancelSubscriptionType,
+  CancelSubscriptionBody,
+  CancelSubscriptionQueryParams,
 } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
 import { Customer } from "../../api/api";
@@ -17,7 +18,7 @@ import {
   useQuery,
   UseQueryResult,
 } from "react-query";
-import { CustomerDetailType, DetailPlan } from "../../types/customer-type";
+import { CustomerType, DetailPlan } from "../../types/customer-type";
 import "./CustomerDetail.css";
 import CustomerInvoiceView from "./CustomerInvoices";
 import CustomerBalancedAdjustments from "./CustomerBalancedAdjustments";
@@ -45,12 +46,11 @@ function CustomerDetail(props: {
     DetailPlan[]
   >([]);
 
-  const { data, isLoading }: UseQueryResult<CustomerDetailType> =
-    useQuery<CustomerDetailType>(
+  const { data, isLoading }: UseQueryResult<CustomerType> =
+    useQuery<CustomerType>(
       ["customer_detail", props.customer_id],
       () =>
         Customer.getCustomerDetail(props.customer_id).then((res) => {
-          console.log(res);
           return res;
         }),
       {
@@ -89,8 +89,10 @@ function CustomerDetail(props: {
   );
 
   const cancelSubscriptionMutation = useMutation(
-    (obj: { post: CancelSubscriptionType }) =>
-      Customer.cancelSubscription(obj.post),
+    (obj: {
+      post: CancelSubscriptionBody;
+      params: CancelSubscriptionQueryParams;
+    }) => Customer.cancelSubscription(obj.params, obj.post),
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
@@ -132,9 +134,13 @@ function CustomerDetail(props: {
     }
   );
 
-  const cancelSubscription = (props: CancelSubscriptionType) => {
+  const cancelSubscription = (
+    props: CancelSubscriptionBody,
+    params: CancelSubscriptionQueryParams
+  ) => {
     cancelSubscriptionMutation.mutate({
       post: props,
+      params: params,
     });
   };
 
@@ -216,7 +222,7 @@ function CustomerDetail(props: {
                   <div key={props.customer_id}>
                     <SubscriptionView
                       customer_id={props.customer_id}
-                      subscription={data?.subscription}
+                      subscriptions={data.subscriptions}
                       plans={props.plans}
                       onCreate={createSubscription}
                       onCancel={cancelSubscription}

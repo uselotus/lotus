@@ -397,7 +397,12 @@ class MetricUpdateSerializer(serializers.ModelSerializer):
 
 class MetricSerializer(api_serializers.MetricSerializer):
     class Meta(api_serializers.MetricSerializer.Meta):
-        fields = api_serializers.MetricSerializer.Meta.fields
+        fields = tuple(
+            set(api_serializers.MetricSerializer.Meta.fields) - {"aggregation_type"}
+        ) + (
+            "usage_aggregation_type",
+            "billable_aggregation_type",
+        )
 
 
 class MetricCreateSerializer(serializers.ModelSerializer):
@@ -412,7 +417,7 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "granularity",
             "event_type",
             "metric_type",
-            "billable_metric_name",
+            "metric_name",
             "properties",
             "is_cost_metric",
         )
@@ -425,11 +430,12 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "granularity": {"write_only": True},
             "event_type": {"write_only": True},
             "metric_type": {"required": True, "write_only": True},
-            "billable_metric_name": {"write_only": True},
+            "metric_name": {"write_only": True},
             "properties": {"write_only": True},
             "is_cost_metric": {"write_only": True},
         }
 
+    metric_name = serializers.CharField(source="billable_metric_name")
     # granularity = serializers.ChoiceField(
     #     choices=METRIC_GRANULARITY.choices,
     #     required=False,
@@ -1356,6 +1362,8 @@ class DraftInvoiceSerializer(InvoiceSerializer):
             set(InvoiceSerializer.Meta.fields)
             - set(
                 [
+                    "customer",
+                    "payment_status",
                     "invoice_number",
                     "external_payment_obj_id",
                     "external_payment_obj_type",
@@ -1363,9 +1371,6 @@ class DraftInvoiceSerializer(InvoiceSerializer):
             )
         )
 
-    payment_status = serializers.ChoiceField(
-        choices=[INVOICE_STATUS.DRAFT], required=True
-    )
     line_items = serializers.SerializerMethodField()
 
     def get_line_items(self, obj) -> GroupedLineItemSerializer(many=True):

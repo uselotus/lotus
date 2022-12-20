@@ -289,7 +289,7 @@ function UsageComponentForm({
       "months",
     ];
     const currentMetric = metricObjects.find(
-      (metric) => metric.billable_metric_name === form.getFieldValue("metric")
+      (metric) => metric.metric_name === form.getFieldValue("metric")
     );
 
     var valid_granularities: string[] = [];
@@ -308,9 +308,8 @@ function UsageComponentForm({
 
   useEffect(() => {
     setMetricStateful(
-      metricObjects.find(
-        (metric) => metric.billable_metric_name === selectedMetricName
-      )?.metric_type === "stateful"
+      metricObjects.find((metric) => metric.metric_name === selectedMetricName)
+        ?.metric_type === "stateful"
     );
   }, [selectedMetricName]);
 
@@ -320,11 +319,11 @@ function UsageComponentForm({
       if (data) {
         const metricList: string[] = [];
         for (let i = 0; i < data.length; i++) {
-          if (typeof data[i].billable_metric_name !== undefined) {
-            metricList.push(data[i].billable_metric_name as unknown as string);
+          if (typeof data[i].metric_name !== undefined) {
+            metricList.push(data[i].metric_name as unknown as string);
           }
 
-          if (editComponentItem?.metric === data[i].billable_metric_name) {
+          if (editComponentItem?.metric === data[i].metric_name) {
             setMetricStateful(data[i].metric_type === "stateful");
           }
         }

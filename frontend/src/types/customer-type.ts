@@ -4,31 +4,43 @@ import { BalanceAdjustments, InvoiceType } from "./invoice-type";
 import { PricingUnit } from "./pricing-unit-type";
 
 export interface CustomerType {
-  customer_name: string;
-  balance?: string;
   customer_id: string;
   email: string;
-  payment_provider_id?: string;
+  customer_name: string;
+  invoices: InvoiceType[];
+  total_amount_due: number;
+  subscriptions: SubscriptionType[];
+  integrations: object;
+  default_currency: PricingUnit;
+}
+
+export interface LightweightCustomerType
+  extends Omit<
+    CustomerType,
+    | "invoices"
+    | "subscriptions"
+    | "default_currency"
+    | "total_amount_due"
+    | "integrations"
+  > {}
+
+export interface CustomerCreateType
+  extends Omit<
+    CustomerType,
+    "invoices" | "subscriptions" | "default_currency" | "customer_name"
+  > {
+  customer_name?: string;
   payment_provider?: string;
-  default_currency?: PricingUnit;
+  payment_provider_id?: string;
+  properties?: { [key: string]: string };
   default_currency_code?: string;
 }
 
-export interface CustomerDetailType extends CustomerType {
-  email: string;
-  timeline: object;
+export interface CustomerTableItem extends CustomerType {
   total_amount_due: number;
-  subscription: CustomerDetailSubscription;
-  billing_address: string;
-  integrations: any;
-  invoices: InvoiceType[];
-  balance_adjustments: BalanceAdjustments[];
 }
 
-export interface CustomerPlus extends CustomerType {
-  subscriptions: CustomerSubscription[];
-}
-export interface CustomerTableItem extends CustomerPlus {
+export interface CustomerTableItem extends CustomerType {
   total_amount_due: number;
 }
 
@@ -37,7 +49,7 @@ export interface CustomerTotal {
   total_amount_due: number;
 }
 
-interface CustomerSubscription {
+export interface CustomerSubscription {
   billing_plan_name: string;
   auto_renew: boolean;
   end_date: string;
@@ -66,5 +78,14 @@ export interface CustomerDetailSubscription extends CustomerSubscription {
 }
 
 export interface CustomerSummary {
-  customers: CustomerPlus[];
+  customer_id: string;
+  customer_name: string;
+  subscriptions: LightweightSubscription[];
+}
+
+export interface LightweightSubscription {
+  billing_plan_name: string;
+  plan_version: number;
+  end_date: string;
+  auto_renew: boolean;
 }

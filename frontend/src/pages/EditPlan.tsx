@@ -104,11 +104,11 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
     const initialComponents: any[] = plan.versions[versionIndex].components.map(
       (component) => {
         return {
-          metric: component.billable_metric.billable_metric_name,
+          metric: component.billable_metric.metric_name,
           tiers: component.tiers,
           separate_by: component.separate_by,
           proration_granularity: component.proration_granularity,
-          id: component.billable_metric.billable_metric_name,
+          id: component.billable_metric.metric_name,
           pricing_unit: component.pricing_unit,
         };
       }
@@ -295,7 +295,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              billable_metric_name: components[i].metric,
+              metric_name: components[i].metric,
               tiers: components[i].tiers,
               separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,
