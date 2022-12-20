@@ -208,7 +208,7 @@ const CreatePlan = () => {
         if (components) {
           for (let i = 0; i < components.length; i++) {
             const usagecomponent: CreateComponent = {
-              metric_id: components[i].metric,
+              metric_id: components[i].metric_id,
               tiers: components[i].tiers,
               separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,
