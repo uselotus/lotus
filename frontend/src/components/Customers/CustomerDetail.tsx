@@ -27,6 +27,7 @@ import CustomerInfoView from "./CustomerInfo";
 // @ts-ignore
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
+import CopyText from "../base/CopytoClipboard";
 
 function CustomerDetail(props: {
   visible: boolean;
@@ -196,9 +197,11 @@ function CustomerDetail(props: {
         <div className="flex justify-between flex-col max-w mx-3">
           <div className="text-left	">
             <h1 className="mb-4">{data?.customer_name}</h1>
-            <div className="flex flex-row">
+            <div className="flex flex-row items-center">
               <div className="plansDetailLabel">ID:&nbsp; </div>
-              <div className="plansDetailValue">{props.customer_id}</div>
+              <div className="plansDetailValue font-menlo">
+                  <CopyText showIcon textToCopy={data?.customer_id}/>
+              </div>
             </div>
           </div>
           <div

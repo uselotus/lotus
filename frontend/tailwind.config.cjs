@@ -2,10 +2,10 @@
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
-    extend: {
+     extend: {
       fontFamily: {
         // add new font family
-        main: ["Satoshi", "sans-serif"],
+        main: ["Inter", "sans-serif"],
       },
     },
     colors: {
