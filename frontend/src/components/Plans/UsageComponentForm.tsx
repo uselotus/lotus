@@ -41,7 +41,11 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
   var currentEnd: number | undefined;
   const arr2: ValidateTiersType = tiers.map((tier, index) => {
     if (index === 0) {
-      if (tier.range_end !== undefined && tier.range_start >= tier.range_end) {
+      if (
+        tier.range_end !== undefined &&
+        tier.range_end !== null &&
+        tier.range_start >= tier.range_end
+      ) {
         return { isValid: false, message: "Range is not valid" };
       }
       currentStart = tier.range_start;
@@ -513,11 +517,15 @@ function UsageComponentForm({
             if (
               validateTiers(currentTiers).every((item) => item.isValid === true)
             ) {
+              const currentMetric = metricObjects.find(
+                (metric) => metric.metric_name === form.getFieldValue("metric")
+              );
               handleComponentAdd({
                 metric: values.metric,
                 separate_by: separateByProperties,
                 tiers: currentTiers,
                 proration_granularity: prorationGranularity,
+                metric_id: currentMetric?.metric_id,
               });
 
               form.submit();
