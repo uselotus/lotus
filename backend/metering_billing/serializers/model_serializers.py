@@ -171,25 +171,9 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class EventSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Event
-        fields = (
-            "event_name",
-            "properties",
-            "time_created",
-            "idempotency_id",
-            "customer_id",
-        )
-
-    customer_id = serializers.CharField(
-        source="cust_id",
-        help_text="The id of the customer that this event is associated with, usually the customer id in your backend",
-    )
-    idempotency_id = serializers.CharField(
-        required=True,
-        help_text="A unique identifier for the specific event being passed in. Passing in a unique id allows Lotus to make sure no double counting occurs. We recommend using a UUID4. You can use the same idempotency_id again after 7 days",
-    )
+class EventSerializer(api_serializers.EventSerializer):
+    class Meta(api_serializers.EventSerializer.Meta):
+        fields = api_serializers.EventSerializer.Meta.fields
 
 
 class WebhookTriggerSerializer(serializers.ModelSerializer):
