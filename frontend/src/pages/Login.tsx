@@ -27,7 +27,7 @@ const Login: FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const us = useGlobalStore((state) => state.username);
+  const setUsernameToStore = useGlobalStore((state) => state.setUsername);
   const queryClient = useQueryClient();
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,7 +52,7 @@ const Login: FC = () => {
       onSuccess: (response) => {
         setIsAuthenticated(true);
         const { token, detail, user } = response;
-        console.log(user);
+        setUsernameToStore(user.username);
         if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
           posthog.group("company", user.organization_id, {
             company_name: user.company_name,
