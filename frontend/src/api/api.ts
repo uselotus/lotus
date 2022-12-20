@@ -103,12 +103,9 @@ const responseBody = (response: AxiosResponse) => response.data;
 
 //make a function that takes an object as input and if it finds a key with the name subscription_filters, it json encodes it, and then returns the whole object
 const encodeSubscriptionFilters = (obj: any) => {
-  console.log(obj);
-
   if (obj.subscription_filters) {
     obj.subscription_filters = JSON.stringify(obj.subscription_filters);
   }
-  console.log(obj);
   return obj;
 };
 
@@ -163,11 +160,7 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<UpdateSubscriptionType> =>
-    requests.post(
-      `app/subscriptions/update/`,
-      post,
-      encodeSubscriptionFilters(params)
-    ),
+    requests.post(`app/subscriptions/update/`, post, params),
   cancelSubscription: (
     params: CancelSubscriptionQueryParams,
     post: CancelSubscriptionBody
@@ -181,11 +174,7 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<SubscriptionType> =>
-    requests.post(
-      `app/subscriptions/update/`,
-      post,
-      encodeSubscriptionFilters(params)
-    ),
+    requests.post(`app/subscriptions/update/`, post, params),
   turnSubscriptionAutoRenewOff: (
     post: TurnSubscriptionAutoRenewOffType,
     params?: {
@@ -194,11 +183,7 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<SubscriptionType> =>
-    requests.post(
-      `app/subscriptions/update/`,
-      post,
-      encodeSubscriptionFilters(params)
-    ),
+    requests.post(`app/subscriptions/update/`, post, params),
 };
 
 export const Plan = {
