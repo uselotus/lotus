@@ -1,6 +1,6 @@
 services:
   db:
-    image: timescale/timescaledb:latest-pg14
+    image: timescale/timescaledb-ha:pg14-latest
     restart: on-failure
     ports:
       - 5432:5432
