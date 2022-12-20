@@ -13,8 +13,8 @@ class GetFeatureAccessSerializer(serializers.Serializer):
     plan_id = serializers.CharField(
         help_text="The plan_id of the plan we are checking that has access to this feature."
     )
-    subscription_filters = serializers.DictField(
-        child=serializers.CharField(),
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
         help_text="The subscription filters that are applied to this plan's relationship with the customer. If your billing model does not have the ability multiple plans or subscriptions per customer, this is likely not relevant for you.",
     )
     access = serializers.BooleanField(

@@ -778,9 +778,14 @@ class GetCustomerEventAccessView(APIView):
             "filters",
         )
         for sub in subscriptions:
-            subscription_filters = {}
+            subscription_filters = []
             for filter in sub.filters.all():
-                subscription_filters[filter.property_name] = filter.comparison_value[0]
+                subscription_filters.append(
+                    {
+                        "property_name": filter.property_name,
+                        "value": filter.comparison_value[0],
+                    }
+                )
             single_sub_dict = {
                 "plan_id": sub.billing_plan.plan_id,
                 "subscription_filters": subscription_filters,
@@ -889,9 +894,14 @@ class GetCustomerFeatureAccessView(APIView):
         features = []
         subscriptions = subscriptions.prefetch_related("billing_plan__features")
         for sub in subscriptions:
-            subscription_filters = {}
+            subscription_filters = []
             for filter in sub.filters.all():
-                subscription_filters[filter.property_name] = filter.comparison_value[0]
+                subscription_filters.append(
+                    {
+                        "property_name": filter.property_name,
+                        "value": filter.comparison_value[0],
+                    }
+                )
             sub_dict = {
                 "feature_name": feature_name,
                 "plan_id": sub.billing_plan.plan_id,
