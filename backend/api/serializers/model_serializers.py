@@ -274,6 +274,15 @@ class LightweightInvoiceSerializer(InvoiceSerializer):
         extra_kwargs = {**InvoiceSerializer.Meta.extra_kwargs}
 
 
+class CustomerStripeIntegrationSerializer(serializers.Serializer):
+    stripe_id = serializers.CharField()
+    has_payment_method = serializers.BooleanField()
+
+
+class CustomerIntegrationsSerializer(serializers.Serializer):
+    stripe = CustomerStripeIntegrationSerializer(required=False, allow_null=True)
+
+
 class CustomerSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
 ):
@@ -288,6 +297,8 @@ class CustomerSerializer(
             "subscriptions",
             "integrations",
             "default_currency",
+            "payment_provider",
+            "has_payment_method",
         )
 
     customer_id = serializers.CharField()
@@ -300,9 +311,42 @@ class CustomerSerializer(
     integrations = serializers.SerializerMethodField(
         help_text="A dictionary containing the customer's integrations. Keys are the integration type, and the value is a dictionary containing the integration's properties, which can vary by integration.",
     )
+    payment_provider = serializers.ChoiceField(
+        choices=PAYMENT_PROVIDERS.choices,
+        allow_null=True,
+        required=True,
+        allow_blank=False,
+    )
+    has_payment_method = serializers.SerializerMethodField()
 
-    def get_integrations(self, obj) -> dict:
-        return obj.integrations
+    def get_has_payment_method(self, obj) -> bool:
+        d = self.get_integrations(obj)
+        if obj.payment_provider == PAYMENT_PROVIDERS.STRIPE:
+            stripe_dict = d.get(PAYMENT_PROVIDERS.STRIPE)
+            if stripe_dict:
+                return stripe_dict["has_payment_method"]
+        return False
+
+    def _format_stripe_integration(
+        self, stripe_connections_dict
+    ) -> CustomerStripeIntegrationSerializer:
+        return {
+            "stripe_id": stripe_connections_dict["id"],
+            "has_payment_method": len(stripe_connections_dict["payment_methods"]) > 0,
+        }
+
+    def get_integrations(self, obj) -> CustomerIntegrationsSerializer:
+        d = obj.integrations
+        if PAYMENT_PROVIDERS.STRIPE in d:
+            try:
+                d[PAYMENT_PROVIDERS.STRIPE] = self._format_stripe_integration(
+                    d[PAYMENT_PROVIDERS.STRIPE]
+                )
+            except (KeyError, TypeError) as e:
+                d[PAYMENT_PROVIDERS.STRIPE] = None
+        else:
+            d[PAYMENT_PROVIDERS.STRIPE] = None
+        return d
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):
         sr_objs = obj.subscription_records.filter(

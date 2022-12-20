@@ -3248,21 +3248,32 @@ components:
             $ref: '#/components/schemas/SubscriptionRecord'
           readOnly: true
         integrations:
-          type: object
-          additionalProperties: {}
+          allOf:
+          - $ref: '#/components/schemas/CustomerIntegrations'
           readOnly: true
           description: A dictionary containing the customer's integrations. Keys are
             the integration type, and the value is a dictionary containing the integration's
             properties, which can vary by integration.
         default_currency:
           $ref: '#/components/schemas/PricingUnit'
+        payment_provider:
+          enum:
+          - stripe
+          - null
+          type: string
+          nullable: true
+        has_payment_method:
+          type: boolean
+          readOnly: true
       required:
       - customer_id
       - customer_name
       - default_currency
       - email
+      - has_payment_method
       - integrations
       - invoices
+      - payment_provider
       - subscriptions
       - total_amount_due
     CustomerBalanceAdjustment:
@@ -3443,6 +3454,23 @@ components:
       required:
       - customer_id
       - email
+    CustomerIntegrations:
+      type: object
+      properties:
+        stripe:
+          allOf:
+          - $ref: '#/components/schemas/CustomerStripeIntegration'
+          nullable: true
+    CustomerStripeIntegration:
+      type: object
+      properties:
+        stripe_id:
+          type: string
+        has_payment_method:
+          type: boolean
+      required:
+      - has_payment_method
+      - stripe_id
     CustomerSummary:
       type: object
       properties:
@@ -3563,7 +3591,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
         due_date:
@@ -3919,6 +3946,7 @@ components:
         transition_to_plan_id:
           type: string
           minLength: 1
+
         usage_billing_frequency:
           enum:
           - monthly
@@ -3935,9 +3963,6 @@ components:
           - in_advance
           type: string
           writeOnly: true
-        currency_code:
-          type: string
-          minLength: 1
         description:
           type: string
           writeOnly: true
