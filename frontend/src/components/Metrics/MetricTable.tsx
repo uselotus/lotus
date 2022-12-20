@@ -89,12 +89,12 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
     {
       title: "Metric Name",
       width: 100,
-      dataIndex: "billable_metric_name",
+      dataIndex: "metric_name",
       align: "left",
     },
     {
       title: "Is Cost",
-      dataIndex: "billable_metric_name",
+      dataIndex: "metric_name",
       align: "left",
       width: 30,
       render: (_, record) => (

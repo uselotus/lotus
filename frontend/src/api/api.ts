@@ -1,9 +1,9 @@
 import axios, { AxiosResponse } from "axios";
 import {
-  CustomerPlus,
   CustomerType,
   CustomerTotal,
-  CustomerDetailType,
+  CustomerCreateType,
+  CustomerSummary,
 } from "../types/customer-type";
 import {
   WebhookEndpoint,
@@ -41,11 +41,12 @@ import {
   CreateSubscriptionType,
   UpdateSubscriptionType,
   SubscriptionType,
-  CancelSubscriptionType,
+  CancelSubscriptionQueryParams,
+  CancelSubscriptionBody,
   ChangeSubscriptionPlanType,
   TurnSubscriptionAutoRenewOffType,
 } from "../types/subscription-type";
-import { MetricUsage, MetricType, MetricNameType } from "../types/metric-type";
+import { MetricUsage, MetricType } from "../types/metric-type";
 import { EventPages } from "../types/event-type";
 import { DemoSignupProps } from "../pages/DemoSignup";
 import {
@@ -102,20 +103,17 @@ const responseBody = (response: AxiosResponse) => response.data;
 
 //make a function that takes an object as input and if it finds a key with the name subscription_filters, it json encodes it, and then returns the whole object
 const encodeSubscriptionFilters = (obj: any) => {
-  console.log(obj);
-
   if (obj.subscription_filters) {
     obj.subscription_filters = JSON.stringify(obj.subscription_filters);
   }
-  console.log(obj);
   return obj;
 };
 
 const requests = {
   get: (url: string, params?: {}) =>
     instance.get(url, params).then(responseBody),
-  post: (url: string, body: {}, headers?: {}) =>
-    instance.post(url, body, headers).then(responseBody),
+  post: (url: string, body: {}, params?: {}) =>
+    instance.post(url, body, { params: params }).then(responseBody),
   patch: (url: string, body: {}, params?: {}) =>
     instance.patch(url, body, { params: params }).then(responseBody),
   delete: (url: string, params?: {}) =>
@@ -123,37 +121,36 @@ const requests = {
 };
 
 export const Customer = {
-  getCustomers: (): Promise<CustomerPlus[]> =>
-    requests.get("api/customer_summary/"),
-  getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
-    requests.get(`api/customers/${customer_id}/`),
-  createCustomer: (post: CustomerType): Promise<CustomerType> =>
-    requests.post("api/customers/", post),
+  getCustomers: (): Promise<CustomerSummary[]> =>
+    requests.get("app/customer_summary/"),
+  getCustomerDetail: (customer_id: string): Promise<CustomerType> =>
+    requests.get(`app/customers/${customer_id}/`),
+  createCustomer: (post: CustomerCreateType): Promise<CustomerType> =>
+    requests.post("app/customers/", post),
   getCustomerTotals: (): Promise<CustomerTotal[]> =>
-    requests.get("api/customer_totals/"),
+    requests.get("app/customer_totals/"),
   updateCustomer: (
     customer_id: string,
     default_currency_code: string
-  ): Promise<CustomerDetailType> =>
-    requests.patch(`api/customers/${customer_id}/`, {
+  ): Promise<CustomerType> =>
+    requests.patch(`app/customers/${customer_id}/`, {
       default_currency_code: default_currency_code,
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
-  //   requests.get(`api/customer_detail/`, { params: { customer_id } }),
+  //   requests.get(`app/customer_detail/`, { params: { customer_id } }),
   //Subscription handling
   getCost(
     customer_id: string,
     start_date: string,
     end_date: string
   ): Promise<CustomerCostType> {
-    return requests.get(`api/cost_analysis/`, {
+    return requests.get(`app/cost_analysis/`, {
       params: { customer_id, start_date, end_date },
     });
   },
   createSubscription: (
     post: CreateSubscriptionType
-  ): Promise<SubscriptionType> =>
-    requests.post("api/subscriptions/plans/", post),
+  ): Promise<SubscriptionType> => requests.post("app/subscriptions/add/", post),
   updateSubscription: (
     subscription_id: string,
     post: UpdateSubscriptionType,
@@ -163,18 +160,12 @@ export const Customer = {
       subscription_filters?: { property_name: string; value: string }[];
     }
   ): Promise<UpdateSubscriptionType> =>
-    requests.patch(
-      `api/subscriptions/plans/`,
-      post,
-      encodeSubscriptionFilters(params)
-    ),
+    requests.post(`app/subscriptions/update/`, post, params),
   cancelSubscription: (
-    post: CancelSubscriptionType
-  ): Promise<CancelSubscriptionType> =>
-    requests.delete(
-      `api/subscriptions/plans/`,
-      encodeSubscriptionFilters(post)
-    ),
+    params: CancelSubscriptionQueryParams,
+    post: CancelSubscriptionBody
+  ): Promise<SubscriptionType> =>
+    requests.post(`app/subscriptions/cancel/`, post, params),
   changeSubscriptionPlan: (
     post: ChangeSubscriptionPlanType,
     params?: {
@@ -182,12 +173,8 @@ export const Customer = {
       plan_id?: string;
       subscription_filters?: { property_name: string; value: string }[];
     }
-  ): Promise<ChangeSubscriptionPlanType> =>
-    requests.patch(
-      `api/subscriptions/plans/`,
-      post,
-      encodeSubscriptionFilters(params)
-    ),
+  ): Promise<SubscriptionType> =>
+    requests.post(`app/subscriptions/update/`, post, params),
   turnSubscriptionAutoRenewOff: (
     post: TurnSubscriptionAutoRenewOffType,
     params?: {
@@ -195,89 +182,85 @@ export const Customer = {
       plan_id?: string;
       subscription_filters?: { property_name: string; value: string }[];
     }
-  ): Promise<TurnSubscriptionAutoRenewOffType> =>
-    requests.patch(
-      `api/subscriptions/plans/`,
-      post,
-      encodeSubscriptionFilters(params)
-    ),
+  ): Promise<SubscriptionType> =>
+    requests.post(`app/subscriptions/update/`, post, params),
 };
 
 export const Plan = {
   //get methods
-  getPlans: (): Promise<PlanType[]> => requests.get("api/plans/"),
+  getPlans: (): Promise<PlanType[]> => requests.get("app/plans/"),
   getPlan: (plan_id: string): Promise<PlanDetailType> =>
-    requests.get(`api/plans/${plan_id}/`),
+    requests.get(`app/plans/${plan_id}/`),
   //create plan
   createPlan: (post: CreatePlanType): Promise<PlanType> =>
-    requests.post("api/plans/", post),
+    requests.post("app/plans/", post),
   //create plan version
   createVersion: (post: CreatePlanVersionType): Promise<PlanVersionType> =>
-    requests.post("api/plan_versions/", post),
+    requests.post("app/plan_versions/", post),
   //create plan external links
   createExternalLinks: (
     post: CreatePlanExternalLinkType
   ): Promise<InitialExternalLinks> =>
-    requests.post("api/external_plan_link/", post),
+    requests.post("app/external_plan_links/", post),
   //delete plan external links
   deleteExternalLinks: (post: InitialExternalLinks): Promise<any> =>
     requests.delete(
-      `api/external_plan_link/${post.external_plan_id}/?source=${post.source}`
+      `app/external_plan_links/${post.external_plan_id}/?source=${post.source}`
     ),
 
   //update plans methods
   updatePlan: (
     plan_id: string,
     post: UpdatePlanType
-  ): Promise<UpdatePlanType> => requests.patch(`api/plans/${plan_id}/`, post),
+  ): Promise<UpdatePlanType> => requests.patch(`app/plans/${plan_id}/`, post),
   //update plan versions methods
   updatePlanVersionDescription: (
     version_id: string,
     post: PlanVersionUpdateDescriptionType
   ): Promise<PlanVersionUpdateDescriptionType> =>
-    requests.patch(`api/plan_versions/${version_id}/`, post),
+    requests.patch(`app/plan_versions/${version_id}/`, post),
   replacePlanVersionLater: (
     version_id: string,
     post: ReplaceLaterType
   ): Promise<ReplaceLaterType> =>
-    requests.patch(`api/plan_versions/${version_id}/`, post),
+    requests.patch(`app/plan_versions/${version_id}/`, post),
   replacePlanVersionImmediately: (
     version_id: string,
     post: ReplaceImmediatelyType
   ): Promise<ReplaceImmediatelyType> =>
-    requests.patch(`api/plan_versions/${version_id}/`, post),
+    requests.patch(`app/plan_versions/${version_id}/`, post),
   archivePlanVersion: (
     version_id: string,
     post: ArchivePlanVersionType
   ): Promise<ArchivePlanVersionType> =>
-    requests.patch(`api/plan_versions/${version_id}/`, post),
+    requests.patch(`app/plan_versions/${version_id}/`, post),
 };
 
 export const Webhook = {
-  getEndpoints: (): Promise<WebhookEndpoint> => requests.get("api/webhooks/"),
+  getEndpoints: (): Promise<WebhookEndpoint> => requests.get("app/webhooks/"),
   createEndpoint: (post: WebhookEndpointCreate): Promise<WebhookEndpoint> =>
-    requests.post("api/webhooks/", post),
+    requests.post("app/webhooks/", post),
   deleteEndpoint: (wh_id: string): Promise<WebhookEndpoint> =>
-    requests.delete(`api/webhooks/${wh_id}/`),
+    requests.delete(`app/webhooks/${wh_id}/`),
   editEndpoint: (
     wh_id: number,
     post: WebhookEndpointUpdate
-  ): Promise<WebhookEndpoint> => requests.patch(`api/webhooks/${wh_id}/`, post),
+  ): Promise<WebhookEndpoint> => requests.patch(`app/webhooks/${wh_id}/`, post),
 };
 
 export const APIKey = {
-  getKeys: (): Promise<APIKeyType[]> => requests.get("api/api_tokens/"),
+  getKeys: (): Promise<APIKeyType[]> => requests.get("app/api_tokens/"),
   createKey: (post: APIKeyCreate): Promise<APIKeyCreateResponse> =>
-    requests.post("api/api_tokens/", post),
+    requests.post("app/api_tokens/", post),
   deleteKey: (prefix: string): Promise<any> =>
-    requests.delete(`api/api_tokens/${prefix}/`),
+    requests.delete(`app/api_tokens/${prefix}/`),
   rollKey: (prefix: string): Promise<APIKeyCreateResponse> =>
-    requests.post(`api/api_tokens/${prefix}/roll/`, {}),
+    requests.post(`app/api_tokens/${prefix}/roll/`, {}),
 };
 
 export const Authentication = {
   getSession: (): Promise<{ isAuthenticated: boolean }> =>
-    requests.get("api/session/"),
+    requests.get("app/session/"),
   login: (
     username: string,
     password: string
@@ -290,8 +273,8 @@ export const Authentication = {
       organization_id: string;
       company_name: string;
     };
-  }> => requests.post("api/login/", { username, password }),
-  logout: (): Promise<{}> => requests.post("api/logout/", {}),
+  }> => requests.post("app/login/", { username, password }),
+  logout: (): Promise<{}> => requests.post("app/logout/", {}),
   registerCreate: (
     register: CreateOrgAccountType
   ): Promise<{
@@ -304,7 +287,7 @@ export const Authentication = {
       company_name: string;
     };
   }> =>
-    requests.post("api/register/", {
+    requests.post("app/register/", {
       register,
     }),
   registerDemo: (
@@ -318,29 +301,29 @@ export const Authentication = {
       organization_id: string;
       company_name: string;
     };
-  }> => requests.post("api/demo_register/", { register }),
+  }> => requests.post("app/demo_register/", { register }),
 
   resetPassword: (email: string): Promise<{ email: string }> =>
-    requests.post("api/user/password/reset/init/", { email }),
+    requests.post("app/user/password/reset/init/", { email }),
   setNewPassword: (
     token: string,
     userId: string,
     password: string
   ): Promise<{ detail: any; token: string }> =>
-    requests.post("api/user/password/reset/", { token, userId, password }),
+    requests.post("app/user/password/reset/", { token, userId, password }),
 };
 
 export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
-    requests.post("api/organization/invite/", { email }),
-  get: (): Promise<OrganizationType[]> => requests.get("api/organizations/"),
+    requests.post("app/organization/invite/", { email }),
+  get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
   getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
-    requests.get("api/actions/", { params: { c: cursor } }),
+    requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
     org_id: string,
     default_currency_code: string
-  ): Promise<CustomerDetailType> =>
-    requests.patch(`api/organizations/${org_id}/`, {
+  ): Promise<OrganizationType> =>
+    requests.patch(`app/organizations/${org_id}/`, {
       default_currency_code: default_currency_code,
     }),
 };
@@ -352,7 +335,7 @@ export const GetRevenue = {
     period_2_start_date: string,
     period_2_end_date: string
   ): Promise<RevenueType> =>
-    requests.get("api/period_metric_revenue/", {
+    requests.get("app/period_metric_revenue/", {
       params: {
         period_1_start_date,
         period_1_end_date,
@@ -369,7 +352,7 @@ export const GetSubscriptions = {
     period_2_start_date: string,
     period_2_end_date: string
   ): Promise<SubscriptionTotals> =>
-    requests.get("api/period_subscriptions/", {
+    requests.get("app/period_subscriptions/", {
       params: {
         period_1_start_date,
         period_1_end_date,
@@ -381,13 +364,13 @@ export const GetSubscriptions = {
 
 export const PlansByCustomer = {
   getPlansByCustomer: (): Promise<PlansByCustomerArray> =>
-    requests.get("api/plans_by_customer/"),
+    requests.get("app/plans_by_customer/"),
 };
 
 export const Features = {
-  getFeatures: (): Promise<FeatureType[]> => requests.get("api/features/"),
+  getFeatures: (): Promise<FeatureType[]> => requests.get("app/features/"),
   createFeature: (post: FeatureType): Promise<FeatureType> =>
-    requests.post("api/features/", post),
+    requests.post("app/features/", post),
 };
 
 export const Metrics = {
@@ -396,62 +379,62 @@ export const Metrics = {
     end_date: string,
     top_n_customers?: number
   ): Promise<MetricUsage> =>
-    requests.get("api/period_metric_usage/", {
+    requests.get("app/period_metric_usage/", {
       params: { start_date, end_date, top_n_customers },
     }),
-  getMetrics: (): Promise<MetricType[]> => requests.get("api/metrics/"),
+  getMetrics: (): Promise<MetricType[]> => requests.get("app/metrics/"),
   createMetric: (post: MetricType): Promise<MetricType> =>
-    requests.post("api/metrics/", post),
+    requests.post("app/metrics/", post),
   deleteMetric: (id: number): Promise<{}> =>
-    requests.delete(`api/metrics/${id}`),
+    requests.delete(`app/metrics/${id}`),
   archiveMetric: (id: string): Promise<{}> =>
-    requests.patch(`api/metrics/${id}/`, { status: "archived" }),
+    requests.patch(`app/metrics/${id}/`, { status: "archived" }),
 };
 
 export const Events = {
   getEventPreviews: (c: string): Promise<EventPages> =>
-    requests.get("api/events/", { params: { c } }),
+    requests.get("app/events/", { params: { c } }),
 };
 
 export const APIToken = {
   newAPIToken: (): Promise<{ api_key: string }> =>
-    requests.get("api/new_api_key/", {}),
+    requests.get("app/new_api_key/", {}),
 };
 
 export const Backtests = {
-  getBacktests: (): Promise<BacktestType[]> => requests.get("api/backtests/"),
+  getBacktests: (): Promise<BacktestType[]> => requests.get("app/backtests/"),
   createBacktest: (post: CreateBacktestType): Promise<CreateBacktestType> =>
-    requests.post("api/backtests/", post),
+    requests.post("app/backtests/", post),
   getBacktestResults: (id: string): Promise<BacktestResultType> =>
-    requests.get(`api/backtests/${id}/`),
+    requests.get(`app/backtests/${id}/`),
 };
 
 export const Stripe = {
   //Import Customers
   importCustomers: (post: Source): Promise<StripeImportCustomerResponse> =>
-    requests.post("api/import_customers/", post),
+    requests.post("app/import_customers/", post),
 
   //Import Payments
   importPayments: (post: Source): Promise<StripeImportCustomerResponse> =>
-    requests.post("api/import_payment_objects/", post),
+    requests.post("app/import_payment_objects/", post),
 
   //transfer Subscription
   transferSubscriptions: (
     post: TransferSub
   ): Promise<StripeImportCustomerResponse> =>
-    requests.post("api/transfer_subscriptions/", post),
+    requests.post("app/transfer_subscriptions/", post),
 
   //Get Organization Settings
   getOrganizationSettings: (
     data: OrganizationSettingsParams
   ): Promise<OrganizationSettings[]> =>
-    requests.get("api/organization_settings/", { params: data }),
+    requests.get("app/organization_settings/", { params: data }),
 
   //Update Organization Settings
   updateOrganizationSettings: (
     data: UpdateOrganizationSettingsParams
   ): Promise<OrganizationSettings> =>
-    requests.patch(`api/organization_settings/${data.setting_id}/`, {
+    requests.patch(`app/organization_settings/${data.setting_id}/`, {
       setting_value: data.setting_value,
     }),
 };
@@ -459,27 +442,27 @@ export const Stripe = {
 export const PaymentProcessorIntegration = {
   getPaymentProcessorConnectionStatus: (): Promise<
     PaymentProcessorStatusType[]
-  > => requests.get("/api/payment_providers/"),
+  > => requests.get("app/payment_providers/"),
   connectPaymentProcessor: (
     pp_info: PaymentProcessorConnectionRequestType
   ): Promise<PaymentProcessorConnectionResponseType> =>
-    requests.post("/api/payment_providers/", { pp_info }),
+    requests.post("app/payment_providers/", { pp_info }),
 };
 
 export const Invoices = {
   changeStatus: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
-    return requests.patch(`api/invoices/${data.invoice_number}/`, {
+    return requests.patch(`app/invoices/${data.invoice_number}/`, {
       payment_status: data.payment_status,
     });
   },
   getDraftInvoice: (customer_id: string): Promise<DraftInvoiceType> => {
-    return requests.get("api/draft_invoice/", { params: { customer_id } });
+    return requests.get("app/draft_invoice/", { params: { customer_id } });
   },
 };
 
 export const BalanceAdjustment = {
   createCredit: (post: CreateBalanceAdjustmentType): Promise<any> =>
-    requests.post("api/balance_adjustments/", post),
+    requests.post("app/balance_adjustments/", post),
 
   getCreditsByCustomer: (params: {
     customer_id: string;
@@ -487,21 +470,21 @@ export const BalanceAdjustment = {
   }): Promise<BalanceAdjustments[]> => {
     if (params.format) {
       return requests.get(
-        `api/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`
+        `app/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`
       );
     }
     return requests.get(
-      `api/balance_adjustments/?customer_id=${params.customer_id}`
+      `app/balance_adjustments/?customer_id=${params.customer_id}`
     );
   },
 
   deleteCredit: (adjustment_id: string): Promise<any> =>
-    requests.delete(`api/balance_adjustments/${adjustment_id}/`),
+    requests.delete(`app/balance_adjustments/${adjustment_id}/`),
 };
 
 export const PricingUnits = {
   create: (post: PricingUnit): Promise<PricingUnit> =>
-    requests.post("api/pricing_units/", post),
+    requests.post("app/pricing_units/", post),
 
-  list: (): Promise<PricingUnit[]> => requests.get(`api/pricing_units/`),
+  list: (): Promise<PricingUnit[]> => requests.get(`app/pricing_units/`),
 };

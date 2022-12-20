@@ -68,7 +68,7 @@ const CreateMetricForm = (props: {
           metric_type: "stateful",
           property_name_2: "seat_count",
           granularity_2: "total",
-          billable_metric_name: "Seats",
+          metric_name: "Seats",
           event_type: "total",
         });
         break;
@@ -79,7 +79,7 @@ const CreateMetricForm = (props: {
 
         form.setFieldsValue({
           usage_aggregation_type: "count",
-          billable_metric_name: "API Post Calls",
+          metric_name: "API Post Calls",
           event_name: "api_post",
           metric_type: "counter",
         });
@@ -91,7 +91,7 @@ const CreateMetricForm = (props: {
 
         form.setFieldsValue({
           usage_aggregation_type: "sum",
-          billable_metric_name: "Database Insert Rate",
+          metric_name: "Database Insert Rate",
           event_name: "db_insert",
           metric_type: "counter",
           property_name: "#_of_inserts",
@@ -166,7 +166,7 @@ const CreateMetricForm = (props: {
             title="Define a display name for this metric"
           >
             <Form.Item
-              name="billable_metric_name"
+              name="metric_name"
               label="Metric Name"
               rules={[
                 {

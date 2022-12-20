@@ -1,35 +1,31 @@
-import { CustomerType } from "./customer-type";
+import { LightweightCustomerType } from "./customer-type";
 import { PricingUnit } from "./pricing-unit-type";
 
 export interface InvoiceType {
-  cost_due: string;
-  cost_due_currency: string;
-  id: string;
+  invoice_number: string;
+  cost_due: number;
+  currency: PricingUnit;
   issue_date: string;
-  payment_status: string;
-  line_items: LineItem[];
-  customer: InvoiceCustomer;
+  payment_status: "draft" | "paid" | "unpaid" | "voided";
   external_payment_obj_type: string;
+  external_payment_obj_id: string;
+  line_items: LineItem[];
+  customer: LightweightCustomerType;
 }
 
 export interface DraftInvoiceType {
-  invoices: DraftInvoiceType2[];
+  invoices: IndividualDraftInvoiceType[];
 }
-export interface DraftInvoiceType2 {
+
+export interface IndividualDraftInvoiceType {
   line_items: ExternalLineItem[];
   cost_due: number;
-  customer: CustomerType;
+  issue_date: string;
+  due_date: string;
   currency: {
     code: string;
     name: string;
     symbol: string;
-  };
-  cust_connected_to_payment_provider: boolean;
-  org_connected_to_cust_payment_provider: boolean;
-  subscription: {
-    end_date: string;
-    start_date: string;
-    status: string;
   };
 }
 
@@ -45,15 +41,6 @@ export interface BalanceAdjustments {
   parent_adjustment_id: string;
   pricing_unit: PricingUnit;
   status: "active" | "inactive";
-}
-
-interface InvoiceCustomer {
-  customer_id: number;
-  name: string;
-}
-
-interface InvoiceOrganization {
-  company_name: string;
 }
 
 export interface ExternalLineItem {
@@ -72,9 +59,9 @@ export interface LineItem {
   quantity: number;
   subtotal: number;
   billing_type: string;
-  plan_version_id: string;
-  metadata?: any;
-  subscription_filters?: { property_name: string; value: string }[];
+  plan: string; //TODO::: fix
+  metadata: object;
+  subscription_filters: { property_name: string; value: string }[];
 }
 
 export interface MarkInvoiceStatusAsPaid {

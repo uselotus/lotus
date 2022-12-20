@@ -1,26 +1,14 @@
 ---
 title: "Create a customer"
 openapi: POST /api/customers/
+description: "Create a customer"
 ---
-
-A `Create Customer` call requires
-
-- `customer_id` which uniquely identifies your customer in your backend. This is
-  the same id you'll pass into track_event calls to identify the customer, in
-  addition to other calls, so make sure it's available to you.
-- `email` an email for your customer
-
-Optionally you can submit:
-
-- `name` a name for your customer
-- payment_provider and payment_provider_id - either both must be present, or neither may be present. payment_provider choices are ["stripe"]
-- `properties` any additional metadata related to your customer
 
 <CodeGroup>
 
 ```py Python
 lotus.create_customer(
-    customer_id='cust_0569173e-e665-4369',
+    customer_id='cust_0569173ee6654369',
     email="corporation@outlook.com",
     name='Corporation Inc.',
 )
@@ -33,7 +21,6 @@ await lotus.createCustomer({
   customer_name: "Test Customer",
   payment_provider: "stripe",
   payment_provider_id: "23423",
-  properties: {},
 });
 ```
 

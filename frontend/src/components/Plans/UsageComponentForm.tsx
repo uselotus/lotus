@@ -21,7 +21,7 @@ import {
 import { DeleteOutlined } from "@ant-design/icons";
 import "./UsageComponentForm.css";
 import { Metrics } from "../../api/api";
-import { MetricNameType, MetricType } from "../../types/metric-type";
+import { MetricType } from "../../types/metric-type";
 import type { InputRef } from "antd";
 import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
@@ -41,7 +41,11 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
   var currentEnd: number | undefined;
   const arr2: ValidateTiersType = tiers.map((tier, index) => {
     if (index === 0) {
-      if (tier.range_end !== undefined && tier.range_start >= tier.range_end) {
+      if (
+        tier.range_end !== undefined &&
+        tier.range_end !== null &&
+        tier.range_start >= tier.range_end
+      ) {
         return { isValid: false, message: "Range is not valid" };
       }
       currentStart = tier.range_start;
@@ -289,7 +293,7 @@ function UsageComponentForm({
       "months",
     ];
     const currentMetric = metricObjects.find(
-      (metric) => metric.billable_metric_name === form.getFieldValue("metric")
+      (metric) => metric.metric_name === form.getFieldValue("metric")
     );
 
     var valid_granularities: string[] = [];
@@ -308,9 +312,8 @@ function UsageComponentForm({
 
   useEffect(() => {
     setMetricStateful(
-      metricObjects.find(
-        (metric) => metric.billable_metric_name === selectedMetricName
-      )?.metric_type === "stateful"
+      metricObjects.find((metric) => metric.metric_name === selectedMetricName)
+        ?.metric_type === "stateful"
     );
   }, [selectedMetricName]);
 
@@ -320,11 +323,11 @@ function UsageComponentForm({
       if (data) {
         const metricList: string[] = [];
         for (let i = 0; i < data.length; i++) {
-          if (typeof data[i].billable_metric_name !== undefined) {
-            metricList.push(data[i].billable_metric_name as unknown as string);
+          if (typeof data[i].metric_name !== undefined) {
+            metricList.push(data[i].metric_name as unknown as string);
           }
 
-          if (editComponentItem?.metric === data[i].billable_metric_name) {
+          if (editComponentItem?.metric === data[i].metric_name) {
             setMetricStateful(data[i].metric_type === "stateful");
           }
         }
@@ -513,11 +516,15 @@ function UsageComponentForm({
             if (
               validateTiers(currentTiers).every((item) => item.isValid === true)
             ) {
+              const currentMetric = metricObjects.find(
+                (metric) => metric.metric_name === form.getFieldValue("metric")
+              );
               handleComponentAdd({
                 metric: values.metric,
                 separate_by: separateByProperties,
                 tiers: currentTiers,
                 proration_granularity: prorationGranularity,
+                metric_id: currentMetric?.metric_id,
               });
 
               form.submit();

@@ -126,6 +126,7 @@ INSTALLED_APPS = [
     "simple_history",
     "knox",
     "anymail",
+    "api",
     "metering_billing",
     "actstream",
     "drf_standardized_errors",
@@ -450,7 +451,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "knox.auth.TokenAuthentication",
     ],
-    "DEFAULT_SCHEMA_CLASS": "drf_standardized_errors.openapi.AutoSchema",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "drf_standardized_errors.handler.exception_handler",
     "COERCE_DECIMAL_TO_STRING": False,
 }
@@ -500,6 +501,7 @@ SPECTACULAR_SETTINGS = {
             },
         }
     },
+    "COMPONENT_SPLIT_REQUEST": True,
     "SECURITY": [
         {
             "OrganizationApiKeyAuth": [],
@@ -507,12 +509,19 @@ SPECTACULAR_SETTINGS = {
         }
     ],
     "PREPROCESSING_HOOKS": [
-        "metering_billing.openapi_hooks.remove_subscription_delete"
+        "metering_billing.openapi_hooks.remove_invalid_subscription_methods"
     ],
     "POSTPROCESSING_HOOKS": [
-        "drf_standardized_errors.openapi_hooks.postprocess_schema_enums"
+        "metering_billing.openapi_hooks.remove_required_parent_plan_and_target_customer",
+        "metering_billing.openapi_hooks.remove_required_external_payment_obj_type",
+        "metering_billing.openapi_hooks.add_external_payment_obj_type_to_required",
+        "metering_billing.openapi_hooks.add_plan_id_parent_plan_target_customer_to_required",
     ],
     "ENUM_NAME_OVERRIDES": {
+        "numeric_filter_operators": "metering_billing.utils.enums.NUMERIC_FILTER_OPERATORS.choices",
+        "categorical_filter_operators": "metering_billing.utils.enums.CATEGORICAL_FILTER_OPERATORS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
+        "BacktestKPIEnum": "metering_billing.utils.enums.BACKTEST_KPI.choices",
         "PaymentProvidersEnum": "metering_billing.utils.enums.PAYMENT_PROVIDERS.choices",
         "FlatFeeBillingTypeEnum": "metering_billing.utils.enums.FLAT_FEE_BILLING_TYPE.choices",
         "MetricAggregationEnum": "metering_billing.utils.enums.METRIC_AGGREGATION.choices",
@@ -625,21 +634,24 @@ else:
 SVIX_CONNECTOR = svix
 
 if SVIX_CONNECTOR is not None:
-    svix = SVIX_CONNECTOR
-    list_response_event_type_out = [x.name for x in svix.event_type.list().data]
-    if "invoice.created" not in list_response_event_type_out:
-        event_type_out = svix.event_type.create(
-            EventTypeIn(
-                description="Invoice is created",
-                archived=False,
-                name="invoice.created",
+    try:
+        svix = SVIX_CONNECTOR
+        list_response_event_type_out = [x.name for x in svix.event_type.list().data]
+        if "invoice.created" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Invoice is created",
+                    archived=False,
+                    name="invoice.created",
+                )
             )
-        )
-    if "invoice.paid" not in list_response_event_type_out:
-        event_type_out = svix.event_type.create(
-            EventTypeIn(
-                description="Invoice is marked as paid",
-                archived=False,
-                name="invoice.paid",
+        if "invoice.paid" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Invoice is marked as paid",
+                    archived=False,
+                    name="invoice.paid",
+                )
             )
-        )
+    except:
+        SVIX_CONNECTOR = None

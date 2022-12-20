@@ -3,8 +3,8 @@ export interface MetricType {
   property_name: string;
   usage_aggregation_type: string;
   billable_aggregation_type?: string;
-  metric_id?: string;
-  billable_metric_name?: string;
+  metric_id: string;
+  metric_name?: string;
   metric_type: "counter" | "stateful" | "rate";
   numeric_filters?: NumericFilterType[];
   categorical_filters?: CateogricalFilterType[];
@@ -12,14 +12,6 @@ export interface MetricType {
   event_type?: "delta" | "total";
   is_cost_metric?: boolean;
   properties?: string[];
-}
-
-export interface MetricNameType {
-  event_name: string;
-  property_name: string;
-  aggregation_type: string;
-  id: number;
-  billable_metric_name: string;
 }
 
 export interface MetricUsage {

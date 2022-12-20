@@ -17,6 +17,7 @@ class PaymentProviderView(APIView):
     permission_classes = [IsAuthenticated & ValidOrganization]
 
     @extend_schema(
+        request=None,
         responses={200: SinglePaymentProviderSerializer(many=True)},
     )
     def get(self, request, format=None):

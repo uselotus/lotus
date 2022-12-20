@@ -1,12 +1,13 @@
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
+from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.models import OrganizationInviteToken
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.model_serializers import *
 from metering_billing.utils import now_plus_day
-from rest_framework import mixins, status, viewsets
+from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,6 +19,20 @@ DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
 class InviteView(APIView):
     permission_classes = [IsAuthenticated & ValidOrganization]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="InviteRequestSerializer",
+            fields={
+                "email": serializers.EmailField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="InviteResponseSerializer",
+                fields={"email": serializers.EmailField()},
+            )
+        },
+    )
     def post(self, request, *args, **kwargs):
         email = request.data.get("email", None)
         user = request.user

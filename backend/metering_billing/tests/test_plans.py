@@ -77,11 +77,6 @@ class TestCreatePlan:
         assert (
             response.data["display_version"]["version"] == 1
         )  # should initialize with v1
-        assert response.data["created_by"] == setup_dict["user"].username
-        assert (
-            response.data["display_version"]["created_by"]
-            == setup_dict["user"].username
-        )
 
     def test_plan_dont_specify_version_fails_doesnt_create_plan(
         self,
@@ -89,25 +84,6 @@ class TestCreatePlan:
     ):
         setup_dict = plan_test_common_setup()
         setup_dict["plan_payload"].pop("initial_version")
-        plan_before = Plan.objects.all().count()
-
-        response = setup_dict["client"].post(
-            reverse("plan-list"),
-            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
-            content_type="application/json",
-        )
-        plan_after = Plan.objects.all().count()
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert plan_before == plan_after
-
-    def test_plan_with_repeated_id_fails(
-        self,
-        plan_test_common_setup,
-    ):
-        setup_dict = plan_test_common_setup()
-        baker.make(Plan, plan_id="test-id")
-        setup_dict["plan_payload"]["plan_id"] = "test-id"
         plan_before = Plan.objects.all().count()
 
         response = setup_dict["client"].post(
@@ -135,6 +111,7 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
+        print(response.data)
         plan = Plan.objects.get(plan_id=response.data["plan_id"])
 
         # now add in the plan ID to the payload, and send a post request for the new version
@@ -156,7 +133,6 @@ class TestCreatePlanVersion:
         assert set(PlanVersion.objects.values_list("status", flat=True)) == set(
             [PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.INACTIVE]
         )
-        assert response.data["created_by"] == setup_dict["user"].username
         assert len(plan.versions.all()) == 2
 
     def test_create_new_version_as_inactive_works(
@@ -190,7 +166,6 @@ class TestCreatePlanVersion:
         assert set(PlanVersion.objects.values_list("version", "status")) == set(
             [(1, PLAN_VERSION_STATUS.ACTIVE), (2, PLAN_VERSION_STATUS.INACTIVE)]
         )
-        assert response.data["created_by"] == setup_dict["user"].username
         assert len(plan.versions.all()) == 2
         assert PlanVersion.objects.get(version=1) == plan.display_version
 
@@ -228,7 +203,6 @@ class TestCreatePlanVersion:
         assert set(PlanVersion.objects.values_list("status", flat=True)) == set(
             [PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.GRANDFATHERED]
         )
-        assert response.data["created_by"] == setup_dict["user"].username
         assert len(plan.versions.all()) == 2
 
     def test_create_new_version_as_active_with_existing_subscriptions_replace_on_renewal(
@@ -267,7 +241,6 @@ class TestCreatePlanVersion:
         assert set(PlanVersion.objects.values_list("status", flat=True)) == set(
             [PLAN_VERSION_STATUS.ACTIVE, PLAN_VERSION_STATUS.RETIRING]
         )
-        assert response.data["created_by"] == setup_dict["user"].username
         assert len(plan.versions.all()) == 2
 
 

@@ -103,7 +103,7 @@ def insert_billable_metric_payload():
         "property_name": "test_property",
         "usage_aggregation_type": METRIC_AGGREGATION.SUM,
         "metric_type": METRIC_TYPE.COUNTER,
-        "billable_metric_name": "test_billable_metric",
+        "metric_name": "test_billable_metric",
     }
     return payload
 
@@ -128,7 +128,6 @@ class TestInsertMetric:
             data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
@@ -174,12 +173,14 @@ class TestInsertMetric:
         )
 
         payload = insert_billable_metric_payload
+        payload["billable_metric_name"] = payload.pop("metric_name")
         Metric.objects.create(
             **{
                 **payload,
                 "organization": setup_dict["org"],
             }
         )
+        payload["metric_name"] = payload.pop("billable_metric_name")
         response = setup_dict["client"].post(
             reverse("metric-list"),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
