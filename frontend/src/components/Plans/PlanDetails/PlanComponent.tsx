@@ -9,7 +9,6 @@ interface PlanComponentsProps {
   components?: Component[];
 }
 const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
-  console.log("RENDERING", record, pricing_unit);
   switch (record.type) {
     case "per_unit":
       return (

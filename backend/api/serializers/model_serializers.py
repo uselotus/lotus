@@ -48,9 +48,9 @@ class LightweightCustomerSerializer(
             "customer_id",
         )
         extra_kwargs = {
-            "customer_id": {"required": True},
-            "customer_name": {"required": True},
-            "email": {"required": True},
+            "customer_id": {"required": True, "read_only": True},
+            "customer_name": {"required": True, "read_only": True},
+            "email": {"required": True, "read_only": True},
         }
 
 
@@ -64,9 +64,14 @@ class LightweightPlanVersionSerializer(
             "plan_id",
             "version",
         )
+        extra_kwargs = {
+            "plan_id": {"required": True, "read_only": True},
+            "plan_name": {"required": True, "read_only": True},
+            "version": {"required": True, "read_only": True},
+        }
 
-    plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
-    plan_id = serializers.CharField(read_only=True, source="plan.plan_id")
+    plan_name = serializers.CharField(source="plan.plan_name")
+    plan_id = serializers.CharField(source="plan.plan_id")
 
 
 class CategoricalFilterSerializer(
@@ -75,6 +80,11 @@ class CategoricalFilterSerializer(
     class Meta:
         model = CategoricalFilter
         fields = ("property_name", "operator", "comparison_value")
+        extra_kwargs = {
+            "property_name": {"required": True, "read_only": True},
+            "operator": {"required": True, "read_only": True},
+            "comparison_value": {"required": True, "read_only": True},
+        }
 
     comparison_value = serializers.ListField(child=serializers.CharField())
 
@@ -83,6 +93,12 @@ class SubscriptionCategoricalFilterSerializer(CategoricalFilterSerializer):
     class Meta(CategoricalFilterSerializer.Meta):
         model = CategoricalFilter
         fields = ("value", "property_name")
+        extra_kwargs = {
+            "property_name": {
+                "required": True,
+            },
+            "value": {"required": True},
+        }
 
     value = serializers.CharField()
     property_name = serializers.CharField(
@@ -423,17 +439,27 @@ class MetricSerializer(
             "is_cost_metric",
         )
         extra_kwargs = {
-            "metric_id": {"required": True},
-            "event_name": {"required": True},
-            "property_name": {"required": True},
-            "aggregation_type": {"required": True},
-            "granularity": {"required": True, "allow_null": True, "allow_blank": False},
-            "event_type": {"required": True, "allow_null": True, "allow_blank": False},
-            "metric_type": {"required": True},
-            "metric_name": {"required": True},
-            "numeric_filters": {"required": True},
-            "categorical_filters": {"required": True},
-            "is_cost_metric": {"required": True},
+            "metric_id": {"required": True, "read_only": True},
+            "event_name": {"required": True, "read_only": True},
+            "property_name": {"required": True, "read_only": True},
+            "aggregation_type": {"required": True, "read_only": True},
+            "granularity": {
+                "required": True,
+                "allow_null": True,
+                "allow_blank": False,
+                "read_only": True,
+            },
+            "event_type": {
+                "required": True,
+                "allow_null": True,
+                "allow_blank": False,
+                "read_only": True,
+            },
+            "metric_type": {"required": True, "read_only": True},
+            "metric_name": {"required": True, "read_only": True},
+            "numeric_filters": {"required": True, "read_only": True},
+            "categorical_filters": {"required": True, "read_only": True},
+            "is_cost_metric": {"required": True, "read_only": True},
         }
 
     numeric_filters = NumericFilterSerializer(
@@ -475,15 +501,20 @@ class PriceTierSerializer(
             "batch_rounding_type",
         )
         extra_kwargs = {
-            "type": {"required": True},
-            "range_start": {"required": True},
-            "range_end": {"required": True, "allow_null": True},
-            "cost_per_batch": {"required": True, "allow_null": True},
-            "metric_units_per_batch": {"required": True, "allow_null": True},
+            "type": {"required": True, "read_only": True},
+            "range_start": {"required": True, "read_only": True},
+            "range_end": {"required": True, "allow_null": True, "read_only": True},
+            "cost_per_batch": {"required": True, "allow_null": True, "read_only": True},
+            "metric_units_per_batch": {
+                "required": True,
+                "allow_null": True,
+                "read_only": True,
+            },
             "batch_rounding_type": {
                 "required": True,
                 "allow_null": True,
                 "allow_blank": False,
+                "read_only": True,
             },
         }
 
@@ -500,14 +531,14 @@ class PlanComponentSerializer(
             "pricing_unit",
         )
         extra_kwargs = {
-            "billable_metric": {"required": True},
+            "billable_metric": {"required": True, "read_only": True},
             "tiers": {"required": True},
             "proration_granularity": {"required": True},
-            "pricing_unit": {"required": True},
+            "pricing_unit": {"required": True, "read_only": True},
         }
 
-    billable_metric = MetricSerializer(read_only=True)
-    pricing_unit = PricingUnitSerializer(read_only=True)
+    billable_metric = MetricSerializer()
+    pricing_unit = PricingUnitSerializer()
     tiers = PriceTierSerializer(many=True)
 
 
@@ -549,16 +580,20 @@ class PlanVersionSerializer(
             "currency",
         )
         extra_kwargs = {
-            "description": {"required": True},
-            "flat_fee_billing_type": {"required": True},
-            "flat_rate": {"required": True},
-            "components": {"required": True},
-            "features": {"required": True},
-            "price_adjustment": {"required": True, "allow_null": True},
-            "usage_billing_frequency": {"required": True},
-            "version": {"required": True},
-            "status": {"required": True},
-            "plan_name": {"required": True},
+            "description": {"required": True, "read_only": True},
+            "flat_fee_billing_type": {"required": True, "read_only": True},
+            "flat_rate": {"required": True, "read_only": True},
+            "components": {"required": True, "read_only": True},
+            "features": {"required": True, "read_only": True},
+            "price_adjustment": {
+                "required": True,
+                "allow_null": True,
+                "read_only": True,
+            },
+            "usage_billing_frequency": {"required": True, "read_only": True},
+            "version": {"required": True, "read_only": True},
+            "status": {"required": True, "read_only": True},
+            "plan_name": {"required": True, "read_only": True},
         }
 
     components = PlanComponentSerializer(many=True, source="plan_components")

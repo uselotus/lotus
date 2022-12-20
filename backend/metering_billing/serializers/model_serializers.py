@@ -559,20 +559,35 @@ class PriceTierSerializer(api_serializers.PriceTierSerializer):
         return PriceTier.objects.create(**validated_data)
 
 
+class PriceTierCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PriceTier
+        fields = (
+            "type",
+            "range_start",
+            "range_end",
+            "cost_per_batch",
+            "metric_units_per_batch",
+            "batch_rounding_type",
+        )
+
+
 # PLAN COMPONENT
 class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
     class Meta(api_serializers.PlanComponentSerializer.Meta):
-        fields = api_serializers.PlanComponentSerializer.Meta.fields + (
-            "billable_metric_name",
-        )
+        fields = tuple(
+            set(api_serializers.PlanComponentSerializer.Meta.fields)
+            - {"billable_metric", "pricing_unit"}
+        ) + ("metric_id",)
+        extra_kwargs = {**api_serializers.PlanComponentSerializer.Meta.extra_kwargs}
 
-    # WRITE-ONLY
-    billable_metric_name = SlugRelatedFieldWithOrganization(
-        slug_field="billable_metric_name",
+    metric_id = SlugRelatedFieldWithOrganization(
+        slug_field="metric_id",
         write_only=True,
         source="billable_metric",
         queryset=Metric.objects.all(),
     )
+    tiers = PriceTierCreateSerializer(many=True, required=False)
 
     def validate(self, data):
         data = super().validate(data)
@@ -749,8 +764,13 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
 
 class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
     class Meta(api_serializers.PlanVersionSerializer.Meta):
-        fields = api_serializers.PlanVersionSerializer.Meta.fields
+        fields = api_serializers.PlanVersionSerializer.Meta.fields + (
+            "version_id",
+            "plan_id",
+        )
         extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
+
+    plan_id = serializers.CharField(source="plan.plan_id", read_only=True)
 
 
 class PlanVersionCreateSerializer(serializers.ModelSerializer):
@@ -767,7 +787,6 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "usage_billing_frequency",
             "day_anchor",
             "month_anchor",
-            # write only
             "make_active",
             "make_active_type",
             "replace_immediately_type",
@@ -775,16 +794,16 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             "currency_code",
         )
         extra_kwargs = {
-            "description": {"read_only": True},
-            "plan_id": {"read_only": True},
-            "flat_fee_billing_type": {"read_only": True},
-            "flat_rate": {"read_only": True},
-            "components": {"read_only": True},
-            "features": {"read_only": True},
-            "price_adjustment": {"read_only": True},
-            "usage_billing_frequency": {"read_only": True},
-            "day_anchor": {"read_only": True},
-            "month_anchor": {"read_only": True},
+            "description": {"write_only": True},
+            "plan_id": {"write_only": True},
+            "flat_fee_billing_type": {"write_only": True},
+            "flat_rate": {"write_only": True},
+            "components": {"write_only": True},
+            "features": {"write_only": True},
+            "price_adjustment": {"write_only": True},
+            "usage_billing_frequency": {"write_only": True},
+            "day_anchor": {"write_only": True},
+            "month_anchor": {"write_only": True},
             "make_active": {"write_only": True},
             "make_active_type": {"write_only": True},
             "replace_immediately_type": {"write_only": True},
@@ -803,8 +822,6 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
         source="plan",
         required=False,
     )
-
-    # WRITE ONLY
     make_active = serializers.BooleanField()
     make_active_type = serializers.ChoiceField(
         choices=MAKE_PLAN_VERSION_ACTIVE_TYPE.choices,
@@ -942,7 +959,14 @@ class LightweightCustomerSerializer(api_serializers.LightweightCustomerSerialize
 
 class PlanSerializer(api_serializers.PlanSerializer):
     class Meta(api_serializers.PlanSerializer.Meta):
-        fields = api_serializers.PlanSerializer.Meta.fields
+        fields = api_serializers.PlanSerializer.Meta.fields + ("versions",)
+
+    versions = serializers.SerializerMethodField()
+
+    def get_versions(self, obj) -> PlanVersionSerializer(many=True):
+        return PlanVersionSerializer(
+            obj.versions.all().order_by("version"), many=True
+        ).data
 
 
 class PlanCreateSerializer(serializers.ModelSerializer):

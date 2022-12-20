@@ -14,14 +14,6 @@ export interface MetricType {
   properties?: string[];
 }
 
-export interface MetricNameType {
-  event_name: string;
-  property_name: string;
-  aggregation_type: string;
-  id: number;
-  metric_name: string;
-}
-
 export interface MetricUsage {
   metrics: { [key: string]: MetricUsageValue };
 }

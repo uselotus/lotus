@@ -32,7 +32,7 @@ const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
 export const ComponentDisplay: FC<{
   componentsData: CreateComponent[];
   handleComponentEdit: (any) => void;
-  deleteComponent: (any) => void;
+  deleteComponent: (id: string) => void;
   pricing_unit: PricingUnit;
 }> = ({
   componentsData,

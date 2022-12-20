@@ -21,7 +21,7 @@ import {
 import { DeleteOutlined } from "@ant-design/icons";
 import "./UsageComponentForm.css";
 import { Metrics } from "../../api/api";
-import { MetricNameType, MetricType } from "../../types/metric-type";
+import { MetricType } from "../../types/metric-type";
 import type { InputRef } from "antd";
 import type { FormInstance } from "antd/es/form";
 import { Tier } from "../../types/plan-type";
@@ -509,6 +509,7 @@ function UsageComponentForm({
         form
           .validateFields()
           .then((values) => {
+            console.log("values", values);
             if (
               validateTiers(currentTiers).every((item) => item.isValid === true)
             ) {
