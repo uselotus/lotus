@@ -509,7 +509,6 @@ function UsageComponentForm({
         form
           .validateFields()
           .then((values) => {
-            console.log("values", values);
             if (
               validateTiers(currentTiers).every((item) => item.isValid === true)
             ) {

@@ -960,8 +960,8 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
     plan_id = serializers.CharField(
         required=True, help_text="Filter to a specific plan."
     )
-    subscription_filters = serializers.ListField(
-        child=SubscriptionCategoricalFilterSerializer(),
+    subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
         required=False,
         help_text="Filter to a specific set of subscription filters. If your billing model only allows for one subscription per customer, you very likely do not need this field. Must be formatted as a JSON-encoded + stringified list of dictionaries, where each dictionary has a key of 'property_name' and a key of 'value'.",
     )

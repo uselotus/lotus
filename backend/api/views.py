@@ -244,7 +244,6 @@ class SubscriptionViewSet(
         qs = super().get_queryset()
         organization = self.request.organization
         qs = qs.filter(organization=organization)
-        # need for: list, update_plans, cancel_plans
         if self.action == "list":
             args = []
             serializer = ListSubscriptionRecordFilter(data=self.request.query_params)
@@ -269,21 +268,20 @@ class SubscriptionViewSet(
                 *args,
             ).select_related("customer")
         elif self.action in ["edit", "cancel"]:
-            params = self.request.query_params.copy()
-            dict_params = params.dict()
-            raw_filters = params.pop("subscription_filters", None)
-            print("raw_filters", raw_filters)
-            if raw_filters:
-                if isinstance(raw_filters, list):
-                    raw_filters = raw_filters[0]
-                print("raw_filters2", raw_filters)
-                parsed_params = json.loads(raw_filters)
-                dict_params["subscription_filters"] = parsed_params
-            print("dict_params", dict_params)
+            subscription_filters = self.request.query_params.getlist(
+                "subscription_filters[]"
+            )
+            subscription_filters = [json.loads(x) for x in subscription_filters]
+            dict_params = self.request.query_params.dict()
+            data = {"subscription_filters": subscription_filters}
+            if "customer_id" in dict_params:
+                data["customer_id"] = dict_params["customer_id"]
+            if "plan_id" in dict_params:
+                data["plan_id"] = dict_params["plan_id"]
             if self.action == "edit":
-                serializer = SubscriptionRecordFilterSerializer(data=dict_params)
+                serializer = SubscriptionRecordFilterSerializer(data=data)
             elif self.action == "cancel":
-                serializer = SubscriptionRecordFilterSerializerDelete(data=dict_params)
+                serializer = SubscriptionRecordFilterSerializerDelete(data=data)
             else:
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
