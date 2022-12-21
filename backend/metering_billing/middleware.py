@@ -16,13 +16,6 @@ class OrganizationInsertMiddleware:
 
     def __call__(self, request):
         try:
-            st = f"OrganizationInsertMiddleware BEFORE: {request.user}, {request.user.is_authenticated}"
-            if request.user.is_authenticated:
-                try:
-                    st += f", {request.user.organization}"
-                except:
-                    pass
-            logger.info(st)
             if request.user.is_authenticated:
                 organization = request.user.organization
             else:
