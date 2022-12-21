@@ -39,7 +39,9 @@ logger = logging.getLogger("django.server")
 def setup_demo_3(company_name, username=None, email=None, password=None, mode="create"):
     if mode == "create":
         try:
-            Organization.objects.get(company_name=company_name).delete()
+            org = Organization.objects.get(company_name=company_name)
+            Event.objects.filter(organization=org).delete()
+            org.delete()
             logger.info("[DEMO3]: Deleted existing organization, replacing")
         except Organization.DoesNotExist:
             logger.info("[DEMO3]: creating from scratch")
@@ -580,7 +582,9 @@ def setup_paas_demo(
     company_name="paas", username="paas", email="paas@paas.com", password="paas"
 ):
     try:
-        Organization.objects.get(company_name=company_name).delete()
+        org = Organization.objects.get(company_name=company_name)
+        Event.objects.filter(organization=org).delete()
+        org.delete()
         logger.info("[PAAS DEMO]: Deleted existing organization, replacing")
     except Organization.DoesNotExist:
         logger.info("[PAAS DEMO]: creating from scratch")

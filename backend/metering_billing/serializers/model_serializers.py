@@ -259,7 +259,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ("username", "email", "company_name", "organization_id")
 
-    organization_id = serializers.CharField(source="organization.id")
+    organization_id = serializers.CharField(source="organization.organization_id")
     company_name = serializers.CharField(source="organization.company_name")
 
 

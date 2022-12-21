@@ -224,7 +224,12 @@ class SessionView(APIView):
         },
     )
     def get(self, request, *args, **kwargs):
-        return JsonResponse({"isAuthenticated": True})
+        resp = {
+            "isAuthenticated": request.user.is_authenticated,
+        }
+        if request.user.is_authenticated:
+            resp["organization_id"] = (request.user.organization.organization_id,)
+        return JsonResponse(resp)
 
 
 @extend_schema(

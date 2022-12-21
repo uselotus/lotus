@@ -7,7 +7,6 @@ import lotus_python
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
-from djmoney.money import Money
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
