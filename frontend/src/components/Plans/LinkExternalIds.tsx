@@ -13,7 +13,6 @@ interface LinkExternalIdsProps {
 
 const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
   externalIds: tags,
-  setExternalLinks,
   createExternalLink,
   deleteExternalLink,
 }) => {
@@ -21,7 +20,7 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<InputRef>(null);
   const editInputRef = useRef<InputRef>(null);
-  console.log(tags);
+
   useEffect(() => {
     if (inputVisible) {
       inputRef.current?.focus();
