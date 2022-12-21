@@ -30,28 +30,7 @@ const PlanDetails: FC = () => {
   const createExternalLinkMutation = useMutation(
     (post: CreatePlanExternalLinkType) => Plan.createExternalLinks(post),
     {
-      onMutate: async (newExternalLink) => {
-        // Cancel any outgoing refetches
-        // (so they don't overwrite our optimistic update)
-        await queryClient.cancelQueries({ queryKey: ["plan_detail", planId] });
-
-        // Snapshot the previous value
-        const previousPlan = queryClient.getQueryData(["plan_detail", planId]);
-
-        // immutably remove value we don't need from the external link
-        const external_link: Partial<CreatePlanExternalLinkType> = {
-          ...newExternalLink,
-        };
-        delete external_link.plan_id;
-
-        // Optimistically update to the new value
-        queryClient.setQueryData(["plan_detail", planId], (old) => {
-          const typed_old = old as PlanDetailType;
-          typed_old.external_links.push(external_link as InitialExternalLinks);
-          return typed_old;
-        });
-        return { previousPlan };
-      },
+      onMutate: optimisticMutateHandler,
       onSuccess: () => {
         toast.success("Successfully created Plan external links", {
           position: toast.POSITION.TOP_CENTER,
@@ -73,6 +52,7 @@ const PlanDetails: FC = () => {
   const deleteExternalLinkMutation = useMutation(
     (post: InitialExternalLinks) => Plan.deleteExternalLinks(post),
     {
+      onMutate: optimisticMutateHandler,
       onSuccess: () => {
         toast.success("Successfully deleted Plan external links", {
           position: toast.POSITION.TOP_CENTER,
@@ -85,7 +65,28 @@ const PlanDetails: FC = () => {
       },
     }
   );
+  async function optimisticMutateHandler(newExternalLink) {
+    // Cancel any outgoing refetches
+    // (so they don't overwrite our optimistic update)
+    await queryClient.cancelQueries({ queryKey: ["plan_detail", planId] });
 
+    // Snapshot the previous value
+    const previousPlan = queryClient.getQueryData(["plan_detail", planId]);
+
+    // immutably remove value we don't need from the external link
+    const external_link: Partial<CreatePlanExternalLinkType> = {
+      ...newExternalLink,
+    };
+    delete external_link.plan_id;
+
+    // Optimistically update to the new value
+    queryClient.setQueryData(["plan_detail", planId], (old) => {
+      const typed_old = old as PlanDetailType;
+      typed_old.external_links.push(external_link as InitialExternalLinks);
+      return typed_old;
+    });
+    return { previousPlan };
+  }
   const createPlanExternalLink = (link: string) => {
     if (plan!.external_links.find((links) => links.external_plan_id === link)) {
       toast.error(`Duplicate  external link for ${plan!.plan_name}`, {
