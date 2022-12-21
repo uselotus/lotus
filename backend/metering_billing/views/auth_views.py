@@ -374,6 +374,8 @@ class DemoRegisterView(LoginViewMixin, APIView):
             return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
 
         user = setup_demo_3(company_name, username, email, password)
+        logger.info("setup_demo_3 took %s seconds", time.time() - start)
+        logger.info(f"Demo user {user} created")
         user.organization.is_demo = True
         user.organization.save()
 
@@ -382,12 +384,16 @@ class DemoRegisterView(LoginViewMixin, APIView):
             event="demo_register",
             properties={"organization": user.organization.company_name},
         )
-        end = time.time()
+        _, token = AuthToken.objects.create(user)
+        user_data = UserSerializer(user).data
+        logger.info(
+            f"Token {token} created for user {user_data}, with org {user.organization}"
+        )
         return Response(
             {
                 "detail": "Successfully registered.",
-                "token": AuthToken.objects.create(user)[1],
-                "user": UserSerializer(user).data,
+                "token": token,
+                "user": user_data,
             },
             status=status.HTTP_201_CREATED,
         )
