@@ -9,6 +9,8 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import posthog from "posthog-js";
+import { QueryErrors } from "../types/error-response-types";
+import useGlobalStore from "../stores/useGlobalstore";
 
 const cookies = new Cookies();
 
@@ -25,6 +27,7 @@ const Login: FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const setUsernameToStore = useGlobalStore((state) => state.setUsername);
   const queryClient = useQueryClient();
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -49,6 +52,7 @@ const Login: FC = () => {
       onSuccess: (response) => {
         setIsAuthenticated(true);
         const { token, detail, user } = response;
+        setUsernameToStore(user.username);
         if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
           posthog.group("company", user.organization_id, {
             company_name: user.company_name,
@@ -65,7 +69,7 @@ const Login: FC = () => {
         queryClient.refetchQueries("session");
         redirectDashboard();
       },
-      onError: (error) => {
+      onError: (error: QueryErrors) => {
         // setError(error.message);
         if (error.response.status === 403) {
           toast.error("Please login again.");
