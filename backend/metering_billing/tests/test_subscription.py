@@ -166,7 +166,6 @@ class TestCreateSubscription:
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
@@ -176,6 +175,7 @@ class TestCreateSubscription:
         subscription_test_common_setup,
         get_subscriptions_in_org,
         get_subscription_records_in_org,
+        add_customers_to_org,
     ):
         # covers num_subscriptions_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false, authenticated=true
         num_subscriptions = 1
@@ -189,19 +189,52 @@ class TestCreateSubscription:
         )
 
         setup_dict["payload"]["start_date"] = now_utc()
+        setup_dict["payload"]["subscription_filters"] = [
+            {"property_name": "email", "value": "123"}
+        ]
+        (customer,) = add_customers_to_org(setup_dict["org"], n=1)
+        setup_dict["payload"]["customer_id"] = customer.customer_id
         response = setup_dict["client"].post(
             reverse("subscription-add"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
+        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions + 1
         assert (
             len(get_subscription_records_in_org(setup_dict["org"]))
             == num_subscription_records_before + 1
         )
+
+    def test_reject_overlapping_subscriptions(
+        self, subscription_test_common_setup, get_subscriptions_in_org
+    ):
+        # covers num_subscriptions_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false
+        num_subscriptions = 0
+        setup_dict = subscription_test_common_setup(
+            num_subscriptions=num_subscriptions,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
+
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_subscriptions_in_org(setup_dict["org"])) == 1
 
 
 @pytest.mark.django_db(transaction=True)

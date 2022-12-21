@@ -823,7 +823,6 @@ class SubscriptionRecordCreateSerializer(
     # WRITE ONLY
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
-        read_only=False,
         source="customer",
         queryset=Customer.objects.all(),
         write_only=True,
@@ -831,7 +830,6 @@ class SubscriptionRecordCreateSerializer(
     )
     plan_id = SlugRelatedFieldWithOrganization(
         slug_field="plan_id",
-        read_only=False,
         source="billing_plan.plan",
         queryset=Plan.objects.all(),
         write_only=True,
@@ -859,12 +857,11 @@ class SubscriptionRecordCreateSerializer(
         return data
 
     def create(self, validated_data):
-        # try:
         filters = validated_data.pop("subscription_filters", [])
-        now = now_utc()
-        sub_record = super().create(validated_data)
+        subscription_filters = []
         for filter_data in filters:
             sub_cat_filter_dict = {
+                "organization": validated_data["customer"].organization,
                 "property_name": filter_data["property_name"],
                 "operator": CATEGORICAL_FILTER_OPERATORS.ISIN,
                 "comparison_value": [filter_data["value"]],
@@ -873,8 +870,10 @@ class SubscriptionRecordCreateSerializer(
                 cf, _ = CategoricalFilter.objects.get_or_create(**sub_cat_filter_dict)
             except CategoricalFilter.MultipleObjectsReturned:
                 cf = CategoricalFilter.objects.filter(**sub_cat_filter_dict).first()
-            sub_record.filters.add(cf)
-        sub_record.save()
+            subscription_filters.append(cf)
+        sub_record = SubscriptionRecord.objects.create_with_filters(
+            **validated_data, subscription_filters=subscription_filters
+        )
         # new subscription means we need to create an invoice if its pay in advance
         if (
             sub_record.billing_plan.flat_fee_billing_type

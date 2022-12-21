@@ -127,3 +127,9 @@ class StripeWebhookFailure(APIException):
     status_code = 400
     default_detail = "Stripe webhook invalid"
     default_code = "stripe_webhook_invalid"
+
+
+class OverlappingPlans(APIException):
+    status_code = 400
+    default_detail = "Overlapping plans"
+    default_code = "overlapping_plans"
