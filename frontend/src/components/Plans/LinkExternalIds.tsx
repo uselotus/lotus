@@ -2,7 +2,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import type { InputRef } from "antd";
 import { Input, Tag, Tooltip } from "antd";
 // @ts-ignore
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, memo } from "react";
 
 interface LinkExternalIdsProps {
   externalIds: string[];
@@ -11,18 +11,17 @@ interface LinkExternalIdsProps {
   deleteExternalLink?: (link) => void;
 }
 
-const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({
-  externalIds,
+const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
+  externalIds: tags,
   setExternalLinks,
   createExternalLink,
   deleteExternalLink,
 }) => {
-  const [tags, setTags] = useState<string[]>(externalIds);
   const [inputVisible, setInputVisible] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<InputRef>(null);
   const editInputRef = useRef<InputRef>(null);
-
+  console.log(tags);
   useEffect(() => {
     if (inputVisible) {
       inputRef.current?.focus();
@@ -34,9 +33,6 @@ const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({
   }, [inputValue]);
 
   const handleClose = (removedTag: string) => {
-    const newTags = tags.filter((tag) => tag !== removedTag);
-    setTags(newTags);
-    setExternalLinks && setExternalLinks(newTags);
     deleteExternalLink && deleteExternalLink(removedTag);
   };
 
@@ -46,9 +42,6 @@ const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({
 
   const handleInputConfirm = () => {
     if (inputValue && tags.indexOf(inputValue) === -1) {
-      const links = [...tags, inputValue];
-      setTags(links);
-      setExternalLinks && setExternalLinks(links);
       createExternalLink && createExternalLink(inputValue);
     }
     setInputVisible(false);
@@ -97,5 +90,5 @@ const LinkExternalIds: React.FC<LinkExternalIdsProps> = ({
     </>
   );
 };
-
+const LinkExternalIds = memo(LinksExternalIds);
 export default LinkExternalIds;

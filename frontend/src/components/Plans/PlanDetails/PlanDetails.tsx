@@ -46,6 +46,9 @@ const PlanDetails: FC = () => {
           position: toast.POSITION.TOP_CENTER,
         });
       },
+      onSettled: () => {
+        queryClient.invalidateQueries(["plan_detail", planId]);
+      },
     }
   );
 
@@ -58,10 +61,18 @@ const PlanDetails: FC = () => {
           position: toast.POSITION.TOP_CENTER,
         });
       },
-      onError: () => {
+      onError: (_, __, context) => {
+        // roll back since it failed
+        queryClient.setQueryData(
+          ["plan_detail", planId],
+          context?.previousPlan
+        );
         toast.error("Failed to delete Plan external links", {
           position: toast.POSITION.TOP_CENTER,
         });
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries(["plan_detail", planId]);
       },
     }
   );
@@ -122,7 +133,7 @@ const PlanDetails: FC = () => {
       }),
     { refetchOnMount: "always" }
   );
-  console.log(plan);
+
   const navigateCreateCustomPlan = () => {
     navigate("/create-custom/" + planId);
   };
