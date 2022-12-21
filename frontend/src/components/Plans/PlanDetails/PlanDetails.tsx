@@ -5,7 +5,7 @@ import { PageLayout } from "../../base/PageLayout";
 import { Button } from "antd";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import SwitchVersions from "./SwitchVersions";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 import { Plan } from "../../../api/api";
 import {
   CreatePlanExternalLinkType,
@@ -25,16 +25,44 @@ const PlanDetails: FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { planId } = useParams<PlanDetailParams>();
+  const queryClient = useQueryClient();
 
   const createExternalLinkMutation = useMutation(
     (post: CreatePlanExternalLinkType) => Plan.createExternalLinks(post),
     {
+      onMutate: async (newExternalLink) => {
+        // Cancel any outgoing refetches
+        // (so they don't overwrite our optimistic update)
+        await queryClient.cancelQueries({ queryKey: ["plan_detail", planId] });
+
+        // Snapshot the previous value
+        const previousPlan = queryClient.getQueryData(["plan_detail", planId]);
+
+        // immutably remove value we don't need from the external link
+        const external_link: Partial<CreatePlanExternalLinkType> = {
+          ...newExternalLink,
+        };
+        delete external_link.plan_id;
+
+        // Optimistically update to the new value
+        queryClient.setQueryData(["plan_detail", planId], (old) => {
+          const typed_old = old as PlanDetailType;
+          typed_old.external_links.push(external_link as InitialExternalLinks);
+          return typed_old;
+        });
+        return { previousPlan };
+      },
       onSuccess: () => {
         toast.success("Successfully created Plan external links", {
           position: toast.POSITION.TOP_CENTER,
         });
       },
-      onError: () => {
+      onError: (_, __, context) => {
+        // roll back since it failed
+        queryClient.setQueryData(
+          ["plan_detail", planId],
+          context?.previousPlan
+        );
         toast.error("Failed to create Plan external links", {
           position: toast.POSITION.TOP_CENTER,
         });
@@ -59,14 +87,14 @@ const PlanDetails: FC = () => {
   );
 
   const createPlanExternalLink = (link: string) => {
-    if (plan.external_links.find((links) => links.external_plan_id === link)) {
-      toast.error(`Duplicate  external link for ${plan.plan_name}`, {
+    if (plan!.external_links.find((links) => links.external_plan_id === link)) {
+      toast.error(`Duplicate  external link for ${plan!.plan_name}`, {
         position: toast.POSITION.TOP_CENTER,
       });
       return;
     }
     const data: CreatePlanExternalLinkType = {
-      plan_id: plan.plan_id,
+      plan_id: plan!.plan_id,
       source: "stripe",
       external_plan_id: link,
     };
@@ -88,12 +116,12 @@ const PlanDetails: FC = () => {
   } = useQuery<PlanDetailType>(
     ["plan_detail", planId],
     () =>
-      Plan.getPlan(planId).then((res) => {
+      Plan.getPlan(planId as string).then((res) => {
         return res;
       }),
     { refetchOnMount: "always" }
   );
-
+  console.log(plan);
   const navigateCreateCustomPlan = () => {
     navigate("/create-custom/" + planId);
   };

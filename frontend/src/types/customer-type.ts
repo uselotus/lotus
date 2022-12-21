@@ -6,6 +6,7 @@ import { PricingUnit } from "./pricing-unit-type";
 export interface CustomerType {
   customer_id: string;
   email: string;
+  name: string;
   customer_name: string;
   invoices: InvoiceType[];
   total_amount_due: number;
