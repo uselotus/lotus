@@ -1,4 +1,5 @@
 import datetime
+import logging
 import math
 import uuid
 from decimal import Decimal
@@ -60,6 +61,7 @@ from svix.api import (
 )
 from svix.internal.openapi_client.models.http_error import HttpError
 
+logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -107,9 +109,9 @@ class Organization(models.Model):
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
-            print("provisioning webhooks")
+            logger.log("provisioning webhooks")
             svix = SVIX_CONNECTOR
-            svix_app = svix.application.create(
+            svix.application.create(
                 ApplicationIn(uid=self.organization_id, name=self.company_name)
             )
             self.webhooks_provisioned = True
@@ -2075,7 +2077,7 @@ class SubscriptionRecord(models.Model):
                     or set(old_filters) == set(new_filters)
                 ):
                     raise OverlappingPlans(
-                        f"Overlapping subscriptions with the same filters are not allowed. New subscription_filters: {new_filters}, Old subscription_filters: {list(old_filters)}"
+                        f"Overlapping subscriptions with the same filters are not allowed (plan: {self.billing_plan}, customer: {self.customer}, dates: {self.start_date, self.end_date}). New subscription_filters: {new_filters}, Old subscription_filters: {list(old_filters)}"
                     )
         super(SubscriptionRecord, self).save(*args, **kwargs)
         for filter in new_filters:

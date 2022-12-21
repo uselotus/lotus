@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
@@ -5,7 +7,6 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.models import OrganizationInviteToken
 from metering_billing.permissions import ValidOrganization
-from metering_billing.serializers.model_serializers import *
 from metering_billing.utils import now_plus_day
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -14,6 +15,7 @@ from rest_framework.views import APIView
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 DEFAULT_FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
+logger = logging.getLogger("django.server")
 
 
 class InviteView(APIView):
@@ -72,7 +74,7 @@ def send_invite_email(reset_url, organization_name, to):
     try:
         msg.send()
     except BadHeaderError:
-        print("Invalid header found.")
+        logger.error("Invalid header found.")
         return False
 
     return True

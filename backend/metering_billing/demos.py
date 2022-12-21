@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import logging
 import random
 import uuid
 
@@ -32,14 +33,18 @@ from metering_billing.utils.enums import (
 )
 from model_bakery import baker
 
+logger = logging.getLogger("django.server")
+
 
 def setup_demo_3(company_name, username=None, email=None, password=None, mode="create"):
     if mode == "create":
         try:
-            Organization.objects.get(company_name=company_name).delete()
-            print("Deleted existing organization, replacing")
+            org = Organization.objects.get(company_name=company_name)
+            Event.objects.filter(organization=org).delete()
+            org.delete()
+            logger.info("[DEMO3]: Deleted existing organization, replacing")
         except Organization.DoesNotExist:
-            print("creating from scratch")
+            logger.info("[DEMO3]: creating from scratch")
         try:
             user = User.objects.get(username=username, email=email)
         except:
@@ -577,10 +582,12 @@ def setup_paas_demo(
     company_name="paas", username="paas", email="paas@paas.com", password="paas"
 ):
     try:
-        Organization.objects.get(company_name=company_name).delete()
-        print("Deleted existing organization, replacing")
+        org = Organization.objects.get(company_name=company_name)
+        Event.objects.filter(organization=org).delete()
+        org.delete()
+        logger.info("[PAAS DEMO]: Deleted existing organization, replacing")
     except Organization.DoesNotExist:
-        print("creating from scratch")
+        logger.info("[PAAS DEMO]: creating from scratch")
     try:
         user = User.objects.get(username=username, email=email)
     except:
