@@ -9,7 +9,6 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from djmoney.money import Money
 from metering_billing.models import (
     Event,
     Invoice,
