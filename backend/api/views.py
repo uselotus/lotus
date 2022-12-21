@@ -366,7 +366,6 @@ class SubscriptionViewSet(
         organization = self.request.organization
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         # check to see if subscription exists
         subscription = (
             Subscription.objects.active()

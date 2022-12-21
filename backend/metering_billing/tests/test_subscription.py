@@ -175,6 +175,7 @@ class TestCreateSubscription:
         subscription_test_common_setup,
         get_subscriptions_in_org,
         get_subscription_records_in_org,
+        add_customers_to_org,
     ):
         # covers num_subscriptions_before_insert = 0, has_org_api_key=true, user_in_org=true, user_org_and_api_key_org_different=false, authenticated=true
         num_subscriptions = 1
@@ -188,15 +189,19 @@ class TestCreateSubscription:
         )
 
         setup_dict["payload"]["start_date"] = now_utc()
+        setup_dict["payload"]["subscription_filters"] = [
+            {"property_name": "email", "value": "123"}
+        ]
+        (customer,) = add_customers_to_org(setup_dict["org"], n=1)
+        setup_dict["payload"]["customer_id"] = customer.customer_id
         response = setup_dict["client"].post(
             reverse("subscription-add"),
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0
-        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions
+        assert len(get_subscriptions_in_org(setup_dict["org"])) == num_subscriptions + 1
         assert (
             len(get_subscription_records_in_org(setup_dict["org"]))
             == num_subscription_records_before + 1

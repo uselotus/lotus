@@ -758,6 +758,9 @@ class CategoricalFilter(models.Model):
     )
     comparison_value = models.JSONField()
 
+    def __str__(self):
+        return f"{self.property_name} {self.operator} {self.comparison_value}"
+
 
 class Metric(models.Model):
     organization = models.ForeignKey(
@@ -1914,6 +1917,14 @@ class Subscription(models.Model):
         )
 
 
+class SubscriptionRecordManager(models.Manager):
+    def create_with_filters(self, *args, **kwargs):
+        subscription_filters = kwargs.pop("subscription_filters", [])
+        sr = self.model(**kwargs)
+        sr.save(subscription_filters=subscription_filters)
+        return sr
+
+
 class SubscriptionRecord(models.Model):
     organization = models.ForeignKey(
         Organization,
@@ -1976,6 +1987,7 @@ class SubscriptionRecord(models.Model):
         default=False,
         help_text="Whether the subscription has been fully billed and finalized.",
     )
+    objects = SubscriptionRecordManager()
     history = HistoricalRecords()
 
     class Meta:
@@ -1993,6 +2005,7 @@ class SubscriptionRecord(models.Model):
         return f"{self.customer.customer_name}  {self.billing_plan.plan.plan_name} : {self.start_date.date()} to {self.end_date.date()}"
 
     def save(self, *args, **kwargs):
+        new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
         subscription = self.customer.subscriptions.active(self.start_date).first()
         if not subscription:
@@ -2046,20 +2059,27 @@ class SubscriptionRecord(models.Model):
             self.status = SUBSCRIPTION_STATUS.NOT_STARTED
         else:
             self.status = SUBSCRIPTION_STATUS.ACTIVE
+        if not self.pk:
+            overlapping_subscriptions = SubscriptionRecord.objects.filter(
+                Q(start_date__range=(self.start_date, self.end_date))
+                | Q(end_date__range=(self.start_date, self.end_date)),
+                organization=self.organization,
+                customer=self.customer,
+                billing_plan=self.billing_plan,
+            )
+            for subscription in overlapping_subscriptions:
+                old_filters = subscription.filters.all()
+                if (
+                    len(old_filters) == 0
+                    or len(new_filters) == 0
+                    or set(old_filters) == set(new_filters)
+                ):
+                    raise OverlappingPlans(
+                        f"Overlapping subscriptions with the same filters are not allowed. New subscription_filters: {new_filters}, Old subscription_filters: {list(old_filters)}"
+                    )
         super(SubscriptionRecord, self).save(*args, **kwargs)
-        overlapping_subscriptions = SubscriptionRecord.objects.filter(
-            Q(start_date__range=(self.start_date, self.end_date))
-            | Q(end_date__range=(self.start_date, self.end_date)),
-            organization=self.organization,
-            customer=self.customer,
-            billing_plan=self.billing_plan,
-        ).exclude(pk=self.pk)
-        for subscription in overlapping_subscriptions:
-            if set(subscription.filters.all()) == set(self.filters.all()):
-                self.delete()
-                raise OverlappingPlans(
-                    "Overlapping subscriptions with the same filters are not allowed"
-                )
+        for filter in new_filters:
+            self.filters.add(filter)
         for filter in self.filters.all():
             if not filter.organization:
                 filter.organization = self.organization
