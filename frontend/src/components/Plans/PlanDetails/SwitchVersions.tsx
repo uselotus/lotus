@@ -24,7 +24,7 @@ interface SwitchVersionProps {
 function getPriceAdjustmentEnding(
   type: string | undefined,
   amount: number | undefined,
-  code: string,
+  code: string
 ) {
   switch (type) {
     case "percentage":
@@ -44,11 +44,13 @@ function capitalize(word: string) {
 
 const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
   const activePlanVersion = versions.find((x) => x.status === "active");
-  const [selectedVersion, setSelectedVersion] = useState(activePlanVersion);
+  if (!activePlanVersion) {
+    return <div>No Active Plan</div>;
+  }
+  const [selectedVersion, setSelectedVersion] =
+    useState<PlanVersionType>(activePlanVersion);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
   const queryClient = useQueryClient();
-
-  const activeVersion = versions.find((x) => x.status === "active")?.version;
 
   const isSelectedVersion = (other_id: string) =>
     selectedVersion.version_id === other_id;
@@ -126,7 +128,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
               activeTab={capitalizedState}
               version_id={selectedVersion.version_id}
               version={selectedVersion.version}
-              activeVersion={activeVersion}
+              activeVersion={activePlanVersion.version}
               tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
             />
           </div>
@@ -227,7 +229,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
             {getPriceAdjustmentEnding(
               selectedVersion.price_adjustment?.price_adjustment_type,
               selectedVersion.price_adjustment?.price_adjustment_amount,
-              selectedVersion.currency.symbol,
+              selectedVersion.currency.symbol
             )}
           </div>
         </div>

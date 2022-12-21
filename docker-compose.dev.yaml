@@ -1,6 +1,6 @@
 services:
   db:
-    image: timescale/timescaledb:latest-pg14
+    image: timescale/timescaledb-ha:pg14-latest
     restart: on-failure
     ports:
       - 5432:5432
@@ -63,6 +63,7 @@ services:
     volumes:
       - ./backend/lotus:/lotus/lotus
       - ./backend/metering_billing:/lotus/metering_billing
+      - ./backend/api:/lotus/api
     command: sh -c "./scripts/start_backend.dev.sh"
     depends_on:
       - db

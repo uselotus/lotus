@@ -10,6 +10,7 @@ import LoadingSpinner from "../LoadingSpinner";
 import { useMutation } from "react-query";
 import { Customer } from "../../api/api";
 import { toast } from "react-toastify";
+import CopyText from "../base/CopytoClipboard";
 
 const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
@@ -52,7 +53,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
         return {
           date: day.date,
           amount: metric.cost,
-          metric: metric.metric.billable_metric_name,
+          metric: metric.metric.metric_name,
           type: "cost",
         };
       });
@@ -128,7 +129,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             <b>Customer Name:</b> {data.customer_name ?? "N/A"}
           </p>
           <p>
-            <b>Customer ID:</b> {data.customer_id ?? "N/A"}
+            <b>Customer ID:</b> {<span class="font-menlo">{data.customer_id}</span> ?? "N/A"}
           </p>
           <p>
             <b>Email:</b> {data.email ?? "N/A"}

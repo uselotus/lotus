@@ -1,27 +1,22 @@
 import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
 import { PricingUnit } from "./pricing-unit-type";
+import { LightweightCustomerType } from "./customer-type";
 
 export interface PlanType {
   plan_name: string;
   plan_duration: "monthly" | "quarterly" | "yearly";
-  product_id?: string;
-  plan_id: string;
   status: "active" | "archived" | "experimental";
-  parent_plan?: {
+  external_links: InitialExternalLinks[];
+  plan_id: string;
+  parent_plan: {
     plan_name: string;
     plan_id: string;
-  };
-  target_customer?: {
-    name: string;
-    customer_id: string;
-  };
-  created_on: string;
-  created_by: string;
-  display_version?: PlanVersionType;
+  } | null;
+  target_customer: LightweightCustomerType | null;
+  display_version: PlanVersionType;
   num_versions: number;
   active_subscriptions: number;
-  external_links?: InitialExternalLinks[];
 }
 
 export interface PlanDetailType extends Omit<PlanType, "display_version"> {
@@ -74,6 +69,12 @@ export interface PlanVersionType
   currency: PricingUnit;
 }
 
+export interface LightweightPlanVersionType {
+  plan_id: string;
+  plan_name: string;
+  version: number;
+}
+
 export interface PlansByCustomerArray {
   results: { plan_name: string; num_customers: number; percent_total: number };
   status?: string;
@@ -118,7 +119,7 @@ export interface CreateVersionType {
 
 export interface CreateComponent
   extends Omit<Component, "billable_metric" | "pricing_unit"> {
-  billable_metric_name: string;
+  metric_id: string;
 }
 
 export interface Component {

@@ -64,6 +64,17 @@ def calculate_invoice():
     # now generate invoices and new subs
     for old_subscription in subs_to_bill:
         old_sub_records = old_subscription.get_subscription_records_to_bill()
+        new_sub = Subscription.objects.create(
+            organization=old_subscription.organization,
+            day_anchor=old_subscription.day_anchor,
+            month_anchor=old_subscription.month_anchor,
+            customer=old_subscription.customer,
+            billing_cadence=old_subscription.billing_cadence,
+            start_date=date_as_min_dt(
+                old_subscription.end_date + relativedelta(days=+1)
+            ),
+            end_date=old_subscription.get_new_sub_end_date(),
+        )
         # Generate the invoice
         try:
             generate_invoice(
@@ -84,19 +95,10 @@ def calculate_invoice():
             status=SUBSCRIPTION_STATUS.ACTIVE,
             end_date__gte=old_subscription.end_date,
         ).count()
-        if num_subscription_records_active > 0:
-            sub = Subscription.objects.create(
-                organization=old_subscription.organization,
-                day_anchor=old_subscription.day_anchor,
-                month_anchor=old_subscription.month_anchor,
-                customer=old_subscription.customer,
-                billing_cadence=old_subscription.billing_cadence,
-                start_date=date_as_min_dt(
-                    old_subscription.end_date + relativedelta(days=+1)
-                ),
-                end_date=old_subscription.get_new_sub_end_date(),
-            )
-            sub.handle_remove_plan()
+        if not (num_subscription_records_active > 0):
+            new_sub.delete()
+        else:
+            new_sub.handle_remove_plan()
         # End the old subscription and delete draft invoices
         Invoice.objects.filter(
             issue_date__lt=now,

@@ -16,28 +16,30 @@ import {
   CreateSubscriptionType,
   TurnSubscriptionAutoRenewOffType,
   ChangeSubscriptionPlanType,
-  CancelSubscriptionType,
+  CancelSubscriptionBody,
+  CancelSubscriptionQueryParams,
+  SubscriptionType,
 } from "../../types/subscription-type";
 //import the Customer type from the api.ts file
 import dayjs from "dayjs";
 
-import {
-  CustomerDetailSubscription,
-  DetailPlan,
-} from "../../types/customer-type";
+import { CustomerSubscription, DetailPlan } from "../../types/customer-type";
 import DraftInvoice from "./DraftInvoice";
 import { Link } from "react-router-dom";
 import qs from "qs";
 
 interface Props {
   customer_id: string;
-  subscription: CustomerDetailSubscription;
+  subscriptions: SubscriptionType[];
   plans: PlanType[] | undefined;
   onAutoRenewOff: (
     params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => void;
-  onCancel: (props: CancelSubscriptionType) => void;
+  onCancel: (
+    props: CancelSubscriptionBody,
+    params: CancelSubscriptionQueryParams
+  ) => void;
   onPlanChange: (params: object, props: ChangeSubscriptionPlanType) => void;
   onCreate: (props: CreateSubscriptionType) => void;
 }
@@ -66,7 +68,7 @@ interface ChangeOption {
 
 const SubscriptionView: FC<Props> = ({
   customer_id,
-  subscription,
+  subscriptions,
   plans,
   onCancel,
   onAutoRenewOff,
@@ -80,40 +82,46 @@ const SubscriptionView: FC<Props> = ({
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
 
-  const [subscriptionPlans, setSubscriptionPlans] = useState<DetailPlan[]>(
-    subscription?.plans || []
-  );
+  const [subscriptionPlans, setSubscriptionPlans] = useState<
+    SubscriptionType[]
+  >(subscriptions || []);
 
   useEffect(() => {
-    if (subscription) {
-      setSubscriptionPlans(subscription.plans);
+    if (subscriptions.length > 0) {
+      setSubscriptionPlans(subscriptions);
     }
-  }, [subscription]);
+  }, [subscriptions]);
 
   const selectPlan = (plan_id: string) => {
     setSelectedPlan(plan_id);
   };
 
   const cancelAndBill = (plan_id, subscription_filters) => {
-    onCancel({
-      bill_usage: true,
-      flat_fee_behavior: "charge_full",
-      invoicing_behavior_on_cancel: "invoice_now",
+    let query_params: CancelSubscriptionQueryParams = {
       plan_id: plan_id,
       subscription_filters: subscription_filters,
       customer_id: customer_id,
-    });
+    };
+    let body: CancelSubscriptionBody = {
+      usage_behavior: "bill_full",
+      flat_fee_behavior: "prorate",
+      invoicing_behavior: "invoice_now",
+    };
+    onCancel(body, query_params);
   };
 
   const cancelAndDontBill = (plan_id, subscription_filters) => {
-    onCancel({
-      customer_id: customer_id,
+    let query_params: CancelSubscriptionQueryParams = {
       plan_id: plan_id,
       subscription_filters: subscription_filters,
-      bill_usage: false,
-      flat_fee_behavior: "refund",
-      invoicing_behavior_on_cancel: "invoice_now",
-    });
+      customer_id: customer_id,
+    };
+    let body: CancelSubscriptionBody = {
+      usage_behavior: "bill_none",
+      flat_fee_behavior: "prorate",
+      invoicing_behavior: "invoice_now",
+    };
+    onCancel(body, query_params);
   };
 
   const turnAutoRenewOff = (plan_id, subscription_filters) => {
@@ -237,13 +245,15 @@ const SubscriptionView: FC<Props> = ({
         customer_id: customer_id,
         plan_id: plan.plan_id,
         start_date: new Date().toISOString(),
-        status: "active",
+        auto_renew: true,
+        is_new: true,
+        subscription_filters: [],
       };
       onCreate(props);
     }
     form.resetFields();
   };
-  if (subscription === null) {
+  if (subscriptionPlans.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
@@ -282,15 +292,15 @@ const SubscriptionView: FC<Props> = ({
       <div className="flex flex-col justify-center">
         <List>
           {subscriptionPlans.map((subPlan) => (
-            <Fragment key={subPlan.plan_detail.version_id}>
+            <Fragment key={subPlan.billing_plan.plan_id}>
               <List.Item>
                 <Card className=" bg-grey3 w-full">
                   <div className="grid grid-cols-2 items-stretch">
                     <div>
-                      <Link to={"../plans/" + subPlan.plan_detail.plan_id}>
+                      <Link to={"../plans/" + subPlan.billing_plan.plan_id}>
                         {" "}
                         <h2 className="font-main font-bold hover:underline">
-                          {subPlan.plan_detail.plan_name}
+                          {subPlan.billing_plan.plan_name}
                         </h2>
                       </Link>
                       <b>Subscription Filters: </b>{" "}
@@ -328,7 +338,7 @@ const SubscriptionView: FC<Props> = ({
                   <div className="grid grid-cols-2 w-full space-x-5 mt-12">
                     <Dropdown
                       overlay={switchMenu(
-                        subPlan.plan_detail.plan_id,
+                        subPlan.billing_plan.plan_id,
                         subPlan.subscription_filters
                       )}
                       trigger={["click"]}
@@ -338,7 +348,7 @@ const SubscriptionView: FC<Props> = ({
                     </Dropdown>
                     <Dropdown
                       overlay={cancelMenu(
-                        subPlan.plan_detail.plan_id,
+                        subPlan.billing_plan.plan_id,
                         subPlan.subscription_filters
                       )}
                       trigger={["click"]}

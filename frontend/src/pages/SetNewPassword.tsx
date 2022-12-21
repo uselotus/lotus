@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
+import { QueryErrors } from "../types/error-response-types";
 
 const cookies = new Cookies();
 
@@ -42,7 +43,7 @@ const SetNewPassword: FC = () => {
 
   const mutation = useMutation(
     (data: { userId: string; token: string; password: string }) =>
-      Authentication.setNewPassword(token, userId, password),
+      Authentication.setNewPassword(data.token, data.userId, data.password),
     {
       onSuccess: (response) => {
         const { token, detail } = response;
@@ -52,15 +53,16 @@ const SetNewPassword: FC = () => {
         queryClient.refetchQueries("session");
         redirectDashboard();
       },
-      onError: (error) => {
+      onError: (error: QueryErrors) => {
         // setError(error.message)
+
         toast.error(error.response.data.message);
       },
     }
   );
 
   const handleUpdatePassword = (event: React.FormEvent<FormElements>) => {
-    mutation.mutate({ token, userId, password });
+    if (token && userId) mutation.mutate({ token, userId, password });
   };
 
   if (!isAuthenticated) {

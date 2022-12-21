@@ -10,3 +10,11 @@ export interface ValidationError {
   detail: string;
   attr: string;
 }
+export type QueryErrors = {
+  response: Resp;
+};
+interface Resp extends Response {
+  data: {
+    [key: string]: string;
+  };
+}

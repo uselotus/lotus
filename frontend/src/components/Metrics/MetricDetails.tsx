@@ -42,14 +42,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
   return (
     <Modal
       visible
-      title={
-        <b>
-          {" "}
-          {metric?.billable_metric_name
-            ? metric.billable_metric_name
-            : "Metric"}{" "}
-        </b>
-      }
+      title={<b> {metric?.metric_name ? metric.metric_name : "Metric"} </b>}
       footer={[
         <Button
           key="submit"

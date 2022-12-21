@@ -49,6 +49,7 @@ cronitor = "*"
 svix = "*"
 pyjwt = "*"
 drf-standardized-errors = {extras = ["openapi"], version = "*"}
+jinjasql = "*"
 
 [dev-packages]
 platformdirs = "*"

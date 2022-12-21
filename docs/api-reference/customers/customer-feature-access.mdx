@@ -1,14 +1,8 @@
 ---
-openapi: "GET /api/customer_feature_access/"
+openapi: GET /api/customer_feature_access/
 title: Get Feature Access
+description: Returns whether a customer has access to a boolean feature under the current subscriptions.
 ---
-
-Returns whether a customer has access to a boolean feature under the current subscriptions.
-
-A `Get Feature Access` call requires
-
-- customer_id the id you defined in your backend for the corresponding customer and the same id that you passed into Lotus when creating the customer
-- `feature_name` name of the feature you want to check access for.
 
 <CodeGroup>
 

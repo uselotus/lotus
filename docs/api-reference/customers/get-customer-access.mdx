@@ -1,11 +1,8 @@
 ---
 openapi: "GET /api/customer_metric_access/"
 title: Get Metric Access
+summary: Checks whether a customer has access to metrics with this event name, and returns both the current usage of that metric and the limits (free, total) for the metric. This is useful if you want to gate access to certain features in your app based on usage.
 ---
-
-Returns a the usage the customer has for their current subscriptions.
-
-Checks whether a customer has access to metrics with this event name, and returns both the current usage of that metric and the limits (free, total) for the metric. This is useful if you want to gate access to certain features in your app based on usage.
 
 <CodeGroup>
 
@@ -20,6 +17,11 @@ lotus.get_customer_metric_access(
 await lotus.getCustomerMetricAccess({
   customerId: "cust_0569173ee6654369",
   eventName: "api_call",
+});
+
+await lotus.getCustomerMetricAccess({
+  customerId: "cust_0569173ee6654369",
+  metricId: "asfsf32423",
 });
 ```
 

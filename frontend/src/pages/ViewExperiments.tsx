@@ -27,7 +27,7 @@ const ViewExperiments: FC = () => {
     }
   );
 
-  const navigateCreatePlan = () => {
+  const navigateCreateExperiment = () => {
     navigate("/create-experiment");
   };
 
@@ -36,7 +36,7 @@ const ViewExperiments: FC = () => {
       title="Experiments"
       extra={[
         <Button
-          onClick={navigateCreatePlan}
+          onClick={navigateCreateExperiment}
           className="text-white"
           size="large"
           key={"create-plan"}
