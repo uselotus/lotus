@@ -36,7 +36,6 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
                     )
                 except Organization.DoesNotExist:
                     invoice_org_object = None
-                    print(f"Invoice {invoice.pk} has no organization")
                 invoice_org_dict[invoice_org] = invoice_org_object
             invoice.organization = invoice_org_object
 
@@ -50,7 +49,6 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
                     )
                 except:
                     invoice_customer_object = None
-                    print(f"Invoice {invoice.pk} has no customer")
                 invoice_customer_dict[invoice_customer] = invoice_customer_object
             invoice.customer = invoice_customer_object
 
@@ -64,7 +62,6 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
                     )
                 except:
                     invoice_sub_object = None
-                    print(f"Invoice {invoice.pk} has no subscription")
                 invoice_sub_dict[invoice_sub] = invoice_sub_object
             invoice.subscription = invoice_sub_object
 

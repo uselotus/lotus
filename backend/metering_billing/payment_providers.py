@@ -1,5 +1,6 @@
 import abc
 import datetime
+import logging
 from decimal import Decimal
 from re import S
 from typing import Union
@@ -24,6 +25,7 @@ from metering_billing.utils.enums import (
 from rest_framework import serializers, status
 from rest_framework.response import Response
 
+logger = logging.getLogger("django.server")
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
 VITE_STRIPE_CLIENT = settings.VITE_STRIPE_CLIENT
@@ -229,7 +231,7 @@ class StripeConnector(PaymentProvider):
                     customer = Customer.objects.create(**customer_kwargs)
                     num_cust_added += 1
         except Exception as e:
-            print("Ran into exception:", e)
+            logger.error("Ran into exception:", e)
 
         return num_cust_added
 

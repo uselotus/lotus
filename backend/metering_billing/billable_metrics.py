@@ -1,5 +1,6 @@
 import abc
 import datetime
+import logging
 from datetime import timedelta
 from typing import Optional
 
@@ -42,6 +43,8 @@ from metering_billing.utils.enums import (
     NUMERIC_FILTER_OPERATORS,
     USAGE_CALC_GRANULARITY,
 )
+
+logger = logging.getLogger("django.server")
 
 Metric = apps.get_app_config("metering_billing").get_model(model_name="Metric")
 Customer = apps.get_app_config("metering_billing").get_model(model_name="Customer")
@@ -506,18 +509,20 @@ class CounterHandler(MetricHandler):
                 )
         else:
             if property_name is not None:
-                print(
+                logger.info(
                     "[METRIC TYPE: COUNTER] Property name specified but not needed for COUNT aggregation"
                 )
                 data.pop("property_name", None)
         if granularity:
-            print("[METRIC TYPE: COUNTER] Granularity type not allowed. Making null.")
+            logger.info(
+                "[METRIC TYPE: COUNTER] Granularity type not allowed. Making null."
+            )
             data.pop("granularity", None)
         if event_type:
-            print("[METRIC TYPE: COUNTER] Event type not allowed. Making null.")
+            logger.info("[METRIC TYPE: COUNTER] Event type not allowed. Making null.")
             data.pop("event_type", None)
         if bill_agg_type:
-            print(
+            logger.info(
                 "[METRIC TYPE: COUNTER] Billable aggregation type not allowed. Making null."
             )
             data.pop("billable_aggregation_type", None)
@@ -590,7 +595,7 @@ class StatefulHandler(MetricHandler):
                 "[METRIC TYPE: CONTINUOUS] Must specify granularity"
             )
         if bill_agg_type:
-            print(
+            logger.info(
                 "[METRIC TYPE: CONTINUOUS] Billable aggregation type not allowed. Making null."
             )
             data.pop("billable_aggregation_type", None)
@@ -1093,14 +1098,14 @@ class RateHandler(MetricHandler):
                 )
         else:
             if property_name is not None:
-                print(
+                logger.info(
                     "[METRIC TYPE: RATE] Property name specified but not needed for COUNT aggregation"
                 )
                 data.pop("property_name", None)
         if not granularity:
             raise MetricValidationFailed("[METRIC TYPE: RATE] Must specify granularity")
         if event_type:
-            print("[METRIC TYPE: RATE] Event type not allowed. Making null.")
+            logger.info("[METRIC TYPE: RATE] Event type not allowed. Making null.")
             data.pop("event_type", None)
         return data
 

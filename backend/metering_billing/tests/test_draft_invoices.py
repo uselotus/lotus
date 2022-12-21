@@ -140,7 +140,6 @@ class TestGenerateInvoice:
         ).count()
         payload = {"customer_id": setup_dict["customer"].customer_id}
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         after_active_subscriptions = Subscription.objects.active().filter(
             organization=setup_dict["org"],
@@ -169,7 +168,6 @@ class TestGenerateInvoice:
             "include_next_period": False,
         }
         response = setup_dict["client"].get(reverse("draft_invoice"), payload)
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         before_cost = response.data["invoices"][0]["cost_due"]
         pct_price_adjustment = PriceAdjustment.objects.create(

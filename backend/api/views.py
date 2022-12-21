@@ -92,6 +92,10 @@ from svix.api import MessageIn, Svix
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
+import logging
+
+logger = logging.getLogger("django.server")
+
 
 class PermissionPolicyMixin:
     def check_permissions(self, request):
@@ -1095,7 +1099,7 @@ class ConfirmIdemsReceivedView(APIView):
         )
 
 
-logger = logging.getLogger("app_api")  # from LOGGING.loggers in settings.py
+logger = logging.getLogger("django.server")
 kafka_producer = Producer()
 
 
@@ -1108,7 +1112,7 @@ def load_event(request: HttpRequest) -> Union[None, Dict]:
             event_data = json.loads(request.body)
             return event_data
         except json.JSONDecodeError as e:
-            print(e)
+            logger.error(e)
             # if not, it's probably base64 encoded from other libraries
             event_data = json.loads(
                 base64.b64decode(request + "===")

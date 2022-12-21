@@ -383,7 +383,6 @@ class DemoRegisterView(LoginViewMixin, APIView):
             properties={"organization": user.organization.company_name},
         )
         end = time.time()
-        print(f"Demo register took {end - start} seconds")
         return Response(
             {
                 "detail": "Successfully registered.",

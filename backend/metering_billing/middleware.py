@@ -1,9 +1,13 @@
+import logging
+
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from metering_billing.models import APIToken, Organization
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.utils import now_utc
 from rest_framework.authentication import BaseAuthentication
+
+logger = logging.getLogger("django.server")
 
 
 class OrganizationInsertMiddleware:
@@ -37,6 +41,7 @@ class OrganizationInsertMiddleware:
                         organization = None
                 else:
                     organization = Organization.objects.get(pk=organization_pk)
+        logger.info(f"OrganizationInsertMiddleware: {organization}, {request.user}")
         request.organization = organization
         # Code to be executed for each request before
         # the view (and later middleware) are called.

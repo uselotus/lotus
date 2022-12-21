@@ -33,6 +33,8 @@ from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
 from svix.api import EventTypeIn, Svix, SvixAsync, SvixOptions
 
+logger = logging.getLogger("django.server")
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 try:
@@ -52,7 +54,7 @@ PROFILER_ENABLED = config("PROFILER_ENABLED", default=False, cast=bool)
 SECRET_KEY = config("SECRET_KEY", default="")
 if SECRET_KEY == "":
     SECRET_KEY = os.urandom(32)
-    print("SECRET_KEY not set. Defaulting to a random one.")
+    logger.info("SECRET_KEY not set. Defaulting to a random one.")
 POSTGRES_DB = config("POSTGRES_DB", default="lotus")
 POSTGRES_USER = config("POSTGRES_USER", default="lotus")
 POSTGRES_PASSWORD = config("POSTGRES_PASSWORD", default="lotus")
@@ -257,7 +259,7 @@ def value_deserializer(value):
     try:
         return loads(value.decode("utf-8"))
     except Exception as e:
-        print(e)
+        logger.error("Value deserialization error:", e)
         return None
 
 
@@ -265,7 +267,7 @@ def key_deserializer(key):
     try:
         return key.decode("utf-8")
     except Exception as e:
-        print(e)
+        logger.error("Key deserialization error:", e)
         return None
 
 
@@ -397,16 +399,33 @@ USE_TZ = True
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": (
+                "%(asctime)s [%(process)d] [%(levelname)s] "
+                + "pathname=%(pathname)s lineno=%(lineno)s "
+                + "funcname=%(funcName)s %(message)s"
+            ),
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "simple": {"format": "%(levelname)s %(message)s"},
+    },
     "handlers": {
+        "null": {
+            "level": "DEBUG",
+            "class": "logging.NullHandler",
+        },
         "console": {
+            "level": "DEBUG",
             "class": "logging.StreamHandler",
+            "formatter": "verbose",
         },
     },
     "loggers": {
-        "app_api": {
+        "django.server": {
             "handlers": ["console"],
             "level": "INFO",
-        },
+        }
     },
 }
 
@@ -423,7 +442,7 @@ if DOCKERIZED:
         _, _, ips = socket.gethostbyname_ex("frontend")
         INTERNAL_IPS.extend(ips)
     except socket.gaierror:
-        print(
+        logger.error(
             "tried to get frontend container ip but failed, current internal ips:",
             INTERNAL_IPS,
         )

@@ -10,6 +10,9 @@ load_dotenv()
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
+        import logging
+
+        logger = logging.getLogger("django.server")
 
         username = os.getenv("ADMIN_USERNAME")
         email = os.getenv("ADMIN_EMAIL")
@@ -25,7 +28,7 @@ class Command(BaseCommand):
             admin.save()
 
         else:
-            print("Admin account has already been initialized.")
+            logger.info("Admin account has already been initialized.")
 
         for org in Organization.objects.all():
             org.provision_currencies()

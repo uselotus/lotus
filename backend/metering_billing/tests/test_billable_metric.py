@@ -1318,7 +1318,6 @@ class TestCalculateMetricProrationForStateful:
             time_created + relativedelta(days=2) + relativedelta(hour=0, minute=i)
             for i in range(6)
         ]
-        print(event_times)
         properties = (
             3 * [{"number": 8}]  # 55-56, 56-57, 57-58 at 8
             + 2 * [{"number": 9}]  # 58-59, 59-60 at 9
