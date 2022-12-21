@@ -15,9 +15,13 @@ class OrganizationInsertMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        logger.info(
-            f"OrganizationInsertMiddleware BEFORE: {request.user}, {request.user.organization}, {request.user.is_authenticated}"
-        )
+        st = f"OrganizationInsertMiddleware BEFORE: {request.user}, {request.user.is_authenticated}"
+        if request.user.is_authenticated:
+            try:
+                st += f", {request.user.organization}"
+            except:
+                pass
+        logger.info()
         if request.user.is_authenticated:
             organization = request.user.organization
         else:
