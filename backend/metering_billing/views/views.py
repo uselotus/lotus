@@ -1,4 +1,5 @@
 import datetime
+import logging
 from decimal import Decimal
 
 import posthog
@@ -39,6 +40,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+logger = logging.getLogger("django.server")
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 
 
@@ -417,6 +419,7 @@ class CustomersSummaryView(APIView):
         Get the current settings for the organization.
         """
         organization = request.organization
+        logger.info(f"CustomersSummaryView: {organization}, {request.user}")
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",

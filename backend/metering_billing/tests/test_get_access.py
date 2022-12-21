@@ -370,7 +370,6 @@ class TestGetAccessWithMetricID:
             "metric_id": setup_dict["allow_limit_metrics"][0].metric_id,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
-        print(response.json())
         assert response.status_code == status.HTTP_200_OK
         response = response.json()
         assert len(response) == 1

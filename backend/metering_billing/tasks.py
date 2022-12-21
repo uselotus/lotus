@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import datetime
+import logging
 from datetime import timezone
 from decimal import Decimal, InvalidOperation
 
@@ -43,6 +44,7 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
 )
 
+logger = logging.getLogger("django.server")
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 EVENT_CACHE_FLUSH_SECONDS = settings.EVENT_CACHE_FLUSH_SECONDS
 POSTHOG_PERSON = settings.POSTHOG_PERSON
@@ -85,9 +87,10 @@ def calculate_invoice():
             )
             now = now_utc()
         except Exception as e:
-            print(e)
-            print(
-                "Error generating invoice for subscription {}".format(old_subscription)
+            logger.error(
+                "Error generating invoice for subscription {}. Error was {}".format(
+                    old_subscription, e
+                )
             )
             continue
         num_subscription_records_active = SubscriptionRecord.objects.filter(
@@ -161,7 +164,7 @@ def run_backtest(backtest_id):
         all_results = {
             "substitution_results": [],
         }
-        print(
+        logger.info(
             "Running backtest for {} substitutions".format(len(backtest_substitutions))
         )
         for subst in backtest_substitutions:
@@ -411,8 +414,7 @@ def run_backtest(backtest_id):
         try:
             serializer.is_valid(raise_exception=True)
         except:
-            print("errors", serializer.errors)
-            print("all results", all_results)
+            logger.error("errors", serializer.errors, "all results", all_results)
             raise Exception
         results = make_all_dates_times_strings(serializer.validated_data)
         backtest.backtest_results = results

@@ -1279,7 +1279,6 @@ class TestRegressions:
             data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.json())
 
         after_subscriptions_len = Subscription.objects.all().count()
         after_subscription_records_len = SubscriptionRecord.objects.all().count()
@@ -1299,13 +1298,11 @@ class TestRegressions:
             "customer_id": setup_dict["customer"].customer_id,
         }
         response = setup_dict["client"].get(reverse("subscription-list"), payload)
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         payload = {
             "customer_id": "1234567890fcfghjkldscfvgbhjo",
         }
         response = setup_dict["client"].get(reverse("subscription-list"), payload)
-        print(response.data)
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_patch_subscription_cant_find_customer(

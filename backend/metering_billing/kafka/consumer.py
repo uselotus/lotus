@@ -1,3 +1,4 @@
+import logging
 import os
 from dataclasses import dataclass
 
@@ -15,6 +16,8 @@ POSTHOG_PERSON = settings.POSTHOG_PERSON
 KAFKA_HOST = settings.KAFKA_HOST
 KAFKA_EVENTS_TOPIC = settings.KAFKA_EVENTS_TOPIC
 CONSUMER = settings.CONSUMER
+
+logger = logging.getLogger("django.server")
 
 
 @dataclass
@@ -39,7 +42,7 @@ class Consumer(metaclass=Singleton):
             for msg in self.__connection:
                 if msg is None or msg.value is None or msg.key is None:
                     continue
-                print(f"Consumed record. key={msg.key}, value={msg.value}")
+                logger.info(f"Consumed record. key={msg.key}, value={msg.value}")
                 try:
                     write_batch_events_to_db(
                         msg.value["events"], msg.value["organization_id"]
@@ -47,7 +50,7 @@ class Consumer(metaclass=Singleton):
                 except:
                     continue
         except:
-            print(f"Could not consume from topic: {self.topic}")
+            logger.info(f"Could not consume from topic: {self.topic}")
             raise
 
 
