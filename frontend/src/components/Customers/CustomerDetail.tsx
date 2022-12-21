@@ -47,7 +47,7 @@ function CustomerDetail(props: {
     DetailPlan[]
   >([]);
 
-  const { data, isLoading }: UseQueryResult<CustomerType> =
+  const { data, isLoading, refetch }: UseQueryResult<CustomerType> =
     useQuery<CustomerType>(
       ["customer_detail", props.customer_id],
       () =>
@@ -58,7 +58,7 @@ function CustomerDetail(props: {
         enabled: props.visible,
       }
     );
-
+  console.log(data);
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
     useQuery<CustomerCostType>(
       ["customer_cost_analysis", props.customer_id, startDate, endDate],
@@ -83,7 +83,7 @@ function CustomerDetail(props: {
           "balance_adjustments",
           props.customer_id,
         ]);
-        queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        refetch();
         toast.success("Subscription created successfully");
       },
     }
@@ -101,7 +101,7 @@ function CustomerDetail(props: {
           "balance_adjustments",
           props.customer_id,
         ]);
-        queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        refetch();
         toast.success("Subscription cancelled successfully");
       },
     }
@@ -117,7 +117,7 @@ function CustomerDetail(props: {
           "balance_adjustments",
           props.customer_id,
         ]);
-        queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        refetch();
         toast.success("Subscription switched successfully");
       },
     }
@@ -129,7 +129,7 @@ function CustomerDetail(props: {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(["customer_list"]);
-        queryClient.invalidateQueries(["customer_detail", props.customer_id]);
+        refetch();
         toast.success("Subscription auto renew turned off");
       },
     }
@@ -200,7 +200,7 @@ function CustomerDetail(props: {
             <div className="flex flex-row items-center">
               <div className="plansDetailLabel">ID:&nbsp; </div>
               <div className="plansDetailValue font-menlo">
-                  <CopyText showIcon textToCopy={data?.customer_id}/>
+                <CopyText showIcon textToCopy={data ? data.customer_id : ""} />
               </div>
             </div>
           </div>

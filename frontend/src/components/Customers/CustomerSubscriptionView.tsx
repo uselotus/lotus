@@ -82,16 +82,6 @@ const SubscriptionView: FC<Props> = ({
   const [planList, setPlanList] =
     useState<{ label: string; value: string }[]>();
 
-  const [subscriptionPlans, setSubscriptionPlans] = useState<
-    SubscriptionType[]
-  >(subscriptions || []);
-
-  useEffect(() => {
-    if (subscriptions.length > 0) {
-      setSubscriptionPlans(subscriptions);
-    }
-  }, [subscriptions]);
-
   const selectPlan = (plan_id: string) => {
     setSelectedPlan(plan_id);
   };
@@ -219,7 +209,7 @@ const SubscriptionView: FC<Props> = ({
         subscription_filters: subscription_filters,
       },
       {
-        replace_plan_id: selectedOptions[0].value,
+        replace_plan_id: selectedOptions[0].value as string,
       }
     );
   };
@@ -253,7 +243,7 @@ const SubscriptionView: FC<Props> = ({
     }
     form.resetFields();
   };
-  if (subscriptionPlans.length === 0) {
+  if (subscriptions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center">
         <h2 className="mb-2 pb-4 pt-4 font-bold text-main">No Subscription</h2>
@@ -291,7 +281,7 @@ const SubscriptionView: FC<Props> = ({
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Active Plans</h2>
       <div className="flex flex-col justify-center">
         <List>
-          {subscriptionPlans.map((subPlan) => (
+          {subscriptions.map((subPlan) => (
             <Fragment key={subPlan.billing_plan.plan_id}>
               <List.Item>
                 <Card className=" bg-grey3 w-full">
