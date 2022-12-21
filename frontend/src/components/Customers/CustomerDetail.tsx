@@ -101,7 +101,7 @@ function CustomerDetail(props: {
           "balance_adjustments",
           props.customer_id,
         ]);
-        refetch({ queryKey: ["customer_detail", props.customer_id] });
+        refetch();
         toast.success("Subscription cancelled successfully");
       },
     }
