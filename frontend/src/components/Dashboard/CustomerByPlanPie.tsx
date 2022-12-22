@@ -24,6 +24,7 @@ export const CustomerByPlanPie = (props: any) => {
     data: data?.results,
     angleField: "num_customers",
     colorField: "plan_name",
+    color: ["#33658A", "#547AA5", "#C3986B", "#D9D9D9", "#171412"],
     radius: 1,
     innerRadius: 0.6,
     label: {

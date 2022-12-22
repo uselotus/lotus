@@ -29,7 +29,7 @@ const IntegrationsTab: FC = () => {
   return (
     <div>
       <Typography.Title level={2}>Integrations</Typography.Title>
-      <Row gutter={[24, 24]}>
+      <Row gutter={[24, 24]} className="flex items-stretch">
         {data &&
           data !== undefined &&
           data.map((item, index) => {
@@ -50,6 +50,15 @@ const IntegrationsTab: FC = () => {
               </Col>
             );
           })}
+        <Col span={6} className="h-full">
+          <AppCard
+            connected={true}
+            title="Snowflake"
+            description="Sync your data to your Snowflake warehouse"
+            icon={integrationsMap["snowflake"].icon}
+            handleClick={() => navigate("/settings/integrations/snowflake")}
+          />
+        </Col>
       </Row>
       <Divider />
     </div>

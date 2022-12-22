@@ -38,6 +38,8 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
     angleField: "new_plan_revenue",
     colorField: "metric_name",
     radius: 1,
+    color: ["#33658A", "#547AA5", "#C3986B", "#D9D9D9", "#171412"],
+
     innerRadius: 0.5,
     label: {
       type: "inner",
@@ -75,6 +77,8 @@ const BacktestSubstitution: FC<Props> = ({ substitution }) => {
     data: substitution.results.revenue_by_metric,
     angleField: "original_plan_revenue",
     colorField: "metric_name",
+    color: ["#33658A", "#547AA5", "#C3986B", "#D9D9D9", "#171412"],
+
     radius: 1,
     innerRadius: 0.5,
     label: {
