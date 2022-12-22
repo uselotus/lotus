@@ -26,4 +26,9 @@ export const integrationsMap = {
     description:
       "Charge and invoice your customers through your Stripe account",
   },
+  snowflake: {
+    name: "Snowflake",
+    icon: "https://i.imgur.com/iNCQmMu.png",
+    description: "Sync data to your Snowflake warehouse",
+  },
 };

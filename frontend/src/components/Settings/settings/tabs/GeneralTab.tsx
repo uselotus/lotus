@@ -140,7 +140,12 @@ const GeneralTab: FC = () => {
 
   return (
     <div>
-      <Typography.Title level={2}>Organization Settings</Typography.Title>
+      <div className="flex justify-between w-6/12">
+        <Typography.Title level={2}>Organization Settings</Typography.Title>
+        <Button onClick={() => setIsEdit(true)} className="justify-self-end">
+          Edit
+        </Button>
+      </div>
 
       <Divider />
 
@@ -167,15 +172,19 @@ const GeneralTab: FC = () => {
               "N/A"
             )}
           </p>
+          <p className="text-[16px] space-y-2">
+            <b>Billing address:</b> <p>1292 Lane Place</p>
+            <p>Cambridge MA</p>
+            <p>USA 92342</p>
+          </p>
+          <p className="text-[16px]">
+            <b>Invoice Grace Period:</b> 15 days
+          </p>
+          <p className="text-[16px]">
+            <b>Organization Tax Rate:</b> 0%
+          </p>
 
-          <div className="">
-            <Button
-              onClick={() => setIsEdit(true)}
-              className="justify-self-end"
-            >
-              Edit
-            </Button>
-          </div>
+          <div className=" flex justify-end"></div>
         </div>
       )}
       <Modal
@@ -223,6 +232,9 @@ const GeneralTab: FC = () => {
                   return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
                 })}
               />
+            </Form.Item>
+            <Form.Item label="Billing Address" name="billing_address">
+              <Input disabled={true} />
             </Form.Item>
           </Form>
         </div>
