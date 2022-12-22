@@ -46,7 +46,10 @@ module.exports = {
     },
     colors: {
       // custom color palette
-      // gray, zinc, stone, slate all from tailwind
+      // gray, zinc, stone, slate
+      // stone, red, orange, yellow, emerald
+      // teal, blue, indigo, purple
+      // all from tailwind
       black: "#000000",
       white: "#FFF",
       gold: "#C3986B",
@@ -70,6 +73,16 @@ module.exports = {
       "gold-700": "#404040",
       "gold-800": "#262626",
       "gold-900": "#171717",
+      "neutral-50": "#fafafa",
+      "neutral-100": "#f5f5f5",
+      "neutral-200": "#e5e5e5",
+      "neutral-300": "#d4d4d4",
+      "neutral-400": "#a3a3a3",
+      "neutral-500": "#737373",
+      "neutral-600": "#525252",
+      "neutral-700": "#404040",
+      "neutral-800": "#262626",
+      "neutral-900": "#171717",
       primary: "#441151",
       darkgold: "#C3986B",
       secondary: "#EE85B5",
