@@ -2,11 +2,47 @@
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
-     extend: {
+    extend: {
       fontFamily: {
         // add new font family
         main: ["Inter", "sans-serif"],
       },
+    },
+    screens: {
+      sm: "640px",
+      md: "768px",
+      xl: "1280px",
+    },
+    spacing: {
+      2: "4px",
+      4: "8px",
+      6: "12px",
+      8: "16px",
+      10: "20px",
+      12: "24px",
+      14: "28px",
+      16: "32px",
+      18: "36px",
+      20: "40px",
+      22: "44px",
+      24: "48px",
+      28: "56px",
+      32: "64px",
+      40: "80px",
+      48: "96px",
+      56: "112px",
+      64: "128px",
+      72: "144px",
+      80: "160px",
+      88: "176px",
+      96: "192px",
+      104: "208px",
+      112: "224px",
+      120: "240px",
+      128: "256px",
+      144: "288px",
+      160: "320px",
+      192: "384px",
     },
     colors: {
       // custom color palette
