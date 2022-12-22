@@ -11,6 +11,9 @@ import Cookies from "universal-cookie";
 import posthog from "posthog-js";
 import { QueryErrors } from "../types/error-response-types";
 import useGlobalStore from "../stores/useGlobalstore";
+import Tooltip from "../components/base/Tooltip/Tooltip";
+import Avatar from "../components/base/Avatar/Avatar";
+import Dropdown from "../components/base/Dropdown/Dropdown";
 
 const cookies = new Cookies();
 
@@ -105,6 +108,19 @@ const Login: FC = () => {
               {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
               <Form onFinish={handleLogin} name="normal_login">
                 <Form.Item>
+                  <div className="relative inline-block -mt-8">
+                    <Dropdown>
+                      <Dropdown.Trigger>
+                        <Avatar src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=256&q=80" />
+                      </Dropdown.Trigger>
+                      <Dropdown.Container>
+                        <Dropdown.MenuItem>About</Dropdown.MenuItem>
+                        <Dropdown.MenuItem>Profile</Dropdown.MenuItem>
+                      </Dropdown.Container>
+                    </Dropdown>
+                  </div>
+                </Form.Item>
+                <Form.Item>
                   <label htmlFor="username">Username or Email</label>
                   <Input
                     type="text"
@@ -129,7 +145,12 @@ const Login: FC = () => {
                   </div>
                 </Form.Item>
                 <Form.Item>
-                  <Button htmlType="submit">Login</Button>
+                  <Tooltip>
+                    <Button htmlType="submit">Login</Button>
+                    <Tooltip.Top className="!bg-black !text-white">
+                      A demo of a tooltip component in Tailwind.
+                    </Tooltip.Top>
+                  </Tooltip>
                 </Form.Item>
                 <Link
                   to="/reset-password"
