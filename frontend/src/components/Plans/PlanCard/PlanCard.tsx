@@ -66,7 +66,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
     <div
       className="min-h-[200px]  w-[246px] p-8 cursor-pointer font-main rounded-sm bg-[#f9f9f9]"
       onClick={(e) => {
-        if (e.target.nodeName === "DIV") gotoPlanDetail();
+        if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
       }}
     >
       <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
