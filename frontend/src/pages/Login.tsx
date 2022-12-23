@@ -14,6 +14,7 @@ import useGlobalStore from "../stores/useGlobalstore";
 import Tooltip from "../components/base/Tooltip/Tooltip";
 import Avatar from "../components/base/Avatar/Avatar";
 import Dropdown from "../components/base/Dropdown/Dropdown";
+import Badge from "../components/base/Badges/Badges";
 
 const cookies = new Cookies();
 
@@ -107,6 +108,15 @@ const Login: FC = () => {
             >
               {/* <img src="../assets/images/logo_large.jpg" alt="logo" /> */}
               <Form onFinish={handleLogin} name="normal_login">
+                <Form.Item className="flex gap-2 justify-center items-center align-middle">
+                  <Badge>
+                    <Badge.Dot />
+                    <Badge.Content>Green badge with dot</Badge.Content>
+                  </Badge>
+                  <Badge className="bg-indigo-100 text-indigo-400">
+                    <Badge.Content>Green badge with classname</Badge.Content>
+                  </Badge>
+                </Form.Item>
                 <Form.Item>
                   <div className="relative inline-block -mt-8">
                     <Dropdown>
