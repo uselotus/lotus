@@ -86,7 +86,7 @@ const ViewPlans: FC = () => {
   }, []);
 
   return (
-    <div>
+    <div className="bg-white">
       <PageLayout
         title="Plans"
         extra={[
@@ -96,7 +96,7 @@ const ViewPlans: FC = () => {
             size="large"
             key="create-plan"
           >
-            <div className="flex items-center justify-between text-white">
+            <div className="flex items-center bg-white justify-between text-white">
               <div>Create new Plan</div>
               <ArrowRightOutlined className="pl-2" />
             </div>
@@ -105,7 +105,7 @@ const ViewPlans: FC = () => {
       >
         <Tabs defaultActiveKey="0" size="large">
           <Tabs.TabPane tab="All" key="0">
-            <div className=" flex flex-col space-y-6 ">
+            <div className=" flex flex-col  space-y-6 ">
               <Row gutter={[24, 32]}>
                 {allPlans?.map((item, key) => (
                   <Col span={8} key={key}>

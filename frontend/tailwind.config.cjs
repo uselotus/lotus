@@ -65,6 +65,9 @@ module.exports = {
         dark: "#2E3A44",
         info: "#1CA7EC",
         light: "#F9FBFC",
+        card: {
+          bg: "#F9F9F9",
+        },
       },
       fontFamily: {
         // add new font family
