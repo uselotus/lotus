@@ -105,82 +105,70 @@ const ViewPlans: FC = () => {
       >
         <Tabs defaultActiveKey="0" size="large">
           <Tabs.TabPane tab="All" key="0">
-            <div className=" flex flex-col  space-y-6 ">
-              <Row gutter={[24, 32]}>
-                {allPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
-              {allCustom?.length > 0 && <h2>Custom Plans</h2>}
+            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+              {allPlans?.map((item, key) => (
+                <PlanCard plan={item} key={key} />
+              ))}
 
-              <Row gutter={[24, 32]}>
-                {allCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
+              <div>
+                {allCustom?.length > 0 && <h2>Custom Plans</h2>}
+
+                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                  {allCustom?.map((item, key) => (
+                    <PlanCard plan={item} key={key} />
+                  ))}
+                </div>
+              </div>
             </div>
           </Tabs.TabPane>
 
           <Tabs.TabPane tab="Monthly" key="1">
-            <div className=" flex flex-col space-y-6 ">
-              <Row gutter={[24, 32]}>
-                {monthlyPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
-              {monthlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+              {monthlyPlans?.map((item, key) => (
+                <PlanCard plan={item} key={key} />
+              ))}
 
-              <Row gutter={[24, 32]}>
-                {monthlyCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
+              <div>
+                {monthlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+
+                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                  {monthlyCustom?.map((item, key) => (
+                    <PlanCard plan={item} key={key} />
+                  ))}
+                </div>
+              </div>
             </div>
           </Tabs.TabPane>
           <Tabs.TabPane tab="Quarterly" key="2">
-            <div className=" flex flex-col space-y-6 ">
-              <Row gutter={[24, 32]}>
-                {quarterlyPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
-              {quarterlyCustom?.length > 0 && <h2>Custom Plans</h2>}
-              <Row gutter={[24, 32]}>
-                {quarterlyCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
+            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+              {quarterlyPlans?.map((item, key) => (
+                <PlanCard plan={item} key={key} />
+              ))}
+
+              <div>
+                {quarterlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                  {quarterlyCustom?.map((item, key) => (
+                    <PlanCard plan={item} key={key} />
+                  ))}
+                </div>
+              </div>
             </div>
           </Tabs.TabPane>
           <Tabs.TabPane tab="Yearly" key="3">
-            <div className=" flex flex-col space-y-6 ">
-              <Row gutter={[24, 32]}>
-                {yearlyPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
-              {yearlyCustom?.length > 0 && <h2>Custom Plans</h2>}
-              <Row gutter={[24, 32]}>
-                {yearlyCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
-                ))}
-              </Row>
+            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+              {yearlyPlans?.map((item, key) => (
+                <PlanCard plan={item} key={key} />
+              ))}
+
+              <div>
+                {yearlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                  {yearlyCustom?.map((item, key) => (
+                    <PlanCard plan={item} key={key} />
+                  ))}
+                </div>
+              </div>
             </div>
           </Tabs.TabPane>
         </Tabs>
