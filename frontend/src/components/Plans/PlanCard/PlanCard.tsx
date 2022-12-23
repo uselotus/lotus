@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC } from "react";
+import React, { FC, useEffect } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
 import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
@@ -9,15 +9,37 @@ import { Plan } from "../../../api/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyText from "../../base/CopytoClipboard";
+import DropdownComponent from "../../base/Dropdown/Dropdown";
 import createShortenedText from "./createShortenedText";
 import capitalize from "./capitalize";
+import PlansTags from "./PlanTags";
+import Badge from "../../base/Badges/Badges";
 interface PlanCardProps {
   plan: PlanType;
 }
+export const tagList = [
+  { color: "#065F46", hex: "#065F46", text: "Documentation" },
+  {
+    color: "text-emerald",
+    hex: "#A7F3D0",
+    text: "API Calls",
+  },
+  {
+    color: "text-indigo-600",
+    hex: "#4F46E5",
+    text: "Metrics",
+  },
+  {
+    color: "text-orange-400",
+    hex: "#FB923C",
+    text: "Words",
+  },
+];
 
 const PlanCard: FC<PlanCardProps> = ({ plan }) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [userTags, setUserTags] = React.useState<typeof tagList>([]);
 
   const mutation = useMutation(
     (plan_id: string) =>
@@ -64,18 +86,18 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
 
   return (
     <div
-      className="min-h-[200px]  w-[246px] p-8 cursor-pointer font-main rounded-sm bg-[#f9f9f9]"
+      className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-[#f9f9f9]"
       onClick={(e) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
       }}
     >
-      <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
+      {/* <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
         <Dropdown overlay={planMenu} trigger={["click"]}>
           <Button type="text" size="small" onClick={(e) => e.preventDefault()}>
             <MoreOutlined />
           </Button>
         </Dropdown>
-      </div>
+      </div> */}
       <Typography.Title className="pt-4 whitespace-pre-wrap" level={3}>
         {plan.target_customer !== null
           ? plan.plan_name + ": " + customerNameOrID(plan.target_customer)
@@ -124,6 +146,35 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
             Plan duration:
           </div>
           <div> {capitalize(plan.plan_duration)}</div>
+        </div>
+        <div className="flex mt-2">
+          {/* <DropdownComponent>
+            <DropdownComponent.Trigger>
+              <PlansTags userTags={userTags} />
+            </DropdownComponent.Trigger>
+            <DropdownComponent.Container>
+              {tagList.map((tag, index) => (
+                <DropdownComponent.MenuItem
+                  onSelect={() => {
+                    const tags = [...userTags];
+                    tags.push(tag);
+                    setUserTags(tags);
+                  }}
+                >
+                  <span key={index} className="flex gap-2 ">
+                    <svg
+                      className={["-ml-1 mr-1.5 h-4 w-4", tag.color].join(" ")}
+                      fill={tag.hex}
+                      viewBox="0 0 8 8"
+                    >
+                      <circle cx="4" cy="4" r="3" />
+                    </svg>
+                    <span className="text-black">{tag.text}</span>
+                  </span>
+                </DropdownComponent.MenuItem>
+              ))}
+            </DropdownComponent.Container>
+          </DropdownComponent> */}
         </div>
       </div>
     </div>

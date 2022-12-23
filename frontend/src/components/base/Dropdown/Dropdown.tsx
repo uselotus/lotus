@@ -1,24 +1,30 @@
-import React, { PropsWithChildren } from "react";
+import React, { PropsWithChildren, useEffect } from "react";
+type TSelected = React.ReactNode | string;
 interface DropdownProps {
   className?: string;
+  onSelect?: (isOpen: boolean, selected: TSelected) => void;
 }
 interface DropdownContextState {
   isOpen: boolean;
   openHandler: VoidFunction;
-  closeHandler: (selected: string) => void;
+  selected: React.ReactNode | string;
+  closeHandler: (selected: TSelected) => void;
 }
 const DropdownContext = React.createContext({} as DropdownContextState);
 
 const Dropdown = ({ children }: PropsWithChildren<DropdownProps>) => {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [selected, setSelected] = React.useState("");
+  const [selected, setSelected] = React.useState<TSelected>("");
   const openHandler = React.useCallback(() => setIsOpen(true), []);
-  const closeHandler = React.useCallback((selected: string) => {
-    setSelected(selected);
-    setIsOpen(false);
-  }, []);
+  const closeHandler = React.useCallback(
+    (selected: React.ReactNode | string) => {
+      setSelected(selected);
+      setIsOpen(false);
+    },
+    []
+  );
   const value = React.useMemo(
-    () => ({ isOpen, openHandler, closeHandler }),
+    () => ({ isOpen, openHandler, closeHandler, selected }),
     [isOpen]
   );
   return (
@@ -45,7 +51,7 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
   const { isOpen } = useDropdownContext();
   return (
     <>
-      {!isOpen && (
+      {isOpen && (
         <div
           className={
             !className
@@ -72,8 +78,10 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
 const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
   children,
   className,
+  onSelect,
 }) => {
-  const { closeHandler } = useDropdownContext();
+  const { closeHandler, isOpen, selected } = useDropdownContext();
+
   return (
     <a
       href="#"
@@ -84,7 +92,11 @@ const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
       }
       role="menuitem"
       tabIndex={-1}
-      onClick={() => closeHandler(children as string)}
+      onClick={(e) => {
+        e.preventDefault();
+        onSelect!(isOpen, selected);
+        closeHandler(children);
+      }}
     >
       {children}
     </a>

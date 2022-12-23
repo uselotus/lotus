@@ -96,7 +96,7 @@ const ViewPlans: FC = () => {
             size="large"
             key="create-plan"
           >
-            <div className="flex items-center bg-white justify-between text-white">
+            <div className="flex items-center  justify-between text-white">
               <div>Create new Plan</div>
               <ArrowRightOutlined className="pl-2" />
             </div>
@@ -105,7 +105,7 @@ const ViewPlans: FC = () => {
       >
         <Tabs defaultActiveKey="0" size="large">
           <Tabs.TabPane tab="All" key="0">
-            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+            <div className="grid gap-4  grid-cols-1 md:grid-cols-3">
               {allPlans?.map((item, key) => (
                 <PlanCard plan={item} key={key} />
               ))}
@@ -113,7 +113,7 @@ const ViewPlans: FC = () => {
               <div>
                 {allCustom?.length > 0 && <h2>Custom Plans</h2>}
 
-                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                   {allCustom?.map((item, key) => (
                     <PlanCard plan={item} key={key} />
                   ))}
@@ -123,7 +123,7 @@ const ViewPlans: FC = () => {
           </Tabs.TabPane>
 
           <Tabs.TabPane tab="Monthly" key="1">
-            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
               {monthlyPlans?.map((item, key) => (
                 <PlanCard plan={item} key={key} />
               ))}
@@ -131,7 +131,7 @@ const ViewPlans: FC = () => {
               <div>
                 {monthlyCustom?.length > 0 && <h2>Custom Plans</h2>}
 
-                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                   {monthlyCustom?.map((item, key) => (
                     <PlanCard plan={item} key={key} />
                   ))}
@@ -140,14 +140,14 @@ const ViewPlans: FC = () => {
             </div>
           </Tabs.TabPane>
           <Tabs.TabPane tab="Quarterly" key="2">
-            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
               {quarterlyPlans?.map((item, key) => (
                 <PlanCard plan={item} key={key} />
               ))}
 
               <div>
                 {quarterlyCustom?.length > 0 && <h2>Custom Plans</h2>}
-                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                   {quarterlyCustom?.map((item, key) => (
                     <PlanCard plan={item} key={key} />
                   ))}
@@ -156,14 +156,14 @@ const ViewPlans: FC = () => {
             </div>
           </Tabs.TabPane>
           <Tabs.TabPane tab="Yearly" key="3">
-            <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
               {yearlyPlans?.map((item, key) => (
                 <PlanCard plan={item} key={key} />
               ))}
 
               <div>
                 {yearlyCustom?.length > 0 && <h2>Custom Plans</h2>}
-                <div className="grid gap-y-4 gap-x-2 grid-cols-1 md:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                   {yearlyCustom?.map((item, key) => (
                     <PlanCard plan={item} key={key} />
                   ))}

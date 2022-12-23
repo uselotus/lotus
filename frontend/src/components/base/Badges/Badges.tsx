@@ -1,14 +1,20 @@
 import React, { PropsWithChildren } from "react";
 interface BadgeProps {
   className?: string;
+  style?: React.CSSProperties;
 }
-const Badge = ({ className, children }: PropsWithChildren<BadgeProps>) => (
+const Badge = ({
+  className,
+  children,
+  style,
+}: PropsWithChildren<BadgeProps>) => (
   <span
+    style={style}
     className={
       !className
         ? "inline-flex items-center rounded-full bg-emerald-100 px-4 py-1 text-sm font-medium text-emerald-800"
         : [
-            "inline-flex items-center rounded-full bg-emerald-100 px-4 py-1 text-sm font-medium text-emerald-800",
+            "inline-flex items-center rounded-full  px-4 py-1 text-sm font-medium",
             className,
           ].join(" ")
     }
@@ -16,12 +22,13 @@ const Badge = ({ className, children }: PropsWithChildren<BadgeProps>) => (
     {children}
   </span>
 );
-const BadgeDot = ({ className }: PropsWithChildren<BadgeProps>) => (
+const BadgeDot = ({ className, style }: PropsWithChildren<BadgeProps>) => (
   <svg
+    style={style}
     className={
       !className
-        ? "-ml-1 mr-1.5 h-2 w-2 text-emerald-400"
-        : ["-ml-1 mr-2 h-4 w-4 text-emerald-400", className].join(" ")
+        ? "-ml-1 mr-1.5 h-4 w-4 text-emerald-400"
+        : [className, "-ml-1 mr-2 h-4 w-4"].join(" ")
     }
     fill="currentColor"
     viewBox="0 0 8 8"
