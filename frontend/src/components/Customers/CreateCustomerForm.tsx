@@ -28,6 +28,9 @@ const CreateCustomerForm = (props: {
       title="Create a Customer"
       okText="Create"
       okType="default"
+      okButtonProps={ {
+          id :'Create-customer-button'
+      }}
       cancelText="Cancel"
       onCancel={props.onCancel}
       onOk={() => {
@@ -42,7 +45,7 @@ const CreateCustomerForm = (props: {
     >
       <Form form={form} layout="vertical" name="customer_form">
         <Form.Item name="name" label="Name">
-          <Input />
+          <Input id='customer-name' />
         </Form.Item>
         <Form.Item
           name="email"
@@ -55,7 +58,7 @@ const CreateCustomerForm = (props: {
             },
           ]}
         >
-          <Input />
+          <Input id='customer-email'  />
         </Form.Item>
         <Form.Item
           name="customer_id"
@@ -67,7 +70,7 @@ const CreateCustomerForm = (props: {
             },
           ]}
         >
-          <Input />
+          <Input id='customer-id' />
         </Form.Item>
         <div className="grid grid-cols-6 items-center gap-4">
           <Form.Item
