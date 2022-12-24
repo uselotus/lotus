@@ -353,7 +353,7 @@ class TestCalculateMetric:
             results = namedtuplefetchall(cursor)
         assert len(results) == 0
 
-    def test_raw_sql_stateful_daily_granularity_delta(
+    def test_raw_sql_stateful_current_usage_delta(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -490,7 +490,7 @@ class TestCalculateMetric:
         assert results[0].usage_qty == 3
         assert results[1].usage_qty == 3
 
-    def test_raw_sql_stateful_daily_granularity_delta(
+    def test_raw_sql_stateful_current_usage_total(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -654,7 +654,7 @@ class TestCalculateMetric:
         assert results[0].usage_qty == 3
         assert results[1].usage_qty == 3
 
-    def test_raw_sql_stateful_daily_granularity_delta_total_usage(
+    def test_raw_sql_stateful_toal_usage_total(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -817,7 +817,10 @@ class TestCalculateMetric:
             results = namedtuplefetchall(cursor)
         foo = [x for x in results if x.groupby_dim_1 == "foo"]
         bar = [x for x in results if x.groupby_dim_1 == "bar"]
+        print("start_time", data["start_time"])
+        print("foo", foo)
         assert 28 <= len(foo) <= 32
         assert 28 <= len(bar) <= 32
         assert max([x.usage_qty for x in foo if x.usage_qty is not None]) == 6
         assert max([x.usage_qty for x in bar if x.usage_qty is not None]) == 6
+        assert False
