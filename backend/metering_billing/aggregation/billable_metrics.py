@@ -419,9 +419,9 @@ class CounterHandler(MetricHandler):
                     hour=23, minute=59, second=59, microsecond=999999
                 )
                 injection_dict["cagg_name"] = (
-                    self.organization.organization_id
+                    self.organization.organization_id[:22]
                     + "___"
-                    + self.metric_id
+                    + self.metric_id[:22]
                     + "___"
                     + "second"
                 )
@@ -434,9 +434,9 @@ class CounterHandler(MetricHandler):
                 injection_dict["start_date"] = full_days_btwn_start
                 injection_dict["end_date"] = full_days_btwn_end
                 injection_dict["cagg_name"] = (
-                    self.organization.organization_id
+                    self.organization.organization_id[:22]
                     + "___"
-                    + self.metric_id
+                    + self.metric_id[:22]
                     + "___"
                     + "day"
                 )
@@ -451,9 +451,9 @@ class CounterHandler(MetricHandler):
                 )
                 injection_dict["end_date"] = end.replace(microseconds=0)
                 injection_dict["cagg_name"] = (
-                    self.organization.organization_id
+                    self.organization.organization_id[:22]
                     + "___"
-                    + self.metric_id
+                    + self.metric_id[:22]
                     + "___"
                     + "second"
                 )
@@ -726,10 +726,10 @@ class CounterHandler(MetricHandler):
                 )
 
                 for continuous_agg_type in ["day", "second"]:
-                    sql_injection_data["continuous_agg_name"] = (
-                        metric.organization.organization_id
+                    sql_injection_data["cagg_name"] = (
+                        metric.organization.organization_id[:22]
                         + "___"
-                        + metric.metric_id
+                        + metric.metric_id[:22]
                         + "___"
                         + continuous_agg_type
                     )
@@ -756,9 +756,7 @@ class CounterHandler(MetricHandler):
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
         sql_injection_data = {
-            "continuous_agg_name": metric.organization.organization_id
-            + "___"
-            + metric.metric_id,
+            "cagg_name": metric.organization.organization_id + "___" + metric.metric_id,
         }
         from .counter_query_templates import COUNTER_CAGG_DROP
 

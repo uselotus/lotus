@@ -1,7 +1,7 @@
 # this will be our basic materialized view where we keep track of stuff per day
 # THIS IS A MATERIALIZED VIEW
 COUNTER_CAGG_QUERY = """
-CREATE MATERIALIZED VIEW IF NOT EXISTS {{ continuous_agg_name }}
+CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH ( timescaledb.continuous ) AS
 SELECT
     "metering_billing_usageevent"."customer_id" AS customer_id,
@@ -72,18 +72,19 @@ GROUP BY
 """
 
 COUNTER_CAGG_REFRESH = """
-SELECT add_continuous_aggregate_policy('{{ continuous_agg_name }}',
+SELECT add_continuous_aggregate_policy('{{ cagg_name }}',
     start_offset => INTERVAL '1 month',
     end_offset => INTERVAL '1 day',
     schedule_interval => INTERVAL '1 day');
 """
 
 COUNTER_CAGG_DROP = """
-DROP MATERIALIZED VIEW IF EXISTS {{ continuous_agg_name }};
+DROP MATERIALIZED VIEW IF EXISTS {{ cagg_name }};
 """
 
 COUNTER_CAGG_COMPRESSION = """
-SELECT add_compression_policy('{{ continuous_agg_name }}', compress_after=>'31 days'::interval);
+ALTER MATERIALIZED VIEW {{ cagg_name }} set (timescaledb.compress = true);;
+SELECT add_compression_policy('{{ cagg_name }}', compress_after=>'31 days'::interval);
 """
 
 # this query will help us fill in the gaps where we don't want to use a full day's worth of usage
