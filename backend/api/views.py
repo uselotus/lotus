@@ -370,6 +370,16 @@ class SubscriptionViewSet(
         organization = self.request.organization
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # make sure subscription filters are valid
+        subscription_filters = serializer.validated_data.get("subscription_filters")
+        sf_setting = organization.settings.get(
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+        )
+        for sf in subscription_filters:
+            if sf["property_name"] not in sf_setting.setting_values:
+                raise ValidationError(
+                    "Invalid subscription filter. Please check your subscription filters setting."
+                )
         # check to see if subscription exists
         subscription = (
             Subscription.objects.active()

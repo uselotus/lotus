@@ -12,7 +12,7 @@ from metering_billing.utils.enums import EVENT_TYPE, METRIC_AGGREGATION
 # can access them the same way we would a stateful metrics with total event type
 # THIS IS A MATERIALIZED VIEW
 STATEFUL_DELTA_CUMULATIVE_SUM = """
-CREATE MATERIALIZED VIEW {{ materialized_view_name }}
+CREATE MATERIALIZED VIEW {{ cagg_name }}
 WITH (timescaledb.continuous) AS
 SELECT 
     "metering_billing_usageevent"."customer_id" AS customer_id
@@ -133,7 +133,7 @@ SELECT
                             AND inner_prev.{{ group_by_field }} = outer_table.{{ group_by_field }}
                             {%- endfor %}
                             AND inner_prev.day_bucket < outer_table.day_bucket
-                        ORDER BY day_bucket DESC'
+                        ORDER BY day_bucket DESC
                         LIMIT 1
                     ),
                     treat_null_as_missing => true

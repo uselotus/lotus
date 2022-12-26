@@ -248,3 +248,11 @@ class ACCOUNTS_RECEIVABLE_TRANSACTION_TYPES(models.IntegerChoices):
 class USAGE_BILLING_BEHAVIOR(models.TextChoices):
     BILL_FULL = ("bill_full", _("Bill Full"))
     BILL_NONE = ("bill_none", _("Bill None"))
+
+
+class ORGANIZATION_SETTING_NAMES(models.TextChoices):
+    GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS = (
+        "generate_customer_after_creating_in_lotus",
+        _("Generate in Stripe after Lotus"),
+    )
+    SUBSCRIPTION_FILTERS = ("subscription_filters", _("Subscription Filters"))

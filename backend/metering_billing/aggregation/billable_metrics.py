@@ -7,6 +7,7 @@ from typing import Optional
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.apps import apps
+from django.db import connection
 from django.db.models import (
     Avg,
     Count,
@@ -23,6 +24,7 @@ from django.db.models import (
     Window,
 )
 from django.db.models.functions import Cast, Trunc
+from jinja2 import Template
 from metering_billing.exceptions.exceptions import (
     AggregationEngineFailure,
     MetricValidationFailed,
@@ -31,6 +33,7 @@ from metering_billing.utils import (
     convert_to_date,
     convert_to_datetime,
     date_as_min_dt,
+    namedtuplefetchall,
     now_utc,
     periods_bwn_twodates,
 )
@@ -41,6 +44,7 @@ from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     METRIC_TYPE,
     NUMERIC_FILTER_OPERATORS,
+    ORGANIZATION_SETTING_NAMES,
     USAGE_CALC_GRANULARITY,
 )
 
@@ -237,6 +241,42 @@ class MetricHandler(abc.ABC):
         """We will use this method when validating post requests to create a billable metric. You should validate the data of the billable metric and return the validated data (can be changed if you want)."""
         pass
 
+    @staticmethod
+    @abc.abstractmethod
+    def create_metric(validated_data: Metric) -> Metric:
+        """We will use this method when creating a billable metric. You should create the metric and return it. This is a greatt ime to create all the other queries you we want to keep track of in order to optimize the usage"""
+        from metering_billing.models import CategoricalFilter, Metric, NumericFilter
+
+        # edit custom name and pop filters + properties
+        num_filter_data = validated_data.pop("numeric_filters", [])
+        cat_filter_data = validated_data.pop("categorical_filters", [])
+
+        bm = Metric.objects.create(**validated_data)
+
+        # get filters
+        for num_filter in num_filter_data:
+            try:
+                nf, _ = NumericFilter.objects.get_or_create(
+                    **num_filter, organization=bm.organization
+                )
+            except NumericFilter.MultipleObjectsReturned:
+                nf = NumericFilter.objects.filter(
+                    **num_filter, organization=bm.organization
+                ).first()
+            bm.numeric_filters.add(nf)
+        for cat_filter in cat_filter_data:
+            try:
+                cf, _ = CategoricalFilter.objects.get_or_create(
+                    **cat_filter, organization=bm.organization
+                )
+            except CategoricalFilter.MultipleObjectsReturned:
+                cf = CategoricalFilter.objects.filter(
+                    **cat_filter, organization=bm.organization
+                ).first()
+            bm.categorical_filters.add(cf)
+        assert bm is not None
+        return bm
+
 
 class CounterHandler(MetricHandler):
     def __init__(self, billable_metric: Metric):
@@ -256,6 +296,8 @@ class CounterHandler(MetricHandler):
             or billable_metric.property_name == ""
             else billable_metric.property_name
         )
+        self.metric_id = billable_metric.metric_id
+        self.organization_id = billable_metric.organization.organization_id
 
         if (
             self.usage_aggregation_type
@@ -306,54 +348,169 @@ class CounterHandler(MetricHandler):
         proration=None,
         filters=None,
     ):
+        from metering_billing.aggregation.counter_query_templates import (
+            COUNTER_CAGG_TOTAL,
+        )
+        from metering_billing.models import OrganizationSetting
+
         if group_by is None:
             group_by = []
-        filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by, filters
-        )
-        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
-            group_by
-        )
-        groupby_kwargs = self._build_groupby_kwargs(
-            customer, results_granularity, start, group_by
-        )
-        post_groupby_annotation_kwargs = {}
+        if filters is None:
+            filters = {}
+        try:
+            if self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+                raise NotImplementedError
+            # there's 3 periods here.... the chunk between the start and the end of that day,
+            # the full days in between, and the chunk between the last full day and the end. There
+            # are scenarios where all 3 of them happen or don't independently of each other, so
+            # we check individually
+            # check for start to end of day condition:
+            start_to_eod = not (
+                start.hour == 0
+                and start.minute == 0
+                and start.second == 0
+                and start.microsecond == 0
+            )
+            # check for start of day to endcondition:
+            sod_to_end = not (
+                end.hour == 23
+                and end.minute == 59
+                and end.second == 59
+                and end.microsecond == 999999
+            )
+            # check for full days in between condition:
+            if not start_to_eod:
+                full_days_btwn_start = start.date()
+            else:
+                full_days_btwn_start = (start + relativedelta(days=1)).date()
+            if not sod_to_end:
+                full_days_btwn_end = end.date()
+            else:
+                full_days_btwn_end = (end - relativedelta(days=1)).date()
+            full_days_between = (full_days_btwn_end - full_days_btwn_start).days > 0
+            # prepare dictionary for injection
+            injection_dict = {
+                "query_type": self.usage_aggregation_type,
+                "customer_id": None,
+                "filter_properties": {},
+            }
+            if customer:
+                injection_dict["customer_id"] = customer.id
+            else:
+                raise NotImplementedError
+            try:
+                groupby = self.organization.settings.get(
+                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER
+                )
+                groupby = groupby.setting_values
+            except OrganizationSetting.DoesNotExist:
+                self.organization.provision_subscription_filter_settings()
+                groupby = []
+            injection_dict["group_by"] = groupby
+            for key, value in filters.items():
+                if not isinstance(value, list):
+                    value = [value]
+                injection_dict["filter_properties"][key] = value
+            # now use our pre-prepared queries with the injectiosn to get the usage
+            all_results = []
+            if start_to_eod:
+                injection_dict["start_date"] = start.replace(microsecond=0)
+                injection_dict["end_date"] = start.replace(
+                    hour=23, minute=59, second=59, microsecond=999999
+                )
+                injection_dict["cagg_name"] = (
+                    self.organization.organization_id
+                    + "___"
+                    + self.metric_id
+                    + "___"
+                    + "second"
+                )
+                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    results = namedtuplefetchall(cursor)
+                all_results.extend(results)
+            if full_days_between:
+                injection_dict["start_date"] = full_days_btwn_start
+                injection_dict["end_date"] = full_days_btwn_end
+                injection_dict["cagg_name"] = (
+                    self.organization.organization_id
+                    + "___"
+                    + self.metric_id
+                    + "___"
+                    + "day"
+                )
+                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    results = namedtuplefetchall(cursor)
+                all_results.extend(results)
+            if sod_to_end:
+                injection_dict["start_date"] = end.replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                injection_dict["end_date"] = end.replace(microseconds=0)
+                injection_dict["cagg_name"] = (
+                    self.organization.organization_id
+                    + "___"
+                    + self.metric_id
+                    + "___"
+                    + "second"
+                )
+                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    results = namedtuplefetchall(cursor)
+                all_results.extend(results)
+            print("ALL RESULTS", all_results)
+            raise NotImplementedError
+        except:
+            filter_args, filter_kwargs = self._build_filter_kwargs(
+                start, end, customer, group_by, filters
+            )
+            pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
+                group_by
+            )
+            groupby_kwargs = self._build_groupby_kwargs(
+                customer, results_granularity, start, group_by
+            )
+            post_groupby_annotation_kwargs = {}
 
-        if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
-            post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.SUM:
-            post_groupby_annotation_kwargs["usage_qty"] = Sum(
-                Cast(F("property_value"), FloatField())
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-            post_groupby_annotation_kwargs["usage_qty"] = Avg(
-                Cast(F("property_value"), FloatField())
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
-            post_groupby_annotation_kwargs["usage_qty"] = Max(
-                Cast(F("property_value"), FloatField())
-            )
-        elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-            post_groupby_annotation_kwargs["usage_qty"] = Count(
-                F("property_value"), distinct=True
-            )
-        q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
-        q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
-        q_gb = q_pre_gb_ann.values(**groupby_kwargs)
-        q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
+            if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT:
+                post_groupby_annotation_kwargs["usage_qty"] = Count("pk")
+            elif self.usage_aggregation_type == METRIC_AGGREGATION.SUM:
+                post_groupby_annotation_kwargs["usage_qty"] = Sum(
+                    Cast(F("property_value"), FloatField())
+                )
+            elif self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+                post_groupby_annotation_kwargs["usage_qty"] = Avg(
+                    Cast(F("property_value"), FloatField())
+                )
+            elif self.usage_aggregation_type == METRIC_AGGREGATION.MAX:
+                post_groupby_annotation_kwargs["usage_qty"] = Max(
+                    Cast(F("property_value"), FloatField())
+                )
+            elif self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+                post_groupby_annotation_kwargs["usage_qty"] = Count(
+                    F("property_value"), distinct=True
+                )
+            q_filt = Event.objects.filter(*filter_args, **filter_kwargs)
+            q_pre_gb_ann = q_filt.annotate(**pre_groupby_annotation_kwargs)
+            q_gb = q_pre_gb_ann.values(**groupby_kwargs)
+            q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
-        return_dict = {}
-        unique_groupby_props = ["customer_name"] + group_by
-        for row in q_post_gb_ann:
-            cust_name = row["customer_name"]
-            tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
-            usage_qty = row["usage_qty"]
-            if cust_name not in return_dict:
-                return_dict[cust_name] = {}
-            if unique_tup not in return_dict[cust_name]:
-                return_dict[cust_name][unique_tup] = {}
-            return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
+            return_dict = {}
+            unique_groupby_props = ["customer_name"] + group_by
+            for row in q_post_gb_ann:
+                cust_name = row["customer_name"]
+                tc_trunc = row["time_created_truncated"]
+                unique_tup = tuple(row[prop] for prop in unique_groupby_props)
+                usage_qty = row["usage_qty"]
+                if cust_name not in return_dict:
+                    return_dict[cust_name] = {}
+                if unique_tup not in return_dict[cust_name]:
+                    return_dict[cust_name][unique_tup] = {}
+                return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
         return return_dict
 
     def get_current_usage(self, subscription_record, group_by=None, filters=None):
@@ -527,6 +684,87 @@ class CounterHandler(MetricHandler):
             )
             data.pop("billable_aggregation_type", None)
         return data
+
+    @staticmethod
+    def create_continuous_aggregate(metric: Metric, refresh=False):
+        from metering_billing.models import OrganizationSetting
+
+        if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+            # unfortunately there's no good way to make caggs for unique
+            # if we're refreshing the matview, then we need to drop the last
+            # one and recreate it
+            if refresh is True:
+                CounterHandler.archive_metric(metric)
+            try:
+                groupby = metric.organization.settings.get(
+                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                )
+                groupby = groupby.setting_values
+            except OrganizationSetting.DoesNotExist:
+                metric.organization.provision_subscription_filter_settings()
+                groupby = []
+            sql_injection_data = {
+                "query_type": metric.usage_aggregation_type,
+                "property_name": metric.property_name,
+                "group_by": groupby,
+                "event_name": metric.event_name,
+                "organization_id": metric.organization.id,
+                "numeric_filters": [
+                    (x.property_name, x.operator, x.comparison_value)
+                    for x in metric.numeric_filters.all()
+                ],
+                "categorical_filters": [
+                    (x.property_name, x.operator, x.comparison_value)
+                    for x in metric.categorical_filters.all()
+                ],
+            }
+            if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+                from .counter_query_templates import (
+                    COUNTER_CAGG_COMPRESSION,
+                    COUNTER_CAGG_QUERY,
+                    COUNTER_CAGG_REFRESH,
+                )
+
+                for continuous_agg_type in ["day", "second"]:
+                    sql_injection_data["continuous_agg_name"] = (
+                        metric.organization.organization_id
+                        + "___"
+                        + metric.metric_id
+                        + "___"
+                        + continuous_agg_type
+                    )
+                    sql_injection_data["bucket_size"] = continuous_agg_type
+                    query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+                    refresh_query = Template(COUNTER_CAGG_REFRESH).render(
+                        **sql_injection_data
+                    )
+                    compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
+                        **sql_injection_data
+                    )
+                    with connection.cursor() as cursor:
+                        cursor.execute(query)
+                        cursor.execute(refresh_query)
+                        if continuous_agg_type == "second":
+                            cursor.execute(compression_query)
+
+    @staticmethod
+    def create_metric(validated_data: dict) -> Metric:
+        metric = MetricHandler.create_metric(validated_data)
+        CounterHandler.create_continuous_aggregate(metric)
+        return metric
+
+    @staticmethod
+    def archive_metric(metric: Metric) -> Metric:
+        sql_injection_data = {
+            "continuous_agg_name": metric.organization.organization_id
+            + "___"
+            + metric.metric_id,
+        }
+        from .counter_query_templates import COUNTER_CAGG_DROP
+
+        query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
+        with connection.cursor() as cursor:
+            cursor.execute(query)
 
 
 class StatefulHandler(MetricHandler):
@@ -1020,6 +1258,11 @@ class StatefulHandler(MetricHandler):
             METRIC_AGGREGATION.MAX,
         ]
 
+    @staticmethod
+    def create_metric(validated_data: dict) -> Metric:
+        metric = MetricHandler.create_metric(validated_data)
+        return metric
+
 
 class RateHandler(MetricHandler):
     """
@@ -1317,6 +1560,15 @@ class RateHandler(MetricHandler):
         return [
             METRIC_AGGREGATION.MAX,
         ]
+
+    @staticmethod
+    def create_metric(validated_data: dict) -> Metric:
+        metric = MetricHandler.create_metric(validated_data)
+        return metric
+
+    @staticmethod
+    def archive_metric(metric: Metric) -> Metric:
+        pass
 
 
 METRIC_HANDLER_MAP = {

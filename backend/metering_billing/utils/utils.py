@@ -1,6 +1,7 @@
 import collections
 import datetime
 import uuid
+from collections import namedtuple
 from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 from typing import Iterator, List, Sequence, Type
@@ -455,3 +456,10 @@ def date_as_min_dt(date):
 
 def date_as_max_dt(date):
     return datetime.datetime.combine(date, datetime.time.max, tzinfo=pytz.UTC)
+
+
+def namedtuplefetchall(cursor):
+    "Return all rows from a cursor as a namedtuple"
+    desc = cursor.description
+    nt_result = namedtuple("Result", [col[0] for col in desc])
+    return [nt_result(*row) for row in cursor.fetchall()]

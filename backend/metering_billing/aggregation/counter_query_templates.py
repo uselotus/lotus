@@ -1,18 +1,18 @@
 # this will be our basic materialized view where we keep track of stuff per day
 # THIS IS A MATERIALIZED VIEW
-COUNTER_DAILY_AGGREGATE = """
+COUNTER_CAGG_QUERY = """
+CREATE MATERIALIZED VIEW IF NOT EXISTS {{ continuous_agg_name }}
+WITH ( timescaledb.continuous ) AS
 SELECT
     "metering_billing_usageevent"."customer_id" AS customer_id,
-    time_bucket_gapfill(
-        bucket_width =>'1 day', 
-        time => "metering_billing_usageevent"."time_created",
-        start => '2020-01-01'::timestamp,
-    ) AS day_bucket,
+    time_bucket('1 {{bucket_size}}', "metering_billing_usageevent"."time_created") AS bucket,
     COUNT(
         "metering_billing_usageevent"."idempotency_id"
     ) AS num_events,
     {%- if query_type == "count" -%}
-    num_events
+    COUNT(
+        "metering_billing_usageevent"."idempotency_id"
+    )
     {%- elif query_type == "sum" -%}
     SUM(
         ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
@@ -29,18 +29,61 @@ SELECT
     AS usage_qty
     {%- for group_by_field in group_by %}
     ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
-    {%- endfor %},
+    {%- endfor %}
 FROM
     "metering_billing_usageevent"
 WHERE
     "metering_billing_usageevent"."event_name" = '{{ event_name }}'
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
+    {%- for property_name, operator, comparison in numeric_filters %}
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
+        {% elif operator == "eq" %}
+        =
+        {% endif %}
+        {{ comparison }}
+    {%- endfor %}
+    {%- for property_name, operator, comparison in categorical_filters %}
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+        {% if operator == "isnotin" %}
+        NOT
+        {% endif %}
+        IN ( 
+            {%- for pval in comparison %} 
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
+        )
+    {%- endfor %}
 GROUP BY
-    "metering_billing_usageevent"."customer_id",
+    "metering_billing_usageevent"."customer_id"
+    , bucket
     {%- for group_by_field in group_by %}
     ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
     {%- endfor %}
+"""
+
+COUNTER_CAGG_REFRESH = """
+SELECT add_continuous_aggregate_policy('{{ continuous_agg_name }}',
+    start_offset => INTERVAL '1 month',
+    end_offset => INTERVAL '1 day',
+    schedule_interval => INTERVAL '1 day');
+"""
+
+COUNTER_CAGG_DROP = """
+DROP MATERIALIZED VIEW IF EXISTS {{ continuous_agg_name }};
+"""
+
+COUNTER_CAGG_COMPRESSION = """
+SELECT add_compression_policy('{{ continuous_agg_name }}', compress_after=>'31 days'::interval);
 """
 
 # this query will help us fill in the gaps where we don't want to use a full day's worth of usage
@@ -53,7 +96,9 @@ SELECT
         "metering_billing_usageevent"."idempotency_id"
     ) AS num_events,
     {%- if query_type == "count" -%}
-    num_events
+    COUNT(
+        "metering_billing_usageevent"."idempotency_id"
+    )
     {%- elif query_type == "sum" -%}
     SUM(
         ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
@@ -87,35 +132,37 @@ GROUP BY
 """
 
 # this query is used to get all the usage aggregated over the entire time period using the
-# materialized view
-COUNTER_USE_DAILY_AGGREGATE = """
+COUNTER_CAGG_TOTAL = """
 SELECT
     customer_id,
     {%- for group_by_field in group_by %}
     {{ group_by_field }},
-    SUM(num_events) AS num_events,
     {%- endfor %}
+    SUM(num_events) AS num_events,
     {%- if query_type == "count" -%}
     SUM(num_events)
     {%- elif query_type == "sum" -%}
     SUM(usage_qty)
     {%- elif query_type == "average" -%}
-    SUM(usage_qty) / SUM(num_events)
+    SUM(usage_qty * num_events) / SUM(num_events)
     {%- elif query_type == "max" -%}
     MAX(usage_qty)
     {%- endif %}
     AS usage_qty
     {%- for group_by_field in group_by %}
-    ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
+    , {{ group_by_field }}
     {%- endfor %}
 FROM
-    {{ materialized_view_name }}
+    {{ cagg_name }}
 WHERE
-    customer_id = {{ customer_id }}
-    AND day_bucket >= '{{ start_date }}'::timestamptz
-    AND day_bucket <= '{{ end_date }}'::timestamptz
+    customer_id IS NOT NULL
+    {%- if customer_id is not none %}
+    AND customer_id = {{ customer_id }}
+    {% endif %}
+    AND bucket >= '{{ start_date }}'::timestamptz
+    AND bucket <= '{{ end_date }}'::timestamptz
     {%- for property_name, property_values in filter_properties.items() %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}') 
+    AND {{ group_by_field }}
         IN ( 
             {%- for pval in property_values %} 
             '{{ pval }}' 
@@ -128,7 +175,6 @@ GROUP BY
     {%- for group_by_field in group_by %}
     {{ group_by_field }},
     {%- endfor %}
-    {%- for group_by_field in group_by %}
 """
 
 

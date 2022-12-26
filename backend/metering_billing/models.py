@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import logging
 import math
 import uuid
@@ -87,6 +88,7 @@ class Organization(models.Model):
     )
     webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
+    subscription_filters_setting_provisioned = models.BooleanField(default=False)
     history = HistoricalRecords()
 
     def __str__(self):
@@ -106,6 +108,18 @@ class Organization(models.Model):
             self.default_currency = PricingUnit.objects.get(
                 organization=self, code="USD"
             )
+        self.provision_subscription_filter_settings()
+
+    def provision_subscription_filter_settings(self):
+        if not self.subscription_filters_setting_provisioned:
+            OrganizationSetting.objects.create(
+                organization=self,
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+                setting_values=[],
+                setting_group=None,
+            )
+            self.subscription_filters_setting_provisioned = True
+            self.save()
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
@@ -768,7 +782,7 @@ class Metric(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="billable_metrics",
+        related_name="metrics",
     )
     event_name = models.CharField(
         max_length=50, help_text="Name of the event that this metric is tracking."
@@ -840,20 +854,57 @@ class Metric(models.Model):
             models.UniqueConstraint(
                 fields=["organization", "metric_id"], name="unique_org_metric_id"
             ),
+        ] + [
             models.UniqueConstraint(
-                fields=[
-                    "organization",
-                    "billable_metric_name",
-                    "event_name",
-                    "metric_type",
-                    "usage_aggregation_type",
-                    "billable_aggregation_type",
-                    "property_name",
-                    "granularity",
-                    "is_cost_metric",
-                ],
-                name="unique_org_event_name_metric_type_and_other_fields",
-            ),
+                fields=list(
+                    {
+                        "organization",
+                        "billable_metric_name",  # nullable
+                        "event_name",
+                        "metric_type",
+                        "usage_aggregation_type",
+                        "billable_aggregation_type",  # nullable
+                        "property_name",  # nullable
+                        "granularity",  # nullable
+                        "is_cost_metric",
+                    }
+                    - {x for x in nullables}
+                ),
+                condition=Q(**{f"{nullable}__in": [None, ""] for nullable in nullables})
+                & Q(status=METRIC_STATUS.ACTIVE),
+                name=f"uq_metric_w_null__"
+                + "_".join(
+                    [
+                        "_".join([x[:2] for x in nullable.split("_")])
+                        for nullable in nullables
+                    ]
+                ),
+            )
+            for nullables in itertools.chain(
+                *map(
+                    lambda x: itertools.combinations(
+                        [
+                            "billable_metric_name",
+                            "billable_aggregation_type",
+                            "property_name",
+                            "granularity",
+                        ],
+                        x,
+                    ),
+                    range(
+                        0,
+                        len(
+                            [
+                                "billable_metric_name",
+                                "billable_aggregation_type",
+                                "property_name",
+                                "granularity",
+                            ]
+                        )
+                        + 1,
+                    ),
+                )
+            )
         ]
 
     def __str__(self):
@@ -2077,7 +2128,7 @@ class SubscriptionRecord(models.Model):
                     or set(old_filters) == set(new_filters)
                 ):
                     raise OverlappingPlans(
-                        f"Overlapping subscriptions with the same filters are not allowed (plan: {self.billing_plan}, customer: {self.customer}, dates: {self.start_date, self.end_date}). New subscription_filters: {new_filters}, Old subscription_filters: {list(old_filters)}"
+                        f"Overlapping subscriptions with the same filters are not allowed. \n Plan: {self.billing_plan} \n Customer: {self.customer}. \n New dates: ({self.start_date, self.end_date}) \n New subscription_filters: {new_filters} \n Old dates: ({self.start_date, self.end_date}) \n Old subscription_filters: {list(old_filters)}"
                     )
         super(SubscriptionRecord, self).save(*args, **kwargs)
         for filter in new_filters:
@@ -2250,14 +2301,11 @@ class OrganizationSetting(models.Model):
     setting_value = models.CharField(
         max_length=100,
     )
+    setting_values = models.JSONField(default=list, blank=True)
     setting_group = models.CharField(max_length=100, blank=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
-        if self.setting_value.lower() == "true":
-            self.setting_value = "true"
-        elif self.setting_value.lower() == "false":
-            self.setting_value = "false"
         super(OrganizationSetting, self).save(*args, **kwargs)
 
     def __str__(self):

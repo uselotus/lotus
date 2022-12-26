@@ -376,6 +376,8 @@ class MetricUpdateSerializer(serializers.ModelSerializer):
         )
         instance.status = validated_data.get("status", instance.status)
         instance.save()
+        if instance.status == METRIC_STATUS.ARCHIVED:
+            METRIC_HANDLER_MAP[instance.metric_type].archive_metric(instance)
         return instance
 
 
@@ -431,42 +433,15 @@ class MetricCreateSerializer(serializers.ModelSerializer):
     # properties = serializers.JSONField(allow_null=True, required=False)
 
     def validate(self, data):
-        super().validate(data)
+        data = super().validate(data)
         metric_type = data["metric_type"]
         data = METRIC_HANDLER_MAP[metric_type].validate_data(data)
         return data
 
     def create(self, validated_data):
-        # edit custom name and pop filters + properties
-        num_filter_data = validated_data.pop("numeric_filters", [])
-        cat_filter_data = validated_data.pop("categorical_filters", [])
-
-        bm = Metric.objects.create(**validated_data)
-
-        # get filters
-        for num_filter in num_filter_data:
-            try:
-                nf, _ = NumericFilter.objects.get_or_create(
-                    **num_filter, organization=bm.organization
-                )
-            except NumericFilter.MultipleObjectsReturned:
-                nf = NumericFilter.objects.filter(
-                    **num_filter, organization=bm.organization
-                ).first()
-            bm.numeric_filters.add(nf)
-        for cat_filter in cat_filter_data:
-            try:
-                cf, _ = CategoricalFilter.objects.get_or_create(
-                    **cat_filter, organization=bm.organization
-                )
-            except CategoricalFilter.MultipleObjectsReturned:
-                cf = CategoricalFilter.objects.filter(
-                    **cat_filter, organization=bm.organization
-                ).first()
-            bm.categorical_filters.add(cf)
-        bm.save()
-
-        return bm
+        metric_type = validated_data["metric_type"]
+        metric = METRIC_HANDLER_MAP[metric_type].create_metric(validated_data)
+        return metric
 
 
 class ExternalPlanLinkSerializer(serializers.ModelSerializer):

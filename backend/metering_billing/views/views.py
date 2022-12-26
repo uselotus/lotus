@@ -419,7 +419,7 @@ class CustomersSummaryView(APIView):
         Get the current settings for the organization.
         """
         organization = request.organization
-        logger.info(f"CustomersSummaryView: {organization}, {request.user}")
+        logger.debug(f"CustomersSummaryView: {organization}, {request.user}")
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",
