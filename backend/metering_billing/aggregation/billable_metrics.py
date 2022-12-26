@@ -400,7 +400,7 @@ class CounterHandler(MetricHandler):
                 raise NotImplementedError
             try:
                 groupby = self.organization.settings.get(
-                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER
+                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
                 )
                 groupby = groupby.setting_values
             except OrganizationSetting.DoesNotExist:
@@ -462,9 +462,35 @@ class CounterHandler(MetricHandler):
                     cursor.execute(query)
                     results = namedtuplefetchall(cursor)
                 all_results.extend(results)
-            print("ALL RESULTS", all_results)
+            per_customer = {}
+            cust_id_to_name_map = {}
+            for result in all_results:
+                if result.customer_id not in cust_id_to_name_map:
+                    cust_id_to_name_map[result.customer_id] = customer.customer_name
+                customer_name = cust_id_to_name_map[result.customer_id]
+                if customer_name not in per_customer:
+                    per_customer[customer_name] = {
+                        "usage_qty": 0,
+                        "num_events": 0,
+                    }
+                if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+                    per_customer[customer_name]["usage_qty"] += (
+                        result.usage_qty * result.num_events
+                    )
+                else:
+                    per_customer[customer_name]["usage_qty"] += result.usage_qty
+                per_customer[customer_name]["num_events"] += result.num_events
+            if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+                for customer_name, values in per_customer.items():
+                    per_customer[customer_name]["usage_qty"] = (
+                        values["usage_qty"] / values["num_events"]
+                    )
+
             raise NotImplementedError
-        except:
+        except Exception as e:
+            print(
+                f"failed on {results_granularity}, {start}, {end}, {customer}, {group_by}, {filters} due to {e}"
+            )
             filter_args, filter_kwargs = self._build_filter_kwargs(
                 start, end, customer, group_by, filters
             )

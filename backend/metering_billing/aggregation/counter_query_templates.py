@@ -73,7 +73,7 @@ GROUP BY
 
 COUNTER_CAGG_REFRESH = """
 SELECT add_continuous_aggregate_policy('{{ cagg_name }}',
-    start_offset => INTERVAL '1 month',
+    start_offset => INTERVAL '30 days',
     end_offset => INTERVAL '1 day',
     schedule_interval => INTERVAL '1 day');
 """
@@ -172,9 +172,9 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    customer_id,
+    customer_id
     {%- for group_by_field in group_by %}
-    {{ group_by_field }},
+    , {{ group_by_field }}
     {%- endfor %}
 """
 
