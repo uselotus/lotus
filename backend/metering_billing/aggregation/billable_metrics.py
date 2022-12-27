@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta
 from typing import Optional
 
+import sqlparse
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.apps import apps
@@ -480,6 +481,7 @@ class CounterHandler(MetricHandler):
                 customer,
                 filters,
             )
+            raise NotImplementedError("not implemented yet")
         except Exception as e:
             print(
                 f"failed on {results_granularity}, {start}, {end}, {customer},{filters} due to {e}"
@@ -524,7 +526,7 @@ class CounterHandler(MetricHandler):
                 if cust_name not in return_dict:
                     return_dict[cust_name] = {}
                 return_dict[cust_name][tc_trunc] = usage_qty
-        return return_dict
+            return return_dict
 
     def get_current_usage(self, subscription_record, filters=None):
         per_customer = self.get_usage(
@@ -811,6 +813,97 @@ class CustomHandler(MetricHandler):
 
     def _build_aggregation_queryset(self, customer, start, end, group_by=None):
         aggregation_queryset = super
+
+    @staticmethod
+    def validate_data(data: dict) -> dict:
+        # has been top-level validated by the MetricSerializer, so we can assume
+        # certain fields are there and ignore others as needed
+        # unpack stuff first
+        usg_agg_type = data.get("usage_aggregation_type", None)
+        bill_agg_type = data.get("billable_aggregation_type", None)
+        metric_type = data.get("metric_type", None)
+        event_type = data.get("event_type", None)
+        granularity = data.get("granularity", None)
+        numeric_filters = data.get("numeric_filters", None)
+        categorical_filters = data.get("categorical_filters", None)
+        property_name = data.get("property_name", None)
+        custom_sql = data.get("custom_sql", None)
+
+        # now validate
+        if usg_agg_type is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Usage aggregation type specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("usage_aggregation_type", None)
+        if bill_agg_type is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Billable aggregation type specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("billable_aggregation_type", None)
+        if metric_type != METRIC_TYPE.CUSTOM:
+            raise MetricValidationFailed("Metric type must be CUSTOM for CustomHandler")
+        if event_type is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Event type specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("event_type", None)
+        if granularity is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Granularity specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("granularity", None)
+        if numeric_filters is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Numeric filters specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("numeric_filters", None)
+        if categorical_filters is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Categorical filters specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("categorical_filters", None)
+        if property_name is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Property name specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("property_name", None)
+        if custom_sql is None:
+            raise MetricValidationFailed(
+                "Custom SQL query is required for CUSTOM metric"
+            )
+        sql_valid = CustomHandler.validate_custom_sql(custom_sql)
+        if not sql_valid:
+            raise MetricValidationFailed(
+                "Custom SQL query must be a SELECT statement and cannot contain any prohibited keywords"
+            )
+        return data
+
+    @staticmethod
+    def validate_custom_sql(
+        custom_sql: str,
+        prohibited_keywords=[
+            "alter",
+            "create",
+            "drop",
+            "delete",
+            "insert",
+            "replace",
+            "truncate",
+            "update",
+        ],
+    ) -> bool:
+        parsed_sql = sqlparse.parse(custom_sql)
+
+        if parsed_sql[0].get_type() != "SELECT":
+            return False
+
+        for token in parsed_sql[0].flatten():
+            if (
+                token.ttype is sqlparse.tokens.Keyword
+                and token.value.lower() in prohibited_keywords
+            ):
+                return False
+        return True
 
 
 class StatefulHandler(MetricHandler):
@@ -1531,4 +1624,10 @@ METRIC_HANDLER_MAP = {
     METRIC_TYPE.COUNTER: CounterHandler,
     METRIC_TYPE.STATEFUL: StatefulHandler,
     METRIC_TYPE.RATE: RateHandler,
+    METRIC_TYPE.CUSTOM: CustomHandler,
 }
+
+
+"""
+This function validates the custom_sql is a SELECT statement and doesn't modify the data in any way.
+"""

@@ -848,7 +848,7 @@ class Metric(models.Model):
         default=False,
         help_text="Whether or not this metric is a cost metric (used to track costs to your business).",
     )
-    custom_sql_query = models.TextField(
+    custom_sql = models.TextField(
         blank=True,
         null=True,
         help_text="A custom SQL query that can be used to define the metric. Please refer to our documentation for more information.",
@@ -888,7 +888,7 @@ class Metric(models.Model):
                         "property_name",  # nullable
                         "granularity",  # nullable
                         "is_cost_metric",
-                        "custom_sql_query",  # nullable
+                        "custom_sql",  # nullable
                     }
                     - {x for x in nullables}
                 ),
@@ -910,7 +910,7 @@ class Metric(models.Model):
                             "billable_aggregation_type",
                             "property_name",
                             "granularity",
-                            "custom_sql_query",
+                            "custom_sql",
                         ],
                         x,
                     ),
@@ -922,7 +922,7 @@ class Metric(models.Model):
                                 "billable_aggregation_type",
                                 "property_name",
                                 "granularity",
-                                "custom_sql_query",
+                                "custom_sql",
                             ],
                         )
                         + 1,
