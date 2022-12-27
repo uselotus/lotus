@@ -3,6 +3,7 @@ import datetime
 import logging
 from datetime import timedelta
 from typing import Optional
+import sqlparse
 
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
@@ -1606,3 +1607,35 @@ METRIC_HANDLER_MAP = {
     METRIC_TYPE.RATE: RateHandler,
     METRIC_TYPE.CUSTOM: CustomHandler,
 }
+
+
+"""
+This function validates the custom_sql is a SELECT statement and doesn't modify the data in any way.
+"""
+
+
+def validate_custom_sql(
+    custom_sql: str,
+    prohibited_keywords=[
+        "alter",
+        "create",
+        "drop",
+        "delete",
+        "insert",
+        "replace",
+        "truncate",
+        "update",
+    ],
+) -> bool:
+    parsed_sql = sqlparse.parse(custom_sql)
+
+    if parsed_sql[0].is_select():
+        return False
+
+    for token in parsed_sql[0].flatten():
+        if (
+            token.ttype is sqlparse.tokens.Keyword
+            and token.value.lower() in prohibited_keywords
+        ):
+            return False
+    return True

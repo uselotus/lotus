@@ -50,6 +50,7 @@ svix = "*"
 pyjwt = "*"
 drf-standardized-errors = {extras = ["openapi"], version = "*"}
 jinja2 = "*"
+sqlparse = "*"
 
 [dev-packages]
 platformdirs = "*"
