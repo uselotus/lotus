@@ -371,7 +371,7 @@ class SubscriptionViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         # make sure subscription filters are valid
-        subscription_filters = serializer.validated_data.get("subscription_filters")
+        subscription_filters = serializer.validated_data.get("subscription_filters", [])
         sf_setting = organization.settings.get(
             setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
         )
@@ -843,27 +843,16 @@ class GetCustomerEventAccessView(APIView):
                         single_sub_dict["usage_per_component"].append(unique_tup_dict)
                         continue
                     custom_metric_usage = metric_usage[customer.customer_name]
-                    for unique_tup, d in custom_metric_usage.items():
-                        i = iter(unique_tup)
-                        try:
-                            _ = next(i)  # i.next() in older versions
-                            groupby_vals = list(i)
-                        except:
-                            groupby_vals = []
-                        usage = list(d.values())[0]
-                        unique_tup_dict = {
-                            "event_name": metric.event_name,
-                            "metric_name": metric_name,
-                            "metric_usage": usage,
-                            "metric_free_limit": free_limit,
-                            "metric_total_limit": total_limit,
-                            "metric_id": metric.metric_id,
-                        }
-                        if len(groupby_vals) > 0:
-                            unique_tup_dict["separate_by_properties"] = dict(
-                                zip(component.separate_by, groupby_vals)
-                            )
-                        single_sub_dict["usage_per_component"].append(unique_tup_dict)
+                    usage = list(custom_metric_usage.values())[0]
+                    unique_tup_dict = {
+                        "event_name": metric.event_name,
+                        "metric_name": metric_name,
+                        "metric_usage": usage,
+                        "metric_free_limit": free_limit,
+                        "metric_total_limit": total_limit,
+                        "metric_id": metric.metric_id,
+                    }
+                    single_sub_dict["usage_per_component"].append(unique_tup_dict)
             metrics.append(single_sub_dict)
         GetEventAccessSerializer(many=True).validate(metrics)
         return Response(

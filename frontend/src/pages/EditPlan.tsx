@@ -106,7 +106,6 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
         return {
           metric: component.billable_metric.metric_name,
           tiers: component.tiers,
-          separate_by: component.separate_by,
           proration_granularity: component.proration_granularity,
           id: component.billable_metric.metric_id,
           metric_id: component.billable_metric.metric_id,
@@ -298,7 +297,6 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);

@@ -121,6 +121,18 @@ class Organization(models.Model):
             self.subscription_filters_setting_provisioned = True
             self.save()
 
+    def update_subscription_filter_settings(self, filter_keys):
+        setting, _ = OrganizationSetting.objects.get_or_create(
+            organization=self,
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+        )
+        if not isinstance(filter_keys, list) and all(
+            isinstance(key, str) for key in filter_keys
+        ):
+            raise ValidationError("filter keys must be a list of strings")
+        setting.setting_values = filter_keys
+        setting.save()
+
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
             logger.log("provisioning webhooks")
@@ -949,7 +961,6 @@ class Metric(models.Model):
         usage = None
         for component in all_components:
             if component.billable_metric == self:
-                group_by = component.separate_by
                 usage = handler.get_current_usage(subscription, group_by=group_by)
                 break
         return usage
@@ -1091,7 +1102,6 @@ class PlanComponent(models.Model):
         null=True,
         blank=True,
     )
-    separate_by = models.JSONField(default=list, blank=True, null=True)
     proration_granularity = models.CharField(
         choices=METRIC_GRANULARITY.choices,
         max_length=10,
@@ -1102,9 +1112,6 @@ class PlanComponent(models.Model):
         return str(self.billable_metric)
 
     def save(self, *args, **kwargs):
-        if self.separate_by is None:
-            self.separate_by = []
-        assert isinstance(self.separate_by, list)
         if not self.pricing_unit:
             self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
@@ -1138,7 +1145,6 @@ class PlanComponent(models.Model):
                 start_date=period_start,
                 end_date=period_end,
                 customer=subscription_record.customer,
-                group_by=self.separate_by,
                 proration=self.proration_granularity,
                 filters=subscription_record.get_filters_dictionary(),
             )
@@ -1164,45 +1170,43 @@ class PlanComponent(models.Model):
                 metric_granularity, proration_granularity, period_start
             )
             # extract usage
-            separated_usage = all_usage.get(
+            usage_by_period = all_usage.get(
                 subscription_record.customer.customer_name, {}
             )
-            for i, (unique_identifier, usage_by_period) in enumerate(
-                separated_usage.items()
-            ):
-                if len(usage_by_period) >= 1:
-                    usage_qty = (
-                        convert_to_decimal(sum(usage_by_period.values()))
-                        / usage_normalization_factor
-                    )
-                    usage_qty = convert_to_decimal(usage_qty)
-                    revenue = 0
-                    tiers = self.tiers.all()
-                    for i, tier in enumerate(tiers):
-                        if i > 0:
-                            prev_tier_end = tiers[i - 1].range_end
-                            tier_revenue = tier.calculate_revenue(
-                                usage_qty, prev_tier_end=prev_tier_end
-                            )
-                        else:
-                            tier_revenue = tier.calculate_revenue(usage_qty)
-                        revenue += tier_revenue
-                    revenue = convert_to_decimal(revenue)
-                else:
-                    usage_qty = Decimal(0)
-                    revenue = Decimal(0)
-                revenue_dict["revenue"] += revenue
-                subp = {
-                    "start_date": period_start,
-                    "end_date": period_end,
-                    "usage_qty": usage_qty,
-                    "revenue": revenue,
-                }
-                if len(unique_identifier) > 1:
-                    subp["unique_identifier"] = dict(
-                        zip(self.separate_by, unique_identifier[1:])
-                    )
-                revenue_dict["subperiods"].append(subp)
+            for k, val in usage_by_period.items():
+                if type(val) == dict:
+                    print(val)
+                    print(k)
+                    raise Exception
+            if len(usage_by_period) >= 1:
+                usage_qty = (
+                    convert_to_decimal(sum(usage_by_period.values()))
+                    / usage_normalization_factor
+                )
+                usage_qty = convert_to_decimal(usage_qty)
+                revenue = 0
+                tiers = self.tiers.all()
+                for i, tier in enumerate(tiers):
+                    if i > 0:
+                        prev_tier_end = tiers[i - 1].range_end
+                        tier_revenue = tier.calculate_revenue(
+                            usage_qty, prev_tier_end=prev_tier_end
+                        )
+                    else:
+                        tier_revenue = tier.calculate_revenue(usage_qty)
+                    revenue += tier_revenue
+                revenue = convert_to_decimal(revenue)
+            else:
+                usage_qty = Decimal(0)
+                revenue = Decimal(0)
+            revenue_dict["revenue"] += revenue
+            subp = {
+                "start_date": period_start,
+                "end_date": period_end,
+                "usage_qty": usage_qty,
+                "revenue": revenue,
+            }
+            revenue_dict["subperiods"].append(subp)
         return revenue_dict
 
     def calculate_earned_revenue_per_day(
@@ -1238,7 +1242,6 @@ class PlanComponent(models.Model):
                 start=period_start,
                 end=period_end,
                 customer=subscription.customer,
-                group_by=self.separate_by,
                 proration=self.proration_granularity,
             )
             if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
@@ -1262,33 +1265,30 @@ class PlanComponent(models.Model):
                 metric_granularity, proration_granularity, period_start
             )
             # extract usage
-            for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
-                if len(usage_by_period) >= 1:
-                    running_total_revenue = Decimal(0)
-                    running_total_usage = Decimal(0)
-                    for date, usage_qty in usage_by_period.items():
-                        date = convert_to_date(date)
-                        usage_qty = (
-                            convert_to_decimal(usage_qty) / usage_normalization_factor
-                        )
-                        running_total_usage += usage_qty
-                        revenue = Decimal(0)
-                        tiers = self.tiers.all()
-                        for i, tier in enumerate(tiers):
-                            if i > 0:
-                                prev_tier_end = tiers[i - 1].range_end
-                                tier_revenue = tier.calculate_revenue(
-                                    running_total_usage, prev_tier_end=prev_tier_end
-                                )
-                            else:
-                                tier_revenue = tier.calculate_revenue(
-                                    running_total_usage
-                                )
-                            revenue += convert_to_decimal(tier_revenue)
-                        date_revenue = revenue - running_total_revenue
-                        running_total_revenue += date_revenue
-                        if date in results:
-                            results[date] += date_revenue
+            if len(all_usage) >= 1:
+                running_total_revenue = Decimal(0)
+                running_total_usage = Decimal(0)
+                for date, usage_qty in all_usage.items():
+                    date = convert_to_date(date)
+                    usage_qty = (
+                        convert_to_decimal(usage_qty) / usage_normalization_factor
+                    )
+                    running_total_usage += usage_qty
+                    revenue = Decimal(0)
+                    tiers = self.tiers.all()
+                    for i, tier in enumerate(tiers):
+                        if i > 0:
+                            prev_tier_end = tiers[i - 1].range_end
+                            tier_revenue = tier.calculate_revenue(
+                                running_total_usage, prev_tier_end=prev_tier_end
+                            )
+                        else:
+                            tier_revenue = tier.calculate_revenue(running_total_usage)
+                        revenue += convert_to_decimal(tier_revenue)
+                    date_revenue = revenue - running_total_revenue
+                    running_total_revenue += date_revenue
+                    if date in results:
+                        results[date] += date_revenue
         return results
 
 

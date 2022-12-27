@@ -210,7 +210,6 @@ const CreatePlan = () => {
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
