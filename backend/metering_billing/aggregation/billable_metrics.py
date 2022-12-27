@@ -475,11 +475,9 @@ class CounterHandler(MetricHandler):
             filters = {}
         try:
             self.get_total_usage(
-                results_granularity,
                 start,
                 end,
                 customer,
-                proration,
                 filters,
             )
         except Exception as e:
@@ -762,6 +760,57 @@ class CounterHandler(MetricHandler):
         query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
         with connection.cursor() as cursor:
             cursor.execute(query)
+
+
+class CustomHandler(MetricHandler):
+    def __init__(self, billable_metric: Metric):
+        self.organization = billable_metric.organization
+        self.event_name = billable_metric.event_name
+        self.billable_metric = billable_metric
+        if billable_metric.metric_type != METRIC_TYPE.CUSTOM:
+            raise AggregationEngineFailure(
+                f"Billable metric of type {billable_metric.metric_type} can't be handled by a CustomHandler."
+            )
+        self.custom_sql = billable_metric.custom_sql
+
+    def _build_groupby_kwargs(
+        self, customer, results_granularity, start, group_by=None, proration=None
+    ):
+        groupby_kwargs = super()._build_groupby_kwargs(
+            customer, results_granularity, start, group_by, proration
+        )
+        if self.property_name is not None:
+            groupby_kwargs["property_name"] = F(self.property_name)
+        return groupby_kwargs
+
+    def _build_pre_groupby_annotation_kwargs(self, customer, start, end):
+        pre_groupby_annotation_kwargs = super()._build_pre_groupby_annotation_kwargs(
+            customer, start, end
+        )
+        if self.property_name is not None:
+            pre_groupby_annotation_kwargs[self.property_name] = F(
+                f"properties__{self.property_name}"
+            )
+        return pre_groupby_annotation_kwargs
+
+    def _build_queryset(self, customer, start, end, group_by=None, proration=None):
+        queryset = (
+            super()
+            ._build_queryset(customer, start, end, group_by, proration)
+            .annotate(**self._build_pre_groupby_annotation_kwargs(customer, start, end))
+        )
+        return queryset
+
+    def _build_aggregation_kwargs(self, customer, start, end, group_by=None):
+        aggregation_kwargs = super()._build_aggregation_kwargs(
+            customer, start, end, group_by
+        )
+        if self.property_name is not None:
+            aggregation_kwargs["property_name"] = F(self.property_name)
+        return aggregation_kwargs
+
+    def _build_aggregation_queryset(self, customer, start, end, group_by=None):
+        aggregation_queryset = super
 
 
 class StatefulHandler(MetricHandler):

@@ -406,12 +406,13 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "metric_name",
             "properties",
             "is_cost_metric",
+            "custom_sql_query",
         )
         extra_kwargs = {
-            "metric_id": {"write_only": True},
+            "metric_id": {"write_only": True, "allow_null": True, "allow_blank": True},
             "event_name": {"write_only": True, "required": True},
             "property_name": {"write_only": True},
-            "usage_aggregation_type": {"required": True, "write_only": True},
+            "usage_aggregation_type": {"write_only": True},
             "billable_aggregation_type": {"write_only": True},
             "granularity": {"write_only": True},
             "event_type": {"write_only": True},
@@ -419,6 +420,7 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "metric_name": {"write_only": True},
             "properties": {"write_only": True},
             "is_cost_metric": {"write_only": True},
+            "custom_sql_query": {"write_only": True},
         }
 
     metric_name = serializers.CharField(source="billable_metric_name")

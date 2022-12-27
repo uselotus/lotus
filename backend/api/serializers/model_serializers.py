@@ -481,6 +481,7 @@ class MetricSerializer(
             "numeric_filters",
             "categorical_filters",
             "is_cost_metric",
+            "custom_sql_query",
         )
         extra_kwargs = {
             "metric_id": {"required": True, "read_only": True},
@@ -504,6 +505,7 @@ class MetricSerializer(
             "numeric_filters": {"required": True, "read_only": True},
             "categorical_filters": {"required": True, "read_only": True},
             "is_cost_metric": {"required": True, "read_only": True},
+            "custom_sql_query": {"required": True, "read_only": True},
         }
 
     numeric_filters = NumericFilterSerializer(

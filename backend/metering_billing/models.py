@@ -848,6 +848,11 @@ class Metric(models.Model):
         default=False,
         help_text="Whether or not this metric is a cost metric (used to track costs to your business).",
     )
+    custom_sql_query = models.TextField(
+        blank=True,
+        null=True,
+        help_text="A custom SQL query that can be used to define the metric. Please refer to our documentation for more information.",
+    )
 
     # filters
     numeric_filters = models.ManyToManyField(NumericFilter, blank=True)
@@ -866,6 +871,10 @@ class Metric(models.Model):
             models.UniqueConstraint(
                 fields=["organization", "metric_id"], name="unique_org_metric_id"
             ),
+            models.UniqueConstraint(
+                fields=["organization", "billable_metric_name"],
+                name="unique_org_billable_metric_name",
+            ),
         ] + [
             models.UniqueConstraint(
                 fields=list(
@@ -879,6 +888,7 @@ class Metric(models.Model):
                         "property_name",  # nullable
                         "granularity",  # nullable
                         "is_cost_metric",
+                        "custom_sql_query",  # nullable
                     }
                     - {x for x in nullables}
                 ),
@@ -900,6 +910,7 @@ class Metric(models.Model):
                             "billable_aggregation_type",
                             "property_name",
                             "granularity",
+                            "custom_sql_query",
                         ],
                         x,
                     ),
@@ -911,7 +922,8 @@ class Metric(models.Model):
                                 "billable_aggregation_type",
                                 "property_name",
                                 "granularity",
-                            ]
+                                "custom_sql_query",
+                            ],
                         )
                         + 1,
                     ),
@@ -962,6 +974,7 @@ class Metric(models.Model):
 
     def get_earned_usage_per_day(self, start, end, customer, proration=None):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_earned_usage_per_day(start, end, customer, proration)
 
