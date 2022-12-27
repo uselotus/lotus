@@ -931,21 +931,17 @@ class Metric(models.Model):
         end_date,
         granularity,
         customer=None,
-        group_by=None,
         proration=None,
         filters=None,
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
-        if group_by is None:
-            group_by = []
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         usage = handler.get_usage(
             results_granularity=granularity,
             start=start_date,
             end=end_date,
             customer=customer,
-            group_by=group_by,
             proration=proration,
             filters=filters,
         )
@@ -957,25 +953,17 @@ class Metric(models.Model):
 
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
         all_components = subscription.billing_plan.plan_components.all()
-        group_by = []
         usage = None
         for component in all_components:
             if component.billable_metric == self:
-                usage = handler.get_current_usage(subscription, group_by=group_by)
+                usage = handler.get_current_usage(subscription)
                 break
         return usage
 
-    def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
-    ):
+    def get_earned_usage_per_day(self, start, end, customer, proration=None):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-
-        if group_by is None:
-            group_by = []
         handler = METRIC_HANDLER_MAP[self.metric_type](self)
-        usage = handler.get_earned_usage_per_day(
-            start, end, customer, group_by, proration
-        )
+        usage = handler.get_earned_usage_per_day(start, end, customer, proration)
 
         return usage
 

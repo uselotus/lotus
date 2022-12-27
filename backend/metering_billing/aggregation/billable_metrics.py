@@ -71,7 +71,6 @@ class MetricHandler(abc.ABC):
         start: datetime.date,
         end: datetime.date,
         customer: Optional[Customer],
-        group_by: Optional[list[str]],
         proration: Optional[METRIC_GRANULARITY],
         filters: Optional[dict[str, str]],
     ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
@@ -87,7 +86,6 @@ class MetricHandler(abc.ABC):
     def get_current_usage(
         self,
         subscription: SubscriptionRecord,
-        group_by: list[str] = [],
     ) -> float:
         """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Stateful with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
         pass
@@ -98,7 +96,6 @@ class MetricHandler(abc.ABC):
         start: datetime.date,
         end: datetime.date,
         customer: Customer,
-        group_by: list[str] = [],
         proration: Optional[METRIC_GRANULARITY] = None,
     ) -> dict[datetime.datetime, float]:
         """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
@@ -107,7 +104,7 @@ class MetricHandler(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
+    def _build_filter_kwargs(self, start, end, customer, filters=None):
         """This method will be used to build the filter args for the get_usage and get_earned_usage_per_day methods. You should build the filter args for the Event model, and return them as a dictionary. You should also handle the case where customer is None, which means that you should return the usage for all customers."""
         if filters is None:
             filters = {}
@@ -122,11 +119,6 @@ class MetricHandler(abc.ABC):
         if self.property_name is not None:
             filter_kwargs["properties__has_key"] = self.property_name
             filter_kwargs[f"properties__{self.property_name}__isnull"] = False
-        if len(group_by) > 0:
-            filter_kwargs["properties__has_keys"] = []
-            for group in group_by:
-                filter_kwargs["properties__has_keys"].append(group)
-                filter_kwargs[f"properties__{group}__isnull"] = False
         if customer is not None:
             filter_kwargs["customer"] = customer
         filter_args = []
@@ -147,9 +139,7 @@ class MetricHandler(abc.ABC):
         return filter_args, filter_kwargs
 
     @abc.abstractmethod
-    def _build_pre_groupby_annotation_kwargs(self, group_by=None):
-        if group_by is None:
-            group_by = []
+    def _build_pre_groupby_annotation_kwargs(self):
         pre_groupby_annotation_kwargs = {
             "customer_name": F("customer__customer_name"),
         }
@@ -157,21 +147,13 @@ class MetricHandler(abc.ABC):
             pre_groupby_annotation_kwargs["property_value"] = F(
                 f"properties__{self.property_name}"
             )
-        for group_by_property in group_by:
-            pre_groupby_annotation_kwargs[group_by_property] = F(
-                f"properties__{group_by_property}"
-            )
         return pre_groupby_annotation_kwargs
 
     @abc.abstractmethod
     def _build_groupby_kwargs(
-        self, customer, results_granularity, start, group_by=None, proration=None
+        self, customer, results_granularity, start, proration=None
     ):
-        if group_by is None:
-            group_by = []
         groupby_kwargs = {}
-        for group_by_property in group_by:
-            groupby_kwargs[group_by_property] = F(group_by_property)
         groupby_kwargs["customer_name"] = F("customer__customer_name")
 
         if self.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
@@ -317,26 +299,163 @@ class CounterHandler(MetricHandler):
             METRIC_AGGREGATION.MAX,
         ]
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
-        if group_by is None:
-            group_by = []
+    def _build_filter_kwargs(self, start, end, customer, filters=None):
         if filters is None:
             filters = {}
-        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
+        return super()._build_filter_kwargs(start, end, customer, filters)
 
-    def _build_pre_groupby_annotation_kwargs(self, group_by=None):
-        if group_by is None:
-            group_by = []
-        return super()._build_pre_groupby_annotation_kwargs(group_by)
+    def _build_pre_groupby_annotation_kwargs(
+        self,
+    ):
+        return super()._build_pre_groupby_annotation_kwargs()
 
     def _build_groupby_kwargs(
-        self, customer, results_granularity, start, group_by=None, proration=None
+        self, customer, results_granularity, start, proration=None
     ):
-        if group_by is None:
-            group_by = []
         return super()._build_groupby_kwargs(
-            customer, results_granularity, start, group_by, proration
+            customer, results_granularity, start, proration
         )
+
+    def get_total_usage(
+        self,
+        start,
+        end,
+        customer=None,
+        filters=None,
+    ):
+        from metering_billing.aggregation.counter_query_templates import (
+            COUNTER_CAGG_TOTAL,
+        )
+        from metering_billing.models import OrganizationSetting
+
+        if self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
+            raise NotImplementedError
+        # there's 3 periods here.... the chunk between the start and the end of that day,
+        # the full days in between, and the chunk between the last full day and the end. There
+        # are scenarios where all 3 of them happen or don't independently of each other, so
+        # we check individually
+        # check for start to end of day condition:
+        start_to_eod = not (
+            start.hour == 0
+            and start.minute == 0
+            and start.second == 0
+            and start.microsecond == 0
+        )
+        # check for start of day to endcondition:
+        sod_to_end = not (
+            end.hour == 23
+            and end.minute == 59
+            and end.second == 59
+            and end.microsecond == 999999
+        )
+        # check for full days in between condition:
+        if not start_to_eod:
+            full_days_btwn_start = start.date()
+        else:
+            full_days_btwn_start = (start + relativedelta(days=1)).date()
+        if not sod_to_end:
+            full_days_btwn_end = end.date()
+        else:
+            full_days_btwn_end = (end - relativedelta(days=1)).date()
+        full_days_between = (full_days_btwn_end - full_days_btwn_start).days > 0
+        # prepare dictionary for injection
+        injection_dict = {
+            "query_type": self.usage_aggregation_type,
+            "customer_id": None,
+            "filter_properties": {},
+        }
+        if customer:
+            injection_dict["customer_id"] = customer.id
+        else:
+            raise NotImplementedError
+        try:
+            groupby = self.organization.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+            )
+            groupby = groupby.setting_values
+        except OrganizationSetting.DoesNotExist:
+            self.organization.provision_subscription_filter_settings()
+            groupby = []
+        injection_dict["group_by"] = groupby
+        for key, value in filters.items():
+            if not isinstance(value, list):
+                value = [value]
+            injection_dict["filter_properties"][key] = value
+        # now use our pre-prepared queries with the injectiosn to get the usage
+        all_results = []
+        if start_to_eod:
+            injection_dict["start_date"] = start.replace(microsecond=0)
+            injection_dict["end_date"] = start.replace(
+                hour=23, minute=59, second=59, microsecond=999999
+            )
+            injection_dict["cagg_name"] = (
+                self.organization.organization_id[:22]
+                + "___"
+                + self.metric_id[:22]
+                + "___"
+                + "second"
+            )
+            query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                results = namedtuplefetchall(cursor)
+            all_results.extend(results)
+        if full_days_between:
+            injection_dict["start_date"] = full_days_btwn_start
+            injection_dict["end_date"] = full_days_btwn_end
+            injection_dict["cagg_name"] = (
+                self.organization.organization_id[:22]
+                + "___"
+                + self.metric_id[:22]
+                + "___"
+                + "day"
+            )
+            query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                results = namedtuplefetchall(cursor)
+            all_results.extend(results)
+        if sod_to_end:
+            injection_dict["start_date"] = end.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+            injection_dict["end_date"] = end.replace(microseconds=0)
+            injection_dict["cagg_name"] = (
+                self.organization.organization_id[:22]
+                + "___"
+                + self.metric_id[:22]
+                + "___"
+                + "second"
+            )
+            query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                results = namedtuplefetchall(cursor)
+            all_results.extend(results)
+        per_customer = {}
+        cust_id_to_name_map = {}
+        for result in all_results:
+            if result.customer_id not in cust_id_to_name_map:
+                cust_id_to_name_map[result.customer_id] = customer.customer_name
+            customer_name = cust_id_to_name_map[result.customer_id]
+            if customer_name not in per_customer:
+                per_customer[customer_name] = {
+                    "usage_qty": 0,
+                    "num_events": 0,
+                }
+            if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+                per_customer[customer_name]["usage_qty"] += (
+                    result.usage_qty * result.num_events
+                )
+            else:
+                per_customer[customer_name]["usage_qty"] += result.usage_qty
+            per_customer[customer_name]["num_events"] += result.num_events
+        if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+            for customer_name, values in per_customer.items():
+                per_customer[customer_name]["usage_qty"] = (
+                    values["usage_qty"] / values["num_events"]
+                )
+        return per_customer
 
     def get_usage(
         self,
@@ -344,7 +463,6 @@ class CounterHandler(MetricHandler):
         start,
         end,
         customer=None,
-        group_by=None,
         proration=None,
         filters=None,
     ):
@@ -353,152 +471,27 @@ class CounterHandler(MetricHandler):
         )
         from metering_billing.models import OrganizationSetting
 
-        if group_by is None:
-            group_by = []
         if filters is None:
             filters = {}
         try:
-            if self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-                raise NotImplementedError
-            # there's 3 periods here.... the chunk between the start and the end of that day,
-            # the full days in between, and the chunk between the last full day and the end. There
-            # are scenarios where all 3 of them happen or don't independently of each other, so
-            # we check individually
-            # check for start to end of day condition:
-            start_to_eod = not (
-                start.hour == 0
-                and start.minute == 0
-                and start.second == 0
-                and start.microsecond == 0
+            self.get_total_usage(
+                results_granularity,
+                start,
+                end,
+                customer,
+                proration,
+                filters,
             )
-            # check for start of day to endcondition:
-            sod_to_end = not (
-                end.hour == 23
-                and end.minute == 59
-                and end.second == 59
-                and end.microsecond == 999999
-            )
-            # check for full days in between condition:
-            if not start_to_eod:
-                full_days_btwn_start = start.date()
-            else:
-                full_days_btwn_start = (start + relativedelta(days=1)).date()
-            if not sod_to_end:
-                full_days_btwn_end = end.date()
-            else:
-                full_days_btwn_end = (end - relativedelta(days=1)).date()
-            full_days_between = (full_days_btwn_end - full_days_btwn_start).days > 0
-            # prepare dictionary for injection
-            injection_dict = {
-                "query_type": self.usage_aggregation_type,
-                "customer_id": None,
-                "filter_properties": {},
-            }
-            if customer:
-                injection_dict["customer_id"] = customer.id
-            else:
-                raise NotImplementedError
-            try:
-                groupby = self.organization.settings.get(
-                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
-                )
-                groupby = groupby.setting_values
-            except OrganizationSetting.DoesNotExist:
-                self.organization.provision_subscription_filter_settings()
-                groupby = []
-            injection_dict["group_by"] = groupby
-            for key, value in filters.items():
-                if not isinstance(value, list):
-                    value = [value]
-                injection_dict["filter_properties"][key] = value
-            # now use our pre-prepared queries with the injectiosn to get the usage
-            all_results = []
-            if start_to_eod:
-                injection_dict["start_date"] = start.replace(microsecond=0)
-                injection_dict["end_date"] = start.replace(
-                    hour=23, minute=59, second=59, microsecond=999999
-                )
-                injection_dict["cagg_name"] = (
-                    self.organization.organization_id[:22]
-                    + "___"
-                    + self.metric_id[:22]
-                    + "___"
-                    + "second"
-                )
-                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
-                    results = namedtuplefetchall(cursor)
-                all_results.extend(results)
-            if full_days_between:
-                injection_dict["start_date"] = full_days_btwn_start
-                injection_dict["end_date"] = full_days_btwn_end
-                injection_dict["cagg_name"] = (
-                    self.organization.organization_id[:22]
-                    + "___"
-                    + self.metric_id[:22]
-                    + "___"
-                    + "day"
-                )
-                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
-                    results = namedtuplefetchall(cursor)
-                all_results.extend(results)
-            if sod_to_end:
-                injection_dict["start_date"] = end.replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                )
-                injection_dict["end_date"] = end.replace(microseconds=0)
-                injection_dict["cagg_name"] = (
-                    self.organization.organization_id[:22]
-                    + "___"
-                    + self.metric_id[:22]
-                    + "___"
-                    + "second"
-                )
-                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
-                    results = namedtuplefetchall(cursor)
-                all_results.extend(results)
-            per_customer = {}
-            cust_id_to_name_map = {}
-            for result in all_results:
-                if result.customer_id not in cust_id_to_name_map:
-                    cust_id_to_name_map[result.customer_id] = customer.customer_name
-                customer_name = cust_id_to_name_map[result.customer_id]
-                if customer_name not in per_customer:
-                    per_customer[customer_name] = {
-                        "usage_qty": 0,
-                        "num_events": 0,
-                    }
-                if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-                    per_customer[customer_name]["usage_qty"] += (
-                        result.usage_qty * result.num_events
-                    )
-                else:
-                    per_customer[customer_name]["usage_qty"] += result.usage_qty
-                per_customer[customer_name]["num_events"] += result.num_events
-            if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-                for customer_name, values in per_customer.items():
-                    per_customer[customer_name]["usage_qty"] = (
-                        values["usage_qty"] / values["num_events"]
-                    )
-
-            raise NotImplementedError
         except Exception as e:
             print(
-                f"failed on {results_granularity}, {start}, {end}, {customer}, {group_by}, {filters} due to {e}"
+                f"failed on {results_granularity}, {start}, {end}, {customer},{filters} due to {e}"
             )
             filter_args, filter_kwargs = self._build_filter_kwargs(
-                start, end, customer, group_by, filters
+                start, end, customer, filters
             )
-            pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
-                group_by
-            )
+            pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs()
             groupby_kwargs = self._build_groupby_kwargs(
-                customer, results_granularity, start, group_by
+                customer, results_granularity, start
             )
             post_groupby_annotation_kwargs = {}
 
@@ -535,37 +528,29 @@ class CounterHandler(MetricHandler):
                 return_dict[cust_name][tc_trunc] = usage_qty
         return return_dict
 
-    def get_current_usage(self, subscription_record, group_by=None, filters=None):
-        if group_by is None:
-            group_by = []
+    def get_current_usage(self, subscription_record, filters=None):
         per_customer = self.get_usage(
             start=subscription_record.start_date,
             end=subscription_record.end_date,
             results_granularity=USAGE_CALC_GRANULARITY.TOTAL,
             customer=subscription_record.customer,
-            group_by=group_by,
             filters=filters,
         )
         return per_customer
 
     def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None, filters=None
+        self, start, end, customer, proration=None, filters=None
     ):
-        if group_by is None:
-            group_by = []
         if filters is None:
             filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by, filters
+            start, end, customer, filters
         )
-        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
-            group_by
-        )
+        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs()
         groupby_kwargs = self._build_groupby_kwargs(
             customer,
             results_granularity=USAGE_CALC_GRANULARITY.DAILY,
             start=start,
-            group_by=group_by,
             proration=proration,
         )
         post_groupby_annotation_kwargs = {}
@@ -619,7 +604,6 @@ class CounterHandler(MetricHandler):
 
         if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
             intermediate_dict = {}
-            unique_groupby_props = ["customer_name"] + group_by
             for row in q_post_gb_ann:
                 tc_trunc = row["time_created_truncated"]
                 usage_qty = row["usage_qty"]
@@ -860,25 +844,19 @@ class StatefulHandler(MetricHandler):
             )
         return data
 
-    def _build_filter_kwargs(self, start, end, customer, group_by=None, filters=None):
-        if group_by is None:
-            group_by = []
+    def _build_filter_kwargs(self, start, end, customer, filters=None):
         if filters is None:
             filters = {}
-        return super()._build_filter_kwargs(start, end, customer, group_by, filters)
+        return super()._build_filter_kwargs(start, end, customer, filters)
 
-    def _build_pre_groupby_annotation_kwargs(self, group_by=None):
-        if group_by is None:
-            group_by = []
-        return super()._build_pre_groupby_annotation_kwargs(group_by)
+    def _build_pre_groupby_annotation_kwargs(self):
+        return super()._build_pre_groupby_annotation_kwargs()
 
     def _build_groupby_kwargs(
-        self, customer, results_granularity, start, group_by=None, proration=None
+        self, customer, results_granularity, start, proration=None
     ):
-        if group_by is None:
-            group_by = []
         return super()._build_groupby_kwargs(
-            customer, results_granularity, start, group_by, proration
+            customer, results_granularity, start, proration
         )
 
     def get_usage(
@@ -887,22 +865,17 @@ class StatefulHandler(MetricHandler):
         start,
         end,
         customer=None,
-        group_by=None,
         proration=None,
         filters=None,
     ):
-        if group_by is None:
-            group_by = []
         if filters is None:
             filters = {}
         filter_args, filter_kwargs = self._build_filter_kwargs(
-            start, end, customer, group_by, filters
+            start, end, customer, filters
         )
-        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs(
-            group_by
-        )
+        pre_groupby_annotation_kwargs = self._build_pre_groupby_annotation_kwargs()
         groupby_kwargs = self._build_groupby_kwargs(
-            customer, results_granularity, start, group_by, proration
+            customer, results_granularity, start, proration
         )
         smallest_granularity = groupby_kwargs.pop("granularity", None)
         post_groupby_annotation_kwargs = {}
