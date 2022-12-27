@@ -577,17 +577,13 @@ class CounterHandler(MetricHandler):
             q_post_gb_ann = q_gb.annotate(**post_groupby_annotation_kwargs)
 
             return_dict = {}
-            unique_groupby_props = ["customer_name"] + group_by
             for row in q_post_gb_ann:
                 cust_name = row["customer_name"]
                 tc_trunc = row["time_created_truncated"]
-                unique_tup = tuple(row[prop] for prop in unique_groupby_props)
                 usage_qty = row["usage_qty"]
                 if cust_name not in return_dict:
                     return_dict[cust_name] = {}
-                if unique_tup not in return_dict[cust_name]:
-                    return_dict[cust_name][unique_tup] = {}
-                return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
+                return_dict[cust_name][tc_trunc] = usage_qty
         return return_dict
 
     def get_current_usage(self, subscription_record, group_by=None, filters=None):
@@ -677,38 +673,31 @@ class CounterHandler(MetricHandler):
             unique_groupby_props = ["customer_name"] + group_by
             for row in q_post_gb_ann:
                 tc_trunc = row["time_created_truncated"]
-                unique_tup = tuple(row[prop] for prop in unique_groupby_props)
                 usage_qty = row["usage_qty"]
-                if unique_tup not in intermediate_dict:
-                    intermediate_dict[unique_tup] = {}
-                if tc_trunc not in intermediate_dict[unique_tup]:
-                    intermediate_dict[unique_tup][tc_trunc] = {
+                if tc_trunc not in intermediate_dict:
+                    intermediate_dict[tc_trunc] = {
                         "usage_qty": usage_qty,
                         "n_events": row["n_events"],
                     }
             return_dict = {}
-            for unique_tup, v in intermediate_dict.items():
-                return_dict[unique_tup] = {}
-                total_usage_qty = sum([row["usage_qty"] * row["n_events"] for row in v])
-                total_num_events = sum([row["n_events"] for row in v])
-                total_average = total_usage_qty / total_num_events
-                for row in v:
-                    tc_trunc = row["time_created_truncated"]
-                    usage_qty = total_average * (
-                        row["usage_qty"] * row["n_events"] / total_usage_qty
-                    )
-                    return_dict[unique_tup][tc_trunc] = usage_qty
+            total_usage_qty = sum(
+                [row["usage_qty"] * row["n_events"] for row in intermediate_dict]
+            )
+            total_num_events = sum([row["n_events"] for row in intermediate_dict])
+            total_average = total_usage_qty / total_num_events
+            for row in intermediate_dict:
+                tc_trunc = row["time_created_truncated"]
+                usage_qty = total_average * (
+                    row["usage_qty"] * row["n_events"] / total_usage_qty
+                )
+                return_dict[tc_trunc] = usage_qty
         else:
             return_dict = {}
-            unique_groupby_props = ["customer_name"] + group_by
             for row in q_post_gb_ann:
                 tc_trunc = row["time_created_truncated"]
-                unique_tup = tuple(row[prop] for prop in unique_groupby_props)
                 usage_qty = row["usage_qty"]
-                if unique_tup not in return_dict:
-                    return_dict[unique_tup] = {}
-                if tc_trunc not in return_dict[unique_tup]:
-                    return_dict[unique_tup][tc_trunc] = usage_qty
+                if tc_trunc not in return_dict:
+                    return_dict[tc_trunc] = usage_qty
         return return_dict
 
     @staticmethod
@@ -1023,17 +1012,13 @@ class StatefulHandler(MetricHandler):
                 )
 
         period_usages = {}
-        unique_groupby_props = ["customer_name"] + group_by
         for row in q_post_gb_ann:
             cust_name = row["customer_name"]
             tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
             usage_qty = row["usage_qty"]
             if cust_name not in period_usages:
                 period_usages[cust_name] = {}
-            if unique_tup not in period_usages[cust_name]:
-                period_usages[cust_name][unique_tup] = {}
-            period_usages[cust_name][unique_tup][tc_trunc] = usage_qty
+            period_usages[cust_name][tc_trunc] = usage_qty
         # grab latest value from previous period per customer
         # needed in case there's gaps from data , you would take the "latest" value not the
         # usage value from aprevious period
@@ -1051,13 +1036,10 @@ class StatefulHandler(MetricHandler):
         for row in latest_per_period:
             cust_name = row["customer_name"]
             tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
             usage_qty = row["usage_qty"]
             if cust_name not in latest_in_period_usages:
                 latest_in_period_usages[cust_name] = {}
-            if unique_tup not in latest_in_period_usages[cust_name]:
-                latest_in_period_usages[cust_name][unique_tup] = {}
-            latest_in_period_usages[cust_name][unique_tup][tc_trunc] = usage_qty
+            latest_in_period_usages[cust_name][tc_trunc] = usage_qty
         # grab pre-query initial values
         filter_kwargs["time_created__lt"] = start
         del filter_kwargs["time_created__gte"]
@@ -1100,13 +1082,10 @@ class StatefulHandler(MetricHandler):
         last_usages = {}
         for row in last_pre_query_actual_events:
             cust_name = row.customer_name
-            unique_tup = tuple(getattr(row, prop) for prop in unique_groupby_props)
             usage_qty = row.usage_qty
             if cust_name not in last_usages:
                 last_usages[cust_name] = {}
-            if unique_tup not in last_usages[cust_name]:
-                last_usages[cust_name][unique_tup] = {}
-            last_usages[cust_name][unique_tup] = usage_qty
+            last_usages[cust_name] = usage_qty
         # quantize first according to the stateful period
         truncate_to_granularity = smallest_granularity not in ["total", None]
         plan_periods = list(
@@ -1127,30 +1106,23 @@ class StatefulHandler(MetricHandler):
         usage_dict = {}
         for customer_name, cust_usages in period_usages.items():
             usage_dict[customer_name] = {}
-            last_usage_cust = last_usages.get(customer_name, {})
+            last_usage_cust = last_usages.get(customer_name, 0)
             customer_latest_in_period_usages = latest_in_period_usages.get(
                 customer_name, {}
             )
-            for unique_customer_tuple, unique_usage in cust_usages.items():
-                last_usage_unique = last_usage_cust.get(unique_customer_tuple, 0)
-                latest_in_period_usages = customer_latest_in_period_usages.get(
-                    unique_customer_tuple, {}
+            usage_dict[customer_name] = {}
+            for period in plan_periods:
+                # check the usage for that period
+                period_usage = cust_usages.get(period, None)
+                # if its none, then we'll use the last usage
+                if period_usage is None:
+                    period_usage = last_usage_cust
+                # add revenue and usage to the dict
+                usage_dict[customer_name][period] = period_usage
+                # redefine what the "last" one is
+                last_usage_cust = customer_latest_in_period_usages.get(
+                    period, period_usage
                 )
-                usage_dict[customer_name][unique_customer_tuple] = {}
-                for period in plan_periods:
-                    # check the usage for that period
-                    period_usage = unique_usage.get(period, None)
-                    # if its none, then we'll use the last usage
-                    if period_usage is None:
-                        period_usage = last_usage_unique
-                    # add revenue and usage to the dict
-                    usage_dict[customer_name][unique_customer_tuple][
-                        period
-                    ] = period_usage
-                    # redefine what the "last" one is
-                    last_usage_unique = latest_in_period_usages.get(
-                        period, period_usage
-                    )
         # ok we got here, but now we have a problem. Usage dicts is indexed in time periods of
         # self.granularity. However, we need to have it in units of results_granularity. We
         # have two cases: 1) results_granularity is coarser than self.granularity (eg want
@@ -1179,30 +1151,28 @@ class StatefulHandler(MetricHandler):
             new_usage_dict = {}
             for customer_name, cust_usages in usage_dict.items():
                 cust_dict = {}
-                for unique_customer_tuple, unique_usage in cust_usages.items():
-                    cust_dict[unique_customer_tuple] = {}
-                    coarse_periods = sorted(unique_usage.items(), key=lambda x: x[0])
-                    fine_periods = list(
-                        periods_bwn_twodates(results_granularity, start, end)
-                    )  # daily
-                    i = 0
-                    j = 0
-                    last_amt = 0
-                    while i < len(fine_periods):
-                        try:
-                            cur_coarse, coarse_usage = coarse_periods[j]
-                        except IndexError:
-                            cur_coarse = None
-                        cur_fine = fine_periods[i]
-                        cc_none = cur_coarse is None
-                        cf_less_cc = cur_fine < cur_coarse if not cc_none else False
-                        if cc_none or cf_less_cc:
-                            cust_dict[unique_customer_tuple][cur_fine] = last_amt
-                        else:
-                            cust_dict[unique_customer_tuple][cur_fine] = coarse_usage
-                            last_amt = coarse_usage
-                            j += 1
-                        i += 1
+                coarse_periods = sorted(cust_usages.items(), key=lambda x: x[0])
+                fine_periods = list(
+                    periods_bwn_twodates(results_granularity, start, end)
+                )  # daily
+                i = 0
+                j = 0
+                last_amt = 0
+                while i < len(fine_periods):
+                    try:
+                        cur_coarse, coarse_usage = coarse_periods[j]
+                    except IndexError:
+                        cur_coarse = None
+                    cur_fine = fine_periods[i]
+                    cc_none = cur_coarse is None
+                    cf_less_cc = cur_fine < cur_coarse if not cc_none else False
+                    if cc_none or cf_less_cc:
+                        cust_dict[cur_fine] = last_amt
+                    else:
+                        cust_dict[cur_fine] = coarse_usage
+                        last_amt = coarse_usage
+                        j += 1
+                    i += 1
                 new_usage_dict[customer_name] = cust_dict
             usage_dict = new_usage_dict
         return usage_dict
@@ -1257,30 +1227,27 @@ class StatefulHandler(MetricHandler):
         coalesced_usage = {}
         if self.granularity in longer_than_daily and proration in longer_than_daily:
             if self.usage_aggregation_type == METRIC_AGGREGATION.LATEST:
-                for unique_customer_tuple, unique_usage in customer_usage.items():
-                    coalesced_usage[unique_customer_tuple] = {}
-                    for period in unique_usage:
-                        period_end = period
-                        if (
-                            self.granularity == METRIC_GRANULARITY.MONTH
-                            or proration == METRIC_GRANULARITY.MONTH
-                        ):
-                            period_end = period + relativedelta(months=1, days=-1)
-                        elif (
-                            self.granularity == METRIC_GRANULARITY.QUARTER
-                            or proration == METRIC_GRANULARITY.QUARTER
-                        ):
-                            period_end = period + relativedelta(months=3, days=-1)
-                        elif (
-                            self.granularity == METRIC_GRANULARITY.YEAR
-                            or proration == METRIC_GRANULARITY.YEAR
-                        ):
-                            period_end = period + relativedelta(years=1, days=-1)
-                        else:
-                            period_end = end + relativedelta(days=-1)
-                        coalesced_usage[unique_customer_tuple][
-                            period_end
-                        ] = unique_usage[period]
+                coalesced_usage = {}
+                for period in customer_usage:
+                    period_end = period
+                    if (
+                        self.granularity == METRIC_GRANULARITY.MONTH
+                        or proration == METRIC_GRANULARITY.MONTH
+                    ):
+                        period_end = period + relativedelta(months=1, days=-1)
+                    elif (
+                        self.granularity == METRIC_GRANULARITY.QUARTER
+                        or proration == METRIC_GRANULARITY.QUARTER
+                    ):
+                        period_end = period + relativedelta(months=3, days=-1)
+                    elif (
+                        self.granularity == METRIC_GRANULARITY.YEAR
+                        or proration == METRIC_GRANULARITY.YEAR
+                    ):
+                        period_end = period + relativedelta(years=1, days=-1)
+                    else:
+                        period_end = end + relativedelta(days=-1)
+                    coalesced_usage[period_end] = customer_usage[period]
             else:
                 daily_per_customer = self.get_usage(
                     start=start,
@@ -1291,40 +1258,33 @@ class StatefulHandler(MetricHandler):
                     proration=METRIC_GRANULARITY.DAY,
                     filters=filters,
                 ).get(customer.customer_name, {})
-                for unique_customer_tuple, unique_usage in customer_usage.items():
-                    daily_per_unique = daily_per_customer.get(unique_customer_tuple, {})
-                    coalesced_usage[unique_customer_tuple] = {}
-                    last_value = 0
-                    unique_usage_items = sorted(
-                        unique_usage.items(), key=lambda x: x[0]
-                    )
-                    for i, (period, usage) in enumerate(unique_usage_items):
-                        period = convert_to_date(period)
-                        try:
-                            less_than = convert_to_date(unique_usage_items[i + 1][0])
-                        except:
-                            less_than = None
-                        for day, usage in daily_per_unique.items():
-                            day = convert_to_date(day)
-                            if day < period:
-                                continue
-                            if less_than is not None:
-                                # make sure less than is not none to avoid comparison bug
-                                if day >= less_than:
-                                    break
-                            if usage > last_value:
-                                coalesced_usage[unique_customer_tuple][day] = (
-                                    usage - last_value
-                                )
-                                last_value = usage
+                coalesced_usage = {}
+                last_value = 0
+                unique_usage_items = sorted(customer_usage.items(), key=lambda x: x[0])
+                for i, (period, usage) in enumerate(unique_usage_items):
+                    period = convert_to_date(period)
+                    try:
+                        less_than = convert_to_date(unique_usage_items[i + 1][0])
+                    except:
+                        less_than = None
+                    for day, usage in daily_per_customer.items():
+                        day = convert_to_date(day)
+                        if day < period:
+                            continue
+                        if less_than is not None:
+                            # make sure less than is not none to avoid comparison bug
+                            if day >= less_than:
+                                break
+                        if usage > last_value:
+                            coalesced_usage[day] = usage - last_value
+                            last_value = usage
         else:
-            for unique_customer_tuple, unique_usage in customer_usage.items():
-                coalesced_usage[unique_customer_tuple] = {}
-                for period, usage in unique_usage.items():
-                    day = period.date()
-                    if day not in coalesced_usage[unique_customer_tuple]:
-                        coalesced_usage[unique_customer_tuple][day] = 0
-                    coalesced_usage[unique_customer_tuple][day] += usage
+            coalesced_usage = {}
+            for period, usage in customer_usage.items():
+                day = period.date()
+                if day not in coalesced_usage:
+                    coalesced_usage[day] = 0
+                coalesced_usage[day] += usage
         return coalesced_usage
 
     @staticmethod
@@ -1509,13 +1469,10 @@ class RateHandler(MetricHandler):
         for row in q_post_gb_ann:
             cust_name = row["customer_name"]
             tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
             usage_qty = row["usage_qty"]
             if cust_name not in return_dict:
                 return_dict[cust_name] = {}
-            if unique_tup not in return_dict[cust_name]:
-                return_dict[cust_name][unique_tup] = {}
-            return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
+            return_dict[cust_name][tc_trunc] = usage_qty
 
         return return_dict
 
@@ -1587,13 +1544,10 @@ class RateHandler(MetricHandler):
         for row in q_post_gb_ann:
             cust_name = row["customer_name"]
             tc_trunc = row["time_created_truncated"]
-            unique_tup = tuple(row[prop] for prop in unique_groupby_props)
             usage_qty = row["new_usage_qty"]
             if cust_name not in return_dict:
                 return_dict[cust_name] = {}
-            if unique_tup not in return_dict[cust_name]:
-                return_dict[cust_name][unique_tup] = {}
-            return_dict[cust_name][unique_tup][tc_trunc] = usage_qty
+            return_dict[cust_name][tc_trunc] = usage_qty
 
         return return_dict
 

@@ -412,10 +412,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             if "unique_org_metric_id" in str(cause):
                 error_message = "Metric ID already exists for this organization. This usually happens if you try to sp ecify an ID instead of letting the Lotus backend handle ID creation."
                 raise DuplicateMetric(error_message)
-            elif "unique_org_billable_metric_name" in str(cause):
-                error_message = "Metric name already exists for this organization. Please choose a different name."
-                raise DuplicateMetric(error_message)
-            elif "unique_org_event_name_metric_type_and_other_fields" in str(cause):
+            elif "uq_metric_w_null__" in str(cause):
                 error_message = "A metric with the same name, type, and other fields already exists for this organization. Please choose a different name or type, or change the other fields."
                 raise DuplicateMetric(error_message)
             else:

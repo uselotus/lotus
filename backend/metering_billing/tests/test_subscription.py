@@ -187,6 +187,8 @@ class TestCreateSubscription:
             get_subscription_records_in_org(setup_dict["org"])
         )
 
+        setup_dict["org"].update_subscription_filter_settings(["email"])
+
         setup_dict["payload"]["start_date"] = now_utc()
         setup_dict["payload"]["subscription_filters"] = [
             {"property_name": "email", "value": "123"}
@@ -756,6 +758,7 @@ class TestSubscriptionAndSubscriptionRecord:
             num_subscriptions=0, auth_method="session_auth"
         )
         cur_payload = setup_dict["payload"]
+        setup_dict["org"].update_subscription_filter_settings(["email"])
         cur_payload["subscription_filters"] = [
             {
                 "property_name": "email",
@@ -791,6 +794,7 @@ class TestSubscriptionAndSubscriptionRecord:
         prev_subscription_records_len = after_subscription_records_len
 
         cur_payload = setup_dict["payload"]
+        setup_dict["org"].update_subscription_filter_settings(["email"])
         cur_payload["subscription_filters"] = [
             {
                 "property_name": "email",
@@ -1148,6 +1152,7 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_id="yearly-plan",
         )
         cur_payload = setup_dict["payload"]
+        setup_dict["org"].update_subscription_filter_settings(["email"])
         cur_payload["subscription_filters"] = [
             {
                 "property_name": "email",

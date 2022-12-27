@@ -256,9 +256,6 @@ function UsageComponentForm({
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
-  const [separateByProperties, setSeparateByProperties] = useState<string[]>(
-    editComponentItem?.separate_by ?? []
-  );
   const [metricStateful, setMetricStateful] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
 
@@ -521,7 +518,6 @@ function UsageComponentForm({
               );
               handleComponentAdd({
                 metric: values.metric,
-                separate_by: separateByProperties,
                 tiers: currentTiers,
                 proration_granularity: prorationGranularity,
                 metric_id: currentMetric?.metric_id,
