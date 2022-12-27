@@ -3,6 +3,7 @@ import datetime
 import logging
 from datetime import timedelta
 from typing import Optional
+import sqlparse
 
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
@@ -258,6 +259,57 @@ class MetricHandler(abc.ABC):
             bm.categorical_filters.add(cf)
         assert bm is not None
         return bm
+
+
+class CustomHandler(MetricHandler):
+    def __init__(self, billable_metric: Metric):
+        self.organization = billable_metric.organization
+        self.event_name = billable_metric.event_name
+        self.billable_metric = billable_metric
+        if billable_metric.metric_type != METRIC_TYPE.CUSTOM:
+            raise AggregationEngineFailure(
+                f"Billable metric of type {billable_metric.metric_type} can't be handled by a CustomHandler."
+            )
+        self.custom_sql = billable_metric.custom_sql
+
+    def _build_groupby_kwargs(
+        self, customer, results_granularity, start, group_by=None, proration=None
+    ):
+        groupby_kwargs = super()._build_groupby_kwargs(
+            customer, results_granularity, start, group_by, proration
+        )
+        if self.property_name is not None:
+            groupby_kwargs["property_name"] = F(self.property_name)
+        return groupby_kwargs
+
+    def _build_pre_groupby_annotation_kwargs(self, customer, start, end):
+        pre_groupby_annotation_kwargs = super()._build_pre_groupby_annotation_kwargs(
+            customer, start, end
+        )
+        if self.property_name is not None:
+            pre_groupby_annotation_kwargs[self.property_name] = F(
+                f"properties__{self.property_name}"
+            )
+        return pre_groupby_annotation_kwargs
+
+    def _build_queryset(self, customer, start, end, group_by=None, proration=None):
+        queryset = (
+            super()
+            ._build_queryset(customer, start, end, group_by, proration)
+            .annotate(**self._build_pre_groupby_annotation_kwargs(customer, start, end))
+        )
+        return queryset
+
+    def _build_aggregation_kwargs(self, customer, start, end, group_by=None):
+        aggregation_kwargs = super()._build_aggregation_kwargs(
+            customer, start, end, group_by
+        )
+        if self.property_name is not None:
+            aggregation_kwargs["property_name"] = F(self.property_name)
+        return aggregation_kwargs
+
+    def _build_aggregation_queryset(self, customer, start, end, group_by=None):
+        aggregation_queryset = super
 
 
 class CounterHandler(MetricHandler):
@@ -1526,4 +1578,37 @@ METRIC_HANDLER_MAP = {
     METRIC_TYPE.COUNTER: CounterHandler,
     METRIC_TYPE.STATEFUL: StatefulHandler,
     METRIC_TYPE.RATE: RateHandler,
+    METRIC_TYPE.CUSTOM: CustomHandler,
 }
+
+
+"""
+This function validates the custom_sql is a SELECT statement and doesn't modify the data in any way.
+"""
+
+
+def validate_custom_sql(
+    custom_sql: str,
+    prohibited_keywords=[
+        "alter",
+        "create",
+        "drop",
+        "delete",
+        "insert",
+        "replace",
+        "truncate",
+        "update",
+    ],
+) -> bool:
+    parsed_sql = sqlparse.parse(custom_sql)
+
+    if parsed_sql[0].is_select():
+        return False
+
+    for token in parsed_sql[0].flatten():
+        if (
+            token.ttype is sqlparse.tokens.Keyword
+            and token.value.lower() in prohibited_keywords
+        ):
+            return False
+    return True
