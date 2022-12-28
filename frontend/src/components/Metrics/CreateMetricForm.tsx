@@ -15,9 +15,6 @@ import { MetricType } from "../../types/metric-type";
 import { render } from "react-dom";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
-import "ace-builds/src-noconflict/mode-sql";
-import "ace-builds/src-noconflict/theme-github";
-import "ace-builds/src-noconflict/ext-language_tools";
 const { Option } = Select;
 const { Panel } = Collapse;
 
@@ -435,7 +432,6 @@ const CreateMetricForm = (props: {
             theme="github"
             onChange={(newValue) => setCustomSQL(newValue)}
             value={customSQL ? customSQL : ""}
-            name="sql-editor"
             editorProps={{ $blockScrolling: true }}
             setOptions={{
               enableBasicAutocompletion: true,
