@@ -319,4 +319,3 @@ WHERE
 # }
 
 # query = Template(STATEFUL_GET_USAGE_WITH_GRANULARITY).render(**data)
-# print(query)

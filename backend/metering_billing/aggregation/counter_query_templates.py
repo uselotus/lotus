@@ -149,6 +149,7 @@ SELECT
     {%- elif query_type == "max" -%}
     MAX(usage_qty)
     {%- endif %} AS usage_qty
+    , bucket
 FROM
     {{ cagg_name }}
 WHERE
