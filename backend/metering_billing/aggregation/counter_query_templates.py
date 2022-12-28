@@ -4,15 +4,11 @@ COUNTER_CAGG_QUERY = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH ( timescaledb.continuous ) AS
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id,
-    time_bucket('1 {{bucket_size}}', "metering_billing_usageevent"."time_created") AS bucket,
-    COUNT(
-        "metering_billing_usageevent"."idempotency_id"
-    ) AS num_events,
-    {%- if query_type == "count" -%}
-    COUNT(
-        "metering_billing_usageevent"."idempotency_id"
-    )
+    "metering_billing_usageevent"."customer_id" AS customer_id
+    , time_bucket('1 {{bucket_size}}', "metering_billing_usageevent"."time_created") AS bucket
+    , COUNT("metering_billing_usageevent"."idempotency_id") AS num_events
+    , {%- if query_type == "count" -%}
+    COUNT("metering_billing_usageevent"."idempotency_id")
     {%- elif query_type == "sum" -%}
     SUM(
         ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
@@ -25,10 +21,9 @@ SELECT
     MAX(
         ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
     )
-    {%- endif %}
-    AS usage_qty
+    {%- endif %} AS usage_qty
     {%- for group_by_field in group_by %}
-    ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
+    , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
     {%- endfor %}
 FROM
     "metering_billing_usageevent"
@@ -64,10 +59,10 @@ WHERE
         )
     {%- endfor %}
 GROUP BY
-    "metering_billing_usageevent"."customer_id"
+    customer_id
     , bucket
     {%- for group_by_field in group_by %}
-    ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
+    , {{ group_by_field }}
     {%- endfor %}
 """
 
@@ -75,7 +70,8 @@ COUNTER_CAGG_REFRESH = """
 SELECT add_continuous_aggregate_policy('{{ cagg_name }}',
     start_offset => INTERVAL '30 days',
     end_offset => INTERVAL '1 day',
-    schedule_interval => INTERVAL '1 day');
+    schedule_interval => INTERVAL '1 day',
+    if_not_exists => TRUE);
 """
 
 COUNTER_CAGG_DROP = """
@@ -83,8 +79,12 @@ DROP MATERIALIZED VIEW IF EXISTS {{ cagg_name }};
 """
 
 COUNTER_CAGG_COMPRESSION = """
-ALTER MATERIALIZED VIEW {{ cagg_name }} set (timescaledb.compress = true);;
-SELECT add_compression_policy('{{ cagg_name }}', compress_after=>'31 days'::interval);
+ALTER MATERIALIZED VIEW {{ cagg_name }} set (timescaledb.compress = true);
+SELECT add_compression_policy(
+    '{{ cagg_name }}', 
+    compress_after=>'31 days'::interval,
+    if_not_exists=>true
+);
 """
 
 # this query will help us fill in the gaps where we don't want to use a full day's worth of usage
@@ -135,12 +135,12 @@ GROUP BY
 # this query is used to get all the usage aggregated over the entire time period using the
 COUNTER_CAGG_TOTAL = """
 SELECT
-    customer_id,
+    customer_id
     {%- for group_by_field in group_by %}
-    {{ group_by_field }},
+    , {{ group_by_field }}
     {%- endfor %}
-    SUM(num_events) AS num_events,
-    {%- if query_type == "count" -%}
+    , SUM(num_events) AS num_events
+    , {%- if query_type == "count" -%}
     SUM(num_events)
     {%- elif query_type == "sum" -%}
     SUM(usage_qty)
@@ -148,22 +148,19 @@ SELECT
     SUM(usage_qty * num_events) / SUM(num_events)
     {%- elif query_type == "max" -%}
     MAX(usage_qty)
-    {%- endif %}
-    AS usage_qty
-    {%- for group_by_field in group_by %}
-    , {{ group_by_field }}
-    {%- endfor %}
+    {%- endif %} AS usage_qty
 FROM
     {{ cagg_name }}
 WHERE
     customer_id IS NOT NULL
     {%- if customer_id is not none %}
     AND customer_id = {{ customer_id }}
-    {% endif %}
+    {%- endif %}
     AND bucket >= '{{ start_date }}'::timestamptz
     AND bucket <= '{{ end_date }}'::timestamptz
+    AND bucket <= NOW()
     {%- for property_name, property_values in filter_properties.items() %}
-    AND {{ group_by_field }}
+    AND {{ property_name }}
         IN ( 
             {%- for pval in property_values %} 
             '{{ pval }}' 
@@ -179,13 +176,14 @@ GROUP BY
 """
 
 
-COUNTER_UNIQUE_TOTAL_PERIOD = """
+COUNTER_UNIQUE_TOTAL = """
 SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id,
+    "metering_billing_usageevent"."customer_id" AS customer_id
     {%- for group_by_field in group_by %}
-    "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }},
+    , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
     {%- endfor %}
-    COUNT( DISTINCT "metering_billing_usageevent"."properties" ->> '{{ property_name }}' ) AS usage_qty
+    , COUNT( DISTINCT "metering_billing_usageevent"."properties" ->> '{{ property_name }}' ) AS usage_qty
+    , COUNT( * ) AS num_events
 FROM
     "metering_billing_usageevent"
 WHERE
@@ -194,11 +192,49 @@ WHERE
     AND "metering_billing_usageevent"."time_created" <= NOW()
     AND "metering_billing_usageevent"."time_created" >= '{{ start_date }}'::timestamptz
     AND "metering_billing_usageevent"."time_created" <= '{{ end_date }}'::timestamptz
+    {%- if customer_id is not none %}
     AND "metering_billing_usageevent"."customer_id" = {{ customer_id }}
+    {% endif %}
+    {%- for property_name, property_values in filter_properties.items() %}
+    AND {{ property_name }}
+        IN ( 
+            {%- for pval in property_values %} 
+            '{{ pval }}' 
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
+        )
+    {%- endfor %}
+    {%- for property_name, operator, comparison in numeric_filters %}
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
+        {% elif operator == "eq" %}
+        =
+        {% endif %}
+        {{ comparison }}
+    {%- endfor %}
+    {%- for property_name, operator, comparison in categorical_filters %}
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+        {% if operator == "isnotin" %}
+        NOT
+        {% endif %}
+        IN ( 
+            {%- for pval in comparison %} 
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
+        )
+    {%- endfor %}
 GROUP BY
-    "metering_billing_usageevent"."customer_id",
+    "metering_billing_usageevent"."customer_id"
     {%- for group_by_field in group_by %}
-    "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}',
+    , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}',
     {%- endfor %}
 """
 
@@ -225,12 +261,14 @@ WHERE
     AND "metering_billing_usageevent"."time_created" <= NOW()
     AND "metering_billing_usageevent"."time_created" >= '{{ start_date }}'::timestamptz
     AND "metering_billing_usageevent"."time_created" <= '{{ end_date }}'::timestamptz
+    {%- if customer_id is not none %}
     AND "metering_billing_usageevent"."customer_id" = {{ customer_id }}
+    {% endif %}
 ORDER BY
-    "metering_billing_usageevent"."customer_id",
+    "metering_billing_usageevent"."customer_id"
     {%- for group_by_field in group_by %}
-    "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}',
+    , "metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
     {%- endfor %}
-    "metering_billing_usageevent"."properties" ->> '{{ property_name }}',
-    "metering_billing_usageevent"."time_created" ASC
+    , "metering_billing_usageevent"."properties" ->> '{{ property_name }}'
+    , "metering_billing_usageevent"."time_created" ASC
 """

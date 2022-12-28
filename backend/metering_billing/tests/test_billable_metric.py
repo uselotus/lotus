@@ -9,6 +9,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     CategoricalFilter,
     Customer,
@@ -316,6 +317,9 @@ class TestCalculateMetric:
             event_name="test_event",
             usage_aggregation_type="unique",
         )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
         time_created = parser.parse("2021-01-01T06:00:00Z")
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test_customer"
@@ -345,9 +349,8 @@ class TestCalculateMetric:
             customer=customer,
         )
         metric_usage = metric_usage[customer.customer_name]
-        assert len(metric_usage) == 1  # no groupbys
-        metric_usage = list(metric_usage.values())[0]
-        assert metric_usage == 2
+        assert "usage_qty" in metric_usage
+        assert metric_usage["usage_qty"] == 2
 
     def test_stateful_total_granularity(
         self, billable_metric_test_common_setup, add_subscription_to_org
@@ -364,6 +367,9 @@ class TestCalculateMetric:
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
@@ -452,6 +458,9 @@ class TestCalculateMetric:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
         )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
@@ -534,6 +543,9 @@ class TestCalculateMetric:
             billable_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.RATE,
             granularity=METRIC_GRANULARITY.DAY,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=14, hour=0)
         customer = baker.make(
@@ -644,6 +656,9 @@ class TestCalculateMetric:
             granularity=METRIC_GRANULARITY.MONTH,
             event_type=EVENT_TYPE.DELTA,
         )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test"
@@ -726,6 +741,9 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.HOUR,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
@@ -840,6 +858,9 @@ class TestCalculateMetricProrationForStateful:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.DAY,
         )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
@@ -949,6 +970,9 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(months=3, days=21)
         customer = baker.make(
@@ -1064,6 +1088,9 @@ class TestCalculateMetricWithFilters:
             event_name="test_event",
             usage_aggregation_type="unique",
         )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
         numeric_filter = NumericFilter.objects.create(
             property_name="test_filter_property",
             operator=NUMERIC_FILTER_OPERATORS.GT,
@@ -1109,9 +1136,8 @@ class TestCalculateMetricWithFilters:
             customer=customer,
         )
         metric_usage = metric_usage[customer.customer_name]
-        assert len(metric_usage) == 1  # no groupbys
-        metric_usage = list(metric_usage.values())[0]
-        assert metric_usage == 2
+        assert "usage_qty" in metric_usage
+        assert metric_usage["usage_qty"] == 2
 
     def test_stateful_total_granularity_with_filters(
         self, billable_metric_test_common_setup, add_subscription_to_org
@@ -1128,6 +1154,9 @@ class TestCalculateMetricWithFilters:
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         numeric_filter = NumericFilter.objects.create(
             property_name="test_filter_property",
@@ -1217,6 +1246,9 @@ class TestCalculateMetricWithFilters:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         numeric_filter = CategoricalFilter.objects.create(
             property_name="test_filter_property",
@@ -1308,6 +1340,9 @@ class TestCalculateMetricWithFilters:
             billable_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.RATE,
             granularity=METRIC_GRANULARITY.DAY,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         numeric_filter = CategoricalFilter.objects.create(
             property_name="test_filter_property",

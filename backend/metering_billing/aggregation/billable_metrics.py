@@ -326,39 +326,10 @@ class CounterHandler(MetricHandler):
     ):
         from metering_billing.aggregation.counter_query_templates import (
             COUNTER_CAGG_TOTAL,
+            COUNTER_UNIQUE_TOTAL,
         )
         from metering_billing.models import OrganizationSetting
 
-        if self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-            raise NotImplementedError
-        # there's 3 periods here.... the chunk between the start and the end of that day,
-        # the full days in between, and the chunk between the last full day and the end. There
-        # are scenarios where all 3 of them happen or don't independently of each other, so
-        # we check individually
-        # check for start to end of day condition:
-        start_to_eod = not (
-            start.hour == 0
-            and start.minute == 0
-            and start.second == 0
-            and start.microsecond == 0
-        )
-        # check for start of day to endcondition:
-        sod_to_end = not (
-            end.hour == 23
-            and end.minute == 59
-            and end.second == 59
-            and end.microsecond == 999999
-        )
-        # check for full days in between condition:
-        if not start_to_eod:
-            full_days_btwn_start = start.date()
-        else:
-            full_days_btwn_start = (start + relativedelta(days=1)).date()
-        if not sod_to_end:
-            full_days_btwn_end = end.date()
-        else:
-            full_days_btwn_end = (end - relativedelta(days=1)).date()
-        full_days_between = (full_days_btwn_end - full_days_btwn_start).days > 0
         # prepare dictionary for injection
         injection_dict = {
             "query_type": self.usage_aggregation_type,
@@ -367,13 +338,11 @@ class CounterHandler(MetricHandler):
         }
         if customer:
             injection_dict["customer_id"] = customer.id
-        else:
-            raise NotImplementedError
         try:
-            groupby = self.organization.settings.get(
+            sf_setting = self.organization.settings.get(
                 setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
             )
-            groupby = groupby.setting_values
+            groupby = sf_setting.setting_values
         except OrganizationSetting.DoesNotExist:
             self.organization.provision_subscription_filter_settings()
             groupby = []
@@ -382,57 +351,105 @@ class CounterHandler(MetricHandler):
             if not isinstance(value, list):
                 value = [value]
             injection_dict["filter_properties"][key] = value
-        # now use our pre-prepared queries with the injectiosn to get the usage
-        all_results = []
-        if start_to_eod:
-            injection_dict["start_date"] = start.replace(microsecond=0)
-            injection_dict["end_date"] = start.replace(
-                hour=23, minute=59, second=59, microsecond=999999
+        if self.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+            # there's 3 periods here.... the chunk between the start and the end of that day,
+            # the full days in between, and the chunk between the last full day and the end. There
+            # are scenarios where all 3 of them happen or don't independently of each other, so
+            # we check individually
+            # check for start to end of day condition:
+            start_to_eod = not (
+                start.hour == 0
+                and start.minute == 0
+                and start.second == 0
+                and start.microsecond == 0
             )
-            injection_dict["cagg_name"] = (
-                self.organization.organization_id[:22]
-                + "___"
-                + self.metric_id[:22]
-                + "___"
-                + "second"
+            # check for start of day to endcondition:
+            sod_to_end = not (
+                end.hour == 23
+                and end.minute == 59
+                and end.second == 59
+                and end.microsecond == 999999
             )
-            query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+            # check for full days in between condition:
+            if not start_to_eod:
+                full_days_btwn_start = start.date()
+            else:
+                full_days_btwn_start = (start + relativedelta(days=1)).date()
+            if not sod_to_end:
+                full_days_btwn_end = end.date()
+            else:
+                full_days_btwn_end = (end - relativedelta(days=1)).date()
+            full_days_between = (full_days_btwn_end - full_days_btwn_start).days > 0
+            # now use our pre-prepared queries with the injectiosn to get the usage
+            all_results = []
+            if start_to_eod:
+                injection_dict["start_date"] = start.replace(microsecond=0)
+                injection_dict["end_date"] = start.replace(
+                    hour=23, minute=59, second=59, microsecond=999999
+                )
+                injection_dict["cagg_name"] = (
+                    self.organization.organization_id[:22]
+                    + "___"
+                    + self.metric_id[:22]
+                    + "___"
+                    + "second"
+                )
+                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    results = namedtuplefetchall(cursor)
+                all_results.extend(results)
+            if full_days_between:
+                injection_dict["start_date"] = full_days_btwn_start
+                injection_dict["end_date"] = full_days_btwn_end
+                injection_dict["cagg_name"] = (
+                    self.organization.organization_id[:22]
+                    + "___"
+                    + self.metric_id[:22]
+                    + "___"
+                    + "day"
+                )
+                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    results = namedtuplefetchall(cursor)
+                all_results.extend(results)
+            if sod_to_end:
+                injection_dict["start_date"] = end.replace(
+                    hour=0, minute=0, second=0, microsecond=0
+                )
+                injection_dict["end_date"] = end.replace(microsecond=0)
+                injection_dict["cagg_name"] = (
+                    self.organization.organization_id[:22]
+                    + "___"
+                    + self.metric_id[:22]
+                    + "___"
+                    + "second"
+                )
+                query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    results = namedtuplefetchall(cursor)
+                all_results.extend(results)
+        else:
+            injection_dict["start_date"] = start
+            injection_dict["end_date"] = end
+            injection_dict["property_name"] = self.property_name
+            injection_dict["event_name"] = self.event_name
+            injection_dict["organization_id"] = self.organization.id
+            injection_dict["numeric_filters"] = [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in self.numeric_filters
+            ]
+            injection_dict["categorical_filters"] = [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in self.categorical_filters
+            ]
+            query = Template(COUNTER_UNIQUE_TOTAL).render(**injection_dict)
             with connection.cursor() as cursor:
                 cursor.execute(query)
                 results = namedtuplefetchall(cursor)
-            all_results.extend(results)
-        if full_days_between:
-            injection_dict["start_date"] = full_days_btwn_start
-            injection_dict["end_date"] = full_days_btwn_end
-            injection_dict["cagg_name"] = (
-                self.organization.organization_id[:22]
-                + "___"
-                + self.metric_id[:22]
-                + "___"
-                + "day"
-            )
-            query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
-            with connection.cursor() as cursor:
-                cursor.execute(query)
-                results = namedtuplefetchall(cursor)
-            all_results.extend(results)
-        if sod_to_end:
-            injection_dict["start_date"] = end.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
-            injection_dict["end_date"] = end.replace(microseconds=0)
-            injection_dict["cagg_name"] = (
-                self.organization.organization_id[:22]
-                + "___"
-                + self.metric_id[:22]
-                + "___"
-                + "second"
-            )
-            query = Template(COUNTER_CAGG_TOTAL).render(**injection_dict)
-            with connection.cursor() as cursor:
-                cursor.execute(query)
-                results = namedtuplefetchall(cursor)
-            all_results.extend(results)
+            all_results = results
         per_customer = {}
         cust_id_to_name_map = {}
         for result in all_results:
@@ -446,10 +463,10 @@ class CounterHandler(MetricHandler):
                 }
             if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
                 per_customer[customer_name]["usage_qty"] += (
-                    result.usage_qty * result.num_events
+                    result.usage_qty or 0 * result.num_events
                 )
             else:
-                per_customer[customer_name]["usage_qty"] += result.usage_qty
+                per_customer[customer_name]["usage_qty"] += result.usage_qty or 0
             per_customer[customer_name]["num_events"] += result.num_events
         if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
             for customer_name, values in per_customer.items():
@@ -474,18 +491,22 @@ class CounterHandler(MetricHandler):
 
         if filters is None:
             filters = {}
+        per_customer = self.get_total_usage(
+            start,
+            end,
+            customer,
+            filters,
+        )
+        return per_customer
         try:
-            self.get_total_usage(
+            per_customer = self.get_total_usage(
                 start,
                 end,
                 customer,
                 filters,
             )
-            raise NotImplementedError("not implemented yet")
+            return per_customer
         except Exception as e:
-            print(
-                f"failed on {results_granularity}, {start}, {end}, {customer},{filters} due to {e}"
-            )
             filter_args, filter_kwargs = self._build_filter_kwargs(
                 start, end, customer, filters
             )
@@ -692,6 +713,12 @@ class CounterHandler(MetricHandler):
             # unfortunately there's no good way to make caggs for unique
             # if we're refreshing the matview, then we need to drop the last
             # one and recreate it
+            from .counter_query_templates import (
+                COUNTER_CAGG_COMPRESSION,
+                COUNTER_CAGG_QUERY,
+                COUNTER_CAGG_REFRESH,
+            )
+
             if refresh is True:
                 CounterHandler.archive_metric(metric)
             try:
@@ -717,34 +744,27 @@ class CounterHandler(MetricHandler):
                     for x in metric.categorical_filters.all()
                 ],
             }
-            if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
-                from .counter_query_templates import (
-                    COUNTER_CAGG_COMPRESSION,
-                    COUNTER_CAGG_QUERY,
-                    COUNTER_CAGG_REFRESH,
+            for continuous_agg_type in ["day", "second"]:
+                sql_injection_data["cagg_name"] = (
+                    metric.organization.organization_id[:22]
+                    + "___"
+                    + metric.metric_id[:22]
+                    + "___"
+                    + continuous_agg_type
                 )
-
-                for continuous_agg_type in ["day", "second"]:
-                    sql_injection_data["cagg_name"] = (
-                        metric.organization.organization_id[:22]
-                        + "___"
-                        + metric.metric_id[:22]
-                        + "___"
-                        + continuous_agg_type
-                    )
-                    sql_injection_data["bucket_size"] = continuous_agg_type
-                    query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
-                    refresh_query = Template(COUNTER_CAGG_REFRESH).render(
-                        **sql_injection_data
-                    )
-                    compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
-                        **sql_injection_data
-                    )
-                    with connection.cursor() as cursor:
-                        cursor.execute(query)
-                        cursor.execute(refresh_query)
-                        if continuous_agg_type == "second":
-                            cursor.execute(compression_query)
+                sql_injection_data["bucket_size"] = continuous_agg_type
+                query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+                refresh_query = Template(COUNTER_CAGG_REFRESH).render(
+                    **sql_injection_data
+                )
+                compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
+                    **sql_injection_data
+                )
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    cursor.execute(refresh_query)
+                    if continuous_agg_type == "second":
+                        cursor.execute(compression_query)
 
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
@@ -754,14 +774,19 @@ class CounterHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
-        sql_injection_data = {
-            "cagg_name": metric.organization.organization_id + "___" + metric.metric_id,
-        }
         from .counter_query_templates import COUNTER_CAGG_DROP
 
-        query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
-        with connection.cursor() as cursor:
-            cursor.execute(query)
+        for continuous_agg_type in ["day", "second"]:
+            sql_injection_data = {
+                "cagg_name": metric.organization.organization_id[:22]
+                + "___"
+                + metric.metric_id[:22]
+                + "___"
+                + continuous_agg_type
+            }
+            query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
 
 
 class CustomHandler(MetricHandler):
@@ -1341,6 +1366,14 @@ class StatefulHandler(MetricHandler):
         metric = MetricHandler.create_metric(validated_data)
         return metric
 
+    @staticmethod
+    def create_continuous_aggregate(metric: Metric, refresh=False):
+        pass
+
+    @staticmethod
+    def archive_metric(metric: Metric) -> Metric:
+        pass
+
 
 class RateHandler(MetricHandler):
     """
@@ -1559,7 +1592,6 @@ class RateHandler(MetricHandler):
 
         q_gb = rate_per_event.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(new_usage_qty=Max("usage_qty"))
-        print(q_post_gb_ann.query)
         return_dict = {}
         for row in q_post_gb_ann:
             cust_name = row["customer_name"]
@@ -1617,6 +1649,10 @@ class RateHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
+        pass
+
+    @staticmethod
+    def create_continuous_aggregate(metric: Metric, refresh=False):
         pass
 
 

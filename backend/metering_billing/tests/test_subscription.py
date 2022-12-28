@@ -9,6 +9,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
     Invoice,
@@ -89,6 +90,8 @@ def subscription_test_common_setup(
             ),
             _quantity=3,
         )
+        for metric in metric_set:
+            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
         setup_dict["metrics"] = metric_set
         product = add_product_to_org(org)
         setup_dict["product"] = product

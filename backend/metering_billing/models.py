@@ -28,14 +28,13 @@ from metering_billing.utils import (
     backtest_uuid,
     calculate_end_date,
     convert_to_date,
+    convert_to_datetime,
     convert_to_decimal,
     customer_balance_adjustment_uuid,
     customer_uuid,
     date_as_min_dt,
-    dates_bwn_two_dts,
     event_uuid,
     get_granularity_ratio,
-    invoice_uuid,
     metric_uuid,
     now_plus_day,
     now_utc,
@@ -53,13 +52,7 @@ from metering_billing.utils.enums import *
 from metering_billing.webhooks import invoice_paid_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
-from svix.api import (
-    ApplicationIn,
-    EndpointIn,
-    EndpointSecretRotateIn,
-    EndpointUpdate,
-    Svix,
-)
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
 from svix.internal.openapi_client.models.http_error import HttpError
 
 logger = logging.getLogger("django.server")
@@ -122,6 +115,8 @@ class Organization(models.Model):
             self.save()
 
     def update_subscription_filter_settings(self, filter_keys):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
         setting, _ = OrganizationSetting.objects.get_or_create(
             organization=self,
             setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
@@ -132,6 +127,10 @@ class Organization(models.Model):
             raise ValidationError("filter keys must be a list of strings")
         setting.setting_values = filter_keys
         setting.save()
+        for metric in self.metrics.all():
+            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(
+                metric, refresh=True
+            )
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
@@ -1176,8 +1175,6 @@ class PlanComponent(models.Model):
             )
             for k, val in usage_by_period.items():
                 if type(val) == dict:
-                    print(val)
-                    print(k)
                     raise Exception
             if len(usage_by_period) >= 1:
                 usage_qty = (
@@ -2062,6 +2059,8 @@ class SubscriptionRecord(models.Model):
         new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
         subscription = self.customer.subscriptions.active(self.start_date).first()
+        if not isinstance(self.start_date, datetime.datetime):
+            self.start_date = convert_to_datetime(self.start_date)
         if not subscription:
             raise ServerError(
                 "Unexpected error: subscription date alignment engine failed."
