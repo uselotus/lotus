@@ -2,52 +2,19 @@ import abc
 import datetime
 import logging
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, TypedDict
 
 import sqlparse
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.apps import apps
 from django.db import connection
-from django.db.models import (
-    Avg,
-    Count,
-    DateTimeField,
-    Exists,
-    F,
-    FloatField,
-    Max,
-    OuterRef,
-    Q,
-    Subquery,
-    Sum,
-    Value,
-    Window,
-)
+from django.db.models import *
 from django.db.models.functions import Cast, Trunc
 from jinja2 import Template
-from metering_billing.exceptions.exceptions import (
-    AggregationEngineFailure,
-    MetricValidationFailed,
-)
-from metering_billing.utils import (
-    convert_to_date,
-    convert_to_datetime,
-    date_as_min_dt,
-    namedtuplefetchall,
-    now_utc,
-    periods_bwn_twodates,
-)
-from metering_billing.utils.enums import (
-    CATEGORICAL_FILTER_OPERATORS,
-    EVENT_TYPE,
-    METRIC_AGGREGATION,
-    METRIC_GRANULARITY,
-    METRIC_TYPE,
-    NUMERIC_FILTER_OPERATORS,
-    ORGANIZATION_SETTING_NAMES,
-    USAGE_CALC_GRANULARITY,
-)
+from metering_billing.exceptions.exceptions import *
+from metering_billing.utils import *
+from metering_billing.utils.enums import *
 
 logger = logging.getLogger("django.server")
 
@@ -57,14 +24,17 @@ Event = apps.get_app_config("metering_billing").get_model(model_name="Event")
 SubscriptionRecord = apps.get_app_config("metering_billing").get_model(
     model_name="SubscriptionRecord"
 )
+Organization = apps.get_app_config("metering_billing").get_model(
+    model_name="Organization"
+)
+
+
+class UsageRevenueSummary(TypedDict):
+    revenue: Decimal
+    usage_qty: Decimal
 
 
 class MetricHandler(abc.ABC):
-    @abc.abstractmethod
-    def __init__(self, billable_metric: Metric):
-        """This method will be called whenever we need to work with a billable metric, whether that's determining usage, or calculating revenue, or generating a bill. You might want to extract the fields you want to work with in the metric and make them instance variables. Additionally, you should double-check that some thinsg you expect are true, for example that the metric type matches the handler, and that the aggregation is supported by the handler. If not, raise an exception."""
-        pass
-
     @abc.abstractmethod
     def get_usage(
         self,
@@ -227,7 +197,7 @@ class MetricHandler(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def create_metric(validated_data: Metric) -> Metric:
-        """We will use this method when creating a billable metric. You should create the metric and return it. This is a greatt ime to create all the other queries you we want to keep track of in order to optimize the usage"""
+        """We will use this method when creating a billable metric. You should create the metric and return it. This is a great time to create all the other queries you we want to keep track of in order to optimize the usage"""
         from metering_billing.models import CategoricalFilter, Metric, NumericFilter
 
         # edit custom name and pop filters + properties
@@ -259,6 +229,34 @@ class MetricHandler(abc.ABC):
             bm.categorical_filters.add(cf)
         assert bm is not None
         return bm
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_subscription_record_total_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        """This method returns the total quantity of usage that a subscription record should be billed for. This is very straightforward and should simply return a numebr that will then be used to calculate teh amoutn due."""
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_subscription_record_current_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        """This method returns the current usage of a susbcription record. The result from this method will be used to calculate whether the customer has access to the event represented by the metric. It soudns similar, but there are some key subtleties to note:
+        Counter: In this case, subscription record current_usage and total_billable_usage are the same.
+        Continuous/Stateful: These metrics are not billed on a per-event bases, but on the peak usage within some specified granularity period. That means that the billable usage is the normalized peak usage, whiel the current usage is the value of the underlying state at the time of the request.
+        Rate: Even though the billable usage would be the maximum rate over teh subscription_record period, the current usage is simply the current rate.
+        """
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_subscription_record_daily_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> dict[datetime.date, Decimal]:
+        """This method should return the same quantity as get_subscription_record_total_billable_usage, but split up per day. This allows for calculations of the amount due per day, which is useful for prorating and accounting integrations."""
+        pass
 
 
 class CounterHandler(MetricHandler):
@@ -317,20 +315,51 @@ class CounterHandler(MetricHandler):
             customer, results_granularity, start, proration
         )
 
-    def get_total_usage(
-        self,
-        start,
-        end,
-        customer=None,
-        filters=None,
-    ):
+    @staticmethod
+    def _prepare_injection_dict(
+        metric: Metric,
+        subscription_record: SubscriptionRecord,
+        organization: Organization,
+    ) -> dict:
+        from metering_billing.models import OrganizationSetting
+
+        injection_dict = {
+            "query_type": metric.usage_aggregation_type,
+            "customer_id": None,
+            "filter_properties": {},
+            "customer_id": subscription_record.customer.id,
+        }
+        try:
+            sf_setting = organization.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+            )
+            groupby = sf_setting.setting_values
+        except OrganizationSetting.DoesNotExist:
+            organization.provision_subscription_filter_settings()
+            groupby = []
+        injection_dict["group_by"] = groupby
+        for filter in subscription_record.filters.all():
+            injection_dict["filter_properties"][
+                filter.property_name
+            ] = filter.comparison_value[0]
+        return injection_dict
+
+    @staticmethod
+    def _get_total_usage_per_day_not_unique(
+        metric: Metric,
+        subscription_record: SubscriptionRecord,
+        organization: Organization,
+    ) -> list[namedtuple]:
         from metering_billing.aggregation.counter_query_templates import (
             COUNTER_CAGG_TOTAL,
         )
-        from metering_billing.models import OrganizationSetting
 
-        if self.usage_aggregation_type == METRIC_AGGREGATION.UNIQUE:
-            raise NotImplementedError
+        # prepare dictionary for injection
+        injection_dict = CounterHandler._prepare_injection_dict(
+            metric, subscription_record
+        )
+        start = subscription_record.usage_start_date
+        end = subscription_record.end_date
         # there's 3 periods here.... the chunk between the start and the end of that day,
         # the full days in between, and the chunk between the last full day and the end. There
         # are scenarios where all 3 of them happen or don't independently of each other, so
@@ -359,29 +388,6 @@ class CounterHandler(MetricHandler):
         else:
             full_days_btwn_end = (end - relativedelta(days=1)).date()
         full_days_between = (full_days_btwn_end - full_days_btwn_start).days > 0
-        # prepare dictionary for injection
-        injection_dict = {
-            "query_type": self.usage_aggregation_type,
-            "customer_id": None,
-            "filter_properties": {},
-        }
-        if customer:
-            injection_dict["customer_id"] = customer.id
-        else:
-            raise NotImplementedError
-        try:
-            groupby = self.organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
-            )
-            groupby = groupby.setting_values
-        except OrganizationSetting.DoesNotExist:
-            self.organization.provision_subscription_filter_settings()
-            groupby = []
-        injection_dict["group_by"] = groupby
-        for key, value in filters.items():
-            if not isinstance(value, list):
-                value = [value]
-            injection_dict["filter_properties"][key] = value
         # now use our pre-prepared queries with the injectiosn to get the usage
         all_results = []
         if start_to_eod:
@@ -390,9 +396,9 @@ class CounterHandler(MetricHandler):
                 hour=23, minute=59, second=59, microsecond=999999
             )
             injection_dict["cagg_name"] = (
-                self.organization.organization_id[:22]
+                organization.organization_id[:22]
                 + "___"
-                + self.metric_id[:22]
+                + metric.metric_id[:22]
                 + "___"
                 + "second"
             )
@@ -405,9 +411,9 @@ class CounterHandler(MetricHandler):
             injection_dict["start_date"] = full_days_btwn_start
             injection_dict["end_date"] = full_days_btwn_end
             injection_dict["cagg_name"] = (
-                self.organization.organization_id[:22]
+                organization.organization_id[:22]
                 + "___"
-                + self.metric_id[:22]
+                + metric.metric_id[:22]
                 + "___"
                 + "day"
             )
@@ -420,11 +426,11 @@ class CounterHandler(MetricHandler):
             injection_dict["start_date"] = end.replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
-            injection_dict["end_date"] = end.replace(microseconds=0)
+            injection_dict["end_date"] = end.replace(microsecond=0)
             injection_dict["cagg_name"] = (
-                self.organization.organization_id[:22]
+                organization.organization_id[:22]
                 + "___"
-                + self.metric_id[:22]
+                + metric.metric_id[:22]
                 + "___"
                 + "second"
             )
@@ -433,30 +439,118 @@ class CounterHandler(MetricHandler):
                 cursor.execute(query)
                 results = namedtuplefetchall(cursor)
             all_results.extend(results)
-        per_customer = {}
-        cust_id_to_name_map = {}
+        return all_results
+
+    @staticmethod
+    def get_subscription_record_total_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        from metering_billing.aggregation.counter_query_templates import (
+            COUNTER_UNIQUE_TOTAL,
+        )
+        from metering_billing.models import OrganizationSetting
+
+        organization = metric.organization.select_related("settings").get()
+        if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+            all_results = CounterHandler._get_total_usage_per_day_not_unique(
+                metric, subscription_record, organization
+            )
+        else:
+            start = subscription_record.usage_start_date
+            end = subscription_record.end_date
+            injection_dict = CounterHandler._prepare_injection_dict(
+                metric, subscription_record, organization
+            )
+            injection_dict["start_date"] = start
+            injection_dict["end_date"] = end
+            injection_dict["property_name"] = metric.property_name
+            injection_dict["event_name"] = metric.event_name
+            injection_dict["organization_id"] = organization.id
+            injection_dict["numeric_filters"] = [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.numeric_filters
+            ]
+            injection_dict["categorical_filters"] = [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.categorical_filters
+            ]
+            query = Template(COUNTER_UNIQUE_TOTAL).render(**injection_dict)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                results = namedtuplefetchall(cursor)
+            all_results = results
+        totals = {"usage_qty": 0, "num_events": 0}
         for result in all_results:
-            if result.customer_id not in cust_id_to_name_map:
-                cust_id_to_name_map[result.customer_id] = customer.customer_name
-            customer_name = cust_id_to_name_map[result.customer_id]
-            if customer_name not in per_customer:
-                per_customer[customer_name] = {
-                    "usage_qty": 0,
-                    "num_events": 0,
-                }
-            if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-                per_customer[customer_name]["usage_qty"] += (
-                    result.usage_qty * result.num_events
-                )
+            if metric.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+                totals["usage_qty"] += result.usage_qty or 0 * result.num_events
             else:
-                per_customer[customer_name]["usage_qty"] += result.usage_qty
-            per_customer[customer_name]["num_events"] += result.num_events
-        if self.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
-            for customer_name, values in per_customer.items():
-                per_customer[customer_name]["usage_qty"] = (
-                    values["usage_qty"] / values["num_events"]
-                )
-        return per_customer
+                totals["usage_qty"] += result.usage_qty or 0
+            totals["num_events"] += result.num_events
+        if metric.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+            totals["usage_qty"] = totals["usage_qty"] / totals["num_events"]
+        return totals["usage_qty"]
+
+    @staticmethod
+    def get_subscription_record_current_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        return CounterHandler.get_subscription_record_total_billable_usage(
+            metric, subscription_record
+        )
+
+    @staticmethod
+    def get_subscription_record_daily_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> dict[datetime.date, Decimal]:
+        from .counter_query_templates import COUNTER_UNIQUE_PER_DAY
+
+        organization = metric.organization.select_related("settings").get()
+        all_results = {}
+        if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+            all_results = CounterHandler._get_total_usage_per_day_not_unique(
+                metric, subscription_record, organization
+            )
+            for result in all_results:
+                time = convert_to_date(result.bucket)
+                if time not in all_results:
+                    all_results[time] = {"usage_qty": 0, "num_events": 0}
+                if metric.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+                    all_results[time]["usage_qty"] += (
+                        result.usage_qty or 0 * result.num_events
+                    )
+                else:
+                    all_results[time]["usage_qty"] += result.usage_qty or 0
+            for time in all_results:
+                if metric.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
+                    all_results[time]["usage_qty"] = (
+                        all_results[time]["usage_qty"] / all_results[time]["num_events"]
+                    )
+                all_results[time] = all_results[time]["usage_qty"]
+        else:
+            start = subscription_record.usage_start_date
+            end = subscription_record.end_date
+            injection_dict = CounterHandler._prepare_injection_dict(
+                metric, subscription_record, organization
+            )
+            injection_dict["start_date"] = start
+            injection_dict["end_date"] = end
+            injection_dict["property_name"] = metric.property_name
+            injection_dict["event_name"] = metric.event_name
+            injection_dict["organization_id"] = organization.id
+            injection_dict["numeric_filters"] = [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.numeric_filters
+            ]
+            injection_dict["categorical_filters"] = [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.categorical_filters
+            ]
+            query = Template(COUNTER_UNIQUE_TOTAL).render(**injection_dict)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                results = namedtuplefetchall(cursor)
+            all_results = results
+        return all_results
 
     def get_usage(
         self,
@@ -474,18 +568,22 @@ class CounterHandler(MetricHandler):
 
         if filters is None:
             filters = {}
+        per_customer = self.get_total_usage(
+            start,
+            end,
+            customer,
+            filters,
+        )
+        return per_customer
         try:
-            self.get_total_usage(
+            per_customer = self.get_total_usage(
                 start,
                 end,
                 customer,
                 filters,
             )
-            raise NotImplementedError("not implemented yet")
+            return per_customer
         except Exception as e:
-            print(
-                f"failed on {results_granularity}, {start}, {end}, {customer},{filters} due to {e}"
-            )
             filter_args, filter_kwargs = self._build_filter_kwargs(
                 start, end, customer, filters
             )
@@ -692,6 +790,12 @@ class CounterHandler(MetricHandler):
             # unfortunately there's no good way to make caggs for unique
             # if we're refreshing the matview, then we need to drop the last
             # one and recreate it
+            from .counter_query_templates import (
+                COUNTER_CAGG_COMPRESSION,
+                COUNTER_CAGG_QUERY,
+                COUNTER_CAGG_REFRESH,
+            )
+
             if refresh is True:
                 CounterHandler.archive_metric(metric)
             try:
@@ -717,34 +821,27 @@ class CounterHandler(MetricHandler):
                     for x in metric.categorical_filters.all()
                 ],
             }
-            if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
-                from .counter_query_templates import (
-                    COUNTER_CAGG_COMPRESSION,
-                    COUNTER_CAGG_QUERY,
-                    COUNTER_CAGG_REFRESH,
+            for continuous_agg_type in ["day", "second"]:
+                sql_injection_data["cagg_name"] = (
+                    metric.organization.organization_id[:22]
+                    + "___"
+                    + metric.metric_id[:22]
+                    + "___"
+                    + continuous_agg_type
                 )
-
-                for continuous_agg_type in ["day", "second"]:
-                    sql_injection_data["cagg_name"] = (
-                        metric.organization.organization_id[:22]
-                        + "___"
-                        + metric.metric_id[:22]
-                        + "___"
-                        + continuous_agg_type
-                    )
-                    sql_injection_data["bucket_size"] = continuous_agg_type
-                    query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
-                    refresh_query = Template(COUNTER_CAGG_REFRESH).render(
-                        **sql_injection_data
-                    )
-                    compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
-                        **sql_injection_data
-                    )
-                    with connection.cursor() as cursor:
-                        cursor.execute(query)
-                        cursor.execute(refresh_query)
-                        if continuous_agg_type == "second":
-                            cursor.execute(compression_query)
+                sql_injection_data["bucket_size"] = continuous_agg_type
+                query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+                refresh_query = Template(COUNTER_CAGG_REFRESH).render(
+                    **sql_injection_data
+                )
+                compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
+                    **sql_injection_data
+                )
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    cursor.execute(refresh_query)
+                    if continuous_agg_type == "second":
+                        cursor.execute(compression_query)
 
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
@@ -754,14 +851,19 @@ class CounterHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
-        sql_injection_data = {
-            "cagg_name": metric.organization.organization_id + "___" + metric.metric_id,
-        }
         from .counter_query_templates import COUNTER_CAGG_DROP
 
-        query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
-        with connection.cursor() as cursor:
-            cursor.execute(query)
+        for continuous_agg_type in ["day", "second"]:
+            sql_injection_data = {
+                "cagg_name": metric.organization.organization_id[:22]
+                + "___"
+                + metric.metric_id[:22]
+                + "___"
+                + continuous_agg_type
+            }
+            query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
 
 
 class CustomHandler(MetricHandler):
@@ -1341,6 +1443,14 @@ class StatefulHandler(MetricHandler):
         metric = MetricHandler.create_metric(validated_data)
         return metric
 
+    @staticmethod
+    def create_continuous_aggregate(metric: Metric, refresh=False):
+        pass
+
+    @staticmethod
+    def archive_metric(metric: Metric) -> Metric:
+        pass
+
 
 class RateHandler(MetricHandler):
     """
@@ -1559,7 +1669,6 @@ class RateHandler(MetricHandler):
 
         q_gb = rate_per_event.values(**groupby_kwargs)
         q_post_gb_ann = q_gb.annotate(new_usage_qty=Max("usage_qty"))
-        print(q_post_gb_ann.query)
         return_dict = {}
         for row in q_post_gb_ann:
             cust_name = row["customer_name"]
@@ -1617,6 +1726,10 @@ class RateHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
+        pass
+
+    @staticmethod
+    def create_continuous_aggregate(metric: Metric, refresh=False):
         pass
 
 

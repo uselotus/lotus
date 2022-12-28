@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
     Invoice,
@@ -85,6 +86,8 @@ def draft_invoice_test_common_setup(
             usage_aggregation_type=itertools.cycle(["sum", "max", "count"]),
             _quantity=3,
         )
+        for metric in metric_set:
+            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
         setup_dict["metrics"] = metric_set
         product = add_product_to_org(org)
         plan = add_plan_to_product(product)

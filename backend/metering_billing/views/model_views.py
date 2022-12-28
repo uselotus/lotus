@@ -1,7 +1,3 @@
-import copy
-import json
-import time
-
 import api.views as api_views
 import lotus_python
 import posthog
@@ -36,7 +32,7 @@ from metering_billing.serializers.backtest_serializers import (
 )
 from metering_billing.serializers.model_serializers import *
 from metering_billing.tasks import run_backtest
-from metering_billing.utils import date_as_max_dt, now_utc, now_utc_ts
+from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     METRIC_STATUS,
     PAYMENT_PROVIDERS,
@@ -411,6 +407,9 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             cause = e.__cause__
             if "unique_org_metric_id" in str(cause):
                 error_message = "Metric ID already exists for this organization. This usually happens if you try to sp ecify an ID instead of letting the Lotus backend handle ID creation."
+                raise DuplicateMetric(error_message)
+            elif "unique_org_billable_metric_name" in str(cause):
+                error_message = "A billable metric with the same name already exists for this organization. Please choose a different name."
                 raise DuplicateMetric(error_message)
             elif "uq_metric_w_null__" in str(cause):
                 error_message = "A metric with the same name, type, and other fields already exists for this organization. Please choose a different name or type, or change the other fields."

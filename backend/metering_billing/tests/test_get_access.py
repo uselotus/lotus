@@ -3,6 +3,7 @@ import itertools
 import pytest
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
     Feature,
@@ -76,10 +77,13 @@ def get_access_test_common_setup(
             organization=org,
             billable_metric_name="email_sent",
             event_name="email_sent",
-            property_name=itertools.cycle([""]),
+            property_name=itertools.cycle([None]),
             usage_aggregation_type=itertools.cycle(["count"]),
             _quantity=1,
         )
+        METRIC_HANDLER_MAP[
+            deny_limit_metric_set[0].metric_type
+        ].create_continuous_aggregate(deny_limit_metric_set[0])
         setup_dict["deny_limit_metrics"] = deny_limit_metric_set
         event_set = baker.make(
             Event,
@@ -94,20 +98,26 @@ def get_access_test_common_setup(
             organization=org,
             billable_metric_name="api_call",
             event_name="api_call",
-            property_name=itertools.cycle([""]),
+            property_name=itertools.cycle([None]),
             usage_aggregation_type=itertools.cycle(["count"]),
             _quantity=1,
         )
+        METRIC_HANDLER_MAP[
+            allow_limit_metric_set[0].metric_type
+        ].create_continuous_aggregate(allow_limit_metric_set[0])
         setup_dict["allow_limit_metrics"] = allow_limit_metric_set
         allow_free_metric_set = baker.make(
             Metric,
             organization=org,
             billable_metric_name="bogus",
             event_name="bogus_event",
-            property_name=itertools.cycle([""]),
+            property_name=itertools.cycle([None]),
             usage_aggregation_type=itertools.cycle(["count"]),
             _quantity=1,
         )
+        METRIC_HANDLER_MAP[
+            allow_free_metric_set[0].metric_type
+        ].create_continuous_aggregate(allow_free_metric_set[0])
         setup_dict["allow_free_metrics"] = allow_free_metric_set
         product = add_product_to_org(org)
         plan = add_plan_to_product(product)
