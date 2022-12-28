@@ -87,6 +87,9 @@ class Organization(models.Model):
     )
     webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
+    properties = models.JSONField(default=dict, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
     history = HistoricalRecords()
 
     def __str__(self):
