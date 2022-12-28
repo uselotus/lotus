@@ -233,6 +233,8 @@ class InvoiceSerializer(
             "line_items",
             "customer",
             "due_date",
+            "start_date",
+            "end_date",
         )
         extra_kwargs = {
             "invoice_number": {"required": True},
@@ -250,6 +252,8 @@ class InvoiceSerializer(
                 "allow_null": True,
                 "allow_blank": False,
             },
+            "start_date": {"required": True},
+            "end_date": {"required": True},
         }
 
     external_payment_obj_type = serializers.ChoiceField(
@@ -258,6 +262,22 @@ class InvoiceSerializer(
     currency = PricingUnitSerializer()
     customer = LightweightCustomerSerializer()
     line_items = InvoiceLineItemSerializer(many=True)
+    start_date = serializers.SerializerMethodField()
+    end_date = serializers.SerializerMethodField()
+
+    def get_start_date(self, obj) -> datetime.date:
+        return min(
+            [
+                convert_to_date(x.start_date)
+                for x in obj.line_items.all()
+                if x.start_date
+            ]
+        )
+
+    def get_end_date(self, obj) -> datetime.date:
+        return max(
+            [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
+        )
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):
