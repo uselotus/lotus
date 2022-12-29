@@ -66,72 +66,6 @@ GROUP BY
     {%- endfor %}
 """
 
-COUNTER_CAGG_REFRESH = """
-SELECT add_continuous_aggregate_policy('{{ cagg_name }}',
-    start_offset => INTERVAL '30 days',
-    end_offset => INTERVAL '1 day',
-    schedule_interval => INTERVAL '1 day',
-    if_not_exists => TRUE);
-"""
-
-COUNTER_CAGG_DROP = """
-DROP MATERIALIZED VIEW IF EXISTS {{ cagg_name }};
-"""
-
-COUNTER_CAGG_COMPRESSION = """
-ALTER MATERIALIZED VIEW {{ cagg_name }} set (timescaledb.compress = true);
-SELECT add_compression_policy(
-    '{{ cagg_name }}', 
-    compress_after=>'31 days'::interval,
-    if_not_exists=>true
-);
-"""
-
-# this query will help us fill in the gaps where we don't want to use a full day's worth of usage
-# for example, if a subscription starts halfway through a day, we don't want to use the full day's
-# worth of usage, we need to get more granular
-COUNTER_NON_AGGREGATE = """
-SELECT
-    "metering_billing_usageevent"."customer_id" AS customer_id,
-    COUNT(
-        "metering_billing_usageevent"."idempotency_id"
-    ) AS num_events,
-    {%- if query_type == "count" -%}
-    COUNT(
-        "metering_billing_usageevent"."idempotency_id"
-    )
-    {%- elif query_type == "sum" -%}
-    SUM(
-        ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
-    )
-    {%- elif query_type == "average" -%}
-    AVG(
-        ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
-    )
-    {%- elif query_type == "max" -%}
-    MAX(
-        ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
-    )
-    {%- endif %}
-    AS usage_qty
-    {%- for group_by_field in group_by %}
-    ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
-    {%- endfor %},
-FROM
-    "metering_billing_usageevent"
-WHERE
-    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
-    AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
-    AND "metering_billing_usageevent"."time_created" <= NOW()
-    AND "metering_billing_usageevent"."time_created" >= '{{ start_date }}'::timestamptz
-    AND "metering_billing_usageevent"."time_created" <= '{{ end_date }}'::timestamptz
-GROUP BY
-    "metering_billing_usageevent"."customer_id",
-    {%- for group_by_field in group_by %}
-    ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
-    {%- endfor %}
-"""
-
 # this query is used to get all the usage aggregated over the entire time period using the
 COUNTER_CAGG_TOTAL = """
 SELECT
@@ -153,10 +87,7 @@ SELECT
 FROM
     {{ cagg_name }}
 WHERE
-    customer_id IS NOT NULL
-    {%- if customer_id is not none %}
-    AND customer_id = {{ customer_id }}
-    {%- endif %}
+    customer_id = {{ customer_id }}
     AND bucket >= '{{ start_date }}'::timestamptz
     AND bucket <= '{{ end_date }}'::timestamptz
     AND bucket <= NOW()

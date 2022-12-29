@@ -120,9 +120,10 @@ def dates_bwn_two_dts(start_date, end_date):
         start_date = start_date.date()
     if isinstance(end_date, datetime.datetime):
         end_date = end_date.date()
-    days_btwn = (end_date - start_date).days
-    for n in range(days_btwn + 1):
-        yield start_date + relativedelta(days=n)
+    i = 0
+    while start_date + relativedelta(days=i) <= end_date:
+        yield start_date + relativedelta(days=i)
+        i += 1
 
 
 def hours_bwn_twodates(start_date, end_date):

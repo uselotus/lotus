@@ -682,6 +682,7 @@ def setup_paas_demo(
             + [METRIC_TYPE.COUNTER] * 2
             + [METRIC_TYPE.RATE] * 2
         ),
+        proration=itertools.cycle([METRIC_GRANULARITY.MINUTE] * 4 + [None] * 4),
         event_type=itertools.cycle([EVENT_TYPE.DELTA] * 4 + [None] * 4),
         billable_aggregation_type=itertools.cycle(
             [None] * 6 + [METRIC_AGGREGATION.MAX] * 2
@@ -808,7 +809,6 @@ def setup_paas_demo(
     plan.save()
     for component in professional_plan.plan_components.all():
         if component.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-            component.proration_granularity = METRIC_GRANULARITY.MINUTE
             component.save()
 
 

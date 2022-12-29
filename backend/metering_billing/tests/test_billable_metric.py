@@ -304,7 +304,9 @@ class TestArchiveMetric:
 
 @pytest.mark.django_db(transaction=True)
 class TestCalculateMetric:
-    def test_count_unique(self, billable_metric_test_common_setup):
+    def test_count_unique(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -320,7 +322,7 @@ class TestCalculateMetric:
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
         )
-        time_created = parser.parse("2021-01-01T06:00:00Z")
+        time_created = now_utc()
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test_customer"
         )
@@ -342,15 +344,50 @@ class TestCalculateMetric:
             customer=customer,
             _quantity=5,
         )
-        metric_usage = billable_metric.get_usage(
-            parser.parse("2021-01-01"),
-            parser.parse("2021-01-30"),
-            granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            customer=customer,
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
         )
-        metric_usage = metric_usage[customer.customer_name]
-        assert "usage_qty" in metric_usage
-        assert metric_usage["usage_qty"] == 2
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+        assert metric_usage == 2
 
     def test_stateful_total_granularity(
         self, billable_metric_test_common_setup, add_subscription_to_org
@@ -367,6 +404,7 @@ class TestCalculateMetric:
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+            event_type=EVENT_TYPE.TOTAL,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -457,6 +495,7 @@ class TestCalculateMetric:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+            proration=METRIC_GRANULARITY.DAILY,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -495,7 +534,6 @@ class TestCalculateMetric:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.DAY,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -655,6 +693,7 @@ class TestCalculateMetric:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
             event_type=EVENT_TYPE.DELTA,
+            proration=METRIC_GRANULARITY.DAY,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -690,7 +729,6 @@ class TestCalculateMetric:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.DAY,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -741,6 +779,7 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.HOUR,
+            proration=METRIC_GRANULARITY.MINUTE,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -784,7 +823,6 @@ class TestCalculateMetricProrationForStateful:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.MINUTE,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -857,6 +895,7 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.DAY,
+            proration=METRIC_GRANULARITY.HOUR,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -896,7 +935,6 @@ class TestCalculateMetricProrationForStateful:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.HOUR,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -970,6 +1008,7 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+            proration=METRIC_GRANULARITY.HOUR,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -1014,7 +1053,6 @@ class TestCalculateMetricProrationForStateful:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.HOUR,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -1098,7 +1136,7 @@ class TestCalculateMetricWithFilters:
         )
         billable_metric.numeric_filters.add(numeric_filter)
         billable_metric.save()
-        time_created = parser.parse("2021-01-01T06:00:00Z")
+        time_created = now_utc()
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test_customer"
         )
@@ -1129,15 +1167,50 @@ class TestCalculateMetricWithFilters:
             customer=customer,
             _quantity=5,
         )
-        metric_usage = billable_metric.get_usage(
-            parser.parse("2021-01-01"),
-            parser.parse("2021-01-30"),
-            granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            customer=customer,
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
         )
-        metric_usage = metric_usage[customer.customer_name]
-        assert "usage_qty" in metric_usage
-        assert metric_usage["usage_qty"] == 2
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+        assert metric_usage == 2
 
     def test_stateful_total_granularity_with_filters(
         self, billable_metric_test_common_setup, add_subscription_to_org
@@ -1154,6 +1227,7 @@ class TestCalculateMetricWithFilters:
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+            event_type=EVENT_TYPE.TOTAL,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -1246,6 +1320,7 @@ class TestCalculateMetricWithFilters:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+            proration=METRIC_GRANULARITY.DAY,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
             billable_metric
@@ -1292,7 +1367,6 @@ class TestCalculateMetricWithFilters:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.DAY,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,

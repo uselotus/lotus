@@ -573,13 +573,11 @@ class PlanComponentSerializer(
         fields = (
             "billable_metric",
             "tiers",
-            "proration_granularity",
             "pricing_unit",
         )
         extra_kwargs = {
             "billable_metric": {"required": True, "read_only": True},
             "tiers": {"required": True},
-            "proration_granularity": {"required": True},
             "pricing_unit": {"required": True, "read_only": True},
         }
 

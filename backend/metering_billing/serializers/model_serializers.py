@@ -564,63 +564,6 @@ class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
                 assert tiers_sorted[i + 1]["range_start"] - tier[
                     "range_end"
                 ] <= Decimal(1), "All tiers must be contiguous"
-
-            pr_gran = data.get("proration_granularity")
-            metric_granularity = data.get("billable_metric").granularity
-            if pr_gran == METRIC_GRANULARITY.SECOND:
-                if metric_granularity == METRIC_GRANULARITY.SECOND:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.MINUTE:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.MINUTE:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.HOUR:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.HOUR:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.DAY:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.DAY:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.MONTH:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                    METRIC_GRANULARITY.DAY,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.MONTH:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.QUARTER:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                    METRIC_GRANULARITY.DAY,
-                    METRIC_GRANULARITY.MONTH,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.QUARTER:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.YEAR:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                    METRIC_GRANULARITY.DAY,
-                    METRIC_GRANULARITY.MONTH,
-                    METRIC_GRANULARITY.QUARTER,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.YEAR:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
         except AssertionError as e:
             raise serializers.ValidationError(str(e))
         return data
