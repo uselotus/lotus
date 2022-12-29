@@ -917,6 +917,89 @@ class CustomHandler(MetricHandler):
         aggregation_queryset = super
 
     @staticmethod
+    def create_continuous_aggregate(metric: Metric, refresh=False):
+        from metering_billing.models import OrganizationSetting
+
+        if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
+            # unfortunately there's no good way to make caggs for unique
+            # if we're refreshing the matview, then we need to drop the last
+            # one and recreate it
+            from .counter_query_templates import (
+                COUNTER_CAGG_COMPRESSION,
+                COUNTER_CAGG_QUERY,
+                COUNTER_CAGG_REFRESH,
+            )
+
+            if refresh is True:
+                CounterHandler.archive_metric(metric)
+            try:
+                groupby = metric.organization.settings.get(
+                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                )
+                groupby = groupby.setting_values
+            except OrganizationSetting.DoesNotExist:
+                metric.organization.provision_subscription_filter_settings()
+                groupby = []
+            sql_injection_data = {
+                "query_type": metric.usage_aggregation_type,
+                "property_name": metric.property_name,
+                "group_by": groupby,
+                "event_name": metric.event_name,
+                "organization_id": metric.organization.id,
+                "numeric_filters": [
+                    (x.property_name, x.operator, x.comparison_value)
+                    for x in metric.numeric_filters.all()
+                ],
+                "categorical_filters": [
+                    (x.property_name, x.operator, x.comparison_value)
+                    for x in metric.categorical_filters.all()
+                ],
+            }
+            for continuous_agg_type in ["day", "second"]:
+                sql_injection_data["cagg_name"] = (
+                    metric.organization.organization_id[:22]
+                    + "___"
+                    + metric.metric_id[:22]
+                    + "___"
+                    + continuous_agg_type
+                )
+                sql_injection_data["bucket_size"] = continuous_agg_type
+                query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+                refresh_query = Template(COUNTER_CAGG_REFRESH).render(
+                    **sql_injection_data
+                )
+                compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
+                    **sql_injection_data
+                )
+                with connection.cursor() as cursor:
+                    cursor.execute(query)
+                    cursor.execute(refresh_query)
+                    if continuous_agg_type == "second":
+                        cursor.execute(compression_query)
+
+    @staticmethod
+    def create_metric(validated_data: dict) -> Metric:
+        metric = MetricHandler.create_metric(validated_data)
+        CustomHandler.create_continuous_aggregate(metric)
+        return metric
+
+    @staticmethod
+    def archive_metric(metric: Metric) -> Metric:
+        from .counter_query_templates import COUNTER_CAGG_DROP
+
+        for continuous_agg_type in ["day", "second"]:
+            sql_injection_data = {
+                "cagg_name": metric.organization.organization_id[:22]
+                + "___"
+                + metric.metric_id[:22]
+                + "___"
+                + continuous_agg_type
+            }
+            query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+
+    @staticmethod
     def validate_data(data: dict) -> dict:
         # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed

@@ -15,6 +15,8 @@ import { MetricType } from "../../types/metric-type";
 import { render } from "react-dom";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
+import "ace-builds/src-noconflict/mode-sql";
+import "ace-builds/src-noconflict/theme-github";
 const { Option } = Select;
 const { Panel } = Collapse;
 
