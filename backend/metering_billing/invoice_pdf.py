@@ -1,4 +1,3 @@
-import boto3
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -91,52 +90,32 @@ def write_total(doc, currency_symbol, total, current_y):
     doc.drawString(75, offset, 'Toal Due')
     doc.drawString(475, offset, f'{currency_symbol}{total}')
 
-def generate_invoice(invoice_json):
-    doc = canvas.Canvas("output.pdf", pagesize=letter, bottomup=0)
+def generate_invoice_pdf(invoice, buffer):
+    doc = canvas.Canvas(buffer)
 
     write_invoice_title(doc)
-    write_seller_details(doc, invoice_json['seller']['name'], invoice_json['seller']['address']['line1'], 
-                              invoice_json['seller']['address']['city'], invoice_json['seller']['address']['state'],
-                              invoice_json['seller']['address']['country'], invoice_json['seller']['address']['postal_code'],
-                              invoice_json['seller']['phone'], invoice_json['seller']['email'])
+    write_seller_details(doc, invoice['seller']['name'], invoice['seller']['address']['line1'], 
+                              invoice['seller']['address']['city'], invoice['seller']['address']['state'],
+                              invoice['seller']['address']['country'], invoice['seller']['address']['postal_code'],
+                              invoice['seller']['phone'], invoice['seller']['email'])
 
-    write_customer_details(doc, invoice_json['customer']['customer_name'], invoice_json['customer']['address']['line1'], 
-    invoice_json['customer']['address']['city'], invoice_json['customer']['address']['state'],
-    invoice_json['customer']['address']['country'], invoice_json['customer']['address']['postal_code'],
-    invoice_json['customer']['email'])
+    write_customer_details(doc, invoice['customer']['customer_name'], invoice['customer']['address']['line1'], 
+    invoice['customer']['address']['city'], invoice['customer']['address']['state'],
+    invoice['customer']['address']['country'], invoice['customer']['address']['postal_code'],
+    invoice['customer']['email'])
 
-    write_invoice_details(doc, invoice_json['invoice_number'], invoice_json['issue_date'], invoice_json['due_date'])
-    write_summary_header(doc,  invoice_json['start_date'], invoice_json['end_date'])
+    write_invoice_details(doc, invoice['invoice_number'], invoice['issue_date'], invoice['due_date'])
+    write_summary_header(doc,  invoice['start_date'], invoice['end_date'])
     
     line_item_start_y = 290
-    for line_item in invoice_json['line_items']:
+    for line_item in invoice['line_items']:
         line_item_start_y = write_line_item(doc, line_item['name'], line_item['start_date'], line_item['end_date'], 
-                        line_item['quantity'], line_item['subtotal'],invoice_json['currency']['symbol'], line_item_start_y)
+                        line_item['quantity'], line_item['subtotal'],invoice['currency']['symbol'], line_item_start_y)
         if line_item_start_y > 680:
             doc.showPage()
             line_item_start_y = 40
     
-    write_total(doc, invoice_json['currency']['symbol'], invoice_json['cost_due'], line_item_start_y)
+    write_total(doc, invoice['currency']['symbol'], invoice['cost_due'], line_item_start_y)
+
     doc.save()
-
-    pdf_file = open("output.pdf", "rb")
-    pdf_bytes = BytesIO(pdf_file.read())
-
-    # Create a connection to S3
-    s3 = boto3.client(
-        "s3",
-        aws_access_key_id="YOUR_ACCESS_KEY",
-        aws_secret_access_key="YOUR_SECRET_ACCESS_KEY",
-    )
-
-    # Specify the name of the bucket
-    bucket_name = "my-s3-bucket"
-
-    # Upload the PDF file to S3
-    s3.upload_fileobj(
-        pdf_bytes,
-        bucket_name,
-        "path/to/save/file.pdf",
-        ExtraArgs={"ContentType": "application/pdf"},
-    )
-    return doc
+    return buffer

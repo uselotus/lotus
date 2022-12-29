@@ -2,9 +2,11 @@ from __future__ import absolute_import
 
 import datetime
 from decimal import Decimal
+from io import BytesIO
 
 import lotus_python
 from dateutil.relativedelta import relativedelta
+from django.core.files.base import ContentFile
 from django.conf import settings
 from django.db.models import Sum
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -25,6 +27,7 @@ from metering_billing.utils.enums import (
     INVOICE_STATUS,
 )
 from metering_billing.webhooks import invoice_created_webhook
+from metering_billing.invoice_pdf import generate_invoice_pdf
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
@@ -281,7 +284,14 @@ def generate_invoice(
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
         if abs(invoice.cost_due) < 0.01 and not draft:
             invoice.payment_status = INVOICE_STATUS.PAID
+
         invoice.save()
+        pdf_buffer = generate_invoice_pdf(invoice, BytesIO())
+        pdf_buffer.seek(0)
+        invoice_pdf_file = ContentFile(pdf_buffer.read(), 'invoice.pdf')
+        invoice.invoice_pdf = invoice_pdf_file
+        invoice.save()
+
         if not draft:
             for pp in customer.integrations.keys():
                 if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
@@ -308,6 +318,6 @@ def generate_invoice(
             #         },
             # )
             invoice_created_webhook(invoice, organization)
-        invoices.append(invoice)
+            invoices.append(invoice)
 
     return invoices
