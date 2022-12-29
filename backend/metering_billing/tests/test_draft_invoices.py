@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Event,
     Invoice,
@@ -216,3 +217,23 @@ class TestGenerateInvoice:
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["cost_due"]
         assert Decimal("20") == after_cost
+
+    def test_generate_invoice_pdf(self, draft_invoice_test_common_setup):
+
+        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+
+        active_subscriptions = Subscription.objects.active().filter(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+        )
+        assert len(active_subscriptions) == 1
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "include_next_period": False,
+        }
+        result_invoices = generate_invoice(
+            active_subscriptions[0], setup_dict["subscription_record"], draft=False
+        )
+
+        assert len(result_invoices) == 1
