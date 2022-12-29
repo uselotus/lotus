@@ -285,7 +285,8 @@ def generate_invoice(
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
         if abs(invoice.cost_due) < 0.01 and not draft:
             invoice.payment_status = INVOICE_STATUS.PAID
-
+        invoice.save()
+        
         if not draft:
             for pp in customer.integrations.keys():
                 if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
