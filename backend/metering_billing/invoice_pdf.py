@@ -121,7 +121,7 @@ def generate_invoice_pdf(invoice, buffer):
     write_total(doc, invoice['currency']['symbol'], invoice['cost_due'], line_item_start_y)
 
     doc.save()
-    
+
     #Upload the file to s3
     s3 = boto3.resource(
         's3',
@@ -129,6 +129,7 @@ def generate_invoice_pdf(invoice, buffer):
         aws_secret_access_key= os.environ['AWS_SECRET_ACCESS_KEY']
     )
     invoice_number = invoice['invoice_number']
+    buffer.seek(0)
     s3.Bucket('BUCKET_NAME_HERE').upload_fileobj(buffer, f'invoice_pdf_{invoice_number}')
 
     return buffer
