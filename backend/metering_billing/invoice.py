@@ -9,6 +9,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.files.base import ContentFile
 from django.conf import settings
 from django.db.models import Sum
+from django.forms.models import model_to_dict
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -286,7 +287,7 @@ def generate_invoice(
             invoice.payment_status = INVOICE_STATUS.PAID
 
         invoice.save()
-        pdf_buffer = generate_invoice_pdf(invoice, BytesIO())
+        pdf_buffer = generate_invoice_pdf(model_to_dict(invoice), BytesIO())
         pdf_buffer.seek(0)
         invoice_pdf_file = ContentFile(pdf_buffer.read(), 'invoice.pdf')
         invoice.invoice_pdf = invoice_pdf_file
