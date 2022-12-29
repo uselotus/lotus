@@ -121,44 +121,17 @@ def generate_invoice_pdf(invoice, buffer):
     write_total(doc, invoice['currency']['symbol'], invoice['cost_due'], line_item_start_y)
 
     doc.save()
-    return buffer
-
-
-def generate_invoice_pdf_s3(invoice):
-    doc = canvas.Canvas('output.pdf')
-
-    write_invoice_title(doc)
-    write_seller_details(doc, invoice['seller']['name'], invoice['seller']['address']['line1'], 
-                              invoice['seller']['address']['city'], invoice['seller']['address']['state'],
-                              invoice['seller']['address']['country'], invoice['seller']['address']['postal_code'],
-                              invoice['seller']['phone'], invoice['seller']['email'])
-
-    write_customer_details(doc, invoice['customer']['customer_name'], invoice['customer']['address']['line1'], 
-    invoice['customer']['address']['city'], invoice['customer']['address']['state'],
-    invoice['customer']['address']['country'], invoice['customer']['address']['postal_code'],
-    invoice['customer']['email'])
-
-    write_invoice_details(doc, invoice['invoice_number'], invoice['issue_date'], invoice['due_date'])
-    write_summary_header(doc,  invoice['start_date'], invoice['end_date'])
     
-    line_item_start_y = 290
-    for line_item in invoice['line_items']:
-        line_item_start_y = write_line_item(doc, line_item['name'], line_item['start_date'], line_item['end_date'], 
-                        line_item['quantity'], line_item['subtotal'],invoice['currency']['symbol'], line_item_start_y)
-        if line_item_start_y > 680:
-            doc.showPage()
-            line_item_start_y = 40
-    
-    write_total(doc, invoice['currency']['symbol'], invoice['cost_due'], line_item_start_y)
-
-    doc.save()
+    #Upload the file to s3
     s3 = boto3.resource(
         's3',
         aws_access_key_id= os.environ['AWS_ACCESS_KEY_ID'],
         aws_secret_access_key= os.environ['AWS_SECRET_ACCESS_KEY']
     )
-
     invoice_number = invoice['invoice_number']
-    s3.Bucket('BUCKET_NAME_HERE').upload_file(f'invoice_pdf_{invoice_number}', 'output.pdf')
+    s3.Bucket('BUCKET_NAME_HERE').upload_fileobj(buffer, f'invoice_pdf_{invoice_number}')
+
+    return buffer
+
 
     
