@@ -16,6 +16,7 @@ from metering_billing.models import (
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
+    EVENT_TYPE,
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
@@ -307,7 +308,9 @@ class TestGetAccess:
             property_name="num_users",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+            event_type=EVENT_TYPE.TOTAL,
         )
+        METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
         plan_component = PlanComponent.objects.create(
             billable_metric=metric,
             plan_version=billing_plan,
@@ -472,7 +475,9 @@ class TestGetAccessWithMetricID:
             property_name="num_users",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+            event_type=EVENT_TYPE.TOTAL,
         )
+        METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
         plan_component = PlanComponent.objects.create(
             billable_metric=metric,
             plan_version=billing_plan,

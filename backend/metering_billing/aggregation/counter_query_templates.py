@@ -105,6 +105,7 @@ GROUP BY
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
+    , bucket
 """
 
 

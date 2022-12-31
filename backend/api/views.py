@@ -35,6 +35,7 @@ from api.serializers.nonmodel_serializers import (
     GetEventAccessSerializer,
     GetFeatureAccessSerializer,
 )
+from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
@@ -784,7 +785,7 @@ class GetCustomerEventAccessView(APIView):
         customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
         access_metric = serializer.validated_data.get("metric")
-        subscriptions = SubscriptionRecord.objects.select_related(
+        subscription_records = SubscriptionRecord.objects.select_related(
             "billing_plan"
         ).filter(
             organization_id=organization_pk,
@@ -797,17 +798,17 @@ class GetCustomerEventAccessView(APIView):
         }
         for key, value in subscription_filters.items():
             key = f"properties__{key}"
-            subscriptions = subscriptions.filter(**{key: value})
+            subscription_records = subscription_records.filter(**{key: value})
         metrics = []
-        subscriptions = subscriptions.prefetch_related(
+        subscription_records = subscription_records.prefetch_related(
             "billing_plan__plan_components",
             "billing_plan__plan_components__billable_metric",
             "billing_plan__plan_components__tiers",
             "filters",
         )
-        for sub in subscriptions:
+        for sr in subscription_records:
             subscription_filters = []
-            for filter in sub.filters.all():
+            for filter in sr.filters.all():
                 subscription_filters.append(
                     {
                         "property_name": filter.property_name,
@@ -815,11 +816,11 @@ class GetCustomerEventAccessView(APIView):
                     }
                 )
             single_sub_dict = {
-                "plan_id": sub.billing_plan.plan_id,
+                "plan_id": sr.billing_plan.plan_id,
                 "subscription_filters": subscription_filters,
                 "usage_per_component": [],
             }
-            for component in sub.billing_plan.plan_components.all():
+            for component in sr.billing_plan.plan_components.all():
                 metric = component.billable_metric
                 if metric.event_name == event_name or access_metric == metric:
                     metric_name = metric.billable_metric_name
@@ -830,24 +831,11 @@ class GetCustomerEventAccessView(APIView):
                         else None
                     )
                     total_limit = tiers[-1].range_end
-                    metric_usage = metric.get_current_usage(sub)
-                    if metric_usage == {}:
-                        unique_tup_dict = {
-                            "event_name": metric.event_name,
-                            "metric_name": metric_name,
-                            "metric_usage": 0,
-                            "metric_free_limit": free_limit,
-                            "metric_total_limit": total_limit,
-                            "metric_id": metric.metric_id,
-                        }
-                        single_sub_dict["usage_per_component"].append(unique_tup_dict)
-                        continue
-                    custom_metric_usage = metric_usage[customer.customer_name]
-                    usage = list(custom_metric_usage.values())[0]
+                    current_usage = metric.get_subscription_record_current_usage(sr)
                     unique_tup_dict = {
                         "event_name": metric.event_name,
                         "metric_name": metric_name,
-                        "metric_usage": usage,
+                        "metric_usage": current_usage,
                         "metric_free_limit": free_limit,
                         "metric_total_limit": total_limit,
                         "metric_id": metric.metric_id,
@@ -1185,19 +1173,27 @@ def track_event(request):
     bad_events = {}
     events_to_insert = set()
     events_by_customer = {}
-
+    now = now_utc()
     for data in event_list:
         customer_id = data.get("customer_id")
         idempotency_id = data.get("idempotency_id", None)
+        time_created = data.get("time_created", None)
         if not customer_id or not idempotency_id:
             if not idempotency_id:
                 bad_events["no_idempotency_id"] = "No idempotency_id provided"
             else:
                 bad_events[idempotency_id] = "No customer_id provided"
             continue
-
         if idempotency_id in events_to_insert:
             bad_events[idempotency_id] = "Duplicate event idempotency in request"
+            continue
+        if not time_created:
+            bad_events[idempotency_id] = "Invalid time_created"
+            continue
+        if parser.parse(time_created) < now - relativedelta(days=30):
+            bad_events[
+                idempotency_id
+            ] = "Time created too far in the past. Events must be within 30 days of current time."
             continue
         try:
             transformed_event = ingest_event(data, customer_id, organization_pk)

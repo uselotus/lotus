@@ -2093,11 +2093,13 @@ class SubscriptionRecord(models.Model):
                 * 24
             )
         for component in self.billing_plan.plan_components.all():
-            rev_per_day = component.calculate_earned_revenue_per_day(self)
-            for period, amount in rev_per_day.items():
+            rev_per_day = component.calculate_revenue_per_day(self)
+            for period, d in rev_per_day.items():
                 period = convert_to_date(period)
+                usage_qty = d["usage_qty"]
+                revenue = d["revenue"]
                 if period in return_dict:
-                    return_dict[period] += amount
+                    return_dict[period] += revenue
         return return_dict
 
 

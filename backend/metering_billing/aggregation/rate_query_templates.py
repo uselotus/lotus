@@ -127,7 +127,7 @@ FROM
                 ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
                 {%- endfor %}
                 ORDER BY "metering_billing_usageevent"."time_created" ASC
-                RANGE BETWEEN INTERVAL '{{ lookback_qty }}' {{ lookback_units }} PRECEDING AND CURRENT ROW
+                RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW
                 ) AS usage_qty
             {%- for group_by_field in group_by %}
             ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
@@ -182,6 +182,78 @@ GROUP BY
 # We use this query to get the total billable usage for a given customer. Since the only billable
 # aggregation type is max, then this query also serves to get the billabel usage per day.
 RATE_CAGG_TOTAL = """
+WITH events_augmented_with_rate AS (
+SELECT
+    "metering_billing_usageevent"."customer_id" AS customer_id,
+    "metering_billing_usageevent"."time_created" AS time_created,
+    {% if query_type == "count" -%}
+    COUNT(
+        "metering_billing_usageevent"."idempotency_id"
+    )
+    {% elif query_type == "sum" -%}
+    SUM(
+        ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+    )
+    {% elif query_type == "average" -%}
+    AVG(
+        ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+    )
+    {% elif query_type == "unique" -%}
+    COUNT(
+        DISTINCT ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+    )
+    {% elif query_type == "max" -%}
+    MAX(
+        ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+    )
+    {% endif %}
+    OVER (
+        PARTITION BY "metering_billing_usageevent"."customer_id"
+        {%- for group_by_field in group_by %}
+        ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}'
+        {%- endfor %}
+        ORDER BY "metering_billing_usageevent"."time_created" ASC
+        RANGE BETWEEN INTERVAL '{{ lookback_qty }} {{ lookback_units }}' PRECEDING AND CURRENT ROW
+        ) AS usage_qty
+    {%- for group_by_field in group_by %}
+    ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
+    {%- endfor %}
+FROM
+    "metering_billing_usageevent"
+WHERE
+    "metering_billing_usageevent"."event_name" = '{{ event_name }}'
+    AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
+    AND "metering_billing_usageevent"."time_created" <= NOW()
+    AND time_created >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
+    AND time_created <= '{{ end_date }}'::timestamptz
+    {%- for property_name, operator, comparison in numeric_filters %}
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
+        {% elif operator == "eq" %}
+        =
+        {% endif %}
+        {{ comparison }}
+    {%- endfor %}
+    {%- for property_name, operator, comparison in categorical_filters %}
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+        {% if operator == "isnotin" %}
+        NOT
+        {% endif %}
+        IN ( 
+            {%- for pval in comparison %} 
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
+        )
+    {%- endfor %}
+)
 SELECT DISTINCT ON (
     customer_id
     {%- for group_by_field in group_by %}
@@ -192,15 +264,15 @@ SELECT DISTINCT ON (
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}
     {%- endfor %}
-    , bucket
+    , time_created AS bucket
     , usage_qty
-FROM 
-    {{ cagg_name }}
+FROM
+    events_augmented_with_rate
 WHERE
     customer_id = {{ customer_id }}
-    AND bucket <= NOW()
-    AND bucket >= '{{ start_time }}'::timestamptz
-    AND bucket <= '{{ end_time }}'::timestamptz
+    AND time_created <= NOW()
+    AND time_created >= '{{ start_date }}'::timestamptz
+    AND time_created <= '{{ end_date }}'::timestamptz
     {%- for property_name, property_values in filter_properties.items() %}
     AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}') 
         IN ( 
