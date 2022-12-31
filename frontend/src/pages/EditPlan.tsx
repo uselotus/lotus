@@ -657,7 +657,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                     pricing_unit={selectedCurrency}
                   />
                 </Form.Item>
-                <div className="inset-x-0 bottom-0 justify-center">
+                {/* <div className="inset-x-0 bottom-0 justify-center">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -680,7 +680,7 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div>
+                </div> */}
               </Card>
             </Col>
             <Col span="24">

@@ -59,12 +59,17 @@ export const AppCard = ({
           }
           description={description}
         />
-        <div className="separator pt-4" />
-        {connected && (
+        {connected ? (
           <div className="flex justify-end pt-4">
             <Link to={title.toLowerCase()}>
-              <h3 className="text-darkgold">View Integration</h3>
+              <h3 className="text-darkgold hover:text-black">
+                View Integration
+              </h3>
             </Link>
+          </div>
+        ) : (
+          <div className="flex justify-end pt-4">
+            <h3 className="">-</h3>
           </div>
         )}
       </Card>

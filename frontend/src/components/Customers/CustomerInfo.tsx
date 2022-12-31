@@ -101,7 +101,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
     seriesField: "metric",
     groupField: "type",
     colorField: "type", // or seriesField in some cases
-    color: ["#C3986B", "#3F3F40"],
+    color: ["#C3986B", "#33658A", "#D9D9D9", "#171412", "#547AA5"],
 
     tooltip: {
       fields: ["type"],
@@ -114,7 +114,7 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
         <h2 className="pb-4 pt-4 font-bold text-main">Customer Details</h2>
         <div className="">
           {" "}
-          Date Range :{"   "}
+          Date Range :{"    "}
           <Select defaultValue={"1"} onChange={onSwitch}>
             <Select.Option value="1">Last 30 Days</Select.Option>
             <Select.Option value="2">Last 60 Days</Select.Option>
@@ -129,7 +129,8 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             <b>Customer Name:</b> {data.customer_name ?? "N/A"}
           </p>
           <p>
-            <b>Customer ID:</b> {<span class="font-menlo">{data.customer_id}</span> ?? "N/A"}
+            <b>Customer ID:</b>{" "}
+            {<span className="font-menlo">{data.customer_id}</span> ?? "N/A"}
           </p>
           <p>
             <b>Email:</b> {data.email ?? "N/A"}
@@ -166,8 +167,16 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
             <b>Amount Due On Next Invoice:</b> {data?.default_currency?.symbol}
             {invoiceData?.invoices[0].cost_due.toFixed(2)}
           </p>
+          <p>
+            <b>Payment Method Connected:</b>{" "}
+            {data.has_payment_method ? (
+              <Tag color="green">True</Tag>
+            ) : (
+              <Tag color="red">False</Tag>
+            )}
+          </p>
         </div>
-        <div className="grid grid-cols-2 justify-items-center  gap-8 py-4 border-2 border-solid rounded border-[#EAEAEB]">
+        <div className="grid grid-cols-3 place-items-center gap-8 py-4">
           <div>
             <p className=" mb-4">Earned Revenue</p>
             {cost_data === undefined ? (

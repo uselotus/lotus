@@ -13,6 +13,7 @@ export interface CustomerType {
   subscriptions: SubscriptionType[];
   integrations: object;
   default_currency: PricingUnit;
+  has_payment_method: boolean;
 }
 
 export interface LightweightCustomerType
