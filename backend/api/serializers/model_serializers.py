@@ -2,12 +2,7 @@ from typing import Optional, Union
 
 from django.conf import settings
 from django.db.models import Q
-<<<<<<< HEAD
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-=======
-from drf_spectacular.utils import extend_schema_field
-from metering_billing.billable_metrics import METRIC_HANDLER_MAP
->>>>>>> main
 from metering_billing.exceptions import ServerError
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
