@@ -49,6 +49,7 @@ cronitor = "*"
 svix = "*"
 pyjwt = "*"
 drf-standardized-errors = {extras = ["openapi"], version = "*"}
+boto3 = "*"
 
 [dev-packages]
 platformdirs = "*"
