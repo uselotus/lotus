@@ -563,7 +563,9 @@ class TestCalculateMetric:
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
-        assert usage_revenue_dict["revenue"] >= Decimal(100) * Decimal(18) / Decimal(32)
+        assert usage_revenue_dict["revenue"] >= Decimal(100) * (
+            Decimal(18) / Decimal(31) - Decimal(1) / Decimal(31)
+        )
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity(
@@ -1399,9 +1401,10 @@ class TestCalculateMetricWithFilters:
             )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
-        # user days, so should be between 18/28*100 and 18/31*100...we make it 32 because we can
-        # have a partial day at the beginning wheere the ratio is a little off
-        assert usage_revenue_dict["revenue"] >= Decimal(100) * Decimal(18) / Decimal(32)
+        # user days, so should be between 18/28*100 and 18/31*100...\
+        assert usage_revenue_dict["revenue"] >= Decimal(100) * (
+            Decimal(18) / Decimal(31) - Decimal(1) / Decimal(31)
+        )
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity_with_filters(
