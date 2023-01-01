@@ -175,24 +175,21 @@ class CostAnalysisView(APIView):
                 granularity=USAGE_CALC_GRANULARITY.DAILY,
                 customer=customer,
             ).get(customer.customer_name, {})
-            for unique_tup, unique_usage in usage_ret.items():
-                for date, usage in unique_usage.items():
-                    date = convert_to_date(date)
-                    usage = convert_to_decimal(usage)
-                    if date in per_day_dict:
-                        if (
-                            metric.billable_metric_name
-                            not in per_day_dict[date]["cost_data"]
-                        ):
-                            per_day_dict[date]["cost_data"][
-                                metric.billable_metric_name
-                            ] = {
-                                "metric": MetricSerializer(metric).data,
-                                "cost": Decimal(0),
-                            }
-                        per_day_dict[date]["cost_data"][metric.billable_metric_name][
-                            "cost"
-                        ] += usage
+            for date, usage in usage_ret.items():
+                date = convert_to_date(date)
+                usage = convert_to_decimal(usage)
+                if date in per_day_dict:
+                    if (
+                        metric.billable_metric_name
+                        not in per_day_dict[date]["cost_data"]
+                    ):
+                        per_day_dict[date]["cost_data"][metric.billable_metric_name] = {
+                            "metric": MetricSerializer(metric).data,
+                            "cost": Decimal(0),
+                        }
+                    per_day_dict[date]["cost_data"][metric.billable_metric_name][
+                        "cost"
+                    ] += usage
         for date, items in per_day_dict.items():
             items["cost_data"] = [v for k, v in items["cost_data"].items()]
         subscriptions = (
@@ -332,29 +329,24 @@ class PeriodMetricUsageView(APIView):
                 "top_n_customers": {},
             }
             metric_dict = return_dict[metric.billable_metric_name]
-            for customer_name, unique_dict in usage_summary.items():
-                for unique_tuple, period_dict in unique_dict.items():
-                    for time, qty in period_dict.items():
-                        if qty is not None:
-                            qty = convert_to_decimal(qty)
-                        else:
-                            qty = 0
-                        customer_identifier = customer_name
-                        if len(unique_tuple) > 1:
-                            for unique in unique_tuple[1:]:
-                                customer_identifier += f"__{unique}"
-                        if time not in metric_dict["data"]:
-                            metric_dict["data"][time] = {
-                                "total_usage": Decimal(0),
-                                "customer_usages": {},
-                            }
-                        date_dict = metric_dict["data"][time]
-                        date_dict["total_usage"] += qty
-                        date_dict["customer_usages"][customer_name] = qty
-                        metric_dict["total_usage"] += qty
-                        if customer_name not in metric_dict["top_n_customers"]:
-                            metric_dict["top_n_customers"][customer_name] = 0
-                        metric_dict["top_n_customers"][customer_name] += qty
+            for customer_name, period_dict in usage_summary.items():
+                for time, qty in period_dict.items():
+                    if qty is not None:
+                        qty = convert_to_decimal(qty)
+                    else:
+                        qty = 0
+                    if time not in metric_dict["data"]:
+                        metric_dict["data"][time] = {
+                            "total_usage": Decimal(0),
+                            "customer_usages": {},
+                        }
+                    date_dict = metric_dict["data"][time]
+                    date_dict["total_usage"] += qty
+                    date_dict["customer_usages"][customer_name] = qty
+                    metric_dict["total_usage"] += qty
+                    if customer_name not in metric_dict["top_n_customers"]:
+                        metric_dict["top_n_customers"][customer_name] = 0
+                    metric_dict["top_n_customers"][customer_name] += qty
             if top_n:
                 top_n_customers = sorted(
                     metric_dict["top_n_customers"].items(),
@@ -419,7 +411,7 @@ class CustomersSummaryView(APIView):
         Get the current settings for the organization.
         """
         organization = request.organization
-        logger.info(f"CustomersSummaryView: {organization}, {request.user}")
+        logger.debug(f"CustomersSummaryView: {organization}, {request.user}")
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",

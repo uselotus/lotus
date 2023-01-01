@@ -42,7 +42,9 @@ class OrganizationInsertMiddleware:
                             organization = None
                     else:
                         organization = Organization.objects.get(pk=organization_pk)
-            logger.info(f"OrganizationInsertMiddleware: {organization}, {request.user}")
+            logger.debug(
+                f"OrganizationInsertMiddleware: {organization}, {request.user}"
+            )
             request.organization = organization
         except Exception as e:
             logger.error(f"OrganizationInsertMiddleware: {e}")

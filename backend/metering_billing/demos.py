@@ -9,6 +9,7 @@ import pytz
 from dateutil.relativedelta import relativedelta
 from django.core.management.base import BaseCommand
 from faker import Faker
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.tasks import run_backtest, run_generate_invoice
@@ -115,51 +116,59 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
             email=f"{str(uuid.uuid4().hex)}@{str(uuid.uuid4().hex)}.com",
         )
         small_customers.append(customer)
-    calls, sum_words, sum_compute, unique_lang, unique_subsections = baker.make(
-        Metric,
-        organization=organization,
-        event_name="generate_text",
-        property_name=itertools.cycle(
-            ["", "words", "compute_time", "language", "subsection"]
-        ),
-        usage_aggregation_type=itertools.cycle(
-            ["count", "sum", "sum", "unique", "unique"]
-        ),
-        billable_metric_name=itertools.cycle(
-            [
-                "API Calls",
-                "Words",
-                "Compute Time",
-                "Unique Languages",
-                "Content Types",
-            ]
-        ),
-        metric_type=METRIC_TYPE.COUNTER,
-        _quantity=5,
-    )
-    (num_seats,) = baker.make(
-        Metric,
-        organization=organization,
-        event_name="log_num_seats",
-        property_name=itertools.cycle(
-            [
-                "qty",
-            ]
-        ),
-        usage_aggregation_type=itertools.cycle(["max"]),
-        metric_type=METRIC_TYPE.STATEFUL,
-        billable_metric_name="User Seats",
-        _quantity=1,
-    )
-    compute_cost = Metric.objects.create(
-        organization=organization,
-        event_name="computation",
-        property_name="cost",
-        billable_metric_name="Compute Cost",
-        metric_type=METRIC_TYPE.COUNTER,
-        usage_aggregation_type="sum",
-        is_cost_metric=True,
-    )
+    metrics_map = {}
+    for property_name, usage_aggregation_type, billable_metric_name, name in zip(
+        [None, "words", "compute_time", "language", "subsection"],
+        ["count", "sum", "sum", "unique", "unique"],
+        ["API Calls", "Words", "Compute Time", "Unique Languages", "Content Types"],
+        ["calls", "sum_words", "sum_compute", "unique_lang", "unique_subsections"],
+    ):
+        validated_data = {
+            "organization": organization,
+            "event_name": "generate_text",
+            "property_name": property_name,
+            "usage_aggregation_type": usage_aggregation_type,
+            "billable_metric_name": billable_metric_name,
+            "metric_type": METRIC_TYPE.COUNTER,
+        }
+        metric = METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(validated_data)
+        metrics_map[name] = metric
+    for property_name, usage_aggregation_type, billable_metric_name, name in zip(
+        ["qty"], ["max"], ["User Seats"], ["num_seats"]
+    ):
+        validated_data = {
+            "organization": organization,
+            "event_name": "log_num_seats",
+            "property_name": property_name,
+            "usage_aggregation_type": usage_aggregation_type,
+            "billable_metric_name": billable_metric_name,
+            "metric_type": METRIC_TYPE.STATEFUL,
+        }
+        metric = METRIC_HANDLER_MAP[METRIC_TYPE.STATEFUL].create_metric(validated_data)
+        metrics_map[name] = metric
+    for property_name, usage_aggregation_type, billable_metric_name, name in zip(
+        ["cost"], ["sum"], ["Compute Cost"], ["compute_cost"]
+    ):
+        validated_data = {
+            "organization": organization,
+            "event_name": "computation",
+            "property_name": property_name,
+            "usage_aggregation_type": usage_aggregation_type,
+            "billable_metric_name": billable_metric_name,
+            "metric_type": METRIC_TYPE.COUNTER,
+            "is_cost_metric": True,
+        }
+        metric = METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(validated_data)
+        assert metric is not None
+        metrics_map[name] = metric
+    calls = metrics_map["calls"]
+    sum_words = metrics_map["sum_words"]
+    assert sum_words is not None
+    sum_compute = metrics_map["sum_compute"]
+    unique_lang = metrics_map["unique_lang"]
+    unique_subsections = metrics_map["unique_subsections"]
+    num_seats = metrics_map["num_seats"]
+    compute_cost = metrics_map["compute_cost"]
     # SET THE BILLING PLANS
     plan = Plan.objects.create(
         plan_name="Free Plan",
@@ -600,6 +609,10 @@ def setup_paas_demo(
         user.save()
         organization.save()
     organization = user.organization
+    setting = organization.settings.get(
+        setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+    )
+    setting.setting_values = ["shard_id"]
     big_customers = []
     for _ in range(1):
         customer = Customer.objects.create(
@@ -669,6 +682,7 @@ def setup_paas_demo(
             + [METRIC_TYPE.COUNTER] * 2
             + [METRIC_TYPE.RATE] * 2
         ),
+        proration=itertools.cycle([METRIC_GRANULARITY.MINUTE] * 4 + [None] * 4),
         event_type=itertools.cycle([EVENT_TYPE.DELTA] * 4 + [None] * 4),
         billable_aggregation_type=itertools.cycle(
             [None] * 6 + [METRIC_AGGREGATION.MAX] * 2
@@ -795,7 +809,6 @@ def setup_paas_demo(
     plan.save()
     for component in professional_plan.plan_components.all():
         if component.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
-            component.proration_granularity = METRIC_GRANULARITY.MINUTE
             component.save()
 
 
@@ -877,6 +890,7 @@ def make_subscription_and_subscription_record(
     start_date,
     is_new,
 ):
+
     end_date = calculate_end_date(
         plan.plan.plan_duration,
         start_date,

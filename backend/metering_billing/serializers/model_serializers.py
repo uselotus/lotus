@@ -7,7 +7,7 @@ from actstream.models import Action
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
-from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateMetric, ServerError
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
@@ -382,6 +382,8 @@ class MetricUpdateSerializer(serializers.ModelSerializer):
         )
         instance.status = validated_data.get("status", instance.status)
         instance.save()
+        if instance.status == METRIC_STATUS.ARCHIVED:
+            METRIC_HANDLER_MAP[instance.metric_type].archive_metric(instance)
         return instance
 
 
@@ -410,12 +412,13 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "metric_name",
             "properties",
             "is_cost_metric",
+            "custom_sql",
         )
         extra_kwargs = {
-            "metric_id": {"write_only": True},
+            "metric_id": {"write_only": True, "allow_null": True, "allow_blank": True},
             "event_name": {"write_only": True, "required": True},
             "property_name": {"write_only": True},
-            "usage_aggregation_type": {"required": True, "write_only": True},
+            "usage_aggregation_type": {"write_only": True},
             "billable_aggregation_type": {"write_only": True},
             "granularity": {"write_only": True},
             "event_type": {"write_only": True},
@@ -423,6 +426,7 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "metric_name": {"write_only": True},
             "properties": {"write_only": True},
             "is_cost_metric": {"write_only": True},
+            "custom_sql": {"write_only": True},
         }
 
     metric_name = serializers.CharField(source="billable_metric_name")
@@ -437,42 +441,15 @@ class MetricCreateSerializer(serializers.ModelSerializer):
     # properties = serializers.JSONField(allow_null=True, required=False)
 
     def validate(self, data):
-        super().validate(data)
+        data = super().validate(data)
         metric_type = data["metric_type"]
         data = METRIC_HANDLER_MAP[metric_type].validate_data(data)
         return data
 
     def create(self, validated_data):
-        # edit custom name and pop filters + properties
-        num_filter_data = validated_data.pop("numeric_filters", [])
-        cat_filter_data = validated_data.pop("categorical_filters", [])
-
-        bm = Metric.objects.create(**validated_data)
-
-        # get filters
-        for num_filter in num_filter_data:
-            try:
-                nf, _ = NumericFilter.objects.get_or_create(
-                    **num_filter, organization=bm.organization
-                )
-            except NumericFilter.MultipleObjectsReturned:
-                nf = NumericFilter.objects.filter(
-                    **num_filter, organization=bm.organization
-                ).first()
-            bm.numeric_filters.add(nf)
-        for cat_filter in cat_filter_data:
-            try:
-                cf, _ = CategoricalFilter.objects.get_or_create(
-                    **cat_filter, organization=bm.organization
-                )
-            except CategoricalFilter.MultipleObjectsReturned:
-                cf = CategoricalFilter.objects.filter(
-                    **cat_filter, organization=bm.organization
-                ).first()
-            bm.categorical_filters.add(cf)
-        bm.save()
-
-        return bm
+        metric_type = validated_data["metric_type"]
+        metric = METRIC_HANDLER_MAP[metric_type].create_metric(validated_data)
+        return metric
 
 
 class ExternalPlanLinkSerializer(serializers.ModelSerializer):
@@ -593,63 +570,6 @@ class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
                 assert tiers_sorted[i + 1]["range_start"] - tier[
                     "range_end"
                 ] <= Decimal(1), "All tiers must be contiguous"
-
-            pr_gran = data.get("proration_granularity")
-            metric_granularity = data.get("billable_metric").granularity
-            if pr_gran == METRIC_GRANULARITY.SECOND:
-                if metric_granularity == METRIC_GRANULARITY.SECOND:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.MINUTE:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.MINUTE:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.HOUR:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.HOUR:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.DAY:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.DAY:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.MONTH:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                    METRIC_GRANULARITY.DAY,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.MONTH:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.QUARTER:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                    METRIC_GRANULARITY.DAY,
-                    METRIC_GRANULARITY.MONTH,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.QUARTER:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
-            elif pr_gran == METRIC_GRANULARITY.YEAR:
-                assert metric_granularity not in [
-                    METRIC_GRANULARITY.SECOND,
-                    METRIC_GRANULARITY.MINUTE,
-                    METRIC_GRANULARITY.HOUR,
-                    METRIC_GRANULARITY.DAY,
-                    METRIC_GRANULARITY.MONTH,
-                    METRIC_GRANULARITY.QUARTER,
-                ], "Metric granularity cannot be finer than proration granularity"
-                if metric_granularity == METRIC_GRANULARITY.YEAR:
-                    data["proration_granularity"] = METRIC_GRANULARITY.TOTAL
         except AssertionError as e:
             raise serializers.ValidationError(str(e))
         return data

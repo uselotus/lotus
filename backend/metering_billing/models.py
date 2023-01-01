@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import logging
 import math
 import uuid
@@ -27,6 +28,7 @@ from metering_billing.utils import (
     backtest_uuid,
     calculate_end_date,
     convert_to_date,
+    convert_to_datetime,
     convert_to_decimal,
     customer_balance_adjustment_uuid,
     customer_uuid,
@@ -34,7 +36,6 @@ from metering_billing.utils import (
     dates_bwn_two_dts,
     event_uuid,
     get_granularity_ratio,
-    invoice_uuid,
     metric_uuid,
     now_plus_day,
     now_utc,
@@ -52,13 +53,7 @@ from metering_billing.utils.enums import *
 from metering_billing.webhooks import invoice_paid_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
-from svix.api import (
-    ApplicationIn,
-    EndpointIn,
-    EndpointSecretRotateIn,
-    EndpointUpdate,
-    Svix,
-)
+from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
 from svix.internal.openapi_client.models.http_error import HttpError
 
 logger = logging.getLogger("django.server")
@@ -87,6 +82,7 @@ class Organization(models.Model):
     )
     webhooks_provisioned = models.BooleanField(default=False)
     currencies_provisioned = models.IntegerField(default=0)
+    subscription_filters_setting_provisioned = models.BooleanField(default=False)
     properties = models.JSONField(default=dict, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
@@ -108,6 +104,36 @@ class Organization(models.Model):
         if not self.default_currency:
             self.default_currency = PricingUnit.objects.get(
                 organization=self, code="USD"
+            )
+        self.provision_subscription_filter_settings()
+
+    def provision_subscription_filter_settings(self):
+        if not self.subscription_filters_setting_provisioned:
+            OrganizationSetting.objects.create(
+                organization=self,
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+                setting_values=[],
+                setting_group=None,
+            )
+            self.subscription_filters_setting_provisioned = True
+            self.save()
+
+    def update_subscription_filter_settings(self, filter_keys):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        setting, _ = OrganizationSetting.objects.get_or_create(
+            organization=self,
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+        )
+        if not isinstance(filter_keys, list) and all(
+            isinstance(key, str) for key in filter_keys
+        ):
+            raise ValidationError("filter keys must be a list of strings")
+        setting.setting_values = filter_keys
+        setting.save()
+        for metric in self.metrics.all():
+            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(
+                metric, refresh=True
             )
 
     def provision_webhooks(self):
@@ -771,7 +797,7 @@ class Metric(models.Model):
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
-        related_name="billable_metrics",
+        related_name="metrics",
     )
     event_name = models.CharField(
         max_length=50, help_text="Name of the event that this metric is tracking."
@@ -788,7 +814,6 @@ class Metric(models.Model):
     event_type = models.CharField(
         max_length=20,
         choices=EVENT_TYPE.choices,
-        default=EVENT_TYPE.TOTAL,
         blank=True,
         null=True,
         help_text="Used only for metrics of type 'continuous'. Please refer to our documentation for an explanation of the different types.",
@@ -821,9 +846,22 @@ class Metric(models.Model):
         null=True,
         help_text="The granularity of the metric. Only applies to metrics of type 'continuous' or 'rate'.",
     )
+    proration = models.CharField(
+        choices=METRIC_GRANULARITY.choices,
+        default=None,
+        max_length=10,
+        blank=True,
+        null=True,
+        help_text="The proration of the metric. Only applies to metrics of type 'continuous'.",
+    )
     is_cost_metric = models.BooleanField(
         default=False,
         help_text="Whether or not this metric is a cost metric (used to track costs to your business).",
+    )
+    custom_sql = models.TextField(
+        blank=True,
+        null=True,
+        help_text="A custom SQL query that can be used to define the metric. Please refer to our documentation for more information.",
     )
 
     # filters
@@ -844,19 +882,63 @@ class Metric(models.Model):
                 fields=["organization", "metric_id"], name="unique_org_metric_id"
             ),
             models.UniqueConstraint(
-                fields=[
-                    "organization",
-                    "billable_metric_name",
-                    "event_name",
-                    "metric_type",
-                    "usage_aggregation_type",
-                    "billable_aggregation_type",
-                    "property_name",
-                    "granularity",
-                    "is_cost_metric",
-                ],
-                name="unique_org_event_name_metric_type_and_other_fields",
+                fields=["organization", "billable_metric_name"],
+                name="unique_org_billable_metric_name",
             ),
+        ] + [
+            models.UniqueConstraint(
+                fields=list(
+                    {
+                        "organization",
+                        "billable_metric_name",  # nullable
+                        "event_name",
+                        "metric_type",
+                        "usage_aggregation_type",
+                        "billable_aggregation_type",  # nullable
+                        "property_name",  # nullable
+                        "granularity",  # nullable
+                        "is_cost_metric",
+                        "custom_sql",  # nullable
+                    }
+                    - {x for x in nullables}
+                ),
+                condition=Q(**{f"{nullable}__in": [None, ""] for nullable in nullables})
+                & Q(status=METRIC_STATUS.ACTIVE),
+                name=f"uq_metric_w_null__"
+                + "_".join(
+                    [
+                        "_".join([x[:2] for x in nullable.split("_")])
+                        for nullable in nullables
+                    ]
+                ),
+            )
+            for nullables in itertools.chain(
+                *map(
+                    lambda x: itertools.combinations(
+                        [
+                            "billable_metric_name",
+                            "billable_aggregation_type",
+                            "property_name",
+                            "granularity",
+                            "custom_sql",
+                        ],
+                        x,
+                    ),
+                    range(
+                        0,
+                        len(
+                            [
+                                "billable_metric_name",
+                                "billable_aggregation_type",
+                                "property_name",
+                                "granularity",
+                                "custom_sql",
+                            ],
+                        )
+                        + 1,
+                    ),
+                )
+            )
         ]
 
     def __str__(self):
@@ -865,58 +947,31 @@ class Metric(models.Model):
     def get_aggregation_type(self):
         return self.aggregation_type
 
-    def get_usage(
-        self,
-        start_date,
-        end_date,
-        granularity,
-        customer=None,
-        group_by=None,
-        proration=None,
-        filters=None,
-    ) -> dict[Customer.customer_name, dict[datetime.datetime, float]]:
-        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+    def get_subscription_record_total_billable_usage(self, subscription_record):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
-        if group_by is None:
-            group_by = []
-        handler = METRIC_HANDLER_MAP[self.metric_type](self)
-        usage = handler.get_usage(
-            results_granularity=granularity,
-            start=start_date,
-            end=end_date,
-            customer=customer,
-            group_by=group_by,
-            proration=proration,
-            filters=filters,
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        usage = handler.get_subscription_record_total_billable_usage(
+            self, subscription_record
         )
 
         return usage
 
-    def get_current_usage(self, subscription):
-        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+    def get_subscription_record_daily_billable_usage(self, subscription_record):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
-        handler = METRIC_HANDLER_MAP[self.metric_type](self)
-        all_components = subscription.billing_plan.plan_components.all()
-        group_by = []
-        usage = None
-        for component in all_components:
-            if component.billable_metric == self:
-                group_by = component.separate_by
-                usage = handler.get_current_usage(subscription, group_by=group_by)
-                break
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        usage = handler.get_subscription_record_daily_billable_usage(
+            self, subscription_record
+        )
+
         return usage
 
-    def get_earned_usage_per_day(
-        self, start, end, customer, group_by=None, proration=None
-    ):
-        from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+    def get_subscription_record_current_usage(self, subscription_record):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 
-        if group_by is None:
-            group_by = []
-        handler = METRIC_HANDLER_MAP[self.metric_type](self)
-        usage = handler.get_earned_usage_per_day(
-            start, end, customer, group_by, proration
-        )
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        usage = handler.get_subscription_record_current_usage(self, subscription_record)
 
         return usage
 
@@ -1029,13 +1084,6 @@ class PlanComponent(models.Model):
         null=True,
         blank=True,
     )
-    reset_frequency = models.CharField(
-        choices=COMPONENT_RESET_FREQUENCY.choices,
-        max_length=10,
-        blank=True,
-        null=True,
-        default=COMPONENT_RESET_FREQUENCY.NONE,
-    )
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -1043,204 +1091,72 @@ class PlanComponent(models.Model):
         null=True,
         blank=True,
     )
-    separate_by = models.JSONField(default=list, blank=True, null=True)
-    proration_granularity = models.CharField(
-        choices=METRIC_GRANULARITY.choices,
-        max_length=10,
-        default=METRIC_GRANULARITY.TOTAL,
-    )
 
     def __str__(self):
         return str(self.billable_metric)
 
     def save(self, *args, **kwargs):
-        if self.separate_by is None:
-            self.separate_by = []
-        assert isinstance(self.separate_by, list)
         if not self.pricing_unit:
             self.pricing_unit = self.plan_version.pricing_unit
         super().save(*args, **kwargs)
 
-    def calculate_total_revenue(
+    def calculate_total_revenue(self, subscription_record) -> UsageRevenueSummary:
+        billable_metric = self.billable_metric
+        usage_qty = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+        revenue = 0
+        tiers = self.tiers.all()
+        for i, tier in enumerate(tiers):
+            if (
+                i > 0
+            ):  # this is for determining whether this is a continuous or discontinuous range
+                prev_tier_end = tiers[i - 1].range_end
+                tier_revenue = tier.calculate_revenue(
+                    usage_qty, prev_tier_end=prev_tier_end
+                )
+            else:
+                tier_revenue = tier.calculate_revenue(usage_qty)
+            revenue += tier_revenue
+        revenue = convert_to_decimal(revenue)
+        return {"revenue": revenue, "usage_qty": usage_qty}
+
+    def calculate_revenue_per_day(
         self, subscription_record
     ) -> dict[datetime.datetime, UsageRevenueSummary]:
-        periods = []
-        start_date = subscription_record.usage_start_date
-        end_date = start_date
-        now = now_utc()
-        while end_date < subscription_record.end_date:
-            if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
-                end_date = start_date + relativedelta(weeks=1)
-            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
-                end_date = start_date + relativedelta(months=1)
-            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
-                end_date = start_date + relativedelta(months=3)
-            else:
-                end_date = subscription_record.end_date
-            end_date = min(subscription_record.end_date, end_date)
-            periods.append((start_date, end_date))
-            start_date = end_date
-            if start_date > now:
-                break
         billable_metric = self.billable_metric
-        revenue_dict = {"revenue": Decimal(0), "subperiods": []}
-        for period_start, period_end in periods:
-            all_usage = billable_metric.get_usage(
-                granularity=USAGE_CALC_GRANULARITY.TOTAL,
-                start_date=period_start,
-                end_date=period_end,
-                customer=subscription_record.customer,
-                group_by=self.separate_by,
-                proration=self.proration_granularity,
-                filters=subscription_record.get_filters_dictionary(),
-            )
-
-            if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
-                if self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
-                    metric_granularity = METRIC_GRANULARITY.MONTH
-                elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
-                    metric_granularity = METRIC_GRANULARITY.QUARTER
-                else:
-                    plan_dur = subscription_record.billing_plan.plan.plan_duration
-                    if plan_dur == PLAN_DURATION.MONTHLY:
-                        metric_granularity = METRIC_GRANULARITY.MONTH
-                    elif plan_dur == PLAN_DURATION.QUARTERLY:
-                        metric_granularity = METRIC_GRANULARITY.QUARTER
-                    elif plan_dur == PLAN_DURATION.YEARLY:
-                        metric_granularity = METRIC_GRANULARITY.YEAR
-            else:
-                metric_granularity = billable_metric.granularity
-            proration_granularity = self.proration_granularity
-
-            usage_normalization_factor = get_granularity_ratio(
-                metric_granularity, proration_granularity, period_start
-            )
-            # extract usage
-            separated_usage = all_usage.get(
-                subscription_record.customer.customer_name, {}
-            )
-            for i, (unique_identifier, usage_by_period) in enumerate(
-                separated_usage.items()
-            ):
-                if len(usage_by_period) >= 1:
-                    usage_qty = (
-                        convert_to_decimal(sum(usage_by_period.values()))
-                        / usage_normalization_factor
-                    )
-                    usage_qty = convert_to_decimal(usage_qty)
-                    revenue = 0
-                    tiers = self.tiers.all()
-                    for i, tier in enumerate(tiers):
-                        if i > 0:
-                            prev_tier_end = tiers[i - 1].range_end
-                            tier_revenue = tier.calculate_revenue(
-                                usage_qty, prev_tier_end=prev_tier_end
-                            )
-                        else:
-                            tier_revenue = tier.calculate_revenue(usage_qty)
-                        revenue += tier_revenue
-                    revenue = convert_to_decimal(revenue)
-                else:
-                    usage_qty = Decimal(0)
-                    revenue = Decimal(0)
-                revenue_dict["revenue"] += revenue
-                subp = {
-                    "start_date": period_start,
-                    "end_date": period_end,
-                    "usage_qty": usage_qty,
-                    "revenue": revenue,
-                }
-                if len(unique_identifier) > 1:
-                    subp["unique_identifier"] = dict(
-                        zip(self.separate_by, unique_identifier[1:])
-                    )
-                revenue_dict["subperiods"].append(subp)
-        return revenue_dict
-
-    def calculate_earned_revenue_per_day(
-        self, subscription
-    ) -> dict[datetime.datetime, UsageRevenueSummary]:
-        billable_metric = self.billable_metric
-        periods = []
-        start_date = subscription.usage_start_date
-        end_date = start_date
+        usage_per_day = billable_metric.get_subscription_record_daily_billable_usage(
+            subscription_record
+        )
         results = {}
-        for period in periods_bwn_twodates(
-            USAGE_CALC_GRANULARITY.DAILY, subscription.start_date, subscription.end_date
+        for period in dates_bwn_two_dts(
+            subscription_record.usage_start_date, subscription_record.end_date
         ):
             period = convert_to_date(period)
-            results[period] = Decimal(0)
-        now = now_utc()
-        while end_date < subscription.end_date:
-            if self.reset_frequency == COMPONENT_RESET_FREQUENCY.WEEKLY:
-                end_date = start_date + relativedelta(weeks=1)
-            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
-                end_date = start_date + relativedelta(months=1)
-            elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
-                end_date = start_date + relativedelta(months=3)
-            else:
-                end_date = subscription.end_date
-            end_date = min(subscription.end_date, end_date)
-            periods.append((start_date, end_date))
-            start_date = end_date
-            if start_date > now:
-                break
-        for period_start, period_end in periods:
-            all_usage = billable_metric.get_earned_usage_per_day(
-                start=period_start,
-                end=period_end,
-                customer=subscription.customer,
-                group_by=self.separate_by,
-                proration=self.proration_granularity,
-            )
-            if billable_metric.granularity == METRIC_GRANULARITY.TOTAL:
-                if self.reset_frequency == COMPONENT_RESET_FREQUENCY.MONTHLY:
-                    metric_granularity = METRIC_GRANULARITY.MONTH
-                elif self.reset_frequency == COMPONENT_RESET_FREQUENCY.QUARTERLY:
-                    metric_granularity = METRIC_GRANULARITY.QUARTER
-                else:
-                    plan_dur = subscription.billing_plan.plan.plan_duration
-                    if plan_dur == PLAN_DURATION.MONTHLY:
-                        metric_granularity = METRIC_GRANULARITY.MONTH
-                    elif plan_dur == PLAN_DURATION.QUARTERLY:
-                        metric_granularity = METRIC_GRANULARITY.QUARTER
-                    elif plan_dur == PLAN_DURATION.YEARLY:
-                        metric_granularity = METRIC_GRANULARITY.YEAR
-            else:
-                metric_granularity = billable_metric.granularity
-            proration_granularity = self.proration_granularity
+            results[period] = {"revenue": Decimal(0), "usage_qty": Decimal(0)}
 
-            usage_normalization_factor = get_granularity_ratio(
-                metric_granularity, proration_granularity, period_start
-            )
-            # extract usage
-            for i, (unique_identifier, usage_by_period) in enumerate(all_usage.items()):
-                if len(usage_by_period) >= 1:
-                    running_total_revenue = Decimal(0)
-                    running_total_usage = Decimal(0)
-                    for date, usage_qty in usage_by_period.items():
-                        date = convert_to_date(date)
-                        usage_qty = (
-                            convert_to_decimal(usage_qty) / usage_normalization_factor
-                        )
-                        running_total_usage += usage_qty
-                        revenue = Decimal(0)
-                        tiers = self.tiers.all()
-                        for i, tier in enumerate(tiers):
-                            if i > 0:
-                                prev_tier_end = tiers[i - 1].range_end
-                                tier_revenue = tier.calculate_revenue(
-                                    running_total_usage, prev_tier_end=prev_tier_end
-                                )
-                            else:
-                                tier_revenue = tier.calculate_revenue(
-                                    running_total_usage
-                                )
-                            revenue += convert_to_decimal(tier_revenue)
-                        date_revenue = revenue - running_total_revenue
-                        running_total_revenue += date_revenue
-                        if date in results:
-                            results[date] += date_revenue
+        running_total_revenue = Decimal(0)
+        running_total_usage = Decimal(0)
+        for date, usage_qty in usage_per_day.items():
+            date = convert_to_date(date)
+            usage_qty = convert_to_decimal(usage_qty)
+            running_total_usage += usage_qty
+            revenue = Decimal(0)
+            tiers = self.tiers.all()
+            for i, tier in enumerate(tiers):
+                if i > 0:
+                    prev_tier_end = tiers[i - 1].range_end
+                    tier_revenue = tier.calculate_revenue(
+                        running_total_usage, prev_tier_end=prev_tier_end
+                    )
+                else:
+                    tier_revenue = tier.calculate_revenue(running_total_usage)
+                revenue += convert_to_decimal(tier_revenue)
+            date_revenue = revenue - running_total_revenue
+            running_total_revenue += date_revenue
+            if date in results:
+                results[date]["revenue"] += date_revenue
+                results[date]["usage_qty"] += usage_qty
         return results
 
 
@@ -2013,6 +1929,8 @@ class SubscriptionRecord(models.Model):
         new_filters = kwargs.pop("subscription_filters", [])
         now = now_utc()
         subscription = self.customer.subscriptions.active(self.start_date).first()
+        if not isinstance(self.start_date, datetime.datetime):
+            self.start_date = convert_to_datetime(self.start_date)
         if not subscription:
             raise ServerError(
                 "Unexpected error: subscription date alignment engine failed."
@@ -2080,7 +1998,7 @@ class SubscriptionRecord(models.Model):
                     or set(old_filters) == set(new_filters)
                 ):
                     raise OverlappingPlans(
-                        f"Overlapping subscriptions with the same filters are not allowed (plan: {self.billing_plan}, customer: {self.customer}, dates: {self.start_date, self.end_date}). New subscription_filters: {new_filters}, Old subscription_filters: {list(old_filters)}"
+                        f"Overlapping subscriptions with the same filters are not allowed. \n Plan: {self.billing_plan} \n Customer: {self.customer}. \n New dates: ({self.start_date, self.end_date}) \n New subscription_filters: {new_filters} \n Old dates: ({self.start_date, self.end_date}) \n Old subscription_filters: {list(old_filters)}"
                     )
         super(SubscriptionRecord, self).save(*args, **kwargs)
         for filter in new_filters:
@@ -2178,11 +2096,13 @@ class SubscriptionRecord(models.Model):
                 * 24
             )
         for component in self.billing_plan.plan_components.all():
-            rev_per_day = component.calculate_earned_revenue_per_day(self)
-            for period, amount in rev_per_day.items():
+            rev_per_day = component.calculate_revenue_per_day(self)
+            for period, d in rev_per_day.items():
                 period = convert_to_date(period)
+                usage_qty = d["usage_qty"]
+                revenue = d["revenue"]
                 if period in return_dict:
-                    return_dict[period] += amount
+                    return_dict[period] += revenue
         return return_dict
 
 
@@ -2253,14 +2173,11 @@ class OrganizationSetting(models.Model):
     setting_value = models.CharField(
         max_length=100,
     )
+    setting_values = models.JSONField(default=list, blank=True)
     setting_group = models.CharField(max_length=100, blank=True, null=True)
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
-        if self.setting_value.lower() == "true":
-            self.setting_value = "true"
-        elif self.setting_value.lower() == "false":
-            self.setting_value = "false"
         super(OrganizationSetting, self).save(*args, **kwargs)
 
     def __str__(self):
