@@ -5,14 +5,13 @@ export interface MetricType {
   billable_aggregation_type?: string;
   metric_id: string;
   metric_name?: string;
-  metric_type: "counter" | "stateful" | "rate" | "custom";
+  metric_type: "counter" | "stateful" | "rate";
   numeric_filters?: NumericFilterType[];
   categorical_filters?: CateogricalFilterType[];
   granularity?: string;
   event_type?: "delta" | "total";
   is_cost_metric?: boolean;
   properties?: string[];
-  custom_sql?: string;
 }
 
 export interface MetricUsage {
