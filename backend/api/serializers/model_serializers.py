@@ -587,6 +587,7 @@ class MetricSerializer(
             "categorical_filters",
             "is_cost_metric",
             "custom_sql",
+            "proration",
         )
         extra_kwargs = {
             "metric_id": {"required": True, "read_only": True},
