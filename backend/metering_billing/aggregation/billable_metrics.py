@@ -198,8 +198,7 @@ class MetricHandler(abc.ABC):
     @abc.abstractmethod
     def create_metric(validated_data: Metric) -> Metric:
         """We will use this method when creating a billable metric. You should create the metric and return it. This is a great time to create all the other queries you we want to keep track of in order to optimize the usage"""
-        from metering_billing.models import (CategoricalFilter, Metric,
-                                             NumericFilter)
+        from metering_billing.models import CategoricalFilter, Metric, NumericFilter
 
         # edit custom name and pop filters + properties
         num_filter_data = validated_data.pop("numeric_filters", [])
@@ -333,8 +332,9 @@ class CounterHandler(MetricHandler):
         subscription_record: SubscriptionRecord,
         organization: Organization,
     ) -> list[namedtuple]:
-        from metering_billing.aggregation.counter_query_templates import \
-            COUNTER_CAGG_TOTAL
+        from metering_billing.aggregation.counter_query_templates import (
+            COUNTER_CAGG_TOTAL,
+        )
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -430,8 +430,9 @@ class CounterHandler(MetricHandler):
     def get_subscription_record_total_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        from metering_billing.aggregation.counter_query_templates import \
-            COUNTER_UNIQUE_TOTAL
+        from metering_billing.aggregation.counter_query_templates import (
+            COUNTER_UNIQUE_TOTAL,
+        )
         from metering_billing.models import Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
@@ -757,9 +758,11 @@ class CustomHandler(MetricHandler):
             # unfortunately there's no good way to make caggs for unique
             # if we're refreshing the matview, then we need to drop the last
             # one and recreate it
-            from .counter_query_templates import (COUNTER_CAGG_COMPRESSION,
-                                                  COUNTER_CAGG_QUERY,
-                                                  COUNTER_CAGG_REFRESH)
+            from .counter_query_templates import (
+                COUNTER_CAGG_COMPRESSION,
+                COUNTER_CAGG_QUERY,
+                COUNTER_CAGG_REFRESH,
+            )
 
             if refresh is True:
                 CounterHandler.archive_metric(metric)
@@ -1040,6 +1043,7 @@ class StatefulHandler(MetricHandler):
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
         metric = MetricHandler.create_metric(validated_data)
+        StatefulHandler.create_continuous_aggregate(metric)
         return metric
 
     @staticmethod
@@ -1048,9 +1052,13 @@ class StatefulHandler(MetricHandler):
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
         from .stateful_query_templates import (
-            STATEFUL_DELTA_CREATE_TRIGGER_FN, STATEFUL_DELTA_CUMULATIVE_SUM,
-            STATEFUL_DELTA_DELETE_TRIGGER, STATEFUL_DELTA_INSERT_TRIGGER,
-            STATEFUL_DELTA_UPDATE_TRIGGER, STATEFUL_TOTAL_CUMULATIVE_SUM)
+            STATEFUL_DELTA_CREATE_TRIGGER_FN,
+            STATEFUL_DELTA_CUMULATIVE_SUM,
+            STATEFUL_DELTA_DELETE_TRIGGER,
+            STATEFUL_DELTA_INSERT_TRIGGER,
+            STATEFUL_DELTA_UPDATE_TRIGGER,
+            STATEFUL_TOTAL_CUMULATIVE_SUM,
+        )
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1148,8 +1156,7 @@ class StatefulHandler(MetricHandler):
     ) -> Decimal:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .stateful_query_templates import \
-            STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION
+        from .stateful_query_templates import STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1251,8 +1258,9 @@ class StatefulHandler(MetricHandler):
     ) -> dict[datetime.date, Decimal]:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .stateful_query_templates import \
-            STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY
+        from .stateful_query_templates import (
+            STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY,
+        )
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1456,8 +1464,7 @@ class RateHandler(MetricHandler):
     def _rate_cagg_total_results(
         metric: Metric, subscription_record: SubscriptionRecord
     ):
-        from metering_billing.aggregation.rate_query_templates import \
-            RATE_CAGG_TOTAL
+        from metering_billing.aggregation.rate_query_templates import RATE_CAGG_TOTAL
         from metering_billing.models import Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
@@ -1515,8 +1522,9 @@ class RateHandler(MetricHandler):
     def get_subscription_record_current_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        from metering_billing.aggregation.rate_query_templates import \
-            RATE_GET_CURRENT_USAGE
+        from metering_billing.aggregation.rate_query_templates import (
+            RATE_GET_CURRENT_USAGE,
+        )
         from metering_billing.models import Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
@@ -1579,6 +1587,12 @@ class RateHandler(MetricHandler):
         total = results[0].usage_qty
         date = convert_to_date(results[0].bucket)
         return {date: total}
+
+    @staticmethod
+    def create_metric(validated_data: dict) -> Metric:
+        metric = MetricHandler.create_metric(validated_data)
+        RateHandler.create_continuous_aggregate(metric)
+        return metric
 
 
 METRIC_HANDLER_MAP = {

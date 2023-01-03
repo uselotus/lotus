@@ -143,6 +143,7 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
             "usage_aggregation_type": usage_aggregation_type,
             "billable_metric_name": billable_metric_name,
             "metric_type": METRIC_TYPE.STATEFUL,
+            "event_type": EVENT_TYPE.TOTAL,
         }
         metric = METRIC_HANDLER_MAP[METRIC_TYPE.STATEFUL].create_metric(validated_data)
         metrics_map[name] = metric
@@ -163,7 +164,6 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
         metrics_map[name] = metric
     calls = metrics_map["calls"]
     sum_words = metrics_map["sum_words"]
-    assert sum_words is not None
     sum_compute = metrics_map["sum_compute"]
     unique_lang = metrics_map["unique_lang"]
     unique_subsections = metrics_map["unique_subsections"]
