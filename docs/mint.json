@@ -7,7 +7,8 @@
   "api": {
     "baseUrl": "https://api.uselotus.io",
     "auth": {
-      "name": "X-API-KEY"
+      "name": "X-API-KEY",
+      "method": "key"
     }
   },
   "favicon": "/favicon.png",
