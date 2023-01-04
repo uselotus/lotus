@@ -87,7 +87,12 @@ Best if you want to keep your data local or want full control and extensibility.
 4. Rename `env/.env.prod.example` to `env/.env.prod`. Make sure you don't commit your secret environment variables anywhere!
 5. Build and run the Docker Image!
    ```sh
-   docker-compose -f docker-compose.prod.yaml --env-file env/.env.prod up --build
+    ./scripts/self-host.sh
+   ```
+   If you have trouble running this command try giving it permissions:
+   ```sh
+   sudo chmod 755 ./scripts/self-host.sh
+   ./scripts/self-host.sh
    ```
    You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined or the default which is:
    ```py
@@ -120,6 +125,7 @@ To set up Lotus for development locally, please refer to our guide [here](https:
 Pricing your SaaS product is never easy, and often isn't directly related to the value you provide. Lotus was built to help you solve those problems and maintain the flexibility you need as you grow. Pricing is an underappreciated but hugely important lever for growth, and pushing it to the side can be a huge mistake. As companies evolve their pricing models, maintaining and scaling a pricing and billing stack can take significant engineering hours. With Lotus, you can go through the pricing deployment, monitoring, and experimentation cycle blazingly fast, while integrating with your existing payments, customer management, and data solutions.
 
 Tech Stack:
+
 - React Typescript
 - Postgres (Timescaledb)
 - Redpanda
