@@ -535,6 +535,7 @@ SPECTACULAR_SETTINGS = {
         "metering_billing.openapi_hooks.remove_required_external_payment_obj_type",
         "metering_billing.openapi_hooks.add_external_payment_obj_type_to_required",
         "metering_billing.openapi_hooks.add_plan_id_parent_plan_target_customer_to_required",
+        "metering_billing.openapi_hooks.remove_required_address_from_lw_cust_invoice",
     ],
     "ENUM_NAME_OVERRIDES": {
         "numeric_filter_operators": "metering_billing.utils.enums.NUMERIC_FILTER_OPERATORS.choices",

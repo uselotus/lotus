@@ -514,7 +514,7 @@ const CreatePlan = () => {
                     pricing_unit={selectedCurrency}
                   />
                 </Form.Item>
-                <div className="inset-x-0 bottom-0 justify-center self-end">
+                {/* <div className="inset-x-0 bottom-0 justify-center self-end">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -537,7 +537,7 @@ const CreatePlan = () => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div>
+                </div> */}
               </Card>
             </Col>
 

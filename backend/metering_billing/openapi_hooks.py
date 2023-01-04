@@ -21,6 +21,22 @@ def remove_required_parent_plan_and_target_customer(result, **kwargs):
     return result
 
 
+def remove_required_address_from_lw_cust_invoice(result, **kwargs):
+    schemas = result.get("components", {}).get("schemas", {})
+    schemas["LightweightCustomerSerializerForInvoice"]["required"] = [
+        x
+        for x in schemas["LightweightCustomerSerializerForInvoice"]["required"]
+        if x not in ["address"]
+    ]
+    schemas["Seller"]["required"] = [
+        x for x in schemas["Seller"]["required"] if x not in ["address"]
+    ]
+    schemas["Customer"]["required"] = [
+        x for x in schemas["Customer"]["required"] if x not in ["address"]
+    ]
+    return result
+
+
 def remove_required_external_payment_obj_type(result, **kwargs):
     schemas = result.get("components", {}).get("schemas", {})
     schemas["LightweightInvoice"]["required"] = [

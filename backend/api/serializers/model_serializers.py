@@ -1,7 +1,8 @@
-from typing import Union
+from typing import Optional, Union
 
 from django.conf import settings
 from django.db.models import Q
+from drf_spectacular.utils import extend_schema_field
 from metering_billing.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import ServerError
 from metering_billing.models import *
@@ -52,6 +53,51 @@ class LightweightCustomerSerializer(
             "customer_name": {"required": True, "read_only": True},
             "email": {"required": True, "read_only": True},
         }
+
+
+class AddressSerializer(serializers.Serializer):
+    city = serializers.CharField(
+        required=True, help_text="City, district, suburb, town, or village"
+    )
+    country = serializers.CharField(
+        min_length=2,
+        max_length=2,
+        required=True,
+        help_text="ISO 3166-1 alpha-2 country code",
+    )
+    line1 = serializers.CharField(
+        required=True,
+        help_text="Address line 1 (e.g., street, PO Box, or company name)",
+    )
+    line2 = serializers.CharField(
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+        help_text="Address line 2 (e.g., apartment, suite, unit, or building)",
+    )
+    postal_code = serializers.CharField(required=True, help_text="ZIP or postal code")
+    state = serializers.CharField(
+        required=True, help_text="State, county, province, or region"
+    )
+
+
+class LightweightCustomerSerializerForInvoice(LightweightCustomerSerializer):
+    class Meta(LightweightCustomerSerializer.Meta):
+        fields = LightweightCustomerSerializer.Meta.fields + ("address",)
+        extra_kwargs = {
+            **LightweightCustomerSerializer.Meta.extra_kwargs,
+            "address": {"required": False, "allow_null": True},
+        }
+
+    address = serializers.SerializerMethodField(required=False, allow_null=True)
+
+    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
+        d = obj.properties.get("address", {})
+        try:
+            data = AddressSerializer(d).data
+        except KeyError:
+            data = None
+        return data
 
 
 class LightweightPlanVersionSerializer(
@@ -217,6 +263,25 @@ class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
     )
 
 
+class SellerSerializer(
+    ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = Organization
+        fields = ("name", "address", "phone", "email")
+
+    name = serializers.CharField(source="company_name")
+    address = serializers.SerializerMethodField(required=False, allow_null=True)
+
+    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
+        d = obj.properties.get("address", {})
+        try:
+            data = AddressSerializer(d).data
+        except KeyError:
+            data = None
+        return data
+
+
 class InvoiceSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
 ):
@@ -233,6 +298,9 @@ class InvoiceSerializer(
             "line_items",
             "customer",
             "due_date",
+            "start_date",
+            "end_date",
+            "seller",
         )
         extra_kwargs = {
             "invoice_number": {"required": True},
@@ -250,14 +318,34 @@ class InvoiceSerializer(
                 "allow_null": True,
                 "allow_blank": False,
             },
+            "start_date": {"required": True},
+            "end_date": {"required": True},
+            "seller": {"required": True},
         }
 
     external_payment_obj_type = serializers.ChoiceField(
         choices=PAYMENT_PROVIDERS.choices, allow_null=True, required=True
     )
     currency = PricingUnitSerializer()
-    customer = LightweightCustomerSerializer()
+    customer = LightweightCustomerSerializerForInvoice()
     line_items = InvoiceLineItemSerializer(many=True)
+    start_date = serializers.SerializerMethodField()
+    end_date = serializers.SerializerMethodField()
+    seller = SellerSerializer(source="organization")
+
+    def get_start_date(self, obj) -> datetime.date:
+        return min(
+            [
+                convert_to_date(x.start_date)
+                for x in obj.line_items.all()
+                if x.start_date
+            ]
+        )
+
+    def get_end_date(self, obj) -> datetime.date:
+        return max(
+            [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
+        )
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):
@@ -299,6 +387,7 @@ class CustomerSerializer(
             "default_currency",
             "payment_provider",
             "has_payment_method",
+            "address",
         )
 
     customer_id = serializers.CharField()
@@ -318,6 +407,15 @@ class CustomerSerializer(
         allow_blank=False,
     )
     has_payment_method = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField(required=False, allow_null=True)
+
+    def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
+        d = obj.properties.get("address", {})
+        try:
+            data = AddressSerializer(d).data
+        except KeyError:
+            data = None
+        return data
 
     def get_has_payment_method(self, obj) -> bool:
         d = self.get_integrations(obj)
@@ -387,6 +485,7 @@ class CustomerCreateSerializer(
             "payment_provider_id",
             "properties",
             "default_currency_code",
+            "address",
         )
         extra_kwargs = {
             "customer_id": {"required": True},
@@ -416,6 +515,7 @@ class CustomerCreateSerializer(
         write_only=True,
         help_text="The currency code this customer will be invoiced in. Codes are 3 letters, e.g. 'USD'.",
     )
+    address = AddressSerializer(required=False, allow_null=True)
 
     def validate(self, data):
         super().validate(data)
@@ -441,6 +541,12 @@ class CustomerCreateSerializer(
 
     def create(self, validated_data):
         pp_id = validated_data.pop("payment_provider_id", None)
+        address = validated_data.pop("address", None)
+        if address:
+            validated_data["properties"] = {
+                **validated_data.get("properties", {}),
+                "address": address,
+            }
         customer = Customer.objects.create(**validated_data)
         if pp_id:
             customer_properties = customer.properties
