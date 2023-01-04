@@ -452,6 +452,11 @@ VITE_APP_DIR = BASE_DIR / "src"
 
 STATICFILES_DIRS = [BASE_DIR / "static", VITE_APP_DIR / "dist"]
 
+### AWS S3 ###
+AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
+AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
+AWS_STORAGE_BUCKET_NAME = os.environ["AWS_STORAGE_BUCKET_NAME"]
+
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "static/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

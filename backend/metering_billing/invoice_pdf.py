@@ -5,6 +5,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from io import BytesIO
+from django.forms.models import model_to_dict
 import os
 
 
@@ -56,19 +57,22 @@ def write_invoice_details(doc, invoice_number, issue_date, due_date):
     doc.setFont("Times-Bold", FONT_M)
     doc.drawString(375, 130, "Invoice Details")
     doc.setFont("Times-Roman", FONT_XS)
-    doc.drawString(375, 145, f"Invoice No. {invoice_number}")
+    doc.drawString(375, 145, f"Invoice #: {invoice_number}")
     doc.drawString(375, 160, f'Date Issued {issue_date.replace("-", "/")}')
-    doc.drawString(375, 175, f'Due Date {due_date.replace("-", "/")}')
+    if due_date:
+        doc.drawString(375, 175, f'Due Date {due_date.replace("-", "/")}')
+    else:
+        doc.drawString(375, 175, f'Due Date {issue_date.replace("-", "/")}')
 
 
-def write_summary_header(doc, start_date, end_date):
+def write_summary_header(doc):
     doc.setFont("Times-Roman", FONT_XL)
     doc.drawString(75, 255, "Summary")
     doc.setFont("Times-Roman", FONT_S)
     doc.setFillColor("gray")
-    doc.drawString(
-        200, 253.5, f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
-    )
+    # doc.drawString(
+    #     200, 253.5, f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
+    # )
     doc.setFillColor("black")
     doc.setFont("Times-Roman", FONT_S)
     doc.setFillColor("gray")
@@ -112,61 +116,68 @@ def write_line_item(
 def write_total(doc, currency_symbol, total, current_y):
     offset = current_y + 50
     doc.setFont("Times-Roman", FONT_S)
-    doc.drawString(75, offset, "Toal Due")
+    doc.drawString(75, offset, "Total Due")
     doc.drawString(475, offset, f"{currency_symbol}{total}")
 
 
-def generate_invoice_pdf(invoice, organization, buffer):
+def generate_invoice_pdf(invoice_model, organization, customer, line_items, buffer):
     doc = canvas.Canvas(buffer)
 
-    write_invoice_title(doc)
-    write_seller_details(
-        doc,
-        invoice["seller"]["name"],
-        invoice["seller"]["address"]["line1"],
-        invoice["seller"]["address"]["city"],
-        invoice["seller"]["address"]["state"],
-        invoice["seller"]["address"]["country"],
-        invoice["seller"]["address"]["postal_code"],
-        invoice["seller"]["phone"],
-        invoice["seller"]["email"],
-    )
+    invoice = model_to_dict(invoice_model)
+    currency = model_to_dict(invoice_model.currency)
 
-    write_customer_details(
-        doc,
-        invoice["customer"]["customer_name"],
-        invoice["customer"]["address"]["line1"],
-        invoice["customer"]["address"]["city"],
-        invoice["customer"]["address"]["state"],
-        invoice["customer"]["address"]["country"],
-        invoice["customer"]["address"]["postal_code"],
-        invoice["customer"]["email"],
-    )
+    write_invoice_title(doc)
+
+    address = organization["properties"].get("address")
+    if address:
+        write_seller_details(
+            doc,
+            organization["company_name"],
+            organization["properties"]["address"]["line1"],
+            organization["properties"]["city"],
+            organization["properties"]["state"],
+            organization["properties"]["address"]["country"],
+            organization["properties"]["address"]["postal_code"],
+            organization["phone"],
+            organization["email"],
+        )
+
+    customer_address = customer["properties"].get("address")
+    if customer_address:
+        write_customer_details(
+            doc,
+            customer["customer_name"],
+            customer["properties"]["address"]["line1"],
+            customer["properties"]["address"]["city"],
+            customer["properties"]["address"]["state"],
+            customer["properties"]["address"]["country"],
+            customer["properties"]["address"]["postal_code"],
+            customer["properties"]["email"],
+        )
 
     write_invoice_details(
-        doc, invoice["invoice_number"], invoice["issue_date"], invoice["due_date"]
+        doc, invoice["invoice_number"], str(invoice["issue_date"]), invoice["due_date"]
     )
-    write_summary_header(doc, invoice["start_date"], invoice["end_date"])
+    write_summary_header(doc)
 
     line_item_start_y = 290
-    for line_item in invoice["line_items"]:
+    for line_item_model in line_items:
+        line_item = model_to_dict(line_item_model)
         line_item_start_y = write_line_item(
             doc,
             line_item["name"],
-            line_item["start_date"],
-            line_item["end_date"],
+            str(line_item["start_date"]),
+            str(line_item["end_date"]),
             line_item["quantity"],
             line_item["subtotal"],
-            invoice["currency"]["symbol"],
+            currency["symbol"],
             line_item_start_y,
         )
         if line_item_start_y > 680:
             doc.showPage()
             line_item_start_y = 40
 
-    write_total(
-        doc, invoice["currency"]["symbol"], invoice["cost_due"], line_item_start_y
-    )
+    write_total(doc, currency["symbol"], invoice["cost_due"], line_item_start_y)
 
     doc.save()
 
@@ -179,13 +190,12 @@ def generate_invoice_pdf(invoice, organization, buffer):
         )
         invoice_number = invoice["invoice_number"]
         organization_id = invoice["organization"]
-        customer_id = invoice["customer"]["customer_id"]
+        customer_id = customer["customer_id"]
         print(customer_id)
         buffer.seek(0)
         s3.Bucket(os.environ["AWS_S3_INVOICE_BUCKET"]).upload_fileobj(
             buffer, f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}"
         )
     except Exception as e:
-        print(e)
-
+        customer(e)
     return buffer
