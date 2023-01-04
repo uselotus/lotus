@@ -1140,6 +1140,9 @@ class StatefulHandler(MetricHandler):
         granularity_ratio = get_granularity_ratio(
             metric.granularity, metric.proration, subscription_record.usage_start_date
         )
+        proration_units = metric.proration
+        if proration_units == METRIC_GRANULARITY.TOTAL:
+            proration_units = None
         injection_dict = {
             "proration_units": metric.proration,
             "cumsum_cagg": (
@@ -1192,6 +1195,9 @@ class StatefulHandler(MetricHandler):
         granularity_ratio = get_granularity_ratio(
             metric.granularity, metric.proration, subscription_record.usage_start_date
         )
+        proration_units = metric.proration
+        if proration_units == METRIC_GRANULARITY.TOTAL:
+            proration_units = None
         injection_dict = {
             "proration_units": metric.proration,
             "cumsum_cagg": (
@@ -1244,6 +1250,9 @@ class StatefulHandler(MetricHandler):
         granularity_ratio = get_granularity_ratio(
             metric.granularity, metric.proration, subscription_record.usage_start_date
         )
+        proration_units = metric.proration
+        if proration_units == METRIC_GRANULARITY.TOTAL:
+            proration_units = None
         injection_dict = {
             "proration_units": metric.proration,
             "cumsum_cagg": (
