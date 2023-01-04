@@ -406,7 +406,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         except IntegrityError as e:
             cause = e.__cause__
             if "unique_org_metric_id" in str(cause):
-                error_message = "Metric ID already exists for this organization. This usually happens if you try to sp ecify an ID instead of letting the Lotus backend handle ID creation."
+                error_message = "Metric ID already exists for this organization. This usually happens if you try to specify an ID instead of letting the Lotus backend handle ID creation."
                 raise DuplicateMetric(error_message)
             elif "unique_org_billable_metric_name" in str(cause):
                 error_message = "A billable metric with the same name already exists for this organization. Please choose a different name."

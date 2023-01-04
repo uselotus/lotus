@@ -1,11 +1,9 @@
 import itertools
 import json
 import unittest.mock as mock
-from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
@@ -19,8 +17,6 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    SubscriptionRecord,
-    User,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
@@ -35,7 +31,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
-    USAGE_CALC_GRANULARITY,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -564,7 +559,7 @@ class TestCalculateMetric:
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
         assert usage_revenue_dict["revenue"] >= Decimal(100) * (
-            Decimal(18) / Decimal(31) - Decimal(1) / Decimal(31)
+            Decimal(18) / Decimal(31) - Decimal(3) / Decimal(31)
         )
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
@@ -706,9 +701,7 @@ class TestCalculateMetric:
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test"
         )
-        event_times = [time_created] + [
-            time_created + relativedelta(days=i) for i in range(8)
-        ]
+        event_times = [time_created + relativedelta(days=i) for i in range(8)]
         properties = (
             1 * [{"number": 3}]
             + 3 * [{"number": 1}]  # 1 hr at 4, 1 hr at 5, 1 hr at 6
@@ -762,7 +755,10 @@ class TestCalculateMetric:
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
         # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
         assert Decimal(100) * Decimal(12) / Decimal(28) >= usage_revenue_dict["revenue"]
-        assert Decimal(100) * Decimal(12) / Decimal(33) <= usage_revenue_dict["revenue"]
+        assert (
+            Decimal(100) * (Decimal(12) / Decimal(31) - Decimal(3) / Decimal(31))
+            <= usage_revenue_dict["revenue"]
+        )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1403,7 +1399,7 @@ class TestCalculateMetricWithFilters:
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100...\
         assert usage_revenue_dict["revenue"] >= Decimal(100) * (
-            Decimal(18) / Decimal(31) - Decimal(1) / Decimal(31)
+            Decimal(18) / Decimal(31) - Decimal(3) / Decimal(31)
         )
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 

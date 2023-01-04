@@ -419,12 +419,12 @@ const CreateMetricForm = (props: {
                 </Select>
               </Form.Item>
 
-              {statefulGranularity && statefulGranularity !== "total" && (
+              {/* {statefulGranularity && statefulGranularity !== "total" && (
                 <p className=" text-darkgold mb-4">
                   When inputting the price for this metric, you will be inputing
                   the price per {statefulGranularity.slice(0, -1)}
                 </p>
-              )}
+              )} */}
             </Fragment>
           )}
         </Form.Item>

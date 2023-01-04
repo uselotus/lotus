@@ -29,6 +29,8 @@ Fields = List[Field]
 
 
 def convert_to_decimal(value):
+    if value is None:
+        return Decimal(0)
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
 
 

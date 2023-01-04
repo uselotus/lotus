@@ -438,7 +438,6 @@ SELECT
     ) AS usage_qty
 """
 
-
 STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY = """
 WITH prev_state AS (
     SELECT

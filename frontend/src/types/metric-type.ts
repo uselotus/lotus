@@ -7,7 +7,24 @@ export interface MetricType {
   metric_name?: string;
   numeric_filters?: NumericFilterType[];
   categorical_filters?: CateogricalFilterType[];
-  granularity?: string;
+  granularity?:
+    | "seconds"
+    | "minutes"
+    | "hours"
+    | "days"
+    | "months"
+    | "quarters"
+    | "years"
+    | "total";
+  proration?:
+    | "seconds"
+    | "minutes"
+    | "hours"
+    | "days"
+    | "months"
+    | "quarters"
+    | "years"
+    | "total";
   event_type?: "delta" | "total";
   is_cost_metric?: boolean;
   properties?: string[];

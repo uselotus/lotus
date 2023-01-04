@@ -86,7 +86,8 @@ const ViewMetrics: FC = () => {
         state.metric_type == "stateful"
           ? state.property_name_2
           : state.property_name,
-      granularity:
+      granularity: state.metric_type === "rate" ? state.granularity : "total",
+      proration:
         state.metric_type === "stateful"
           ? state.granularity_2
           : state.granularity,

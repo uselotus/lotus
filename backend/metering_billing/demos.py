@@ -537,8 +537,11 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                     event_name="log_num_seats",
                     properties=gaussian_users(n, users_mean, users_sd, max_users),
                     time_created=random_date(sub.start_date, sub.end_date, n),
-                    idempotency_id=str(uuid.uuid4().hex),
+                    idempotency_id=itertools.cycle(
+                        [str(uuid.uuid4().hex) for _ in range(n)]
+                    ),
                     _quantity=n,
+                    cust_id=customer.customer_id,
                 )
 
                 next_plan = (

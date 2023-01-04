@@ -401,7 +401,6 @@ class MetricCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Metric
         fields = (
-            "metric_id",
             "event_name",
             "property_name",
             "usage_aggregation_type",
@@ -410,12 +409,12 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "event_type",
             "metric_type",
             "metric_name",
+            "proration",
             "properties",
             "is_cost_metric",
             "custom_sql",
         )
         extra_kwargs = {
-            "metric_id": {"write_only": True, "allow_null": True, "allow_blank": True},
             "event_name": {"write_only": True, "required": True},
             "property_name": {"write_only": True},
             "usage_aggregation_type": {"write_only": True},
@@ -427,6 +426,7 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "properties": {"write_only": True},
             "is_cost_metric": {"write_only": True},
             "custom_sql": {"write_only": True},
+            "proration": {"write_only": True, "required": False, "allow_null": True},
         }
 
     metric_name = serializers.CharField(source="billable_metric_name")

@@ -203,7 +203,6 @@ class MetricHandler(abc.ABC):
         # edit custom name and pop filters + properties
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
-
         bm = Metric.objects.create(**validated_data)
 
         # get filters
@@ -260,34 +259,6 @@ class MetricHandler(abc.ABC):
 
 
 class CounterHandler(MetricHandler):
-    def __init__(self, billable_metric: Metric):
-        self.organization = billable_metric.organization
-        self.event_name = billable_metric.event_name
-        self.billable_metric = billable_metric
-        if billable_metric.metric_type != METRIC_TYPE.COUNTER:
-            raise AggregationEngineFailure(
-                f"Billable metric of type {billable_metric.metric_type} can't be handled by a CounterHandler."
-            )
-        self.usage_aggregation_type = billable_metric.usage_aggregation_type
-        self.numeric_filters = billable_metric.numeric_filters.all()
-        self.categorical_filters = billable_metric.categorical_filters.all()
-        self.property_name = (
-            None
-            if self.usage_aggregation_type == METRIC_AGGREGATION.COUNT
-            or billable_metric.property_name == ""
-            else billable_metric.property_name
-        )
-        self.metric_id = billable_metric.metric_id
-        self.organization_id = billable_metric.organization.organization_id
-
-        if (
-            self.usage_aggregation_type
-            not in CounterHandler._allowed_usage_aggregation_types()
-        ):
-            raise AggregationEngineFailure(
-                f"Usage aggregation type {self.usage_aggregation_type} is not allowed for billable metrics of type {billable_metric.metric_type}."
-            )
-
     @staticmethod
     def _allowed_usage_aggregation_types() -> list[METRIC_AGGREGATION]:
         return [
@@ -502,10 +473,10 @@ class CounterHandler(MetricHandler):
         )
         all_results = {}
         if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
-            all_results = CounterHandler._get_total_usage_per_day_not_unique(
+            usg_per_day_results = CounterHandler._get_total_usage_per_day_not_unique(
                 metric, subscription_record, organization
             )
-            for result in all_results:
+            for result in usg_per_day_results:
                 time = convert_to_date(result.bucket)
                 if time not in all_results:
                     all_results[time] = {"usage_qty": 0, "num_events": 0}
@@ -519,7 +490,7 @@ class CounterHandler(MetricHandler):
                 else:
                     all_results[time]["usage_qty"] += result.usage_qty or 0
             cumulative_max = 0
-            for time in enumerate(sorted(list(all_results.keys()))):
+            for time in sorted(list(all_results.keys())):
                 if metric.usage_aggregation_type == METRIC_AGGREGATION.AVERAGE:
                     all_results[time]["usage_qty"] = (
                         all_results[time]["usage_qty"] / all_results[time]["num_events"]
@@ -533,7 +504,6 @@ class CounterHandler(MetricHandler):
                         cumulative_max = cur_value
                     else:
                         all_results[time]["usage_qty"] = 0
-
                 all_results[time] = all_results[time]["usage_qty"]
         else:
             start = subscription_record.usage_start_date
@@ -928,8 +898,6 @@ class CustomHandler(MetricHandler):
 class StatefulHandler(MetricHandler):
     """
     The key difference between a stateful handler and an aggregation handler is that the stateful handler has state across time periods. Even when given a blocked off time period, it'll look for previous values of the event/property in question and use those as a starting point. A common example of a metric that woudl fit under the Stateful pattern would be the number of seats a product has available. When we go into a new billing period, the number of seats doesn't magically disappear... we have to keep track of it. We currently support two types of events: quantity_logging and delta_logging. Quantity logging would look like sending events to the API that say we have x users at the moment. Delta logging would be like sending events that say we added x users or removed x users. The stateful handler will look at the previous value of the metric and add/subtract the delta to get the new value.
-
-    An interesting thing to note is the definition of "usage".
     """
 
     @staticmethod
@@ -1195,9 +1163,13 @@ class StatefulHandler(MetricHandler):
         query = Template(STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION).render(
             **injection_dict
         )
+        # print("query: ", query)
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
+        # for row in result:
+        #     print(row)
+        # raise Exception("test")
         if len(result) == 0:
             return Decimal(0)
         return result[0].usage_qty

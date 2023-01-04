@@ -352,6 +352,7 @@ class Customer(models.Model):
     email = models.EmailField(
         max_length=100,
         help_text="The primary email address of the customer, must be the same as the email address used to create the customer in the payment provider",
+        null=True,
     )
     customer_id = models.SlugField(
         max_length=50,

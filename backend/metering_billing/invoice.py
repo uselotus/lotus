@@ -23,6 +23,7 @@ from metering_billing.utils.enums import (
     FLAT_FEE_BEHAVIOR,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
+    SUBSCRIPTION_STATUS,
 )
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -288,6 +289,10 @@ def generate_invoice(
                         invoice.external_payment_obj_type = pp
                         invoice.save()
                         break
+            for subscription_record in subscription_records:
+                subscription_record.fully_billed = True
+                subscription_record.status = SUBSCRIPTION_STATUS.ACTIVE
+                subscription_record.save()
             # if META:
             # lotus_python.track_event(
             #     customer_id=organization.company_name + str(organization.pk),
