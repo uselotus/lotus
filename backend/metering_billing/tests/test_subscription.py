@@ -9,6 +9,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     Event,
     Invoice,
@@ -89,6 +90,8 @@ def subscription_test_common_setup(
             ),
             _quantity=3,
         )
+        for metric in metric_set:
+            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
         setup_dict["metrics"] = metric_set
         product = add_product_to_org(org)
         setup_dict["product"] = product
@@ -186,6 +189,8 @@ class TestCreateSubscription:
         num_subscription_records_before = len(
             get_subscription_records_in_org(setup_dict["org"])
         )
+
+        setup_dict["org"].update_subscription_filter_settings(["email"])
 
         setup_dict["payload"]["start_date"] = now_utc()
         setup_dict["payload"]["subscription_filters"] = [
@@ -756,6 +761,7 @@ class TestSubscriptionAndSubscriptionRecord:
             num_subscriptions=0, auth_method="session_auth"
         )
         cur_payload = setup_dict["payload"]
+        setup_dict["org"].update_subscription_filter_settings(["email"])
         cur_payload["subscription_filters"] = [
             {
                 "property_name": "email",
@@ -1148,6 +1154,7 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_id="yearly-plan",
         )
         cur_payload = setup_dict["payload"]
+        setup_dict["org"].update_subscription_filter_settings(["email"])
         cur_payload["subscription_filters"] = [
             {
                 "property_name": "email",

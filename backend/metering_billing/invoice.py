@@ -23,6 +23,7 @@ from metering_billing.utils.enums import (
     FLAT_FEE_BEHAVIOR,
     FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
+    SUBSCRIPTION_STATUS,
 )
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -92,25 +93,18 @@ def generate_invoice(
                     usg_rev = plan_component.calculate_total_revenue(
                         subscription_record
                     )
-                    subperiods = usg_rev["subperiods"]
-                    for subperiod in subperiods:
-                        ili = InvoiceLineItem.objects.create(
-                            name=str(
-                                plan_component.billable_metric.billable_metric_name
-                            ),
-                            start_date=subperiod["start_date"],
-                            end_date=subperiod["end_date"],
-                            quantity=subperiod["usage_qty"],
-                            subtotal=subperiod["revenue"],
-                            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                            chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
-                            invoice=invoice,
-                            associated_subscription_record=subscription_record,
-                            organization=organization,
-                        )
-                        if "unique_identifier" in subperiod:
-                            ili.metadata = subperiod["unique_identifier"]
-                            ili.save()
+                    ili = InvoiceLineItem.objects.create(
+                        name=str(plan_component.billable_metric.billable_metric_name),
+                        start_date=subscription_record.usage_start_date,
+                        end_date=subscription_record.end_date,
+                        quantity=usg_rev["usage_qty"],
+                        subtotal=usg_rev["revenue"],
+                        billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,
+                        invoice=invoice,
+                        associated_subscription_record=subscription_record,
+                        organization=organization,
+                    )
             # flat fee calculation for current plan
             if subscription_record.flat_fee_behavior is not FLAT_FEE_BEHAVIOR.REFUND:
                 start = subscription_record.start_date
@@ -295,6 +289,10 @@ def generate_invoice(
                         invoice.external_payment_obj_type = pp
                         invoice.save()
                         break
+            for subscription_record in subscription_records:
+                subscription_record.fully_billed = True
+                subscription_record.status = SUBSCRIPTION_STATUS.ACTIVE
+                subscription_record.save()
             # if META:
             # lotus_python.track_event(
             #     customer_id=organization.company_name + str(organization.pk),

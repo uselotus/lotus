@@ -2,8 +2,7 @@ from typing import Optional, Union
 
 from django.conf import settings
 from django.db.models import Q
-from drf_spectacular.utils import extend_schema_field
-from metering_billing.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import ServerError
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -587,6 +586,8 @@ class MetricSerializer(
             "numeric_filters",
             "categorical_filters",
             "is_cost_metric",
+            "custom_sql",
+            "proration",
         )
         extra_kwargs = {
             "metric_id": {"required": True, "read_only": True},
@@ -610,6 +611,7 @@ class MetricSerializer(
             "numeric_filters": {"required": True, "read_only": True},
             "categorical_filters": {"required": True, "read_only": True},
             "is_cost_metric": {"required": True, "read_only": True},
+            "custom_sql": {"required": True, "read_only": True},
         }
 
     numeric_filters = NumericFilterSerializer(
@@ -677,13 +679,11 @@ class PlanComponentSerializer(
         fields = (
             "billable_metric",
             "tiers",
-            "proration_granularity",
             "pricing_unit",
         )
         extra_kwargs = {
             "billable_metric": {"required": True, "read_only": True},
             "tiers": {"required": True},
-            "proration_granularity": {"required": True},
             "pricing_unit": {"required": True, "read_only": True},
         }
 

@@ -30,6 +30,7 @@ const defaultMetricState: CreateMetricState = {
   metric_type: "counter",
   usage_aggregation_type_2: "max",
   property_name_2: "",
+  metric_id: "",
 };
 
 const ViewMetrics: FC = () => {
@@ -85,7 +86,8 @@ const ViewMetrics: FC = () => {
         state.metric_type == "stateful"
           ? state.property_name_2
           : state.property_name,
-      granularity:
+      granularity: state.metric_type === "rate" ? state.granularity : "total",
+      proration:
         state.metric_type === "stateful"
           ? state.granularity_2
           : state.granularity,
@@ -95,6 +97,8 @@ const ViewMetrics: FC = () => {
       //defaults for now
       event_type: state.metric_type === "stateful" ? state.event_type : "delta",
       is_cost_metric: state.is_cost_metric,
+      custom_sql: state.metric_type === "custom" ? state.custom_sql : undefined,
+      metric_id: "",
     };
 
     if (state.filters) {

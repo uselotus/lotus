@@ -27,5 +27,4 @@ class TestSession:
             reverse("api-session"),
             content_type="application/json",
         )
-        print(response.json())
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

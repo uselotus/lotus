@@ -23,7 +23,7 @@ const operatorDisplayMap = new Map<string, string>([
 
 const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
   const queryClient = useQueryClient();
-
+  console.log(metric);
   const mutation = useMutation(
     (metric_id: string) => Metrics.archiveMetric(metric_id),
     {
@@ -84,7 +84,12 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
             <b className="mr-2">Per Time Unit:</b>{" "}
             {metric.granularity === "total" ? "none" : metric.granularity}
           </p>
-
+          <p>
+            <b className="mr-2">Proration:</b>{" "}
+            {metric.proration === "total" || metric.proration == undefined
+              ? "none"
+              : metric.proration}
+          </p>
           <p>
             <b className="mr-2">Usage Aggregation Type:</b>
             <Tag color={colorMap.get(metric.usage_aggregation_type)}>
