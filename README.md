@@ -68,7 +68,7 @@ There are a few ways to use Lotus. After you set it up, head over to the [Docs](
 
 Test out Lotus with a demo account [here](https://demo.uselotus.io/register).
 
-Best for convenience and fast deployment. This version also gets access to features faster than the self-hosted version.
+The cloud version is best for convenience and fast deployment. This version also gets access to features faster than the self-hosted version.
 
 Sign up for our `beta` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
 
@@ -83,17 +83,20 @@ Best if you want to keep your data local or want full control and extensibility.
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-3. Change the environemnt variables located in `env/.env.prod.example` to suit your needs. If you need help you can check out [this guide in our docs](https://docs.uselotus.io/docs/overview/self-hosting).
-4. Rename `env/.env.prod.example` to `env/.env.prod`. Make sure you don't commit your secret environment variables anywhere!
-5. Build and run the Docker Image!
+3. Run the self-hosting script:
    ```sh
-   docker-compose -f docker-compose.prod.yaml --env-file env/.env.prod up --build
+    ./scripts/self-host.sh
    ```
-   You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined or the default which is:
+   If you need to give the script permission to run, run `chmod 755 ./scripts/self-host.sh` first.
+4. You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined, or the default, which is:
    ```py
    username: change_me
    password: change_me
    ```
+
+Optionally:
+
+- Change the environment variables located in `env/.env.prod` to suit your needs. For more details, check out [this guide in our docs](https://docs.uselotus.io/docs/overview/self-hosting).
 
 Easy deployment options for AWS, GCP, and Azure are on the roadmap. If you have any questions, feel free to reach out to us.
 
@@ -120,6 +123,7 @@ To set up Lotus for development locally, please refer to our guide [here](https:
 Pricing your SaaS product is never easy, and often isn't directly related to the value you provide. Lotus was built to help you solve those problems and maintain the flexibility you need as you grow. Pricing is an underappreciated but hugely important lever for growth, and pushing it to the side can be a huge mistake. As companies evolve their pricing models, maintaining and scaling a pricing and billing stack can take significant engineering hours. With Lotus, you can go through the pricing deployment, monitoring, and experimentation cycle blazingly fast, while integrating with your existing payments, customer management, and data solutions.
 
 Tech Stack:
+
 - React Typescript
 - Postgres (Timescaledb)
 - Redpanda
