@@ -1,3 +1,4 @@
+import React, { Fragment, useState } from "react";
 import {
   Modal,
   Form,
@@ -11,8 +12,11 @@ import {
   InputNumber,
 } from "antd";
 import { MetricType } from "../../types/metric-type";
+import { render } from "react-dom";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import React, { Fragment, useEffect, useState } from "react";
+import AceEditor from "react-ace";
+import "ace-builds/src-noconflict/mode-sql";
+import "ace-builds/src-noconflict/theme-github";
 const { Option } = Select;
 const { Panel } = Collapse;
 
@@ -40,6 +44,7 @@ const CreateMetricForm = (props: {
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
   const [filters, setFilters] = useState();
+  const [customSQL, setCustomSQL] = useState<null | string>();
 
   // useEffect(() => {
   //   if (props.visible === false) {
@@ -118,6 +123,9 @@ const CreateMetricForm = (props: {
             values.is_cost_metric = costMetric;
             if (rate) {
               values.metric_type = "rate";
+            }
+            if (values.metric_type === "custom") {
+              values.custom_sql = customSQL;
             }
             console.log("values", values);
             props.onSave(values);
@@ -218,6 +226,7 @@ const CreateMetricForm = (props: {
             >
               <Radio value="counter">Counter</Radio>
               <Radio value="stateful">Continuous</Radio>
+              {/* <Radio value="custom">Custom</Radio> */}
             </Radio.Group>
           </Form.Item>
           <Form.Item label="Does this metric represent a cost?">
@@ -398,7 +407,7 @@ const CreateMetricForm = (props: {
               >
                 <Input />
               </Form.Item>
-              <Form.Item name="granularity_2" label="Per Time Unit">
+              <Form.Item name="granularity_2" label="Proration">
                 <Select>
                   <Option value="minutes">minute</Option>
                   <Option value="hours">hour</Option>
@@ -410,103 +419,121 @@ const CreateMetricForm = (props: {
                 </Select>
               </Form.Item>
 
-              {statefulGranularity && statefulGranularity !== "total" && (
+              {/* {statefulGranularity && statefulGranularity !== "total" && (
                 <p className=" text-darkgold mb-4">
                   When inputting the price for this metric, you will be inputing
                   the price per {statefulGranularity.slice(0, -1)}
                 </p>
-              )}
+              )} */}
             </Fragment>
           )}
         </Form.Item>
+        {eventType === "custom" && (
+          <AceEditor
+            mode="sql"
+            theme="github"
+            onChange={(newValue) => setCustomSQL(newValue)}
+            value={customSQL ? customSQL : ""}
+            editorProps={{ $blockScrolling: true }}
+            setOptions={{
+              enableBasicAutocompletion: true,
+              enableLiveAutocompletion: true,
+              enableSnippets: true,
+              showLineNumbers: true,
+              tabSize: 2,
+            }}
+          />
+        )}
 
-        <Collapse>
-          <Panel header="Filters" key="1">
-            <Form.List name="filters">
-              {(fields, { add, remove }, { errors }) => (
-                <>
-                  {fields.map((field, index) => (
-                    <Form.Item
-                      required={false}
-                      key={field.key}
-                      label={index === 0 ? "" : "and"}
-                      className="mt-4"
-                    >
-                      <div className="flex flex-col space-y-4">
-                        <Form.Item
-                          {...field}
-                          name={[field.name, "property_name"]}
-                          validateTrigger={["onChange", "onBlur"]}
-                          rules={[
-                            {
-                              required: true,
-                              whitespace: true,
-                              message:
-                                "Please input a property name name or delete this filter.",
-                            },
-                          ]}
-                          noStyle
-                        >
-                          <Input
-                            placeholder="property name"
-                            style={{ width: "30%" }}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          name={[field.name, "operator"]}
-                          rules={[
-                            {
-                              required: true,
-                              whitespace: true,
-                              message:
-                                "Please input a property name name or delete this filter.",
-                            },
-                          ]}
-                        >
-                          <Select style={{ width: "50%" }}>
-                            <Option value="isin">is (string)</Option>
-                            <Option value="isnotin">is not (string)</Option>
-                            <Option value="eq">= </Option>
-                            <Option value="gte">&#8805;</Option>
-                            <Option value="gt"> &#62; </Option>
-                            <Option value="lt"> &#60;</Option>
-                            <Option value="lte">&#8804;</Option>
-                          </Select>
-                        </Form.Item>
-
-                        <div className="grid grid-cols-2 w-6/12">
+        {eventType !== "custom" && (
+          <Collapse>
+            <Panel header="Filters" key="1">
+              <Form.List name="filters">
+                {(fields, { add, remove }, { errors }) => (
+                  <>
+                    {fields.map((field, index) => (
+                      <Form.Item
+                        required={false}
+                        key={field.key}
+                        label={index === 0 ? "" : "and"}
+                        className="mt-4"
+                      >
+                        <div className="flex flex-col space-y-4">
                           <Form.Item
-                            name={[field.name, "comparison_value"]}
-                            style={{ alignSelf: "middle" }}
+                            {...field}
+                            name={[field.name, "property_name"]}
+                            validateTrigger={["onChange", "onBlur"]}
+                            rules={[
+                              {
+                                required: true,
+                                whitespace: true,
+                                message:
+                                  "Please input a property name name or delete this filter.",
+                              },
+                            ]}
+                            noStyle
                           >
-                            <Input />
-                          </Form.Item>
-                          {fields.length > 0 ? (
-                            <MinusCircleOutlined
-                              className="hover:bg-background place-self-center p-4"
-                              onClick={() => remove(field.name)}
+                            <Input
+                              placeholder="property name"
+                              style={{ width: "30%" }}
                             />
-                          ) : null}
+                          </Form.Item>
+                          <Form.Item
+                            name={[field.name, "operator"]}
+                            rules={[
+                              {
+                                required: true,
+                                whitespace: true,
+                                message:
+                                  "Please input a property name name or delete this filter.",
+                              },
+                            ]}
+                          >
+                            <Select style={{ width: "50%" }}>
+                              <Option value="isin">is (string)</Option>
+                              <Option value="isnotin">is not (string)</Option>
+                              <Option value="eq">= </Option>
+                              <Option value="gte">&#8805;</Option>
+                              <Option value="gt"> &#62; </Option>
+                              <Option value="lt"> &#60;</Option>
+                              <Option value="lte">&#8804;</Option>
+                            </Select>
+                          </Form.Item>
+
+                          <div className="grid grid-cols-2 w-6/12">
+                            <Form.Item
+                              name={[field.name, "comparison_value"]}
+                              style={{ alignSelf: "middle" }}
+                            >
+                              <Input />
+                            </Form.Item>
+                            {fields.length > 0 ? (
+                              <MinusCircleOutlined
+                                className="hover:bg-background place-self-center p-4"
+                                onClick={() => remove(field.name)}
+                              />
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
+                      </Form.Item>
+                    ))}
+                    <Form.Item>
+                      <Button
+                        type="dashed"
+                        onClick={() => add()}
+                        style={{ width: "60%" }}
+                        icon={<PlusOutlined />}
+                      >
+                        Add filter
+                      </Button>
+                      <Form.ErrorList errors={errors} />
                     </Form.Item>
-                  ))}
-                  <Form.Item>
-                    <Button
-                      type="dashed"
-                      onClick={() => add()}
-                      style={{ width: "60%" }}
-                      icon={<PlusOutlined />}
-                    >
-                      Add filter
-                    </Button>
-                    <Form.ErrorList errors={errors} />
-                  </Form.Item>
-                </>
-              )}
-            </Form.List>
-          </Panel>
-        </Collapse>
+                  </>
+                )}
+              </Form.List>
+            </Panel>
+          </Collapse>
+        )}
       </Form>
     </Modal>
   );

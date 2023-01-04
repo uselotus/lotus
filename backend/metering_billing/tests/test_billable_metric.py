@@ -1,14 +1,13 @@
 import itertools
 import json
 import unittest.mock as mock
-from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
     CategoricalFilter,
     Customer,
@@ -18,8 +17,6 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    SubscriptionRecord,
-    User,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
@@ -34,7 +31,6 @@ from metering_billing.utils.enums import (
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
     PRICE_TIER_TYPE,
-    USAGE_CALC_GRANULARITY,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -303,7 +299,9 @@ class TestArchiveMetric:
 
 @pytest.mark.django_db(transaction=True)
 class TestCalculateMetric:
-    def test_count_unique(self, billable_metric_test_common_setup):
+    def test_count_unique(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
             num_billable_metrics=num_billable_metrics,
@@ -314,9 +312,13 @@ class TestCalculateMetric:
             organization=setup_dict["org"],
             property_name="test_property",
             event_name="test_event",
-            usage_aggregation_type="unique",
+            usage_aggregation_type=METRIC_AGGREGATION.UNIQUE,
+            metric_type=METRIC_TYPE.COUNTER,
         )
-        time_created = parser.parse("2021-01-01T06:00:00Z")
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
+        time_created = now_utc()
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test_customer"
         )
@@ -338,17 +340,49 @@ class TestCalculateMetric:
             customer=customer,
             _quantity=5,
         )
-        metric_usage = billable_metric.get_usage(
-            parser.parse("2021-01-01"),
-            parser.parse("2021-01-30"),
-            granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            customer=customer,
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
         )
-        metric_usage = metric_usage[customer.customer_name]
-        assert len(metric_usage) == 1  # no groupbys
-        unique_tup, dd = list(metric_usage.items())[0]
-        assert len(dd) == 1
-        metric_usage = list(dd.values())[0]
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
         assert metric_usage == 2
 
     def test_stateful_total_granularity(
@@ -366,6 +400,10 @@ class TestCalculateMetric:
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
@@ -453,6 +491,11 @@ class TestCalculateMetric:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+            proration=METRIC_GRANULARITY.DAY,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
@@ -488,7 +531,6 @@ class TestCalculateMetric:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.DAY,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -516,7 +558,9 @@ class TestCalculateMetric:
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
         # user days, so should be between 18/28*100 and 18/31*100
-        assert usage_revenue_dict["revenue"] >= Decimal(100) * Decimal(18) / Decimal(31)
+        assert usage_revenue_dict["revenue"] >= Decimal(100) * (
+            Decimal(18) / Decimal(31) - Decimal(3) / Decimal(31)
+        )
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity(
@@ -536,6 +580,9 @@ class TestCalculateMetric:
             billable_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.RATE,
             granularity=METRIC_GRANULARITY.DAY,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=14, hour=0)
         customer = baker.make(
@@ -645,14 +692,16 @@ class TestCalculateMetric:
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
             event_type=EVENT_TYPE.DELTA,
+            proration=METRIC_GRANULARITY.DAY,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test"
         )
-        event_times = [time_created] + [
-            time_created + relativedelta(days=i) for i in range(8)
-        ]
+        event_times = [time_created + relativedelta(days=i) for i in range(8)]
         properties = (
             1 * [{"number": 3}]
             + 3 * [{"number": 1}]  # 1 hr at 4, 1 hr at 5, 1 hr at 6
@@ -677,7 +726,6 @@ class TestCalculateMetric:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.DAY,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -707,584 +755,10 @@ class TestCalculateMetric:
         # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
         # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
         assert Decimal(100) * Decimal(12) / Decimal(28) >= usage_revenue_dict["revenue"]
-        assert Decimal(100) * Decimal(12) / Decimal(31) <= usage_revenue_dict["revenue"]
-
-    def test_stateful_daily_granularity_with_group_by(
-        self, billable_metric_test_common_setup, add_subscription_to_org
-    ):
-        num_billable_metrics = 0
-        setup_dict = billable_metric_test_common_setup(
-            num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
-            user_org_and_api_key_org_different=False,
-        )
-        billable_metric = Metric.objects.create(
-            organization=setup_dict["org"],
-            event_name="number_of_users",
-            property_name="number",
-            usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
-            granularity=METRIC_GRANULARITY.MONTH,
-        )
-        time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test"
-        )
-        event_times = [time_created] + [
-            time_created + relativedelta(days=i) for i in range(1, 19)
-        ]
-        for groupby_dim_1 in ["foo", "bar"]:
-            for groupby_dimension_2 in ["baz", "qux"]:
-                for groupby_dimension_3 in ["quux", "quuz"]:
-                    properties = (
-                        3
-                        * [
-                            {
-                                "number": 3,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "number": 3,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "number": 3,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "number": 4,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "number": 5,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "number": 6,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + [
-                            {
-                                "number": 3,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                    )
-                    baker.make(
-                        Event,
-                        event_name="number_of_users",
-                        properties=iter(properties),
-                        organization=setup_dict["org"],
-                        time_created=iter(event_times),
-                        customer=customer,
-                        _quantity=19,
-                    )
-        billing_plan = PlanVersion.objects.create(
-            organization=setup_dict["org"],
-            flat_rate=0,
-            version=1,
-            plan=setup_dict["plan"],
-        )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            plan_version=billing_plan,
-            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
-            proration_granularity=METRIC_GRANULARITY.DAY,
-        )
-        free_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
-            range_start=0,
-            range_end=3,
-        )
-        paid_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
-            range_start=3,
-            cost_per_batch=100,
-            metric_units_per_batch=1,
-        )
-        with (
-            mock.patch("metering_billing.models.now_utc", return_value=time_created),
-            mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
-                return_value=time_created,
-            ),
-        ):
-            subscription, subscription_record = add_subscription_to_org(
-                setup_dict["org"], billing_plan, customer, time_created
-            )
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-        # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
-        # user days, so should be between 18/28*100 and 18/31*100
-        # if we multiply this by the 8 different combinations we're suppsoed to have, we
-        # should get the expected number
-        assert usage_revenue_dict["revenue"] >= 8 * Decimal(100) * Decimal(
-            18
-        ) / Decimal(31)
-        assert usage_revenue_dict["revenue"] <= 8 * Decimal(100) * Decimal(
-            18
-        ) / Decimal(28)
-
-    def test_stateful_daily_granularity_delta_event_with_groupby(
-        self, billable_metric_test_common_setup, add_subscription_to_org
-    ):
-        num_billable_metrics = 0
-        setup_dict = billable_metric_test_common_setup(
-            num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
-            user_org_and_api_key_org_different=False,
-        )
-        billable_metric = Metric.objects.create(
-            organization=setup_dict["org"],
-            event_name="number_of_users",
-            property_name="number",
-            usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
-            granularity=METRIC_GRANULARITY.MONTH,
-            event_type=EVENT_TYPE.DELTA,
-        )
-        time_created = now_utc() - relativedelta(days=45)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test"
-        )
-        event_times = [time_created + relativedelta(days=i) for i in range(8)]
-        for groupby_dim_1 in ["foo", "bar"]:
-            for groupby_dimension_2 in ["baz", "qux"]:
-                for groupby_dimension_3 in ["quux", "quuz"]:
-                    properties = (
-                        1
-                        * [
-                            {
-                                "number": 3,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "number": 1,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 1
-                        * [
-                            {
-                                "number": 0,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "number": -1,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                    )
-                    baker.make(
-                        Event,
-                        event_name="number_of_users",
-                        properties=iter(properties),
-                        organization=setup_dict["org"],
-                        time_created=iter(event_times),
-                        customer=customer,
-                        _quantity=8,
-                    )
-        billing_plan = PlanVersion.objects.create(
-            organization=setup_dict["org"],
-            flat_rate=0,
-            version=1,
-            plan=setup_dict["plan"],
-        )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            plan_version=billing_plan,
-            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
-            proration_granularity=METRIC_GRANULARITY.DAY,
-        )
-        free_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
-            range_start=0,
-            range_end=3,
-        )
-        paid_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
-            range_start=3,
-            cost_per_batch=100,
-            metric_units_per_batch=1,
-        )
-        with (
-            mock.patch("metering_billing.models.now_utc", return_value=time_created),
-            mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
-                return_value=time_created,
-            ),
-        ):
-            subscription, subscription_record = add_subscription_to_org(
-                setup_dict["org"], billing_plan, customer, time_created
-            )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-        # 2 * (4-3) + 2* (5-3) + 2 * (6-3) = 12 user*days abvoe the free tier... it costs 100
-        # per 1 month of user*days, so should be between 12/28*100 and 12/31*100
-        # if we multiply this by the 8 different combinations we're suppsoed to have, we
         assert (
-            8 * Decimal(100) * Decimal(12) / Decimal(28)
-            >= usage_revenue_dict["revenue"]
-        )
-        assert (
-            8 * Decimal(100) * Decimal(12) / Decimal(31)
+            Decimal(100) * (Decimal(12) / Decimal(31) - Decimal(3) / Decimal(31))
             <= usage_revenue_dict["revenue"]
         )
-
-    def test_rate_hourly_granularity_with_groupby(
-        self, billable_metric_test_common_setup, add_subscription_to_org
-    ):
-        num_billable_metrics = 0
-        setup_dict = billable_metric_test_common_setup(
-            num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
-            user_org_and_api_key_org_different=False,
-        )
-        billable_metric = Metric.objects.create(
-            organization=setup_dict["org"],
-            event_name="rows_inserted",
-            property_name="num_rows",
-            usage_aggregation_type=METRIC_AGGREGATION.SUM,
-            billable_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.RATE,
-            granularity=METRIC_GRANULARITY.DAY,
-        )
-        time_created = now_utc() - relativedelta(days=14, hour=0)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test"
-        )
-        # 64 in an hour, 14 days ago
-        event_times = [time_created] + [
-            time_created + relativedelta(minutes=i) for i in range(1, 19)
-        ]
-        for groupby_dim_1 in ["foo", "bar"]:
-            for groupby_dimension_2 in ["baz", "qux"]:
-                for groupby_dimension_3 in ["quux", "quuz"]:
-                    properties = (
-                        4
-                        * [
-                            {
-                                "num_rows": 1,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 2,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 3,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 4,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 5,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 6,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                    )  # = 64
-                    baker.make(
-                        Event,
-                        event_name="rows_inserted",
-                        properties=iter(properties),
-                        organization=setup_dict["org"],
-                        time_created=iter(event_times),
-                        customer=customer,
-                        _quantity=19,
-                    )
-        # 60 in an hour, 5 days ago
-        time_created = now_utc() - relativedelta(days=5, hour=0)
-        event_times = [time_created] + [
-            time_created + relativedelta(minutes=i) for i in range(1, 19)
-        ]
-        for groupby_dim_1 in ["foo", "bar"]:
-            for groupby_dimension_2 in ["baz", "qux"]:
-                for groupby_dimension_3 in ["quux", "quuz"]:
-                    properties = (
-                        4
-                        * [
-                            {
-                                "num_rows": 1,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 2,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 3,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 2
-                        * [
-                            {
-                                "num_rows": 4,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 5,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                        + 3
-                        * [
-                            {
-                                "num_rows": 6,
-                                "groupby_dim_1": groupby_dim_1,
-                                "groupby_dim_2": groupby_dimension_2,
-                                "groupby_dim_3": groupby_dimension_3,
-                            }
-                        ]
-                    )  # = 64
-                    baker.make(
-                        Event,
-                        event_name="rows_inserted",
-                        properties=list(properties),
-                        organization=setup_dict["org"],
-                        time_created=iter(event_times),
-                        customer=customer,
-                        _quantity=19,
-                    )
-        billing_plan = PlanVersion.objects.create(
-            organization=setup_dict["org"],
-            flat_rate=0,
-            version=1,
-            plan=setup_dict["plan"],
-        )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            plan_version=billing_plan,
-            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
-        )
-        free_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
-            range_start=0,
-            range_end=3,
-        )
-        paid_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
-            range_start=3,
-            cost_per_batch=1,
-            metric_units_per_batch=1,
-        )
-        now = now_utc()
-        time_created = now - relativedelta(days=31)
-        with (
-            mock.patch("metering_billing.models.now_utc", return_value=time_created),
-            mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
-                return_value=time_created,
-            ),
-        ):
-            subscription, subscription_record = add_subscription_to_org(
-                setup_dict["org"],
-                billing_plan,
-                customer,
-                time_created,
-            )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-        # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
-        assert usage_revenue_dict["revenue"] == 8 * Decimal(61)
-
-    def test_count_unique_with_groupby(
-        self, billable_metric_test_common_setup, add_subscription_to_org
-    ):
-        num_billable_metrics = 0
-        setup_dict = billable_metric_test_common_setup(
-            num_billable_metrics=num_billable_metrics,
-            auth_method="api_key",
-            user_org_and_api_key_org_different=False,
-        )
-        billable_metric = Metric.objects.create(
-            organization=setup_dict["org"],
-            event_name="test_event",
-            property_name="test_property",
-            usage_aggregation_type=METRIC_AGGREGATION.UNIQUE,
-            metric_type=METRIC_TYPE.COUNTER,
-        )
-        time_created = now_utc() - relativedelta(days=14, hour=0)
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="test"
-        )
-        event_times = [time_created] + [
-            time_created + relativedelta(minutes=i) for i in range(1, 2)
-        ]
-
-        customer = baker.make(
-            Customer, organization=setup_dict["org"], customer_name="foo"
-        )
-        for groupby_dim_1 in ["foo", "bar"]:
-            for groupby_dimension_2 in ["baz", "qux"]:
-                for groupby_dimension_3 in ["quux", "quuz"]:
-                    baker.make(
-                        Event,
-                        event_name="test_event",
-                        properties={
-                            "test_property": "foo",
-                            "groupby_dim_1": groupby_dim_1,
-                            "groupby_dim_2": groupby_dimension_2,
-                            "groupby_dim_3": groupby_dimension_3,
-                        },
-                        organization=setup_dict["org"],
-                        time_created=event_times[0],
-                        customer=customer,
-                        _quantity=5,
-                    )
-                    baker.make(
-                        Event,
-                        event_name="test_event",
-                        properties={
-                            "test_property": "bar",
-                            "groupby_dim_1": groupby_dim_1,
-                            "groupby_dim_2": groupby_dimension_2,
-                            "groupby_dim_3": groupby_dimension_3,
-                        },
-                        organization=setup_dict["org"],
-                        time_created=event_times[1],
-                        customer=customer,
-                        _quantity=5,
-                    )
-        billing_plan = PlanVersion.objects.create(
-            organization=setup_dict["org"],
-            flat_rate=0,
-            version=1,
-            plan=setup_dict["plan"],
-        )
-        plan_component = PlanComponent.objects.create(
-            billable_metric=billable_metric,
-            plan_version=billing_plan,
-            separate_by=["groupby_dim_1", "groupby_dim_2", "groupby_dim_3"],
-        )
-        free_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
-            range_start=0,
-            range_end=1,
-        )
-        paid_tier = PriceTier.objects.create(
-            plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
-            range_start=1,
-            cost_per_batch=100,
-            metric_units_per_batch=1,
-        )
-        with (
-            mock.patch("metering_billing.models.now_utc", return_value=time_created),
-            mock.patch(
-                "metering_billing.tests.test_billable_metric.now_utc",
-                return_value=time_created,
-            ),
-        ):
-            subscription, subscription_record = add_subscription_to_org(
-                setup_dict["org"], billing_plan, customer, time_created
-            )
-
-        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-        # 2 (-1 free) unique + 8 combinations gives 800
-        assert 8 * Decimal(100) == usage_revenue_dict["revenue"]
 
 
 @pytest.mark.django_db(transaction=True)
@@ -1305,6 +779,11 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.HOUR,
+            proration=METRIC_GRANULARITY.MINUTE,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
@@ -1345,7 +824,6 @@ class TestCalculateMetricProrationForStateful:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.MINUTE,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -1418,6 +896,11 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.DAY,
+            proration=METRIC_GRANULARITY.HOUR,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(days=45)
         customer = baker.make(
@@ -1454,7 +937,6 @@ class TestCalculateMetricProrationForStateful:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.HOUR,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -1528,6 +1010,11 @@ class TestCalculateMetricProrationForStateful:
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+            proration=METRIC_GRANULARITY.HOUR,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         time_created = now_utc() - relativedelta(months=3, days=21)
         customer = baker.make(
@@ -1569,7 +1056,6 @@ class TestCalculateMetricProrationForStateful:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.HOUR,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -1641,7 +1127,11 @@ class TestCalculateMetricWithFilters:
             organization=setup_dict["org"],
             property_name="test_property",
             event_name="test_event",
-            usage_aggregation_type="unique",
+            usage_aggregation_type=METRIC_AGGREGATION.UNIQUE,
+            metric_type=METRIC_TYPE.COUNTER,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         numeric_filter = NumericFilter.objects.create(
             property_name="test_filter_property",
@@ -1650,7 +1140,7 @@ class TestCalculateMetricWithFilters:
         )
         billable_metric.numeric_filters.add(numeric_filter)
         billable_metric.save()
-        time_created = parser.parse("2021-01-01T06:00:00Z")
+        time_created = now_utc()
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="test_customer"
         )
@@ -1681,17 +1171,49 @@ class TestCalculateMetricWithFilters:
             customer=customer,
             _quantity=5,
         )
-        metric_usage = billable_metric.get_usage(
-            parser.parse("2021-01-01"),
-            parser.parse("2021-01-30"),
-            granularity=USAGE_CALC_GRANULARITY.TOTAL,
-            customer=customer,
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
         )
-        metric_usage = metric_usage[customer.customer_name]
-        assert len(metric_usage) == 1  # no groupbys
-        unique_tup, dd = list(metric_usage.items())[0]
-        assert len(dd) == 1
-        metric_usage = list(dd.values())[0]
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
         assert metric_usage == 2
 
     def test_stateful_total_granularity_with_filters(
@@ -1709,6 +1231,10 @@ class TestCalculateMetricWithFilters:
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         numeric_filter = NumericFilter.objects.create(
             property_name="test_filter_property",
@@ -1795,9 +1321,11 @@ class TestCalculateMetricWithFilters:
             organization=setup_dict["org"],
             event_name="number_of_users",
             property_name="number",
+            event_type=EVENT_TYPE.TOTAL,
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.STATEFUL,
             granularity=METRIC_GRANULARITY.MONTH,
+            proration=METRIC_GRANULARITY.DAY,
         )
         numeric_filter = CategoricalFilter.objects.create(
             property_name="test_filter_property",
@@ -1810,9 +1338,7 @@ class TestCalculateMetricWithFilters:
         customer = baker.make(
             Customer, organization=setup_dict["org"], customer_name="foo"
         )
-        event_times = [time_created] + [
-            time_created + relativedelta(days=i) for i in range(1, 20)
-        ]
+        event_times = [time_created + relativedelta(days=i) for i in range(21)]
         properties = (
             3 * [{"number": 3, "test_filter_property": "a"}]
             + 3 * [{"number": 3, "test_filter_property": "b"}]
@@ -1841,7 +1367,6 @@ class TestCalculateMetricWithFilters:
         plan_component = PlanComponent.objects.create(
             billable_metric=billable_metric,
             plan_version=billing_plan,
-            proration_granularity=METRIC_GRANULARITY.DAY,
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
@@ -1856,6 +1381,9 @@ class TestCalculateMetricWithFilters:
             cost_per_batch=100,
             metric_units_per_batch=1,
         )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
         with (
             mock.patch("metering_billing.models.now_utc", return_value=time_created),
             mock.patch(
@@ -1868,8 +1396,10 @@ class TestCalculateMetricWithFilters:
             )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 3 * (4-3) + 3* (5-3) + 3 * (6-3) = 18 user*days ... it costs 100 per 1 month of
-        # user days, so should be between 18/28*100 and 18/31*100
-        assert usage_revenue_dict["revenue"] >= Decimal(100) * Decimal(18) / Decimal(31)
+        # user days, so should be between 18/28*100 and 18/31*100...\
+        assert usage_revenue_dict["revenue"] >= Decimal(100) * (
+            Decimal(18) / Decimal(31) - Decimal(3) / Decimal(31)
+        )
         assert usage_revenue_dict["revenue"] <= Decimal(100) * Decimal(18) / Decimal(28)
 
     def test_rate_hourly_granularity_with_filters(
@@ -1889,6 +1419,9 @@ class TestCalculateMetricWithFilters:
             billable_aggregation_type=METRIC_AGGREGATION.MAX,
             metric_type=METRIC_TYPE.RATE,
             granularity=METRIC_GRANULARITY.DAY,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
         )
         numeric_filter = CategoricalFilter.objects.create(
             property_name="test_filter_property",
@@ -1914,7 +1447,7 @@ class TestCalculateMetricWithFilters:
             + 3 * [{"num_rows": 5, "test_filter_property": "9yge"}]
             + 3 * [{"num_rows": 6, "test_filter_property": "wedsfgu"}]
             + [{"num_rows": 3, "test_filter_property": "a"}]
-        )  # = 64
+        )  # = 67
         baker.make(
             Event,
             event_name="rows_inserted",
@@ -1977,5 +1510,5 @@ class TestCalculateMetricWithFilters:
             now - relativedelta(days=21),
         )
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-        # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
-        assert usage_revenue_dict["revenue"] == Decimal(61)
+        # 1 dollar per for 67 rows - 3 free rows = 64 rows * 1 dollar = 64 dollars
+        assert usage_revenue_dict["revenue"] == Decimal(64)

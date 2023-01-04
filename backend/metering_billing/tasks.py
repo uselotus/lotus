@@ -66,6 +66,8 @@ def calculate_invoice():
     # now generate invoices and new subs
     for old_subscription in subs_to_bill:
         old_sub_records = old_subscription.get_subscription_records_to_bill()
+        if old_sub_records.count() == 0:
+            continue
         new_sub = Subscription.objects.create(
             organization=old_subscription.organization,
             day_anchor=old_subscription.day_anchor,

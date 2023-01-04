@@ -210,7 +210,6 @@ const CreatePlan = () => {
             const usagecomponent: CreateComponent = {
               metric_id: components[i].metric_id,
               tiers: components[i].tiers,
-              separate_by: components[i].separate_by,
               proration_granularity: components[i].proration_granularity,
             };
             usagecomponentslist.push(usagecomponent);
@@ -514,7 +513,7 @@ const CreatePlan = () => {
                     pricing_unit={selectedCurrency}
                   />
                 </Form.Item>
-                <div className="inset-x-0 bottom-0 justify-center self-end">
+                {/* <div className="inset-x-0 bottom-0 justify-center self-end">
                   <div className="w-full border-t border-gray-300 py-2" />
                   <div className="mx-4">
                     <Form.Item
@@ -537,7 +536,7 @@ const CreatePlan = () => {
                       </Radio.Group>
                     </Form.Item>
                   </div>
-                </div>
+                </div> */}
               </Card>
             </Col>
 

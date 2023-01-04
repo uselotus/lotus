@@ -18,6 +18,7 @@ from metering_billing.serializers.payment_provider_serializers import (
 from metering_billing.utils import calculate_end_date, date_as_max_dt, now_utc
 from metering_billing.utils.enums import (
     INVOICE_STATUS,
+    ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
     USAGE_BILLING_FREQUENCY,
@@ -287,7 +288,21 @@ class StripeConnector(PaymentProvider):
             organization=customer.organization,
             setting_group=PAYMENT_PROVIDERS.STRIPE,
         )
-        if setting.setting_value == "true":
+        setting_value = setting.setting_values
+        if len(setting_value) == 0:
+            setting_value = setting.setting_value
+            if setting_value == "false":
+                setting.setting_values = [False]
+            else:
+                setting.setting_values = [True]
+            setting.save()
+            if setting_value == "false":
+                setting_value = False
+            else:
+                setting_value = True
+        else:
+            setting_value = setting.setting_values[0]
+        if setting_value == True:
             assert (
                 customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id")
                 is None
@@ -315,7 +330,7 @@ class StripeConnector(PaymentProvider):
                 customer.save()
             except:
                 pass
-        elif setting.setting_value == "false":
+        elif setting_value == False:
             pass
         else:
             raise Exception(
@@ -601,8 +616,9 @@ class StripeConnector(PaymentProvider):
 
         OrganizationSetting.objects.create(
             organization=organization,
-            setting_name="generate_customer_after_creating_in_lotus",
+            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
             setting_value="True",
+            setting_values=[True],
             setting_group=PAYMENT_PROVIDERS.STRIPE,
         )
 

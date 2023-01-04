@@ -30,10 +30,10 @@ class ValidOrganization(permissions.BasePermission):
 
     def has_permission(self, request, view):
         org = request.organization
-        logger.info("ValidOrganization: %s" % (org))
+        logger.debug("ValidOrganization: %s" % (org))
         if org is None and request.user.is_authenticated:
             org = request.user.organization
-            logger.info(f"ValidOrganization didn't have org, got from user: {org}")
+            logger.debug(f"ValidOrganization didn't have org, got from user: {org}")
             request.organization = org
         return org is not None
 
