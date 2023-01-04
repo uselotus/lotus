@@ -1144,7 +1144,7 @@ class StatefulHandler(MetricHandler):
         if proration_units == METRIC_GRANULARITY.TOTAL:
             proration_units = None
         injection_dict = {
-            "proration_units": metric.proration,
+            "proration_units": proration_units,
             "cumsum_cagg": (
                 organization.organization_id[:22]
                 + "___"
@@ -1199,7 +1199,7 @@ class StatefulHandler(MetricHandler):
         if proration_units == METRIC_GRANULARITY.TOTAL:
             proration_units = None
         injection_dict = {
-            "proration_units": metric.proration,
+            "proration_units": proration_units,
             "cumsum_cagg": (
                 organization.organization_id[:22]
                 + "___"
@@ -1254,7 +1254,7 @@ class StatefulHandler(MetricHandler):
         if proration_units == METRIC_GRANULARITY.TOTAL:
             proration_units = None
         injection_dict = {
-            "proration_units": metric.proration,
+            "proration_units": proration_units,
             "cumsum_cagg": (
                 organization.organization_id[:22]
                 + "___"
