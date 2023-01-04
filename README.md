@@ -83,22 +83,20 @@ Best if you want to keep your data local or want full control and extensibility.
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus
    ```
-3. Change the environemnt variables located in `env/.env.prod.example` to suit your needs. If you need help you can check out [this guide in our docs](https://docs.uselotus.io/docs/overview/self-hosting).
-4. Rename `env/.env.prod.example` to `env/.env.prod`. Make sure you don't commit your secret environment variables anywhere!
-5. Build and run the Docker Image!
+3. Run the self-hosting script:
    ```sh
     ./scripts/self-host.sh
    ```
-   If you have trouble running this command try giving it permissions:
-   ```sh
-   sudo chmod 755 ./scripts/self-host.sh
-   ./scripts/self-host.sh
-   ```
-   You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined or the default which is:
+   If you need to give the script permission to run, run `chmod 755 ./scripts/self-host.sh` first.
+4. You should now be able to access the homepage at [localhost/](http://localhost/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined, or the default, which is:
    ```py
    username: change_me
    password: change_me
    ```
+
+Optionally:
+
+- Change the environment variables located in `env/.env.prod` to suit your needs. For more details, check out [this guide in our docs](https://docs.uselotus.io/docs/overview/self-hosting).
 
 Easy deployment options for AWS, GCP, and Azure are on the roadmap. If you have any questions, feel free to reach out to us.
 

@@ -28,32 +28,27 @@ You can find these issues tagged with the
 In order to develop locally, we recommend using Docker to set up the
 environment, which allows for hot reloading of both frontend and backend code.
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and
-   make sure it is running.
-2. Clone the repo (our version, or your fork of it) and navigate to the project.
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+2. Clone the repo and navigate to the project
+   ```sh
+   git clone https://github.com/uselotus/lotus.git && cd lotus
+   ```
+3. Run the self-hosting script:
+   ```sh
+   ./scripts/dev.sh
+   ```
+   If you need to give the script permission to run, run `chmod 755 ./scripts/dev.sh` first.
+4. You should now be able to access the homepage at [localhost:8000/](http://localhost:8000/), and sign in using the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined, or the default, which is:
+   ```py
+   username: change_me
+   password: change_me
+   ```
 
-```bash
-git clone https://github.com/uselotus/lotus.git && cd lotus
-```
+Optionally:
 
-3. Change the environment variables located in `env/.env.dev.example` to suit
-   your needs. If you need help you can check out the example environment
-   variables at the bottom of this page.
-4. Rename `env/.env.dev.example` to `env/.env.dev`. Make sure you don't commit
-   your secret environment variables anywhere!
-5. Build and run the Docker Image!
+- Change the environment variables located in `env/.env.dev` to suit your needs. For more details, check out [this guide in our docs](https://docs.uselotus.io/docs/overview/self-hosting).
 
-```bash
-docker-compose -f docker-compose.dev.yaml --env-file env/.env.dev up --build
-```
-
-You should now be able to access the homepage at
-[localhost:8000/](http://localhost:8000/), and sign in using the
-`ADMIN_USERNAME` and `ADMIN_PASSWORD` you defined. The homepage takes a minute
-or two to load, so be patient!
-
-If you make any changes to the backend settings, you might need to restart the
-Docker container.
+If you make any changes to the backend settings or the enviornment variables, you might need to restart the Docker container.
 
 #### 🔍 Before Committing
 
