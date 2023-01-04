@@ -735,7 +735,7 @@ class CustomHandler(MetricHandler):
             )
 
             if refresh is True:
-                CounterHandler.archive_metric(metric)
+                CustomHandler.archive_metric(metric)
             try:
                 groupby = metric.organization.settings.get(
                     setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
@@ -1163,13 +1163,9 @@ class StatefulHandler(MetricHandler):
         query = Template(STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION).render(
             **injection_dict
         )
-        # print("query: ", query)
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
-        # for row in result:
-        #     print(row)
-        # raise Exception("test")
         if len(result) == 0:
             return Decimal(0)
         return result[0].usage_qty

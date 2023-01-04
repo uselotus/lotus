@@ -797,7 +797,6 @@ class TestSubscriptionAndSubscriptionRecord:
         prev_subscription_records_len = after_subscription_records_len
 
         cur_payload = setup_dict["payload"]
-        setup_dict["org"].update_subscription_filter_settings(["email"])
         cur_payload["subscription_filters"] = [
             {
                 "property_name": "email",
