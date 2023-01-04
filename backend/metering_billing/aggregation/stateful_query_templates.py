@@ -12,7 +12,7 @@ from metering_billing.utils.enums import EVENT_TYPE, METRIC_AGGREGATION
 # can access them the same way we would a stateful metrics with total event type
 # THIS IS A MATERIALIZED VIEW
 STATEFUL_DELTA_CUMULATIVE_SUM = """
-CREATE MATERIALIZED VIEW {{ cagg_name }} AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }} AS
 SELECT 
     "metering_billing_usageevent"."customer_id" AS customer_id
     {%- for group_by_field in group_by %}
@@ -224,7 +224,7 @@ EXECUTE PROCEDURE tg_refresh_{{ cagg_name }}();
 # different schemas
 # THIS IS A MATERIALIZED VIEW
 STATEFUL_TOTAL_CUMULATIVE_SUM = """
-CREATE MATERIALIZED VIEW {{ cagg_name }}
+CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH (timescaledb.continuous) AS
 SELECT 
     "metering_billing_usageevent"."customer_id" AS customer_id

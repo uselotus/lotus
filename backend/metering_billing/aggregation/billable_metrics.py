@@ -789,7 +789,7 @@ class CustomHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
-        from .counter_query_templates import COUNTER_CAGG_DROP
+        from .common_query_templates import CAGG_DROP
 
         for continuous_agg_type in ["day", "second"]:
             sql_injection_data = {
@@ -799,7 +799,7 @@ class CustomHandler(MetricHandler):
                 + "___"
                 + continuous_agg_type
             }
-            query = Template(COUNTER_CAGG_DROP).render(**sql_injection_data)
+            query = Template(CAGG_DROP).render(**sql_injection_data)
             with connection.cursor() as cursor:
                 cursor.execute(query)
 

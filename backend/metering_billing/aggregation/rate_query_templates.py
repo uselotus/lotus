@@ -86,7 +86,7 @@ GROUP BY
 """
 
 RATE_CAGG_QUERY = """
-CREATE MATERIALIZED VIEW {{ cagg_name }}
+CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH ( timescaledb.continuous ) AS
 SELECT
     customer_id

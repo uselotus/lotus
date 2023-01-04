@@ -873,6 +873,7 @@ class Metric(models.Model):
     status = models.CharField(
         choices=METRIC_STATUS.choices, max_length=40, default=METRIC_STATUS.ACTIVE
     )
+    mat_views_provisioned = models.BooleanField(default=False)
 
     # records
     history = HistoricalRecords()
@@ -981,6 +982,22 @@ class Metric(models.Model):
         usage = handler.get_subscription_record_current_usage(self, subscription_record)
 
         return usage
+
+    def provision_materialized_views(self):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        handler.create_continuous_aggregate(self)
+        self.mat_views_provisioned = True
+        self.save()
+
+    def delete_materialized_views(self):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        handler.archive_metric(self)
+        self.mat_views_provisioned = False
+        self.save()
 
 
 class UsageRevenueSummary(TypedDict):
