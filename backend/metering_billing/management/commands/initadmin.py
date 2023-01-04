@@ -2,8 +2,8 @@ import os
 
 from django.core.management.base import BaseCommand
 from dotenv import load_dotenv
-from metering_billing.models import Organization, PricingUnit, User
-from metering_billing.utils.enums.enums import SUPPORTED_CURRENCIES
+from metering_billing.models import Metric, Organization, PricingUnit, User
+from metering_billing.utils.enums import METRIC_STATUS, SUPPORTED_CURRENCIES
 
 load_dotenv()
 
@@ -32,3 +32,14 @@ class Command(BaseCommand):
 
         for org in Organization.objects.all():
             org.provision_currencies()
+            org.provision_subscription_filter_settings()
+
+        for metric in Metric.objects.filter(
+            status=METRIC_STATUS.ACTIVE, mat_views_provisioned=False
+        ):
+            metric.provision_materialized_views()
+
+        for metric in Metric.objects.filter(
+            status=METRIC_STATUS.ARCHIVED, mat_views_provisioned=True
+        ):
+            metric.delete_materialized_views()

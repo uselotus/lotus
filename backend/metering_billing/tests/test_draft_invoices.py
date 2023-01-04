@@ -1,10 +1,14 @@
 import itertools
+import unittest.mock as mock
 from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from dateutil.relativedelta import relativedelta
 from django.urls import reverse
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.models import (
+    Customer,
     Event,
     Invoice,
     Metric,
@@ -13,10 +17,15 @@ from metering_billing.models import (
     PriceAdjustment,
     PriceTier,
     Subscription,
+    SubscriptionRecord,
 )
+from metering_billing.tasks import calculate_invoice
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
+    EVENT_TYPE,
     INVOICE_STATUS,
+    METRIC_AGGREGATION,
+    METRIC_TYPE,
     PRICE_ADJUSTMENT_TYPE,
     PRICE_TIER_TYPE,
 )
@@ -85,6 +94,8 @@ def draft_invoice_test_common_setup(
             usage_aggregation_type=itertools.cycle(["sum", "max", "count"]),
             _quantity=3,
         )
+        for metric in metric_set:
+            METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
         setup_dict["metrics"] = metric_set
         product = add_product_to_org(org)
         plan = add_plan_to_product(product)
@@ -216,3 +227,155 @@ class TestGenerateInvoice:
         assert response.status_code == status.HTTP_200_OK
         after_cost = response.data["invoices"][0]["cost_due"]
         assert Decimal("20") == after_cost
+
+
+@pytest.fixture
+def schedule_invoice_test_common_setup(
+    generate_org_and_api_key,
+    add_billable_metrics_to_org,
+    add_users_to_org,
+    api_client_with_api_key_auth,
+    add_product_to_org,
+    add_plan_to_product,
+):
+    def do_schedule_invoice_test_common_setup(
+        *, num_billable_metrics, auth_method, user_org_and_api_key_org_different
+    ):
+        # set up organizations and api keys
+        org, key = generate_org_and_api_key()
+        org2, key2 = generate_org_and_api_key()
+        setup_dict = {
+            "org": org,
+            "key": key,
+            "org2": org2,
+            "key2": key2,
+        }
+        # set up the client with the appropriate api key spec
+        if auth_method == "api_key":
+            client = api_client_with_api_key_auth(key)
+        elif auth_method == "session_auth":
+            client = APIClient()
+            (user,) = add_users_to_org(org, n=1)
+            client.force_authenticate(user=user)
+            setup_dict["user"] = user
+        else:
+            client = api_client_with_api_key_auth(key)
+            if user_org_and_api_key_org_different:
+                (user,) = add_users_to_org(org2, n=1)
+            else:
+                (user,) = add_users_to_org(org, n=1)
+            client.force_authenticate(user=user)
+            setup_dict["user"] = user
+        setup_dict["client"] = client
+
+        # set up billable_metrics
+        if num_billable_metrics > 0:
+            setup_dict["org_billable_metrics"] = add_billable_metrics_to_org(
+                org, n=num_billable_metrics
+            )
+            setup_dict["org2_billable_metrics"] = add_billable_metrics_to_org(
+                org2, n=num_billable_metrics
+            )
+        product = add_product_to_org(org)
+        plan = add_plan_to_product(product)
+        setup_dict["plan"] = plan
+        return setup_dict
+
+    return do_schedule_invoice_test_common_setup
+
+
+@pytest.mark.django_db(transaction=True)
+class TestScheduledInvoice:
+    def test_generate_invoice_on_schedule(
+        self, schedule_invoice_test_common_setup, add_subscription_to_org
+    ):
+        num_billable_metrics = 0
+        setup_dict = schedule_invoice_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="number_of_users",
+            property_name="number",
+            usage_aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.STATEFUL,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
+        time_created = now_utc() - relativedelta(days=45)
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="foo"
+        )
+        event_times = [time_created] + [
+            time_created + relativedelta(days=i) for i in range(19)
+        ]
+        properties = (
+            3 * [{"number": 1}]
+            + 3 * [{"number": 2}]
+            + 3 * [{"number": 3}]
+            + 3 * [{"number": 4}]
+            + 3 * [{"number": 5}]
+            + 3 * [{"number": 6}]
+            + [{"number": 3}]
+        )
+        baker.make(
+            Event,
+            event_name="number_of_users",
+            properties=iter(properties),
+            organization=setup_dict["org"],
+            time_created=iter(event_times),
+            customer=customer,
+            _quantity=19,
+        )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        now = now_utc()
+
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=46),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=46),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=46),
+            )
+
+        invoices_before = Invoice.objects.count()
+        sr_before = SubscriptionRecord.objects.count()
+        task = calculate_invoice.apply()
+        assert task.successful()
+        assert Invoice.objects.count() == invoices_before + 1
+        assert SubscriptionRecord.objects.count() == sr_before + 1

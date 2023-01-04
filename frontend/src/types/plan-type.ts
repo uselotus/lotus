@@ -125,7 +125,6 @@ export interface CreateComponent
 export interface Component {
   billable_metric: MetricType;
   tiers: Tier[];
-  separate_by: string[];
   proration_granularity: string;
   id?: number;
   pricing_unit: PricingUnit;

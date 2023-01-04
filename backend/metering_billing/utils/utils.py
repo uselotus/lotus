@@ -1,6 +1,7 @@
 import collections
 import datetime
 import uuid
+from collections import namedtuple
 from datetime import timezone
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
 from typing import Iterator, List, Sequence, Type
@@ -28,6 +29,8 @@ Fields = List[Field]
 
 
 def convert_to_decimal(value):
+    if value is None:
+        return Decimal(0)
     return Decimal(value).quantize(Decimal(".0000000001"), rounding=ROUND_UP)
 
 
@@ -119,9 +122,10 @@ def dates_bwn_two_dts(start_date, end_date):
         start_date = start_date.date()
     if isinstance(end_date, datetime.datetime):
         end_date = end_date.date()
-    days_btwn = (end_date - start_date).days
-    for n in range(days_btwn + 1):
-        yield start_date + relativedelta(days=n)
+    i = 0
+    while start_date + relativedelta(days=i) <= end_date:
+        yield start_date + relativedelta(days=i)
+        i += 1
 
 
 def hours_bwn_twodates(start_date, end_date):
@@ -455,3 +459,10 @@ def date_as_min_dt(date):
 
 def date_as_max_dt(date):
     return datetime.datetime.combine(date, datetime.time.max, tzinfo=pytz.UTC)
+
+
+def namedtuplefetchall(cursor):
+    "Return all rows from a cursor as a namedtuple"
+    desc = cursor.description
+    nt_result = namedtuple("Result", [col[0] for col in desc])
+    return [nt_result(*row) for row in cursor.fetchall()]

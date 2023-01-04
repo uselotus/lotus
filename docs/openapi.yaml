@@ -2911,6 +2911,70 @@ components:
       - id
       - target
       - verb
+    Address:
+      type: object
+      properties:
+        city:
+          type: string
+          description: City, district, suburb, town, or village
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 country code
+          maxLength: 2
+          minLength: 2
+        line1:
+          type: string
+          description: Address line 1 (e.g., street, PO Box, or company name)
+        line2:
+          type: string
+          nullable: true
+          description: Address line 2 (e.g., apartment, suite, unit, or building)
+        postal_code:
+          type: string
+          description: ZIP or postal code
+        state:
+          type: string
+          description: State, county, province, or region
+      required:
+      - city
+      - country
+      - line1
+      - postal_code
+      - state
+    AddressRequest:
+      type: object
+      properties:
+        city:
+          type: string
+          minLength: 1
+          description: City, district, suburb, town, or village
+        country:
+          type: string
+          minLength: 2
+          description: ISO 3166-1 alpha-2 country code
+          maxLength: 2
+        line1:
+          type: string
+          minLength: 1
+          description: Address line 1 (e.g., street, PO Box, or company name)
+        line2:
+          type: string
+          nullable: true
+          description: Address line 2 (e.g., apartment, suite, unit, or building)
+        postal_code:
+          type: string
+          minLength: 1
+          description: ZIP or postal code
+        state:
+          type: string
+          minLength: 1
+          description: State, county, province, or region
+      required:
+      - city
+      - country
+      - line1
+      - postal_code
+      - state
     AllSubstitutionResults:
       type: object
       properties:
@@ -3273,6 +3337,11 @@ components:
         has_payment_method:
           type: boolean
           readOnly: true
+        address:
+          allOf:
+          - $ref: '#/components/schemas/Address'
+          nullable: true
+          readOnly: true
       required:
       - customer_id
       - customer_name
@@ -3459,6 +3528,10 @@ components:
           writeOnly: true
           description: The currency code this customer will be invoiced in. Codes
             are 3 letters, e.g. 'USD'.
+        address:
+          allOf:
+          - $ref: '#/components/schemas/AddressRequest'
+          nullable: true
       required:
       - customer_id
       - email
@@ -3588,30 +3661,40 @@ components:
       properties:
         currency:
           $ref: '#/components/schemas/PricingUnit'
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        issue_date:
+          type: string
+          format: date-time
+        start_date:
+          type: string
+          format: date
+          readOnly: true
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
-        issue_date:
-          type: string
-          format: date-time
         due_date:
           type: string
           format: date-time
           nullable: true
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
       required:
       - cost_due
       - currency
       - due_date
+      - end_date
       - issue_date
       - line_items
+      - start_date
     DraftInvoiceResponse:
       type: object
       properties:
@@ -3947,23 +4030,6 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRequest'
-          nullable: true
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          type: string
-          writeOnly: true
         flat_rate:
           type: number
           format: double
@@ -3971,6 +4037,38 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        currency_code:
+          type: string
+          minLength: 1
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentRequest'
+          nullable: true
         usage_billing_frequency:
           enum:
           - monthly
@@ -3981,8 +4079,6 @@ components:
           type: string
           writeOnly: true
           nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
         features:
           type: array
           items:
@@ -3991,19 +4087,6 @@ components:
         transition_to_plan_id:
           type: string
           minLength: 1
-        currency_code:
-          type: string
-          minLength: 1
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        description:
-          type: string
-          writeOnly: true
-          nullable: true
       required:
       - flat_fee_billing_type
     InviteRequestRequest:
@@ -4062,22 +4145,35 @@ components:
           items:
             $ref: '#/components/schemas/InvoiceLineItem'
         customer:
-          $ref: '#/components/schemas/LightweightCustomer'
+          $ref: '#/components/schemas/LightweightCustomerSerializerForInvoice'
         due_date:
           type: string
           format: date-time
           nullable: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        seller:
+          $ref: '#/components/schemas/Seller'
       required:
       - cost_due
       - currency
       - customer
       - due_date
+      - end_date
       - external_payment_obj_id
       - external_payment_obj_type
       - invoice_number
       - issue_date
       - line_items
       - payment_status
+      - seller
+      - start_date
     InvoiceLineItem:
       type: object
       properties:
@@ -4165,26 +4261,38 @@ components:
       - customer_id
       - customer_name
       - email
+    LightweightCustomerSerializerForInvoice:
+      type: object
+      properties:
+        customer_name:
+          type: string
+          readOnly: true
+          nullable: true
+          description: The display name of the customer
+        email:
+          type: string
+          format: email
+          readOnly: true
+          description: The primary email address of the customer, must be the same
+            as the email address used to create the customer in the payment provider
+        customer_id:
+          type: string
+          readOnly: true
+          description: The id provided when creating the customer, we suggest matching
+            with your internal customer id in your backend
+          pattern: ^[-a-zA-Z0-9_]+$
+        address:
+          allOf:
+          - $ref: '#/components/schemas/Address'
+          nullable: true
+          readOnly: true
+      required:
+      - customer_id
+      - customer_name
+      - email
     LightweightInvoice:
       type: object
       properties:
-        invoice_number:
-          type: string
-          maxLength: 13
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        cost_due:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - null
-          type: string
-          nullable: true
         payment_status:
           enum:
           - draft
@@ -4192,44 +4300,59 @@ components:
           - paid
           - unpaid
           type: string
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        seller:
+          $ref: '#/components/schemas/Seller'
+        end_date:
+          type: string
+          format: date
+          readOnly: true
         issue_date:
           type: string
           format: date-time
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        invoice_number:
+          type: string
+          maxLength: 13
         external_payment_obj_id:
           type: string
           nullable: true
           maxLength: 100
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
         due_date:
           type: string
           format: date-time
+          nullable: true
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - null
+          type: string
           nullable: true
       required:
       - cost_due
       - currency
       - due_date
+      - end_date
       - external_payment_obj_id
       - invoice_number
       - issue_date
       - payment_status
+      - seller
+      - start_date
       - external_payment_obj_type
     LightweightInvoiceLineItem:
       type: object
       properties:
-        end_date:
-          type: string
-          format: date-time
-        plan:
-          type: string
-        start_date:
-          type: string
-          format: date-time
-        name:
-          type: string
-          maxLength: 100
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
         billing_type:
           enum:
           - in_arrears
@@ -4237,13 +4360,14 @@ components:
           - null
           type: string
           nullable: true
-        quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          nullable: true
+        plan:
+          type: string
+        name:
+          type: string
+          maxLength: 100
+        end_date:
+          type: string
+          format: date-time
         subtotal:
           type: number
           format: double
@@ -4251,6 +4375,20 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        start_date:
+          type: string
+          format: date-time
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
       required:
       - billing_type
       - end_date
@@ -4383,6 +4521,7 @@ components:
           - counter
           - stateful
           - rate
+          - custom
           type: string
           readOnly: true
           description: The type of metric that this is. Please refer to our documentation
@@ -4402,9 +4541,16 @@ components:
           readOnly: true
           description: Whether or not this metric is a cost metric (used to track
             costs to your business).
+        custom_sql:
+          type: string
+          readOnly: true
+          nullable: true
+          description: A custom SQL query that can be used to define the metric. Please
+            refer to our documentation for more information.
       required:
       - aggregation_type
       - categorical_filters
+      - custom_sql
       - event_name
       - event_type
       - granularity
@@ -4420,7 +4566,7 @@ components:
         metric_id:
           type: string
           writeOnly: true
-          minLength: 1
+          nullable: true
           maxLength: 100
           pattern: ^[-a-zA-Z0-9_]+$
         event_name:
@@ -4496,6 +4642,7 @@ components:
           - counter
           - stateful
           - rate
+          - custom
           type: string
           writeOnly: true
           description: The type of metric that this is. Please refer to our documentation
@@ -4513,11 +4660,16 @@ components:
           writeOnly: true
           description: Whether or not this metric is a cost metric (used to track
             costs to your business).
+        custom_sql:
+          type: string
+          writeOnly: true
+          nullable: true
+          description: A custom SQL query that can be used to define the metric. Please
+            refer to our documentation for more information.
       required:
       - event_name
       - metric_name
       - metric_type
-      - usage_aggregation_type
     MetricRevenue:
       type: object
       properties:
@@ -4630,6 +4782,10 @@ components:
       properties:
         default_currency_code:
           type: string
+        address:
+          allOf:
+          - $ref: '#/components/schemas/Address'
+          nullable: true
       required:
       - default_currency_code
     OrganizationUser:
@@ -4723,6 +4879,10 @@ components:
         default_currency_code:
           type: string
           minLength: 1
+        address:
+          allOf:
+          - $ref: '#/components/schemas/AddressRequest'
+          nullable: true
     PatchedPlanUpdateRequest:
       type: object
       properties:
@@ -4963,38 +5123,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PriceTier'
-        proration_granularity:
-          enum:
-          - seconds
-          - minutes
-          - hours
-          - days
-          - months
-          - quarters
-          - years
-          - total
-          type: string
         pricing_unit:
           $ref: '#/components/schemas/PricingUnit'
       required:
       - billable_metric
       - pricing_unit
-      - proration_granularity
       - tiers
     PlanComponentRequest:
       type: object
       properties:
-        proration_granularity:
-          enum:
-          - seconds
-          - minutes
-          - hours
-          - days
-          - months
-          - quarters
-          - years
-          - total
-          type: string
         tiers:
           type: array
           items:
@@ -5005,7 +5142,6 @@ components:
           writeOnly: true
       required:
       - metric_id
-      - proration_granularity
     PlanCreateRequest:
       type: object
       properties:
@@ -5618,6 +5754,27 @@ components:
       - date
       - new_plan_revenue
       - original_plan_revenue
+    Seller:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          allOf:
+          - $ref: '#/components/schemas/Address'
+          nullable: true
+          readOnly: true
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 254
+      required:
+      - name
     SessionSuccess:
       type: object
       properties:

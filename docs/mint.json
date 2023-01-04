@@ -7,7 +7,8 @@
   "api": {
     "baseUrl": "https://api.uselotus.io",
     "auth": {
-      "name": "X-API-KEY"
+      "name": "X-API-KEY",
+      "method": "key"
     }
   },
   "favicon": "/favicon.png",
@@ -44,7 +45,7 @@
     {
       "name": "Blog",
       "icon": "newspaper",
-      "url": "https://www.uselotus.io/blog"
+      "url": "https://www.uselotus.io/journal"
     },
     {
       "name": "Github",
