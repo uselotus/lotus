@@ -237,3 +237,5 @@ class TestGenerateInvoice:
         )
 
         assert len(result_invoices) == 1
+
+        assert False

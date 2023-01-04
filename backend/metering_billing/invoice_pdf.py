@@ -116,7 +116,7 @@ def write_total(doc, currency_symbol, total, current_y):
     doc.drawString(475, offset, f"{currency_symbol}{total}")
 
 
-def generate_invoice_pdf(invoice, buffer):
+def generate_invoice_pdf(invoice, organization, buffer):
     doc = canvas.Canvas(buffer)
 
     write_invoice_title(doc)
@@ -179,9 +179,11 @@ def generate_invoice_pdf(invoice, buffer):
         )
         invoice_number = invoice["invoice_number"]
         organization_id = invoice["organization"]
+        customer_id = invoice["customer"]["customer_id"]
+        print(customer_id)
         buffer.seek(0)
         s3.Bucket(os.environ["AWS_S3_INVOICE_BUCKET"]).upload_fileobj(
-            buffer, f"{organization_id}/invoice_pdf_{invoice_number}"
+            buffer, f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}"
         )
     except Exception as e:
         print(e)

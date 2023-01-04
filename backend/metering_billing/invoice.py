@@ -56,6 +56,7 @@ def generate_invoice(
         InvoiceLineItem,
         PlanVersion,
         SubscriptionRecord,
+        Organization,
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
@@ -65,6 +66,9 @@ def generate_invoice(
 
     customer = subscription.customer
     organization = subscription.organization
+    organization_model = Organization.objects.get(id=organization.id)
+
+    print(model_to_dict(organization_model))
     try:
         _ = (e for e in subscription_records)
     except TypeError:
@@ -286,7 +290,7 @@ def generate_invoice(
         if abs(invoice.cost_due) < 0.01 and not draft:
             invoice.payment_status = INVOICE_STATUS.PAID
         invoice.save()
-        
+
         if not draft:
             for pp in customer.integrations.keys():
                 if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
@@ -299,11 +303,7 @@ def generate_invoice(
                         )
                         invoice.external_payment_obj_type = pp
                         invoice.save()
-                        pdf_buffer = generate_invoice_pdf(model_to_dict(invoice), BytesIO())
-                        pdf_buffer.seek(0)
-                        invoice_pdf_file = ContentFile(pdf_buffer.read(), 'invoice.pdf')
-                        invoice.invoice_pdf = invoice_pdf_file
-                        invoice.save()
+
                         break
             # if META:
             # lotus_python.track_event(
@@ -317,6 +317,14 @@ def generate_invoice(
             #         'external_type': invoice.external_payment_obj_type,
             #         },
             # )
+            print(model_to_dict(invoice))
+            pdf_buffer = generate_invoice_pdf(
+                model_to_dict(invoice), organization_model, BytesIO()
+            )
+            pdf_buffer.seek(0)
+            invoice_pdf_file = ContentFile(pdf_buffer.read(), "invoice.pdf")
+            invoice.invoice_pdf = invoice_pdf_file
+            invoice.save()
             invoice_created_webhook(invoice, organization)
             invoices.append(invoice)
 
