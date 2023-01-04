@@ -855,7 +855,6 @@ class TestCalculateMetricProrationForStateful:
             )
 
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
-        print("usg rev dict", usage_revenue_dict)
         calculated_amt = (Decimal(87) - Decimal(60)) / Decimal(60) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - calculated_amt) < Decimal(0.01)
 

@@ -880,36 +880,42 @@ class Metric(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["organization", "metric_id"], name="unique_org_metric_id"
+                fields=["organization", "metric_id"],
+                name="unique_org_metric_id",
             ),
             models.UniqueConstraint(
                 fields=["organization", "billable_metric_name"],
+                condition=Q(status=METRIC_STATUS.ACTIVE),
                 name="unique_org_billable_metric_name",
             ),
         ] + [
             models.UniqueConstraint(
-                fields=list(
-                    {
-                        "organization",
-                        "billable_metric_name",  # nullable
-                        "event_name",
-                        "metric_type",
-                        "usage_aggregation_type",
-                        "billable_aggregation_type",  # nullable
-                        "property_name",  # nullable
-                        "granularity",  # nullable
-                        "is_cost_metric",
-                        "custom_sql",  # nullable
-                    }
-                    - {x for x in nullables}
+                fields=sorted(
+                    list(
+                        {
+                            "organization",
+                            "billable_metric_name",  # nullable
+                            "event_name",
+                            "metric_type",
+                            "usage_aggregation_type",
+                            "billable_aggregation_type",  # nullable
+                            "property_name",  # nullable
+                            "granularity",  # nullable
+                            "is_cost_metric",
+                            "custom_sql",  # nullable
+                        }
+                        - {x for x in nullables}
+                    )
                 ),
-                condition=Q(**{f"{nullable}__in": [None, ""] for nullable in nullables})
+                condition=Q(
+                    **{f"{nullable}__in": [None, ""] for nullable in sorted(nullables)}
+                )
                 & Q(status=METRIC_STATUS.ACTIVE),
                 name=f"uq_metric_w_null__"
                 + "_".join(
                     [
                         "_".join([x[:2] for x in nullable.split("_")])
-                        for nullable in nullables
+                        for nullable in sorted(nullables)
                     ]
                 ),
             )
