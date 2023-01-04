@@ -257,3 +257,7 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
         _("Generate in Stripe after Lotus"),
     )
     SUBSCRIPTION_FILTERS = ("subscription_filters", _("Subscription Filters"))
+
+
+class TAG_GROUP(models.TextChoices):
+    PLAN = ("plan", _("Plan"))

@@ -77,11 +77,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "users",
             "default_currency",
             "available_currencies",
+            "plan_tags",
         )
 
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
+    plan_tags = serializers.SerializerMethodField()
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(organization=obj)
@@ -103,6 +105,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return PricingUnitSerializer(
             PricingUnit.objects.filter(organization=obj), many=True
         ).data
+
+    def get_plan_tags(
+        self, obj
+    ) -> serializers.ListField(child=serializers.CharField()):
+        return obj.tags.filter(tag_group=TAG_GROUP.PLAN).values_list(
+            "tag_name", flat=True
+        )
 
 
 class APITokenSerializer(serializers.ModelSerializer):
@@ -132,12 +141,13 @@ class APITokenSerializer(serializers.ModelSerializer):
 class OrganizationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("default_currency_code", "address")
+        fields = ("default_currency_code", "address", "plan_tags")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
+    plan_tags = serializers.ListField(child=serializers.CharField(), required=False)
 
     def update(self, instance, validated_data):
         assert (
@@ -152,6 +162,22 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             cur_properties = instance.properties or {}
             new_properties = {**cur_properties, "address": address}
             instance.properties = new_properties
+        plan_tags = validated_data.pop("plan_tags", None)
+        if plan_tags:
+            plan_tags_lower = [x.lower() for x in plan_tags]
+            existing_tags = instance.tags.filter(tag_group=TAG_GROUP.PLAN)
+            existing_tags_lower = [x.tag_name.lower() for x in existing_tags]
+            for tag in existing_tags:
+                if tag.tag_name.lower() not in plan_tags_lower:
+                    tag.delete()
+            for plan_tag in plan_tags:
+                if plan_tag.lower() not in existing_tags_lower:
+                    tag, _ = Tag.objects.get_or_create(
+                        organization=instance,
+                        tag_name=plan_tag,
+                        tag_group=TAG_GROUP.PLAN,
+                    )
+
         instance.save()
         return instance
 
@@ -891,6 +917,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             "initial_version",
             "parent_plan_id",
             "target_customer_id",
+            "tags",
         )
         extra_kwargs = {
             "plan_name": {"write_only": True},
@@ -901,6 +928,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             "initial_version": {"write_only": True},
             "parent_plan_id": {"write_only": True},
             "target_customer_id": {"write_only": True},
+            "tags": {"write_only": True},
         }
 
     initial_version = InitialPlanVersionSerializer()
@@ -919,6 +947,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
     initial_external_links = InitialExternalPlanLinkSerializer(
         many=True, required=False
     )
+    tags = serializers.ListField(child=serializers.CharField(), required=False)
 
     def validate(self, data):
         # we'll feed the version data into the serializer later, checking now breaks it
@@ -954,10 +983,13 @@ class PlanCreateSerializer(serializers.ModelSerializer):
         display_version_data = validated_data.pop("initial_version")
         initial_external_links = validated_data.get("initial_external_links")
         transition_to_plan_id = validated_data.get("transition_to_plan_id")
+        tags = validated_data.get("tags")
         if initial_external_links:
             validated_data.pop("initial_external_links")
         if transition_to_plan_id:
             display_version_data.pop("transition_to_plan_id")
+        if tags:
+            validated_data.pop("tags")
         plan = Plan.objects.create(**validated_data)
         try:
             display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
@@ -973,6 +1005,26 @@ class PlanCreateSerializer(serializers.ModelSerializer):
                         context={"organization": validated_data["organization"]}
                     ).validate(link_data)
                     ExternalPlanLinkSerializer().create(link_data)
+            if tags and len(tags) > 0:
+                cond = Q(tag_name__iexact=tags[0].lower())
+                for tag in tags[1:]:
+                    cond |= Q(tag_name__iexact=tag.lower())
+                existing_tags = Tag.objects.filter(
+                    cond,
+                    organization=plan.organization,
+                    tag_group=TAG_GROUP.PLAN,
+                )
+                for tag in tags:
+                    if not existing_tags.filter(tag_name__iexact=tag.lower()).exists():
+                        tag_obj = Tag.objects.create(
+                            organization=plan.organization,
+                            tag_name=tag,
+                            tag_name_lower=tag.lower(),
+                            tag_group=TAG_GROUP.PLAN,
+                        )
+                    else:
+                        tag_obj = existing_tags.get(tag_name__iexact=tag.lower())
+                    plan.tags.add(tag_obj)
             plan.display_version = plan_version
             plan.save()
             return plan
@@ -987,9 +1039,20 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
         fields = (
             "plan_name",
             "status",
+            "tags",
         )
+        extra_kwargs = {
+            "plan_name": {"required": False},
+            "status": {"required": False},
+            "tags": {"required": False},
+        }
 
-    status = serializers.ChoiceField(choices=[PLAN_STATUS.ACTIVE, PLAN_STATUS.ARCHIVED])
+    status = serializers.ChoiceField(
+        choices=[PLAN_STATUS.ACTIVE, PLAN_STATUS.ARCHIVED], required=False
+    )
+    tags = serializers.ListField(
+        child=serializers.CharField(), required=False, source=None
+    )
 
     def validate(self, data):
         data = super().validate(data)
@@ -1005,6 +1068,22 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
         instance.status = validated_data.get("status", instance.status)
+        tags = validated_data.get("tags")
+        if tags:
+            tags_lower = [tag.lower() for tag in tags]
+            existing_tags = instance.tags.all()
+            existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
+            for tag in tags:
+                if tag.lower() not in existing_tag_names:
+                    tag_obj, _ = Tag.objects.get_or_create(
+                        organization=instance.organization,
+                        tag_name=tag,
+                        tag_group=TAG_GROUP.PLAN,
+                    )
+                    instance.tags.add(tag_obj)
+            for existing_tag in existing_tags:
+                if existing_tag.tag_name.lower() not in tags_lower:
+                    instance.tags.remove(existing_tag)
         instance.save()
         return instance
 

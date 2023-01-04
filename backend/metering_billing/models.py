@@ -1545,6 +1545,7 @@ class Plan(models.Model):
         related_name="custom_plans",
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
+    tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
 
     history = HistoricalRecords()
 
@@ -2312,3 +2313,25 @@ class AccountsReceivableTransaction(models.Model):
     due = models.DateTimeField(null=True)
     amount = models.DecimalField(max_digits=20, decimal_places=10)
     related_txns = models.ManyToManyField("self")
+
+
+class Tag(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="tags"
+    )
+    tag_name = models.CharField(max_length=50)
+    tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
+
+    def save(self, *args, **kwargs):
+        super(Tag, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.tag_name} [{self.tag_group}]"
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "tag_name", "tag_group"],
+                name="unique_with_tag_group",
+            ),
+        ]

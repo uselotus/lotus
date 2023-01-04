@@ -329,6 +329,135 @@ class TestUpdatePlan:
         assert plan_before == plan_after
         assert plans_inactive_before == plans_inactive_after
 
+    def test_plan_no_tags_before_add_tags(
+        self, plan_test_common_setup, add_subscription_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+
+        # add in the plan, along with initial version
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_version = plan.display_version
+        sub = add_subscription_to_org(
+            setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
+        )
+        plan_obj_before = Plan.objects.all()[0]
+        plan_id = plan_obj_before.plan_id
+        tags_before = plan_obj_before.tags.all().count()
+        payload = {
+            "tags": ["tag1", "tag2"],
+        }
+        response = setup_dict["client"].patch(
+            reverse("plan-detail", kwargs={"plan_id": plan_id}),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan_obj_after = Plan.objects.get(plan_id=response.data["plan_id"])
+        tags_after = plan_obj_after.tags.all()
+        assert response.status_code == status.HTTP_200_OK
+        assert tags_before == 0
+        assert len(tags_after) == 2
+
+    def test_plantags_before_remove_tags(
+        self, plan_test_common_setup, add_subscription_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+
+        # add in the plan, along with initial version
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_version = plan.display_version
+        sub = add_subscription_to_org(
+            setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
+        )
+        plan_obj_before = Plan.objects.all()[0]
+        plan_id = plan_obj_before.plan_id
+        tags_before = plan_obj_before.tags.all().count()
+        payload = {
+            "tags": ["tag1", "tag2"],
+        }
+        response = setup_dict["client"].patch(
+            reverse("plan-detail", kwargs={"plan_id": plan_id}),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan_obj_after = Plan.objects.get(plan_id=response.data["plan_id"])
+        tags_after = plan_obj_after.tags.all()
+        assert response.status_code == status.HTTP_200_OK
+        assert tags_before == 0
+        assert len(tags_after) == 2
+
+        payload = {
+            "tags": ["tag3"],
+        }
+        response = setup_dict["client"].patch(
+            reverse("plan-detail", kwargs={"plan_id": plan_id}),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan_obj_after_remove = Plan.objects.get(plan_id=response.data["plan_id"])
+        tags_after_remove = plan_obj_after_remove.tags.all()
+        assert response.status_code == status.HTTP_200_OK
+        assert len(tags_after_remove) == 1
+        assert "tag3" == tags_after_remove[0].tag_name
+
+    def test_add_tags_with_different_capitalization_dont_add_new(
+        self, plan_test_common_setup, add_subscription_to_org
+    ):
+        setup_dict = plan_test_common_setup()
+
+        # add in the plan, along with initial version
+        response = setup_dict["client"].post(
+            reverse("plan-list"),
+            data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_version = plan.display_version
+        sub = add_subscription_to_org(
+            setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
+        )
+        plan_obj_before = Plan.objects.all()[0]
+        plan_id = plan_obj_before.plan_id
+        tags_before = plan_obj_before.tags.all().count()
+        payload = {
+            "tags": ["tag1", "tag2"],
+        }
+        response = setup_dict["client"].patch(
+            reverse("plan-detail", kwargs={"plan_id": plan_id}),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan_obj_after = Plan.objects.get(plan_id=response.data["plan_id"])
+        tags_after = plan_obj_after.tags.all()
+        assert response.status_code == status.HTTP_200_OK
+        assert tags_before == 0
+        assert len(tags_after) == 2
+
+        payload = {
+            "tags": ["Tag1", "tag2"],
+        }
+        response = setup_dict["client"].patch(
+            reverse("plan-detail", kwargs={"plan_id": plan_id}),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        plan_obj_after_remove = Plan.objects.get(plan_id=response.data["plan_id"])
+        tags_after_remove = plan_obj_after_remove.tags.all()
+        assert response.status_code == status.HTTP_200_OK
+        assert len(tags_after_remove) == 2
+        assert "tag1" in [x.tag_name for x in tags_after_remove]
+        assert "tag2" in [x.tag_name for x in tags_after_remove]
+        assert "Tag1" not in [x.tag_name for x in tags_after_remove]
+
 
 @pytest.mark.django_db(transaction=True)
 class TestUpdatePlanVersion:

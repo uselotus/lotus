@@ -836,6 +836,7 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
             "display_version",
             "num_versions",
             "active_subscriptions",
+            "tags",
         )
         extra_kwargs = {
             "plan_name": {"required": True},
@@ -848,6 +849,7 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
             "display_version": {"required": True},
             "num_versions": {"required": True},
             "active_subscriptions": {"required": True},
+            "tags": {"required": True},
         }
 
     parent_plan = PlanNameAndIDSerializer(allow_null=True)
@@ -862,12 +864,16 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
     external_links = InitialExternalPlanLinkSerializer(
         many=True, help_text="The external links that this plan has."
     )
+    tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
 
     def get_num_versions(self, obj) -> int:
         return len(obj.version_numbers())
 
     def get_active_subscriptions(self, obj) -> int:
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+
+    def get_tags(self, obj) -> serializers.ListField(child=serializers.CharField()):
+        return obj.tags.values_list("tag_name", flat=True)
 
 
 class EventSerializer(serializers.ModelSerializer):
