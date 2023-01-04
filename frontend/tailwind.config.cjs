@@ -1,6 +1,12 @@
 /** @type {import('tailwindcss').Config} */
+const colors = require("tailwindcss/colors");
+
 module.exports = {
-  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./src/**/**/*.{js,jsx,ts,tsx}",
+   
+  ],
   theme: {
     extend: {
       colors: {
@@ -9,8 +15,6 @@ module.exports = {
         // stone, red, orange, yellow, emerald
         // teal, blue, indigo, purple
         // all from tailwind
-        black: "#000000",
-        white: "#FFF",
         gold: "#C3986B",
         primary: {
           primary: "#441151",
@@ -66,14 +70,17 @@ module.exports = {
         info: "#1CA7EC",
         light: "#F9FBFC",
         card: {
-          bg: "#F9F9F9",
+          DEFAULT: "#F9F9F9",
+          divider: "#EAEAEB",
+          text: "#3c3a38",
         },
       },
-      fontFamily: {
-        // add new font family
-        main: ["Inter", "sans-serif"],
-      },
     },
+    fontFamily: {
+      // add new font family
+      main: ["Inter", "sans-serif"],
+    },
+
     screens: {
       sm: "640px",
       md: "768px",

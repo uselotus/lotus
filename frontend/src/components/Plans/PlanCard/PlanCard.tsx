@@ -86,7 +86,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
 
   return (
     <div
-      className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-[#f9f9f9]"
+      className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
       onClick={(e) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
       }}
@@ -108,14 +108,15 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
         {plan.parent_plan !== null ? (
           <Tag color="#C3986B">{plan.parent_plan?.plan_name}</Tag>
         ) : null}
-        <div className="divide-y-2 divide-[#EAEAEB]">
-          <div className="flex mb-2">
-            <div className="pr-1 font-normal  not-italic whitespace-nowrap text-sm  leading-3 text-[#C3986B]">
+        <div>
+          <div className="mb-2">
+            <div className="pr-1 font-normal  not-italic whitespace-nowrap text-sm  leading-3 text-darkgold">
               Total Active Subscriptions: {plan.active_subscriptions}
             </div>
+            <div className=" w-full h-[1.5px] mt-2 bg-card-divider xl:w-3/4" />
           </div>
 
-          <div className="flex items-center text-[#3c3a38] justify-between gap-6 mb-1">
+          <div className="flex items-center text-card-text justify-between gap-2 mb-1">
             <div className=" font-normal whitespace-nowrap leading-4">
               Plan ID
             </div>
@@ -127,22 +128,22 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[#3c3a38] gap-6 mb-1">
+        <div className="flex items-center justify-between text-card-text gap-2 mb-1">
           <div className="font-normal whitespace-nowrap leading-4">
             # of versions:
           </div>
           <div>{plan.num_versions}</div>
         </div>
 
-        <div className="flex items-center justify-between text-[#3c3a38] gap-6 mb-1">
+        <div className="flex items-center justify-between text-card-text gap-2 mb-1">
           <div className="font-normal whitespace-nowrap leading-4">
             Active Versions
           </div>
           <div> v{plan.display_version?.version}</div>
         </div>
 
-        <div className="flex items-center text-[#3c3a38] justify-between gap-6 mb-1">
-          <div className="font-normal text-[#3c3a38] whitespace-nowrap leading-4xs">
+        <div className="flex items-center text-card-text justify-between gap-2 mb-1">
+          <div className="font-normal text-card-text whitespace-nowrap leading-4xs">
             Plan duration:
           </div>
           <div> {capitalize(plan.plan_duration)}</div>
