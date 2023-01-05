@@ -1,5 +1,6 @@
 import collections
 import datetime
+import random
 import uuid
 from collections import namedtuple
 from datetime import timezone
@@ -455,6 +456,10 @@ def customer_balance_adjustment_uuid():
 
 def generic_uuid():
     return str(uuid.uuid4().hex)
+
+
+def random_color():
+    return "#%06x" % random.randint(0, 0xFFFFFF)
 
 
 def date_as_min_dt(date):

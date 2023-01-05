@@ -1,3 +1,4 @@
+import re
 from typing import Optional, Union
 
 from django.conf import settings
@@ -13,6 +14,18 @@ from metering_billing.utils.enums import *
 from rest_framework import serializers
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ("tag_name", "tag_hex", "tag_color")
+
+    def validate(self, data):
+        match = re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", data["tag_hex"])
+        if not match:
+            raise serializers.ValidationError("Invalid hex code")
+        return data
 
 
 class ConvertEmptyStringToSerializerMixin:
@@ -872,8 +885,9 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
     def get_active_subscriptions(self, obj) -> int:
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
 
-    def get_tags(self, obj) -> serializers.ListField(child=serializers.CharField()):
-        return obj.tags.values_list("tag_name", flat=True)
+    def get_tags(self, obj) -> TagSerializer(many=True):
+        data = TagSerializer(obj.tags.all(), many=True).data
+        return data
 
 
 class EventSerializer(serializers.ModelSerializer):

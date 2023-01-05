@@ -349,7 +349,10 @@ class TestUpdatePlan:
         plan_id = plan_obj_before.plan_id
         tags_before = plan_obj_before.tags.all().count()
         payload = {
-            "tags": ["tag1", "tag2"],
+            "tags": [
+                {"tag_name": "test_tag1", "tag_color": "blue", "tag_hex": "#ffffff"},
+                {"tag_name": "test_tag2", "tag_color": "red", "tag_hex": "#ffffff"},
+            ]
         }
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan_id}),
@@ -382,7 +385,10 @@ class TestUpdatePlan:
         plan_id = plan_obj_before.plan_id
         tags_before = plan_obj_before.tags.all().count()
         payload = {
-            "tags": ["tag1", "tag2"],
+            "tags": [
+                {"tag_name": "test_tag1", "tag_color": "blue", "tag_hex": "#ffffff"},
+                {"tag_name": "test_tag2", "tag_color": "red", "tag_hex": "#ffffff"},
+            ]
         }
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan_id}),
@@ -396,7 +402,9 @@ class TestUpdatePlan:
         assert len(tags_after) == 2
 
         payload = {
-            "tags": ["tag3"],
+            "tags": [
+                {"tag_name": "test_tag3", "tag_color": "orange", "tag_hex": "#123456"},
+            ]
         }
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan_id}),
@@ -407,7 +415,7 @@ class TestUpdatePlan:
         tags_after_remove = plan_obj_after_remove.tags.all()
         assert response.status_code == status.HTTP_200_OK
         assert len(tags_after_remove) == 1
-        assert "tag3" == tags_after_remove[0].tag_name
+        assert "test_tag3" == tags_after_remove[0].tag_name
 
     def test_add_tags_with_different_capitalization_dont_add_new(
         self, plan_test_common_setup, add_subscription_to_org
@@ -429,7 +437,10 @@ class TestUpdatePlan:
         plan_id = plan_obj_before.plan_id
         tags_before = plan_obj_before.tags.all().count()
         payload = {
-            "tags": ["tag1", "tag2"],
+            "tags": [
+                {"tag_name": "test_tag1", "tag_color": "blue", "tag_hex": "#ffffff"},
+                {"tag_name": "test_tag2", "tag_color": "red", "tag_hex": "#ffffff"},
+            ]
         }
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan_id}),
@@ -443,7 +454,10 @@ class TestUpdatePlan:
         assert len(tags_after) == 2
 
         payload = {
-            "tags": ["Tag1", "tag2"],
+            "tags": [
+                {"tag_name": "Test_tag1", "tag_color": "green", "tag_hex": "#abcdef"},
+                {"tag_name": "test_tag2", "tag_color": "red", "tag_hex": "#ffffff"},
+            ]
         }
         response = setup_dict["client"].patch(
             reverse("plan-detail", kwargs={"plan_id": plan_id}),
@@ -454,9 +468,9 @@ class TestUpdatePlan:
         tags_after_remove = plan_obj_after_remove.tags.all()
         assert response.status_code == status.HTTP_200_OK
         assert len(tags_after_remove) == 2
-        assert "tag1" in [x.tag_name for x in tags_after_remove]
-        assert "tag2" in [x.tag_name for x in tags_after_remove]
-        assert "Tag1" not in [x.tag_name for x in tags_after_remove]
+        assert "test_tag1" in [x.tag_name for x in tags_after_remove]
+        assert "test_tag2" in [x.tag_name for x in tags_after_remove]
+        assert "Test_tag1" not in [x.tag_name for x in tags_after_remove]
 
 
 @pytest.mark.django_db(transaction=True)

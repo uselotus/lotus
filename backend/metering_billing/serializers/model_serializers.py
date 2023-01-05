@@ -23,6 +23,10 @@ from rest_framework.exceptions import APIException, ValidationError
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
+class TagSerializer(api_serializers.TagSerializer):
+    pass
+
+
 class OrganizationUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -106,12 +110,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
             PricingUnit.objects.filter(organization=obj), many=True
         ).data
 
-    def get_plan_tags(
-        self, obj
-    ) -> serializers.ListField(child=serializers.CharField()):
-        return obj.tags.filter(tag_group=TAG_GROUP.PLAN).values_list(
-            "tag_name", flat=True
-        )
+    def get_plan_tags(self, obj) -> TagSerializer(many=True):
+        data = TagSerializer(obj.tags.filter(tag_group=TAG_GROUP.PLAN), many=True).data
+        return data
 
 
 class APITokenSerializer(serializers.ModelSerializer):
@@ -147,7 +148,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
-    plan_tags = serializers.ListField(child=serializers.CharField(), required=False)
+    plan_tags = serializers.ListField(child=TagSerializer(), required=False)
 
     def update(self, instance, validated_data):
         assert (
@@ -164,18 +165,20 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             instance.properties = new_properties
         plan_tags = validated_data.pop("plan_tags", None)
         if plan_tags:
-            plan_tags_lower = [x.lower() for x in plan_tags]
+            plan_tag_names_lower = [x["tag_name"].lower() for x in plan_tags]
             existing_tags = instance.tags.filter(tag_group=TAG_GROUP.PLAN)
             existing_tags_lower = [x.tag_name.lower() for x in existing_tags]
             for tag in existing_tags:
-                if tag.tag_name.lower() not in plan_tags_lower:
+                if tag.tag_name.lower() not in plan_tag_names_lower:
                     tag.delete()
             for plan_tag in plan_tags:
-                if plan_tag.lower() not in existing_tags_lower:
+                if plan_tag["tag_name"].lower() not in existing_tags_lower:
                     tag, _ = Tag.objects.get_or_create(
                         organization=instance,
-                        tag_name=plan_tag,
+                        tag_name=plan_tag["tag_name"],
                         tag_group=TAG_GROUP.PLAN,
+                        tag_hex=plan_tag["tag_hex"],
+                        tag_color=plan_tag["tag_color"],
                     )
 
         instance.save()
@@ -947,7 +950,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
     initial_external_links = InitialExternalPlanLinkSerializer(
         many=True, required=False
     )
-    tags = serializers.ListField(child=serializers.CharField(), required=False)
+    tags = serializers.ListField(child=TagSerializer(), required=False)
 
     def validate(self, data):
         # we'll feed the version data into the serializer later, checking now breaks it
@@ -1006,24 +1009,29 @@ class PlanCreateSerializer(serializers.ModelSerializer):
                     ).validate(link_data)
                     ExternalPlanLinkSerializer().create(link_data)
             if tags and len(tags) > 0:
-                cond = Q(tag_name__iexact=tags[0].lower())
+                cond = Q(tag_name__iexact=tags[0]["tag_name"].lower())
                 for tag in tags[1:]:
-                    cond |= Q(tag_name__iexact=tag.lower())
+                    cond |= Q(tag_name__iexact=tag["tag_name"].lower())
                 existing_tags = Tag.objects.filter(
                     cond,
                     organization=plan.organization,
                     tag_group=TAG_GROUP.PLAN,
                 )
                 for tag in tags:
-                    if not existing_tags.filter(tag_name__iexact=tag.lower()).exists():
+                    if not existing_tags.filter(
+                        tag_name__iexact=tag["tag_name"].lower()
+                    ).exists():
                         tag_obj = Tag.objects.create(
                             organization=plan.organization,
-                            tag_name=tag,
-                            tag_name_lower=tag.lower(),
+                            tag_name=tag["tag_name"],
                             tag_group=TAG_GROUP.PLAN,
+                            tag_color=tag["tag_color"],
+                            tag_hex=tag["tag_hex"],
                         )
                     else:
-                        tag_obj = existing_tags.get(tag_name__iexact=tag.lower())
+                        tag_obj = existing_tags.get(
+                            tag_name__iexact=tag["tag_name"].lower()
+                        )
                     plan.tags.add(tag_obj)
             plan.display_version = plan_version
             plan.save()
@@ -1050,9 +1058,7 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
     status = serializers.ChoiceField(
         choices=[PLAN_STATUS.ACTIVE, PLAN_STATUS.ARCHIVED], required=False
     )
-    tags = serializers.ListField(
-        child=serializers.CharField(), required=False, source=None
-    )
+    tags = serializers.ListField(child=TagSerializer(), required=False, source=None)
 
     def validate(self, data):
         data = super().validate(data)
@@ -1070,15 +1076,17 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
         instance.status = validated_data.get("status", instance.status)
         tags = validated_data.get("tags")
         if tags:
-            tags_lower = [tag.lower() for tag in tags]
+            tags_lower = [tag["tag_name"].lower() for tag in tags]
             existing_tags = instance.tags.all()
             existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
             for tag in tags:
-                if tag.lower() not in existing_tag_names:
+                if tag["tag_name"].lower() not in existing_tag_names:
                     tag_obj, _ = Tag.objects.get_or_create(
                         organization=instance.organization,
-                        tag_name=tag,
+                        tag_name=tag["tag_name"],
                         tag_group=TAG_GROUP.PLAN,
+                        tag_hex=tag["tag_hex"],
+                        tag_color=tag["tag_color"],
                     )
                     instance.tags.add(tag_obj)
             for existing_tag in existing_tags:

@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
@@ -64,7 +65,12 @@ class TestOrganizationTags:
         setup_dict = org_test_common_setup()
         org = setup_dict["org"]
         client = setup_dict["client"]
-        payload = {"plan_tags": ["test_tag1", "test_tag2"]}
+        payload = {
+            "plan_tags": [
+                {"tag_name": "test_tag1", "tag_color": "blue", "tag_hex": "#ffffff"},
+                {"tag_name": "test_tag2", "tag_color": "red", "tag_hex": "#ffffff"},
+            ]
+        }
         response = client.patch(
             reverse(
                 "organization-detail",
@@ -73,6 +79,7 @@ class TestOrganizationTags:
             payload,
             format="json",
         )
+        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         assert sorted(
             list(
@@ -89,7 +96,12 @@ class TestOrganizationTags:
         setup_dict = org_test_common_setup()
         org = setup_dict["org"]
         client = setup_dict["client"]
-        payload = {"plan_tags": ["test_tag1", "test_tag2"]}
+        payload = {
+            "plan_tags": [
+                {"tag_name": "test_tag1", "tag_color": "blue", "tag_hex": "#ffffff"},
+                {"tag_name": "test_tag2", "tag_color": "red", "tag_hex": "#ffffff"},
+            ]
+        }
         response = client.patch(
             reverse(
                 "organization-detail",
@@ -109,7 +121,11 @@ class TestOrganizationTags:
             "test_tag1",
             "test_tag2",
         ]
-        payload = {"plan_tags": ["test_tag1"]}
+        payload = {
+            "plan_tags": [
+                {"tag_name": "test_tag1", "tag_color": "blue", "tag_hex": "#ffffff"},
+            ]
+        }
         response = client.patch(
             reverse(
                 "organization-detail",

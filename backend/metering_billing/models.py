@@ -35,7 +35,6 @@ from metering_billing.utils import (
     date_as_min_dt,
     dates_bwn_two_dts,
     event_uuid,
-    get_granularity_ratio,
     metric_uuid,
     now_plus_day,
     now_utc,
@@ -44,6 +43,7 @@ from metering_billing.utils import (
     plan_uuid,
     plan_version_uuid,
     product_uuid,
+    random_color,
     subscription_record_uuid,
     subscription_uuid,
     webhook_endpoint_uuid,
@@ -2321,9 +2321,8 @@ class Tag(models.Model):
     )
     tag_name = models.CharField(max_length=50)
     tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
-
-    def save(self, *args, **kwargs):
-        super(Tag, self).save(*args, **kwargs)
+    tag_hex = models.CharField(max_length=7, null=True)
+    tag_color = models.CharField(max_length=20, null=True)
 
     def __str__(self):
         return f"{self.tag_name} [{self.tag_group}]"
