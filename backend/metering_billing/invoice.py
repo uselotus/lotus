@@ -223,10 +223,7 @@ def generate_invoice(
                         organization=organization,
                     )
 
-        before_cost = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
         apply_taxes(invoice, customer, organization)
-        after_cost = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
-        print(f"before cost: {before_cost}, after cost: {after_cost}")
         apply_customer_balance_adjustments(invoice, customer, organization, draft)
 
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
@@ -276,40 +273,36 @@ def apply_taxes(invoice, customer, organization):
 
     if invoice.payment_status == INVOICE_STATUS.PAID:
         return
-    if customer.tax_rate is not None:
-        if customer.tax_rate > 0:
-            current_subtotal = (
-                invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
-            )
-            tax_amount = current_subtotal * (customer.tax_rate / Decimal(100))
-            InvoiceLineItem.objects.create(
-                name=f"{customer.customer_id[:90]} Tax Rate",
-                start_date=invoice.issue_date,
-                end_date=invoice.issue_date,
-                quantity=None,
-                subtotal=tax_amount,
-                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
-                invoice=invoice,
-                organization=invoice.organization,
-            )
-    elif organization.tax_rate is not None:
-        if organization.tax_rate > 0:
-            current_subtotal = (
-                invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
-            )
-            tax_amount = current_subtotal * (organization.tax_rate / Decimal(100))
-            InvoiceLineItem.objects.create(
-                name=f"{organization.company_name[:90]} Tax Rate",
-                start_date=invoice.issue_date,
-                end_date=invoice.issue_date,
-                quantity=None,
-                subtotal=tax_amount,
-                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
-                invoice=invoice,
-                organization=invoice.organization,
-            )
+    if customer.tax_rate is None and organization.tax_rate is None:
+        return
+    associated_subscription_records = invoice.line_items.values_list(
+        "associated_subscription_record", flat=True
+    ).distinct()
+    for sr in associated_subscription_records:
+        current_subtotal = (
+            invoice.line_items.filter(associated_subscription_record=sr).aggregate(
+                tot=Sum("subtotal")
+            )["tot"]
+            or 0
+        )
+        if customer.tax_rate is not None:
+            tax_rate = customer.tax_rate
+        elif organization.tax_rate is not None:
+            tax_rate = organization.tax_rate
+        name = f"Tax - {round(tax_rate, 2)}%"
+        tax_amount = current_subtotal * (tax_rate / Decimal(100))
+        InvoiceLineItem.objects.create(
+            name=name,
+            start_date=invoice.issue_date,
+            end_date=invoice.issue_date,
+            quantity=None,
+            subtotal=tax_amount,
+            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+            chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
+            invoice=invoice,
+            organization=invoice.organization,
+            associated_subscription_record_id=sr,
+        )
 
 
 def apply_customer_balance_adjustments(invoice, customer, organization, draft):
