@@ -2,11 +2,14 @@ from __future__ import absolute_import
 
 import datetime
 from decimal import Decimal
+from io import BytesIO
 
 import lotus_python
 from dateutil.relativedelta import relativedelta
+from django.core.files.base import ContentFile
 from django.conf import settings
 from django.db.models import Sum
+from django.forms.models import model_to_dict
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -26,9 +29,11 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
 )
 from metering_billing.webhooks import invoice_created_webhook
+from metering_billing.invoice_pdf import generate_invoice_pdf
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
+DEBUG = settings.DEBUG
 # LOTUS_HOST = settings.LOTUS_HOST
 # LOTUS_API_KEY = settings.LOTUS_API_KEY
 # if LOTUS_HOST and LOTUS_API_KEY:
@@ -51,7 +56,9 @@ def generate_invoice(
         CustomerBalanceAdjustment,
         Invoice,
         InvoiceLineItem,
+        Customer,
         SubscriptionRecord,
+        Organization,
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
@@ -60,6 +67,8 @@ def generate_invoice(
 
     customer = subscription.customer
     organization = subscription.organization
+    organization_model = Organization.objects.get(id=organization.id)
+    customer_model = Customer.objects.get(id=customer.id)
     try:
         _ = (e for e in subscription_records)
     except TypeError:
@@ -230,6 +239,7 @@ def generate_invoice(
         if abs(invoice.cost_due) < 0.01 and not draft:
             invoice.payment_status = INVOICE_STATUS.PAID
         invoice.save()
+
         if not draft:
             for pp in customer.integrations.keys():
                 if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
@@ -242,6 +252,7 @@ def generate_invoice(
                         )
                         invoice.external_payment_obj_type = pp
                         invoice.save()
+
                         break
             for subscription_record in subscription_records:
                 subscription_record.fully_billed = True
@@ -259,8 +270,19 @@ def generate_invoice(
             #         'external_type': invoice.external_payment_obj_type,
             #         },
             # )
+            line_items = invoice.line_items.all()
+            pdf_url = generate_invoice_pdf(
+                invoice,
+                model_to_dict(organization_model),
+                model_to_dict(customer_model),
+                line_items,
+                BytesIO(),
+            )
+            invoice.invoice_pdf = pdf_url
+            print(pdf_url)
+            invoice.save()
             invoice_created_webhook(invoice, organization)
-        invoices.append(invoice)
+            invoices.append(invoice)
 
     return invoices
 
