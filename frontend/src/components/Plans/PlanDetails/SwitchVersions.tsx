@@ -12,7 +12,7 @@ import {
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
 import StateTabs from "./StateTabs";
-import { Dropdown, Menu, Button } from "antd";
+import { Dropdown, Menu, Button, Typography } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 // @ts-ignore
 import dayjs from "dayjs";
@@ -42,7 +42,7 @@ function getPriceAdjustmentEnding(
     case "price_override":
       return `${code} ${amount}`;
     default:
-      return "No Adjustment";
+      return "No adjustment added";
   }
 }
 
@@ -73,6 +73,18 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
     (tags: PlanType["tags"]) =>
       Plan.updatePlan(plan.plan_id, {
         tags,
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+      },
+    }
+  );
+  const updateBillingFrequency = useMutation(
+    (plan_duration: "monthly" | "quarterly" | "yearly") =>
+      Plan.updatePlan(plan.plan_id, {
+        plan_duration,
       }),
     {
       onSuccess: () => {
@@ -160,7 +172,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         </div>
 
         <div className="px-4 py-2">
-          <PlanComponents components={selectedVersion.components} />
+          <PlanComponents updateBillingFrequencyMutation={updateBillingFrequency.mutate} plan={plan} components={selectedVersion.components} />
         </div>
         <div className="px-4 py-2">
           <PlanFeatures features={selectedVersion.features} />
@@ -168,16 +180,17 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
 
         <div className="separator pt-4" />
 
-        <div className="px-4 py-4 flex justify-start align-middle ">
-          <div className="pb-5 pt-3 font-main font-bold text-[20px]">
-            Price Adjustments:
-          </div>
-          <div className="mb-5 mt-3 px-4 font-main font-bold text-[20px] self-center">
-            {getPriceAdjustmentEnding(
-              selectedVersion.price_adjustment?.price_adjustment_type,
-              selectedVersion.price_adjustment?.price_adjustment_amount,
-              selectedVersion.currency.symbol
-            )}
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
+          <Typography.Title level={2}>Price Adjustments</Typography.Title>
+          <div className="mb-5 mt-3 px-4 font-main self-center">
+            <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+            <div className="text-card-grey">
+              {getPriceAdjustmentEnding(
+                selectedVersion.price_adjustment?.price_adjustment_type,
+                selectedVersion.price_adjustment?.price_adjustment_amount,
+                selectedVersion.currency.symbol
+              )}
+            </div>
           </div>
         </div>
 

@@ -194,16 +194,7 @@ const PlanDetails: FC = () => {
                 <div>
                   {plan.plan_name}
                   <span className="block mt-4 text-neutral-500 text-base">
-                    {plan.display_version.description} + usage based pricing on{" "}
-                    {createDescription(
-                      plan.display_version.components
-                        .map(
-                          (component) =>
-                            `${component.billable_metric.property_name} and `
-                        )
-                        .join("")
-                        .split(" ")
-                    )}
+                    {plan.display_version.description}
                   </span>
                 </div>
               )

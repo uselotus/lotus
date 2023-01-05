@@ -21,8 +21,13 @@ import CopyText from "../../base/CopytoClipboard";
 import dayjs from "dayjs";
 import useVersionStore from "../../../stores/useVersionStore";
 import Badge from "../../base/Badges/Badges";
+import Select from "../../base/Select/Select";
 interface PlanComponentsProps {
   components?: Component[];
+  plan: PlanType;
+  updateBillingFrequencyMutation: (
+    billing_frequency: "monthly" | "quarterly" | "yearly"
+  ) => void;
 }
 export const tagList = [
   { color: "text-tags-lg", hex: "#065F46", text: "Documentation" },
@@ -80,7 +85,7 @@ export const PlanSummary = ({
   const inputRef = useRef<HTMLInputElement | null>(null!);
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
-      <Typography.Title className="pt-4 whitespace-pre-wrap" level={3}>
+      <Typography.Title className="pt-4 whitespace-pre-wrap" level={2}>
         Summary
       </Typography.Title>
 
@@ -92,7 +97,9 @@ export const PlanSummary = ({
           </div>
           <div className="flex gap-1">
             {" "}
-            <div>{createShortenedText(plan.plan_id)}</div>
+            <div className="!text-card-grey">
+              {createShortenedText(plan.plan_id)}
+            </div>
             <CopyText showIcon onlyIcon textToCopy={plan.plan_id} />
           </div>
         </div>
@@ -101,7 +108,7 @@ export const PlanSummary = ({
           <div className="font-normal whitespace-nowrap leading-4">
             Total Active Subscriptions
           </div>
-          <div>{plan.active_subscriptions}</div>
+          <div className="!text-card-grey">{plan.active_subscriptions}</div>
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
@@ -177,24 +184,21 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
       return str;
     }
   };
-  const schedule = (day: Number) => {
-    if (day >= 1 && day <= 10) {
-      return "Start of Month";
-    } else if (day >= 11 && day <= 20) {
-      return "Middle of Month";
-    } else {
-      return "End of Month";
-    }
-  };
-  console.log(
-    Number(dayjs(version.created_on).format("YYYY/MM/DD").split("/")[2])
-  );
-  console.log(dayjs(version?.created_on).day());
+  // const schedule = (day: Number) => {
+  //   if (day >= 1 && day <= 10) {
+  //     return "Start of Month";
+  //   } else if (day >= 11 && day <= 20) {
+  //     return "Middle of Month";
+  //   } else {
+  //     return "End of Month";
+  //   }
+  // };
+
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
       <Typography.Title
         className="pt-4 whitespace-pre-wrap grid gap-4 items-center grid-cols-1 md:grid-cols-2"
-        level={3}
+        level={2}
       >
         <div>Plan Information</div>
         <div>
@@ -224,14 +228,19 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             <div className="font-normal whitespace-nowrap leading-4">
               Plan Duration
             </div>
-            <div>{capitalize(plan.plan_duration)}</div>
+            <div className="!text-card-grey">
+              {capitalize(plan.plan_duration)}
+            </div>
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
             <div className="font-normal whitespace-nowrap leading-4">
               Created At
             </div>
-            <div> {dayjs(version?.created_on).format("YYYY/MM/DD")}</div>
+            <div className="!text-card-grey">
+              {" "}
+              {dayjs(version?.created_on).format("YYYY/MM/DD")}
+            </div>
           </div>
         </div>
 
@@ -242,7 +251,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             </div>
             <div className="flex gap-1 ">
               {" "}
-              <div>
+              <div className="!text-card-grey">
                 {version?.transition_to
                   ? capitalize(version.transition_to)
                   : "Self"}
@@ -273,13 +282,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             </div>
             <div>
               {" "}
-              <span>
-                {schedule(
-                  Number(
-                    dayjs(version.created_on).format("YYYY/MM/DD").split("/")[2]
-                  )
-                )}
-              </span>
+              <span>–</span>
             </div>
           </div>
         </div>
@@ -287,61 +290,98 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
     </div>
   );
 };
-const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
+const PlanComponents: FC<PlanComponentsProps> = ({
+  components,
+  plan,
+  updateBillingFrequencyMutation,
+}) => {
+  const selectRef = useRef<HTMLSelectElement | null>(null!);
+
   return (
     <div className="">
-      <div className="pb-5 pt-3 font-main font-bold text-[20px]">
-        Components:
-      </div>
       {components && components.length > 0 ? (
-        <div className="flex items-stretch justify-start flex-wrap">
-          {components.map((component) => (
-            <div className="pt-2 pb-4 bg-[#FAFAFA] mr-4 mb-2 px-8 border-2 border-solid border-[#EAEAEB]">
-              <div className="planDetails planComponentMetricName text-[20px] text-[#1d1d1fd9]">
-                <div> {component.billable_metric.metric_name}</div>
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
+          <Typography.Title className="pt-4 whitespace-pre-wrap" level={2}>
+            Added Components
+          </Typography.Title>
+          <div>
+            <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+          </div>
+          <div className="grid gap-2 grid-cols-1 xl:grid-cols-2">
+            {components.map((component) => (
+              <div className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px]">
+                <div className="text-base text-card-text">
+                  <div> {component.billable_metric.metric_name}</div>
+                </div>
+                <div>
+                  <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+                  <Table
+                    dataSource={component.tiers}
+                    pagination={false}
+                    showHeader={false}
+                    bordered={false}
+                    className="noborderTable"
+                    size="middle"
+                    columns={[
+                      {
+                        title: "Range",
+                        dataIndex: "range_start",
+                        key: "range_start",
+                        align: "left",
+                        width: "50%",
+                        className: "bg-primary-50 pointer-events-none",
+                        render: (value: any, record: any) => (
+                          <span>
+                            From {value} to{" "}
+                            {record.range_end == null ? "∞" : record.range_end}
+                          </span>
+                        ),
+                      },
+                      {
+                        title: "Cost",
+                        align: "left",
+                        dataIndex: "cost_per_batch",
+                        key: "cost_per_batch",
+                        className:
+                          "bg-primary-50 pointer-events-none !text-card-grey",
+                        render: (value: any, record: any) => (
+                          <div>
+                            {renderCost(record, component.pricing_unit)}
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
               </div>
-              <div>
-                <Table
-                  dataSource={component.tiers}
-                  pagination={false}
-                  showHeader={false}
-                  bordered={false}
-                  rowClassName="bg-[#FAFAFA]"
-                  className="bg-background noborderTable"
-                  style={{ color: "blue" }}
-                  size="middle"
-                  columns={[
-                    {
-                      title: "Range",
-                      dataIndex: "range_start",
-                      key: "range_start",
-                      align: "left",
-                      width: "50%",
-                      render: (value: any, record: any) => (
-                        <span>
-                          From {value} to{" "}
-                          {record.range_end == null ? "∞" : record.range_end}
-                        </span>
-                      ),
-                    },
-                    {
-                      title: "Cost",
-                      align: "left",
-                      dataIndex: "cost_per_batch",
-                      key: "cost_per_batch",
-                      render: (value: any, record: any) => (
-                        <div>{renderCost(record, component.pricing_unit)}</div>
-                      ),
-                    },
-                  ]}
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          {/* <div>
+            <Select>
+              <Select.Label className="after:content-['*'] after:ml-0.5 after:text-red-500">
+                Billing Frequency
+              </Select.Label>
+              <Select.Select
+                onChange={(e) => {
+                  updateBillingFrequencyMutation(
+                    e.target.value as "monthly" | "quarterly" | "yearly"
+                  );
+                }}
+                ref={selectRef}
+              >
+                <Select.Option selected>{plan.plan_duration}</Select.Option>
+                {["quarterly", "yearly"].map((el) => (
+                  <Select.Option>{el}</Select.Option>
+                ))}
+              </Select.Select>
+            </Select>
+          </div> */}
         </div>
       ) : (
-        <div className="flex items-center justify-start flex-wrap">
-          No components
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
+          <Typography.Title level={2}>Added Components</Typography.Title>
+          <div className="w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+          <div className="text-card-grey text-base">No components added</div>
         </div>
       )}
     </div>

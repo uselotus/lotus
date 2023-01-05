@@ -192,5 +192,6 @@ export interface ReplaceLaterType extends PlanVersionUpdateType {
 export interface UpdatePlanType {
   plan_name?: string;
   status?: "active" | "archived";
-  tags?:  PlanType["tags"];
+  plan_duration?: "monthly" | "quarterly" | "yearly";
+  tags?: PlanType["tags"];
 }

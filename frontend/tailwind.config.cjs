@@ -80,6 +80,7 @@ module.exports = {
           DEFAULT: "#F9F9F9",
           divider: "#EAEAEB",
           text: "#3c3a38",
+          grey: "#707070",
         },
       },
     },
