@@ -19,7 +19,7 @@ export interface PlanType {
   active_subscriptions: number;
 }
 
-export interface PlanDetailType extends Omit<PlanType, "display_version"> {
+export interface PlanDetailType extends PlanType {
   versions: PlanVersionType[];
 }
 

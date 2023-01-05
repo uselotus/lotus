@@ -94,9 +94,10 @@ const ViewPlans: FC = () => {
           type="primary"
           size="large"
           key="create-plan"
+          style={{ background: "#C3986B", borderColor: "#C3986B" }}
         >
           <div className="flex items-center  justify-between text-white">
-            <div>Create new Plan</div>
+            <div>Create Plan</div>
             <ArrowRightOutlined className="pl-2" />
           </div>
         </Button>,

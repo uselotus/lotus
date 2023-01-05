@@ -5,7 +5,7 @@ module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
     "./src/**/**/*.{js,jsx,ts,tsx}",
-   
+    "./src/**/**/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
     extend: {
@@ -15,7 +15,7 @@ module.exports = {
         // stone, red, orange, yellow, emerald
         // teal, blue, indigo, purple
         // all from tailwind
-        gold: "#C3986B",
+
         primary: {
           primary: "#441151",
           50: "#f9f5f0",
@@ -30,6 +30,7 @@ module.exports = {
           900: "#171717",
         },
         gold: {
+          DEFAULT: "#c3986b",
           50: "#fafafa",
           100: "#f5f5f5",
           200: "#e5e5e5",

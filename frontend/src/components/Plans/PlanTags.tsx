@@ -1,6 +1,6 @@
 import React from "react";
-import Badge from "../../base/Badges/Badges";
-import { tagList } from "./PlanCard";
+import Badge from "../base/Badges/Badges";
+import { tagList } from "./PlanCard/PlanCard";
 interface PlanTagsProps {
   userTags: typeof tagList;
 }

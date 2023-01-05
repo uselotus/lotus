@@ -6,11 +6,27 @@ const headingText: string =
   import.meta.env.VITE_IS_DEMO === "true"
     ? "Welcome To The Lotus Cloud Demo"
     : "";
-
-export const PageLayout = ({ children, ...props }: PageHeaderProps) => {
+interface PageLayoutProps extends PageHeaderProps {
+  hasBackButton?: boolean;
+  backButton?: React.ReactNode;
+}
+export const PageLayout = ({
+  children,
+  hasBackButton,
+  backButton,
+  ...props
+}: PageLayoutProps) => {
   return (
     <div>
-      <PageHeader title={<h1 className=" text-xl">{headingText}</h1>} />
+      {/* {hasBackButton && backButton} */}
+      <PageHeader
+        title={
+          <div>
+            {backButton}
+            <h1 className=" text-xl">{headingText}</h1>
+          </div>
+        }
+      />
       <div className="mx-10 mt-10">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (

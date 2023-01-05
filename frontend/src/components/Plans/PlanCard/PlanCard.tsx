@@ -10,9 +10,9 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import CopyText from "../../base/CopytoClipboard";
 import DropdownComponent from "../../base/Dropdown/Dropdown";
-import createShortenedText from "./createShortenedText";
-import capitalize from "./capitalize";
-import PlansTags from "./PlanTags";
+import createShortenedText from "../helpers/createShortenedText";
+import capitalize from "../helpers/capitalize";
+import PlansTags from "../PlanTags";
 import Badge from "../../base/Badges/Badges";
 interface PlanCardProps {
   plan: PlanType;

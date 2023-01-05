@@ -3,6 +3,7 @@ import type { InputRef } from "antd";
 import { Input, Tag, Tooltip } from "antd";
 // @ts-ignore
 import React, { useEffect, useRef, useState, memo } from "react";
+import Badge from "../base/Badges/Badges";
 
 interface LinkExternalIdsProps {
   externalIds: string[];
@@ -82,9 +83,12 @@ const LinksExternalIds: React.FC<LinkExternalIdsProps> = ({
         />
       )}
       {!inputVisible && (
-        <Tag className="site-tag-plus" onClick={() => setInputVisible(true)}>
-          <PlusOutlined /> Link External IDs
-        </Tag>
+        <Badge
+          onClick={() => setInputVisible(true)}
+          className="bg-[#E0E7FF] text-[#3730A3]"
+        >
+          <Badge.Content>Link External IDs</Badge.Content>
+        </Badge>
       )}
     </>
   );
