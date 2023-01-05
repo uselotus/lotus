@@ -35,7 +35,7 @@ export const AppCard = ({
           ) : !selfHosted ? (
             <Tag
               color="default"
-              onClick={handleClick}
+              onClick={title === "Stripe" ? handleClick : () => {}}
               style={{ cursor: "pointer" }}
             >
               Connect

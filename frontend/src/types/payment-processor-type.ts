@@ -31,4 +31,9 @@ export const integrationsMap = {
     icon: "https://i.imgur.com/iNCQmMu.png",
     description: "Sync data to your Snowflake warehouse",
   },
+  salesforce: {
+    name: "Salesforce",
+    icon: "https://imgur.com/a/UQZc8iH",
+    description: "Sync data to your Salesforce account",
+  },
 };
