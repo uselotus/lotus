@@ -7,6 +7,9 @@ from reportlab.lib.pagesizes import letter
 from datetime import datetime
 from io import BytesIO
 from django.forms.models import model_to_dict
+from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
+
+
 import os
 
 
@@ -228,8 +231,12 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
         grouped_line_items[key].append(line_item)
 
     line_item_start_y = 290
+    taxes = []
     for group in grouped_line_items:
         for line_item_model in grouped_line_items[group]:
+            if line_item_model.chargeable_item_type == CHARGEABLE_ITEM_TYPE.TAX:
+                taxes.append(line_item_model)
+                continue
             line_item = model_to_dict(line_item_model)
             line_item_start_y = write_line_item(
                 doc,
@@ -245,6 +252,21 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
                 doc.showPage()
                 line_item_start_y = 40
 
+    for tax_line_item in taxes:
+        line_item = model_to_dict(tax_line_item)
+        line_item_start_y = write_line_item(
+            doc,
+            line_item["name"],
+            transform_date(line_item["start_date"]),
+            transform_date(line_item["end_date"]),
+            line_item["quantity"],
+            line_item["subtotal"],
+            currency["symbol"],
+            line_item_start_y,
+        )
+        if line_item_start_y > 680:
+            doc.showPage()
+            line_item_start_y = 40
     write_total(
         doc, currency["symbol"], round(invoice["cost_due"], 2), line_item_start_y
     )
