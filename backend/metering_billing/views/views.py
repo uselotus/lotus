@@ -168,7 +168,7 @@ class CostAnalysisView(APIView):
         cost_metrics = Metric.objects.filter(
             organization=organization, is_cost_metric=True
         )
-        for metric in cost_metrics:
+        for metric in []:
             usage_ret = metric.get_usage(
                 start_date,
                 end_date,
