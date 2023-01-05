@@ -69,6 +69,7 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 ###TODO: write this
 # def save_pdf_to_s3()
 
+
 class Organization(models.Model):
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
     company_name = models.CharField(max_length=100, blank=False, null=False)
@@ -1276,7 +1277,7 @@ class Invoice(models.Model):
         blank=True,
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
-    invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
+    invoice_pdf = models.URLField(max_length=300, null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(
@@ -1320,7 +1321,6 @@ class Invoice(models.Model):
             )
         if not self.currency:
             self.currency = self.organization.default_currency
-        
 
         ### Generate invoice number
         if not self.pk and self.payment_status != INVOICE_STATUS.DRAFT:

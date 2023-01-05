@@ -238,4 +238,4 @@ class TestGenerateInvoice:
 
         assert len(result_invoices) == 1
 
-        assert False
+        assert result_invoices[0].invoice_pdf != ""

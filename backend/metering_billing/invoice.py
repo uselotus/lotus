@@ -318,16 +318,16 @@ def generate_invoice(
             #         },
             # )
             line_items = invoice.line_items.all()
-            pdf_buffer = generate_invoice_pdf(
+            pdf_url = generate_invoice_pdf(
                 invoice,
                 model_to_dict(organization_model),
                 model_to_dict(customer_model),
                 line_items,
                 BytesIO(),
             )
-            # invoice_pdf_file = ContentFile(pdf_buffer.read(), "invoice.pdf")
-            # invoice.invoice_pdf = invoice_pdf_file
-            # invoice.save()
+            invoice.invoice_pdf = pdf_url
+            print(pdf_url)
+            invoice.save()
             invoice_created_webhook(invoice, organization)
             invoices.append(invoice)
 

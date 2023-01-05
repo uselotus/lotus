@@ -132,7 +132,6 @@ INSTALLED_APPS = [
     "metering_billing",
     "actstream",
     "drf_standardized_errors",
-    "storages",
 ]
 
 SITE_ID = 1
@@ -458,17 +457,9 @@ AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
 AWS_S3_INVOICE_BUCKET = config("AWS_S3_INVOICE_BUCKET", default="")
 AWS_STORAGE_BUCKET_NAME = AWS_S3_INVOICE_BUCKET
 
-if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_INVOICE_BUCKET:
-    AWS_S3_CUSTOM_DOMAIN = "%s.s3.amazonaws.com" % AWS_STORAGE_BUCKET_NAME
-    AWS_S3_OBJECT_PARAMETERS = {
-        "CacheControl": "max-age=86400",
-    }
-    AWS_LOCATION = "static"
-    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/"
-    STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-else:
-    STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-    STATIC_URL = "static/"
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_URL = "static/"
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_FINDERS = [
