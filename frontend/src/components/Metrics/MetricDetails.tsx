@@ -23,7 +23,6 @@ const operatorDisplayMap = new Map<string, string>([
 
 const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
   const queryClient = useQueryClient();
-  console.log(metric);
   const mutation = useMutation(
     (metric_id: string) => Metrics.archiveMetric(metric_id),
     {
@@ -33,9 +32,9 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
         onclose();
       },
 
-      onError: (error) => {
+      onError: (error: any) => {
         console.log(error);
-        toast.error(error.response.detail);
+        toast.error(error.response.data.detail);
       },
     }
   );
