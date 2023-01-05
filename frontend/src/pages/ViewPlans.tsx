@@ -62,7 +62,18 @@ const ViewPlans: FC = () => {
     setQuarterlyPlans(quarterlystandard);
     setQuarterlyCustom(quarterlycustom);
   };
-
+  const createTag = useMutation(
+    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+      Plan.updatePlan(plan_id, {
+        tags,
+      }),
+    {
+      onSuccess: (_, { plan_id }) => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan_id]);
+      },
+    }
+  );
   const { data, isLoading, isError }: UseQueryResult<PlanType[]> = useQuery<
     PlanType[]
   >(
@@ -107,7 +118,11 @@ const ViewPlans: FC = () => {
         <Tabs.TabPane tab="All" key="0">
           <div className="grid gap-4  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             {allPlans?.map((item, key) => (
-              <PlanCard plan={item} key={key} />
+              <PlanCard
+                createTagMutation={createTag.mutate}
+                plan={item}
+                key={key}
+              />
             ))}
 
             <div>
@@ -115,7 +130,11 @@ const ViewPlans: FC = () => {
 
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {allCustom?.map((item, key) => (
-                  <PlanCard plan={item} key={key} />
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
               </div>
             </div>
@@ -125,7 +144,11 @@ const ViewPlans: FC = () => {
         <Tabs.TabPane tab="Monthly" key="1">
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             {monthlyPlans?.map((item, key) => (
-              <PlanCard plan={item} key={key} />
+              <PlanCard
+                createTagMutation={createTag.mutate}
+                plan={item}
+                key={key}
+              />
             ))}
 
             <div>
@@ -133,7 +156,11 @@ const ViewPlans: FC = () => {
 
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {monthlyCustom?.map((item, key) => (
-                  <PlanCard plan={item} key={key} />
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
               </div>
             </div>
@@ -142,14 +169,22 @@ const ViewPlans: FC = () => {
         <Tabs.TabPane tab="Quarterly" key="2">
           <div className="grid gap-4  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             {quarterlyPlans?.map((item, key) => (
-              <PlanCard plan={item} key={key} />
+              <PlanCard
+                createTagMutation={createTag.mutate}
+                plan={item}
+                key={key}
+              />
             ))}
 
             <div>
               {quarterlyCustom?.length > 0 && <h2>Custom Plans</h2>}
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {quarterlyCustom?.map((item, key) => (
-                  <PlanCard plan={item} key={key} />
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
               </div>
             </div>
@@ -158,14 +193,22 @@ const ViewPlans: FC = () => {
         <Tabs.TabPane tab="Yearly" key="3">
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             {yearlyPlans?.map((item, key) => (
-              <PlanCard plan={item} key={key} />
+              <PlanCard
+                createTagMutation={createTag.mutate}
+                plan={item}
+                key={key}
+              />
             ))}
 
             <div>
               {yearlyCustom?.length > 0 && <h2>Custom Plans</h2>}
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {yearlyCustom?.map((item, key) => (
-                  <PlanCard plan={item} key={key} />
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
               </div>
             </div>

@@ -1,7 +1,7 @@
 // @ts-ignore
-import React, { FC, useEffect } from "react";
+import React, { FC, useRef } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
-import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
+import { DeleteOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
@@ -16,31 +16,16 @@ import PlansTags from "../PlanTags";
 import Badge from "../../base/Badges/Badges";
 interface PlanCardProps {
   plan: PlanType;
+  createTagMutation: (variables: {
+    plan_id: string;
+    tags: PlanType["tags"];
+  }) => void;
 }
-export const tagList = [
-  { color: "#065F46", hex: "#065F46", text: "Documentation" },
-  {
-    color: "text-emerald",
-    hex: "#A7F3D0",
-    text: "API Calls",
-  },
-  {
-    color: "text-indigo-600",
-    hex: "#4F46E5",
-    text: "Metrics",
-  },
-  {
-    color: "text-orange-400",
-    hex: "#FB923C",
-    text: "Words",
-  },
-];
 
-const PlanCard: FC<PlanCardProps> = ({ plan }) => {
+const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [userTags, setUserTags] = React.useState<typeof tagList>([]);
-
+  const inputRef = useRef<HTMLInputElement | null>(null!);
   const mutation = useMutation(
     (plan_id: string) =>
       Plan.updatePlan(plan_id, {
@@ -149,33 +134,41 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
           <div> {capitalize(plan.plan_duration)}</div>
         </div>
         <div className="flex mt-2">
-          {/* <DropdownComponent>
+          <DropdownComponent>
             <DropdownComponent.Trigger>
-              <PlansTags userTags={userTags} />
+              <PlansTags tags={plan.tags} />
             </DropdownComponent.Trigger>
             <DropdownComponent.Container>
-              {tagList.map((tag, index) => (
-                <DropdownComponent.MenuItem
-                  onSelect={() => {
-                    const tags = [...userTags];
-                    tags.push(tag);
-                    setUserTags(tags);
-                  }}
-                >
-                  <span key={index} className="flex gap-2 ">
-                    <svg
-                      className={["-ml-1 mr-1.5 h-4 w-4", tag.color].join(" ")}
-                      fill={tag.hex}
-                      viewBox="0 0 8 8"
-                    >
-                      <circle cx="4" cy="4" r="3" />
-                    </svg>
-                    <span className="text-black">{tag.text}</span>
-                  </span>
-                </DropdownComponent.MenuItem>
-              ))}
+              {plan.tags &&
+                plan.tags.map((tag, index) => (
+                  <DropdownComponent.MenuItem
+                    onSelect={() => {
+                      // should actually serve as delete
+                      const tags = [...plan.tags];
+                    }}
+                  >
+                    <span key={index} className="flex gap-2 justify-between">
+                      <span className="text-black">{tag} </span>
+                      <CheckCircleOutlined className="!text-gold" />
+                    </span>
+                  </DropdownComponent.MenuItem>
+                ))}
+              <DropdownComponent.MenuItem
+                onSelect={() => {
+                  const tags = [...plan.tags];
+                  tags.push(inputRef.current!.value);
+                  createTagMutation({ plan_id: plan.plan_id, tags });
+                }}
+              >
+                <input
+                  type="text"
+                  className="text-black outline-none"
+                  placeholder="Custom tag..."
+                  ref={inputRef}
+                />
+              </DropdownComponent.MenuItem>
             </DropdownComponent.Container>
-          </DropdownComponent> */}
+          </DropdownComponent>
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ export interface PlanType {
   display_version: PlanVersionType;
   num_versions: number;
   active_subscriptions: number;
+  tags: string[];
 }
 
 export interface PlanDetailType extends PlanType {
@@ -191,4 +192,5 @@ export interface ReplaceLaterType extends PlanVersionUpdateType {
 export interface UpdatePlanType {
   plan_name?: string;
   status?: "active" | "archived";
+  tags?:  PlanType["tags"];
 }

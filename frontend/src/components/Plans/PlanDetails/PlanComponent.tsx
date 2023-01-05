@@ -1,11 +1,13 @@
 // @ts-ignore
-import React, { FC } from "react";
+import React, { FC, useRef } from "react";
 import "./PlanDetails.css";
 import { Table, Typography, Tag } from "antd";
+import { CheckCircleOutlined } from "@ant-design/icons";
 import StateTabs from "./StateTabs";
 import {
   Component,
   PlanDetailType,
+  PlanType,
   PlanVersionType,
   Tier,
 } from "../../../types/plan-type";
@@ -23,7 +25,7 @@ interface PlanComponentsProps {
   components?: Component[];
 }
 export const tagList = [
-  { color: "#065F46", hex: "#065F46", text: "Documentation" },
+  { color: "text-tags-lg", hex: "#065F46", text: "Documentation" },
   {
     color: "text-emerald",
     hex: "#A7F3D0",
@@ -64,17 +66,18 @@ const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
   }
 };
 interface PlanSummaryProps {
-  createPlanExternalLink: VoidFunction;
-  deletePlanExternalLink: VoidFunction;
+  createPlanExternalLink: (link: string) => void;
+  deletePlanExternalLink: (link: string) => void;
   plan: PlanDetailType;
+  createTagMutation: (variables: string[]) => void;
 }
 export const PlanSummary = ({
   plan,
+  createTagMutation,
   createPlanExternalLink,
   deletePlanExternalLink,
 }: PlanSummaryProps) => {
-  const [userTags, setUserTags] = React.useState<typeof tagList>([]);
-
+  const inputRef = useRef<HTMLInputElement | null>(null!);
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
       <Typography.Title className="pt-4 whitespace-pre-wrap" level={3}>
@@ -121,31 +124,36 @@ export const PlanSummary = ({
             {" "}
             <DropdownComponent>
               <DropdownComponent.Trigger>
-                <PlansTags userTags={userTags} />
+                <PlansTags tags={plan.tags} />
               </DropdownComponent.Trigger>
               <DropdownComponent.Container>
-                {tagList.map((tag, index) => (
-                  <DropdownComponent.MenuItem
-                    onSelect={() => {
-                      const tags = [...userTags];
-                      tags.push(tag);
-                      setUserTags(tags);
-                    }}
-                  >
-                    <span key={index} className="flex gap-2 ">
-                      <svg
-                        className={["-ml-1 mr-1.5 h-4 w-4", tag.color].join(
-                          " "
-                        )}
-                        fill={tag.hex}
-                        viewBox="0 0 8 8"
-                      >
-                        <circle cx="4" cy="4" r="3" />
-                      </svg>
-                      <span className="text-black">{tag.text}</span>
-                    </span>
-                  </DropdownComponent.MenuItem>
-                ))}
+                {plan.tags &&
+                  plan.tags.map((tag, index) => (
+                    <DropdownComponent.MenuItem
+                      onSelect={() => {
+                        //should actually serve as a delete
+                      }}
+                    >
+                      <span key={index} className="flex gap-2 justify-between">
+                        <span className="text-black">{tag} </span>
+                        <CheckCircleOutlined className="!text-gold" />
+                      </span>
+                    </DropdownComponent.MenuItem>
+                  ))}
+                <DropdownComponent.MenuItem
+                  onSelect={() => {
+                    const tags = [...plan.tags];
+                    tags.push(inputRef.current!.value);
+                    createTagMutation(tags);
+                  }}
+                >
+                  <input
+                    type="text"
+                    className="text-black outline-none"
+                    placeholder="Custom tag..."
+                    ref={inputRef}
+                  />
+                </DropdownComponent.MenuItem>
               </DropdownComponent.Container>
             </DropdownComponent>
           </div>
@@ -159,12 +167,6 @@ interface PlanInfoProps {
   plan: PlanDetailType;
 }
 export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
-  console.log(
-    plan.display_version.flat_fee_billing_type
-      .split("_")
-      .map((el) => capitalize(el))
-      .join(" ")
-  );
   const constructBillType = (str: string) => {
     if (str.includes("_")) {
       return str
@@ -175,6 +177,19 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
       return str;
     }
   };
+  const schedule = (day: Number) => {
+    if (day >= 1 && day <= 10) {
+      return "Start of Month";
+    } else if (day >= 11 && day <= 20) {
+      return "Middle of Month";
+    } else {
+      return "End of Month";
+    }
+  };
+  console.log(
+    Number(dayjs(version.created_on).format("YYYY/MM/DD").split("/")[2])
+  );
+  console.log(dayjs(version?.created_on).day());
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
       <Typography.Title
@@ -201,7 +216,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             </div>
             <div className="flex gap-1">
               {" "}
-              <div className="text-[#C3986B]">{`${plan.display_version.currency.symbol}${plan.display_version.flat_rate}`}</div>
+              <div className="text-gold">{`${plan.display_version.currency.symbol}${plan.display_version.flat_rate}`}</div>
             </div>
           </div>
 
@@ -258,7 +273,13 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             </div>
             <div>
               {" "}
-              <span>Start of Month</span>
+              <span>
+                {schedule(
+                  Number(
+                    dayjs(version.created_on).format("YYYY/MM/DD").split("/")[2]
+                  )
+                )}
+              </span>
             </div>
           </div>
         </div>

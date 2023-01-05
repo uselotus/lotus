@@ -151,7 +151,6 @@ const PlanDetails: FC = () => {
     ["plan_detail", planId],
     () =>
       Plan.getPlan(planId as string).then((res) => {
-        console.log("resr",res);
         return res;
       }),
     { refetchOnMount: "always" }
@@ -246,6 +245,8 @@ const PlanDetails: FC = () => {
             {plan.versions.length > 0 && (
               <SwitchVersions
                 versions={plan.versions}
+                createPlanExternalLink={createPlanExternalLink}
+                deletePlanExternalLink={deletePlanExternalLink}
                 plan={plan}
                 className="flex items-center mx-10 my-5"
               />

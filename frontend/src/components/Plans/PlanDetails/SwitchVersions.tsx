@@ -4,7 +4,11 @@ import shallow from "zustand/shallow";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-import { PlanDetailType, PlanVersionType } from "../../../types/plan-type";
+import {
+  PlanDetailType,
+  PlanType,
+  PlanVersionType,
+} from "../../../types/plan-type";
 import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
 import StateTabs from "./StateTabs";
@@ -20,6 +24,8 @@ interface SwitchVersionProps {
   versions: PlanVersionType[];
   plan: PlanDetailType;
   className: string;
+  createPlanExternalLink: (link: string) => void;
+  deletePlanExternalLink: (link: string) => void;
 }
 
 //function that takes in a string and returns a string based on the cases of the string equals percentage, flat, or override
@@ -47,6 +53,8 @@ function capitalize(word: string) {
 const SwitchVersions: FC<SwitchVersionProps> = ({
   versions,
   plan,
+  createPlanExternalLink,
+  deletePlanExternalLink,
   className,
 }) => {
   const activePlanVersion = versions.find((x) => x.status === "active");
@@ -61,7 +69,18 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
 
   const isSelectedVersion = (other_id: string) =>
     selectedVersion.version_id === other_id;
-
+  const createTag = useMutation(
+    (tags: PlanType["tags"]) =>
+      Plan.updatePlan(plan.plan_id, {
+        tags,
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+      },
+    }
+  );
   const archivemutation = useMutation(
     (version_id: string) =>
       Plan.archivePlanVersion(version_id, { status: "archived" }),
@@ -130,8 +149,9 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           <div className="col-span-1">
             <PlanSummary
               plan={plan}
-              createPlanExternalLink={() => {}}
-              deletePlanExternalLink={() => {}}
+              createPlanExternalLink={createPlanExternalLink}
+              createTagMutation={createTag.mutate}
+              deletePlanExternalLink={deletePlanExternalLink}
             />
           </div>
           <div className="col-span-2">

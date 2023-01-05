@@ -1,43 +1,39 @@
 import React from "react";
+import { PlanType } from "../../types/plan-type";
 import Badge from "../base/Badges/Badges";
-import { tagList } from "./PlanCard/PlanCard";
+
 interface PlanTagsProps {
-  userTags: typeof tagList;
+  tags: PlanType["tags"];
 }
 
-const PlansTags = ({ userTags }: PlanTagsProps) => {
+const PlansTags = ({ tags }: PlanTagsProps) => {
   return (
     <>
-      {!userTags.length ? (
+      {!tags.length ? (
         <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-2 py-0.5">
           <Badge.Content>+ Add Tag</Badge.Content>
         </Badge>
       ) : (
         <span className="flex">
-          {userTags.length >= 3 ? (
+          {tags.length >= 3 ? (
             <span className="flex gap-2">
-              {userTags.slice(0, 2).map((el) => (
+              {tags.slice(0, 2).map((tag) => (
                 <span className="flex gap-2">
                   <Badge
                     className={
                       "text-[12px] px-2 py-0.5 bg-white text-black whitespace-nowrap"
                     }
                   >
-                    <Badge.Dot style={{ color: el.hex }} />
-                    <Badge.Content> {el.text}</Badge.Content>
+                    <Badge.Content> {tag}</Badge.Content>
                   </Badge>
                 </span>
               ))}
-              <span className="whitespace-nowrap">
-                {" "}
-                +{userTags.length} tags
-              </span>
+              <span className="whitespace-nowrap"> +{tags.length} tags</span>
             </span>
           ) : (
-            userTags.map((el) => (
+            tags.map((tag) => (
               <Badge className={"text-[12px] px-2 py-0.5 bg-white text-black"}>
-                <Badge.Dot style={{ color: el.hex }} />
-                <Badge.Content> {el.text}</Badge.Content>
+                <Badge.Content> {tag}</Badge.Content>
               </Badge>
             ))
           )}

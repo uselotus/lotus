@@ -1,4 +1,4 @@
-import React, { PropsWithChildren, useEffect } from "react";
+import React, { PropsWithChildren, ReactElement, useEffect } from "react";
 type TSelected = React.ReactNode | string;
 interface DropdownProps {
   className?: string;
@@ -55,9 +55,9 @@ const Container: React.FC<PropsWithChildren<DropdownProps>> = ({
         <div
           className={
             !className
-              ? "absolute right-0 z-10 mt-2  w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none "
+              ? "absolute right-0 z-10 mt-2  m-w-64 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none "
               : [
-                  "absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none",
+                  "absolute right-0 z-10 mt-2 m-w-64 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none",
                   className,
                 ].join(" ")
           }
@@ -92,10 +92,20 @@ const MenuItem: React.FC<PropsWithChildren<DropdownProps>> = ({
       }
       role="menuitem"
       tabIndex={-1}
+      onKeyDown={(e) => {
+        let element = children as unknown as { type: string };
+        if (element.type === "input" && e.key === "Enter") {
+          onSelect && onSelect(isOpen, selected);
+          closeHandler(children);
+        }
+      }}
       onClick={(e) => {
         e.preventDefault();
-        onSelect!(isOpen, selected);
-        closeHandler(children);
+        let element = children as unknown as { type: string };
+        if (element.type !== "input") {
+          onSelect!(isOpen, selected);
+          closeHandler(children);
+        }
       }}
     >
       {children}

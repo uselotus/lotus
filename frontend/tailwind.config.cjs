@@ -3,9 +3,12 @@ const colors = require("tailwindcss/colors");
 
 module.exports = {
   content: [
+    "./src/components/*.{js,jsx,ts,tsx}",
+    "./src/components/**/*.{js,jsx,ts,tsx}",
+    "./src/components/**/**/*.{js,jsx,ts,tsx}",
+    "./src/pages/*.{js,jsx,ts,tsx}",
     "./src/**/*.{js,jsx,ts,tsx}",
-    "./src/**/**/*.{js,jsx,ts,tsx}",
-    "./src/**/**/**/*.{js,jsx,ts,tsx}",
+    "./index.html",
   ],
   theme: {
     extend: {
@@ -28,6 +31,9 @@ module.exports = {
           700: "#cfad89",
           800: "#c9a27a",
           900: "#171717",
+        },
+        tags: {
+          lg: "#065F46",
         },
         gold: {
           DEFAULT: "#c3986b",
