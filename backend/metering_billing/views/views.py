@@ -449,11 +449,15 @@ class CustomersSummaryView(APIView):
         """
         organization = request.organization
         logger.debug(f"CustomersSummaryView: {organization}, {request.user}")
+        now = now_utc()
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",
                 queryset=SubscriptionRecord.objects.filter(
-                    organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+                    organization=organization,
+                    status=SUBSCRIPTION_STATUS.ACTIVE,
+                    end_date__gte=now,
+                    start_date__lte=now,
                 ),
                 to_attr="subscriptions",
             ),
