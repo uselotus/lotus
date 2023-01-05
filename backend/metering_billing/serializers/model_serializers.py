@@ -77,6 +77,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "users",
             "default_currency",
             "available_currencies",
+            "tax_rate",
         )
 
     users = serializers.SerializerMethodField()
@@ -132,7 +133,7 @@ class APITokenSerializer(serializers.ModelSerializer):
 class OrganizationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("default_currency_code", "address")
+        fields = ("default_currency_code", "address", "tax_rate")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
@@ -152,6 +153,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             cur_properties = instance.properties or {}
             new_properties = {**cur_properties, "address": address}
             instance.properties = new_properties
+        instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
         instance.save()
         return instance
 
@@ -305,6 +307,9 @@ class CustomerSerializer(api_serializers.CustomerSerializer):
     def update(self, instance, validated_data, behavior="merge"):
         instance.customer_id = validated_data.get(
             "customer_id", instance.customer_id if behavior == "merge" else None
+        )
+        instance.tax_rate = validated_data.get(
+            "tax_rate", instance.tax_rate if behavior == "merge" else None
         )
         instance.customer_name = validated_data.get(
             "customer_name", instance.customer_name if behavior == "merge" else None

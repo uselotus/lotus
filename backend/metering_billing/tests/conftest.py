@@ -57,7 +57,7 @@ def generate_org_and_api_key():
     from metering_billing.models import APIToken, Organization
 
     def do_generate_org_and_api_key():
-        organization = baker.make(Organization)
+        organization = baker.make(Organization, tax_rate=None)
         _, key = APIToken.objects.create_key(
             name="test-api-key", organization=organization
         )
@@ -77,6 +77,7 @@ def add_customers_to_org():
             organization=organization,
             customer_id=uuid.uuid4,
             customer_name="test_customer",
+            tax_rate=None,
         )
         return customer_set
 

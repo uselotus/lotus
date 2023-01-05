@@ -216,6 +216,7 @@ class CHARGEABLE_ITEM_TYPE(models.TextChoices):
     ONE_TIME_CHARGE = ("one_time_charge", _("One Time Charge"))
     PLAN_ADJUSTMENT = ("plan_adjustment", _("Plan Adjustment"))
     CUSTOMER_ADJUSTMENT = ("customer_adjustment", _("Customer Adjustment"))
+    TAX = ("tax", _("Tax"))
 
 
 SUPPORTED_CURRENCIES = [

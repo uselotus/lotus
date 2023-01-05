@@ -1,6 +1,7 @@
 import { Avatar, Card, Tag } from "antd";
 import React from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 
 type Props = {
   title: string;
@@ -35,7 +36,13 @@ export const AppCard = ({
           ) : !selfHosted ? (
             <Tag
               color="default"
-              onClick={title === "Stripe" ? handleClick : () => {}}
+              onClick={
+                title === "Stripe"
+                  ? handleClick
+                  : () => {
+                      toast.error("Upgrade to get access to this integration");
+                    }
+              }
               style={{ cursor: "pointer" }}
             >
               Connect
