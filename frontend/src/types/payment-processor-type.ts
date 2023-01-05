@@ -33,7 +33,7 @@ export const integrationsMap = {
   },
   salesforce: {
     name: "Salesforce",
-    icon: "https://imgur.com/a/UQZc8iH",
+    icon: "https://imgur.com/a/UQZc8iH.png",
     description: "Sync data to your Salesforce account",
   },
 };
