@@ -45,7 +45,7 @@ const GeneralTab: FC = () => {
   const org = useGlobalStore((state) => state.org);
   const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
   const [currentCurrency, setCurrentCurrency] = useState("");
-
+  const [taxRate, setTaxRate] = useState(0);
   const {
     data: pricingUnits,
     isLoading: pricingUnitsLoading,
@@ -68,6 +68,12 @@ const GeneralTab: FC = () => {
         ) {
           setCurrentCurrency(res[0].default_currency.code);
         }
+        if (res[0].tax_rate === null) {
+          setTaxRate(0);
+        } else {
+          setTaxRate(res[0].tax_rate);
+        }
+
         return res[0];
       }),
     {
@@ -117,8 +123,16 @@ const GeneralTab: FC = () => {
   );
 
   const updateOrg = useMutation(
-    (obj: { org_id: string; default_currency_code: string }) =>
-      Organization.updateOrganization(obj.org_id, obj.default_currency_code),
+    (obj: {
+      org_id: string;
+      default_currency_code: string;
+      tax_rate: number;
+    }) =>
+      Organization.updateOrganization(
+        obj.org_id,
+        obj.default_currency_code,
+        obj.tax_rate
+      ),
     {
       onSuccess: () => {
         toast.success("Successfully Updated Default Currency", {
@@ -181,7 +195,7 @@ const GeneralTab: FC = () => {
             <b>Invoice Grace Period:</b> 15 days
           </p>
           <p className="text-[16px]">
-            <b>Organization Tax Rate:</b> 0%
+            <b>Organization Tax Rate:</b> {taxRate}%
           </p>
 
           <div className=" flex justify-end"></div>
@@ -197,6 +211,7 @@ const GeneralTab: FC = () => {
             updateOrg.mutate({
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
+              tax_rate: taxRate,
             });
             form.resetFields();
           }
@@ -231,6 +246,16 @@ const GeneralTab: FC = () => {
                 options={pricingUnits?.map((pc) => {
                   return { label: `${pc.name} ${pc.symbol}`, value: pc.code };
                 })}
+              />
+            </Form.Item>
+            <Form.Item label="Tax Rate" name="tax_rate">
+              <Input
+                type="number"
+                step=".01"
+                onChange={(e) =>
+                  setTaxRate(e.target.value as unknown as number)
+                }
+                defaultValue={taxRate}
               />
             </Form.Item>
             <Form.Item label="Billing Address" name="billing_address">

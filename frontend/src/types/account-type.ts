@@ -24,6 +24,7 @@ export interface OrganizationType {
   default_currency: PricingUnit;
   available_currencies: PricingUnit[];
   organization_id: string;
+  tax_rate: null | number;
 }
 
 export interface ActionUserType extends UserType {
