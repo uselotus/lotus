@@ -32,6 +32,7 @@ from metering_billing.invoice_pdf import generate_invoice_pdf
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
+DEBUG = settings.DEBUG
 # LOTUS_HOST = settings.LOTUS_HOST
 # LOTUS_API_KEY = settings.LOTUS_API_KEY
 # if LOTUS_HOST and LOTUS_API_KEY:

@@ -41,7 +41,7 @@ def write_seller_details(
     doc, name, line1, city, state, country, postal_code, number, email
 ):
     doc.setFont("Times-Bold", FONT_M)
-    doc.drawString(75, 130, name)
+    doc.drawString(75, 130, name[:12] + "...")
     doc.setFont("Times-Roman", FONT_XS)
     doc.drawString(75, 145, line1)
     doc.drawString(75, 160, f"{city} {state}, {postal_code}")
@@ -74,7 +74,7 @@ def write_invoice_details(doc, invoice_number, issue_date, due_date):
 
 
 def write_summary_header(doc):
-    doc.setFont("Times-Roman", FONT_XL)
+    doc.setFont("Times-Roman", FONT_L)
     doc.drawString(75, 255, "Summary")
     doc.setFont("Times-Roman", FONT_S)
     doc.setFillColor("gray")
@@ -114,8 +114,16 @@ def write_line_item(
     )
     doc.setFont("Times-Roman", FONT_S)
     doc.setFillColor("black")
-    doc.drawString(350, datespan_offset, str(quantity))
-    doc.drawString(475, datespan_offset, f"{currency_symbol}{str(subtotal)}")
+    if quantity:
+        new_quantity = "{:g}".format(float(quantity))
+        doc.drawString(350, datespan_offset, str(new_quantity))
+    else:
+        doc.drawString(350, datespan_offset, str(quantity))
+    if subtotal:
+        new_subtotal = "{:g}".format(float(subtotal))
+        doc.drawString(475, datespan_offset, f"{currency_symbol}{str(new_subtotal)}")
+    else:
+        doc.drawString(475, datespan_offset, f"{currency_symbol}{str(subtotal)}")
     doc.setFillColor("black")
     draw_hr(doc, line_item_start + 45)
     return line_item_start + 45
