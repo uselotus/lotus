@@ -376,7 +376,7 @@ class StripeConnector(PaymentProvider):
                 "start": int(line_item.start_date.timestamp()),
                 "end": int(line_item.end_date.timestamp()),
             }
-            tax_behavior = "exclusive"
+            tax_behavior = "inclusive"
             sr = line_item.associated_subscription_record
             metadata = {
                 "plan_name": sr.billing_plan.plan.plan_name,
