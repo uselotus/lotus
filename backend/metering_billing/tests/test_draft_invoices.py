@@ -228,6 +228,37 @@ class TestGenerateInvoice:
         after_cost = response.data["invoices"][0]["cost_due"]
         assert Decimal("20") == after_cost
 
+    def test_generate_invoice_with_taxes(self, draft_invoice_test_common_setup):
+        setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
+
+        active_subscriptions = Subscription.objects.active().filter(
+            organization=setup_dict["org"],
+            customer=setup_dict["customer"],
+        )
+        assert len(active_subscriptions) == 1
+
+        payload = {
+            "customer_id": setup_dict["customer"].customer_id,
+            "include_next_period": False,
+        }
+        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        assert response.status_code == status.HTTP_200_OK
+        before_cost = response.data["invoices"][0]["cost_due"]
+
+        setup_dict["org"].tax_rate = Decimal("10")
+        setup_dict["org"].save()
+        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        assert response.status_code == status.HTTP_200_OK
+        after_cost = response.data["invoices"][0]["cost_due"]
+        assert (before_cost * Decimal("1.1") - after_cost) < Decimal("0.01")
+
+        setup_dict["customer"].tax_rate = Decimal("20")
+        setup_dict["customer"].save()
+        response = setup_dict["client"].get(reverse("draft_invoice"), payload)
+        assert response.status_code == status.HTTP_200_OK
+        after_cost = response.data["invoices"][0]["cost_due"]
+        assert (before_cost * Decimal("1.2") - after_cost) < Decimal("0.01")
+
 
 @pytest.fixture
 def schedule_invoice_test_common_setup(

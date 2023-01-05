@@ -86,6 +86,16 @@ class Organization(models.Model):
     properties = models.JSONField(default=dict, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    tax_rate = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        validators=[
+            MinValueValidator(Decimal(0)),
+            MaxValueValidator(Decimal(999.9999)),
+        ],
+        help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
+        null=True,
+    )
     history = HistoricalRecords()
 
     def __str__(self):
@@ -373,6 +383,16 @@ class Customer(models.Model):
         null=True,
         blank=True,
         help_text="The currency the customer will be invoiced in",
+    )
+    tax_rate = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        validators=[
+            MinValueValidator(Decimal(0)),
+            MaxValueValidator(Decimal(999.9999)),
+        ],
+        help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
+        null=True,
     )
     history = HistoricalRecords()
 

@@ -51,14 +51,12 @@ def generate_invoice(
         CustomerBalanceAdjustment,
         Invoice,
         InvoiceLineItem,
-        PlanVersion,
         SubscriptionRecord,
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
     if not issue_date:
         issue_date = now_utc()
-    issue_date_fmt = issue_date.strftime("%Y-%m-%d")
 
     customer = subscription.customer
     organization = subscription.organization
@@ -225,52 +223,11 @@ def generate_invoice(
                         organization=organization,
                     )
 
-        subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
-        if subtotal < 0:
-            InvoiceLineItem.objects.create(
-                name=f"{subscription.subscription_id} Customer Balance Adjustment",
-                start_date=issue_date,
-                end_date=issue_date,
-                quantity=None,
-                subtotal=-subtotal,
-                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
-                invoice=invoice,
-                organization=organization,
-            )
-            if not draft:
-                CustomerBalanceAdjustment.objects.create(
-                    organization=organization,
-                    customer=customer,
-                    amount=-subtotal,
-                    description=f"Balance increase from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
-                    created=issue_date,
-                    effective_at=issue_date,
-                    status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
-                )
-        elif subtotal > 0:
-            customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(
-                customer
-            )
-            balance_adjustment = min(subtotal, customer_balance)
-            if balance_adjustment > 0 and not draft:
-                leftover = CustomerBalanceAdjustment.draw_down_amount(
-                    customer,
-                    balance_adjustment,
-                    description=f"Balance decrease from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
-                )
-                if -balance_adjustment + leftover != 0:
-                    InvoiceLineItem.objects.create(
-                        name=f"{subscription.subscription_id} Customer Balance Adjustment",
-                        start_date=issue_date,
-                        end_date=issue_date,
-                        quantity=None,
-                        subtotal=-balance_adjustment + leftover,
-                        billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
-                        chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
-                        invoice=invoice,
-                        organization=organization,
-                    )
+        before_cost = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+        apply_taxes(invoice, customer, organization)
+        after_cost = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+        print(f"before cost: {before_cost}, after cost: {after_cost}")
+        apply_customer_balance_adjustments(invoice, customer, organization, draft)
 
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
         if abs(invoice.cost_due) < 0.01 and not draft:
@@ -309,3 +266,106 @@ def generate_invoice(
         invoices.append(invoice)
 
     return invoices
+
+
+def apply_taxes(invoice, customer, organization):
+    """
+    Apply taxes to an invoice
+    """
+    from metering_billing.models import InvoiceLineItem
+
+    if invoice.payment_status == INVOICE_STATUS.PAID:
+        return
+    if customer.tax_rate is not None:
+        if customer.tax_rate > 0:
+            current_subtotal = (
+                invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+            )
+            tax_amount = current_subtotal * (customer.tax_rate / Decimal(100))
+            InvoiceLineItem.objects.create(
+                name=f"{customer.customer_id[:90]} Tax Rate",
+                start_date=invoice.issue_date,
+                end_date=invoice.issue_date,
+                quantity=None,
+                subtotal=tax_amount,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
+                invoice=invoice,
+                organization=invoice.organization,
+            )
+    elif organization.tax_rate is not None:
+        if organization.tax_rate > 0:
+            current_subtotal = (
+                invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+            )
+            tax_amount = current_subtotal * (organization.tax_rate / Decimal(100))
+            InvoiceLineItem.objects.create(
+                name=f"{organization.company_name[:90]} Tax Rate",
+                start_date=invoice.issue_date,
+                end_date=invoice.issue_date,
+                quantity=None,
+                subtotal=tax_amount,
+                billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                chargeable_item_type=CHARGEABLE_ITEM_TYPE.TAX,
+                invoice=invoice,
+                organization=invoice.organization,
+            )
+
+
+def apply_customer_balance_adjustments(invoice, customer, organization, draft):
+    """
+    Apply customer balance adjustments to an invoice
+    """
+    from metering_billing.models import CustomerBalanceAdjustment, InvoiceLineItem
+
+    issue_date = invoice.issue_date
+    issue_date_fmt = issue_date.strftime("%Y-%m-%d")
+    if invoice.payment_status == INVOICE_STATUS.PAID:
+        return
+    subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+    if subtotal < 0:
+        InvoiceLineItem.objects.create(
+            name=f"Balance Adjustment [CREDIT]",
+            start_date=invoice.issue_date,
+            end_date=invoice.issue_date,
+            quantity=None,
+            subtotal=-subtotal,
+            billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+            chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
+            invoice=invoice,
+            organization=organization,
+        )
+        if not draft:
+            CustomerBalanceAdjustment.objects.create(
+                organization=organization,
+                customer=customer,
+                amount=-subtotal,
+                description=f"Balance increase from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
+                created=issue_date,
+                effective_at=issue_date,
+                status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+            )
+    elif subtotal > 0:
+        customer_balance = CustomerBalanceAdjustment.get_pricing_unit_balance(customer)
+        balance_adjustment = min(subtotal, customer_balance)
+        if balance_adjustment > 0:
+            if draft:
+                leftover = 0
+            else:
+                leftover = CustomerBalanceAdjustment.draw_down_amount(
+                    customer,
+                    balance_adjustment,
+                    description=f"Balance decrease from invoice {invoice.invoice_number} generated on {issue_date_fmt}",
+                )
+            if -balance_adjustment + leftover != 0:
+                InvoiceLineItem.objects.create(
+                    name=f"Balance Adjustment [DEBIT]",
+                    start_date=issue_date,
+                    end_date=issue_date,
+                    quantity=None,
+                    subtotal=-balance_adjustment + leftover,
+                    billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+                    chargeable_item_type=CHARGEABLE_ITEM_TYPE.CUSTOMER_ADJUSTMENT,
+                    invoice=invoice,
+                    organization=organization,
+                )
