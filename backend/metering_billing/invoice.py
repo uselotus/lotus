@@ -325,9 +325,9 @@ def generate_invoice(
                 line_items,
                 BytesIO(),
             )
-            invoice_pdf_file = ContentFile(pdf_buffer.read(), "invoice.pdf")
-            invoice.invoice_pdf = invoice_pdf_file
-            invoice.save()
+            # invoice_pdf_file = ContentFile(pdf_buffer.read(), "invoice.pdf")
+            # invoice.invoice_pdf = invoice_pdf_file
+            # invoice.save()
             invoice_created_webhook(invoice, organization)
             invoices.append(invoice)
 
