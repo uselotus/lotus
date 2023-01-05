@@ -132,6 +132,7 @@ INSTALLED_APPS = [
     "metering_billing",
     "actstream",
     "drf_standardized_errors",
+    "storages",
 ]
 
 SITE_ID = 1
@@ -450,12 +451,12 @@ if DOCKERIZED:
 
 VITE_APP_DIR = BASE_DIR / "src"
 
-STATICFILES_DIRS = [BASE_DIR / "static", VITE_APP_DIR / "dist"]
 
 ### AWS S3 ###
 AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = os.environ["AWS_SECRET_ACCESS_KEY"]
-AWS_STORAGE_BUCKET_NAME = os.environ["AWS_STORAGE_BUCKET_NAME"]
+AWS_S3_INVOICE_BUCKET = os.environ["AWS_S3_INVOICE_BUCKET"]
+
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "static/"
@@ -464,6 +465,7 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
+STATICFILES_DIRS = [BASE_DIR / "static", VITE_APP_DIR / "dist"]
 
 
 MEDIA_URL = "/media/"

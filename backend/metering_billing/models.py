@@ -22,6 +22,7 @@ from metering_billing.exceptions.exceptions import (
     OverlappingPlans,
     ServerError,
 )
+from django.core.files.base import ContentFile
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
@@ -65,6 +66,8 @@ logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
+###TODO: write this
+# def save_pdf_to_s3()
 
 class Organization(models.Model):
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
@@ -1317,6 +1320,7 @@ class Invoice(models.Model):
             )
         if not self.currency:
             self.currency = self.organization.default_currency
+        
 
         ### Generate invoice number
         if not self.pk and self.payment_status != INVOICE_STATUS.DRAFT:

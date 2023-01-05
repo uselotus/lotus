@@ -51,6 +51,7 @@ pyjwt = "*"
 drf-standardized-errors = {extras = ["openapi"], version = "*"}
 boto3 = "*"
 reportlab = "*"
+django-storages = "*"
 
 [dev-packages]
 platformdirs = "*"

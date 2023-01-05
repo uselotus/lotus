@@ -4,6 +4,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
+from datetime import datetime
 from io import BytesIO
 from django.forms.models import model_to_dict
 import os
@@ -15,6 +16,13 @@ FONT_M = 16
 FONT_S = 14
 FONT_XS = 12
 FONT_XXS = 10
+
+
+def transform_date(date: datetime) -> str:
+    # Format the input datetime object as a string in the desired output format
+    formatted_string = date.strftime("%d/%m/%Y")
+
+    return formatted_string
 
 
 def draw_hr(doc, vertical_offset):
@@ -57,7 +65,7 @@ def write_invoice_details(doc, invoice_number, issue_date, due_date):
     doc.setFont("Times-Bold", FONT_M)
     doc.drawString(375, 130, "Invoice Details")
     doc.setFont("Times-Roman", FONT_XS)
-    doc.drawString(375, 145, f"Invoice #: {invoice_number}")
+    doc.drawString(375, 145, f"Invoice No. {invoice_number}")
     doc.drawString(375, 160, f'Date Issued {issue_date.replace("-", "/")}')
     if due_date:
         doc.drawString(375, 175, f'Due Date {due_date.replace("-", "/")}')
@@ -121,7 +129,8 @@ def write_total(doc, currency_symbol, total, current_y):
 
 
 def generate_invoice_pdf(invoice_model, organization, customer, line_items, buffer):
-    doc = canvas.Canvas(buffer)
+    doc = canvas.Canvas(buffer, pagesize=letter, bottomup=0)
+    output_format = "%B %d, %Y"
 
     invoice = model_to_dict(invoice_model)
     currency = model_to_dict(invoice_model.currency)
@@ -141,6 +150,18 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             organization["phone"],
             organization["email"],
         )
+    else:
+        write_seller_details(
+            doc,
+            organization["company_name"],
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        )
 
     customer_address = customer["properties"].get("address")
     if customer_address:
@@ -152,32 +173,74 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             customer["properties"]["address"]["state"],
             customer["properties"]["address"]["country"],
             customer["properties"]["address"]["postal_code"],
-            customer["properties"]["email"],
+            customer["email"],
+        )
+    else:
+        write_customer_details(
+            doc,
+            customer["customer_name"],
+            "",
+            "",
+            "",
+            "",
+            "",
+            customer["email"],
         )
 
-    write_invoice_details(
-        doc, invoice["invoice_number"], str(invoice["issue_date"]), invoice["due_date"]
-    )
+    if invoice["due_date"]:
+        write_invoice_details(
+            doc,
+            invoice["invoice_number"],
+            transform_date(invoice["issue_date"]),
+            transform_date(invoice["due_date"]),
+        )
+    else:
+        write_invoice_details(
+            doc,
+            invoice["invoice_number"],
+            transform_date(invoice["issue_date"]),
+            transform_date(invoice["issue_date"]),
+        )
     write_summary_header(doc)
 
-    line_item_start_y = 290
-    for line_item_model in line_items:
-        line_item = model_to_dict(line_item_model)
-        line_item_start_y = write_line_item(
-            doc,
-            line_item["name"],
-            str(line_item["start_date"]),
-            str(line_item["end_date"]),
-            line_item["quantity"],
-            line_item["subtotal"],
-            currency["symbol"],
-            line_item_start_y,
+    grouped_line_items = {}
+    for line_item in line_items:
+        plan_id = line_item.associated_subscription_record.billing_plan.id
+        subscription_filters = list(
+            (line_item.associated_subscription_record.get_filters_dictionary()).items()
         )
-        if line_item_start_y > 680:
-            doc.showPage()
-            line_item_start_y = 40
+        if len(subscription_filters) > 0:
+            subscription_filters = subscription_filters[0]
+        else:
+            subscription_filters = None
+        key = (subscription_filters, plan_id)
+        if key not in grouped_line_items:
+            grouped_line_items[key] = []
 
-    write_total(doc, currency["symbol"], invoice["cost_due"], line_item_start_y)
+        # Add the line item to the list for the key
+        grouped_line_items[key].append(line_item)
+
+    line_item_start_y = 290
+    for group in grouped_line_items:
+        for line_item_model in grouped_line_items[group]:
+            line_item = model_to_dict(line_item_model)
+            line_item_start_y = write_line_item(
+                doc,
+                line_item["name"],
+                transform_date(line_item["start_date"]),
+                transform_date(line_item["end_date"]),
+                line_item["quantity"],
+                line_item["subtotal"],
+                currency["symbol"],
+                line_item_start_y,
+            )
+            if line_item_start_y > 680:
+                doc.showPage()
+                line_item_start_y = 40
+
+    write_total(
+        doc, currency["symbol"], round(invoice["cost_due"], 2), line_item_start_y
+    )
 
     doc.save()
 
@@ -191,7 +254,6 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
         invoice_number = invoice["invoice_number"]
         organization_id = invoice["organization"]
         customer_id = customer["customer_id"]
-        print(customer_id)
         buffer.seek(0)
         s3.Bucket(os.environ["AWS_S3_INVOICE_BUCKET"]).upload_fileobj(
             buffer, f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}"
