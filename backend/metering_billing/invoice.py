@@ -6,10 +6,11 @@ from io import BytesIO
 
 import lotus_python
 from dateutil.relativedelta import relativedelta
-from django.core.files.base import ContentFile
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db.models import Sum
 from django.forms.models import model_to_dict
+from metering_billing.invoice_pdf import generate_invoice_pdf
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
@@ -29,7 +30,6 @@ from metering_billing.utils.enums import (
     SUBSCRIPTION_STATUS,
 )
 from metering_billing.webhooks import invoice_created_webhook
-from metering_billing.invoice_pdf import generate_invoice_pdf
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 META = settings.META
@@ -53,12 +53,12 @@ def generate_invoice(
     Generate an invoice for a subscription.
     """
     from metering_billing.models import (
+        Customer,
         CustomerBalanceAdjustment,
         Invoice,
         InvoiceLineItem,
-        Customer,
-        SubscriptionRecord,
         Organization,
+        SubscriptionRecord,
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
 
@@ -134,7 +134,7 @@ def generate_invoice(
                         name=f"{billing_plan_name} v{billing_plan_version} Prorated Flat Fee",
                         start_date=convert_to_datetime(start, date_behavior="min"),
                         end_date=convert_to_datetime(end, date_behavior="max"),
-                        quantity=None,
+                        quantity=1,
                         subtotal=flat_fee_due,
                         billing_type=billing_plan.flat_fee_billing_type,
                         chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
@@ -147,7 +147,7 @@ def generate_invoice(
                             name=f"{billing_plan_name} v{billing_plan_version} Flat Fee Already Invoiced",
                             start_date=issue_date,
                             end_date=issue_date,
-                            quantity=None,
+                            quantity=1,
                             subtotal=-amt_already_billed,
                             billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                             chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
@@ -198,7 +198,7 @@ def generate_invoice(
                         end_date=calculate_end_date(
                             next_bp.plan.plan_duration, subscription.end_date
                         ),
-                        quantity=None,
+                        quantity=1,
                         subtotal=next_bp.flat_rate,
                         billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
                         chargeable_item_type=CHARGEABLE_ITEM_TYPE.RECURRING_CHARGE,
@@ -282,7 +282,7 @@ def generate_invoice(
             print(pdf_url)
             invoice.save()
             invoice_created_webhook(invoice, organization)
-            invoices.append(invoice)
+        invoices.append(invoice)
 
     return invoices
 
@@ -335,7 +335,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
 
     issue_date = invoice.issue_date
     issue_date_fmt = issue_date.strftime("%Y-%m-%d")
-    if invoice.payment_status == INVOICE_STATUS.PAID:
+    if invoice.payment_status == INVOICE_STATUS.PAID or draft:
         return
     subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0:

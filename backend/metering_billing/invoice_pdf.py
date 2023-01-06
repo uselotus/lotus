@@ -1,18 +1,16 @@
-import boto3
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
+import os
 from datetime import datetime
 from io import BytesIO
+
+import boto3
+from django.conf import settings
 from django.forms.models import model_to_dict
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
-from django.conf import settings
-
-
-import os
-
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
 
 FONT_XL = 26
 FONT_L = 24
@@ -44,6 +42,8 @@ def write_invoice_title(doc):
 def write_seller_details(
     doc, name, line1, city, state, country, postal_code, number, email
 ):
+    if email is None:
+        email = ""
     doc.setFont("Times-Bold", FONT_M)
     doc.drawString(75, 130, name[:12] + "...")
     doc.setFont("Times-Roman", FONT_XS)
@@ -55,6 +55,8 @@ def write_seller_details(
 
 
 def write_customer_details(doc, name, line1, city, state, country, postal_code, email):
+    if email is None:
+        email = ""
     doc.setFont("Times-Bold", FONT_M)
     doc.drawString(225, 130, "Billed To")
     doc.setFont("Times-Roman", FONT_XS)
@@ -216,13 +218,20 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
 
     grouped_line_items = {}
     for line_item in line_items:
-        plan_id = line_item.associated_subscription_record.billing_plan.id
-        subscription_filters = list(
-            (line_item.associated_subscription_record.get_filters_dictionary()).items()
-        )
-        if len(subscription_filters) > 0:
-            subscription_filters = subscription_filters[0]
+        sr = line_item.associated_subscription_record
+        if sr is not None:
+            plan_id = line_item.associated_subscription_record.billing_plan.id
+            subscription_filters = list(
+                (
+                    line_item.associated_subscription_record.get_filters_dictionary()
+                ).items()
+            )
+            if len(subscription_filters) > 0:
+                subscription_filters = subscription_filters[0]
+            else:
+                subscription_filters = None
         else:
+            plan_id = None
             subscription_filters = None
         key = (subscription_filters, plan_id)
         if key not in grouped_line_items:
