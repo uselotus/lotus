@@ -86,6 +86,8 @@ def draft_invoice_test_common_setup(
             usage_aggregation_type=itertools.cycle(["sum", "max", "count"]),
             _quantity=3,
         )
+        for metric in metric_set:
+            metric.provision_materialized_views()
         setup_dict["metrics"] = metric_set
         product = add_product_to_org(org)
         plan = add_plan_to_product(product)

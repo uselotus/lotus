@@ -1173,7 +1173,7 @@ class CustomerSummarySerializer(serializers.ModelSerializer):
     def get_subscriptions(
         self, obj
     ) -> SubscriptionCustomerSummarySerializer(many=True, required=False):
-        sub_obj = obj.subscription_records.filter(status=SUBSCRIPTION_STATUS.ACTIVE)
+        sub_obj = obj.subscription_records_filtered
         return SubscriptionCustomerSummarySerializer(sub_obj, many=True).data
 
 

@@ -46,7 +46,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         dataIndex: "quantity",
         render: (_, record) => (
           <div className="flex flex-col">
-            {record.quantity !== null ? record.quantity.toFixed(2) : "1"}
+            {record.quantity !== null ? record.quantity.toFixed(2) : ""}
           </div>
         ),
       },
