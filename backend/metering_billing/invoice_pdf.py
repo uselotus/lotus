@@ -3,6 +3,7 @@ from datetime import datetime
 from io import BytesIO
 
 import boto3
+from django.conf import settings
 from django.forms.models import model_to_dict
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.pagesizes import letter
@@ -282,31 +283,32 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
 
     doc.save()
 
-    try:
-        # Upload the file to s3
-        s3 = boto3.resource(
-            "s3",
-            aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-            aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-        )
-        invoice_number = invoice["invoice_number"]
-        organization_id = invoice["organization"]
-        customer_id = customer["customer_id"]
-        bucket_name = os.environ["AWS_S3_INVOICE_BUCKET"]
-        key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
-        buffer.seek(0)
-        s3.Bucket(bucket_name).upload_fileobj(buffer, key)
+    if settings.DEBUG is False:
+        try:
+            # Upload the file to s3
+            s3 = boto3.resource(
+                "s3",
+                aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+                aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+            )
+            invoice_number = invoice["invoice_number"]
+            organization_id = invoice["organization"]
+            customer_id = customer["customer_id"]
+            bucket_name = os.environ["AWS_S3_INVOICE_BUCKET"]
+            key = f"{organization_id}/{customer_id}/invoice_pdf_{invoice_number}.pdf"
+            buffer.seek(0)
+            s3.Bucket(bucket_name).upload_fileobj(buffer, key)
 
-        s3_object = s3.Object(bucket_name, key)
+            s3_object = s3.Object(bucket_name, key)
 
-        s3 = boto3.client("s3")
+            s3 = boto3.client("s3")
 
-        url = s3.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={"Bucket": bucket_name, "Key": key},
-            ExpiresIn=3600,  # URL will expire in 1 hour
-        )
-        return url
-    except Exception as e:
-        print(e)
+            url = s3.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": bucket_name, "Key": key},
+                ExpiresIn=3600,  # URL will expire in 1 hour
+            )
+            return url
+        except Exception as e:
+            print(e)
     return ""
