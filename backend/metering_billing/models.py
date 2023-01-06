@@ -18,6 +18,7 @@ from django.db import models
 from django.db.models import Count, F, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from metering_billing.exceptions.exceptions import (
+    AlignmentEngineFailure,
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
@@ -1724,7 +1725,8 @@ class SubscriptionManager(models.Manager):
         if time is None:
             time = now_utc()
         return self.filter(
-            Q(start_date__lte=time) & (Q(end_date__gte=time) | Q(end_date__isnull=True))
+            Q(start_date__lte=time)
+            & ((Q(end_date__gte=time) | Q(end_date__isnull=True)))
         )
 
     def ended(self, time=None):
@@ -1766,6 +1768,44 @@ class Subscription(models.Model):
     end_date = models.DateTimeField()
     subscription_id = models.SlugField(max_length=100, default=subscription_uuid)
     objects = SubscriptionManager()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=Q(start_date__lte=F("end_date")),
+                name="start_date_less_than_end_date",
+            ),
+            models.UniqueConstraint(
+                fields=["subscription_id", "organization"],
+                name="unique_subscription_id",
+            ),
+            models.UniqueConstraint(
+                fields=["customer", "start_date", "end_date"],
+                name="unique_customer_start_end_date",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            overlapping_subscriptions = Subscription.objects.filter(
+                Q(start_date__range=(self.start_date, self.end_date))
+                | Q(end_date__range=(self.start_date, self.end_date)),
+                organization=self.organization,
+                customer=self.customer,
+            )
+            if overlapping_subscriptions.exists():
+                logger.error(
+                    "Overlapping subscriptions found. Subscription that was trying to be created had start date of %s and end date of %s, customer id %s, and organization id %s. Overlapping subscriptions: %s",
+                    self.start_date,
+                    self.end_date,
+                    self.customer.id,
+                    self.organization.id,
+                    overlapping_subscriptions,
+                )
+                raise AlignmentEngineFailure(
+                    f"An unexpected error in the alignment engine has occurred. Please contact support."
+                )
+        super(Subscription, self).save(*args, **kwargs)
 
     def get_anchors(self):
         return self.day_anchor, self.month_anchor
