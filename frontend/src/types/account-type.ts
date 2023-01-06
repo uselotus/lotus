@@ -1,3 +1,4 @@
+import { PlanType } from "./plan-type";
 import { PricingUnit } from "./pricing-unit-type";
 
 export interface CreateOrgAccountType {
@@ -24,6 +25,7 @@ export interface OrganizationType {
   default_currency: PricingUnit;
   available_currencies: PricingUnit[];
   organization_id: string;
+  plan_tags: PlanType["tags"];
 }
 
 export interface ActionUserType extends UserType {

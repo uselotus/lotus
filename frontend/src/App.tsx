@@ -1,15 +1,16 @@
 import AppRoutes from "./config/Routes";
-import { Authentication } from "./api/api";
+import { Authentication, Organization } from "./api/api";
 import { useQuery } from "react-query";
 import ExternalRoutes from "./config/ExternalRoutes";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "@tremor/react/dist/esm/tremor.css";
 import LoadingSpinner from "./components/LoadingSpinner";
-import React from "react";
+import React, { useEffect } from "react";
 import { PlanProvider } from "./context/PlanContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import posthog from "posthog-js";
+import useGlobalStore, { IOrgStoreType } from "./stores/useGlobalstore";
 
 //telemetry for cloud version only
 if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
@@ -28,7 +29,29 @@ const publicRoutes = [
 function App() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
+  const { refetch } = useQuery(
+    ["organization"],
+    () =>
+      Organization.get().then((res) => {
+        return res[0];
+      }),
+    {
+      onSuccess: (data) => {
+        const storeOrgObject: IOrgStoreType = {
+          organization_id: data.organization_id,
+          company_name: data.company_name,
+          default_currency: data.default_currency
+            ? data.default_currency
+            : undefined,
+          environment: undefined,
+          plan_tags: data.plan_tags,
+        };
 
+        setOrgInfoToStore(storeOrgObject);
+      },
+    }
+  );
   const fetchSessionInfo = async (): Promise<{ isAuthenticated: boolean }> =>
     Authentication.getSession()
       .then((res) => {
@@ -54,7 +77,11 @@ function App() {
   const contextClass = {
     success: "bg-[#cca43b] text-[#cca43b]",
   };
-
+  useEffect(() => {
+    if (isAuthenticated) {
+      refetch();
+    }
+  }, [isAuthenticated]);
   if (isLoading) {
     return (
       <div className="flex h-screen">

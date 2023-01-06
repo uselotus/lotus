@@ -15,6 +15,8 @@ import capitalize from "../helpers/capitalize";
 import PlansTags from "../PlanTags";
 import Badge from "../../base/Badges/Badges";
 import useMediaQuery from "../../../hooks/useWindowQuery";
+import createTags from "../helpers/createTags";
+import useGlobalStore from "../../../stores/useGlobalstore";
 interface PlanCardProps {
   plan: PlanType;
   createTagMutation: (variables: {
@@ -24,6 +26,7 @@ interface PlanCardProps {
 }
 
 const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
+  const { plan_tags } = useGlobalStore((state) => state.org);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const windowWidth = useMediaQuery();
@@ -37,6 +40,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
+
         toast.success("Plan archived");
       },
     }
@@ -146,11 +150,11 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         <div className="flex mt-2">
           <DropdownComponent>
             <DropdownComponent.Trigger>
-              <PlansTags tags={plan.tags} />
+              <PlansTags tags={plan_tags} />
             </DropdownComponent.Trigger>
             <DropdownComponent.Container>
-              {plan.tags &&
-                plan.tags.map((tag, index) => (
+              {plan_tags &&
+                plan_tags.map((tag, index) => (
                   <DropdownComponent.MenuItem
                     onSelect={() => {
                       // should actually serve as delete
@@ -158,7 +162,10 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
                     }}
                   >
                     <span key={index} className="flex gap-2 justify-between">
-                      <span className="text-black">{tag} </span>
+                      <span className="flex gap-2 items-center">
+                        <Badge.Dot fill={tag.tag_hex} />
+                        <span className="text-black">{tag.tag_name}</span>
+                      </span>
                       <CheckCircleOutlined className="!text-gold" />
                     </span>
                   </DropdownComponent.MenuItem>
@@ -166,7 +173,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
               <DropdownComponent.MenuItem
                 onSelect={() => {
                   const tags = [...plan.tags];
-                  tags.push(inputRef.current!.value);
+                  const newTag = createTags(inputRef.current!.value);
+                  tags.push(newTag);
+
                   createTagMutation({ plan_id: plan.plan_id, tags });
                 }}
               >

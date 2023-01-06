@@ -71,6 +71,7 @@ const ViewPlans: FC = () => {
       onSuccess: (_, { plan_id }) => {
         queryClient.invalidateQueries("plan_list");
         queryClient.invalidateQueries(["plan_detail", plan_id]);
+        queryClient.invalidateQueries("organization");
       },
     }
   );

@@ -1,5 +1,6 @@
 import create from "zustand";
 import { OrganizationType } from "../types/account-type";
+import { PlanType } from "../types/plan-type";
 import { PricingUnit } from "../types/pricing-unit-type";
 type GlobalStoreState = {
   username: string;
@@ -13,6 +14,7 @@ interface IOrgStoreType {
   company_name: string;
   default_currency?: PricingUnit;
   environment?: string;
+  plan_tags: PlanType["tags"];
 }
 
 const useGlobalStore = create<GlobalStoreState>((set) => ({
@@ -22,6 +24,7 @@ const useGlobalStore = create<GlobalStoreState>((set) => ({
     company_name: "N/A",
     default_currency: undefined,
     environment: undefined,
+    plan_tags: [],
   },
   setUsername: (username: string) => set({ username }),
   setOrgInfo: (org: IOrgStoreType) => set({ org }),

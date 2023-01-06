@@ -23,6 +23,8 @@ import useVersionStore from "../../../stores/useVersionStore";
 import Badge from "../../base/Badges/Badges";
 import Select from "../../base/Select/Select";
 import useMediaQuery from "../../../hooks/useWindowQuery";
+import createTags from "../helpers/createTags";
+import useGlobalStore from "../../../stores/useGlobalstore";
 interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
@@ -30,24 +32,6 @@ interface PlanComponentsProps {
     billing_frequency: "monthly" | "quarterly" | "yearly"
   ) => void;
 }
-export const tagList = [
-  { color: "text-tags-lg", hex: "#065F46", text: "Documentation" },
-  {
-    color: "text-emerald",
-    hex: "#A7F3D0",
-    text: "API Calls",
-  },
-  {
-    color: "text-indigo-600",
-    hex: "#4F46E5",
-    text: "Metrics",
-  },
-  {
-    color: "text-orange-400",
-    hex: "#FB923C",
-    text: "Words",
-  },
-];
 
 const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
   switch (record.type) {
@@ -75,7 +59,7 @@ interface PlanSummaryProps {
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
   plan: PlanDetailType;
-  createTagMutation: (variables: string[]) => void;
+  createTagMutation: (variables: PlanType["tags"]) => void;
 }
 export const PlanSummary = ({
   plan,
@@ -83,6 +67,7 @@ export const PlanSummary = ({
   createPlanExternalLink,
   deletePlanExternalLink,
 }: PlanSummaryProps) => {
+  const { plan_tags } = useGlobalStore((state) => state.org);
   const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
   return (
@@ -133,18 +118,21 @@ export const PlanSummary = ({
             {" "}
             <DropdownComponent>
               <DropdownComponent.Trigger>
-                <PlansTags tags={plan.tags} />
+                <PlansTags tags={plan_tags} />
               </DropdownComponent.Trigger>
               <DropdownComponent.Container>
-                {plan.tags &&
-                  plan.tags.map((tag, index) => (
+                {plan_tags &&
+                  plan_tags.map((tag, index) => (
                     <DropdownComponent.MenuItem
                       onSelect={() => {
                         //should actually serve as a delete
                       }}
                     >
                       <span key={index} className="flex gap-2 justify-between">
-                        <span className="text-black">{tag} </span>
+                        <span className="flex gap-2 ">
+                          <Badge.Dot fill={tag.tag_hex} />
+                          <span className="text-black">{tag.tag_name}</span>
+                        </span>
                         <CheckCircleOutlined className="!text-gold" />
                       </span>
                     </DropdownComponent.MenuItem>
@@ -152,7 +140,8 @@ export const PlanSummary = ({
                 <DropdownComponent.MenuItem
                   onSelect={() => {
                     const tags = [...plan.tags];
-                    tags.push(inputRef.current!.value);
+                    const newTag = createTags(inputRef.current!.value);
+                    tags.push(newTag);
                     createTagMutation(tags);
                   }}
                 >

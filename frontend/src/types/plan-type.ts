@@ -17,7 +17,7 @@ export interface PlanType {
   display_version: PlanVersionType;
   num_versions: number;
   active_subscriptions: number;
-  tags: string[];
+  tags: { tag_color: string; tag_hex: string; tag_name: string }[];
 }
 
 export interface PlanDetailType extends PlanType {

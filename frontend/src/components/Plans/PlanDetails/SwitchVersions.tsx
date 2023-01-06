@@ -90,6 +90,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       onSuccess: () => {
         queryClient.invalidateQueries("plan_list");
         queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+        queryClient.invalidateQueries("organization");
       },
     }
   );
