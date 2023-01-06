@@ -367,6 +367,7 @@ class SubscriptionViewSet(
     @extend_schema(responses=SubscriptionRecordSerializer)
     @action(detail=False, methods=["post"])
     def add(self, request, *args, **kwargs):
+        now = now_utc()
         # run checks to make sure it's valid
         organization = self.request.organization
         serializer = self.get_serializer(data=request.data)
@@ -383,7 +384,7 @@ class SubscriptionViewSet(
                 )
         # check to see if subscription exists
         subscription = (
-            Subscription.objects.active()
+            Subscription.objects.active(now)
             .filter(
                 organization=organization,
                 customer=serializer.validated_data["customer"],
@@ -419,6 +420,10 @@ class SubscriptionViewSet(
             month_anchor=month_anchor,
         )
         end_date = serializer.validated_data.get("end_date", end_date)
+        if end_date < now:
+            raise ValidationError(
+                "End date cannot be in the past. For historical backfilling of subscriptions, please contact support."
+            )
         if billing_freq in [
             USAGE_BILLING_FREQUENCY.MONTHLY,
             USAGE_BILLING_FREQUENCY.QUARTERLY,
