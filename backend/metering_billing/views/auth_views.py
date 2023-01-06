@@ -31,7 +31,7 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
 class LoginViewMixin(KnoxLoginView):
-    authentication_classes = []
+    authentication_classes = [BasicAuthentication]
     permission_classes = [AllowAny]
 
 

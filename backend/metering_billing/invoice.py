@@ -279,7 +279,6 @@ def generate_invoice(
                 BytesIO(),
             )
             invoice.invoice_pdf = pdf_url
-            print(pdf_url)
             invoice.save()
             invoice_created_webhook(invoice, organization)
         invoices.append(invoice)
