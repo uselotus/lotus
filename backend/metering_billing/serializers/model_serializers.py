@@ -78,11 +78,29 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "default_currency",
             "available_currencies",
             "tax_rate",
+            "invoice_grace_period",
         )
 
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
+    invoice_grace_period = serializers.SerializerMethodField()
+
+    def get_invoice_grace_period(
+        self, obj
+    ) -> serializers.IntegerField(
+        min_value=0, max_value=365, required=False, allow_null=True
+    ):
+        grace_period_setting = OrganizationSetting.objects.filter(
+            organization=obj,
+            setting_name="invoice_grace_period",
+            setting_group="billing",
+        ).first()
+        if grace_period_setting:
+            val = grace_period_setting.setting_values.get("value")
+        else:
+            val = 0
+        return val
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(organization=obj)
@@ -133,12 +151,20 @@ class APITokenSerializer(serializers.ModelSerializer):
 class OrganizationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("default_currency_code", "address", "tax_rate")
+        fields = (
+            "default_currency_code",
+            "address",
+            "tax_rate",
+            "invoice_grace_period",
+        )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
+    invoice_grace_period = serializers.IntegerField(
+        min_value=0, max_value=365, required=False, allow_null=True
+    )
 
     def update(self, instance, validated_data):
         assert (
@@ -154,6 +180,23 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             new_properties = {**cur_properties, "address": address}
             instance.properties = new_properties
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
+        invoice_grace_period = validated_data.get("invoice_grace_period", None)
+        if invoice_grace_period is not None:
+            grace_period_setting = OrganizationSetting.objects.filter(
+                organization=instance,
+                setting_name="invoice_grace_period",
+                setting_group="billing",
+            ).first()
+            if grace_period_setting:
+                grace_period_setting.setting_values = {"value": invoice_grace_period}
+                grace_period_setting.save()
+            else:
+                OrganizationSetting.objects.create(
+                    organization=instance,
+                    setting_name="invoice_grace_period",
+                    setting_group="billing",
+                    setting_values={"value": invoice_grace_period},
+                )
         instance.save()
         return instance
 

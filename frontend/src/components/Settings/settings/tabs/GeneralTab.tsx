@@ -46,6 +46,9 @@ const GeneralTab: FC = () => {
   const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
   const [currentCurrency, setCurrentCurrency] = useState("");
   const [taxRate, setTaxRate] = useState(0);
+  const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
+  const [displayTaxRate, setDisplayTaxRate] = useState(0);
+  const [displayInvoiceGracePeriod, setDisplayInvoiceGracePeriod] = useState(0);
   const {
     data: pricingUnits,
     isLoading: pricingUnitsLoading,
@@ -70,8 +73,17 @@ const GeneralTab: FC = () => {
         }
         if (res[0].tax_rate === null) {
           setTaxRate(0);
+          setDisplayTaxRate(0);
         } else {
           setTaxRate(res[0].tax_rate);
+          setDisplayTaxRate(res[0].tax_rate);
+        }
+        if (res[0].invoice_grace_period === null) {
+          setInvoiceGracePeriod(0);
+          setDisplayInvoiceGracePeriod(0);
+        } else {
+          setInvoiceGracePeriod(res[0].invoice_grace_period);
+          setDisplayInvoiceGracePeriod(res[0].invoice_grace_period);
         }
 
         return res[0];
@@ -127,21 +139,23 @@ const GeneralTab: FC = () => {
       org_id: string;
       default_currency_code: string;
       tax_rate: number;
+      invoice_grace_period: number;
     }) =>
       Organization.updateOrganization(
         obj.org_id,
         obj.default_currency_code,
-        obj.tax_rate
+        obj.tax_rate,
+        obj.invoice_grace_period
       ),
     {
       onSuccess: () => {
-        toast.success("Successfully Updated Default Currency", {
+        toast.success("Successfully Updated Organization Settings", {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries("organization");
       },
       onError: () => {
-        toast.error("Failed to Update Default Currency", {
+        toast.error("Failed to Update Organization Settings", {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -192,11 +206,18 @@ const GeneralTab: FC = () => {
             <p>USA 92342</p>
           </p>
           <p className="text-[16px]">
-            <b>Invoice Grace Period:</b> 15 days
+            <b>Invoice Grace Period:</b> {displayInvoiceGracePeriod}{" "}
+            {displayInvoiceGracePeriod === 1 ? "day" : "days"}
           </p>
-          <p className="text-[16px]">
-            <b>Organization Tax Rate:</b> {taxRate}%
-          </p>
+          {displayTaxRate !== null && displayTaxRate !== undefined ? (
+            <p className="text-[16px]">
+              <b>Organization Tax Rate:</b> {displayTaxRate} %
+            </p>
+          ) : (
+            <p className="text-[16px]">
+              <b>Organization Tax Rate:</b> None
+            </p>
+          )}
 
           <div className=" flex justify-end"></div>
         </div>
@@ -212,6 +233,7 @@ const GeneralTab: FC = () => {
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
               tax_rate: taxRate,
+              invoice_grace_period: invoiceGracePeriod,
             });
             form.resetFields();
           }
@@ -260,6 +282,16 @@ const GeneralTab: FC = () => {
             </Form.Item>
             <Form.Item label="Billing Address" name="billing_address">
               <Input disabled={true} />
+            </Form.Item>
+            <Form.Item label="Invoice Grace Period" name="invoice_grace_period">
+              <Input
+                type="number"
+                step="1"
+                onChange={(e) =>
+                  setInvoiceGracePeriod(e.target.value as unknown as number)
+                }
+                defaultValue={invoiceGracePeriod}
+              />
             </Form.Item>
           </Form>
         </div>

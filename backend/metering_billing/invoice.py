@@ -58,6 +58,7 @@ def generate_invoice(
         Invoice,
         InvoiceLineItem,
         Organization,
+        OrganizationSetting,
         SubscriptionRecord,
     )
     from metering_billing.serializers.model_serializers import InvoiceSerializer
@@ -87,6 +88,17 @@ def generate_invoice(
             "payment_status": INVOICE_STATUS.DRAFT if draft else INVOICE_STATUS.UNPAID,
             "currency": currency,
         }
+        due_date = issue_date
+        grace_period_setting = OrganizationSetting.objects.filter(
+            organization=organization,
+            setting_name="invoice_grace_period",
+            setting_group="billing",
+        ).first()
+        if grace_period_setting:
+            due_date += relativedelta(
+                days=int(grace_period_setting.setting_values["value"])
+            )
+        invoice_kwargs["due_date"] = due_date
         # Create the invoice
         invoice = Invoice.objects.create(**invoice_kwargs)
 
