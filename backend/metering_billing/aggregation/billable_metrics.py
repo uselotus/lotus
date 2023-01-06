@@ -1181,9 +1181,6 @@ class StatefulHandler(MetricHandler):
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
-        for row in result:
-            if row.usage_qty != 0 or row.time_ratio != 1:
-                print(row)
         if len(result) == 0:
             return Decimal(0)
         return result[0].usage_qty

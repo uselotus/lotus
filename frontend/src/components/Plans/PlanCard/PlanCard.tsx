@@ -70,9 +70,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
         </Dropdown>
       </div>
       <Typography.Title className="pt-4" level={2}>
-        {plan.target_customer !== null
-          ? plan.plan_name + ": " + customerNameOrID(plan.target_customer)
-          : plan.plan_name}
+        {plan.plan_name}
       </Typography.Title>
 
       <div>
@@ -88,7 +86,10 @@ const PlanCard: FC<PlanCardProps> = ({ plan }) => {
 
         <div className="planDetails">
           <div className="pr-1 planDetailsLabel">Plan ID:</div>
-          <div className="planDetailsValue planIdOverflow font-menlo"> {plan.plan_id}</div>
+          <div className="planDetailsValue planIdOverflow font-menlo">
+            {" "}
+            {plan.plan_id}
+          </div>
         </div>
 
         <div className="planDetails">

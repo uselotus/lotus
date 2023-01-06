@@ -447,9 +447,8 @@ class CustomerSerializer(
         return d
 
     def get_subscriptions(self, obj) -> SubscriptionRecordSerializer(many=True):
-        sr_objs = obj.subscription_records.filter(
+        sr_objs = obj.subscription_records.active().filter(
             organization=self.context.get("organization"),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
             start_date__lte=now_utc(),
             end_date__gte=now_utc(),
         )

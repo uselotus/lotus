@@ -330,8 +330,7 @@ class TestUpdateSub:
             num_subscriptions=1, auth_method="session_auth"
         )
 
-        active_subscriptions = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        active_subscriptions = SubscriptionRecord.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -352,13 +351,11 @@ class TestUpdateSub:
             content_type="application/json",
         )
 
-        after_active_subscriptions = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
+        after_active_subscriptions = SubscriptionRecord.objects.active().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
-        after_canceled_subscriptions = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ENDED,
+        after_canceled_subscriptions = SubscriptionRecord.objects.ended().filter(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
         )
@@ -469,11 +466,12 @@ class TestUpdateSub:
             content_type="application/json",
         )
 
-        after_autorenew_subscription_records = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            organization=setup_dict["org"],
-            customer=setup_dict["customer"],
-            auto_renew=True,
+        after_autorenew_subscription_records = (
+            SubscriptionRecord.objects.active().filter(
+                organization=setup_dict["org"],
+                customer=setup_dict["customer"],
+                auto_renew=True,
+            )
         )
         new_invoices_len = Invoice.objects.all().count()
 
@@ -1044,9 +1042,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.month_anchor is not None
 
         before_active_subs = Subscription.objects.active().count()
-        before_active_sub_records = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        before_active_sub_records = SubscriptionRecord.objects.active().count()
         before_invoices = Invoice.objects.all().count()
 
         params = {
@@ -1062,9 +1058,7 @@ class TestSubscriptionAndSubscriptionRecord:
         )
 
         after_active_subs = Subscription.objects.active().count()
-        after_active_sub_records = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        after_active_sub_records = SubscriptionRecord.objects.active().count()
         after_invoices = Invoice.objects.all().count()
 
         assert response.status_code == status.HTTP_200_OK
@@ -1272,9 +1266,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.month_anchor is not None
 
         before_active_subs = Subscription.objects.active().count()
-        before_active_sub_records = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        before_active_sub_records = SubscriptionRecord.objects.active().count()
         before_invoices = Invoice.objects.all().count()
 
         params = {
@@ -1291,9 +1283,7 @@ class TestSubscriptionAndSubscriptionRecord:
         )
 
         after_active_subs = Subscription.objects.active().count()
-        after_active_sub_records = SubscriptionRecord.objects.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        after_active_sub_records = SubscriptionRecord.objects.active().count()
         after_invoices = Invoice.objects.all().count()
         active_sub = Subscription.objects.active().first()
 

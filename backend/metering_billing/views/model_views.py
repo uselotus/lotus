@@ -594,6 +594,7 @@ class PlanViewSet(api_views.PlanViewSet):
 
     def get_queryset(self):
         organization = self.request.organization
+        now = now_utc()
         qs = super(PlanViewSet, self).get_queryset()
         if self.action == "retrieve" or self.action == "list":
             qs = qs.prefetch_related(
@@ -606,7 +607,8 @@ class PlanViewSet(api_views.PlanViewSet):
                         active_subscriptions=Count(
                             "subscription_record",
                             filter=Q(
-                                subscription_record__status=SUBSCRIPTION_STATUS.ACTIVE
+                                subscription_record__start_date__lte=now,
+                                subscription_record__end_date__gte=now,
                             ),
                         )
                     ),

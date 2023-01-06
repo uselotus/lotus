@@ -83,6 +83,7 @@ function CustomerDetail(props: {
           "balance_adjustments",
           props.customer_id,
         ]);
+        queryClient.invalidateQueries(["draft_invoice", props.customer_id]);
         refetch();
         toast.success("Subscription created successfully");
       },
@@ -101,6 +102,7 @@ function CustomerDetail(props: {
           "balance_adjustments",
           props.customer_id,
         ]);
+        queryClient.invalidateQueries(["draft_invoice", props.customer_id]);
         refetch();
         toast.success("Subscription cancelled successfully");
       },
@@ -117,6 +119,7 @@ function CustomerDetail(props: {
           "balance_adjustments",
           props.customer_id,
         ]);
+        queryClient.invalidateQueries(["draft_invoice", props.customer_id]);
         refetch();
         toast.success("Subscription switched successfully");
       },
