@@ -1502,7 +1502,7 @@ class PriceAdjustment(models.Model):
             return str(self.price_adjustment_name)
         else:
             return (
-                str(self.price_adjustment_amount)
+                str(round(self.price_adjustment_amount, 2))
                 + " "
                 + str(self.price_adjustment_type)
             )
