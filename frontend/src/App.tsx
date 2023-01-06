@@ -68,7 +68,7 @@ function App() {
       return (
         <div>
           <ToastContainer
-            autoClose={1000}
+            autoClose={3000}
             bodyClassName=" text-gold font-main"
             position="top-center"
           />
@@ -81,7 +81,7 @@ function App() {
       return (
         <div>
           <ToastContainer
-            autoClose={1000}
+            autoClose={3000}
             toastClassName="rounded-md bg-background font-main"
             bodyClassName=" text-gold font-main"
           />
