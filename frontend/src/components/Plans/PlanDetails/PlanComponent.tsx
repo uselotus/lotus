@@ -22,6 +22,7 @@ import dayjs from "dayjs";
 import useVersionStore from "../../../stores/useVersionStore";
 import Badge from "../../base/Badges/Badges";
 import Select from "../../base/Select/Select";
+import useMediaQuery from "../../../hooks/useWindowQuery";
 interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
@@ -82,15 +83,16 @@ export const PlanSummary = ({
   createPlanExternalLink,
   deletePlanExternalLink,
 }: PlanSummaryProps) => {
+  const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
+    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
       <Typography.Title className="pt-4 whitespace-pre-wrap" level={2}>
         Summary
       </Typography.Title>
 
       <div>
-        <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+        <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
         <div className="flex items-center text-card-text justify-between gap-2 mb-1">
           <div className=" font-normal whitespace-nowrap leading-4">
             Plan ID
@@ -98,7 +100,7 @@ export const PlanSummary = ({
           <div className="flex gap-1">
             {" "}
             <div className="!text-card-grey">
-              {createShortenedText(plan.plan_id)}
+              {createShortenedText(plan.plan_id, windowWidth >= 2500)}
             </div>
             <CopyText showIcon onlyIcon textToCopy={plan.plan_id} />
           </div>
@@ -195,11 +197,8 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
   // };
 
   return (
-    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
-      <Typography.Title
-        className="pt-4 whitespace-pre-wrap grid gap-4 items-center grid-cols-1 md:grid-cols-2"
-        level={2}
-      >
+    <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+      <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 font-arimo !text-[18px] items-center grid-cols-1 md:grid-cols-2">
         <div>Plan Information</div>
         <div>
           <StateTabs
@@ -211,11 +210,11 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           />
         </div>
       </Typography.Title>
-      <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        <div>
-          <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
+      <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
+      <div className="grid  items-center grid-cols-1 md:grid-cols-2">
+        <div className="w-[240px]">
+          <div className="flex items-center text-card-text justify-between mb-1">
+            <div className=" font-normal font-arimo whitespace-nowrap leading-4">
               Recurring Price
             </div>
             <div className="flex gap-1">
@@ -225,7 +224,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
+            <div className="font-normal font-arimo whitespace-nowrap leading-4">
               Plan Duration
             </div>
             <div className="!text-card-grey">
@@ -234,7 +233,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
+            <div className="font-normal font-arimo whitespace-nowrap leading-4">
               Created At
             </div>
             <div className="!text-card-grey">
@@ -244,9 +243,9 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
         </div>
 
-        <div>
+        <div className="w-[254px] ml-auto">
           <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
+            <div className=" font-normal font-arimo whitespace-nowrap leading-4">
               Plan on next cycle
             </div>
             <div className="flex gap-1 ">
@@ -260,16 +259,18 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
+            <div className="font-normal font-arimo whitespace-nowrap leading-4">
               Recurring Bill Type
             </div>
             <div>
               {
                 <Badge>
                   <Badge.Content>
-                    {constructBillType(
-                      plan.display_version.flat_fee_billing_type
-                    )}
+                    <div className="p-1">
+                      {constructBillType(
+                        plan.display_version.flat_fee_billing_type
+                      )}
+                    </div>
                   </Badge.Content>
                 </Badge>
               }
@@ -277,7 +278,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal whitespace-nowrap leading-4">
+            <div className="font-normal font-arimo whitespace-nowrap leading-4">
               Schedule
             </div>
             <div>
@@ -300,21 +301,21 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   return (
     <div className="">
       {components && components.length > 0 ? (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
-          <Typography.Title className="pt-4 whitespace-pre-wrap" level={2}>
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+          <Typography.Title className="pt-4 whitespace-pre-wrap font-arimo !text-[18px]">
             Added Components
           </Typography.Title>
           <div>
-            <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+            <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           </div>
-          <div className="grid gap-2 grid-cols-1 xl:grid-cols-2">
+          <div className="grid gap-6 grid-cols-1 xl:grid-cols-4">
             {components.map((component) => (
-              <div className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px]">
-                <div className="text-base text-card-text">
+              <div className="pt-2 pb-4 bg-primary-50 mt-2  mb-2 p-4 min-h-[152px] min-w-[270px]">
+                <div className="text-base text-card-text align-middle">
                   <div> {component.billable_metric.metric_name}</div>
                 </div>
                 <div>
-                  <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+                  <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
                   <Table
                     dataSource={component.tiers}
                     pagination={false}
@@ -378,9 +379,9 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           </div> */}
         </div>
       ) : (
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
           <Typography.Title level={2}>Added Components</Typography.Title>
-          <div className="w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+          <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
           <div className="text-card-grey text-base">No components added</div>
         </div>
       )}

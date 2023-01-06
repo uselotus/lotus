@@ -87,12 +87,14 @@ module.exports = {
     fontFamily: {
       // add new font family
       main: ["Inter", "sans-serif"],
+      arimo: ["Arimo", "sans-serif"],
     },
 
     screens: {
       sm: "640px",
       md: "768px",
       xl: "1280px",
+      xxl: "2500px",
     },
     spacing: {
       2: "4px",

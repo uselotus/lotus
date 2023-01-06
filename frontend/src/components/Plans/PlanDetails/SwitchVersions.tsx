@@ -156,8 +156,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           </div>
         </Link>
       </div>
-      <div className="bg-white mb-5  py-4 px-10 rounded-lg">
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+      <div className="bg-white mb-5 flex flex-col py-4 px-10 rounded-lg">
+        <div className="grid gap-6 grid-cols-1  md:grid-cols-3">
           <div className="col-span-1">
             <PlanSummary
               plan={plan}
@@ -172,7 +172,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         </div>
 
         <div className="px-4 py-2">
-          <PlanComponents updateBillingFrequencyMutation={updateBillingFrequency.mutate} plan={plan} components={selectedVersion.components} />
+          <PlanComponents
+            updateBillingFrequencyMutation={updateBillingFrequency.mutate}
+            plan={plan}
+            components={selectedVersion.components}
+          />
         </div>
         <div className="px-4 py-2">
           <PlanFeatures features={selectedVersion.features} />
@@ -180,10 +184,10 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
 
         <div className="separator pt-4" />
 
-        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400">
+        <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
           <Typography.Title level={2}>Price Adjustments</Typography.Title>
           <div className="mb-5 mt-3 px-4 font-main self-center">
-            <div className=" w-full h-[1.5px] mt-2 bg-card-divider mb-2" />
+            <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
             <div className="text-card-grey">
               {getPriceAdjustmentEnding(
                 selectedVersion.price_adjustment?.price_adjustment_type,

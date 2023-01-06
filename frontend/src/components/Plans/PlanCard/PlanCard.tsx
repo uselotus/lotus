@@ -14,6 +14,7 @@ import createShortenedText from "../helpers/createShortenedText";
 import capitalize from "../helpers/capitalize";
 import PlansTags from "../PlanTags";
 import Badge from "../../base/Badges/Badges";
+import useMediaQuery from "../../../hooks/useWindowQuery";
 interface PlanCardProps {
   plan: PlanType;
   createTagMutation: (variables: {
@@ -25,6 +26,7 @@ interface PlanCardProps {
 const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const windowWidth = useMediaQuery();
   const inputRef = useRef<HTMLInputElement | null>(null!);
   const mutation = useMutation(
     (plan_id: string) =>
@@ -71,7 +73,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
 
   return (
     <div
-      className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
+      className="min-h-[200px]  min-w-[246px] p-6 cursor-pointer  rounded-sm bg-card  shadow-lg hover:shadow-neutral-400"
       onClick={(e) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
       }}
@@ -83,7 +85,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
           </Button>
         </Dropdown>
       </div> */}
-      <Typography.Title className="pt-4 whitespace-pre-wrap" level={3}>
+      <Typography.Title className="pt-4 whitespace-pre-wrap font-arimo !text-[18px]">
         {plan.target_customer !== null
           ? plan.plan_name + ": " + customerNameOrID(plan.target_customer)
           : plan.plan_name}
@@ -95,43 +97,51 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         ) : null}
         <div>
           <div className="mb-2">
-            <div className="pr-1 font-normal  not-italic whitespace-nowrap text-sm  leading-3 text-darkgold">
+            <div className="pr-1 font-normal font-arimo not-italic whitespace-nowrap text-sm  leading-3 text-darkgold">
               Total Active Subscriptions: {plan.active_subscriptions}
             </div>
-            <div className=" w-full h-[1.5px] mt-2 bg-card-divider xl:w-3/4" />
+            <div className=" w-full h-[1.5px] mt-6 bg-card-divider" />
           </div>
 
           <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-normal whitespace-nowrap leading-4">
+            <div className=" font-normal font-arimo whitespace-nowrap leading-4">
               Plan ID
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 text-card-grey font-menlo">
               {" "}
-              <div>{createShortenedText(plan.plan_id)}</div>
+              <div>
+                {createShortenedText(plan.plan_id, windowWidth >= 2500)}
+              </div>
               <CopyText showIcon onlyIcon textToCopy={plan.plan_id} />
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-          <div className="font-normal whitespace-nowrap leading-4">
+          <div className="font-normal font-arimo whitespace-nowrap leading-4">
             # of versions:
           </div>
-          <div>{plan.num_versions}</div>
+          <div className="text-card-grey font-main">{plan.num_versions}</div>
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-          <div className="font-normal whitespace-nowrap leading-4">
+          <div className="font-normal font-arimo whitespace-nowrap leading-4">
             Active Versions
           </div>
-          <div> v{plan.display_version?.version}</div>
+          <div className="text-card-grey font-main">
+            {" "}
+            v{plan.display_version?.version}
+          </div>
         </div>
 
         <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-          <div className="font-normal text-card-text whitespace-nowrap leading-4xs">
+          <div className="font-normal font-arimo text-card-text whitespace-nowrap leading-4xs">
             Plan duration:
           </div>
-          <div> {capitalize(plan.plan_duration)}</div>
+          <div className="text-card-grey font-main">
+            {" "}
+            {capitalize(plan.plan_duration)}
+          </div>
         </div>
         <div className="flex mt-2">
           <DropdownComponent>

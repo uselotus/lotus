@@ -71,7 +71,7 @@ const StateTabs: FC<StateTabsProps> = ({
   };
 
   return (
-    <div className="flex items-center w-full justify-around tabsContainer">
+    <div className="flex items-center w-full justify-between tabsContainer">
       {tabs.map((tab) => (
         <Tooltip title={getToolTipText(tab)}>
           <div

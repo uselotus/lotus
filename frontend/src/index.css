@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,6 +9,10 @@
     font-style: normal;
     font-weight: normal;
     src: local('Menlo'), url('../fonts/Menlo-Regular.woff') format('woff');
+}
+@font-face {
+  font-family: "Alliance No.2 Regular";
+  src:   url('../fonts/Alliance-No.2-Regular.woff') format('woff');
 }
 
 @font-face {
@@ -23,6 +28,9 @@
 
 .font-satoshi {
     font-family: Satoshi, serif;
+}
+.font-alliance {
+  font-family: 'Alliance No.2 Regular';
 }
 
 
@@ -105,14 +113,24 @@ a {
   height: 88px;
   border-bottom: 1px solid rgba(29, 29, 31, 0.1);
 }
-
+/* tabs */ 
+.ant-tabs-tab.ant-tabs-tab-active {
+  border-bottom: 2px solid #C3986B !important;
+  z-index: 2;
+  color: #C3986B!important;
+}
+.ant-tabs-tab.ant-tabs-tab-active>.ant-tabs-tab-btn {
+color: #C3986B !important;
+}
 .ant-switch {
   color: #fff;
 }
 .ant-switch-checked {
   background-color: #cca43b;
 }
-
+.ant-table-row.ant-table-row-level-0 td:not(:first-of-type) {
+text-align: right  !important;
+}
 .ant-picker {
   border-radius: 100px;
   border-color: #1d1d1d;
