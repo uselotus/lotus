@@ -24,10 +24,10 @@ const tabItems = [
     key: "team",
     tab: "Team",
   },
-  {
-    key: "activity",
-    tab: "Activity",
-  },
+  // {
+  //   key: "activity",
+  //   tab: "Activity",
+  // },
   {
     key: "developer-settings",
     tab: "Developer Settings",
