@@ -12,6 +12,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, Q, Sum
@@ -23,7 +24,6 @@ from metering_billing.exceptions.exceptions import (
     OverlappingPlans,
     ServerError,
 )
-from django.core.files.base import ContentFile
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
@@ -2232,7 +2232,6 @@ class OrganizationSetting(models.Model):
         return f"{self.setting_name} - {self.setting_value}"
 
     class Meta:
-        unique_together = ("organization", "setting_name")
         constraints = [
             UniqueConstraint(
                 fields=[

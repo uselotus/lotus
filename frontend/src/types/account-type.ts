@@ -25,6 +25,7 @@ export interface OrganizationType {
   available_currencies: PricingUnit[];
   organization_id: string;
   tax_rate: null | number;
+  invoice_grace_period: number;
 }
 
 export interface ActionUserType extends UserType {
