@@ -598,12 +598,12 @@ function UsageComponentForm({
           <p className="flex justify-center text-danger">{errorMessage}</p>
         )}
         <div className="mt-8 mb-12">
-          <Collapse
+          {/* <Collapse
             className="col-span-full bg-white py-8 rounded"
             defaultActiveKey={"1"}
           >
-            <Panel header="Advanced Settings" key="1">
-              {/* <div className="mb-8">
+            <Panel header="Advanced Settings" key="1"> */}
+          {/* <div className="mb-8">
                 (Optional) Separate Reporting Based on Distinct Property Value
               </div>
 
@@ -625,7 +625,7 @@ function UsageComponentForm({
                   </p>
                 )} */}
 
-              {metricStateful === true && (
+          {/* {metricStateful === true && (
                 <Fragment>
                   <div className="separator mb-8"></div>
                   <div className="grid grid-flow-col items-center mb-4">
@@ -650,9 +650,9 @@ function UsageComponentForm({
                     </p>
                   )}
                 </Fragment>
-              )}
-            </Panel>
-          </Collapse>
+              )} */}
+          {/* </Panel>
+          </Collapse> */}
         </div>
       </Form>
     </Modal>

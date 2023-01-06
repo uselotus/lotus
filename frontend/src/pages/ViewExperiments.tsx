@@ -33,7 +33,7 @@ const ViewExperiments: FC = () => {
 
   return (
     <PageLayout
-      title="Experiments"
+      title="Experiments (beta)"
       extra={[
         <Button
           onClick={navigateCreateExperiment}

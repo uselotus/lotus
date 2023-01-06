@@ -459,7 +459,7 @@ class CustomersSummaryView(APIView):
                     end_date__gte=now,
                     start_date__lte=now,
                 ),
-                to_attr="subscriptions",
+                to_attr="subscription_records_filtered",
             ),
             Prefetch(
                 "subscription_records__billing_plan",

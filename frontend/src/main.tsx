@@ -1,12 +1,14 @@
 // @ts-ignore
-import React  from "react";
-import * as ReactDOM from 'react-dom/client';
+import React from "react";
+import * as ReactDOM from "react-dom/client";
 import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import "vite/modulepreload-polyfill";
 import "./index.css";
 import "./custom.less";
 import { QueryClient, QueryClientProvider } from "react-query";
+import { ConfigProvider } from "antd";
+import enUS from "antd/lib/locale/en_US";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +28,9 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
-        <App />
+        <ConfigProvider locale={enUS}>
+          <App />
+        </ConfigProvider>
       </QueryClientProvider>
     </BrowserRouter>
   </React.StrictMode>

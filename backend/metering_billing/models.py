@@ -23,6 +23,7 @@ from metering_billing.exceptions.exceptions import (
     OverlappingPlans,
     ServerError,
 )
+from django.core.files.base import ContentFile
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     backtest_uuid,
@@ -60,6 +61,9 @@ logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
+###TODO: write this
+# def save_pdf_to_s3()
+
 
 class Organization(models.Model):
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
@@ -86,6 +90,16 @@ class Organization(models.Model):
     properties = models.JSONField(default=dict, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    tax_rate = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        validators=[
+            MinValueValidator(Decimal(0)),
+            MaxValueValidator(Decimal(999.9999)),
+        ],
+        help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
+        null=True,
+    )
     history = HistoricalRecords()
 
     def __str__(self):
@@ -373,6 +387,16 @@ class Customer(models.Model):
         null=True,
         blank=True,
         help_text="The currency the customer will be invoiced in",
+    )
+    tax_rate = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        validators=[
+            MinValueValidator(Decimal(0)),
+            MaxValueValidator(Decimal(999.9999)),
+        ],
+        help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
+        null=True,
     )
     history = HistoricalRecords()
 
@@ -1213,7 +1237,7 @@ class Invoice(models.Model):
         blank=True,
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
-    invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
+    invoice_pdf = models.URLField(max_length=300, null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(

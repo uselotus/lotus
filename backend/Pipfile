@@ -49,6 +49,8 @@ cronitor = "*"
 svix = "*"
 pyjwt = "*"
 drf-standardized-errors = {extras = ["openapi"], version = "*"}
+boto3 = "*"
+reportlab = "*"
 jinja2 = "*"
 sqlparse = "*"
 

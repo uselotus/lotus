@@ -387,6 +387,7 @@ class CustomerSerializer(
             "payment_provider",
             "has_payment_method",
             "address",
+            "tax_rate",
         )
 
     customer_id = serializers.CharField()
@@ -485,6 +486,7 @@ class CustomerCreateSerializer(
             "properties",
             "default_currency_code",
             "address",
+            "tax_rate",
         )
         extra_kwargs = {
             "customer_id": {"required": True},

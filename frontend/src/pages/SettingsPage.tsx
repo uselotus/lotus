@@ -62,8 +62,8 @@ const SettingsPage: FC = () => {
         return <IntegrationsTab />;
       case "Team":
         return <TeamTab />;
-      case "Activity":
-        return <ActivityStream />;
+      // case "Activity":
+      //   return <ActivityStream />;
       case "Developer Settings":
         return <DeveloperTab />;
       case "Create Pricing Units":
