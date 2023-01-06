@@ -229,8 +229,7 @@ class TestCreateSubscription:
         setup_dict["org"].update_subscription_filter_settings(["email"])
         (customer,) = add_customers_to_org(setup_dict["org"], n=1)
         setup_dict["payload"]["customer_id"] = customer.customer_id
-        subscriptions_before = Subscription.objects.all().count()
-        print("subscriptions_before", subscriptions_before)
+        subscriptions_before = len(Subscription.objects.all())
         for i in range(100):
             setup_dict["payload"]["start_date"] = now_utc()
             setup_dict["payload"]["subscription_filters"] = [
@@ -1254,7 +1253,6 @@ class TestSubscriptionAndSubscriptionRecord:
         after_subscriptions_len = Subscription.objects.all().count()
         after_subscription_records_len = SubscriptionRecord.objects.all().count()
 
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert after_subscriptions_len == prev_subscriptions_len
         assert after_subscription_records_len == prev_subscription_records_len + 1

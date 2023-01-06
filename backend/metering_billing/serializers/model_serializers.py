@@ -204,11 +204,12 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
 class CustomerUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("default_currency_code",)
+        fields = ("default_currency_code", "address", "tax_rate")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
+    address = api_serializers.AddressSerializer(required=False, allow_null=True)
 
     def update(self, instance, validated_data):
         assert (
@@ -218,6 +219,12 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
+        instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
+        address = validated_data.pop("address", None)
+        if address:
+            cur_properties = instance.properties or {}
+            new_properties = {**cur_properties, "address": address}
+            instance.properties = new_properties
         instance.save()
         return instance
 

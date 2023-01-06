@@ -1512,3 +1512,99 @@ class TestCalculateMetricWithFilters:
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         # 1 dollar per for 67 rows - 3 free rows = 64 rows * 1 dollar = 64 dollars
         assert usage_revenue_dict["revenue"] == Decimal(64)
+
+
+@pytest.mark.django_db(transaction=True)
+class TestRegressions:
+    def test_granularity_ratio_total_fails(
+        self, billable_metric_test_common_setup, add_subscription_to_org
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="api_key",
+            user_org_and_api_key_org_different=False,
+        )
+        billable_metric = Metric.objects.create(
+            organization=setup_dict["org"],
+            event_name="number_of_users",
+            property_name="number",
+            usage_aggregation_type=METRIC_AGGREGATION.MAX,
+            metric_type=METRIC_TYPE.STATEFUL,
+            granularity=METRIC_GRANULARITY.TOTAL,
+            proration=METRIC_GRANULARITY.MINUTE,
+            event_type=EVENT_TYPE.TOTAL,
+        )
+        METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
+            billable_metric
+        )
+        time_created = now_utc() - relativedelta(days=45)
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="foo"
+        )
+        event_times = [
+            time_created + relativedelta(days=1) + relativedelta(hour=23, minute=i)
+            for i in range(55, 60)
+        ]
+        event_times += [
+            time_created + relativedelta(days=2) + relativedelta(hour=0, minute=i)
+            for i in range(6)
+        ]
+        properties = (
+            3 * [{"number": 800}]  # 55-56, 56-57, 57-58 at 8
+            + 2 * [{"number": 900}]  # 58-59, 59-60 at 9
+            + 1 * [{"number": 1000}]  # 60-61 at 10
+            + 1 * [{"number": 1100}]  # 61-62 at 11
+            + 2 * [{"number": 600}]  # 62-63, 63-64 at 6
+            + 1 * [{"number": 1200}]  # 64-65 at 12
+            + [{"number": 0}]  # everything else back to 0
+        )  # this should total 3*8 + 2*9 + 1*10 + 1*11 + 2*6 + 1*12 = 8700
+        baker.make(
+            Event,
+            event_name="number_of_users",
+            properties=iter(properties),
+            organization=setup_dict["org"],
+            time_created=iter(event_times),
+            customer=customer,
+            _quantity=11,
+        )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=0,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        now = now_utc()
+        time_created = now - relativedelta(days=45)
+        with (
+            mock.patch("metering_billing.models.now_utc", return_value=time_created),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=time_created,
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                time_created,
+            )
+
+        usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
+        assert usage_revenue_dict["revenue"] >= Decimal(8700) / (
+            Decimal(60) * Decimal(24) * Decimal(31)
+        ) * Decimal(100)
+        assert usage_revenue_dict["revenue"] <= Decimal(8700) / (
+            Decimal(60) * Decimal(24) * Decimal(28)
+        ) * Decimal(100)

@@ -11,6 +11,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count, Q
+from metering_billing.exceptions.exceptions import AlignmentEngineFailure
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
@@ -68,17 +69,22 @@ def calculate_invoice():
         old_sub_records = old_subscription.get_subscription_records_to_bill()
         if old_sub_records.count() == 0:
             continue
-        new_sub = Subscription.objects.create(
-            organization=old_subscription.organization,
-            day_anchor=old_subscription.day_anchor,
-            month_anchor=old_subscription.month_anchor,
-            customer=old_subscription.customer,
-            billing_cadence=old_subscription.billing_cadence,
-            start_date=date_as_min_dt(
-                old_subscription.end_date + relativedelta(days=+1)
-            ),
-            end_date=old_subscription.get_new_sub_end_date(),
-        )
+        try:
+            new_sub = Subscription.objects.create(
+                organization=old_subscription.organization,
+                day_anchor=old_subscription.day_anchor,
+                month_anchor=old_subscription.month_anchor,
+                customer=old_subscription.customer,
+                billing_cadence=old_subscription.billing_cadence,
+                start_date=date_as_min_dt(
+                    old_subscription.end_date + relativedelta(days=+1)
+                ),
+                end_date=old_subscription.get_new_sub_end_date(),
+            )
+        except AlignmentEngineFailure as e:
+            logger.info(f"Alignment engine failure on calculate_invoice: {e}")
+            new_sub = None
+            continue
         # Generate the invoice
         try:
             generate_invoice(
@@ -95,22 +101,24 @@ def calculate_invoice():
                 )
             )
             continue
-        num_subscription_records_active = SubscriptionRecord.objects.filter(
-            organization=old_subscription.organization,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            end_date__gte=old_subscription.end_date,
-        ).count()
-        if not (num_subscription_records_active > 0):
-            new_sub.delete()
-        else:
-            new_sub.handle_remove_plan()
-        # End the old subscription and delete draft invoices
+        # delete draft invoices
         Invoice.objects.filter(
             issue_date__lt=now,
             payment_status=INVOICE_STATUS.DRAFT,
             subscription=old_subscription,
             organization=old_subscription.organization,
         ).delete()
+        # if everything ends, delete the new sub
+        if new_sub:
+            num_subscription_records_active = SubscriptionRecord.objects.filter(
+                organization=old_subscription.organization,
+                status=SUBSCRIPTION_STATUS.ACTIVE,
+                end_date__gte=old_subscription.end_date,
+            ).count()
+            if not (num_subscription_records_active > 0):
+                new_sub.delete()
+            else:
+                new_sub.handle_remove_plan()
 
 
 @shared_task

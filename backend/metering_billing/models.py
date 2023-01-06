@@ -1785,6 +1785,9 @@ class Subscription(models.Model):
             ),
         ]
 
+    def __str__(self):
+        return f"{self.customer.id} [{self.start_date}, {self.end_date}] - {self.subscription_id}"
+
     def save(self, *args, **kwargs):
         if not self.pk:
             overlapping_subscriptions = Subscription.objects.filter(
