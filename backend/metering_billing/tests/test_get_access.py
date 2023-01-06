@@ -328,7 +328,6 @@ class TestGetAccess:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         event1 = Event.objects.create(
@@ -495,7 +494,6 @@ class TestGetAccessWithMetricID:
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
         # initial value, just 1 user
         event1 = Event.objects.create(

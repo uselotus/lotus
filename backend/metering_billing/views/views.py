@@ -455,7 +455,6 @@ class CustomersSummaryView(APIView):
                 "subscription_records",
                 queryset=SubscriptionRecord.objects.filter(
                     organization=organization,
-                    status=SUBSCRIPTION_STATUS.ACTIVE,
                     end_date__gte=now,
                     start_date__lte=now,
                 ),
@@ -764,8 +763,9 @@ class PlansByNumCustomersView(APIView):
     def get(self, request, format=None):
         organization = request.organization
         plans = (
-            SubscriptionRecord.objects.filter(
-                organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+            SubscriptionRecord.objects.active()
+            .filter(
+                organization=organization,
             )
             .values(plan_name=F("billing_plan__plan__plan_name"))
             .annotate(num_customers=Count("customer"))

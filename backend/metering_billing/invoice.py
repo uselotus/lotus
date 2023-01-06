@@ -268,7 +268,6 @@ def generate_invoice(
                         break
             for subscription_record in subscription_records:
                 subscription_record.fully_billed = True
-                subscription_record.status = SUBSCRIPTION_STATUS.ACTIVE
                 subscription_record.save()
             # if META:
             # lotus_python.track_event(
