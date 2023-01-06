@@ -116,7 +116,7 @@ def generate_invoice(
                         name=str(plan_component.billable_metric.billable_metric_name),
                         start_date=subscription_record.usage_start_date,
                         end_date=subscription_record.end_date,
-                        quantity=usg_rev["usage_qty"],
+                        quantity=usg_rev["usage_qty"] or 0,
                         subtotal=usg_rev["revenue"],
                         billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
                         chargeable_item_type=CHARGEABLE_ITEM_TYPE.USAGE_CHARGE,

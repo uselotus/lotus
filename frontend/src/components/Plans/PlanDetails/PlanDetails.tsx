@@ -178,14 +178,7 @@ const PlanDetails: FC = () => {
       {plan && (
         <div>
           <PageLayout
-            title={
-              plan.target_customer !== null
-                ? plan.plan_name +
-                  ": " +
-                  (plan.target_customer?.name ??
-                    plan.target_customer?.customer_id.substring(0, 8))
-                : plan.plan_name
-            }
+            title={plan.plan_name}
             backIcon
             extra={
               plan.target_customer === null && [

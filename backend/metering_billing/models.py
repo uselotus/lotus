@@ -1571,6 +1571,11 @@ class Plan(models.Model):
 
     history = HistoricalRecords()
 
+    def save(self, *args, **kwargs):
+        if not self.pk and self.target_customer:
+            self.plan_name = self.plan_name + " - " + self.target_customer.customer_name
+        super().save(*args, **kwargs)
+
     class Meta:
         constraints = [
             models.CheckConstraint(

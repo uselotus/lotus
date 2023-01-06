@@ -10,7 +10,19 @@ import generatePicker from "antd/es/date-picker/generatePicker";
 import { useQuery, UseQueryResult } from "react-query";
 import { RevenueType } from "../../types/revenue-type";
 import { GetRevenue } from "../../api/api";
-import RevenueBarGraph from "./RevenueBarGraph";
+import advancedFormat from "dayjs/plugin/advancedFormat";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import localeData from "dayjs/plugin/localeData";
+import weekday from "dayjs/plugin/weekday";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+import weekYear from "dayjs/plugin/weekYear";
+
+dayjs.extend(customParseFormat);
+dayjs.extend(advancedFormat);
+dayjs.extend(weekday);
+dayjs.extend(localeData);
+dayjs.extend(weekOfYear);
+dayjs.extend(weekYear);
 
 import { PageLayout } from "../base/PageLayout";
 import { CustomerByPlanPie } from "./CustomerByPlanPie";
