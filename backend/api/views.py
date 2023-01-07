@@ -785,6 +785,17 @@ class CustomerBalanceAdjustmentViewSet(
     def perform_create(self, serializer):
         serializer.save(organization=self.request.organization)
 
+    @extend_schema(
+        parameters=[CustomerBalanceAdjustmentFilterSerializer],
+    )
+    def list(self, request):
+        return super().list(request)
+
+    def perform_destroy(self, instance):
+        if instance.amount <= 0:
+            raise ValidationError("Cannot delete a negative adjustment.")
+        instance.zero_out(reason="voided")
+    
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"])
     def void(self, request, adjustment_id=None):
@@ -798,17 +809,11 @@ class CustomerBalanceAdjustmentViewSet(
             ).data,
             status=status.HTTP_200_OK,
         )
-
-    @extend_schema(
-        parameters=[CustomerBalanceAdjustmentFilterSerializer],
-    )
-    def list(self, request):
-        return super().list(request)
-
-    def perform_destroy(self, instance):
-        if instance.amount <= 0:
-            raise ValidationError("Cannot delete a negative adjustment.")
-        instance.zero_out(reason="voided")
+    
+    @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
+    @action(detail=True, methods=["post"])
+    def update(self, request, adjustment_id=None):
+        
 
 
 class GetCustomerEventAccessView(APIView):
