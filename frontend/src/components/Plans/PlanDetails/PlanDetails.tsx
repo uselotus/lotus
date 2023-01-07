@@ -216,7 +216,6 @@ const PlanDetails: FC = () => {
                 </div>
               </Button>
             }
-            title={plan.plan_name}
             backIcon
             extra={
               plan.target_customer === null && [

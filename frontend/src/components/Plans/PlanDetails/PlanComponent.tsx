@@ -355,6 +355,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               </Select.Label>
               <Select.Select
                 disabled
+                className="!w-1/4"
                 onChange={(e) => {
                   updateBillingFrequencyMutation(
                     e.target.value as "monthly" | "quarterly" | "yearly"

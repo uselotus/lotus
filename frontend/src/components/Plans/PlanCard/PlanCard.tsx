@@ -1,7 +1,11 @@
 // @ts-ignore
 import React, { FC, useRef } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
-import { DeleteOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  CheckCircleOutlined,
+  MoreOutlined,
+} from "@ant-design/icons";
 import { PlanType, UpdatePlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
@@ -82,7 +86,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
       }}
     >
-      {/* <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
         <Dropdown overlay={planMenu} trigger={["click"]}>
           <Button type="text" size="small" onClick={(e) => e.preventDefault()}>
             <MoreOutlined />
@@ -124,12 +128,6 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
             # of versions:
           </div>
           <div className="text-card-grey font-main">{plan.num_versions}</div>
-        <div className="planDetails">
-          <div className="pr-1 planDetailsLabel">Plan ID:</div>
-          <div className="planDetailsValue planIdOverflow font-menlo">
-            {" "}
-            {plan.plan_id}
-          </div>
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
@@ -154,7 +152,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         <div className="flex mt-2">
           <DropdownComponent>
             <DropdownComponent.Trigger>
-              <PlansTags tags={plan_tags} />
+              <PlansTags tags={plan.tags} />
             </DropdownComponent.Trigger>
             <DropdownComponent.Container>
               {plan_tags &&

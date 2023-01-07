@@ -96,16 +96,7 @@ const GeneralTab: FC = () => {
         ) {
           setCurrentCurrency(data.default_currency.code);
         }
-        const storeOrgObject: IOrgStoreType = {
-          organization_id: data.organization_id,
-          company_name: data.company_name,
-          default_currency: data.default_currency
-            ? data.default_currency
-            : undefined,
-          environment: undefined,
-        };
-
-        setOrgInfoToStore(storeOrgObject);
+       
       },
     }
   );
@@ -177,36 +168,6 @@ const GeneralTab: FC = () => {
 
       <Divider />
 
-      <div className="flex flex-col w-6/12 justify-between">
-        {mutation.isLoading && <LoadingSpinner />}
-        <p className=" text-[16px]">
-          <b>Company Name:</b> {org.company_name}
-        </p>
-        <p className=" text-[16px]">
-          <b className="">Default Organization Currency:</b>{" "}
-          {org.default_currency !== undefined &&
-          org.default_currency !== null ? (
-            <Tag>
-              {org.default_currency?.name + " " + org.default_currency?.symbol}
-            </Tag>
-          ) : (
-            "N/A"
-          )}
-        </p>
-        <p className="text-[16px] space-y-2">
-          <b>Billing address:</b> <p>1292 Lane Place</p>
-          <p>Cambridge MA</p>
-          <p>USA 92342</p>
-        </p>
-        <p className="text-[16px]">
-          <b>Invoice Grace Period:</b> 15 days
-        </p>
-        <p className="text-[16px]">
-          <b>Organization Tax Rate:</b> 0%
-        </p>
-
-        <div className=" flex justify-end"></div>
-      </div>
       {isLoading ? (
         <div className="mt-10">
           <LoadingSpinner />
@@ -249,6 +210,9 @@ const GeneralTab: FC = () => {
             </p>
           )}
 
+          <div className=" flex justify-end"></div>
+        </div>
+      )}
       <Modal
         title="Edit Organization Settings"
         visible={isEdit}
