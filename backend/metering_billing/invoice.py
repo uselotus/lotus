@@ -204,11 +204,14 @@ def generate_invoice(
                     and next_bp.flat_rate > 0
                     and subscription_record.auto_renew
                 ):
+                    new_start = date_as_min_dt(
+                        subscription_record.end_date + relativedelta(days=1)
+                    )
                     ili = InvoiceLineItem.objects.create(
                         name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
-                        start_date=subscription.end_date,
+                        start_date=new_start,
                         end_date=calculate_end_date(
-                            next_bp.plan.plan_duration, subscription.end_date
+                            next_bp.plan.plan_duration, new_start
                         ),
                         quantity=1,
                         subtotal=next_bp.flat_rate,
