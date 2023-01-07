@@ -46,7 +46,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
         dataIndex: "quantity",
         render: (_, record) => (
           <div className="flex flex-col">
-            {record.quantity !== null ? record.quantity.toFixed(2) : "1"}
+            {record.quantity !== null ? record.quantity.toFixed(2) : ""}
           </div>
         ),
       },
@@ -86,7 +86,7 @@ const DraftInvoice: FC<Props> = ({ customer_id }) => {
               <div className="grid grid-cols-3">
                 <p>
                   <b>Issue Date: </b>
-                  {dayjs(invoice.due_date).format("YYYY/MM/DD HH:mm")}
+                  {dayjs(invoice.issue_date).format("YYYY/MM/DD")}
                 </p>
                 <p>
                   <b>Currency: </b> {invoice.currency.name}

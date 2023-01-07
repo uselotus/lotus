@@ -82,12 +82,31 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "default_currency",
             "available_currencies",
             "plan_tags",
+            "tax_rate",
+            "invoice_grace_period",
         )
 
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
     plan_tags = serializers.SerializerMethodField()
+    invoice_grace_period = serializers.SerializerMethodField()
+
+    def get_invoice_grace_period(
+        self, obj
+    ) -> serializers.IntegerField(
+        min_value=0, max_value=365, required=False, allow_null=True
+    ):
+        grace_period_setting = OrganizationSetting.objects.filter(
+            organization=obj,
+            setting_name="invoice_grace_period",
+            setting_group="billing",
+        ).first()
+        if grace_period_setting:
+            val = grace_period_setting.setting_values.get("value")
+        else:
+            val = 0
+        return val
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(organization=obj)
@@ -142,13 +161,22 @@ class APITokenSerializer(serializers.ModelSerializer):
 class OrganizationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("default_currency_code", "address", "plan_tags")
+        fields = (
+            "default_currency_code",
+            "address",
+            "tax_rate",
+            "invoice_grace_period",
+            "plan_tags",
+        )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
     plan_tags = serializers.ListField(child=TagSerializer(), required=False)
+    invoice_grace_period = serializers.IntegerField(
+        min_value=0, max_value=365, required=False, allow_null=True
+    )
 
     def update(self, instance, validated_data):
         assert (
@@ -181,6 +209,24 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
                         tag_color=plan_tag["tag_color"],
                     )
 
+        instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
+        invoice_grace_period = validated_data.get("invoice_grace_period", None)
+        if invoice_grace_period is not None:
+            grace_period_setting = OrganizationSetting.objects.filter(
+                organization=instance,
+                setting_name="invoice_grace_period",
+                setting_group="billing",
+            ).first()
+            if grace_period_setting:
+                grace_period_setting.setting_values = {"value": invoice_grace_period}
+                grace_period_setting.save()
+            else:
+                OrganizationSetting.objects.create(
+                    organization=instance,
+                    setting_name="invoice_grace_period",
+                    setting_group="billing",
+                    setting_values={"value": invoice_grace_period},
+                )
         instance.save()
         return instance
 
@@ -188,11 +234,12 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
 class CustomerUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ("default_currency_code",)
+        fields = ("default_currency_code", "address", "tax_rate")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
+    address = api_serializers.AddressSerializer(required=False, allow_null=True)
 
     def update(self, instance, validated_data):
         assert (
@@ -202,6 +249,12 @@ class CustomerUpdateSerializer(serializers.ModelSerializer):
         instance.default_currency = validated_data.get(
             "default_currency", instance.default_currency
         )
+        instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
+        address = validated_data.pop("address", None)
+        if address:
+            cur_properties = instance.properties or {}
+            new_properties = {**cur_properties, "address": address}
+            instance.properties = new_properties
         instance.save()
         return instance
 
@@ -334,6 +387,9 @@ class CustomerSerializer(api_serializers.CustomerSerializer):
     def update(self, instance, validated_data, behavior="merge"):
         instance.customer_id = validated_data.get(
             "customer_id", instance.customer_id if behavior == "merge" else None
+        )
+        instance.tax_rate = validated_data.get(
+            "tax_rate", instance.tax_rate if behavior == "merge" else None
         )
         instance.customer_name = validated_data.get(
             "customer_name", instance.customer_name if behavior == "merge" else None
@@ -1255,7 +1311,7 @@ class CustomerSummarySerializer(serializers.ModelSerializer):
     def get_subscriptions(
         self, obj
     ) -> SubscriptionCustomerSummarySerializer(many=True, required=False):
-        sub_obj = obj.subscription_records.filter(status=SUBSCRIPTION_STATUS.ACTIVE)
+        sub_obj = obj.subscription_records_filtered
         return SubscriptionCustomerSummarySerializer(sub_obj, many=True).data
 
 

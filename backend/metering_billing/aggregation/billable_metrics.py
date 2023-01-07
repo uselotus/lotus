@@ -1137,8 +1137,20 @@ class StatefulHandler(MetricHandler):
         except OrganizationSetting.DoesNotExist:
             organization.provision_subscription_filter_settings()
             groupby = []
+        metric_granularity = metric.granularity
+        if metric_granularity == METRIC_GRANULARITY.TOTAL:
+            plan_duration = subscription_record.billing_plan.plan.plan_duration
+            metric_granularity = (
+                METRIC_GRANULARITY.YEAR
+                if plan_duration == PLAN_DURATION.YEARLY
+                else (
+                    METRIC_GRANULARITY.QUARTER
+                    if plan_duration == PLAN_DURATION.QUARTERLY
+                    else METRIC_GRANULARITY.MONTH
+                )
+            )
         granularity_ratio = get_granularity_ratio(
-            metric.granularity, metric.proration, subscription_record.usage_start_date
+            metric_granularity, metric.proration, subscription_record.usage_start_date
         )
         proration_units = metric.proration
         if proration_units == METRIC_GRANULARITY.TOTAL:
@@ -1192,8 +1204,20 @@ class StatefulHandler(MetricHandler):
         except OrganizationSetting.DoesNotExist:
             organization.provision_subscription_filter_settings()
             groupby = []
+        metric_granularity = metric.granularity
+        if metric_granularity == METRIC_GRANULARITY.TOTAL:
+            plan_duration = subscription_record.billing_plan.plan.plan_duration
+            metric_granularity = (
+                METRIC_GRANULARITY.YEAR
+                if plan_duration == PLAN_DURATION.YEARLY
+                else (
+                    METRIC_GRANULARITY.QUARTER
+                    if plan_duration == PLAN_DURATION.QUARTERLY
+                    else METRIC_GRANULARITY.MONTH
+                )
+            )
         granularity_ratio = get_granularity_ratio(
-            metric.granularity, metric.proration, subscription_record.usage_start_date
+            metric_granularity, metric.proration, subscription_record.usage_start_date
         )
         proration_units = metric.proration
         if proration_units == METRIC_GRANULARITY.TOTAL:
@@ -1247,8 +1271,20 @@ class StatefulHandler(MetricHandler):
         except OrganizationSetting.DoesNotExist:
             organization.provision_subscription_filter_settings()
             groupby = []
+        metric_granularity = metric.granularity
+        if metric_granularity == METRIC_GRANULARITY.TOTAL:
+            plan_duration = subscription_record.billing_plan.plan.plan_duration
+            metric_granularity = (
+                METRIC_GRANULARITY.YEAR
+                if plan_duration == PLAN_DURATION.YEARLY
+                else (
+                    METRIC_GRANULARITY.QUARTER
+                    if plan_duration == PLAN_DURATION.QUARTERLY
+                    else METRIC_GRANULARITY.MONTH
+                )
+            )
         granularity_ratio = get_granularity_ratio(
-            metric.granularity, metric.proration, subscription_record.usage_start_date
+            metric_granularity, metric.proration, subscription_record.usage_start_date
         )
         proration_units = metric.proration
         if proration_units == METRIC_GRANULARITY.TOTAL:

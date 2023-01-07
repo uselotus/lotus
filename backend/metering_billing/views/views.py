@@ -168,7 +168,7 @@ class CostAnalysisView(APIView):
         cost_metrics = Metric.objects.filter(
             organization=organization, is_cost_metric=True
         )
-        for metric in cost_metrics:
+        for metric in []:
             usage_ret = metric.get_usage(
                 start_date,
                 end_date,
@@ -449,13 +449,16 @@ class CustomersSummaryView(APIView):
         """
         organization = request.organization
         logger.debug(f"CustomersSummaryView: {organization}, {request.user}")
+        now = now_utc()
         customers = Customer.objects.filter(organization=organization).prefetch_related(
             Prefetch(
                 "subscription_records",
                 queryset=SubscriptionRecord.objects.filter(
-                    organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+                    organization=organization,
+                    end_date__gte=now,
+                    start_date__lte=now,
                 ),
-                to_attr="subscriptions",
+                to_attr="subscription_records_filtered",
             ),
             Prefetch(
                 "subscription_records__billing_plan",
@@ -760,8 +763,9 @@ class PlansByNumCustomersView(APIView):
     def get(self, request, format=None):
         organization = request.organization
         plans = (
-            SubscriptionRecord.objects.filter(
-                organization=organization, status=SUBSCRIPTION_STATUS.ACTIVE
+            SubscriptionRecord.objects.active()
+            .filter(
+                organization=organization,
             )
             .values(plan_name=F("billing_plan__plan__plan_name"))
             .annotate(num_customers=Count("customer"))

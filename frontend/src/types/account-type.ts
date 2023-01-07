@@ -26,6 +26,8 @@ export interface OrganizationType {
   available_currencies: PricingUnit[];
   organization_id: string;
   plan_tags: PlanType["tags"];
+  tax_rate: null | number;
+  invoice_grace_period: number;
 }
 
 export interface ActionUserType extends UserType {

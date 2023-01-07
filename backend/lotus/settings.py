@@ -450,15 +450,23 @@ if DOCKERIZED:
 
 VITE_APP_DIR = BASE_DIR / "src"
 
-STATICFILES_DIRS = [BASE_DIR / "static", VITE_APP_DIR / "dist"]
+
+### AWS S3 ###
+AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID", default="")
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
+AWS_S3_INVOICE_BUCKET = config("AWS_S3_INVOICE_BUCKET", default="")
+AWS_STORAGE_BUCKET_NAME = AWS_S3_INVOICE_BUCKET
+
 
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "static/"
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
+STATICFILES_DIRS = [BASE_DIR / "static", VITE_APP_DIR / "dist"]
 
 
 MEDIA_URL = "/media/"

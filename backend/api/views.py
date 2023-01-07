@@ -266,6 +266,7 @@ class SubscriptionViewSet(
             return SubscriptionRecordSerializer
 
     def get_queryset(self):
+        now = now_utc()
         qs = super().get_queryset()
         organization = self.request.organization
         qs = qs.filter(organization=organization)
@@ -291,7 +292,12 @@ class SubscriptionViewSet(
                 args.append(Q(customer=serializer.validated_data["customer"]))
             status_combo = []
             for status in allowed_status:
-                status_combo.append(Q(status=status))
+                if status == SUBSCRIPTION_STATUS.ACTIVE:
+                    status_combo.append(Q(start_date__lte=now, end_date__gte=now))
+                elif status == SUBSCRIPTION_STATUS.ENDED:
+                    status_combo.append(Q(end_date__lt=now))
+                elif status == SUBSCRIPTION_STATUS.NOT_STARTED:
+                    status_combo.append(Q(start_date__gt=now))
             args.append(reduce(operator.or_, status_combo))
             qs = qs.filter(
                 *args,
@@ -319,7 +325,7 @@ class SubscriptionViewSet(
                 raise Exception("Invalid action")
             serializer.is_valid(raise_exception=True)
             args = []
-            args.append(Q(status=SUBSCRIPTION_STATUS.ACTIVE))
+            args.append(Q(start_date__lte=now, end_date__gte=now))
             args.append(Q(customer=serializer.validated_data["customer"]))
             if serializer.validated_data.get("plan_id"):
                 args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
@@ -367,6 +373,7 @@ class SubscriptionViewSet(
     @extend_schema(responses=SubscriptionRecordSerializer)
     @action(detail=False, methods=["post"])
     def add(self, request, *args, **kwargs):
+        now = now_utc()
         # run checks to make sure it's valid
         organization = self.request.organization
         serializer = self.get_serializer(data=request.data)
@@ -383,7 +390,7 @@ class SubscriptionViewSet(
                 )
         # check to see if subscription exists
         subscription = (
-            Subscription.objects.active()
+            Subscription.objects.active(now)
             .filter(
                 organization=organization,
                 customer=serializer.validated_data["customer"],
@@ -419,6 +426,10 @@ class SubscriptionViewSet(
             month_anchor=month_anchor,
         )
         end_date = serializer.validated_data.get("end_date", end_date)
+        if end_date < now:
+            raise ValidationError(
+                "End date cannot be in the past. For historical backfilling of subscriptions, please contact support."
+            )
         if billing_freq in [
             USAGE_BILLING_FREQUENCY.MONTHLY,
             USAGE_BILLING_FREQUENCY.QUARTERLY,
@@ -445,7 +456,7 @@ class SubscriptionViewSet(
                 "next_billing_date"
             ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
         subscription_record = serializer.save(
-            organization=organization, status="active"
+            organization=organization,
         )
 
         # now we can actually create the subscription record
@@ -479,7 +490,6 @@ class SubscriptionViewSet(
             invoice_usage_charges=usage_behavior == USAGE_BILLING_BEHAVIOR.BILL_FULL,
             auto_renew=False,
             end_date=now,
-            status=SUBSCRIPTION_STATUS.ENDED,
             fully_billed=invoicing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW,
         )
         qs = SubscriptionRecord.objects.filter(pk__in=qs_pks, organization=organization)
@@ -550,7 +560,6 @@ class SubscriptionViewSet(
                     usage_start_date=now
                     if keep_separate
                     else subscription_record.usage_start_date,
-                    status=SUBSCRIPTION_STATUS.ACTIVE,
                     auto_renew=subscription_record.auto_renew,
                     fully_billed=False,
                     unadjusted_duration_seconds=subscription_record.unadjusted_duration_seconds,
@@ -785,12 +794,13 @@ class GetCustomerEventAccessView(APIView):
         customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
         access_metric = serializer.validated_data.get("metric")
-        subscription_records = SubscriptionRecord.objects.select_related(
-            "billing_plan"
-        ).filter(
-            organization_id=organization_pk,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            customer=customer,
+        subscription_records = (
+            SubscriptionRecord.objects.active()
+            .select_related("billing_plan")
+            .filter(
+                organization_id=organization_pk,
+                customer=customer,
+            )
         )
         subscription_filters = {
             x["property_name"]: x["value"]
@@ -882,12 +892,13 @@ class GetCustomerFeatureAccessView(APIView):
         # )
         customer = serializer.validated_data["customer"]
         feature_name = serializer.validated_data.get("feature_name")
-        subscriptions = SubscriptionRecord.objects.select_related(
-            "billing_plan"
-        ).filter(
-            organization_id=organization_pk,
-            status=SUBSCRIPTION_STATUS.ACTIVE,
-            customer=customer,
+        subscriptions = (
+            SubscriptionRecord.objects.active()
+            .select_related("billing_plan")
+            .filter(
+                organization_id=organization_pk,
+                customer=customer,
+            )
         )
         subscription_filters = {
             x["property_name"]: x["value"]

@@ -567,11 +567,6 @@ def setup_demo_3(company_name, username=None, email=None, password=None, mode="c
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
     now = now_utc()
-    SubscriptionRecord.objects.filter(
-        organization=organization,
-        status=SUBSCRIPTION_STATUS.ENDED,
-        end_date__gt=now,
-    ).update(status=SUBSCRIPTION_STATUS.ACTIVE)
     backtest = Backtest.objects.create(
         backtest_name=organization,
         start_date="2022-08-01",
@@ -912,8 +907,6 @@ def make_subscription_and_subscription_record(
         customer=customer,
         billing_plan=plan,
         start_date=start_date,
-        status=SUBSCRIPTION_STATUS.ENDED,
     )
-    sub.status = SUBSCRIPTION_STATUS.ENDED
     sub.save()
     return sub, sr

@@ -133,3 +133,9 @@ class OverlappingPlans(APIException):
     status_code = 400
     default_detail = "Overlapping plans"
     default_code = "overlapping_plans"
+
+
+class AlignmentEngineFailure(APIException):
+    status_code = 500
+    default_detail = "Alignment engine failed to perform alignment"
+    default_code = "alignment_engine_failure"

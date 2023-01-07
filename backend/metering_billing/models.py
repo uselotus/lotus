@@ -12,11 +12,13 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from metering_billing.exceptions.exceptions import (
+    AlignmentEngineFailure,
     ExternalConnectionFailure,
     ExternalConnectionInvalid,
     NotEditable,
@@ -60,6 +62,9 @@ logger = logging.getLogger("django.server")
 META = settings.META
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
+###TODO: write this
+# def save_pdf_to_s3()
+
 
 class Organization(models.Model):
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
@@ -86,6 +91,16 @@ class Organization(models.Model):
     properties = models.JSONField(default=dict, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    tax_rate = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        validators=[
+            MinValueValidator(Decimal(0)),
+            MaxValueValidator(Decimal(999.9999)),
+        ],
+        help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
+        null=True,
+    )
     history = HistoricalRecords()
 
     def __str__(self):
@@ -373,6 +388,16 @@ class Customer(models.Model):
         null=True,
         blank=True,
         help_text="The currency the customer will be invoiced in",
+    )
+    tax_rate = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        validators=[
+            MinValueValidator(Decimal(0)),
+            MaxValueValidator(Decimal(999.9999)),
+        ],
+        help_text="Tax rate as percentage. For example, 10.5 for 10.5%",
+        null=True,
     )
     history = HistoricalRecords()
 
@@ -1213,7 +1238,7 @@ class Invoice(models.Model):
         blank=True,
     )
     issue_date = models.DateTimeField(max_length=100, default=now_utc)
-    invoice_pdf = models.FileField(upload_to="invoices/", null=True, blank=True)
+    invoice_pdf = models.URLField(max_length=300, null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
     payment_status = models.CharField(
@@ -1433,9 +1458,7 @@ class PlanVersion(models.Model):
         return str(self.plan) + " v" + str(self.version)
 
     def num_active_subs(self):
-        cnt = self.subscription_records.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        ).count()
+        cnt = self.subscription_records.active().count()
         return cnt
 
     def save(self, *args, **kwargs):
@@ -1479,7 +1502,7 @@ class PriceAdjustment(models.Model):
             return str(self.price_adjustment_name)
         else:
             return (
-                str(self.price_adjustment_amount)
+                str(round(self.price_adjustment_amount, 2))
                 + " "
                 + str(self.price_adjustment_type)
             )
@@ -1549,6 +1572,11 @@ class Plan(models.Model):
 
     history = HistoricalRecords()
 
+    def save(self, *args, **kwargs):
+        if not self.pk and self.target_customer:
+            self.plan_name = self.plan_name + " - " + self.target_customer.customer_name
+        super().save(*args, **kwargs)
+
     class Meta:
         constraints = [
             models.CheckConstraint(
@@ -1563,10 +1591,14 @@ class Plan(models.Model):
 
     def active_subs_by_version(self):
         versions = self.versions.all().prefetch_related("subscription_records")
+        now = now_utc()
         versions_count = versions.annotate(
             active_subscriptions=Count(
                 "subscription_record",
-                filter=Q(subscription_record__status=SUBSCRIPTION_STATUS.ACTIVE),
+                filter=Q(
+                    subscription_record__start_date__lte=now,
+                    subscription_record__end_date__gte=now,
+                ),
                 output_field=models.IntegerField(),
             )
         )
@@ -1607,6 +1639,7 @@ class Plan(models.Model):
                 == MAKE_PLAN_VERSION_ACTIVE_TYPE.REPLACE_ON_ACTIVE_VERSION_RENEWAL
             ):
                 replace_with_lst.append(PLAN_VERSION_STATUS.ACTIVE)
+            now = now_utc()
             versions_to_replace = (
                 self.versions.all()
                 .filter(~Q(pk=new_version.pk), status__in=replace_with_lst)
@@ -1614,7 +1647,8 @@ class Plan(models.Model):
                     active_subscriptions=Count(
                         "subscription_record",
                         filter=Q(
-                            subscription_record__status=SUBSCRIPTION_STATUS.ACTIVE
+                            subscription_record__start_date__lte=now,
+                            subscription_record__end_date__gte=now,
                         ),
                         output_field=models.IntegerField(),
                     )
@@ -1651,9 +1685,7 @@ class Plan(models.Model):
             )
             versions.update(status=PLAN_VERSION_STATUS.INACTIVE, replace_with=None)
             for version in versions:
-                for sub in version.subscription_records.filter(
-                    status=SUBSCRIPTION_STATUS.ACTIVE
-                ):
+                for sub in version.subscription_records.active():
                     if (
                         replace_immediately_type
                         == REPLACE_IMMEDIATELY_TYPE.CHANGE_SUBSCRIPTION_PLAN
@@ -1701,7 +1733,8 @@ class SubscriptionManager(models.Manager):
         if time is None:
             time = now_utc()
         return self.filter(
-            Q(start_date__lte=time) & (Q(end_date__gte=time) | Q(end_date__isnull=True))
+            Q(start_date__lte=time)
+            & ((Q(end_date__gte=time) | Q(end_date__isnull=True)))
         )
 
     def ended(self, time=None):
@@ -1743,6 +1776,47 @@ class Subscription(models.Model):
     end_date = models.DateTimeField()
     subscription_id = models.SlugField(max_length=100, default=subscription_uuid)
     objects = SubscriptionManager()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=Q(start_date__lte=F("end_date")),
+                name="start_date_less_than_end_date",
+            ),
+            models.UniqueConstraint(
+                fields=["subscription_id", "organization"],
+                name="unique_subscription_id",
+            ),
+            models.UniqueConstraint(
+                fields=["customer", "start_date", "end_date"],
+                name="unique_customer_start_end_date",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.customer.id} [{self.start_date}, {self.end_date}] - {self.subscription_id}"
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            overlapping_subscriptions = Subscription.objects.filter(
+                Q(start_date__range=(self.start_date, self.end_date))
+                | Q(end_date__range=(self.start_date, self.end_date)),
+                organization=self.organization,
+                customer=self.customer,
+            )
+            if overlapping_subscriptions.exists():
+                logger.error(
+                    "Overlapping subscriptions found. Subscription that was trying to be created had start date of %s and end date of %s, customer id %s, and organization id %s. Overlapping subscriptions: %s",
+                    self.start_date,
+                    self.end_date,
+                    self.customer.id,
+                    self.organization.id,
+                    overlapping_subscriptions,
+                )
+                raise AlignmentEngineFailure(
+                    f"An unexpected error in the alignment engine has occurred. Please contact support."
+                )
+        super(Subscription, self).save(*args, **kwargs)
 
     def get_anchors(self):
         return self.day_anchor, self.month_anchor
@@ -1793,9 +1867,7 @@ class Subscription(models.Model):
         self.save()
 
     def handle_remove_plan(self):
-        active_sub_records = self.customer.subscription_records.filter(
-            status=SUBSCRIPTION_STATUS.ACTIVE
-        )
+        active_sub_records = self.customer.subscription_records.active()
         active_subs_with_yearly_quarterly = active_sub_records.filter(
             billing_plan__plan__plan_duration__in=[
                 PLAN_DURATION.YEARLY,
@@ -1842,11 +1914,10 @@ class Subscription(models.Model):
         self.save()
 
     def get_subscription_records(self):
-        return self.customer.subscription_records.filter(
+        return self.customer.subscription_records.active().filter(
             Q(last_billing_date__range=(self.start_date, self.end_date))
             | Q(end_date__range=(self.start_date, self.end_date))
             | Q(start_date__lte=self.start_date, end_date__gte=self.end_date),
-            status=SUBSCRIPTION_STATUS.ACTIVE,
         )
 
     def get_subscription_records_to_bill(self):
@@ -1869,6 +1940,24 @@ class SubscriptionRecordManager(models.Manager):
         sr = self.model(**kwargs)
         sr.save(subscription_filters=subscription_filters)
         return sr
+
+    def active(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(
+            Q(start_date__lte=time)
+            & ((Q(end_date__gte=time) | Q(end_date__isnull=True)))
+        )
+
+    def ended(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(end_date__lte=time)
+
+    def not_started(self, time=None):
+        if time is None:
+            time = now_utc()
+        return self.filter(start_date__gt=time)
 
 
 class SubscriptionRecord(models.Model):
@@ -1902,11 +1991,6 @@ class SubscriptionRecord(models.Model):
         help_text="The time the subscription starts. This will be a string in yyyy-mm-dd HH:mm:ss format in UTC time."
     )
     unadjusted_duration_seconds = models.PositiveIntegerField(null=True, blank=True)
-    status = models.CharField(
-        max_length=20,
-        choices=SUBSCRIPTION_STATUS.choices,
-        default=SUBSCRIPTION_STATUS.NOT_STARTED,
-    )
     auto_renew = models.BooleanField(
         default=True,
         help_text="Whether the subscription automatically renews. Defaults to true.",
@@ -2001,12 +2085,6 @@ class SubscriptionRecord(models.Model):
                     )
         if not self.usage_start_date:
             self.usage_start_date = self.start_date
-        if self.end_date < now:
-            self.status = SUBSCRIPTION_STATUS.ENDED
-        elif self.start_date > now:
-            self.status = SUBSCRIPTION_STATUS.NOT_STARTED
-        else:
-            self.status = SUBSCRIPTION_STATUS.ACTIVE
         if not self.pk:
             overlapping_subscriptions = SubscriptionRecord.objects.filter(
                 Q(start_date__range=(self.start_date, self.end_date))
@@ -2075,14 +2153,14 @@ class SubscriptionRecord(models.Model):
         bill_usage=True,
         flat_fee_behavior=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
     ):
-        if self.status != SUBSCRIPTION_STATUS.ACTIVE:
-            return
         now = now_utc()
+        if self.end_date <= now:
+            logger.info("Subscription already ended.")
+            return
         self.flat_fee_behavior = flat_fee_behavior
         self.invoice_usage_charges = bill_usage
         self.auto_renew = False
         self.end_date = now
-        self.status = SUBSCRIPTION_STATUS.ENDED
         self.save()
 
     def turn_off_auto_renew(self):
@@ -2209,7 +2287,6 @@ class OrganizationSetting(models.Model):
         return f"{self.setting_name} - {self.setting_value}"
 
     class Meta:
-        unique_together = ("organization", "setting_name")
         constraints = [
             UniqueConstraint(
                 fields=[

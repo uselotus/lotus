@@ -88,11 +88,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
             <MoreOutlined />
           </Button>
         </Dropdown>
-      </div> */}
-      <Typography.Title className="pt-4 whitespace-pre-wrap font-arimo !text-[18px]">
-        {plan.target_customer !== null
-          ? plan.plan_name + ": " + customerNameOrID(plan.target_customer)
-          : plan.plan_name}
+      </div>
+      <Typography.Title className="pt-4" level={2}>
+        {plan.plan_name}
       </Typography.Title>
 
       <div>
@@ -126,6 +124,12 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
             # of versions:
           </div>
           <div className="text-card-grey font-main">{plan.num_versions}</div>
+        <div className="planDetails">
+          <div className="pr-1 planDetailsLabel">Plan ID:</div>
+          <div className="planDetailsValue planIdOverflow font-menlo">
+            {" "}
+            {plan.plan_id}
+          </div>
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">

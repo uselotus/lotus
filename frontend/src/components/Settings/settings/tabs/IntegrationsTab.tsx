@@ -52,10 +52,19 @@ const IntegrationsTab: FC = () => {
           })}
         <Col span={6} className="h-full">
           <AppCard
-            connected={true}
+            connected={false}
             title="Snowflake"
             description="Sync your data to your Snowflake warehouse"
             icon={integrationsMap["snowflake"].icon}
+            handleClick={() => navigate("/settings/integrations/snowflake")}
+          />
+        </Col>
+        <Col span={6} className="h-full">
+          <AppCard
+            connected={false}
+            title="Salesforce"
+            description="Sync your products, customers, and invoices to Salesforce"
+            icon={integrationsMap["salesforce"].icon}
             handleClick={() => navigate("/settings/integrations/snowflake")}
           />
         </Col>

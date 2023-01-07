@@ -45,7 +45,10 @@ const GeneralTab: FC = () => {
   const org = useGlobalStore((state) => state.org);
   const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
   const [currentCurrency, setCurrentCurrency] = useState("");
-
+  const [taxRate, setTaxRate] = useState(0);
+  const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
+  const [displayTaxRate, setDisplayTaxRate] = useState(0);
+  const [displayInvoiceGracePeriod, setDisplayInvoiceGracePeriod] = useState(0);
   const {
     data: pricingUnits,
     isLoading: pricingUnitsLoading,
@@ -55,6 +58,56 @@ const GeneralTab: FC = () => {
       PricingUnits.list().then((res) => {
         return res;
       })
+  );
+
+  const { isLoading } = useQuery(
+    ["organization"],
+    () =>
+      Organization.get().then((res) => {
+        //if the default currency is null, then don't set it, otherwise setCurrentCurrency
+        if (
+          res[0].default_currency !== undefined &&
+          res[0].default_currency !== null
+        ) {
+          setCurrentCurrency(res[0].default_currency.code);
+        }
+        if (res[0].tax_rate === null) {
+          setTaxRate(0);
+          setDisplayTaxRate(0);
+        } else {
+          setTaxRate(res[0].tax_rate);
+          setDisplayTaxRate(res[0].tax_rate);
+        }
+        if (res[0].invoice_grace_period === null) {
+          setInvoiceGracePeriod(0);
+          setDisplayInvoiceGracePeriod(0);
+        } else {
+          setInvoiceGracePeriod(res[0].invoice_grace_period);
+          setDisplayInvoiceGracePeriod(res[0].invoice_grace_period);
+        }
+
+        return res[0];
+      }),
+    {
+      onSuccess: (data) => {
+        if (
+          data.default_currency !== undefined &&
+          data.default_currency !== null
+        ) {
+          setCurrentCurrency(data.default_currency.code);
+        }
+        const storeOrgObject: IOrgStoreType = {
+          organization_id: data.organization_id,
+          company_name: data.company_name,
+          default_currency: data.default_currency
+            ? data.default_currency
+            : undefined,
+          environment: undefined,
+        };
+
+        setOrgInfoToStore(storeOrgObject);
+      },
+    }
   );
 
   const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,17 +135,27 @@ const GeneralTab: FC = () => {
   );
 
   const updateOrg = useMutation(
-    (obj: { org_id: string; default_currency_code: string }) =>
-      Organization.updateOrganization(obj.org_id, obj.default_currency_code),
+    (obj: {
+      org_id: string;
+      default_currency_code: string;
+      tax_rate: number;
+      invoice_grace_period: number;
+    }) =>
+      Organization.updateOrganization(
+        obj.org_id,
+        obj.default_currency_code,
+        obj.tax_rate,
+        obj.invoice_grace_period
+      ),
     {
       onSuccess: () => {
-        toast.success("Successfully Updated Default Currency", {
+        toast.success("Successfully Updated Organization Settings", {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries("organization");
       },
       onError: () => {
-        toast.error("Failed to Update Default Currency", {
+        toast.error("Failed to Update Organization Settings", {
           position: toast.POSITION.TOP_CENTER,
         });
       },
@@ -144,6 +207,47 @@ const GeneralTab: FC = () => {
 
         <div className=" flex justify-end"></div>
       </div>
+      {isLoading ? (
+        <div className="mt-10">
+          <LoadingSpinner />
+        </div>
+      ) : (
+        <div className="flex flex-col w-6/12 justify-between">
+          {mutation.isLoading && <LoadingSpinner />}
+          <p className=" text-[16px]">
+            <b>Company Name:</b> {org.company_name}
+          </p>
+          <p className=" text-[16px]">
+            <b className="">Default Organization Currency:</b>{" "}
+            {org.default_currency !== undefined &&
+            org.default_currency !== null ? (
+              <Tag>
+                {org.default_currency?.name +
+                  " " +
+                  org.default_currency?.symbol}
+              </Tag>
+            ) : (
+              "N/A"
+            )}
+          </p>
+          <p className="text-[16px] space-y-2">
+            <b>Billing address:</b> <p>1292 Lane Place</p>
+            <p>Cambridge MA</p>
+            <p>USA 92342</p>
+          </p>
+          <p className="text-[16px]">
+            <b>Invoice Grace Period:</b> {displayInvoiceGracePeriod}{" "}
+            {displayInvoiceGracePeriod === 1 ? "day" : "days"}
+          </p>
+          {displayTaxRate !== null && displayTaxRate !== undefined ? (
+            <p className="text-[16px]">
+              <b>Organization Tax Rate:</b> {displayTaxRate} %
+            </p>
+          ) : (
+            <p className="text-[16px]">
+              <b>Organization Tax Rate:</b> None
+            </p>
+          )}
 
       <Modal
         title="Edit Organization Settings"
@@ -155,6 +259,8 @@ const GeneralTab: FC = () => {
             updateOrg.mutate({
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
+              tax_rate: taxRate,
+              invoice_grace_period: invoiceGracePeriod,
             });
             form.resetFields();
           }
@@ -191,8 +297,28 @@ const GeneralTab: FC = () => {
                 })}
               />
             </Form.Item>
+            <Form.Item label="Tax Rate" name="tax_rate">
+              <Input
+                type="number"
+                step=".01"
+                onChange={(e) =>
+                  setTaxRate(e.target.value as unknown as number)
+                }
+                defaultValue={taxRate}
+              />
+            </Form.Item>
             <Form.Item label="Billing Address" name="billing_address">
               <Input disabled={true} />
+            </Form.Item>
+            <Form.Item label="Invoice Grace Period" name="invoice_grace_period">
+              <Input
+                type="number"
+                step="1"
+                onChange={(e) =>
+                  setInvoiceGracePeriod(e.target.value as unknown as number)
+                }
+                defaultValue={invoiceGracePeriod}
+              />
             </Form.Item>
           </Form>
         </div>
