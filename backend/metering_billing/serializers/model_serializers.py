@@ -8,7 +8,11 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateMetric, ServerError
+from metering_billing.exceptions import (
+    DuplicateMetric,
+    DuplicateOrganization,
+    ServerError,
+)
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -103,12 +107,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return val
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
-        users = User.objects.filter(organization=obj)
+        users = User.objects.filter(team=obj.team)
         users_data = list(OrganizationUserSerializer(users, many=True).data)
         now = now_utc()
-        invited_users = OrganizationInviteToken.objects.filter(
-            organization=obj, expire_at__gt=now
-        )
+        invited_users = TeamInviteToken.objects.filter(team=obj.team, expire_at__gt=now)
         invited_users_data = OrganizationInvitedUserSerializer(
             invited_users, many=True
         ).data
@@ -122,6 +124,45 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return PricingUnitSerializer(
             PricingUnit.objects.filter(organization=obj), many=True
         ).data
+
+
+class OrganizationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("company_name", "default_currency_code", "organization_type")
+
+    default_currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        source="default_currency",
+        required=False,
+    )
+    organization_type = serializers.ChoiceField(
+        choices=["development", "production"], default="development"
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        existing_org_num = Organization.objects.filter(
+            company_name=data["company_name"],
+        ).count()
+        if existing_org_num > 0:
+            raise DuplicateOrganization("Organization with company name already exists")
+        if data["organization_type"] == "development":
+            data["organization_type"] = Organization.OrganizationType.DEVELOPMENT
+        elif data["organization_type"] == "production":
+            data["organization_type"] = Organization.OrganizationType.PRODUCTION
+
+    def create(self, validated_data):
+        existing_organization = self.context["organization"]
+        team = existing_organization.team
+        organization = Organization.objects.create(
+            company_name=validated_data["company_name"],
+            default_currency=validated_data.get("default_currency", None),
+            organization_type=validated_data["organization_type"],
+            team=team,
+        )
+        return organization
 
 
 class APITokenSerializer(serializers.ModelSerializer):

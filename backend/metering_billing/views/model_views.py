@@ -910,6 +910,7 @@ class OrganizationViewSet(
     PermissionPolicyMixin,
     mixins.ListModelMixin,
     mixins.UpdateModelMixin,
+    mixins.CreateModelMixin,
     viewsets.GenericViewSet,
 ):
     """

@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
-from metering_billing.models import OrganizationInviteToken
+from metering_billing.models import TeamInviteToken
 from metering_billing.permissions import ValidOrganization
 from metering_billing.utils import now_plus_day
 from rest_framework import mixins, serializers, status, viewsets
@@ -39,9 +39,10 @@ class InviteView(APIView):
         email = request.data.get("email", None)
         user = request.user
         organization = request.organization
+        team = organization.team
 
-        token_object, created = OrganizationInviteToken.objects.get_or_create(
-            organization=organization, email=email, defaults={"user": user}
+        token_object, created = TeamInviteToken.objects.get_or_create(
+            team=team, email=email, defaults={"user": user}
         )
         if not created:
             token_object.user = user
