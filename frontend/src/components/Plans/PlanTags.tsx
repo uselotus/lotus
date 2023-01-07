@@ -18,7 +18,7 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
           {tags.length >= 3 ? (
             <span className="flex gap-2">
               {tags.slice(0, 2).map((tag) => (
-                <span className="flex gap-2">
+                <span className="flex gap-2" key={tag.tag_name}>
                   <Badge
                     className={`text-[12px] px-2 py-0.5 bg-white text-black whitespace-nowrap`}
                   >
@@ -33,14 +33,16 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
             </span>
           ) : (
             tags.map((tag) => (
-              <Badge
-                className={`text-[12px] px-2 py-0.5 bg-white text-black whitespace-nowrap`}
-              >
-                <span className="flex gap-2 items-center">
-                  <Badge.Dot fill={tag.tag_hex} />
-                  <Badge.Content>{tag.tag_name}</Badge.Content>
-                </span>
-              </Badge>
+              <span key={tag.tag_name}>
+                <Badge
+                  className={`text-[12px] px-2 py-0.5 bg-white text-black whitespace-nowrap`}
+                >
+                  <span className="flex gap-2 items-center">
+                    <Badge.Dot fill={tag.tag_hex} />
+                    <Badge.Content>{tag.tag_name}</Badge.Content>
+                  </span>
+                </Badge>
+              </span>
             ))
           )}
         </span>
