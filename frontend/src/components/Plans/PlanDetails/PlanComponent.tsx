@@ -175,15 +175,17 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
       return str;
     }
   };
-  // const schedule = (day: Number) => {
-  //   if (day >= 1 && day <= 10) {
-  //     return "Start of Month";
-  //   } else if (day >= 11 && day <= 20) {
-  //     return "Middle of Month";
-  //   } else {
-  //     return "End of Month";
-  //   }
-  // };
+  const schedule = (duration: "monthly" | "yearly" | "quarterly") => {
+    switch (duration) {
+      case "monthly":
+        return "Start of Month";
+      case "quarterly":
+        return "Start of Quarter";
+
+      default:
+        return "Start of Year";
+    }
+  };
 
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
@@ -272,7 +274,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
             </div>
             <div>
               {" "}
-              <span>–</span>
+              <span>{schedule(plan.plan_duration)}</span>
             </div>
           </div>
         </div>
@@ -346,12 +348,13 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               </div>
             ))}
           </div>
-          {/* <div>
+          <div>
             <Select>
               <Select.Label className="after:content-['*'] after:ml-0.5 after:text-red-500">
                 Billing Frequency
               </Select.Label>
               <Select.Select
+                disabled
                 onChange={(e) => {
                   updateBillingFrequencyMutation(
                     e.target.value as "monthly" | "quarterly" | "yearly"
@@ -365,7 +368,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 ))}
               </Select.Select>
             </Select>
-          </div> */}
+          </div>
         </div>
       ) : (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">

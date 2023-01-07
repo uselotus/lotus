@@ -4,6 +4,7 @@ interface SelectProps {
   className?: string;
   style?: React.CSSProperties;
   selected?: boolean;
+  disabled?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 const Select = ({ children }: PropsWithChildren) => {
@@ -24,7 +25,7 @@ const SelectLabel = ({
   </label>
 );
 const SelectElement = forwardRef<SelectRef, PropsWithChildren<SelectProps>>(
-  ({ children, className, onChange }, ref) => (
+  ({ children, className, onChange, disabled }, ref) => (
     <select
       className={
         !className
@@ -34,6 +35,7 @@ const SelectElement = forwardRef<SelectRef, PropsWithChildren<SelectProps>>(
               className,
             ].join(" ")
       }
+      disabled={disabled}
       ref={ref}
       onChange={(e) => onChange!(e)}
     >
