@@ -1282,3 +1282,50 @@ class CustomerBalanceAdjustmentSerializer(
         if amount <= 0:
             raise serializers.ValidationError("Amount must be non-zero")
         return data
+
+
+class CustomerBalanceAdjustmentFilterSerializer(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
+    )
+    expires_before = serializers.DateTimeField(
+        required=False, help_text="Filter to adjustments that expire before this date"
+    )
+    expires_after = serializers.DateTimeField(
+        required=False, help_text="Filter to adjustments that expire after this date"
+    )
+    issued_before = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that were issued before this date",
+    )
+    issued_after = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that were issued after this date",
+    )
+    effective_before = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that are effective before this date",
+    )
+    effective_after = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that are effective after this date",
+    )
+    status = serializers.MultipleChoiceField(
+        choices=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.choices,
+        required=False,
+        default=[
+            CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+            CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE,
+        ],
+        help_text="Filter to a specific set of adjustment statuses. Defaults to both active and inactive.",
+    )
+    currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+        source="pricing_unit",
+        help_text="Filter to adjustments in a specific currency",
+    )
