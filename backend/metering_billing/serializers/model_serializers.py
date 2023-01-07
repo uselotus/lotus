@@ -1,6 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
-from typing import Union
+from typing import Literal, Union
 
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
@@ -70,6 +70,19 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
         return PricingUnit.objects.create(**validated_data)
 
 
+class LightweightOrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("organization_id", "company_name", "organization_type")
+
+    organization_type = serializers.SerializerMethodField()
+
+    def get_organization_type(
+        self, obj
+    ) -> serializers.ChoiceField(choices=Organization.OrganizationType.labels):
+        return obj.organization_type.label
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
@@ -83,12 +96,24 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "available_currencies",
             "tax_rate",
             "invoice_grace_period",
+            "linked_organizations",
         )
 
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
     invoice_grace_period = serializers.SerializerMethodField()
+    linked_organizations = serializers.SerializerMethodField()
+
+    def get_linked_organizations(
+        self, obj
+    ) -> LightweightOrganizationSerializer(many=True):
+        team = obj.team
+        if team is None:
+            linked = [obj]
+        else:
+            linked = team.organizations.all()
+        return LightweightOrganizationSerializer(linked, many=True).data
 
     def get_invoice_grace_period(
         self, obj
