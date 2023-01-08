@@ -1,6 +1,6 @@
 import { PlanDisplay, PlanVersionType } from "./plan-type";
 import { SubscriptionType } from "./subscription-type";
-import { BalanceAdjustments, InvoiceType } from "./invoice-type";
+import { InvoiceType } from "./invoice-type";
 import { PricingUnit } from "./pricing-unit-type";
 
 export interface CustomerType {
