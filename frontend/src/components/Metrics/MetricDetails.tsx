@@ -75,9 +75,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
           </p>
           <p>
             <b className="mr-2">Metric Type:</b>
-            {metric.metric_type === "stateful"
-              ? "continuous"
-              : metric.metric_type}
+            {metric.metric_type === "stateful" ? "gauge" : metric.metric_type}
           </p>
           <p>
             <b className="mr-2">Per Time Unit:</b>{" "}

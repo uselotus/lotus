@@ -127,7 +127,6 @@ const CreateMetricForm = (props: {
             if (values.metric_type === "custom") {
               values.custom_sql = customSQL;
             }
-            console.log("values", values);
             props.onSave(values);
             form.resetFields();
             setRate(false);
@@ -225,7 +224,7 @@ const CreateMetricForm = (props: {
               }}
             >
               <Radio value="counter">Counter</Radio>
-              <Radio value="stateful">Continuous</Radio>
+              <Radio value="stateful">Gauge</Radio>
               {/* <Radio value="custom">Custom</Radio> */}
             </Radio.Group>
           </Form.Item>

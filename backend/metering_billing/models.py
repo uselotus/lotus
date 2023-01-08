@@ -907,7 +907,7 @@ class Metric(models.Model):
         choices=EVENT_TYPE.choices,
         blank=True,
         null=True,
-        help_text="Used only for metrics of type 'continuous'. Please refer to our documentation for an explanation of the different types.",
+        help_text="Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.",
     )
     # metric type specific
     usage_aggregation_type = models.CharField(
@@ -935,7 +935,7 @@ class Metric(models.Model):
         max_length=10,
         blank=True,
         null=True,
-        help_text="The granularity of the metric. Only applies to metrics of type 'continuous' or 'rate'.",
+        help_text="The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.",
     )
     proration = models.CharField(
         choices=METRIC_GRANULARITY.choices,
@@ -943,7 +943,7 @@ class Metric(models.Model):
         max_length=10,
         blank=True,
         null=True,
-        help_text="The proration of the metric. Only applies to metrics of type 'continuous'.",
+        help_text="The proration of the metric. Only applies to metrics of type 'gauge'.",
     )
     is_cost_metric = models.BooleanField(
         default=False,

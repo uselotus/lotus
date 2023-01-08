@@ -210,7 +210,6 @@ const EditPlan = ({ type, plan, versionIndex }: Props) => {
 
   const handleComponentAdd = (newData: any) => {
     const old = componentsData;
-    console.log("newData", newData);
     if (editComponentItem) {
       const index = componentsData.findIndex(
         (item) => item.id === editComponentItem.id

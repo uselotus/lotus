@@ -58,7 +58,6 @@ function CustomerDetail(props: {
         enabled: props.visible,
       }
     );
-  console.log(data);
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
     useQuery<CustomerCostType>(
       ["customer_cost_analysis", props.customer_id, startDate, endDate],
@@ -162,7 +161,6 @@ function CustomerDetail(props: {
     params: object,
     props: TurnSubscriptionAutoRenewOffType
   ) => {
-    console.log(params);
     turnSubscriptionAutoRenewOffMutation.mutate({
       params: params,
       post: props,

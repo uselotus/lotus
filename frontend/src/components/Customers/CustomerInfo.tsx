@@ -67,7 +67,6 @@ const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
       return result_list;
     });
     setTransformedGraphData(newgraphdata.flat(1));
-    console.log(newgraphdata.flat(1));
   }, [cost_data]);
 
   const onSwitch = (key: string) => {
