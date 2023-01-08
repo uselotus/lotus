@@ -49,9 +49,9 @@ class PAYMENT_PROVIDERS(models.TextChoices):
 
 class METRIC_TYPE(models.TextChoices):
     COUNTER = ("counter", _("Counter"))
-    STATEFUL = ("stateful", _("Stateful"))
     RATE = ("rate", _("Rate"))
     CUSTOM = ("custom", _("Custom"))
+    GAUGE = ("gauge", _("Gauge"))
 
 
 class CUSTOMER_BALANCE_ADJUSTMENT_STATUS(models.TextChoices):

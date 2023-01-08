@@ -110,7 +110,7 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
       align: "left",
       render: (_, record) => {
         {
-          if (record.metric_type === "stateful") {
+          if (record.metric_type === "gauge") {
             return "gauge";
           }
           if (record.metric_type === "rate") {
