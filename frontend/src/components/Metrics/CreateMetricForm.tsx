@@ -224,7 +224,7 @@ const CreateMetricForm = (props: {
               }}
             >
               <Radio value="counter">Counter</Radio>
-              <Radio value="stateful">Continuous</Radio>
+              <Radio value="stateful">Gauge</Radio>
               {/* <Radio value="custom">Custom</Radio> */}
             </Radio.Group>
           </Form.Item>

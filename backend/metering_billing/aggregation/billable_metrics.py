@@ -234,7 +234,7 @@ class MetricHandler(abc.ABC):
     def get_subscription_record_total_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        """This method returns the total quantity of usage that a subscription record should be billed for. This is very straightforward and should simply return a numebr that will then be used to calculate teh amoutn due."""
+        """This method returns the total quantity of usage that a subscription record should be billed for. This is very straightforward and should simply return a number that will then be used to calculate the amount due."""
         pass
 
     @staticmethod
@@ -242,9 +242,9 @@ class MetricHandler(abc.ABC):
     def get_subscription_record_current_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        """This method returns the current usage of a susbcription record. The result from this method will be used to calculate whether the customer has access to the event represented by the metric. It soudns similar, but there are some key subtleties to note:
+        """This method returns the current usage of a susbcription record. The result from this method will be used to calculate whether the customer has access to the event represented by the metric. It sounds similar, but there are some key subtleties to note:
         Counter: In this case, subscription record current_usage and total_billable_usage are the same.
-        Continuous/Stateful: These metrics are not billed on a per-event bases, but on the peak usage within some specified granularity period. That means that the billable usage is the normalized peak usage, whiel the current usage is the value of the underlying state at the time of the request.
+        Gauge/Stateful: These metrics are not billed on a per-event bases, but on the peak usage within some specified granularity period. That means that the billable usage is the normalized peak usage, where the current usage is the value of the underlying state at the time of the request.
         Rate: Even though the billable usage would be the maximum rate over teh subscription_record period, the current usage is simply the current rate.
         """
         pass
