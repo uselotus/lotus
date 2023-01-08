@@ -950,3 +950,28 @@ class OrganizationViewSet(
 
 class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSet):
     pass
+
+
+class UsageAlertViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for viewing and editing UsageAlerts.
+    """
+
+    serializer_class = UsageAlertSerializer
+    permission_classes = [IsAuthenticated & ValidOrganization]
+    http_method_names = ["get", "post", "head", "delete"]
+    queryset = UsageAlert.objects.all()
+    lookup_field = "usage_alert_id"
+
+    def get_queryset(self):
+        organization = self.request.organization
+        return UsageAlert.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        serializer.save(organization=self.request.organization)
+
+    def get_serializer_context(self):
+        context = super(UsageAlertViewSet, self).get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context

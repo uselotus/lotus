@@ -1475,3 +1475,50 @@ class CustomerBalanceAdjustmentSerializer(
 ):
     class Meta(api_serializers.CustomerBalanceAdjustmentSerializer.Meta):
         fields = api_serializers.CustomerBalanceAdjustmentSerializer.Meta.fields
+
+
+class UsageAlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsageAlert
+        fields = (
+            "usage_alert_id",
+            "metric",
+            "plan_version",
+            "threshold",
+        )
+
+    metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
+
+
+class UsageAlertCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsageAlert
+        fields = (
+            "metric_id",
+            "plan_version_id",
+            "threshold",
+        )
+
+    metric_id = SlugRelatedFieldWithOrganization(
+        slug_field="metric_id", queryset=Metric.objects.all(), source="metric"
+    )
+    plan_version_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_version_id",
+        queryset=PlanVersion.objects.all(),
+        source="plan_version",
+    )
+
+    def create(self, validated_data):
+        metric = validated_data.pop("metric")
+        plan_version = validated_data.pop("plan_version")
+        usage_alert = UsageAlert.objects.create(
+            metric=metric,
+            plan_version=plan_version,
+            **validated_data,
+        )
+        # create a scheduled task to check usage
+        # create an alert result for every active subscription record
+        # on subscription record create, check for alerts on the plan version (model level)
+        # make sure periodic task sends webhooks for alerts
+        # make sure once a subscription record ends, the alert result is deleted

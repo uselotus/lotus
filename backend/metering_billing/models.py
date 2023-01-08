@@ -50,6 +50,7 @@ from metering_billing.utils import (
     product_uuid,
     subscription_record_uuid,
     subscription_uuid,
+    usage_alert_uuid,
     webhook_endpoint_uuid,
     webhook_secret_uuid,
 )
@@ -2468,3 +2469,46 @@ class AccountsReceivableTransaction(models.Model):
     due = models.DateTimeField(null=True)
     amount = models.DecimalField(max_digits=20, decimal_places=10)
     related_txns = models.ManyToManyField("self")
+
+
+class UsageAlert(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="usage_alerts"
+    )
+    usage_alert_id = models.SlugField(default=usage_alert_uuid, max_length=50)
+    metric = models.ForeignKey(
+        Metric, on_delete=models.CASCADE, related_name="usage_alerts"
+    )
+    plan_version = models.ForeignKey(
+        PlanVersion, on_delete=models.CASCADE, related_name="usage_alerts"
+    )
+    threshold = models.DecimalField(max_digits=20, decimal_places=10)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "alert_id"], name="unique_alert_id_per_org"
+            ),
+        ]
+
+
+class AlertResult(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="alert_results"
+    )
+    alert = models.ForeignKey(
+        UsageAlert, on_delete=models.CASCADE, related_name="alert_results"
+    )
+    subscription_record = models.ForeignKey(
+        SubscriptionRecord, on_delete=models.CASCADE, related_name="alert_results"
+    )
+    last_run_value = models.DecimalField(max_digits=20, decimal_places=10)
+    last_run_timestamp = models.DateTimeField(default=now_utc)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "alert", "subscription_record"],
+                name="unique_alert_result_per_org",
+            ),
+        ]
