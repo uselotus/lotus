@@ -19,6 +19,7 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -55,7 +56,7 @@ from metering_billing.utils import (
     webhook_secret_uuid,
 )
 from metering_billing.utils.enums import *
-from metering_billing.webhooks import invoice_paid_webhook
+from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
@@ -908,7 +909,7 @@ class Metric(models.Model):
         choices=EVENT_TYPE.choices,
         blank=True,
         null=True,
-        help_text="Used only for metrics of type 'gauge'. Please refer to our documentation for an explanation of the different types.",
+        help_text="Used only for metrics of type 'continuous'. Please refer to our documentation for an explanation of the different types.",
     )
     # metric type specific
     usage_aggregation_type = models.CharField(
@@ -936,7 +937,7 @@ class Metric(models.Model):
         max_length=10,
         blank=True,
         null=True,
-        help_text="The granularity of the metric. Only applies to metrics of type 'gauge' or 'rate'.",
+        help_text="The granularity of the metric. Only applies to metrics of type 'continuous' or 'rate'.",
     )
     proration = models.CharField(
         choices=METRIC_GRANULARITY.choices,
@@ -944,7 +945,7 @@ class Metric(models.Model):
         max_length=10,
         blank=True,
         null=True,
-        help_text="The proration of the metric. Only applies to metrics of type 'gauge'.",
+        help_text="The proration of the metric. Only applies to metrics of type 'continuous'.",
     )
     is_cost_metric = models.BooleanField(
         default=False,
@@ -1376,7 +1377,7 @@ class Invoice(models.Model):
         paid_before = self.payment_status == INVOICE_STATUS.PAID
         super().save(*args, **kwargs)
         paid_after = self.payment_status == INVOICE_STATUS.PAID
-        if not paid_before and paid_after:
+        if not paid_before and paid_after and self.cost_due > 0:
             invoice_paid_webhook(self, self.organization)
 
 
@@ -2189,6 +2190,18 @@ class SubscriptionRecord(models.Model):
             if not filter.organization:
                 filter.organization = self.organization
                 filter.save()
+        alerts = UsageAlert.objects.filter(
+            organization=self.organization, plan_version=self.billing_plan
+        )
+        now = now_utc()
+        for alert in alerts:
+            AlertResult.objects.create(
+                organization=self.organization,
+                alert=alert,
+                subscription_record=self,
+                last_run_value=0,
+                last_run_timestamp=now,
+            )
 
     def get_filters_dictionary(self):
         filters_dict = {}
@@ -2491,6 +2504,25 @@ class UsageAlert(models.Model):
             ),
         ]
 
+    def save(self, *args, **kwargs):
+        if self.metric.metric_type != METRIC_TYPE.COUNTER:
+            raise ValidationError(
+                "Only counter metrics can be used for alerts at this time"
+            )
+        super(UsageAlert, self).save(*args, **kwargs)
+        active_sr = SubscriptionRecord.objects.active().filter(
+            organization=self.organization,
+            billing_plan=self.plan_version,
+        )
+        for subscription_record in active_sr:
+            AlertResult.objects.create(
+                organization=self.organization,
+                alert=self,
+                subscription_record=subscription_record,
+                last_run_value=0,
+                last_run_timestamp=now_utc(),
+            )
+
 
 class AlertResult(models.Model):
     organization = models.ForeignKey(
@@ -2512,3 +2544,26 @@ class AlertResult(models.Model):
                 name="unique_alert_result_per_org",
             ),
         ]
+
+    def refresh(self):
+        # calculate the value for the alert
+        # update the last_run_value and last_run_timestamp
+        # save the object
+
+        metric = self.alert.metric
+        subscription_record = self.subscription_record
+        now = now_utc()
+        new_value = metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+        if (
+            new_value >= self.alert.threshold
+            and self.last_run_value < self.alert.threshold
+        ):
+            # send alert
+            usage_alert_webhook(
+                self.alert, self, subscription_record, self.organization
+            )
+        self.last_run_value = new_value
+        self.last_run_timestamp = now
+        self.save()

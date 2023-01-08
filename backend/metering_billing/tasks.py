@@ -14,12 +14,10 @@ from django.db.models import Count, Q
 from metering_billing.exceptions.exceptions import AlignmentEngineFailure
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
+    AlertResult,
     Backtest,
-    Customer,
     CustomerBalanceAdjustment,
-    Event,
     Invoice,
-    Organization,
     PlanComponent,
     Subscription,
     SubscriptionRecord,
@@ -40,9 +38,7 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
-    SUBSCRIPTION_STATUS,
 )
 
 logger = logging.getLogger("django.server")
@@ -122,6 +118,18 @@ def calculate_invoice():
                 new_sub.delete()
             else:
                 new_sub.handle_remove_plan()
+
+
+@shared_task
+def refresh_alerts():
+    # get all AlertResults
+    now = now_utc()
+    AlertResult.objects.filter(subscription_record__end_date__lt=now).delete()
+    alert_results = AlertResult.objects.filter(
+        subscription_record__end_date__gte=now
+    ).prefetch_related("alert", "subscription_record", "alert__metric")
+    for alert_result in alert_results:
+        alert_result.refresh()
 
 
 @shared_task
