@@ -29,7 +29,7 @@ interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
   updateBillingFrequencyMutation: (
-    billing_frequency: "monthly" | "quarterly" | "yearly"
+    billing_frequency: "Monthly" | "Quarterly" | "Yearly"
   ) => void;
 }
 
@@ -350,9 +350,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
           </div>
           <div>
             <Select>
-              <Select.Label className="after:content-['*'] after:ml-0.5 after:text-red-500">
-                Billing Frequency
-              </Select.Label>
+              <Select.Label className="">Billing Frequency</Select.Label>
               <Select.Select
                 disabled
                 className="!w-1/4"

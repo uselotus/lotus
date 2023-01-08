@@ -103,7 +103,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         ) : null}
         <div>
           <div className="mb-2">
-            <div className="pr-1 font-normal font-arimo not-italic whitespace-nowrap text-sm  leading-3 text-darkgold">
+            <div className="pr-1 font-normal font-arimo not-italic whitespace-nowrap  text-darkgold">
               Total Active Subscriptions: {plan.active_subscriptions}
             </div>
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider" />
