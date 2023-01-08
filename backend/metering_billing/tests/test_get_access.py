@@ -289,7 +289,7 @@ class TestGetAccess:
         feature = response.json()[0]
         assert feature["access"] is False
 
-    def test_get_access_stateful_with_max_reached_previously(
+    def test_get_access_gauge_with_max_reached_previously(
         self, get_access_test_common_setup, add_product_to_org, add_plan_to_product
     ):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
@@ -307,7 +307,7 @@ class TestGetAccess:
             event_name="log_num_users",
             property_name="num_users",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             event_type=EVENT_TYPE.TOTAL,
         )
         METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
@@ -455,7 +455,7 @@ class TestGetAccessWithMetricID:
             < response[0]["usage_per_component"][0]["metric_free_limit"]
         ) is False
 
-    def test_get_access_stateful_with_max_reached_previously(
+    def test_get_access_gauge_with_max_reached_previously(
         self, get_access_test_common_setup, add_product_to_org, add_plan_to_product
     ):
         setup_dict = get_access_test_common_setup(auth_method="api_key")
@@ -473,7 +473,7 @@ class TestGetAccessWithMetricID:
             event_name="log_num_users",
             property_name="num_users",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             event_type=EVENT_TYPE.TOTAL,
         )
         METRIC_HANDLER_MAP[metric.metric_type].create_continuous_aggregate(metric)
