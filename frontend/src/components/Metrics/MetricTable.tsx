@@ -179,7 +179,6 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
         onRow={(record, rowIndex) => {
           return {
             onClick: (event) => {
-              console.log(event, "heree");
               setCurrentMetric(record);
             },
           };

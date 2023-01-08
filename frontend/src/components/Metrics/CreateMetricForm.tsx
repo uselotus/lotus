@@ -127,7 +127,6 @@ const CreateMetricForm = (props: {
             if (values.metric_type === "custom") {
               values.custom_sql = customSQL;
             }
-            console.log("values", values);
             props.onSave(values);
             form.resetFields();
             setRate(false);
