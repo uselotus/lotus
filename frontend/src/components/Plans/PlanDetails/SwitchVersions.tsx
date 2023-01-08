@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, Fragment, useEffect, useState, version } from "react";
+import React, { FC, Fragment, useEffect, useState } from "react";
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";

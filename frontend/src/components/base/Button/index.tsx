@@ -1,5 +1,4 @@
 import { Button as BTN } from 'antd'
-import React from 'react'
 
 import './button.less'
 

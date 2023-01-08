@@ -16,10 +16,10 @@ Metrics can be as complex as you need to be and come in a few basic types.
    SQL-like aggregations) over events or the properties of events. For example,
    you could keep track of the `COUNT` of API calls made to your service, or the
    `SUM` of bytes uploaded to your service.
-2. **Continuous**  
-   The key difference between a counter and a continuous metric is what the
+2. **Gauge**  
+   The key difference between a counter and a gauge metric is what the
    events represent. Whereas in a counter we aggregate over the events, in a
-   continuous, the events are simply informing us about updates to some
+   gauge, the events are simply informing us about updates to some
    underlying state. For example, the number of seats currently active, or the
    storage currently in use. We don't actually aggregate over the events
    themselves, but rather over the state that they represent
@@ -57,9 +57,9 @@ The allowed aggregation metrics are:
 - `MAX` **:property field required**
   - Take the max of a certain property field over all events.
 
-### Continuous Metrics
+### Gauge Metrics
 
-Defining a continuous metric also starts with defining the `event_name`,
+Defining a gauge metric also starts with defining the `event_name`,
 `metric_name`, and `event_type`.
 
 Lotus currently supports two `event_type`s:
@@ -71,7 +71,7 @@ Lotus currently supports two `event_type`s:
   example, the events could represent the total gigabytes of storage a customer
   is using, and could have values like `10` or `50` to represent the total.
 
-Continuous metrics additionally require a `granularity` field. This field
+gauge metrics additionally require a `granularity` field. This field
 specifies the size of the smallest time periods you want to track your metric
 over. The allowed values are:
 
@@ -80,7 +80,7 @@ over. The allowed values are:
 - `week`
 - `total`
 
-For example, you may want to have a continuous metric that tracks the number of
+For example, you may want to have a gauge metric that tracks the number of
 seats currently active. However, sometimes companies want to prorate at a
 smaller interval. For example, Notion's pricing states:
 
@@ -171,9 +171,9 @@ This is an example of what an event might look like:
 }
 ```
 
-#### Continuous Metric
+#### Gauge Metric
 
-The following example shows how we might implement a continuous metric that
+The following example shows how we might implement a gauge metric that
 tracks the number of active seats in a company. Because we have an aggregation
 type of `max` and a period of `day`, we will calculate the maximum number of
 seats seen over each day. In essence, we will be tracking user-days. Because we
@@ -182,7 +182,7 @@ value of the number of seats. Again, this is simply a definition of the metric.
 We will later define how to transform that usage quantity into a price, when
 creating [plan components](/plan-management/creating-plans).
 
-![Continuous Metric Example](/images/metering/continuous-faab26e6d6f06d5d14d2ab1efaf5ebb4.png)
+![Gauge Metric Example](/images/metering/continuous-faab26e6d6f06d5d14d2ab1efaf5ebb4.png)
 
 This is an example of what an event might look like:
 

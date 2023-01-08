@@ -1,4 +1,4 @@
-import { Button, message, Steps } from "antd";
+import { Button, Steps } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import CreateOrganization from "../components/Registration/CreateOrganization";

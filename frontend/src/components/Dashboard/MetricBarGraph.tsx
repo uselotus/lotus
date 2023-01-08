@@ -1,6 +1,5 @@
 import { Column } from "@ant-design/plots";
 import React, { useState, useEffect } from "react";
-import { RevenuePeriod } from "../../types/revenue-type";
 import LoadingSpinner from "../LoadingSpinner";
 import { Select } from "antd";
 import { useQuery, UseQueryResult } from "react-query";

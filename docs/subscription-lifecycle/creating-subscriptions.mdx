@@ -19,6 +19,6 @@ Another necessary behavior is the ability to switch the plan a customer is on, u
 - End the current subscription immediately, don't bill for it, and start the new one now
 - Switch the plan while keeping the same subscription billing cycle
 
-Upgrades and downgrades are handled internally for usage-based metrics based on the proration setting for the metric. Proration for a continuous metric is set at the component level.
+Upgrades and downgrades are handled internally for usage-based metrics based on the proration setting for the metric. Proration for a gauge metric is set at the metric level.
 
 As a quick example, if proration is set to day for a seats-based metric that is upgraded halfway through the month, the first half will be calculated based on the price of the seats for the month \* (# of days/# of days in the month).

@@ -9,10 +9,8 @@ import {
   Switch,
   Collapse,
   Button,
-  InputNumber,
 } from "antd";
 import { MetricType } from "../../types/metric-type";
-import { render } from "react-dom";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-sql";
@@ -127,7 +125,6 @@ const CreateMetricForm = (props: {
             if (values.metric_type === "custom") {
               values.custom_sql = customSQL;
             }
-            console.log("values", values);
             props.onSave(values);
             form.resetFields();
             setRate(false);
@@ -225,7 +222,7 @@ const CreateMetricForm = (props: {
               }}
             >
               <Radio value="counter">Counter</Radio>
-              <Radio value="stateful">Continuous</Radio>
+              <Radio value="stateful">Gauge</Radio>
               {/* <Radio value="custom">Custom</Radio> */}
             </Radio.Group>
           </Form.Item>

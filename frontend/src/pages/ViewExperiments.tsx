@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC } from "react";
 import BacktestTable from "../components/Experiments/BacktestTable";
 
 import { Backtests } from "../api/api";

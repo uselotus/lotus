@@ -1,12 +1,10 @@
 import React, { FC, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
 import { PaymentProcessorIntegration } from "../api/api";
 import {
   PaymentProcessorConnectionRequestType,
   PaymentProcessorConnectionResponseType,
   StripeConnectionRequestType,
 } from "../types/payment-processor-type";
-import { useQuery, UseQueryResult } from "react-query";
 import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { Button } from "antd";

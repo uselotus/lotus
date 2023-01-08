@@ -20,10 +20,9 @@ import {
   CreateComponent,
   CreateInitialVersionType,
   CreatePlanType,
-  InitialExternalLinks,
   PlanType,
 } from "../types/plan-type";
-import { Plan, Organization, PricingUnits } from "../api/api";
+import { Plan, Organization } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import LinkExternalIds from "../components/Plans/LinkExternalIds";
@@ -31,7 +30,6 @@ import { PageLayout } from "../components/base/PageLayout";
 import { ComponentDisplay } from "../components/Plans/ComponentDisplay";
 import FeatureDisplay from "../components/Plans/FeatureDisplay";
 import { PricingUnit } from "../types/pricing-unit-type";
-import { formatTimeStr } from "antd/lib/statistic/utils";
 
 interface ComponentDisplay {
   metric: string;
@@ -165,7 +163,6 @@ const CreatePlan = () => {
         },
       ];
       setComponentsData(newComponentsData);
-      console.log(newComponentsData);
     }
     setEditComponentsItem(undefined);
     setcomponentVisible(false);

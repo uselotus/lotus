@@ -6,6 +6,24 @@ import { CreateComponent, Tier } from "../../types/plan-type";
 import "./ComponentDisplay.css";
 import { PricingUnit } from "../../types/pricing-unit-type";
 
+const returnRoundingText = (rounding: string | undefined) => {
+  if (!rounding) {
+    return "";
+  }
+  switch (rounding) {
+    case "round_down":
+      return "Round Down";
+    case "round_up":
+      return "Round Up";
+    case "round_nearest":
+      return "Round Nearest";
+    case "no_rounding":
+      return "No Rounding";
+    default:
+      return "No Rounding";
+  }
+};
+
 const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
   switch (record.type) {
     case "per_unit":
@@ -13,6 +31,8 @@ const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
         <span>
           {pricing_unit.symbol}
           {record.cost_per_batch} per {record.metric_units_per_batch} Unit
+          {record.metric_units_per_batch > 1 ? "s " : " "}(
+          {returnRoundingText(record.batch_rounding_type)})
         </span>
       );
 

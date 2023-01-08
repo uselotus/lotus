@@ -1,9 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { RevenueType } from "../../types/revenue-type";
-import { GetRevenue } from "../../api/api";
-import { Statistic, Card } from "antd";
-import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
-import { useQuery, UseQueryResult } from "react-query";
 import LoadingSpinner from "../LoadingSpinner";
 import { Paper } from "../base/Paper";
 
