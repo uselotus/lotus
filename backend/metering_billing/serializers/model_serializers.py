@@ -83,6 +83,12 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
         return obj.organization_type.label
 
 
+class LightweightUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "email")
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
@@ -97,6 +103,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "tax_rate",
             "invoice_grace_period",
             "linked_organizations",
+            "current_user",
         )
 
     users = serializers.SerializerMethodField()
@@ -104,6 +111,11 @@ class OrganizationSerializer(serializers.ModelSerializer):
     available_currencies = serializers.SerializerMethodField()
     invoice_grace_period = serializers.SerializerMethodField()
     linked_organizations = serializers.SerializerMethodField()
+    current_user = serializers.SerializerMethodField()
+
+    def get_current_user(self, obj) -> LightweightUserSerializer():
+        user = self.context.get("user")
+        return LightweightUserSerializer(user).data
 
     def get_linked_organizations(
         self, obj

@@ -3912,26 +3912,16 @@ components:
     DraftInvoice:
       type: object
       properties:
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        cost_due:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-        issue_date:
-          type: string
-          format: date-time
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
+        issue_date:
+          type: string
+          format: date-time
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         start_date:
           type: string
           format: date
@@ -3940,6 +3930,16 @@ components:
           type: string
           format: date
           readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
       required:
       - cost_due
       - currency
@@ -4283,16 +4283,9 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRequest'
-          nullable: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureRequest'
-          nullable: true
+        transition_to_plan_id:
+          type: string
+          minLength: 1
         usage_billing_frequency:
           enum:
           - monthly
@@ -4303,6 +4296,12 @@ components:
           type: string
           writeOnly: true
           nullable: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
         flat_rate:
           type: number
           format: double
@@ -4310,12 +4309,11 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
-        transition_to_plan_id:
-          type: string
-          minLength: 1
-        currency_code:
-          type: string
-          minLength: 1
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureRequest'
+          nullable: true
         price_adjustment:
           $ref: '#/components/schemas/PriceAdjustmentRequest'
         flat_fee_billing_type:
@@ -4324,21 +4322,23 @@ components:
           - in_advance
           type: string
           writeOnly: true
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        currency_code:
+          type: string
+          minLength: 1
         day_anchor:
           type: integer
           maximum: 31
           minimum: 1
           writeOnly: true
           nullable: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        description:
-          type: string
-          writeOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentRequest'
           nullable: true
       required:
       - flat_fee_billing_type
@@ -4548,10 +4548,8 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
+        seller:
+          $ref: '#/components/schemas/Seller'
         payment_status:
           enum:
           - draft
@@ -4559,8 +4557,6 @@ components:
           - paid
           - unpaid
           type: string
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
         external_payment_obj_type:
           enum:
           - stripe
@@ -4570,15 +4566,11 @@ components:
         issue_date:
           type: string
           format: date-time
-        cost_due:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
         invoice_number:
           type: string
           maxLength: 13
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
         start_date:
           type: string
           format: date
@@ -4587,12 +4579,20 @@ components:
           type: string
           format: date
           readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
         external_payment_obj_id:
           type: string
           nullable: true
           maxLength: 100
-        seller:
-          $ref: '#/components/schemas/Seller'
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
       required:
       - cost_due
       - currency
@@ -4608,6 +4608,9 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
+        name:
+          type: string
+          maxLength: 100
         quantity:
           type: number
           format: double
@@ -4615,16 +4618,10 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
-        plan:
-          type: string
-        name:
-          type: string
-          maxLength: 100
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
         start_date:
+          type: string
+          format: date-time
+        end_date:
           type: string
           format: date-time
         billing_type:
@@ -4634,9 +4631,6 @@ components:
           - null
           type: string
           nullable: true
-        end_date:
-          type: string
-          format: date-time
         subtotal:
           type: number
           format: double
@@ -4644,6 +4638,12 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        plan:
+          type: string
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
       required:
       - billing_type
       - end_date
@@ -4700,6 +4700,22 @@ components:
       required:
       - plan_id
       - plan_name
+    LightweightUser:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+      - email
+      - username
     LoginFailure:
       type: object
       properties:
@@ -5071,9 +5087,14 @@ components:
           items:
             $ref: '#/components/schemas/LightweightOrganization'
           readOnly: true
+        current_user:
+          allOf:
+          - $ref: '#/components/schemas/LightweightUser'
+          readOnly: true
       required:
       - available_currencies
       - company_name
+      - current_user
       - default_currency
       - invoice_grace_period
       - linked_organizations
