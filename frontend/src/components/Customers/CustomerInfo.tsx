@@ -2,15 +2,18 @@
 import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient } from "react-query";
+
 import { Button, Select, Tag, Form, Input } from "antd";
-import { DraftInvoiceType, LineItem } from "../../types/invoice-type";
+import { DraftInvoiceType } from "../../types/invoice-type";
+
 // @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
 import { useMutation } from "react-query";
 import { Customer } from "../../api/api";
 import { toast } from "react-toastify";
-import CopyText from "../base/CopytoClipboard";
+
+
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
 import { PricingUnit } from "../../types/pricing-unit-type";
@@ -28,6 +31,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   onDateChange,
   refetch,
 }) => {
+
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
     []
   );

@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Form, Tabs, Modal } from "antd";
 import { PlanType } from "../../types/plan-type";
 import {

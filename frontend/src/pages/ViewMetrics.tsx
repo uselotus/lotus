@@ -1,5 +1,5 @@
-import React, { FC, useEffect, useState } from "react";
-import { Card, Button, Divider } from "antd";
+import React, { FC, useState } from "react";
+import { Card, Button } from "antd";
 import MetricTable from "../components/Metrics/MetricTable";
 import { Metrics } from "../api/api";
 import {

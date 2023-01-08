@@ -18,11 +18,9 @@ import {
   Tag,
 } from "antd";
 import { Organization, PricingUnits } from "../../../../api/api";
-import { EditOutlined } from "@ant-design/icons";
 import { PricingUnit } from "../../../../types/pricing-unit-type";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
-import PricingUnitDropDown from "../../../PricingUnitDropDown";
 import useGlobalStore, {
   IOrgStoreType,
 } from "../../../../stores/useGlobalstore";

@@ -1,6 +1,6 @@
-import { Popconfirm, Select } from "antd";
+import { Select } from "antd";
 // @ts-ignore
-import React, { useState } from "react";
+import React from "react";
 import { UseQueryResult } from "react-query";
 import { PricingUnits } from "../api/api";
 import { useQuery } from "react-query";

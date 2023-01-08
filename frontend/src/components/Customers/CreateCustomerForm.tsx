@@ -89,7 +89,11 @@ const CreateCustomerForm = (props: {
             name="default_currency_code"
             label="Default currency"
           >
-             <PricingUnitDropDown setCurrentCurrency={value => form.setFieldValue("default_currency_code", value)}/>
+            <PricingUnitDropDown
+              setCurrentCurrency={(value) =>
+                form.setFieldValue("default_currency_code", value)
+              }
+            />
           </Form.Item>
         </div>
       </Form>

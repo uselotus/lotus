@@ -1,5 +1,5 @@
-import React, { FC, useEffect, useState } from "react";
-import { Card, Input, Button, Form, Select } from "antd";
+import React, { useState } from "react";
+import { Card, Input, Button, Form } from "antd";
 
 interface LoginForm extends HTMLFormControlsCollection {
   username: string;
