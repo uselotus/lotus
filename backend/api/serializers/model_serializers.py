@@ -301,6 +301,7 @@ class InvoiceSerializer(
             "start_date",
             "end_date",
             "seller",
+            "invoice_pdf",
         )
         extra_kwargs = {
             "invoice_number": {"required": True},
@@ -321,6 +322,7 @@ class InvoiceSerializer(
             "start_date": {"required": True},
             "end_date": {"required": True},
             "seller": {"required": True},
+            "invoice_pdf": {"required": True, "allow_null": True},
         }
 
     external_payment_obj_type = serializers.ChoiceField(
@@ -356,6 +358,7 @@ class LightweightInvoiceSerializer(InvoiceSerializer):
                 [
                     "line_items",
                     "customer",
+                    "invoice_pdf",
                 ]
             )
         )
@@ -1066,12 +1069,7 @@ class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
         fields = fields = tuple(
             set(SubscriptionRecordSerializer.Meta.fields)
             - set(
-                [
-                    "customer_id",
-                    "plan_id",
-                    "billing_plan",
-                    "auto_renew",
-                ]
+                ["customer_id", "plan_id", "billing_plan", "auto_renew", "invoice_pdf"]
             )
         )
 

@@ -1447,6 +1447,7 @@ class DraftInvoiceSerializer(InvoiceSerializer):
                     "invoice_number",
                     "external_payment_obj_id",
                     "external_payment_obj_type",
+                    "invoice_pdf",
                 ]
             )
         )
