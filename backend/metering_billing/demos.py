@@ -150,10 +150,10 @@ def setup_demo3(
             "property_name": property_name,
             "usage_aggregation_type": usage_aggregation_type,
             "billable_metric_name": billable_metric_name,
-            "metric_type": METRIC_TYPE.STATEFUL,
+            "metric_type": METRIC_TYPE.GAUGE,
             "event_type": EVENT_TYPE.TOTAL,
         }
-        metric = METRIC_HANDLER_MAP[METRIC_TYPE.STATEFUL].create_metric(validated_data)
+        metric = METRIC_HANDLER_MAP[METRIC_TYPE.GAUGE].create_metric(validated_data)
         metrics_map[name] = metric
     for property_name, usage_aggregation_type, billable_metric_name, name in zip(
         ["cost"], ["sum"], ["Compute Cost"], ["compute_cost"]
@@ -689,9 +689,7 @@ def setup_paas_demo(
             ]
         ),
         metric_type=itertools.cycle(
-            [METRIC_TYPE.STATEFUL] * 4
-            + [METRIC_TYPE.COUNTER] * 2
-            + [METRIC_TYPE.RATE] * 2
+            [METRIC_TYPE.GAUGE] * 4 + [METRIC_TYPE.COUNTER] * 2 + [METRIC_TYPE.RATE] * 2
         ),
         proration=itertools.cycle([METRIC_GRANULARITY.MINUTE] * 4 + [None] * 4),
         event_type=itertools.cycle([EVENT_TYPE.DELTA] * 4 + [None] * 4),
@@ -819,7 +817,7 @@ def setup_paas_demo(
     plan.display_version = professional_plan
     plan.save()
     for component in professional_plan.plan_components.all():
-        if component.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+        if component.billable_metric.metric_type == METRIC_TYPE.GAUGE:
             component.save()
 
 

@@ -274,7 +274,7 @@ function UsageComponentForm({
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
-  const [metricStateful, setMetricStateful] = useState<boolean>(false);
+  const [metricGauge, setMetricGauge] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
 
   const [prorationGranularity, setProrationGranularity] = useState<string>(
@@ -326,9 +326,9 @@ function UsageComponentForm({
   };
 
   useEffect(() => {
-    setMetricStateful(
+    setMetricGauge(
       metricObjects.find((metric) => metric.metric_name === selectedMetricName)
-        ?.metric_type === "stateful"
+        ?.metric_type === "gauge"
     );
   }, [selectedMetricName]);
 
@@ -343,7 +343,7 @@ function UsageComponentForm({
           }
 
           if (editComponentItem?.metric === data[i].metric_name) {
-            setMetricStateful(data[i].metric_type === "stateful");
+            setMetricGauge(data[i].metric_type === "gauge");
           }
         }
         setMetrics(metricList);
@@ -657,7 +657,7 @@ function UsageComponentForm({
                   </p>
                 )} */}
 
-          {/* {metricStateful === true && (
+          {/* {metricGauge === true && (
                 <Fragment>
                   <div className="separator mb-8"></div>
                   <div className="grid grid-flow-col items-center mb-4">

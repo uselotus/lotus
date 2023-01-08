@@ -7,11 +7,11 @@ from metering_billing.utils.enums import EVENT_TYPE, METRIC_AGGREGATION
 
 ### INFRASTRUCTURE TABLES
 
-# This table is for stateful metrics with delta events, since the cumulative sum since
+# This table is for GAUGE metrics with delta events, since the cumulative sum since
 # the beginning of time is an expensive query, we precompute the cumulative sums so we
-# can access them the same way we would a stateful metrics with total event type
+# can access them the same way we would a GAUGE metrics with total event type
 # THIS IS A MATERIALIZED VIEW
-STATEFUL_DELTA_CUMULATIVE_SUM = """
+GAUGE_DELTA_CUMULATIVE_SUM = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }} AS
 SELECT 
     "metering_billing_usageevent"."customer_id" AS customer_id
@@ -64,13 +64,13 @@ WHERE
     {%- endfor %}
 """
 
-STATEFUL_DELTA_DROP_TRIGGER = """
+GAUGE_DELTA_DROP_TRIGGER = """
 DROP TRIGGER IF EXISTS tg_{{ cagg_name }}_insert ON "metering_billing_usageevent";
 DROP TRIGGER IF EXISTS tg_{{ cagg_name }}_update ON "metering_billing_usageevent";
 DROP TRIGGER IF EXISTS tg_{{ cagg_name }}_delete ON "metering_billing_usageevent";
 """
 
-STATEFUL_DELTA_CREATE_TRIGGER_FN = """
+GAUGE_DELTA_CREATE_TRIGGER_FN = """
 CREATE OR REPLACE FUNCTION tg_refresh_{{ cagg_name }}()
     RETURNS trigger LANGUAGE plpgsql AS $$
     BEGIN
@@ -80,7 +80,7 @@ CREATE OR REPLACE FUNCTION tg_refresh_{{ cagg_name }}()
 $$;
 """
 
-STATEFUL_DELTA_INSERT_TRIGGER = """
+GAUGE_DELTA_INSERT_TRIGGER = """
 CREATE TRIGGER tg_{{ cagg_name }}_insert AFTER INSERT
 ON "metering_billing_usageevent"
 FOR EACH ROW
@@ -118,7 +118,7 @@ WHEN  (
 EXECUTE PROCEDURE tg_refresh_{{ cagg_name }}();
 """
 
-STATEFUL_DELTA_DELETE_TRIGGER = """
+GAUGE_DELTA_DELETE_TRIGGER = """
 CREATE TRIGGER tg_{{ cagg_name }}_delete AFTER DELETE
 ON "metering_billing_usageevent"
 FOR EACH ROW 
@@ -156,7 +156,7 @@ WHEN  (
 EXECUTE PROCEDURE tg_refresh_{{ cagg_name }}();
 """
 
-STATEFUL_DELTA_UPDATE_TRIGGER = """
+GAUGE_DELTA_UPDATE_TRIGGER = """
 CREATE TRIGGER tg_{{ cagg_name }}_update AFTER UPDATE
 ON "metering_billing_usageevent"
 FOR EACH ROW
@@ -223,7 +223,7 @@ EXECUTE PROCEDURE tg_refresh_{{ cagg_name }}();
 # we make this table so that downstream queries don't have to refer to tables with
 # different schemas
 # THIS IS A MATERIALIZED VIEW
-STATEFUL_TOTAL_CUMULATIVE_SUM = """
+GAUGE_TOTAL_CUMULATIVE_SUM = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH (timescaledb.continuous) AS
 SELECT 
@@ -277,7 +277,7 @@ GROUP BY
 """
 
 # get current usage is easy, just pull the latest value from the cumulative sum table
-STATEFUL_GET_CURRENT_USAGE = """
+GAUGE_GET_CURRENT_USAGE = """
 SELECT
     customer_id
     {%- for group_by_field in group_by %}
@@ -305,7 +305,7 @@ GROUP BY
     {%- endfor %}
 """
 
-STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION = """
+GAUGE_GET_TOTAL_USAGE_WITH_PRORATION = """
 WITH prev_state AS (
     SELECT
         customer_id
@@ -438,7 +438,7 @@ SELECT
     ) AS usage_qty
 """
 
-STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY = """
+GAUGE_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY = """
 WITH prev_state AS (
     SELECT
         customer_id

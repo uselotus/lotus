@@ -79,23 +79,21 @@ const ViewMetrics: FC = () => {
     const metricInstance: MetricType = {
       event_name: state.event_name,
       usage_aggregation_type:
-        state.metric_type === "stateful"
+        state.metric_type === "gauge"
           ? state.usage_aggregation_type_2
           : state.usage_aggregation_type,
       property_name:
-        state.metric_type == "stateful"
+        state.metric_type == "gauge"
           ? state.property_name_2
           : state.property_name,
       granularity: state.metric_type === "rate" ? state.granularity : "total",
       proration:
-        state.metric_type === "stateful"
-          ? state.granularity_2
-          : state.granularity,
+        state.metric_type === "gauge" ? state.granularity_2 : state.granularity,
       metric_name: state.metric_name,
       metric_type: state.metric_type,
       billable_aggregation_type: state.billable_aggregation_type,
       //defaults for now
-      event_type: state.metric_type === "stateful" ? state.event_type : "delta",
+      event_type: state.metric_type === "gauge" ? state.event_type : "delta",
       is_cost_metric: state.is_cost_metric,
       custom_sql: state.metric_type === "custom" ? state.custom_sql : undefined,
       metric_id: "",
