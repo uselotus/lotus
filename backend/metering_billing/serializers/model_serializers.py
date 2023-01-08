@@ -80,7 +80,15 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
     def get_organization_type(
         self, obj
     ) -> serializers.ChoiceField(choices=Organization.OrganizationType.labels):
-        return obj.organization_type.label
+        org_type = obj.organization_type
+        if org_type == Organization.OrganizationType.PRODUCTION:
+            return Organization.OrganizationType.PRODUCTION.label
+        elif org_type == Organization.OrganizationType.DEVELOPMENT:
+            return Organization.OrganizationType.DEVELOPMENT.label
+        elif org_type == Organization.OrganizationType.INTERNAL_DEMO:
+            return Organization.OrganizationType.INTERNAL_DEMO.label
+        elif org_type == Organization.OrganizationType.EXTERNAL_DEMO:
+            return Organization.OrganizationType.EXTERNAL_DEMO.label
 
 
 class LightweightUserSerializer(serializers.ModelSerializer):
