@@ -18,6 +18,7 @@ from django.db import models
 from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
+from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -67,7 +68,23 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 # def save_pdf_to_s3()
 
 
+class Team(models.Model):
+    name = models.CharField(max_length=100, blank=False, null=False)
+
+    def __str__(self):
+        return self.name
+
+
 class Organization(models.Model):
+    class OrganizationType(models.IntegerChoices):
+        PRODUCTION = (1, "Production")
+        DEVELOPMENT = (2, "Development")
+        EXTERNAL_DEMO = (3, "Demo")
+        INTERNAL_DEMO = (4, "Internal Demo")
+
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, null=True, related_name="organizations"
+    )
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
     company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
@@ -78,7 +95,9 @@ class Organization(models.Model):
         default=PAYMENT_PLANS.SELF_HOSTED_FREE,
         null=False,
     )
-    is_demo = models.BooleanField(default=False)
+    organization_type = models.PositiveSmallIntegerField(
+        choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
+    )
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -114,6 +133,21 @@ class Organization(models.Model):
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         new = self.pk is None
+        (
+            prev_organization_type,
+            new_organization_type,
+        ) = self.organization_type, kwargs.get(
+            "organization_type", self.organization_type
+        )
+        if prev_organization_type != new_organization_type and self.pk:
+            raise NotEditable(
+                "Organization type cannot be changed once an organization is created."
+            )
+        if (
+            self.team is None
+            and self.organization_type != self.OrganizationType.EXTERNAL_DEMO
+        ):
+            self.team = Team.objects.create(name=self.company_name)
         super(Organization, self).save(*args, **kwargs)
         if new:
             self.provision_currencies()
@@ -321,6 +355,9 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name="users",
+    )
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, null=True, related_name="users"
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
@@ -1405,14 +1442,12 @@ class APIToken(AbstractAPIKey):
         return str(self.name) + " " + str(self.organization.company_name)
 
 
-class OrganizationInviteToken(models.Model):
+class TeamInviteToken(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="user_invite_token"
     )
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name="invite_token",
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="team_invite_token"
     )
     email = models.EmailField()
     token = models.SlugField(max_length=250, default=uuid.uuid4)

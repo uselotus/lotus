@@ -436,6 +436,42 @@ class SettingsView(APIView):
         )
 
 
+class ChangeUserOrganizationView(APIView):
+    permission_classes = [IsAuthenticated | ValidOrganization]
+
+    @extend_schema(
+        request=inline_serializer(
+            name="ChangeUserOrganizationRequestSerializer",
+            fields={
+                "transfer_to_organization_id": serializers.CharField(
+                    help_text="The organization ID to transfer to"
+                )
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="ChangeUserOrganizationResponseSerializer", fields={}
+            )
+        },
+    )
+    def get(self, request, format=None):
+        """
+        Get the current settings for the organization.
+        """
+        user = request.user
+        new_organization_id = request.query_params.get("transfer_to_organization_id")
+        if not new_organization_id:
+            raise ValidationError("No organization ID provided")
+        new_organization = Organization.objects.filter(
+            organization_id=new_organization_id
+        ).first()
+        if not new_organization:
+            raise ValidationError("Organization not found")
+        user.organization = new_organization
+        user.save()
+        return Response(status=status.HTTP_200_OK)
+
+
 class CustomersSummaryView(APIView):
     permission_classes = [IsAuthenticated | ValidOrganization]
 
