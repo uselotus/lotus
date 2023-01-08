@@ -2,13 +2,12 @@
 import React, { FC } from "react";
 import { Menu, Dropdown, Button, Typography, Tag } from "antd";
 import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
-import { PlanType, UpdatePlanType } from "../../../types/plan-type";
+import { PlanType } from "../../../types/plan-type";
 import "./PlanCard.css";
 import { useMutation, useQueryClient } from "react-query";
 import { Plan } from "../../../api/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import CopyText from "../../base/CopytoClipboard";
 interface PlanCardProps {
   plan: PlanType;
 }

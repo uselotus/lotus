@@ -3,14 +3,13 @@ import React, { FC, useEffect } from "react";
 import { Column } from "@ant-design/plots";
 import { useQueryClient } from "react-query";
 import { Select, Tag } from "antd";
-import { DraftInvoiceType, LineItem } from "../../types/invoice-type";
+import { DraftInvoiceType } from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
 import LoadingSpinner from "../LoadingSpinner";
 import { useMutation } from "react-query";
 import { Customer } from "../../api/api";
 import { toast } from "react-toastify";
-import CopyText from "../base/CopytoClipboard";
 
 const CustomerInfoView: FC<any> = ({ data, cost_data, onDateChange }) => {
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(

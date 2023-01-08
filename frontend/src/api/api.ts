@@ -69,15 +69,13 @@ import {
   TransferSub,
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
-import { DraftInvoiceType, InvoiceType } from "../types/invoice-type";
+import { DraftInvoiceType } from "../types/invoice-type";
 import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
 import {
   CreateBalanceAdjustmentType,
   BalanceAdjustmentType,
 } from "../types/balance-adjustment";
 import { PricingUnit } from "../types/pricing-unit-type";
-
-import { stringify } from "qs";
 
 const cookies = new Cookies();
 

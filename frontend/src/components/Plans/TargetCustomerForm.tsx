@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import { FeatureType } from "../../types/feature-type";
-import { Button, Divider, Modal, Select, Input, message } from "antd";
-import { Features } from "../../api/api";
+import { Modal, Select } from "antd";
 import { UseQueryResult, useQuery } from "react-query";
 import { Customer } from "../../api/api";
 import { CustomerPlus } from "../../types/customer-type";

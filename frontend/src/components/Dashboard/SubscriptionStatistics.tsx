@@ -1,6 +1,4 @@
-import React, { useEffect, useState } from "react";
-import { Statistic, Card } from "antd";
-import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+import React from "react";
 import { GetSubscriptions } from "../../api/api";
 import { useQuery } from "react-query";
 import { SubscriptionTotals } from "../../types/subscription-type";

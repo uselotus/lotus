@@ -1,7 +1,7 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Authentication } from "../api/api";
-import { Card, Input, Button, Form, Modal } from "antd";
+import { Card, Input, Button, Form } from "antd";
 import "./Login.css";
 import { useQueryClient, useMutation } from "react-query";
 import { toast } from "react-toastify";

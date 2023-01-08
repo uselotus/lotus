@@ -1,7 +1,7 @@
 import React, { FC, useState } from "react";
 import { useQuery, useMutation } from "react-query";
 import { useNavigate } from "react-router-dom";
-import { Table, Typography, Row, Col, Input, Button, Form, Tag } from "antd";
+import { Table, Typography, Input, Button, Form, Tag } from "antd";
 import { Organization } from "../../../../api/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../../components/LoadingSpinner";
