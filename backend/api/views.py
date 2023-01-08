@@ -13,8 +13,10 @@ import lotus_python
 import posthog
 from actstream import action
 from api.serializers.model_serializers import (
+    CustomerBalanceAdjustmentCreateSerializer,
     CustomerBalanceAdjustmentFilterSerializer,
     CustomerBalanceAdjustmentSerializer,
+    CustomerBalanceAdjustmentUpdateSerializer,
     CustomerCreateSerializer,
     CustomerSerializer,
     EventSerializer,
@@ -724,6 +726,17 @@ class CustomerBalanceAdjustmentViewSet(
     lookup_field = "adjustment_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
+    def get_serializer_class(self):
+        if self.action == "list":
+            return CustomerBalanceAdjustmentSerializer
+        elif self.action == "create":
+            return CustomerBalanceAdjustmentCreateSerializer
+        elif self.action == "void":
+            return None
+        elif self.action == "edit":
+            return CustomerBalanceAdjustmentUpdateSerializer
+        return CustomerBalanceAdjustmentSerializer
+
     def get_queryset(self):
         qs = super().get_queryset()
         organization = self.request.organization
@@ -782,26 +795,32 @@ class CustomerBalanceAdjustmentViewSet(
         context.update({"organization": organization})
         return context
 
+    @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        metric_data = CustomerBalanceAdjustmentSerializer(instance).data
+        return Response(metric_data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
         serializer.save(organization=self.request.organization)
 
     @extend_schema(
         parameters=[CustomerBalanceAdjustmentFilterSerializer],
+        responses=CustomerBalanceAdjustmentSerializer(many=True),
     )
     def list(self, request):
         return super().list(request)
 
-    def perform_destroy(self, instance):
-        if instance.amount <= 0:
-            raise ValidationError("Cannot delete a negative adjustment.")
-        instance.zero_out(reason="voided")
-    
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"])
     def void(self, request, adjustment_id=None):
         adjustment = self.get_object()
         if adjustment.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
             raise ValidationError("Cannot void an adjustment that is not active.")
+        if adjustment.amount <= 0:
+            raise ValidationError("Cannot delete a negative adjustment.")
         adjustment.zero_out(reason="voided")
         return Response(
             CustomerBalanceAdjustmentSerializer(
@@ -809,11 +828,53 @@ class CustomerBalanceAdjustmentViewSet(
             ).data,
             status=status.HTTP_200_OK,
         )
-    
+
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
-    @action(detail=True, methods=["post"])
-    def update(self, request, adjustment_id=None):
-        
+    @action(detail=True, methods=["post"], url_path="update")
+    def edit(self, request, adjustment_id=None):
+        adjustment = self.get_object()
+        serializer = self.get_serializer(adjustment, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(adjustment, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            adjustment._prefetched_objects_cache = {}
+
+        return Response(
+            CustomerBalanceAdjustmentSerializer(
+                adjustment, context=self.get_serializer_context()
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except:
+                username = None
+            organization = self.request.organization
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username if username else organization.company_name + " (API Key)"
+                ),
+                event=f"{self.action}_balance_adjustment",
+                properties={"organization": organization.company_name},
+            )
+            # if username:
+            #     if self.action == "plans":
+            #         action.send(
+            #             self.request.user,
+            #             verb="attached",
+            #             action_object=instance.customer,
+            #             target=instance.billing_plan,
+            #         )
+
+        return response
 
 
 class GetCustomerEventAccessView(APIView):

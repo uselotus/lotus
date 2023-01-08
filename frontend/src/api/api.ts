@@ -70,11 +70,11 @@ import {
   UpdateOrganizationSettingsParams,
 } from "../types/stripe-type";
 import { DraftInvoiceType, InvoiceType } from "../types/invoice-type";
+import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
 import {
-  BalanceAdjustments,
-  MarkInvoiceStatusAsPaid,
-} from "../types/invoice-type";
-import { CreateBalanceAdjustmentType } from "../types/balance-adjustment";
+  CreateBalanceAdjustmentType,
+  BalanceAdjustmentType,
+} from "../types/balance-adjustment";
 import { PricingUnit } from "../types/pricing-unit-type";
 
 import { stringify } from "qs";
@@ -471,7 +471,7 @@ export const BalanceAdjustment = {
   getCreditsByCustomer: (params: {
     customer_id: string;
     format?: string;
-  }): Promise<BalanceAdjustments[]> => {
+  }): Promise<BalanceAdjustmentType[]> => {
     if (params.format) {
       return requests.get(
         `app/balance_adjustments/?customer_id=${params.customer_id}?format=${params.format}`
@@ -482,8 +482,8 @@ export const BalanceAdjustment = {
     );
   },
 
-  deleteCredit: (adjustment_id: string): Promise<any> =>
-    requests.delete(`app/balance_adjustments/${adjustment_id}/`),
+  deleteCredit: (adjustment_id: string): Promise<BalanceAdjustmentType> =>
+    requests.post(`app/balance_adjustments/${adjustment_id}/void/`, {}),
 };
 
 export const PricingUnits = {

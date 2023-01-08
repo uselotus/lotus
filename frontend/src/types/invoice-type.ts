@@ -29,20 +29,6 @@ export interface IndividualDraftInvoiceType {
   };
 }
 
-export interface BalanceAdjustments {
-  amount: number;
-  amount_currency: string;
-  description: string;
-  created: string;
-  effective_at: string;
-  expires_at: string;
-  adjustment_id: string;
-  customer_id: string;
-  parent_adjustment_id: string;
-  pricing_unit: PricingUnit;
-  status: "active" | "inactive";
-}
-
 export interface ExternalLineItem {
   end_date: string;
   plan_name: string;
