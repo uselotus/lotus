@@ -27,7 +27,7 @@ import { Organization, Plan } from "../api/api";
 import { FeatureType } from "../types/feature-type";
 import FeatureForm from "../components/Plans/FeatureForm";
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { usePlanState, usePlanUpdater } from "../context/PlanContext";
+import { usePlanUpdater } from "../context/PlanContext";
 // @ts-ignore
 import React from "react";
 import { PageLayout } from "../components/base/PageLayout";

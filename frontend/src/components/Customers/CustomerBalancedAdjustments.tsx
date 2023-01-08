@@ -7,13 +7,8 @@ import { BalanceAdjustmentType } from "../../types/balance-adjustment";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import {
-  useMutation,
-  useQuery,
-  UseQueryResult,
-  useQueryClient,
-} from "react-query";
-import { BalanceAdjustment, Plan } from "../../api/api";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
+import { BalanceAdjustment } from "../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { ColumnsType } from "antd/es/table";

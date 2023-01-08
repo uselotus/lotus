@@ -4,8 +4,6 @@ import {
   Typography,
   Modal,
   Input,
-  message,
-  Popconfirm,
   Table,
   Menu,
   Dropdown,
@@ -16,13 +14,11 @@ import React, { useState } from "react";
 import { useQuery, useMutation, QueryClient } from "react-query";
 import { DatePicker } from "antd";
 import { Webhook, APIKey } from "../../../../api/api";
-import { DeleteOutlined, MoreOutlined } from "@ant-design/icons";
-import { Paper } from "../../../base/Paper";
+import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import {
   WebhookEndpoint,
   WebhookEndpointCreate,
-  WebhookEndpointUpdate,
 } from "../../../../types/webhook-type";
 import CopyText from "../../../base/CopytoClipboard";
 import {
@@ -277,7 +273,7 @@ export const DeveloperTab = () => {
               dataIndex: "prefix",
               key: "prefix",
               render: (prefix: string) => {
-                return <div className="font-menlo">{prefix}•••</div>
+                return <div className="font-menlo">{prefix}•••</div>;
               },
             },
             {
@@ -343,7 +339,7 @@ export const DeveloperTab = () => {
               title: "Webhook URL",
               dataIndex: "webhook_url",
               key: "webhook_url",
-             render: (webhook_url: string, record) => (
+              render: (webhook_url: string, record) => (
                 <CopyText textToCopy={webhook_url} />
               ),
             },

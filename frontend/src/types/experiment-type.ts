@@ -1,4 +1,4 @@
-import { CreatePlanType, PlanType } from "./plan-type";
+import { PlanType } from "./plan-type";
 
 export interface BacktestType {
   backtest_name: string;

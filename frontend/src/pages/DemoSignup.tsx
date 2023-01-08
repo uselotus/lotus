@@ -1,4 +1,4 @@
-import { Button, message, Card, Form, Input } from "antd";
+import { Button, Card, Form, Input } from "antd";
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Organizaton } from "../components/Registration/CreateOrganization";
@@ -8,7 +8,6 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
-import { ErrorResponse } from "../types/error-response-types";
 
 const cookies = new Cookies();
 

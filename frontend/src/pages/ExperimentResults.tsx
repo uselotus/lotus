@@ -1,8 +1,7 @@
 import React, { FC, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Select, Button } from "antd";
-import { Card, Flex, Metric, Text, Badge } from "@tremor/react";
-import { Title as NewTitle } from "../components/base/Typograpy/index.";
+import { Card, Flex, Metric } from "@tremor/react";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useQuery, UseQueryResult } from "react-query";
 import { Backtests } from "../api/api";

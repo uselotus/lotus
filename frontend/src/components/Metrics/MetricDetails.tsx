@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 import { Metrics } from "../../api/api";
 // @ts-ignore
-import React, { FC, Fragment } from "react";
+import React, { FC } from "react";
 import { colorMap } from "./MetricTable";
 
 interface MetricDetailsProps {

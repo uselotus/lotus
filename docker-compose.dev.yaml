@@ -3,7 +3,7 @@ services:
     image: timescale/timescaledb-ha:pg14-latest
     restart: on-failure
     ports:
-      - 5433:5432
+      - 5432:5432
     volumes:
       - ./pgdata_dev:/var/lib/postgresql/data
     env_file:

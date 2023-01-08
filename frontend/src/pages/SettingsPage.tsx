@@ -1,11 +1,10 @@
 // @ts-ignore
-import React, { FC, useEffect } from "react";
+import React, { FC } from "react";
 import { Tabs } from "antd";
 import IntegrationsTab from "../components/Settings/settings/tabs/IntegrationsTab";
 import { DeveloperTab } from "../components/Settings/settings/tabs/DeveloperTab";
 import TeamTab from "../components/Settings/settings/tabs/TeamTab";
 import { PageLayout } from "../components/base/PageLayout";
-import ActivityStream from "../components/Settings/settings/tabs/ActivityTab";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import GeneralTab from "../components/Settings/settings/tabs/GeneralTab";
