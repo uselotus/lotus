@@ -10,7 +10,7 @@ import {
   CancelSubscriptionQueryParams,
 } from "../../types/subscription-type";
 import LoadingSpinner from "../LoadingSpinner";
-import { Customer } from "../../api/api";
+import { Customer, PricingUnits } from "../../api/api";
 import SubscriptionView from "./CustomerSubscriptionView";
 import {
   useMutation,
@@ -28,6 +28,7 @@ import CustomerInfoView from "./CustomerInfo";
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import CopyText from "../base/CopytoClipboard";
+import { PricingUnit } from "../../types/pricing-unit-type";
 
 function CustomerDetail(props: {
   visible: boolean;
@@ -46,18 +47,20 @@ function CustomerDetail(props: {
   const [customerSubscriptions, setCustomerSubscriptions] = useState<
     DetailPlan[]
   >([]);
-
+  const { data: pricingUnits }: UseQueryResult<PricingUnit[]> = useQuery<
+    PricingUnit[]
+  >(["pricing_unit_list"], () =>
+    PricingUnits.list().then((res) => {
+      return res;
+    })
+  );
   const { data, isLoading, refetch }: UseQueryResult<CustomerType> =
-    useQuery<CustomerType>(
-      ["customer_detail", props.customer_id],
-      () =>
-        Customer.getCustomerDetail(props.customer_id).then((res) => {
-          return res;
-        }),
-      {
-        enabled: props.visible,
-      }
+    useQuery<CustomerType>(["customer_detail", props.customer_id], () =>
+      Customer.getCustomerDetail(props.customer_id).then((res) => {
+        return res;
+      })
     );
+  
   const { data: cost_analysis, isLoading: cost_analysis_loading } =
     useQuery<CustomerCostType>(
       ["customer_cost_analysis", props.customer_id, startDate, endDate],
@@ -211,10 +214,14 @@ function CustomerDetail(props: {
           >
             <Tabs defaultActiveKey="subscriptions" centered className="w-full">
               <Tabs.TabPane tab="Detail" key="detail">
-                {data !== undefined && cost_analysis !== undefined ? (
+                {data !== undefined &&
+                cost_analysis !== undefined &&
+                pricingUnits !== undefined ? (
                   <CustomerInfoView
                     data={data}
                     cost_data={cost_analysis}
+                    refetch={refetch}
+                    pricingUnits={pricingUnits}
                     onDateChange={refetchGraphData}
                   />
                 ) : (

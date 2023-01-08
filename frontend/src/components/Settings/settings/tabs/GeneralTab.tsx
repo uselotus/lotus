@@ -27,6 +27,7 @@ import useGlobalStore, {
   IOrgStoreType,
 } from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
+import { OrganizationType } from "../../../../types/account-type";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -49,6 +50,13 @@ const GeneralTab: FC = () => {
   const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
   const [displayTaxRate, setDisplayTaxRate] = useState(0);
   const [displayInvoiceGracePeriod, setDisplayInvoiceGracePeriod] = useState(0);
+
+  const [line1, setLine1] = React.useState("");
+  const [line2, setLine2] = React.useState("");
+  const [city, setCity] = React.useState("");
+  const [state, setState] = React.useState("");
+  const [country, setCountry] = React.useState("");
+  const [postalCode, setPostalCode] = React.useState("");
   const {
     data: pricingUnits,
     isLoading: pricingUnitsLoading,
@@ -106,6 +114,12 @@ const GeneralTab: FC = () => {
         };
 
         setOrgInfoToStore(storeOrgObject);
+        setLine1(data.address ? data.address.line1 : "");
+        setLine2(data.address && data.address.line2 ? data.address.line2 : "");
+        setCity(data.address ? data.address.city : "");
+        setState(data.address ? data.address.state : "");
+        setCountry(data.address ? data.address.country : "");
+        setPostalCode(data.address ? data.address.postal_code : "");
       },
     }
   );
@@ -138,6 +152,7 @@ const GeneralTab: FC = () => {
     (obj: {
       org_id: string;
       default_currency_code: string;
+      address: OrganizationType["address"];
       tax_rate: number;
       invoice_grace_period: number;
     }) =>
@@ -145,7 +160,8 @@ const GeneralTab: FC = () => {
         obj.org_id,
         obj.default_currency_code,
         obj.tax_rate,
-        obj.invoice_grace_period
+        obj.invoice_grace_period,
+        obj.address
       ),
     {
       onSuccess: () => {
@@ -165,7 +181,8 @@ const GeneralTab: FC = () => {
   const handleSendInviteEmail = (event: React.FormEvent<FormElements>) => {
     mutation.mutate({ email });
   };
-
+  const fourDP = (taxRate: number) =>
+    parseFloat(parseFloat(String(taxRate)).toFixed(4));
   return (
     <div>
       <div className="flex justify-between w-6/12">
@@ -201,9 +218,13 @@ const GeneralTab: FC = () => {
             )}
           </p>
           <p className="text-[16px] space-y-2">
-            <b>Billing address:</b> <p>1292 Lane Place</p>
-            <p>Cambridge MA</p>
-            <p>USA 92342</p>
+            <b>Billing address:</b>{" "}
+            <p>{line1.length ? line1 : "1292 Lane Place"}</p>
+            <p>{city.length ? city : "Cambridge MA"}</p>
+            <p>
+              {country.length ? country : "USA"}{" "}
+              {postalCode.length ? postalCode : "92342"}
+            </p>
           </p>
           <p className="text-[16px]">
             <b>Invoice Grace Period:</b> {displayInvoiceGracePeriod}{" "}
@@ -232,9 +253,23 @@ const GeneralTab: FC = () => {
             updateOrg.mutate({
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
-              tax_rate: taxRate,
+              tax_rate: fourDP(taxRate),
               invoice_grace_period: invoiceGracePeriod,
+              address: {
+                city,
+                line1,
+                line2,
+                country,
+                postal_code: postalCode,
+                state,
+              },
             });
+            // updateOrg.mutate({
+            //   org_id: org.organization_id,
+            //   default_currency_code: currentCurrency,
+            //   tax_rate: fourDP(taxRate),
+            //   invoice_grace_period: invoiceGracePeriod,
+            // });
             form.resetFields();
           }
           setIsEdit(false);
@@ -274,22 +309,62 @@ const GeneralTab: FC = () => {
               <Input
                 type="number"
                 step=".01"
+                max={999.9999}
                 onChange={(e) =>
                   setTaxRate(e.target.value as unknown as number)
                 }
                 defaultValue={taxRate}
               />
             </Form.Item>
-            <Form.Item label="Billing Address" name="billing_address">
-              <Input disabled={true} />
+            <Form.Item name="billing_address">
+              <label className="mb-2">Billing Address: </label>
+              <div className="flex gap-4 mt-2">
+                <Input
+                  placeholder="Address Line 1"
+                  defaultValue={line1}
+                  onChange={(e) => setLine1(e.target.value)}
+                  required
+                />
+                <Input
+                  placeholder="Address Line 2"
+                  defaultValue={line2}
+                  onChange={(e) => setLine2(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-4 mt-2">
+                <Input
+                  placeholder="City"
+                  onChange={(e) => setCity(e.target.value)}
+                  defaultValue={city}
+                  required
+                />
+                <Input
+                  placeholder="Country"
+                  defaultValue={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex gap-4 mt-2">
+                <Input
+                  placeholder="State"
+                  defaultValue={state}
+                  onChange={(e) => setState(e.target.value)}
+                  required
+                />
+                <Input
+                  defaultValue={postalCode}
+                  placeholder="Zip Code"
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  required
+                />
+              </div>
             </Form.Item>
             <Form.Item label="Invoice Grace Period" name="invoice_grace_period">
               <Input
                 type="number"
                 step="1"
-                onChange={(e) =>
-                  setInvoiceGracePeriod(e.target.value as unknown as number)
-                }
+                onChange={(e) => setInvoiceGracePeriod(Number(e.target.value))}
                 defaultValue={invoiceGracePeriod}
               />
             </Form.Item>
