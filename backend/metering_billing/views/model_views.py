@@ -910,6 +910,7 @@ class OrganizationViewSet(
     PermissionPolicyMixin,
     mixins.ListModelMixin,
     mixins.UpdateModelMixin,
+    mixins.CreateModelMixin,
     viewsets.GenericViewSet,
 ):
     """
@@ -942,7 +943,8 @@ class OrganizationViewSet(
     def get_serializer_context(self):
         context = super(OrganizationViewSet, self).get_serializer_context()
         organization = self.request.organization
-        context.update({"organization": organization})
+        user = self.request.user
+        context.update({"organization": organization, "user": user})
         return context
 
 

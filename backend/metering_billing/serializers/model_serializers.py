@@ -1,6 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
-from typing import Union
+from typing import Literal, Union
 
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
@@ -8,7 +8,11 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateMetric, ServerError
+from metering_billing.exceptions import (
+    DuplicateMetric,
+    DuplicateOrganization,
+    ServerError,
+)
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -66,6 +70,25 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
         return PricingUnit.objects.create(**validated_data)
 
 
+class LightweightOrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("organization_id", "company_name", "organization_type")
+
+    organization_type = serializers.SerializerMethodField()
+
+    def get_organization_type(
+        self, obj
+    ) -> serializers.ChoiceField(choices=Organization.OrganizationType.labels):
+        return obj.organization_type.label
+
+
+class LightweightUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "email")
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
@@ -79,12 +102,30 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "available_currencies",
             "tax_rate",
             "invoice_grace_period",
+            "linked_organizations",
+            "current_user",
         )
 
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
     invoice_grace_period = serializers.SerializerMethodField()
+    linked_organizations = serializers.SerializerMethodField()
+    current_user = serializers.SerializerMethodField()
+
+    def get_current_user(self, obj) -> LightweightUserSerializer():
+        user = self.context.get("user")
+        return LightweightUserSerializer(user).data
+
+    def get_linked_organizations(
+        self, obj
+    ) -> LightweightOrganizationSerializer(many=True):
+        team = obj.team
+        if team is None:
+            linked = [obj]
+        else:
+            linked = team.organizations.all()
+        return LightweightOrganizationSerializer(linked, many=True).data
 
     def get_invoice_grace_period(
         self, obj
@@ -103,12 +144,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return val
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
-        users = User.objects.filter(organization=obj)
+        users = User.objects.filter(team=obj.team)
         users_data = list(OrganizationUserSerializer(users, many=True).data)
         now = now_utc()
-        invited_users = OrganizationInviteToken.objects.filter(
-            organization=obj, expire_at__gt=now
-        )
+        invited_users = TeamInviteToken.objects.filter(team=obj.team, expire_at__gt=now)
         invited_users_data = OrganizationInvitedUserSerializer(
             invited_users, many=True
         ).data
@@ -122,6 +161,45 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return PricingUnitSerializer(
             PricingUnit.objects.filter(organization=obj), many=True
         ).data
+
+
+class OrganizationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("company_name", "default_currency_code", "organization_type")
+
+    default_currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        source="default_currency",
+        required=False,
+    )
+    organization_type = serializers.ChoiceField(
+        choices=["development", "production"], default="development"
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        existing_org_num = Organization.objects.filter(
+            company_name=data["company_name"],
+        ).count()
+        if existing_org_num > 0:
+            raise DuplicateOrganization("Organization with company name already exists")
+        if data["organization_type"] == "development":
+            data["organization_type"] = Organization.OrganizationType.DEVELOPMENT
+        elif data["organization_type"] == "production":
+            data["organization_type"] = Organization.OrganizationType.PRODUCTION
+
+    def create(self, validated_data):
+        existing_organization = self.context["organization"]
+        team = existing_organization.team
+        organization = Organization.objects.create(
+            company_name=validated_data["company_name"],
+            default_currency=validated_data.get("default_currency", None),
+            organization_type=validated_data["organization_type"],
+            team=team,
+        )
+        return organization
 
 
 class APITokenSerializer(serializers.ModelSerializer):
@@ -875,8 +953,12 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             component.save()
         for feature_data in features_data:
             feature_data["organization"] = org
+            description = feature_data.pop("description", None)
             try:
-                f, _ = Feature.objects.get_or_create(**feature_data)
+                f, created = Feature.objects.get_or_create(**feature_data)
+                if created and description:
+                    f.description = description
+                    f.save()
             except Feature.MultipleObjectsReturned:
                 f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)

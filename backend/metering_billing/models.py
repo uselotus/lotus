@@ -15,8 +15,10 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
+from django.db.models.functions import Cast, Coalesce
+from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -66,7 +68,23 @@ SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 # def save_pdf_to_s3()
 
 
+class Team(models.Model):
+    name = models.CharField(max_length=100, blank=False, null=False)
+
+    def __str__(self):
+        return self.name
+
+
 class Organization(models.Model):
+    class OrganizationType(models.IntegerChoices):
+        PRODUCTION = (1, "Production")
+        DEVELOPMENT = (2, "Development")
+        EXTERNAL_DEMO = (3, "Demo")
+        INTERNAL_DEMO = (4, "Internal Demo")
+
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, null=True, related_name="organizations"
+    )
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
     company_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
@@ -77,7 +95,9 @@ class Organization(models.Model):
         default=PAYMENT_PLANS.SELF_HOSTED_FREE,
         null=False,
     )
-    is_demo = models.BooleanField(default=False)
+    organization_type = models.PositiveSmallIntegerField(
+        choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
+    )
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -113,6 +133,21 @@ class Organization(models.Model):
                     f"Payment provider {k} is not supported. Supported payment providers are: {PAYMENT_PROVIDERS}"
                 )
         new = self.pk is None
+        (
+            prev_organization_type,
+            new_organization_type,
+        ) = self.organization_type, kwargs.get(
+            "organization_type", self.organization_type
+        )
+        if prev_organization_type != new_organization_type and self.pk:
+            raise NotEditable(
+                "Organization type cannot be changed once an organization is created."
+            )
+        if (
+            self.team is None
+            and self.organization_type != self.OrganizationType.EXTERNAL_DEMO
+        ):
+            self.team = Team.objects.create(name=self.company_name)
         super(Organization, self).save(*args, **kwargs)
         if new:
             self.provision_currencies()
@@ -200,7 +235,11 @@ class WebhookEndpoint(models.Model):
     objects = WebhookEndpointManager()
 
     class Meta:
-        unique_together = ("organization", "webhook_url")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "webhook_url"], name="unique_webhook_url"
+            )
+        ]
 
     def save(self, *args, **kwargs):
         new = not self.pk
@@ -316,6 +355,9 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name="users",
+    )
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, null=True, related_name="users"
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
@@ -543,6 +585,16 @@ class CustomerBalanceAdjustment(models.Model):
         blank=True,
         related_name="drawdowns",
     )
+    amount_paid = models.DecimalField(
+        decimal_places=10, max_digits=20, default=Decimal(0)
+    )
+    amount_paid_currency = models.ForeignKey(
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
     status = models.CharField(
         max_length=20,
         choices=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.choices,
@@ -611,6 +663,8 @@ class CustomerBalanceAdjustment(models.Model):
             self.pricing_unit = self.customer.organization.default_currency
         if not self.organization:
             self.organization = self.customer.organization
+        if self.amount_paid is None or self.amount_paid == 0:
+            self.amount_paid_currency = None
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
@@ -645,14 +699,25 @@ class CustomerBalanceAdjustment(models.Model):
         if not pricing_unit:
             pricing_unit = customer.organization.default_currency
         now = now_utc()
-        adjs = CustomerBalanceAdjustment.objects.filter(
-            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
-            organization=customer.organization,
-            customer=customer,
-            pricing_unit=pricing_unit,
-            amount__gt=0,
-            status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
-        ).order_by(F("expires_at").desc(nulls_last=True))
+        adjs = (
+            CustomerBalanceAdjustment.objects.filter(
+                Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+                organization=customer.organization,
+                customer=customer,
+                pricing_unit=pricing_unit,
+                amount__gt=0,
+                status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+            )
+            .annotate(
+                cost_basis=Cast(
+                    Coalesce(F("amount_paid") / F("amount"), 0), FloatField()
+                )
+            )
+            .order_by(
+                F("cost_basis").desc(nulls_last=True),
+                F("expires_at").desc(nulls_last=True),
+            )
+        )
         am = amount
         for adj in adjs:
             remaining_balance = adj.get_remaining_balance()
@@ -1217,7 +1282,11 @@ class Feature(models.Model):
     feature_description = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ("organization", "feature_name")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "feature_name"], name="unique_feature"
+            )
+        ]
 
     def __str__(self):
         return str(self.feature_name)
@@ -1373,14 +1442,12 @@ class APIToken(AbstractAPIKey):
         return str(self.name) + " " + str(self.organization.company_name)
 
 
-class OrganizationInviteToken(models.Model):
+class TeamInviteToken(models.Model):
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="user_invite_token"
     )
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name="invite_token",
+    team = models.ForeignKey(
+        Team, on_delete=models.CASCADE, related_name="team_invite_token"
     )
     email = models.EmailField()
     token = models.SlugField(max_length=250, default=uuid.uuid4)
@@ -1452,7 +1519,14 @@ class PlanVersion(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "version_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["plan", "version"], name="unique_plan_version"
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "version_id"], name="unique_version_id"
+            ),
+        ]
 
     def __str__(self) -> str:
         return str(self.plan) + " v" + str(self.version)
@@ -1724,7 +1798,12 @@ class ExternalPlanLink(models.Model):
         return f"{self.plan} - {self.source} - {self.external_plan_id}"
 
     class Meta:
-        unique_together = ("organization", "source", "external_plan_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "source", "external_plan_id"],
+                name="unique_external_plan_link",
+            )
+        ]
 
 
 class SubscriptionManager(models.Manager):

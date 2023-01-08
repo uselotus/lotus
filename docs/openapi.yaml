@@ -12,11 +12,71 @@ paths:
       description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
       parameters:
         - in: query
+          name: currency_code
+          schema:
+            type: string
+            minLength: 1
+          description: Filter to adjustments in a specific currency
+        - in: query
           name: customer_id
           schema:
             type: string
             minLength: 1
+          description:
+            The id provided when creating the customer, we suggest matching
+            with your internal customer id in your backend
           required: true
+        - in: query
+          name: effective_after
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that are effective after this date
+        - in: query
+          name: effective_before
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that are effective before this date
+        - in: query
+          name: expires_after
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that expire after this date
+        - in: query
+          name: expires_before
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that expire before this date
+        - in: query
+          name: issued_after
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that were issued after this date
+        - in: query
+          name: issued_before
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that were issued before this date
+        - in: query
+          name: status
+          schema:
+            type: array
+            items:
+              enum:
+                - active
+                - inactive
+              type: string
+            default:
+              - active
+              - inactive
+          description:
+            Filter to a specific set of adjustment statuses. Defaults to
+            both active and inactive.
       tags:
         - api
       security:
@@ -41,13 +101,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CustomerBalanceAdjustmentRequest"
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentCreateRequest"
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/CustomerBalanceAdjustmentRequest"
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentCreateRequest"
           multipart/form-data:
             schema:
-              $ref: "#/components/schemas/CustomerBalanceAdjustmentRequest"
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentCreateRequest"
         required: true
       security:
         - knoxTokenAuth: []
@@ -60,9 +120,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/CustomerBalanceAdjustment"
           description: ""
-  /api/balance_adjustments/{adjustment_id}/:
-    delete:
-      operationId: api_balance_adjustments_destroy
+  /api/balance_adjustments/{adjustment_id}/update/:
+    post:
+      operationId: api_balance_adjustments_update_create
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+        - in: path
+          name: adjustment_id
+          schema:
+            type: string
+          required: true
+      tags:
+        - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentUpdateRequest"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentUpdateRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentUpdateRequest"
+      security:
+        - knoxTokenAuth: []
+        - OrganizationApiKeyAuth: []
+          TokenAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerBalanceAdjustment"
+          description: ""
+  /api/balance_adjustments/{adjustment_id}/void/:
+    post:
+      operationId: api_balance_adjustments_void_create
       description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
       parameters:
         - in: path
@@ -77,8 +171,12 @@ paths:
         - OrganizationApiKeyAuth: []
           TokenAuth: []
       responses:
-        "204":
-          description: No response body
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerBalanceAdjustment"
+          description: ""
   /api/batch_create_customers/:
     post:
       operationId: api_batch_create_customers_create
@@ -889,11 +987,71 @@ paths:
       description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
       parameters:
         - in: query
+          name: currency_code
+          schema:
+            type: string
+            minLength: 1
+          description: Filter to adjustments in a specific currency
+        - in: query
           name: customer_id
           schema:
             type: string
             minLength: 1
+          description:
+            The id provided when creating the customer, we suggest matching
+            with your internal customer id in your backend
           required: true
+        - in: query
+          name: effective_after
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that are effective after this date
+        - in: query
+          name: effective_before
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that are effective before this date
+        - in: query
+          name: expires_after
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that expire after this date
+        - in: query
+          name: expires_before
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that expire before this date
+        - in: query
+          name: issued_after
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that were issued after this date
+        - in: query
+          name: issued_before
+          schema:
+            type: string
+            format: date-time
+          description: Filter to adjustments that were issued before this date
+        - in: query
+          name: status
+          schema:
+            type: array
+            items:
+              enum:
+                - active
+                - inactive
+              type: string
+            default:
+              - active
+              - inactive
+          description:
+            Filter to a specific set of adjustment statuses. Defaults to
+            both active and inactive.
       tags:
         - app
       security:
@@ -918,13 +1076,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CustomerBalanceAdjustmentRequest"
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentCreateRequest"
           application/x-www-form-urlencoded:
             schema:
-              $ref: "#/components/schemas/CustomerBalanceAdjustmentRequest"
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentCreateRequest"
           multipart/form-data:
             schema:
-              $ref: "#/components/schemas/CustomerBalanceAdjustmentRequest"
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentCreateRequest"
         required: true
       security:
         - knoxTokenAuth: []
@@ -937,9 +1095,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/CustomerBalanceAdjustment"
           description: ""
-  /app/balance_adjustments/{adjustment_id}/:
-    delete:
-      operationId: app_balance_adjustments_destroy
+  /app/balance_adjustments/{adjustment_id}/update/:
+    post:
+      operationId: app_balance_adjustments_update_create
+      description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
+      parameters:
+        - in: path
+          name: adjustment_id
+          schema:
+            type: string
+          required: true
+      tags:
+        - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentUpdateRequest"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentUpdateRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CustomerBalanceAdjustmentUpdateRequest"
+      security:
+        - knoxTokenAuth: []
+        - OrganizationApiKeyAuth: []
+          TokenAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerBalanceAdjustment"
+          description: ""
+  /app/balance_adjustments/{adjustment_id}/void/:
+    post:
+      operationId: app_balance_adjustments_void_create
       description: A simple ViewSet meant only for creating CustomerBalanceAdjustments.
       parameters:
         - in: path
@@ -954,8 +1146,12 @@ paths:
         - OrganizationApiKeyAuth: []
           TokenAuth: []
       responses:
-        "204":
-          description: No response body
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerBalanceAdjustment"
+          description: ""
   /app/cost_analysis/:
     get:
       operationId: app_cost_analysis_retrieve
@@ -2570,6 +2766,19 @@ paths:
                 items:
                   $ref: "#/components/schemas/SubscriptionRecord"
           description: ""
+  /app/switch_organization/:
+    get:
+      operationId: app_switch_organization_retrieve
+      description: Get the current settings for the organization.
+      tags:
+        - app
+      security:
+        - knoxTokenAuth: []
+        - OrganizationApiKeyAuth: []
+          TokenAuth: []
+      responses:
+        "200":
+          description: No response body
   /app/transfer_subscriptions/:
     post:
       operationId: app_transfer_subscriptions_create
@@ -3397,11 +3606,10 @@ components:
           type: string
           maxLength: 100
           pattern: ^[-a-zA-Z0-9_]+$
-        customer_id:
-          type: string
-          description:
-            The id provided when creating the customer, we suggest matching
-            with your internal customer id in your backend
+        customer:
+          allOf:
+            - $ref: "#/components/schemas/LightweightCustomer"
+          readOnly: true
         amount:
           type: number
           format: double
@@ -3431,12 +3639,24 @@ components:
         parent_adjustment_id:
           type: string
           readOnly: true
+        amount_paid:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        amount_paid_currency:
+          allOf:
+            - $ref: "#/components/schemas/PricingUnit"
+          readOnly: true
       required:
         - amount
-        - customer_id
+        - amount_paid_currency
+        - customer
         - parent_adjustment_id
         - pricing_unit
-    CustomerBalanceAdjustmentRequest:
+    CustomerBalanceAdjustmentCreateRequest:
       type: object
       properties:
         adjustment_id:
@@ -3461,6 +3681,9 @@ components:
           type: string
           minLength: 1
           writeOnly: true
+        pricing_unit:
+          type: integer
+          nullable: true
         description:
           type: string
           nullable: true
@@ -3476,10 +3699,31 @@ components:
             - active
             - inactive
           type: string
+        amount_paid:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        amount_paid_currency_code:
+          type: string
+          minLength: 1
+          writeOnly: true
       required:
         - amount
         - customer_id
         - pricing_unit_code
+    CustomerBalanceAdjustmentUpdateRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
     CustomerBatchCreateFailure:
       type: object
       properties:
@@ -3723,16 +3967,6 @@ components:
     DraftInvoice:
       type: object
       properties:
-        currency:
-          $ref: "#/components/schemas/PricingUnit"
-        end_date:
-          type: string
-          format: date
-          readOnly: true
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
         issue_date:
           type: string
           format: date-time
@@ -3744,6 +3978,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GroupedLineItem"
+          readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        currency:
+          $ref: "#/components/schemas/PricingUnit"
+        end_date:
+          type: string
+          format: date
           readOnly: true
         cost_due:
           type: number
@@ -4108,19 +4352,13 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+        currency_code:
+          type: string
+          minLength: 1
         month_anchor:
           type: integer
           maximum: 12
           minimum: 1
-          writeOnly: true
-          nullable: true
-        features:
-          type: array
-          items:
-            $ref: "#/components/schemas/FeatureRequest"
-          nullable: true
-        description:
-          type: string
           writeOnly: true
           nullable: true
         usage_billing_frequency:
@@ -4133,6 +4371,27 @@ components:
           type: string
           writeOnly: true
           nullable: true
+        features:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeatureRequest"
+          nullable: true
+        price_adjustment:
+          $ref: "#/components/schemas/PriceAdjustmentRequest"
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanComponentRequest"
+          nullable: true
+        transition_to_plan_id:
+          type: string
+          minLength: 1
         flat_rate:
           type: number
           format: double
@@ -4140,31 +4399,16 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
-        components:
-          type: array
-          items:
-            $ref: "#/components/schemas/PlanComponentRequest"
-          nullable: true
         flat_fee_billing_type:
           enum:
             - in_arrears
             - in_advance
           type: string
           writeOnly: true
-        price_adjustment:
-          $ref: "#/components/schemas/PriceAdjustmentRequest"
-        currency_code:
+        description:
           type: string
-          minLength: 1
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
           writeOnly: true
           nullable: true
-        transition_to_plan_id:
-          type: string
-          minLength: 1
       required:
         - flat_fee_billing_type
     InviteRequestRequest:
@@ -4377,6 +4621,25 @@ components:
     LightweightInvoice:
       type: object
       properties:
+        payment_status:
+          enum:
+            - draft
+            - voided
+            - paid
+            - unpaid
+          type: string
+        issue_date:
+          type: string
+          format: date-time
+        invoice_number:
+          type: string
+          maxLength: 13
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        seller:
+          $ref: "#/components/schemas/Seller"
         currency:
           $ref: "#/components/schemas/PricingUnit"
         external_payment_obj_id:
@@ -4387,41 +4650,22 @@ components:
           type: string
           format: date-time
           nullable: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
         external_payment_obj_type:
           enum:
             - stripe
             - null
           type: string
           nullable: true
-        end_date:
-          type: string
-          format: date
-          readOnly: true
-        seller:
-          $ref: "#/components/schemas/Seller"
-        issue_date:
-          type: string
-          format: date-time
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        payment_status:
-          enum:
-            - draft
-            - voided
-            - paid
-            - unpaid
-          type: string
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
-        invoice_number:
-          type: string
-          maxLength: 13
       required:
         - cost_due
         - currency
@@ -4437,11 +4681,6 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        plan:
-          type: string
-        end_date:
-          type: string
-          format: date-time
         subtotal:
           type: number
           format: double
@@ -4449,11 +4688,20 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
-        subscription_filters:
-          type: array
-          items:
-            $ref: "#/components/schemas/SubscriptionCategoricalFilter"
+        billing_type:
+          enum:
+            - in_arrears
+            - in_advance
+            - null
+          type: string
+          nullable: true
         start_date:
+          type: string
+          format: date-time
+        name:
+          type: string
+          maxLength: 100
+        end_date:
           type: string
           format: date-time
         quantity:
@@ -4463,16 +4711,12 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
-        billing_type:
-          enum:
-            - in_arrears
-            - in_advance
-            - null
+        subscription_filters:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubscriptionCategoricalFilter"
+        plan:
           type: string
-          nullable: true
-        name:
-          type: string
-          maxLength: 100
       required:
         - billing_type
         - end_date
@@ -4482,6 +4726,27 @@ components:
         - start_date
         - subscription_filters
         - subtotal
+    LightweightOrganization:
+      type: object
+      properties:
+        organization_id:
+          type: string
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        company_name:
+          type: string
+          maxLength: 100
+        organization_type:
+          enum:
+            - Production
+            - Development
+            - Demo
+            - Internal Demo
+          type: string
+          readOnly: true
+      required:
+        - company_name
+        - organization_type
     LightweightPlanVersion:
       type: object
       properties:
@@ -4508,6 +4773,23 @@ components:
       required:
         - plan_id
         - plan_name
+    LightweightUser:
+      type: object
+      properties:
+        username:
+          type: string
+          description:
+            Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          maxLength: 254
+      required:
+        - email
+        - username
     LoginFailure:
       type: object
       properties:
@@ -4889,11 +5171,22 @@ components:
           minimum: 0
           nullable: true
           readOnly: true
+        linked_organizations:
+          type: array
+          items:
+            $ref: "#/components/schemas/LightweightOrganization"
+          readOnly: true
+        current_user:
+          allOf:
+            - $ref: "#/components/schemas/LightweightUser"
+          readOnly: true
       required:
         - available_currencies
         - company_name
+        - current_user
         - default_currency
         - invoice_grace_period
+        - linked_organizations
         - users
     OrganizationSetting:
       type: object

@@ -10,9 +10,14 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
-from metering_billing.demos import setup_demo_3
-from metering_billing.exceptions.exceptions import InvalidRequest
-from metering_billing.models import Organization, OrganizationInviteToken, User
+from metering_billing.demos import setup_demo3
+from metering_billing.exceptions import (
+    DuplicateOrganization,
+    DuplicateUser,
+    InvalidRequest,
+    RegistrationFailure,
+)
+from metering_billing.models import Organization, TeamInviteToken, User
 from metering_billing.serializers.auth_serializers import *
 from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.serializer_utils import EmailSerializer
@@ -265,37 +270,44 @@ class RegisterView(LoginViewMixin, APIView):
         password = reg_dict["password"]
         company_name = reg_dict["company_name"]
 
+        existing_user_num = User.objects.filter(username=username).count()
+        if existing_user_num > 0:
+            raise DuplicateUser("User with username already exists")
+        existing_user_num = User.objects.filter(email=email).count()
+        if existing_user_num > 0:
+            raise DuplicateUser("User with email already exists")
+
         if invite_token is not None and invite_token != "null":
             now = now_utc()
             try:
-                token = OrganizationInviteToken.objects.get(
+                token = TeamInviteToken.objects.get(
                     token=invite_token, expire_at__gt=now
                 )
-            except OrganizationInviteToken.DoesNotExist:
-                return Response(
-                    {"detail": "Invalid invite token."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            except TeamInviteToken.DoesNotExist:
+                raise RegistrationFailure("Invalid invite token")
             if token.email != email:
-                return Response(
-                    {"detail": "Email entered does not match invitation email."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            org = token.organization
+                raise RegistrationFailure("Email does not match invite token")
+            team = token.team
+            org = (
+                Organization.objects.filter(team=team)
+                .order_by("-organization_type")
+                .first()
+            )
         else:
             # Organization doesn't exist yet
             existing_org_num = Organization.objects.filter(
-                company_name=company_name
+                company_name=company_name,
             ).count()
             if existing_org_num > 0:
-                return JsonResponse(
-                    {"detail": "Organization already exists."},
-                    status=status.HTTP_400_BAD_REQUEST,
+                raise DuplicateOrganization(
+                    "Organization with company name already exists"
                 )
+            team = Team.objects.create(name=company_name)
             org = Organization.objects.create(
-                company_name=reg_dict["company_name"],
+                company_name=company_name,
+                team=team,
+                organization_type=Organization.OrganizationType.DEVELOPMENT,
             )
-
             token = None
             if META:
                 lotus_python.create_customer(
@@ -303,22 +315,12 @@ class RegisterView(LoginViewMixin, APIView):
                     name=org.company_name,
                 )
 
-        existing_user_num = User.objects.filter(username=username).count()
-        if existing_user_num > 0:
-            msg = f"User with username already exists"
-            org.delete()
-            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
-        existing_user_num = User.objects.filter(email=email).count()
-        if existing_user_num > 0:
-            msg = f"User with email already exists"
-            org.delete()
-            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
-
         user = User.objects.create_user(
             email=email,
             username=username,
             password=password,
             organization=org,
+            team=team,
         )
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else username,
@@ -371,17 +373,23 @@ class DemoRegisterView(LoginViewMixin, APIView):
 
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
-            msg = f"User with username already exists"
-            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+            raise DuplicateUser("User with username already exists")
         existing_user_num = User.objects.filter(email=email).count()
         if existing_user_num > 0:
-            msg = f"User with email already exists"
-            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+            raise DuplicateUser("User with email already exists")
 
-        user = setup_demo_3(company_name, username, email, password)
-        logger.info("setup_demo_3 took %s seconds", time.time() - start)
+        user = setup_demo3(
+            company_name,
+            username,
+            email,
+            password,
+            org_type=Organization.OrganizationType.EXTERNAL_DEMO,
+        )
+        logger.info("setup_demo3 took %s seconds", time.time() - start)
         logger.info(f"Demo user {user} created")
-        user.organization.is_demo = True
+        user.organization.organization_type = (
+            Organization.OrganizationType.EXTERNAL_DEMO
+        )
         user.organization.save()
 
         posthog.capture(

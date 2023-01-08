@@ -135,7 +135,6 @@ class TestStripeIntegration:
             billing_plan=setup_dict["plan_version"],
             start_date=now_utc() - timedelta(days=35),
             end_date=now_utc() - timedelta(days=5),
-            status="ended",
         )
         invoice = generate_invoice(subscription, subscription_record)[0]
         assert invoice.payment_status == INVOICE_STATUS.UNPAID
