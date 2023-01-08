@@ -2786,6 +2786,94 @@ paths:
               schema:
                 $ref: '#/components/schemas/TransferSubscriptionsFailure'
           description: ''
+  /app/usage_alerts/:
+    get:
+      operationId: app_usage_alerts_list
+      description: ViewSet for viewing and editing UsageAlerts.
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UsageAlert'
+          description: ''
+    post:
+      operationId: app_usage_alerts_create
+      description: ViewSet for viewing and editing UsageAlerts.
+      tags:
+      - app
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsageAlertCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UsageAlertCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UsageAlertCreateRequest'
+        required: true
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAlertCreate'
+          description: ''
+  /app/usage_alerts/{usage_alert_id}/:
+    get:
+      operationId: app_usage_alerts_retrieve
+      description: ViewSet for viewing and editing UsageAlerts.
+      parameters:
+      - in: path
+        name: usage_alert_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAlert'
+          description: ''
+    delete:
+      operationId: app_usage_alerts_destroy
+      description: ViewSet for viewing and editing UsageAlerts.
+      parameters:
+      - in: path
+        name: usage_alert_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - app
+      security:
+      - knoxTokenAuth: []
+      - OrganizationApiKeyAuth: []
+        TokenAuth: []
+      responses:
+        '204':
+          description: No response body
   /app/user/password/reset/:
     post:
       operationId: app_user_password_reset_create
@@ -3925,26 +4013,21 @@ components:
     DraftInvoice:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
-        issue_date:
-          type: string
-          format: date-time
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
+        issue_date:
+          type: string
+          format: date-time
+        start_date:
+          type: string
+          format: date
+          readOnly: true
         end_date:
           type: string
           format: date
@@ -3953,6 +4036,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
       required:
       - cost_due
       - currency
@@ -4296,6 +4384,9 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+        transition_to_plan_id:
+          type: string
+          minLength: 1
         flat_rate:
           type: number
           format: double
@@ -4303,6 +4394,37 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
+        currency_code:
+          type: string
+          minLength: 1
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureRequest'
+          nullable: true
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentRequest'
+          nullable: true
         usage_billing_frequency:
           enum:
           - monthly
@@ -4313,44 +4435,10 @@ components:
           type: string
           writeOnly: true
           nullable: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureRequest'
-          nullable: true
         month_anchor:
           type: integer
           maximum: 12
           minimum: 1
-          writeOnly: true
-          nullable: true
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          type: string
-          writeOnly: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRequest'
-          nullable: true
-        transition_to_plan_id:
-          type: string
-          minLength: 1
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        currency_code:
-          type: string
-          minLength: 1
-        description:
-          type: string
           writeOnly: true
           nullable: true
       required:
@@ -4567,21 +4655,12 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - null
-          type: string
-          nullable: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
-        issue_date:
+        external_payment_obj_id:
           type: string
-          format: date-time
+          nullable: true
+          maxLength: 100
         cost_due:
           type: number
           format: double
@@ -4590,14 +4669,6 @@ components:
           exclusiveMaximum: true
         seller:
           $ref: '#/components/schemas/Seller'
-        external_payment_obj_id:
-          type: string
-          nullable: true
-          maxLength: 100
-        end_date:
-          type: string
-          format: date
-          readOnly: true
         payment_status:
           enum:
           - draft
@@ -4605,9 +4676,26 @@ components:
           - paid
           - unpaid
           type: string
+        issue_date:
+          type: string
+          format: date-time
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        end_date:
+          type: string
+          format: date
+          readOnly: true
         invoice_number:
           type: string
           maxLength: 13
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - null
+          type: string
+          nullable: true
         due_date:
           type: string
           format: date-time
@@ -4627,30 +4715,6 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        start_date:
-          type: string
-          format: date-time
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-        quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          nullable: true
-        name:
-          type: string
-          maxLength: 100
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
         billing_type:
           enum:
           - in_arrears
@@ -4658,11 +4722,35 @@ components:
           - null
           type: string
           nullable: true
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
+        start_date:
+          type: string
+          format: date-time
         end_date:
           type: string
           format: date-time
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+        name:
+          type: string
+          maxLength: 100
         plan:
           type: string
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
       required:
       - billing_type
       - end_date
@@ -5338,6 +5426,7 @@ components:
             enum:
             - invoice.created
             - invoice.paid
+            - usage_alert.triggered
             type: string
           writeOnly: true
     PaymentProviderPostDataRequest:
@@ -6616,6 +6705,66 @@ components:
       required:
       - detail
       - status
+    UsageAlert:
+      type: object
+      properties:
+        usage_alert_id:
+          type: string
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        metric:
+          $ref: '#/components/schemas/Metric'
+        plan_version:
+          $ref: '#/components/schemas/LightweightPlanVersion'
+        threshold:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - metric
+      - plan_version
+      - threshold
+    UsageAlertCreate:
+      type: object
+      properties:
+        metric_id:
+          type: string
+        plan_version_id:
+          type: string
+        threshold:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - metric_id
+      - plan_version_id
+      - threshold
+    UsageAlertCreateRequest:
+      type: object
+      properties:
+        metric_id:
+          type: string
+          minLength: 1
+        plan_version_id:
+          type: string
+          minLength: 1
+        threshold:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+      required:
+      - metric_id
+      - plan_version_id
+      - threshold
     User:
       type: object
       properties:
@@ -6709,6 +6858,7 @@ components:
             enum:
             - invoice.created
             - invoice.paid
+            - usage_alert.triggered
             type: string
           writeOnly: true
       required:
@@ -6721,6 +6871,7 @@ components:
           enum:
           - invoice.created
           - invoice.paid
+          - usage_alert.triggered
           type: string
       required:
       - trigger_name
@@ -6731,6 +6882,7 @@ components:
           enum:
           - invoice.created
           - invoice.paid
+          - usage_alert.triggered
           type: string
       required:
       - trigger_name

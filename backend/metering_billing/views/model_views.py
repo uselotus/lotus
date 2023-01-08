@@ -963,6 +963,11 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
     queryset = UsageAlert.objects.all()
     lookup_field = "usage_alert_id"
 
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UsageAlertCreateSerializer
+        return UsageAlertSerializer
+
     def get_queryset(self):
         organization = self.request.organization
         return UsageAlert.objects.filter(organization=organization)
