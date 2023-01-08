@@ -941,8 +941,12 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             component.save()
         for feature_data in features_data:
             feature_data["organization"] = org
+            description = feature_data.pop("description", None)
             try:
-                f, _ = Feature.objects.get_or_create(**feature_data)
+                f, created = Feature.objects.get_or_create(**feature_data)
+                if created and description:
+                    f.description = description
+                    f.save()
             except Feature.MultipleObjectsReturned:
                 f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)

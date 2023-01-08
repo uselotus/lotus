@@ -15,8 +15,9 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
+from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
@@ -234,7 +235,11 @@ class WebhookEndpoint(models.Model):
     objects = WebhookEndpointManager()
 
     class Meta:
-        unique_together = ("organization", "webhook_url")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "webhook_url"], name="unique_webhook_url"
+            )
+        ]
 
     def save(self, *args, **kwargs):
         new = not self.pk
@@ -580,6 +585,16 @@ class CustomerBalanceAdjustment(models.Model):
         blank=True,
         related_name="drawdowns",
     )
+    amount_paid = models.DecimalField(
+        decimal_places=10, max_digits=20, default=Decimal(0)
+    )
+    amount_paid_currency = models.ForeignKey(
+        "PricingUnit",
+        on_delete=models.SET_NULL,
+        related_name="+",
+        null=True,
+        blank=True,
+    )
     status = models.CharField(
         max_length=20,
         choices=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.choices,
@@ -648,6 +663,8 @@ class CustomerBalanceAdjustment(models.Model):
             self.pricing_unit = self.customer.organization.default_currency
         if not self.organization:
             self.organization = self.customer.organization
+        if self.amount_paid is None or self.amount_paid == 0:
+            self.amount_paid_currency = None
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
@@ -682,14 +699,25 @@ class CustomerBalanceAdjustment(models.Model):
         if not pricing_unit:
             pricing_unit = customer.organization.default_currency
         now = now_utc()
-        adjs = CustomerBalanceAdjustment.objects.filter(
-            Q(expires_at__gte=now) | Q(expires_at__isnull=True),
-            organization=customer.organization,
-            customer=customer,
-            pricing_unit=pricing_unit,
-            amount__gt=0,
-            status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
-        ).order_by(F("expires_at").desc(nulls_last=True))
+        adjs = (
+            CustomerBalanceAdjustment.objects.filter(
+                Q(expires_at__gte=now) | Q(expires_at__isnull=True),
+                organization=customer.organization,
+                customer=customer,
+                pricing_unit=pricing_unit,
+                amount__gt=0,
+                status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+            )
+            .annotate(
+                cost_basis=Cast(
+                    Coalesce(F("amount_paid") / F("amount"), 0), FloatField()
+                )
+            )
+            .order_by(
+                F("cost_basis").desc(nulls_last=True),
+                F("expires_at").desc(nulls_last=True),
+            )
+        )
         am = amount
         for adj in adjs:
             remaining_balance = adj.get_remaining_balance()
@@ -1254,7 +1282,11 @@ class Feature(models.Model):
     feature_description = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ("organization", "feature_name")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "feature_name"], name="unique_feature"
+            )
+        ]
 
     def __str__(self):
         return str(self.feature_name)
@@ -1487,7 +1519,14 @@ class PlanVersion(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        unique_together = ("organization", "version_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["plan", "version"], name="unique_plan_version"
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "version_id"], name="unique_version_id"
+            ),
+        ]
 
     def __str__(self) -> str:
         return str(self.plan) + " v" + str(self.version)
@@ -1759,7 +1798,12 @@ class ExternalPlanLink(models.Model):
         return f"{self.plan} - {self.source} - {self.external_plan_id}"
 
     class Meta:
-        unique_together = ("organization", "source", "external_plan_id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "source", "external_plan_id"],
+                name="unique_external_plan_link",
+            )
+        ]
 
 
 class SubscriptionManager(models.Manager):

@@ -13,7 +13,10 @@ import lotus_python
 import posthog
 from actstream import action
 from api.serializers.model_serializers import (
+    CustomerBalanceAdjustmentCreateSerializer,
+    CustomerBalanceAdjustmentFilterSerializer,
     CustomerBalanceAdjustmentSerializer,
+    CustomerBalanceAdjustmentUpdateSerializer,
     CustomerCreateSerializer,
     CustomerSerializer,
     EventSerializer,
@@ -366,7 +369,7 @@ class SubscriptionViewSet(
 
     def create(self, request, *args, **kwargs):
         raise MethodNotAllowed(
-            "Cannot use the create method on the subscription endpoint. Please use the /susbcriptions/add endpoint to attach a plan and create a subscription."
+            "Cannot use the create method on the subscription endpoint. Please use the /subscriptions/add endpoint to attach a plan and create a subscription."
         )
 
     # ad hoc methods
@@ -707,7 +710,6 @@ class CustomerBalanceAdjustmentViewSet(
     PermissionPolicyMixin,
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
-    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     """
@@ -715,22 +717,77 @@ class CustomerBalanceAdjustmentViewSet(
     """
 
     permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = ["get", "post", "delete", "head"]
+    http_method_names = [
+        "get",
+        "head",
+        "post",
+    ]
     serializer_class = CustomerBalanceAdjustmentSerializer
-    permission_classes_per_method = {
-        "list": [IsAuthenticated & ValidOrganization],
-        "create": [IsAuthenticated & ValidOrganization],
-        "destroy": [IsAuthenticated & ValidOrganization],
-    }
     lookup_field = "adjustment_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
+    def get_serializer_class(self):
+        if self.action == "list":
+            return CustomerBalanceAdjustmentSerializer
+        elif self.action == "create":
+            return CustomerBalanceAdjustmentCreateSerializer
+        elif self.action == "void":
+            return None
+        elif self.action == "edit":
+            return CustomerBalanceAdjustmentUpdateSerializer
+        return CustomerBalanceAdjustmentSerializer
+
     def get_queryset(self):
-        filter_kwargs = {"organization": self.request.organization}
-        customer_id = self.request.query_params.get("customer_id")
-        if customer_id:
-            filter_kwargs["customer__customer_id"] = customer_id
-        return CustomerBalanceAdjustment.objects.filter(**filter_kwargs)
+        qs = super().get_queryset()
+        organization = self.request.organization
+        qs = qs.filter(organization=organization)
+        context = self.get_serializer_context()
+        context["organization"] = organization
+        if self.action == "list":
+            args = []
+            serializer = CustomerBalanceAdjustmentFilterSerializer(
+                data=self.request.query_params, context=context
+            )
+            serializer.is_valid(raise_exception=True)
+            allowed_status = serializer.validated_data.get("status")
+            if len(allowed_status) == 0:
+                allowed_status = [
+                    CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+                    CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE,
+                ]
+            expires_before = serializer.validated_data.get("expires_before")
+            expires_after = serializer.validated_data.get("expires_after")
+            issued_before = serializer.validated_data.get("issued_before")
+            issued_after = serializer.validated_data.get("issued_after")
+            effective_before = serializer.validated_data.get("effective_before")
+            effective_after = serializer.validated_data.get("effective_after")
+            if expires_after:
+                args.append(
+                    Q(expires_at__gte=expires_after) | Q(expires_at__isnull=True)
+                )
+            if expires_before:
+                args.append(Q(expires_at__lte=expires_before))
+            if issued_after:
+                args.append(Q(issued_at__gte=issued_after))
+            if issued_before:
+                args.append(Q(issued_at__lte=issued_before))
+            if effective_after:
+                args.append(Q(effective_at__gte=effective_after))
+            if effective_before:
+                args.append(Q(effective_at__lte=effective_before))
+            args.append(Q(customer=serializer.validated_data["customer"]))
+            status_combo = []
+            for status in allowed_status:
+                status_combo.append(Q(status=status))
+            args.append(reduce(operator.or_, status_combo))
+            if serializer.validated_data.get("pricing_unit"):
+                args.append(Q(pricing_unit=serializer.validated_data["pricing_unit"]))
+            qs = qs.filter(
+                *args,
+            ).select_related("customer")
+            if serializer.validated_data.get("pricing_unit"):
+                qs = qs.select_related("pricing_unit")
+        return qs
 
     def get_serializer_context(self):
         context = super(CustomerBalanceAdjustmentViewSet, self).get_serializer_context()
@@ -738,26 +795,86 @@ class CustomerBalanceAdjustmentViewSet(
         context.update({"organization": organization})
         return context
 
+    @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        metric_data = CustomerBalanceAdjustmentSerializer(instance).data
+        return Response(metric_data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
         serializer.save(organization=self.request.organization)
 
     @extend_schema(
-        parameters=[
-            inline_serializer(
-                name="BalanceAdjustmentCustomerFilter",
-                fields={
-                    "customer_id": serializers.CharField(required=True),
-                },
-            ),
-        ],
+        parameters=[CustomerBalanceAdjustmentFilterSerializer],
+        responses=CustomerBalanceAdjustmentSerializer(many=True),
     )
     def list(self, request):
         return super().list(request)
 
-    def perform_destroy(self, instance):
-        if instance.amount <= 0:
+    @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
+    @action(detail=True, methods=["post"])
+    def void(self, request, adjustment_id=None):
+        adjustment = self.get_object()
+        if adjustment.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
+            raise ValidationError("Cannot void an adjustment that is not active.")
+        if adjustment.amount <= 0:
             raise ValidationError("Cannot delete a negative adjustment.")
-        instance.zero_out(reason="voided")
+        adjustment.zero_out(reason="voided")
+        return Response(
+            CustomerBalanceAdjustmentSerializer(
+                adjustment, context=self.get_serializer_context()
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
+    @action(detail=True, methods=["post"], url_path="update")
+    def edit(self, request, adjustment_id=None):
+        adjustment = self.get_object()
+        serializer = self.get_serializer(adjustment, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(adjustment, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            adjustment._prefetched_objects_cache = {}
+
+        return Response(
+            CustomerBalanceAdjustmentSerializer(
+                adjustment, context=self.get_serializer_context()
+            ).data,
+            status=status.HTTP_200_OK,
+        )
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if status.is_success(response.status_code):
+            try:
+                username = self.request.user.username
+            except:
+                username = None
+            organization = self.request.organization
+            posthog.capture(
+                POSTHOG_PERSON
+                if POSTHOG_PERSON
+                else (
+                    username if username else organization.company_name + " (API Key)"
+                ),
+                event=f"{self.action}_balance_adjustment",
+                properties={"organization": organization.company_name},
+            )
+            # if username:
+            #     if self.action == "plans":
+            #         action.send(
+            #             self.request.user,
+            #             verb="attached",
+            #             action_object=instance.customer,
+            #             target=instance.billing_plan,
+            #         )
+
+        return response
 
 
 class GetCustomerEventAccessView(APIView):
