@@ -813,17 +813,6 @@ class PriceAdjustmentSerializer(serializers.ModelSerializer):
     price_adjustment_name = serializers.CharField(default="")
 
 
-class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
-    class Meta(api_serializers.PlanVersionSerializer.Meta):
-        fields = api_serializers.PlanVersionSerializer.Meta.fields + (
-            "version_id",
-            "plan_id",
-        )
-        extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
-
-    plan_id = serializers.CharField(source="plan.plan_id", read_only=True)
-
-
 class PlanVersionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PlanVersion
@@ -1498,6 +1487,22 @@ class UsageAlertSerializer(serializers.ModelSerializer):
 
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()
+
+
+class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
+    class Meta(api_serializers.PlanVersionSerializer.Meta):
+        fields = api_serializers.PlanVersionSerializer.Meta.fields + (
+            "version_id",
+            "plan_id",
+            "alerts",
+        )
+        extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
+
+    plan_id = serializers.CharField(source="plan.plan_id", read_only=True)
+    alerts = serializers.SerializerMethodField()
+
+    def get_alerts(self, obj) -> UsageAlertSerializer(many=True):
+        return UsageAlertSerializer(obj.usage_alerts, many=True).data
 
 
 class UsageAlertCreateSerializer(serializers.ModelSerializer):
