@@ -2165,7 +2165,8 @@ class SubscriptionRecord(models.Model):
                     )
         if not self.usage_start_date:
             self.usage_start_date = self.start_date
-        if not self.pk:
+        new = not self.pk
+        if new:
             overlapping_subscriptions = SubscriptionRecord.objects.filter(
                 Q(start_date__range=(self.start_date, self.end_date))
                 | Q(end_date__range=(self.start_date, self.end_date)),
@@ -2190,18 +2191,19 @@ class SubscriptionRecord(models.Model):
             if not filter.organization:
                 filter.organization = self.organization
                 filter.save()
-        alerts = UsageAlert.objects.filter(
-            organization=self.organization, plan_version=self.billing_plan
-        )
-        now = now_utc()
-        for alert in alerts:
-            AlertResult.objects.create(
-                organization=self.organization,
-                alert=alert,
-                subscription_record=self,
-                last_run_value=0,
-                last_run_timestamp=now,
+        if new:
+            alerts = UsageAlert.objects.filter(
+                organization=self.organization, plan_version=self.billing_plan
             )
+            now = now_utc()
+            for alert in alerts:
+                UsageAlertResult.objects.create(
+                    organization=self.organization,
+                    alert=alert,
+                    subscription_record=self,
+                    last_run_value=0,
+                    last_run_timestamp=now,
+                )
 
     def get_filters_dictionary(self):
         filters_dict = {}
@@ -2516,7 +2518,7 @@ class UsageAlert(models.Model):
             billing_plan=self.plan_version,
         )
         for subscription_record in active_sr:
-            AlertResult.objects.create(
+            UsageAlertResult.objects.create(
                 organization=self.organization,
                 alert=self,
                 subscription_record=subscription_record,
@@ -2525,7 +2527,7 @@ class UsageAlert(models.Model):
             )
 
 
-class AlertResult(models.Model):
+class UsageAlertResult(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="alert_results"
     )
@@ -2537,6 +2539,7 @@ class AlertResult(models.Model):
     )
     last_run_value = models.DecimalField(max_digits=20, decimal_places=10)
     last_run_timestamp = models.DateTimeField(default=now_utc)
+    triggered_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         constraints = [
@@ -2565,6 +2568,7 @@ class AlertResult(models.Model):
             usage_alert_webhook(
                 self.alert, self, subscription_record, self.organization
             )
+            self.triggered_count = self.triggered_count + 1
         self.last_run_value = new_value
         self.last_run_timestamp = now
         self.save()

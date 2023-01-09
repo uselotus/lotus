@@ -1513,7 +1513,7 @@ class UsageAlertCreateSerializer(serializers.ModelSerializer):
         slug_field="metric_id", queryset=Metric.objects.all(), source="metric"
     )
     plan_version_id = SlugRelatedFieldWithOrganization(
-        slug_field="plan_version_id",
+        slug_field="version_id",
         queryset=PlanVersion.objects.all(),
         source="plan_version",
     )
@@ -1526,8 +1526,4 @@ class UsageAlertCreateSerializer(serializers.ModelSerializer):
             plan_version=plan_version,
             **validated_data,
         )
-        # create a scheduled task to check usage
-        # create an alert result for every active subscription record
-        # on subscription record create, check for alerts on the plan version (model level)
-        # make sure periodic task sends webhooks for alerts
-        # make sure once a subscription record ends, the alert result is deleted
+        return usage_alert

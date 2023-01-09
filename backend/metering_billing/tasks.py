@@ -14,13 +14,13 @@ from django.db.models import Count, Q
 from metering_billing.exceptions.exceptions import AlignmentEngineFailure
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
-    AlertResult,
     Backtest,
     CustomerBalanceAdjustment,
     Invoice,
     PlanComponent,
     Subscription,
     SubscriptionRecord,
+    UsageAlertResult,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
@@ -120,16 +120,20 @@ def calculate_invoice():
                 new_sub.handle_remove_plan()
 
 
-@shared_task
-def refresh_alerts():
-    # get all AlertResults
+def refresh_alerts_inner():
+    # get all UsageAlertResults
     now = now_utc()
-    AlertResult.objects.filter(subscription_record__end_date__lt=now).delete()
-    alert_results = AlertResult.objects.filter(
+    UsageAlertResult.objects.filter(subscription_record__end_date__lt=now).delete()
+    alert_results = UsageAlertResult.objects.filter(
         subscription_record__end_date__gte=now
     ).prefetch_related("alert", "subscription_record", "alert__metric")
     for alert_result in alert_results:
         alert_result.refresh()
+
+
+@shared_task
+def refresh_alerts():
+    refresh_alerts_inner()
 
 
 @shared_task
