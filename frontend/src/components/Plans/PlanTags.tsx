@@ -29,7 +29,11 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
                   </Badge>
                 </span>
               ))}
-              <span className="whitespace-nowrap"> +{tags.length} tags</span>
+              <span className="whitespace-nowrap">
+                {" "}
+                +{tags.length - tags.slice(0, 2).length}{" "}
+                {tags.length - tags.slice(0, 2).length > 1 ? "tags" : "tag"}
+              </span>
             </span>
           ) : (
             tags.map((tag) => (
