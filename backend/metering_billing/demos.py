@@ -101,7 +101,6 @@ def setup_demo3(
             organization.delete()
             return
     organization = user.organization
-    PAYMENT_PROVIDER_MAP[PAYMENT_PROVIDERS.STRIPE].initialize_settings(organization)
     big_customers = []
     for _ in range(1):
         customer = Customer.objects.create(
