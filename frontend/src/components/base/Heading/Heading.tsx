@@ -30,7 +30,7 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
         </div>
         <div className="flex items-center ml-[58%]">
           <div className="mr-10">
-            {/* <Badge>
+            <Badge>
               <Badge.Dot />
               <Badge.Content>
                 <span className="flex gap-2 ml-2 justify-center items-center">
@@ -38,7 +38,7 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
                   <RightOutlined className="text-[10px]" />
                 </span>
               </Badge.Content>
-            </Badge> */}
+            </Badge>
           </div>
           <div
             className={`flex gap-4 items-center p-4 ${
