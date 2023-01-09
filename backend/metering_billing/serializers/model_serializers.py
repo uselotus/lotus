@@ -112,6 +112,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "invoice_grace_period",
             "linked_organizations",
             "current_user",
+            "address",
         )
 
     users = serializers.SerializerMethodField()
@@ -120,6 +121,17 @@ class OrganizationSerializer(serializers.ModelSerializer):
     invoice_grace_period = serializers.SerializerMethodField()
     linked_organizations = serializers.SerializerMethodField()
     current_user = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField(required=False, allow_null=True)
+
+    def get_address(
+        self, obj
+    ) -> api_serializers.AddressSerializer(allow_null=True, required=False):
+        d = obj.properties.get("address", {})
+        try:
+            data = api_serializers.AddressSerializer(d).data
+        except KeyError:
+            data = None
+        return data
 
     def get_current_user(self, obj) -> LightweightUserSerializer():
         user = self.context.get("user")
