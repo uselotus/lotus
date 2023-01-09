@@ -385,7 +385,7 @@ class TestCalculateMetric:
         )
         assert metric_usage == 2
 
-    def test_stateful_total_granularity(
+    def test_gauge_total_granularity(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -399,7 +399,7 @@ class TestCalculateMetric:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             event_type=EVENT_TYPE.TOTAL,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
@@ -475,7 +475,7 @@ class TestCalculateMetric:
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
-    def test_stateful_daily_granularity(
+    def test_gauge_daily_granularity(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -489,7 +489,7 @@ class TestCalculateMetric:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             granularity=METRIC_GRANULARITY.MONTH,
             proration=METRIC_GRANULARITY.DAY,
             event_type=EVENT_TYPE.TOTAL,
@@ -675,7 +675,7 @@ class TestCalculateMetric:
         # 1 dollar per for 64 rows - 3 free rows = 61 rows * 1 dollar = 61 dollars
         assert usage_revenue_dict["revenue"] == Decimal(61)
 
-    def test_stateful_daily_granularity_delta_event(
+    def test_gauge_daily_granularity_delta_event(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -689,7 +689,7 @@ class TestCalculateMetric:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             granularity=METRIC_GRANULARITY.MONTH,
             event_type=EVENT_TYPE.DELTA,
             proration=METRIC_GRANULARITY.DAY,
@@ -762,7 +762,7 @@ class TestCalculateMetric:
 
 
 @pytest.mark.django_db(transaction=True)
-class TestCalculateMetricProrationForStateful:
+class TestCalculateMetricProrationForGauge:
     def test_proration_and_metric_granularity_sub_day(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
@@ -777,7 +777,7 @@ class TestCalculateMetricProrationForStateful:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             granularity=METRIC_GRANULARITY.HOUR,
             proration=METRIC_GRANULARITY.MINUTE,
             event_type=EVENT_TYPE.TOTAL,
@@ -894,7 +894,7 @@ class TestCalculateMetricProrationForStateful:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             granularity=METRIC_GRANULARITY.DAY,
             proration=METRIC_GRANULARITY.HOUR,
             event_type=EVENT_TYPE.TOTAL,
@@ -1008,7 +1008,7 @@ class TestCalculateMetricProrationForStateful:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             granularity=METRIC_GRANULARITY.MONTH,
             proration=METRIC_GRANULARITY.HOUR,
             event_type=EVENT_TYPE.TOTAL,
@@ -1216,7 +1216,7 @@ class TestCalculateMetricWithFilters:
         )
         assert metric_usage == 2
 
-    def test_stateful_total_granularity_with_filters(
+    def test_gauge_total_granularity_with_filters(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -1230,7 +1230,7 @@ class TestCalculateMetricWithFilters:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             event_type=EVENT_TYPE.TOTAL,
         )
         METRIC_HANDLER_MAP[billable_metric.metric_type].create_continuous_aggregate(
@@ -1308,7 +1308,7 @@ class TestCalculateMetricWithFilters:
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert usage_revenue_dict["revenue"] == Decimal(300)
 
-    def test_stateful_daily_granularity_with_filters(
+    def test_gauge_daily_granularity_with_filters(
         self, billable_metric_test_common_setup, add_subscription_to_org
     ):
         num_billable_metrics = 0
@@ -1323,7 +1323,7 @@ class TestCalculateMetricWithFilters:
             property_name="number",
             event_type=EVENT_TYPE.TOTAL,
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             granularity=METRIC_GRANULARITY.MONTH,
             proration=METRIC_GRANULARITY.DAY,
         )
@@ -1530,7 +1530,7 @@ class TestRegressions:
             event_name="number_of_users",
             property_name="number",
             usage_aggregation_type=METRIC_AGGREGATION.MAX,
-            metric_type=METRIC_TYPE.STATEFUL,
+            metric_type=METRIC_TYPE.GAUGE,
             granularity=METRIC_GRANULARITY.TOTAL,
             proration=METRIC_GRANULARITY.MINUTE,
             event_type=EVENT_TYPE.TOTAL,

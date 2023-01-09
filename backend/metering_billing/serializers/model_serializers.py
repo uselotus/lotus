@@ -73,9 +73,10 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
 class LightweightOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("organization_id", "company_name", "organization_type")
+        fields = ("organization_id", "company_name", "organization_type", "current")
 
     organization_type = serializers.SerializerMethodField()
+    current = serializers.SerializerMethodField()
 
     def get_organization_type(
         self, obj
@@ -89,6 +90,9 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
             return Organization.OrganizationType.INTERNAL_DEMO.label
         elif org_type == Organization.OrganizationType.EXTERNAL_DEMO:
             return Organization.OrganizationType.EXTERNAL_DEMO.label
+
+    def get_current(self, obj) -> serializers.BooleanField():
+        return obj == self.context.get("organization")
 
 
 class LightweightUserSerializer(serializers.ModelSerializer):
@@ -112,6 +116,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "invoice_grace_period",
             "linked_organizations",
             "current_user",
+            "address",
         )
 
     users = serializers.SerializerMethodField()
@@ -120,6 +125,17 @@ class OrganizationSerializer(serializers.ModelSerializer):
     invoice_grace_period = serializers.SerializerMethodField()
     linked_organizations = serializers.SerializerMethodField()
     current_user = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField(required=False, allow_null=True)
+
+    def get_address(
+        self, obj
+    ) -> api_serializers.AddressSerializer(allow_null=True, required=False):
+        d = obj.properties.get("address", {})
+        try:
+            data = api_serializers.AddressSerializer(d).data
+        except KeyError:
+            data = None
+        return data
 
     def get_current_user(self, obj) -> LightweightUserSerializer():
         user = self.context.get("user")
@@ -133,7 +149,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
             linked = [obj]
         else:
             linked = team.organizations.all()
-        return LightweightOrganizationSerializer(linked, many=True).data
+        return LightweightOrganizationSerializer(
+            linked, many=True, context={"organization": obj}
+        ).data
 
     def get_invoice_grace_period(
         self, obj
@@ -1383,13 +1401,39 @@ class ActionSerializer(serializers.ModelSerializer):
 class OrganizationSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSetting
-        fields = ("setting_id", "setting_name", "setting_value", "setting_group")
-        read_only_fields = ("setting_id", "setting_name", "setting_group")
+        fields = ("setting_id", "setting_name", "setting_values", "setting_group")
+        extra_kwargs = {
+            "setting_id": {"required": True},
+            "setting_name": {"required": True},
+            "setting_group": {"required": True},
+            "setting_values": {"required": True},
+        }
+
+
+class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationSetting
+        fields = ("setting_values",)
 
     def update(self, instance, validated_data):
-        instance.setting_value = validated_data.get(
-            "setting_value", instance.setting_value
-        )
+        setting_values = validated_data.get("setting_values")
+        if instance.setting_name == ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS:
+            if not isinstance(setting_values, list):
+                raise serializers.ValidationError(
+                    "Setting values must be a list of strings"
+                )
+            if not all(isinstance(item, str) for item in setting_values):
+                raise serializers.ValidationError(
+                    "Setting values must be a list of strings"
+                )
+        elif (
+            instance.setting_name
+            == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
+        ):
+            if not isinstance(setting_values, bool):
+                raise serializers.ValidationError("Setting values must be a boolean")
+            setting_values = {"value": setting_values}
+        instance.setting_values = setting_values
         instance.save()
         return instance
 

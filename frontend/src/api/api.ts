@@ -62,12 +62,12 @@ import {
   BacktestResultType,
 } from "../types/experiment-type";
 import {
-  OrganizationSettingsParams,
-  OrganizationSettings,
+  StripeSettingsParams,
+  StripeSetting,
   Source,
   StripeImportCustomerResponse,
   TransferSub,
-  UpdateOrganizationSettingsParams,
+  UpdateStripeSettingParams,
 } from "../types/stripe-type";
 import { DraftInvoiceType } from "../types/invoice-type";
 import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
@@ -129,10 +129,14 @@ export const Customer = {
     requests.get("app/customer_totals/"),
   updateCustomer: (
     customer_id: string,
-    default_currency_code: string
+    default_currency_code: string,
+    address: CustomerType["address"],
+    tax_rate: number
   ): Promise<CustomerType> =>
     requests.patch(`app/customers/${customer_id}/`, {
-      default_currency_code: default_currency_code,
+      default_currency_code,
+      address,
+      tax_rate,
     }),
   // getCustomerDetail: (customer_id: string): Promise<CustomerDetailType> =>
   //   requests.get(`app/customer_detail/`, { params: { customer_id } }),
@@ -321,12 +325,14 @@ export const Organization = {
     org_id: string,
     default_currency_code: string,
     tax_rate: number,
-    invoice_grace_period: number
+    invoice_grace_period: number,
+    address: OrganizationType["address"]
   ): Promise<OrganizationType> =>
     requests.patch(`app/organizations/${org_id}/`, {
       default_currency_code: default_currency_code,
       tax_rate,
       invoice_grace_period,
+      address,
     }),
 };
 
@@ -426,18 +432,16 @@ export const Stripe = {
   ): Promise<StripeImportCustomerResponse> =>
     requests.post("app/transfer_subscriptions/", post),
 
-  //Get Organization Settings
-  getOrganizationSettings: (
-    data: OrganizationSettingsParams
-  ): Promise<OrganizationSettings[]> =>
+  //Get Stripe Setting
+  getStripeSettings: (data: StripeSettingsParams): Promise<StripeSetting[]> =>
     requests.get("app/organization_settings/", { params: data }),
 
-  //Update Organization Settings
-  updateOrganizationSettings: (
-    data: UpdateOrganizationSettingsParams
-  ): Promise<OrganizationSettings> =>
+  //Update Stripe Setting
+  updateStripeSetting: (
+    data: UpdateStripeSettingParams
+  ): Promise<StripeSetting> =>
     requests.patch(`app/organization_settings/${data.setting_id}/`, {
-      setting_value: data.setting_value,
+      setting_values: data.setting_values,
     }),
 };
 

@@ -1,29 +1,29 @@
 export interface StripeImportCustomerResponse {
-    status: string,
-    detail: string,
+  status: string;
+  detail: string;
 }
 
 export interface Source {
-    source: string
+  source: string;
 }
 
-export interface TransferSub extends Source{
-    end_now: boolean
+export interface TransferSub extends Source {
+  end_now: boolean;
 }
 
-export interface OrganizationSettingsParams{
-    setting_group: string
-    setting_name?: string
+export interface StripeSettingsParams {
+  setting_group: "stripe";
+  setting_name?: string;
 }
 
-export interface OrganizationSettings{
-    setting_group: string
-    setting_id: string
-    setting_name: string
-    setting_value: string
+export interface StripeSetting {
+  setting_group: string;
+  setting_id: string;
+  setting_name: string;
+  setting_values: any;
 }
 
-export interface UpdateOrganizationSettingsParams{
-    setting_id: string
-    setting_value: string
+export interface UpdateStripeSettingParams {
+  setting_id: string;
+  setting_values: boolean;
 }

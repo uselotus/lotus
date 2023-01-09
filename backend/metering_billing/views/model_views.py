@@ -31,6 +31,9 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestSummarySerializer,
 )
 from metering_billing.serializers.model_serializers import *
+from metering_billing.serializers.request_serializers import (
+    OrganizationSettingFilterSerializer,
+)
 from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
@@ -864,21 +867,55 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing OrganizationSettings.
     """
 
-    serializer_class = OrganizationSettingSerializer
     permission_classes = [IsAuthenticated & ValidOrganization]
     http_method_names = ["get", "head", "patch"]
     lookup_field = "setting_id"
     queryset = OrganizationSetting.objects.all()
 
+    def get_serializer_class(self):
+        if self.action == "partial_update":
+            return OrganizationSettingUpdateSerializer
+        return OrganizationSettingSerializer
+
     def get_queryset(self):
         filter_kwargs = {"organization": self.request.organization}
-        setting_name = self.request.query_params.get("setting_name")
-        if setting_name:
-            filter_kwargs["setting_name"] = setting_name
-        setting_group = self.request.query_params.get("setting_group")
+        serializer = OrganizationSettingFilterSerializer(
+            data=self.request.query_params,
+        )
+        serializer.is_valid(raise_exception=True)
+        setting_name = serializer.validated_data.get("setting_name", [])
+        if len(setting_name) > 0:
+            filter_kwargs["setting_name__in"] = setting_name
+        setting_group = serializer.validated_data.get("setting_group", None)
         if setting_group:
             filter_kwargs["setting_group"] = setting_group
         return OrganizationSetting.objects.filter(**filter_kwargs)
+
+    @extend_schema(
+        parameters=[OrganizationSettingFilterSerializer],
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request)
+
+    @extend_schema(responses=OrganizationSettingSerializer)
+    def update(self, request, *args, **kwargs):
+        organization_setting = self.get_object()
+        serializer = self.get_serializer(
+            organization_setting, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(organization_setting, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            organization_setting._prefetched_objects_cache = {}
+
+        return Response(
+            OrganizationSettingSerializer(
+                organization_setting, context=self.get_serializer_context()
+            ).data,
+            status=status.HTTP_200_OK,
+        )
 
 
 class PricingUnitViewSet(
@@ -918,7 +955,7 @@ class OrganizationViewSet(
     """
 
     permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = ["get", "patch", "head"]
+    http_method_names = ["get", "patch", "head", "post"]
     permission_classes_per_method = {
         "list": [IsAuthenticated & ValidOrganization],
         "partial_update": [IsAuthenticated & ValidOrganization],
@@ -938,6 +975,8 @@ class OrganizationViewSet(
     def get_serializer_class(self):
         if self.action == "partial_update":
             return OrganizationUpdateSerializer
+        elif self.action == "create":
+            return OrganizationCreateSerializer
         return OrganizationSerializer
 
     def get_serializer_context(self):
@@ -946,6 +985,34 @@ class OrganizationViewSet(
         user = self.request.user
         context.update({"organization": organization, "user": user})
         return context
+
+    @extend_schema(responses=OrganizationSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        org_data = OrganizationSerializer(instance).data
+        return Response(org_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(responses=OrganizationSerializer)
+    def update(self, request, *args, **kwargs):
+        org = self.get_object()
+        serializer = self.get_serializer(org, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(org, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            org._prefetched_objects_cache = {}
+
+        return Response(
+            OrganizationSerializer(org, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(responses=OrganizationSerializer)
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
 
 class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSet):
