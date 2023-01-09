@@ -13,10 +13,11 @@ import { useMutation } from "react-query";
 import { Customer } from "../../api/api";
 import { toast } from "react-toastify";
 
-
 import { CustomerType } from "../../types/customer-type";
 import { CustomerCostType } from "../../types/revenue-type";
 import { PricingUnit } from "../../types/pricing-unit-type";
+import { country_json } from "../../assets/country_codes";
+
 interface CustomerInfoViewProps {
   data: CustomerType;
   cost_data: CustomerCostType;
@@ -31,13 +32,12 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   onDateChange,
   refetch,
 }) => {
-
   const [transformedGraphData, setTransformedGraphData] = React.useState<any>(
     []
   );
   const [form] = Form.useForm();
   const [currentCurrency, setCurrentCurrency] = React.useState<string>(
-    data.default_currency.symbol
+    data.default_currency.code
   );
   const [taxRate, setTaxRate] = React.useState(
     data.tax_rate ? data.tax_rate : 0
@@ -84,6 +84,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
         toast.success("Successfully Updated Customer Details", {
           position: toast.POSITION.TOP_CENTER,
         });
+        form.resetFields();
       },
       onError: () => {
         toast.error("Failed to Update Customer Details", {
@@ -96,16 +97,29 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
     setIsEditing(true);
   };
   const EditCustomerHandler = async () => {
-    const d = await updateCustomer.mutateAsync({
-      customer_id: data.customer_id,
-      address: {
+    let submittedAddress;
+    if (
+      city === "" &&
+      line1 === "" &&
+      country === "" &&
+      postalCode === "" &&
+      state === "" &&
+      line2 === ""
+    ) {
+      submittedAddress = null;
+    } else {
+      submittedAddress = {
         city,
         line1,
         line2,
         country,
         postal_code: postalCode,
         state,
-      },
+      };
+    }
+    const d = await updateCustomer.mutateAsync({
+      customer_id: data.customer_id,
+      address: submittedAddress,
       default_currency_code: currentCurrency,
       tax_rate: taxRate,
     });
@@ -197,16 +211,6 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
 
       <div className="grid grid-cols-2 gap-8">
         <div className="border-2 border-solid rounded border-[#EAEAEB] py-4 px-8">
-          {!isEditing && (
-            <Button
-              type="primary"
-              size="large"
-              className="w-1/3 mb-2"
-              onClick={makeEditable}
-            >
-              Edit
-            </Button>
-          )}
           {!isEditing ? (
             <div>
               <p>
@@ -256,11 +260,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               "N/A"
             )} */}
               </p>
-              <p>
-                <b>Amount Due On Next Invoice:</b>{" "}
-                {data?.default_currency?.symbol}
-                {invoiceData?.invoices[0].cost_due.toFixed(2)}
-              </p>
+
               <p>
                 <b>Payment Method Connected:</b>{" "}
                 {data.has_payment_method ? (
@@ -272,16 +272,28 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               <p>
                 <b>Tax Rate:</b> {data.tax_rate ?? "0"}%
               </p>
+              <p>
+                <b>Amount Due On Next Invoice:</b>{" "}
+                {data?.default_currency?.symbol}
+                {invoiceData?.invoices[0].cost_due.toFixed(2)}
+              </p>
+              {!isEditing && (
+                <Button
+                  type="primary"
+                  size="large"
+                  className="w-1/3 mb-2 float-right"
+                  onClick={makeEditable}
+                >
+                  Edit
+                </Button>
+              )}
             </div>
           ) : (
             <Form form={form}>
               <Form.Item label="Customer Name" name="customer_name">
                 <Input disabled={true} defaultValue={data.customer_name} />
               </Form.Item>
-              <Form.Item
-                label="Default Organization Currency"
-                name="default_currency"
-              >
+              <Form.Item label="Customer Currency" name="default_currency">
                 <Select
                   onChange={setCurrentCurrency}
                   defaultValue={currentCurrency}
@@ -323,12 +335,17 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
                     defaultValue={city}
                     required
                   />
-                  <Input
+                  <Select
                     placeholder="Country"
                     defaultValue={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    required
-                  />
+                    onChange={(e) => setCountry(e)}
+                  >
+                    {country_json.map((country) => (
+                      <Select.Option value={country.Code}>
+                        {country.Name}
+                      </Select.Option>
+                    ))}
+                  </Select>
                 </div>
                 <div className="flex gap-4 mt-2">
                   <Input
@@ -347,20 +364,20 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               </Form.Item>
               <div className="flex gap-2 mb-2">
                 <Button
-                  type="primary"
-                  size="large"
-                  className=" w-full"
-                  onClick={EditCustomerHandler}
-                >
-                  Submit
-                </Button>
-                <Button
                   type="ghost"
                   size="large"
                   className=" w-full"
                   onClick={() => setIsEditing(false)}
                 >
                   Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  size="large"
+                  className=" w-full"
+                  onClick={EditCustomerHandler}
+                >
+                  Submit
                 </Button>
               </div>
             </Form>

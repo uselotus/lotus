@@ -26,6 +26,7 @@ import useGlobalStore, {
 } from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
+import { country_json } from "../../../../assets/country_codes";
 
 interface InviteWithEmailForm extends HTMLFormControlsCollection {
   email: string;
@@ -167,6 +168,8 @@ const GeneralTab: FC = () => {
           position: toast.POSITION.TOP_CENTER,
         });
         queryClient.invalidateQueries("organization");
+        setIsEdit(false);
+        form.resetFields();
       },
       onError: () => {
         toast.error("Failed to Update Organization Settings", {
@@ -225,7 +228,7 @@ const GeneralTab: FC = () => {
             </p>
           </p>
           <p className="text-[16px]">
-            <b>Invoice Grace Period:</b> {displayInvoiceGracePeriod}{" "}
+            <b>Payment Grace Period:</b> {displayInvoiceGracePeriod}{" "}
             {displayInvoiceGracePeriod === 1 ? "day" : "days"}
           </p>
           {displayTaxRate !== null && displayTaxRate !== undefined ? (
@@ -248,19 +251,32 @@ const GeneralTab: FC = () => {
         okText="Save"
         onOk={() => {
           if (org.organization_id.length) {
-            updateOrg.mutate({
-              org_id: org.organization_id,
-              default_currency_code: currentCurrency,
-              tax_rate: fourDP(taxRate),
-              invoice_grace_period: invoiceGracePeriod,
-              address: {
+            let submittedAddress;
+            if (
+              city === "" &&
+              line1 === "" &&
+              country === "" &&
+              postalCode === "" &&
+              state === "" &&
+              line2 === ""
+            ) {
+              submittedAddress = null;
+            } else {
+              submittedAddress = {
                 city,
                 line1,
                 line2,
                 country,
                 postal_code: postalCode,
                 state,
-              },
+              };
+            }
+            updateOrg.mutate({
+              org_id: org.organization_id,
+              default_currency_code: currentCurrency,
+              tax_rate: fourDP(taxRate),
+              invoice_grace_period: invoiceGracePeriod,
+              address: submittedAddress,
             });
             // updateOrg.mutate({
             //   org_id: org.organization_id,
@@ -268,9 +284,7 @@ const GeneralTab: FC = () => {
             //   tax_rate: fourDP(taxRate),
             //   invoice_grace_period: invoiceGracePeriod,
             // });
-            form.resetFields();
           }
-          setIsEdit(false);
         }}
       >
         <div className="flex flex-col justify-between">
@@ -336,12 +350,17 @@ const GeneralTab: FC = () => {
                   defaultValue={city}
                   required
                 />
-                <Input
+                <Select
                   placeholder="Country"
                   defaultValue={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  required
-                />
+                  onChange={(e) => setCountry(e)}
+                >
+                  {country_json.map((country) => (
+                    <Select.Option value={country.Code}>
+                      {country.Name}
+                    </Select.Option>
+                  ))}
+                </Select>
               </div>
               <div className="flex gap-4 mt-2">
                 <Input
@@ -358,7 +377,7 @@ const GeneralTab: FC = () => {
                 />
               </div>
             </Form.Item>
-            <Form.Item label="Invoice Grace Period" name="invoice_grace_period">
+            <Form.Item label="Payment Grace Period" name="invoice_grace_period">
               <Input
                 type="number"
                 step="1"
