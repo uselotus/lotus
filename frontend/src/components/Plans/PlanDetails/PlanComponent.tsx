@@ -335,7 +335,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                         dataIndex: "cost_per_batch",
                         key: "cost_per_batch",
                         className:
-                          "bg-primary-50 pointer-events-none !text-card-grey",
+                          "bg-primary-50 pointer-events-none !text-card-grey arr",
                         render: (value: any, record: any) => (
                           <div>
                             {renderCost(record, component.pricing_unit)}
