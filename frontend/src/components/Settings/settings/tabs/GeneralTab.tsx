@@ -21,9 +21,7 @@ import { Organization, PricingUnits } from "../../../../api/api";
 import { PricingUnit } from "../../../../types/pricing-unit-type";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
-import useGlobalStore, {
-  IOrgStoreType,
-} from "../../../../stores/useGlobalstore";
+import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
@@ -43,7 +41,6 @@ const GeneralTab: FC = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const org = useGlobalStore((state) => state.org);
-  const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
   const [currentCurrency, setCurrentCurrency] = useState("");
   const [taxRate, setTaxRate] = useState(0);
   const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
@@ -110,7 +107,6 @@ const GeneralTab: FC = () => {
         setState(data.address ? data.address.state : "");
         setCountry(data.address ? data.address.country : "");
         setPostalCode(data.address ? data.address.postal_code : "");
-
       },
     }
   );

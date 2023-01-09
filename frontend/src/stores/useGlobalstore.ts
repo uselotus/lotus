@@ -15,6 +15,7 @@ interface IOrgStoreType {
   default_currency?: PricingUnit;
   environment?: string;
   plan_tags: PlanType["tags"];
+  current_user: { username: string };
 }
 
 const useGlobalStore = create<GlobalStoreState>((set) => ({
@@ -24,6 +25,7 @@ const useGlobalStore = create<GlobalStoreState>((set) => ({
     company_name: "N/A",
     default_currency: undefined,
     environment: undefined,
+    current_user: { username: "" },
     plan_tags: [],
   },
   setUsername: (username: string) => set({ username }),

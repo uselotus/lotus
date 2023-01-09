@@ -36,6 +36,7 @@ export interface OrganizationType {
   plan_tags: PlanType["tags"];
   tax_rate: null | number;
   invoice_grace_period: number;
+  current_user: { username: string };
 }
 
 export interface ActionUserType extends UserType {

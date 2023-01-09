@@ -3,12 +3,14 @@ import { useLocation } from "react-router-dom";
 import { RightOutlined } from "@ant-design/icons";
 import Avatar from "../Avatar/Avatar";
 import Badge from "../Badges/Badges";
+import useGlobalStore from "../../../stores/useGlobalstore";
 interface HeadingProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;
 }
 
 const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
+  const { current_user } = useGlobalStore((state) => state.org);
   const { pathname } = useLocation();
   const currentPath = pathname.split("/")[1];
   const isPlansPage = currentPath === "plans";
@@ -45,7 +47,7 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
           >
             <Avatar className="w-16 h-16" />
             <span className="text-sm flex gap-2">
-              Parker Conrad{" "}
+              {current_user.username}{" "}
               <svg
                 className="-mr-1 ml-2 h-10 w-10"
                 xmlns="http://www.w3.org/2000/svg"

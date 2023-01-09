@@ -46,6 +46,7 @@ function App() {
             : undefined,
           environment: undefined,
           plan_tags: data.plan_tags,
+          current_user: data.current_user,
         };
 
         setOrgInfoToStore(storeOrgObject);
