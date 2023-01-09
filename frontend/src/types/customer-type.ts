@@ -5,6 +5,14 @@ import { PricingUnit } from "./pricing-unit-type";
 
 export interface CustomerType {
   customer_id: string;
+  address?: {
+    city: string;
+    country: string;
+    line1: string;
+    line2: string;
+    postal_code: string;
+    state: string;
+  };
   email: string;
   name: string;
   customer_name: string;
@@ -14,6 +22,7 @@ export interface CustomerType {
   integrations: object;
   default_currency: PricingUnit;
   has_payment_method: boolean;
+  tax_rate?: number;
 }
 
 export interface LightweightCustomerType

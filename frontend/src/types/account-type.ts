@@ -20,6 +20,14 @@ export interface OrganizationType {
   company_name: string;
   payment_plan: string;
   payment_provider_ids: object;
+  address?: {
+    city: string;
+    country: string;
+    line1: string;
+    line2: string;
+    postal_code: string;
+    state: string;
+  };
   users: UserType[];
   default_currency: PricingUnit;
   available_currencies: PricingUnit[];
