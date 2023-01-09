@@ -10,7 +10,7 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
   return (
     <>
       {!tags.length ? (
-        <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-2 py-0.5">
+        <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2">
           <Badge.Content>+ Add Tag</Badge.Content>
         </Badge>
       ) : (
@@ -20,9 +20,9 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
               {tags.slice(0, 2).map((tag) => (
                 <span className="flex gap-2" key={tag.tag_name}>
                   <Badge
-                    className={`text-[12px] px-2 py-0.5 bg-white text-black whitespace-nowrap`}
+                    className={`text-[12px] px-[5px] py-0.5 bg-white text-black whitespace-nowrap`}
                   >
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <Badge.Dot className={`text-${tag.tag_hex}`} />
                       <Badge.Content>{tag.tag_name}</Badge.Content>
                     </div>
@@ -33,21 +33,23 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
             </span>
           ) : (
             tags.map((tag) => (
-              <span key={tag.tag_name}>
-                <Badge
-                  className={`text-[12px] px-2 py-0.5 bg-white text-black whitespace-nowrap`}
-                >
-                  <span className="flex gap-2 items-center">
-                    <Badge.Dot fill={tag.tag_hex} />
-                    <Badge.Content>{tag.tag_name}</Badge.Content>
-                  </span>
+              <span className="flex gap-2">
+                <span className="flex gap-2" key={tag.tag_name}>
+                  <Badge
+                    className={`text-[12px] px-[5px] py-2 bg-white text-black whitespace-nowrap`}
+                  >
+                    <div className="flex gap-2 items-center">
+                      <Badge.Dot fill={tag.tag_hex} />
+                      <Badge.Content>{tag.tag_name}</Badge.Content>
+                    </div>
+                  </Badge>
+                </span>
+                <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-[6px] py-2 ml-2 whitespace-nowrap">
+                  <Badge.Content>+ Add Tag</Badge.Content>
                 </Badge>
               </span>
             ))
           )}
-          <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-2 py-0.5 ml-2">
-            <Badge.Content>+ Add Tag</Badge.Content>
-          </Badge>
         </span>
       )}
     </>

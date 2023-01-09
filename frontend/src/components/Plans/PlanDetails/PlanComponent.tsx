@@ -113,7 +113,6 @@ export const PlanSummary = ({
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-          <div className="font-normal whitespace-nowrap leading-4">Tags</div>
           <div>
             {" "}
             <DropdownComponent>
