@@ -454,13 +454,9 @@ def customer_balance_adjustment_uuid():
     return "custbaladj_" + str(uuid.uuid4().hex)
 
 
-def generic_uuid():
+
+def random_uuid():
     return str(uuid.uuid4().hex)
-
-
-def random_color():
-    return "#%06x" % random.randint(0, 0xFFFFFF)
-
 
 def date_as_min_dt(date):
     return datetime.datetime.combine(date, datetime.time.min, tzinfo=pytz.UTC)

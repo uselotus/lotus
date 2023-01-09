@@ -58,7 +58,7 @@ class MetricHandler(abc.ABC):
         self,
         subscription: SubscriptionRecord,
     ) -> float:
-        """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Stateful with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
+        """This method will be used to calculate how much usage a customer currently has on a subscription. THough there are cases where get_usage and get_current_usage will be the same, there are cases where they will not. For example, if your billable metric is Gauge with a Max aggregation, then your usage over some period will be the max over past readings, but your current usage will be the latest reading."""
         pass
 
     @abc.abstractmethod
@@ -127,7 +127,7 @@ class MetricHandler(abc.ABC):
         groupby_kwargs = {}
         groupby_kwargs["customer_name"] = F("customer__customer_name")
 
-        if self.billable_metric.metric_type == METRIC_TYPE.STATEFUL:
+        if self.billable_metric.metric_type == METRIC_TYPE.GAUGE:
             kind = None
             granularity = None
             if (
@@ -234,7 +234,7 @@ class MetricHandler(abc.ABC):
     def get_subscription_record_total_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        """This method returns the total quantity of usage that a subscription record should be billed for. This is very straightforward and should simply return a numebr that will then be used to calculate teh amoutn due."""
+        """This method returns the total quantity of usage that a subscription record should be billed for. This is very straightforward and should simply return a number that will then be used to calculate the amount due."""
         pass
 
     @staticmethod
@@ -242,9 +242,9 @@ class MetricHandler(abc.ABC):
     def get_subscription_record_current_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-        """This method returns the current usage of a susbcription record. The result from this method will be used to calculate whether the customer has access to the event represented by the metric. It soudns similar, but there are some key subtleties to note:
+        """This method returns the current usage of a susbcription record. The result from this method will be used to calculate whether the customer has access to the event represented by the metric. It sounds similar, but there are some key subtleties to note:
         Counter: In this case, subscription record current_usage and total_billable_usage are the same.
-        Continuous/Stateful: These metrics are not billed on a per-event bases, but on the peak usage within some specified granularity period. That means that the billable usage is the normalized peak usage, whiel the current usage is the value of the underlying state at the time of the request.
+        Gauge: These metrics are not billed on a per-event bases, but on the peak usage within some specified granularity period. That means that the billable usage is the normalized peak usage, where the current usage is the value of the underlying state at the time of the request.
         Rate: Even though the billable usage would be the maximum rate over teh subscription_record period, the current usage is simply the current rate.
         """
         pass
@@ -657,17 +657,19 @@ class CounterHandler(MetricHandler):
     def archive_metric(metric: Metric) -> Metric:
         from .common_query_templates import CAGG_DROP
 
-        for continuous_agg_type in ["day", "second"]:
-            sql_injection_data = {
-                "cagg_name": metric.organization.organization_id[:22]
-                + "___"
-                + metric.metric_id[:22]
-                + "___"
-                + continuous_agg_type
-            }
-            query = Template(CAGG_DROP).render(**sql_injection_data)
-            with connection.cursor() as cursor:
-                cursor.execute(query)
+        base_name = (
+            metric.organization.organization_id[:22]
+            + "___"
+            + metric.metric_id[:22]
+            + "___"
+        )
+        sql_injection_data = {"cagg_name": base_name + "day"}
+        day_query = Template(CAGG_DROP).render(**sql_injection_data)
+        sql_injection_data = {"cagg_name": base_name + "second"}
+        second_query = Template(CAGG_DROP).render(**sql_injection_data)
+        with connection.cursor() as cursor:
+            cursor.execute(day_query)
+            cursor.execute(second_query)
 
 
 class CustomHandler(MetricHandler):
@@ -895,9 +897,9 @@ class CustomHandler(MetricHandler):
         return True
 
 
-class StatefulHandler(MetricHandler):
+class GaugeHandler(MetricHandler):
     """
-    The key difference between a stateful handler and an aggregation handler is that the stateful handler has state across time periods. Even when given a blocked off time period, it'll look for previous values of the event/property in question and use those as a starting point. A common example of a metric that woudl fit under the Stateful pattern would be the number of seats a product has available. When we go into a new billing period, the number of seats doesn't magically disappear... we have to keep track of it. We currently support two types of events: quantity_logging and delta_logging. Quantity logging would look like sending events to the API that say we have x users at the moment. Delta logging would be like sending events that say we added x users or removed x users. The stateful handler will look at the previous value of the metric and add/subtract the delta to get the new value.
+    The key difference between a gauge handler and an aggregation handler is that the gauge handler has state across time periods. Even when given a blocked off time period, it'll look for previous values of the event/property in question and use those as a starting point. A common example of a metric that woudl fit under the Gauge pattern would be the number of seats a product has available. When we go into a new billing period, the number of seats doesn't magically disappear... we have to keep track of it. We currently support two types of events: quantity_logging and delta_logging. Quantity logging would look like sending events to the API that say we have x users at the moment. Delta logging would be like sending events that say we added x users or removed x users. The gauge handler will look at the previous value of the metric and add/subtract the delta to get the new value.
     """
 
     @staticmethod
@@ -917,32 +919,30 @@ class StatefulHandler(MetricHandler):
         proration = data.get("proration", None)
 
         # now validate
-        if metric_type != METRIC_TYPE.STATEFUL:
+        if metric_type != METRIC_TYPE.GAUGE:
+            raise MetricValidationFailed("Metric type must be GAUGE for GaugeHandler")
+        if usg_agg_type not in GaugeHandler._allowed_usage_aggregation_types():
             raise MetricValidationFailed(
-                "Metric type must be CONTINUOUS for ContinuousHandler"
-            )
-        if usg_agg_type not in StatefulHandler._allowed_usage_aggregation_types():
-            raise MetricValidationFailed(
-                "[METRIC TYPE: CONTINUOUS] Usage aggregation type {} is not allowed.".format(
+                "[METRIC TYPE: GAUGE] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
             )
         if not granularity:
             raise MetricValidationFailed(
-                "[METRIC TYPE: CONTINUOUS] Must specify granularity"
+                "[METRIC TYPE: GAUGE] Must specify granularity"
             )
         if bill_agg_type:
             logger.info(
-                "[METRIC TYPE: CONTINUOUS] Billable aggregation type not allowed. Making null."
+                "[METRIC TYPE: GAUGE] Billable aggregation type not allowed. Making null."
             )
             data.pop("billable_aggregation_type", None)
         if not event_type:
             raise MetricValidationFailed(
-                "[METRIC TYPE: CONTINUOUS] Must specify event type."
+                "[METRIC TYPE: GAUGE] Must specify event type."
             )
         if not property_name:
             raise MetricValidationFailed(
-                "[METRIC TYPE: CONTINUOUS] Must specify property name."
+                "[METRIC TYPE: GAUGE] Must specify property name."
             )
         pr_gran = proration
         metric_granularity = granularity
@@ -1011,7 +1011,7 @@ class StatefulHandler(MetricHandler):
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
         metric = MetricHandler.create_metric(validated_data)
-        StatefulHandler.create_continuous_aggregate(metric)
+        GaugeHandler.create_continuous_aggregate(metric)
         return metric
 
     @staticmethod
@@ -1019,20 +1019,20 @@ class StatefulHandler(MetricHandler):
         from metering_billing.models import Organization, OrganizationSetting
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
-        from .stateful_query_templates import (
-            STATEFUL_DELTA_CREATE_TRIGGER_FN,
-            STATEFUL_DELTA_CUMULATIVE_SUM,
-            STATEFUL_DELTA_DELETE_TRIGGER,
-            STATEFUL_DELTA_INSERT_TRIGGER,
-            STATEFUL_DELTA_UPDATE_TRIGGER,
-            STATEFUL_TOTAL_CUMULATIVE_SUM,
+        from .gauge_query_templates import (
+            GAUGE_DELTA_CREATE_TRIGGER_FN,
+            GAUGE_DELTA_CUMULATIVE_SUM,
+            GAUGE_DELTA_DELETE_TRIGGER,
+            GAUGE_DELTA_INSERT_TRIGGER,
+            GAUGE_DELTA_UPDATE_TRIGGER,
+            GAUGE_TOTAL_CUMULATIVE_SUM,
         )
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
         if refresh is True:
-            StatefulHandler.archive_metric(metric)
+            GaugeHandler.archive_metric(metric)
         try:
             groupby = organization.settings.get(
                 setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
@@ -1063,24 +1063,18 @@ class StatefulHandler(MetricHandler):
             + "cumsum"
         )
         if metric.event_type == "delta":
-            query = Template(STATEFUL_DELTA_CUMULATIVE_SUM).render(**sql_injection_data)
-            trigger_fn = Template(STATEFUL_DELTA_CREATE_TRIGGER_FN).render(
+            query = Template(GAUGE_DELTA_CUMULATIVE_SUM).render(**sql_injection_data)
+            trigger_fn = Template(GAUGE_DELTA_CREATE_TRIGGER_FN).render(
                 **sql_injection_data
             )
-            trigger1 = Template(STATEFUL_DELTA_DELETE_TRIGGER).render(
-                **sql_injection_data
-            )
-            trigger2 = Template(STATEFUL_DELTA_INSERT_TRIGGER).render(
-                **sql_injection_data
-            )
-            trigger3 = Template(STATEFUL_DELTA_UPDATE_TRIGGER).render(
-                **sql_injection_data
-            )
+            trigger1 = Template(GAUGE_DELTA_DELETE_TRIGGER).render(**sql_injection_data)
+            trigger2 = Template(GAUGE_DELTA_INSERT_TRIGGER).render(**sql_injection_data)
+            trigger3 = Template(GAUGE_DELTA_UPDATE_TRIGGER).render(**sql_injection_data)
         elif metric.event_type == "total":
-            query = Template(STATEFUL_TOTAL_CUMULATIVE_SUM).render(**sql_injection_data)
+            query = Template(GAUGE_TOTAL_CUMULATIVE_SUM).render(**sql_injection_data)
         else:
             raise ValueError(
-                "Invalid event type for stateful: {}".format(metric.event_type)
+                "Invalid event type for gauge: {}".format(metric.event_type)
             )
         refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
         compression_query = Template(CAGG_COMPRESSION).render(**sql_injection_data)
@@ -1098,7 +1092,7 @@ class StatefulHandler(MetricHandler):
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
         from .common_query_templates import CAGG_DROP
-        from .stateful_query_templates import STATEFUL_DELTA_DROP_TRIGGER
+        from .gauge_query_templates import GAUGE_DELTA_DROP_TRIGGER
 
         sql_injection_data = {
             "cagg_name": (
@@ -1111,7 +1105,7 @@ class StatefulHandler(MetricHandler):
         }
         query = Template(CAGG_DROP).render(**sql_injection_data)
         if metric.event_type == "delta":
-            trigger = Template(STATEFUL_DELTA_DROP_TRIGGER).render(**sql_injection_data)
+            trigger = Template(GAUGE_DELTA_DROP_TRIGGER).render(**sql_injection_data)
         with connection.cursor() as cursor:
             cursor.execute(query)
             if metric.event_type == "delta":
@@ -1124,7 +1118,7 @@ class StatefulHandler(MetricHandler):
     ) -> Decimal:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .stateful_query_templates import STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION
+        from .gauge_query_templates import GAUGE_GET_TOTAL_USAGE_WITH_PRORATION
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1175,9 +1169,7 @@ class StatefulHandler(MetricHandler):
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value[0]
-        query = Template(STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION).render(
-            **injection_dict
-        )
+        query = Template(GAUGE_GET_TOTAL_USAGE_WITH_PRORATION).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
@@ -1191,7 +1183,7 @@ class StatefulHandler(MetricHandler):
     ) -> Decimal:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .stateful_query_templates import STATEFUL_GET_CURRENT_USAGE
+        from .gauge_query_templates import GAUGE_GET_CURRENT_USAGE
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1242,7 +1234,7 @@ class StatefulHandler(MetricHandler):
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value[0]
-        query = Template(STATEFUL_GET_CURRENT_USAGE).render(**injection_dict)
+        query = Template(GAUGE_GET_CURRENT_USAGE).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
@@ -1256,9 +1248,7 @@ class StatefulHandler(MetricHandler):
     ) -> dict[datetime.date, Decimal]:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .stateful_query_templates import (
-            STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY,
-        )
+        from .gauge_query_templates import GAUGE_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1309,7 +1299,7 @@ class StatefulHandler(MetricHandler):
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value[0]
-        query = Template(STATEFUL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY).render(
+        query = Template(GAUGE_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY).render(
             **injection_dict
         )
         with connection.cursor() as cursor:
@@ -1326,7 +1316,7 @@ class StatefulHandler(MetricHandler):
 
 class RateHandler(MetricHandler):
     """
-    A rate handler can be thought of as the exact opposite of a Stateful Handler. A StatefulHandler keeps an underlying state that persists across billing periods. A RateHandler resets it's state in intervals shorter than the billing period. For example, a RateHandler could be used to charge for the number of API calls made in a day, or to limit the number of database insertions per hour. If a StatefulHandler is teh "integral" of a CounterHandler, then a RateHandler is the "derivative" of a CounterHandler.
+    A rate handler can be thought of as the exact opposite of a Gauge Handler. A GaugeHandler keeps an underlying state that persists across billing periods. A RateHandler resets it's state in intervals shorter than the billing period. For example, a RateHandler could be used to charge for the number of API calls made in a day, or to limit the number of database insertions per hour. If a GaugeHandler is the "integral" of a CounterHandler, then a RateHandler is the "derivative" of a CounterHandler.
     """
 
     @staticmethod
@@ -1610,7 +1600,7 @@ class RateHandler(MetricHandler):
 
 METRIC_HANDLER_MAP = {
     METRIC_TYPE.COUNTER: CounterHandler,
-    METRIC_TYPE.STATEFUL: StatefulHandler,
+    METRIC_TYPE.GAUGE: GaugeHandler,
     METRIC_TYPE.RATE: RateHandler,
     METRIC_TYPE.CUSTOM: CustomHandler,
 }

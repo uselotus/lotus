@@ -204,11 +204,14 @@ def generate_invoice(
                     and next_bp.flat_rate > 0
                     and subscription_record.auto_renew
                 ):
+                    new_start = date_as_min_dt(
+                        subscription_record.end_date + relativedelta(days=1)
+                    )
                     ili = InvoiceLineItem.objects.create(
                         name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
-                        start_date=subscription.end_date,
+                        start_date=new_start,
                         end_date=calculate_end_date(
-                            next_bp.plan.plan_duration, subscription.end_date
+                            next_bp.plan.plan_duration, new_start
                         ),
                         quantity=1,
                         subtotal=next_bp.flat_rate,
@@ -394,3 +397,105 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                     invoice=invoice,
                     organization=organization,
                 )
+
+
+def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
+    """
+    Generate an invoice for a subscription.
+    """
+    from metering_billing.models import (
+        Customer,
+        CustomerBalanceAdjustment,
+        Invoice,
+        InvoiceLineItem,
+        Organization,
+        OrganizationSetting,
+        SubscriptionRecord,
+    )
+    from metering_billing.serializers.model_serializers import InvoiceSerializer
+
+    issue_date = balance_adjustment.created
+    customer = balance_adjustment.customer
+    organization = balance_adjustment.organization
+    # create kwargs for invoice
+    invoice_kwargs = {
+        "issue_date": issue_date,
+        "organization": organization,
+        "customer": customer,
+        "payment_status": INVOICE_STATUS.DRAFT if draft else INVOICE_STATUS.UNPAID,
+        "currency": balance_adjustment.amount_paid_currency,
+    }
+    due_date = issue_date
+    grace_period_setting = OrganizationSetting.objects.filter(
+        organization=organization,
+        setting_name="invoice_grace_period",
+        setting_group="billing",
+    ).first()
+    if grace_period_setting:
+        due_date += relativedelta(
+            days=int(grace_period_setting.setting_values["value"])
+        )
+    invoice_kwargs["due_date"] = due_date
+    # Create the invoice
+    invoice = Invoice.objects.create(**invoice_kwargs)
+
+    # Create the invoice line item
+    InvoiceLineItem.objects.create(
+        name=f"Balance Adjustment Grant",
+        start_date=issue_date,
+        end_date=issue_date,
+        quantity=balance_adjustment.amount,
+        subtotal=balance_adjustment.amount_paid,
+        billing_type=FLAT_FEE_BILLING_TYPE.IN_ARREARS,
+        chargeable_item_type=CHARGEABLE_ITEM_TYPE.ONE_TIME_CHARGE,
+        invoice=invoice,
+        organization=organization,
+    )
+
+    apply_taxes(invoice, customer, organization)
+    apply_customer_balance_adjustments(invoice, customer, organization, draft)
+
+    invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
+    if abs(invoice.cost_due) < 0.01 and not draft:
+        invoice.payment_status = INVOICE_STATUS.PAID
+    invoice.save()
+
+    if not draft:
+        for pp in customer.integrations.keys():
+            if pp in PAYMENT_PROVIDER_MAP and PAYMENT_PROVIDER_MAP[pp].working():
+                pp_connector = PAYMENT_PROVIDER_MAP[pp]
+                customer_conn = pp_connector.customer_connected(customer)
+                org_conn = pp_connector.organization_connected(organization)
+                if customer_conn and org_conn:
+                    invoice.external_payment_obj_id = (
+                        pp_connector.create_payment_object(invoice)
+                    )
+                    invoice.external_payment_obj_type = pp
+                    invoice.save()
+
+                    break
+        # if META:
+        # lotus_python.track_event(
+        #     customer_id=organization.company_name + str(organization.pk),
+        #     event_name='create_invoice',
+        #     properties={
+        #         'amount': float(invoice.cost_due.amount),
+        #         'currency': str(invoice.cost_due.currency),
+        #         'customer': customer.customer_id,
+        #         'subscription': subscription.subscription_id,
+        #         'external_type': invoice.external_payment_obj_type,
+        #         },
+        # )
+        line_items = invoice.line_items.all()
+        pdf_url = generate_invoice_pdf(
+            invoice,
+            model_to_dict(organization),
+            model_to_dict(customer),
+            line_items,
+            BytesIO(),
+        )
+        invoice.invoice_pdf = pdf_url
+        invoice.save()
+        invoice_created_webhook(invoice, organization)
+
+    return invoice

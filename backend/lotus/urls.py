@@ -44,6 +44,7 @@ from metering_billing.views.model_views import (
 )
 from metering_billing.views.payment_provider_views import PaymentProviderView
 from metering_billing.views.views import (  # MergeCustomersView,; ExperimentalToActiveView,
+    ChangeUserOrganizationView,
     CostAnalysisView,
     CustomersSummaryView,
     CustomersWithRevenueView,
@@ -145,6 +146,11 @@ urlpatterns = [
         "app/cost_analysis/",
         CostAnalysisView.as_view(),
         name="cost_analysis",
+    ),
+    path(
+        "app/switch_organization/",
+        ChangeUserOrganizationView.as_view(),
+        name="switch_organization",
     ),
     path(
         "app/customer_totals/",

@@ -1,21 +1,11 @@
-import React, {
-  Fragment,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Button,
-  Checkbox,
   Collapse,
   Form,
-  Input,
   InputNumber,
   Modal,
-  Radio,
   Select,
-  Switch,
   Table,
 } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
@@ -36,9 +26,9 @@ type EditableTableProps = Parameters<typeof Table>[0];
 type ColumnTypes = Exclude<EditableTableProps["columns"], undefined>;
 type ValidateTiersType = { isValid: boolean; message: string }[];
 const validateTiers = (tiers: Tier[]): ValidateTiersType => {
-  const response: {} = {};
   var currentStart = 0;
   var currentEnd: number | undefined;
+
   const arr2: ValidateTiersType = tiers.map((tier, index) => {
     if (index === 0) {
       if (
@@ -54,7 +44,8 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
       if (!["flat", "free", "per_unit"].includes(tier.type)) {
         return { isValid: false, message: "Tiers are not valid" };
       } else if (tier.type === "per_unit") {
-        return typeof tier.cost_per_batch === "number" &&
+        return typeof tier.batch_rounding_type === "string" &&
+          typeof tier.cost_per_batch === "number" &&
           typeof tier.metric_units_per_batch === "number" &&
           tier.metric_units_per_batch > 0 &&
           tier.cost_per_batch >= 0 === true
@@ -74,7 +65,9 @@ const validateTiers = (tiers: Tier[]): ValidateTiersType => {
         currentEnd === undefined ||
         tier.range_start < currentEnd ||
         tier.range_start > currentEnd + 1 ||
-        (tier.range_end !== undefined && tier.range_start >= tier.range_end)
+        (tier.range_end !== undefined &&
+          tier.range_end !== null &&
+          tier.range_start >= tier.range_end)
       ) {
         return { isValid: false, message: "Range is not valid." };
       } else {
@@ -166,12 +159,16 @@ const EditableCell: React.FC<EditableCellProps> = ({
     if (record.type === "free") {
       if (
         dataIndex === "cost_per_batch" ||
-        dataIndex === "metric_units_per_batch"
+        dataIndex === "metric_units_per_batch" ||
+        dataIndex === "batch_rounding_type"
       ) {
         return false;
       }
     } else if (record.type === "flat") {
-      if (dataIndex === "metric_units_per_batch") {
+      if (
+        dataIndex === "metric_units_per_batch" ||
+        dataIndex === "batch_rounding_type"
+      ) {
         return false;
       }
     }
@@ -202,25 +199,46 @@ const EditableCell: React.FC<EditableCellProps> = ({
         //   },
         // ]}
       >
-        {title === "Charge Type" ? (
-          <Select
-            onChange={save}
-            ref={inputRef}
-            onBlur={save}
-            onPressEnter={save}
-          >
-            <Option value="per_unit">Per Unit</Option>
-            <Option value="free">Free</Option>
-            <Option value="flat">Flat</Option>
-          </Select>
-        ) : (
-          <InputNumber
-            ref={inputRef}
-            onPressEnter={save}
-            onBlur={save}
-            min={0}
-          />
-        )}
+        {(() => {
+          switch (title) {
+            case "Charge Type":
+              return (
+                <Select
+                  onChange={save}
+                  ref={inputRef}
+                  onBlur={save}
+                  onPressEnter={save}
+                >
+                  <Option value="per_unit">Per Unit</Option>
+                  <Option value="free">Free</Option>
+                  <Option value="flat">Flat</Option>
+                </Select>
+              );
+            case "Rounding Type":
+              return (
+                <Select
+                  onChange={save}
+                  ref={inputRef}
+                  onBlur={save}
+                  onPressEnter={save}
+                >
+                  <Option value="round_up">round_up</Option>
+                  <Option value="round_down">round_down</Option>
+                  <Option value="round_nearest">round_nearest</Option>
+                  <Option value="no_rounding">no_rounding</Option>
+                </Select>
+              );
+            default:
+              return (
+                <InputNumber
+                  ref={inputRef}
+                  onPressEnter={save}
+                  onBlur={save}
+                  min={0}
+                />
+              );
+          }
+        })()}
       </Form.Item>
     ) : (
       <div
@@ -256,7 +274,7 @@ function UsageComponentForm({
   const [form] = Form.useForm();
   const [metrics, setMetrics] = useState<string[]>([]);
   const [metricObjects, setMetricObjects] = useState<MetricType[]>([]);
-  const [metricStateful, setMetricStateful] = useState<boolean>(false);
+  const [metricGauge, setMetricGauge] = useState<boolean>(false);
   const selectedMetricName = Form.useWatch("metric", form);
 
   const [prorationGranularity, setProrationGranularity] = useState<string>(
@@ -276,7 +294,7 @@ function UsageComponentForm({
     editComponentItem?.tiers ?? initialTier
   );
   const [rangeEnd, setRangeEnd] = useState<number | undefined>(
-    editComponentItem?.tiers[0]?.range_end ?? 0
+    editComponentItem?.tiers[-1]?.range_end ?? undefined
   );
 
   /// Ouput accepted proration grandularities for a given metric
@@ -308,9 +326,9 @@ function UsageComponentForm({
   };
 
   useEffect(() => {
-    setMetricStateful(
+    setMetricGauge(
       metricObjects.find((metric) => metric.metric_name === selectedMetricName)
-        ?.metric_type === "stateful"
+        ?.metric_type === "gauge"
     );
   }, [selectedMetricName]);
 
@@ -325,7 +343,7 @@ function UsageComponentForm({
           }
 
           if (editComponentItem?.metric === data[i].metric_name) {
-            setMetricStateful(data[i].metric_type === "stateful");
+            setMetricGauge(data[i].metric_type === "gauge");
           }
         }
         setMetrics(metricList);
@@ -336,7 +354,7 @@ function UsageComponentForm({
 
   const handleAdd = () => {
     //if range_end isn't null
-    if (rangeEnd !== undefined) {
+    if (rangeEnd !== undefined && rangeEnd !== null) {
       const newTierDefault: Tier = {
         range_start: rangeEnd,
         type: "flat",
@@ -434,6 +452,20 @@ function UsageComponentForm({
           return "-";
         } else {
           return record.metric_units_per_batch;
+        }
+      },
+    },
+    {
+      title: "Rounding Type",
+      dataIndex: "batch_rounding_type",
+      width: "15%",
+      align: "center",
+      editable: true,
+      render: (text: any, record: Tier) => {
+        if (record.type === "flat" || record.type === "free") {
+          return "-";
+        } else {
+          return record.batch_rounding_type;
         }
       },
     },
@@ -625,7 +657,7 @@ function UsageComponentForm({
                   </p>
                 )} */}
 
-          {/* {metricStateful === true && (
+          {/* {metricGauge === true && (
                 <Fragment>
                   <div className="separator mb-8"></div>
                   <div className="grid grid-flow-col items-center mb-4">

@@ -1,13 +1,11 @@
-import { Button, Card, Col, Form, Input, InputNumber, Row, Select } from "antd";
+import { Button, Form, Input, InputNumber } from "antd";
 // @ts-ignore
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient, UseQueryResult } from "react-query";
 import { toast } from "react-toastify";
-import { BalanceAdjustment, Plan, PricingUnits } from "../api/api";
-import { PageLayout } from "../components/base/PageLayout";
+import { BalanceAdjustment, PricingUnits } from "../api/api";
 import { CreateBalanceAdjustmentType } from "../types/balance-adjustment";
-import { useParams } from "react-router";
 import { useQuery } from "react-query";
 import { PricingUnit } from "../types/pricing-unit-type";
 import PricingUnitDropDown from "../components/PricingUnitDropDown";
@@ -31,6 +29,20 @@ const CreateCredit = ({ customerId, onSubmit }) => {
       return res;
     })
   );
+  const [amount_paid, setAmountPaid] = useState(
+    form.getFieldValue("amount_paid")
+  );
+  const [amount_paid_currency, setAmountPaidCurrency] = useState(
+    form.getFieldValue("amount_paid_currency")
+  );
+
+  const handleAmountPaidChange = (value) => {
+    setAmountPaid(value);
+  };
+
+  const handleAmountPaidCurrencyChange = (value) => {
+    setAmountPaidCurrency(value);
+  };
 
   const disabledDate = (current) => {
     return current && current < dayjs().startOf("day");
@@ -67,11 +79,24 @@ const CreateCredit = ({ customerId, onSubmit }) => {
           pricing_unit_code: values.pricing_unit_code,
           effective_at: values.effective_at,
           expires_at: values.expires_at,
+          amount_paid: values.amount_paid,
+          amount_paid_currency: values.amount_paid_currency,
         });
         onSubmit();
       })
       .catch((info) => {});
   };
+
+  const validateAmountPaidCurrency = () => ({
+    validator(rule, value, callback) {
+      const { amount_paid } = form.getFieldsValue();
+      if (amount_paid !== null && amount_paid > 0 && !value) {
+        callback("Please select an amount paid currency");
+      } else {
+        callback();
+      }
+    },
+  });
 
   return (
     <div className=" w-8/12 my-4">
@@ -114,6 +139,23 @@ const CreateCredit = ({ customerId, onSubmit }) => {
                 setCurrentCurrency={(value) =>
                   form.setFieldValue("pricing_unit_code", value)
                 }
+                setCurrentSymbol={() => null}
+              />
+            </Form.Item>
+            <Form.Item name="amount_paid" label="Amount Paid">
+              <InputNumber precision={2} onChange={handleAmountPaidChange} />
+            </Form.Item>
+            <Form.Item
+              name="amount_paid_currency"
+              label="Currency"
+              rules={[validateAmountPaidCurrency]}
+            >
+              <PricingUnitDropDown
+                setCurrentCurrency={(value) => {
+                  form.setFieldValue("amount_paid_currency", value);
+                  handleAmountPaidCurrencyChange(value);
+                }}
+                setCurrentSymbol={() => null}
               />
             </Form.Item>
             <Form.Item
@@ -150,6 +192,13 @@ const CreateCredit = ({ customerId, onSubmit }) => {
               <Input type="textarea" placeholder="Description for adjustment" />
             </Form.Item>
             <div>
+              {amount_paid > 0 && amount_paid !== null ? (
+                <div className="warning-text mb-2 text-darkgold">
+                  Warning: An invoice will be generated for the amount paid of{" "}
+                  {amount_paid} {amount_paid_currency}.
+                </div>
+              ) : null}
+
               <Form.Item>
                 <Button
                   type="primary"

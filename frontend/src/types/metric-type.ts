@@ -28,7 +28,7 @@ export interface MetricType {
   event_type?: "delta" | "total";
   is_cost_metric?: boolean;
   properties?: string[];
-  metric_type: "counter" | "stateful" | "rate" | "custom";
+  metric_type: "counter" | "gauge" | "rate" | "custom";
   custom_sql?: string;
 }
 

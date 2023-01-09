@@ -8,11 +8,11 @@ import { useMutation, useQuery } from "react-query";
 import { toast } from "react-toastify";
 import { Stripe } from "../../api/api";
 import {
-  OrganizationSettings,
+  StripeSetting,
   Source,
   StripeImportCustomerResponse,
   TransferSub,
-  UpdateOrganizationSettingsParams,
+  UpdateStripeSettingParams,
 } from "../../types/stripe-type";
 
 const TOAST_POSITION = toast.POSITION.TOP_CENTER;
@@ -23,20 +23,25 @@ const StripeIntegrationView: FC = () => {
   let { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isSettingValue, setIsSettingValue] = useState(false);
-  const [currentOrganizationSetting, setCurrentOrganizationSetting] =
-    useState<OrganizationSettings>();
+  const [currentStripeSetting, setCurrentStripeSetting] =
+    useState<StripeSetting>();
 
-  const getOrganizationSettings = async (): Promise<OrganizationSettings[]> =>
-    Stripe.getOrganizationSettings({ setting_group: "stripe" });
+  const getStripeSettings = async (): Promise<StripeSetting[]> =>
+    Stripe.getStripeSettings({ setting_group: "stripe" });
 
-  const { error, data, isLoading } = useQuery<OrganizationSettings[]>(
-    ["organization_settings"],
-    getOrganizationSettings
+  const { error, data, isLoading } = useQuery<StripeSetting[]>(
+    ["stripe_settings"],
+    getStripeSettings
   );
 
   useEffect(() => {
     if (!isLoading && !error && data) {
-      setCurrentOrganizationSetting(data[0]);
+      setCurrentStripeSetting(
+        data.filter(
+          (item) =>
+            item.setting_name === "generate_customer_after_creating_in_lotus"
+        )[0]
+      );
     }
   }, [isLoading, error, data]);
 
@@ -91,21 +96,21 @@ const StripeIntegrationView: FC = () => {
     }
   );
 
-  const updateOrganizationSettings = useMutation(
-    (post: UpdateOrganizationSettingsParams) =>
-      Stripe.updateOrganizationSettings(post),
+  const updateStripeSettings = useMutation(
+    (post: UpdateStripeSettingParams) => Stripe.updateStripeSetting(post),
     {
-      onSuccess: (data: OrganizationSettings) => {
-        setCurrentOrganizationSetting(data);
+      onSuccess: (data: StripeSetting) => {
+        setCurrentStripeSetting(data);
         setIsSettingValue(false);
-        const state = data.setting_value === "true" ? "Enabled" : "Disabled";
-        toast.success(`${state} the Organization Settings`, {
+        const state =
+          data.setting_values.value === true ? "Enabled" : "Disabled";
+        toast.success(`${state} Create Lotus Customers In Stripe`, {
           position: TOAST_POSITION,
         });
       },
       onError: () => {
         setIsSettingValue(false);
-        toast.error("Failed to Update the organization settings", {
+        toast.error("Failed to Update Create Lotus Customers In Stripe", {
           position: TOAST_POSITION,
         });
       },
@@ -183,13 +188,13 @@ const StripeIntegrationView: FC = () => {
               aria-describedby="comments-description"
               name="comments"
               type="checkbox"
-              disabled={isSettingValue || !currentOrganizationSetting}
-              checked={currentOrganizationSetting?.setting_value === "true"}
+              disabled={isSettingValue || !currentStripeSetting}
+              checked={currentStripeSetting?.setting_values.value === true}
               onChange={(value) => {
-                currentOrganizationSetting &&
-                  updateOrganizationSettings.mutate({
-                    setting_value: value.target.checked.toString(),
-                    setting_id: currentOrganizationSetting.setting_id,
+                currentStripeSetting &&
+                  updateStripeSettings.mutate({
+                    setting_values: value.target.checked,
+                    setting_id: currentStripeSetting.setting_id,
                   });
                 setIsSettingValue(true);
               }}

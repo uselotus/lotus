@@ -21,6 +21,7 @@ import Badge from "../../base/Badges/Badges";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
+
 interface PlanCardProps {
   plan: PlanType;
   createTagMutation: (variables: {

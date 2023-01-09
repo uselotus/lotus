@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { Menu, MenuItemProps } from "antd";
+import { Menu } from "antd";
 import {
   UserOutlined,
   DashboardOutlined,
@@ -129,7 +129,8 @@ const SideBar: FC = () => {
   ];
 
   // @ts-ignore
-    const menuItems = import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
+  const menuItems =
+    import.meta.env.VITE_IS_DEMO === "true" ? menuItemsBasic : menuItemsAdmin;
 
   return (
     <div

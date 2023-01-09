@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from "react";
-import ReactDOM from "react-dom";
+import React from "react";
 import { Pie } from "@ant-design/plots";
 import { Paper } from "../base/Paper";
-import { Title } from "../base/Typograpy/index.";
 import { useQuery, UseQueryResult } from "react-query";
 import { PlansByCustomer } from "../../api/api";
 import LoadingSpinner from "../LoadingSpinner";

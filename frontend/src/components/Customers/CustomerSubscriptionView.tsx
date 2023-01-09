@@ -23,10 +23,8 @@ import {
 //import the Customer type from the api.ts file
 import dayjs from "dayjs";
 
-import { CustomerSubscription, DetailPlan } from "../../types/customer-type";
 import DraftInvoice from "./DraftInvoice";
 import { Link } from "react-router-dom";
-import qs from "qs";
 
 interface Props {
   customer_id: string;

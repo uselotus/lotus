@@ -1,6 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
-from typing import Union
+from typing import Literal, Union
 
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
@@ -8,7 +8,11 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import DuplicateMetric, ServerError
+from metering_billing.exceptions import (
+    DuplicateMetric,
+    DuplicateOrganization,
+    ServerError,
+)
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -70,6 +74,33 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
         return PricingUnit.objects.create(**validated_data)
 
 
+class LightweightOrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("organization_id", "company_name", "organization_type")
+
+    organization_type = serializers.SerializerMethodField()
+
+    def get_organization_type(
+        self, obj
+    ) -> serializers.ChoiceField(choices=Organization.OrganizationType.labels):
+        org_type = obj.organization_type
+        if org_type == Organization.OrganizationType.PRODUCTION:
+            return Organization.OrganizationType.PRODUCTION.label
+        elif org_type == Organization.OrganizationType.DEVELOPMENT:
+            return Organization.OrganizationType.DEVELOPMENT.label
+        elif org_type == Organization.OrganizationType.INTERNAL_DEMO:
+            return Organization.OrganizationType.INTERNAL_DEMO.label
+        elif org_type == Organization.OrganizationType.EXTERNAL_DEMO:
+            return Organization.OrganizationType.EXTERNAL_DEMO.label
+
+
+class LightweightUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("username", "email")
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
@@ -84,6 +115,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "plan_tags",
             "tax_rate",
             "invoice_grace_period",
+            "linked_organizations",
+            "current_user",
+            "address",
         )
 
     users = serializers.SerializerMethodField()
@@ -91,6 +125,33 @@ class OrganizationSerializer(serializers.ModelSerializer):
     available_currencies = serializers.SerializerMethodField()
     plan_tags = serializers.SerializerMethodField()
     invoice_grace_period = serializers.SerializerMethodField()
+    linked_organizations = serializers.SerializerMethodField()
+    current_user = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField(required=False, allow_null=True)
+
+    def get_address(
+        self, obj
+    ) -> api_serializers.AddressSerializer(allow_null=True, required=False):
+        d = obj.properties.get("address", {})
+        try:
+            data = api_serializers.AddressSerializer(d).data
+        except KeyError:
+            data = None
+        return data
+
+    def get_current_user(self, obj) -> LightweightUserSerializer():
+        user = self.context.get("user")
+        return LightweightUserSerializer(user).data
+
+    def get_linked_organizations(
+        self, obj
+    ) -> LightweightOrganizationSerializer(many=True):
+        team = obj.team
+        if team is None:
+            linked = [obj]
+        else:
+            linked = team.organizations.all()
+        return LightweightOrganizationSerializer(linked, many=True).data
 
     def get_invoice_grace_period(
         self, obj
@@ -109,12 +170,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return val
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
-        users = User.objects.filter(organization=obj)
+        users = User.objects.filter(team=obj.team)
         users_data = list(OrganizationUserSerializer(users, many=True).data)
         now = now_utc()
-        invited_users = OrganizationInviteToken.objects.filter(
-            organization=obj, expire_at__gt=now
-        )
+        invited_users = TeamInviteToken.objects.filter(team=obj.team, expire_at__gt=now)
         invited_users_data = OrganizationInvitedUserSerializer(
             invited_users, many=True
         ).data
@@ -132,6 +191,45 @@ class OrganizationSerializer(serializers.ModelSerializer):
     def get_plan_tags(self, obj) -> TagSerializer(many=True):
         data = TagSerializer(obj.tags.filter(tag_group=TAG_GROUP.PLAN), many=True).data
         return data
+
+
+class OrganizationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ("company_name", "default_currency_code", "organization_type")
+
+    default_currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        source="default_currency",
+        required=False,
+    )
+    organization_type = serializers.ChoiceField(
+        choices=["development", "production"], default="development"
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        existing_org_num = Organization.objects.filter(
+            company_name=data["company_name"],
+        ).count()
+        if existing_org_num > 0:
+            raise DuplicateOrganization("Organization with company name already exists")
+        if data["organization_type"] == "development":
+            data["organization_type"] = Organization.OrganizationType.DEVELOPMENT
+        elif data["organization_type"] == "production":
+            data["organization_type"] = Organization.OrganizationType.PRODUCTION
+
+    def create(self, validated_data):
+        existing_organization = self.context["organization"]
+        team = existing_organization.team
+        organization = Organization.objects.create(
+            company_name=validated_data["company_name"],
+            default_currency=validated_data.get("default_currency", None),
+            organization_type=validated_data["organization_type"],
+            team=team,
+        )
+        return organization
 
 
 class APITokenSerializer(serializers.ModelSerializer):
@@ -905,8 +1003,12 @@ class PlanVersionCreateSerializer(serializers.ModelSerializer):
             component.save()
         for feature_data in features_data:
             feature_data["organization"] = org
+            description = feature_data.pop("description", None)
             try:
-                f, _ = Feature.objects.get_or_create(**feature_data)
+                f, created = Feature.objects.get_or_create(**feature_data)
+                if created and description:
+                    f.description = description
+                    f.save()
             except Feature.MultipleObjectsReturned:
                 f = Feature.objects.filter(**feature_data).first()
             billing_plan.features.add(f)
@@ -1381,13 +1483,41 @@ class ActionSerializer(serializers.ModelSerializer):
 class OrganizationSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSetting
-        fields = ("setting_id", "setting_name", "setting_value", "setting_group")
-        read_only_fields = ("setting_id", "setting_name", "setting_group")
+        fields = ("setting_id", "setting_name", "setting_values", "setting_group")
+        extra_kwargs = {
+            "setting_id": {"required": True},
+            "setting_name": {"required": True},
+            "setting_group": {"required": True},
+            "setting_values": {"required": True},
+        }
+
+
+class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationSetting
+        fields = ("setting_values",)
 
     def update(self, instance, validated_data):
-        instance.setting_value = validated_data.get(
-            "setting_value", instance.setting_value
-        )
+        setting_values = validated_data.get("setting_values")
+        if instance.setting_name == ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS:
+            if not isinstance(setting_values, list):
+                raise serializers.ValidationError(
+                    "Setting values must be a list of strings"
+                )
+            if not all(isinstance(item, str) for item in setting_values):
+                raise serializers.ValidationError(
+                    "Setting values must be a list of strings"
+                )
+        elif (
+            instance.setting_name
+            == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
+        ):
+            if not isinstance(setting_values, bool):
+                raise serializers.ValidationError(
+                    "Setting values must be a boolean"
+                )
+            setting_values = {"value": setting_values}
+        instance.setting_values = setting_values
         instance.save()
         return instance
 
@@ -1445,6 +1575,7 @@ class DraftInvoiceSerializer(InvoiceSerializer):
                     "invoice_number",
                     "external_payment_obj_id",
                     "external_payment_obj_type",
+                    "invoice_pdf",
                 ]
             )
         )

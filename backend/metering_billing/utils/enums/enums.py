@@ -49,9 +49,9 @@ class PAYMENT_PROVIDERS(models.TextChoices):
 
 class METRIC_TYPE(models.TextChoices):
     COUNTER = ("counter", _("Counter"))
-    STATEFUL = ("stateful", _("Stateful"))
     RATE = ("rate", _("Rate"))
     CUSTOM = ("custom", _("Custom"))
+    GAUGE = ("gauge", _("Gauge"))
 
 
 class CUSTOMER_BALANCE_ADJUSTMENT_STATUS(models.TextChoices):
@@ -260,5 +260,10 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
     SUBSCRIPTION_FILTERS = ("subscription_filters", _("Subscription Filters"))
 
 
+
 class TAG_GROUP(models.TextChoices):
     PLAN = ("plan", _("Plan"))
+
+class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
+    STRIPE = ("stripe", _("Stripe"))
+

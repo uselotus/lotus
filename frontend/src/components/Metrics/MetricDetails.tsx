@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "react-query";
 import { toast } from "react-toastify";
 import { Metrics } from "../../api/api";
 // @ts-ignore
-import React, { FC, Fragment } from "react";
+import React, { FC } from "react";
 import { colorMap } from "./MetricTable";
 
 interface MetricDetailsProps {
@@ -75,9 +75,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
           </p>
           <p>
             <b className="mr-2">Metric Type:</b>
-            {metric.metric_type === "stateful"
-              ? "continuous"
-              : metric.metric_type}
+            {metric.metric_type === "gauge" ? "gauge" : metric.metric_type}
           </p>
           <p>
             <b className="mr-2">Per Time Unit:</b>{" "}
@@ -105,7 +103,7 @@ const MetricDetails: FC<MetricDetailsProps> = ({ metric, onclose }) => {
               )}
             </p>
           )}
-          {metric.metric_type === "stateful" && (
+          {metric.metric_type === "gauge" && (
             <p>
               <b className="mr-2">Event Type:</b>
               {!!metric.event_type ? <Tag>{metric.event_type}</Tag> : "N/A"}

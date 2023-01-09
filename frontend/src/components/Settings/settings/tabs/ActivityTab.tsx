@@ -1,12 +1,11 @@
-import React, { FC, Fragment, useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "react-query";
+import React, { Fragment, useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "react-query";
 import dayjs from "dayjs";
 import { Paper } from "../../../base/Paper";
 import { Typography } from "antd";
 import { Organization } from "../../../../api/api";
 import LoadingSpinner from "../../../LoadingSpinner";
 import CustomPagination from "../../../CustomPagination/CustomPagination";
-import {ActionUserType} from "../../../../types/account-type";
 
 export default function ActivityStream() {
   const [cursor, setCursor] = useState<string>("");

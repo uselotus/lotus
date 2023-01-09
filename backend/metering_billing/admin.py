@@ -16,12 +16,12 @@ from .models import (  # Subscription,
     Metric,
     NumericFilter,
     Organization,
-    OrganizationInviteToken,
     Plan,
     PlanComponent,
     PlanVersion,
     Subscription,
     SubscriptionRecord,
+    TeamInviteToken,
     User,
     WebhookEndpoint,
 )
@@ -46,7 +46,7 @@ admin.site.register(PlanComponent)
 admin.site.register(Feature, SimpleHistoryAdmin)
 admin.site.register(PlanVersion, SimpleHistoryAdmin)
 admin.site.register(Invoice, SimpleHistoryAdmin)
-admin.site.register(OrganizationInviteToken)
+admin.site.register(TeamInviteToken)
 admin.site.unregister(APIKey)
 admin.site.register(BacktestSubstitution)
 

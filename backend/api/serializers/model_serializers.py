@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db.models import Q
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import ServerError
+from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
@@ -313,6 +314,7 @@ class InvoiceSerializer(
             "start_date",
             "end_date",
             "seller",
+            "invoice_pdf",
         )
         extra_kwargs = {
             "invoice_number": {"required": True},
@@ -333,6 +335,7 @@ class InvoiceSerializer(
             "start_date": {"required": True},
             "end_date": {"required": True},
             "seller": {"required": True},
+            "invoice_pdf": {"required": True, "allow_null": True},
         }
 
     external_payment_obj_type = serializers.ChoiceField(
@@ -368,6 +371,7 @@ class LightweightInvoiceSerializer(InvoiceSerializer):
                 [
                     "line_items",
                     "customer",
+                    "invoice_pdf",
                 ]
             )
         )
@@ -1085,12 +1089,7 @@ class SubscriptionInvoiceSerializer(SubscriptionRecordSerializer):
         fields = fields = tuple(
             set(SubscriptionRecordSerializer.Meta.fields)
             - set(
-                [
-                    "customer_id",
-                    "plan_id",
-                    "billing_plan",
-                    "auto_renew",
-                ]
+                ["customer_id", "plan_id", "billing_plan", "auto_renew", "invoice_pdf"]
             )
         )
 
@@ -1263,6 +1262,36 @@ class CustomerBalanceAdjustmentSerializer(
         model = CustomerBalanceAdjustment
         fields = (
             "adjustment_id",
+            "customer",
+            "amount",
+            "pricing_unit",
+            "description",
+            "effective_at",
+            "expires_at",
+            "status",
+            "parent_adjustment_id",
+            "amount_paid",
+            "amount_paid_currency",
+        )
+
+    customer = LightweightCustomerSerializer(read_only=True)
+    pricing_unit = PricingUnitSerializer(read_only=True)
+    parent_adjustment_id = SlugRelatedFieldWithOrganization(
+        slug_field="adjustment_id",
+        required=False,
+        source="parent_adjustment",
+        read_only=True,
+    )
+    amount_paid_currency = PricingUnitSerializer(read_only=True)
+
+
+class CustomerBalanceAdjustmentCreateSerializer(
+    ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
+):
+    class Meta:
+        model = CustomerBalanceAdjustment
+        fields = (
+            "adjustment_id",
             "customer_id",
             "amount",
             "pricing_unit_code",
@@ -1271,7 +1300,8 @@ class CustomerBalanceAdjustmentSerializer(
             "effective_at",
             "expires_at",
             "status",
-            "parent_adjustment_id",
+            "amount_paid",
+            "amount_paid_currency_code",
         )
 
     customer_id = SlugRelatedFieldWithOrganization(
@@ -1287,12 +1317,12 @@ class CustomerBalanceAdjustmentSerializer(
         source="pricing_unit",
         write_only=True,
     )
-    pricing_unit = PricingUnitSerializer(read_only=True)
-    parent_adjustment_id = SlugRelatedFieldWithOrganization(
-        slug_field="adjustment_id",
+    amount_paid_currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
         required=False,
-        source="parent_adjustment",
-        read_only=True,
+        source="amount_paid_currency",
+        write_only=True,
     )
 
     def validate(self, data):
@@ -1300,5 +1330,82 @@ class CustomerBalanceAdjustmentSerializer(
         amount = data.get("amount", 0)
         customer = data["customer"]
         if amount <= 0:
-            raise serializers.ValidationError("Amount must be non-zero")
+            raise serializers.ValidationError("Amount must be greater than 0")
+        if data.get("amount_paid") and data.get("amount_paid") <= 0:
+            raise serializers.ValidationError("Amount paid must be greater than 0")
         return data
+
+    def create(self, validated_data):
+        balance_adjustment = super().create(validated_data)
+        if balance_adjustment.amount_paid and balance_adjustment.amount_paid > 0:
+            generate_balance_adjustment_invoice(balance_adjustment)
+        return balance_adjustment
+
+
+class CustomerBalanceAdjustmentUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerBalanceAdjustment
+        fields = (
+            "description",
+            "expires_at",
+        )
+
+    def validate(self, data):
+        now = now_utc()
+        expires_at = data.get("expires_at")
+        if expires_at and expires_at < now:
+            raise serializers.ValidationError("Expiration date must be in the future")
+        return data
+
+    def update(self, instance, validated_data):
+        instance.description = validated_data.get("description", instance.description)
+        instance.expires_at = validated_data.get("expires_at", instance.expires_at)
+        instance.save()
+        return instance
+
+
+class CustomerBalanceAdjustmentFilterSerializer(serializers.Serializer):
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        source="customer",
+    )
+    expires_before = serializers.DateTimeField(
+        required=False, help_text="Filter to adjustments that expire before this date"
+    )
+    expires_after = serializers.DateTimeField(
+        required=False, help_text="Filter to adjustments that expire after this date"
+    )
+    issued_before = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that were issued before this date",
+    )
+    issued_after = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that were issued after this date",
+    )
+    effective_before = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that are effective before this date",
+    )
+    effective_after = serializers.DateTimeField(
+        required=False,
+        help_text="Filter to adjustments that are effective after this date",
+    )
+    status = serializers.MultipleChoiceField(
+        choices=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.choices,
+        required=False,
+        default=[
+            CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
+            CUSTOMER_BALANCE_ADJUSTMENT_STATUS.INACTIVE,
+        ],
+        help_text="Filter to a specific set of adjustment statuses. Defaults to both active and inactive.",
+    )
+    currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        required=False,
+        source="pricing_unit",
+        help_text="Filter to adjustments in a specific currency",
+    )

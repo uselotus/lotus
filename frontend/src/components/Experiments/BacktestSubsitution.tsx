@@ -1,18 +1,13 @@
 import React, { FC, useEffect } from "react";
-import { BacktestType, SpecificResults } from "../../types/experiment-type";
-import { Select, Typography } from "antd";
+import { SpecificResults } from "../../types/experiment-type";
 import {
-  Card,
   ColGrid,
-  Metric,
   Text,
   LineChart,
   Title,
   Bold,
   List,
   ListItem,
-  Flex,
-  Badge,
 } from "@tremor/react";
 import { Pie } from "@ant-design/plots";
 const arrowURL = new URL("../arrow.svg", import.meta.url).href;

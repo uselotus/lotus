@@ -9,10 +9,8 @@ import {
   Switch,
   Collapse,
   Button,
-  InputNumber,
 } from "antd";
 import { MetricType } from "../../types/metric-type";
-import { render } from "react-dom";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-sql";
@@ -39,7 +37,7 @@ const CreateMetricForm = (props: {
   onCancel: () => void;
 }) => {
   const [form] = Form.useForm();
-  const statefulGranularity = Form.useWatch("granularity_2", form);
+  const gaugeGranularity = Form.useWatch("granularity_2", form);
   const [eventType, setEventType] = useState("counter");
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
@@ -63,14 +61,14 @@ const CreateMetricForm = (props: {
         form.resetFields();
         break;
       case "seats":
-        setEventType("stateful");
+        setEventType("gauge");
         setRate(false);
         setCostMetric(false);
 
         form.setFieldsValue({
           aggregation_type_2: "max",
           event_name: "seats",
-          metric_type: "stateful",
+          metric_type: "gauge",
           property_name_2: "seat_count",
           granularity_2: "total",
           metric_name: "Seats",
@@ -127,7 +125,6 @@ const CreateMetricForm = (props: {
             if (values.metric_type === "custom") {
               values.custom_sql = customSQL;
             }
-            console.log("values", values);
             props.onSave(values);
             form.resetFields();
             setRate(false);
@@ -225,7 +222,7 @@ const CreateMetricForm = (props: {
               }}
             >
               <Radio value="counter">Counter</Radio>
-              <Radio value="stateful">Continuous</Radio>
+              <Radio value="gauge">Gauge</Radio>
               {/* <Radio value="custom">Custom</Radio> */}
             </Radio.Group>
           </Form.Item>
@@ -371,7 +368,7 @@ const CreateMetricForm = (props: {
               )}
             </Fragment>
           )}
-          {eventType === "stateful" && (
+          {eventType === "gauge" && (
             <Fragment>
               <div className="grid grid-cols-2 gap-4">
                 <Form.Item
@@ -419,10 +416,10 @@ const CreateMetricForm = (props: {
                 </Select>
               </Form.Item>
 
-              {/* {statefulGranularity && statefulGranularity !== "total" && (
+              {/* {gaugeGranularity && gaugeGranularity !== "total" && (
                 <p className=" text-darkgold mb-4">
                   When inputting the price for this metric, you will be inputing
-                  the price per {statefulGranularity.slice(0, -1)}
+                  the price per {gaugeGranularity.slice(0, -1)}
                 </p>
               )} */}
             </Fragment>

@@ -2,18 +2,13 @@ import { Table, Button, Select, Dropdown, Menu, Tag } from "antd";
 import { FC, useState, useEffect } from "react";
 // @ts-ignore
 import React from "react";
-import { BalanceAdjustments } from "../../types/invoice-type";
+import { BalanceAdjustmentType } from "../../types/balance-adjustment";
 // @ts-ignore
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import {
-  useMutation,
-  useQuery,
-  UseQueryResult,
-  useQueryClient,
-} from "react-query";
-import { BalanceAdjustment, Plan } from "../../api/api";
+import { useMutation, useQuery, UseQueryResult } from "react-query";
+import { BalanceAdjustment } from "../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import { ColumnsType } from "antd/es/table";
@@ -23,7 +18,7 @@ interface Props {
   customerId: string;
 }
 
-interface DataType extends BalanceAdjustments {
+interface DataType extends BalanceAdjustmentType {
   children?: DataType[];
 }
 
@@ -33,11 +28,23 @@ const defaultView = "grouped";
 const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   const [selectedView, setSelectedView] = useState(defaultView);
   const [selectedCurrency, setSelectedCurrency] = useState("All");
+  const [selectedSymbol, setSelectedSymbol] = useState("");
   const [showCreateCredit, setShowCreateCredit] = useState(false);
   const [transformedData, setTransformedData] = useState<DataType[]>([]);
+  const [sumOfCredits, setSumOfCredits] = useState(0);
 
-  const { data, isLoading, refetch }: UseQueryResult<BalanceAdjustments[]> =
-    useQuery<BalanceAdjustments[]>(["balance_adjustments", customerId], () =>
+  useEffect(() => {
+    let total: number = 0;
+    transformedData.forEach((credit) => {
+      if (credit.pricing_unit.code === selectedCurrency) {
+        total += credit.amount;
+      }
+    });
+    setSumOfCredits(total);
+  }, [selectedCurrency, transformedData]);
+
+  const { data, isLoading, refetch }: UseQueryResult<BalanceAdjustmentType[]> =
+    useQuery<BalanceAdjustmentType[]>(["balance_adjustments", customerId], () =>
       BalanceAdjustment.getCreditsByCustomer({
         customer_id: customerId,
       }).then((res) => {
@@ -123,7 +130,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
     dataIndex: "actions",
     key: "actions",
     width: "1%",
-    render: (_, record: BalanceAdjustments) => (
+    render: (_, record: BalanceAdjustmentType) => (
       <Dropdown
         overlay={
           <Menu>
@@ -216,6 +223,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
               defaultValue="All"
               shouldShowAllOption
               setCurrentCurrency={setSelectedCurrency}
+              setCurrentSymbol={setSelectedSymbol}
             />
           </div>
           <div className="flex items-center justify-between pr-6">
@@ -260,7 +268,11 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
           }}
         />
       )}
-
+      {selectedCurrency !== "All" && (
+        <div className="mb-2">
+          Credit Balance: {selectedSymbol} {sumOfCredits}
+        </div>
+      )}
       {!!data?.length ? (
         <Table
           rowKey={(record) => record.adjustment_id}
