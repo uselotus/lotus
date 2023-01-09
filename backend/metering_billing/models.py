@@ -40,7 +40,6 @@ from metering_billing.utils import (
     date_as_min_dt,
     dates_bwn_two_dts,
     event_uuid,
-    get_granularity_ratio,
     metric_uuid,
     now_plus_day,
     now_utc,
@@ -49,6 +48,7 @@ from metering_billing.utils import (
     plan_uuid,
     plan_version_uuid,
     product_uuid,
+    random_uuid,
     subscription_record_uuid,
     subscription_uuid,
     usage_alert_uuid,
@@ -2363,14 +2363,11 @@ class OrganizationSetting(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="settings"
     )
-    setting_id = models.SlugField(default=uuid.uuid4, max_length=100, unique=True)
+    setting_id = models.SlugField(default=random_uuid, max_length=100, unique=True)
     setting_name = models.CharField(
         max_length=100,
     )
-    setting_value = models.CharField(
-        max_length=100,
-    )
-    setting_values = models.JSONField(default=list, blank=True)
+    setting_values = models.JSONField(default=dict, blank=True)
     setting_group = models.CharField(max_length=100, blank=True, null=True)
     history = HistoricalRecords()
 
@@ -2378,7 +2375,7 @@ class OrganizationSetting(models.Model):
         super(OrganizationSetting, self).save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.setting_name} - {self.setting_value}"
+        return f"{self.setting_name} - {self.setting_values}"
 
     class Meta:
         constraints = [

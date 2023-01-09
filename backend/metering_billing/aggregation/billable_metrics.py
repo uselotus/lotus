@@ -657,17 +657,19 @@ class CounterHandler(MetricHandler):
     def archive_metric(metric: Metric) -> Metric:
         from .common_query_templates import CAGG_DROP
 
-        for continuous_agg_type in ["day", "second"]:
-            sql_injection_data = {
-                "cagg_name": metric.organization.organization_id[:22]
-                + "___"
-                + metric.metric_id[:22]
-                + "___"
-                + continuous_agg_type
-            }
-            query = Template(CAGG_DROP).render(**sql_injection_data)
-            with connection.cursor() as cursor:
-                cursor.execute(query)
+        base_name = (
+            metric.organization.organization_id[:22]
+            + "___"
+            + metric.metric_id[:22]
+            + "___"
+        )
+        sql_injection_data = {"cagg_name": base_name + "day"}
+        day_query = Template(CAGG_DROP).render(**sql_injection_data)
+        sql_injection_data = {"cagg_name": base_name + "second"}
+        second_query = Template(CAGG_DROP).render(**sql_injection_data)
+        with connection.cursor() as cursor:
+            cursor.execute(day_query)
+            cursor.execute(second_query)
 
 
 class CustomHandler(MetricHandler):
