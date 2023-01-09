@@ -86,7 +86,8 @@ module.exports = {
     },
     fontFamily: {
       // add new font family
-      main: ["Inter", "sans-serif"],
+      main: ["Alliance No 2"],
+      alliance: ["Alliance No 2", "sans-serif"],
       arimo: ["Arimo", "sans-serif"],
     },
 

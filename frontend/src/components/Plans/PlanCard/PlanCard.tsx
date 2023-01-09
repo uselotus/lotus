@@ -93,7 +93,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
           </Button>
         </Dropdown>
       </div>
-      <Typography.Title className="pt-4" level={2}>
+      <Typography.Title className="pt-4 font-alliance" level={2}>
         {plan.plan_name}
       </Typography.Title>
 

@@ -45,6 +45,9 @@ const PlansTags = ({ tags }: PlanTagsProps) => {
               </span>
             ))
           )}
+          <Badge className="bg-[#E0E7FF] text-[#3730A3] text-[12px] px-2 py-0.5 ml-2">
+            <Badge.Content>+ Add Tag</Badge.Content>
+          </Badge>
         </span>
       )}
     </>
