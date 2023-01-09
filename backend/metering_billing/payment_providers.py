@@ -288,20 +288,7 @@ class StripeConnector(PaymentProvider):
             organization=customer.organization,
             setting_group=PAYMENT_PROVIDERS.STRIPE,
         )
-        setting_value = setting.setting_values
-        if len(setting_value) == 0:
-            setting_value = setting.setting_value
-            if setting_value == "false":
-                setting.setting_values = [False]
-            else:
-                setting.setting_values = [True]
-            setting.save()
-            if setting_value == "false":
-                setting_value = False
-            else:
-                setting_value = True
-        else:
-            setting_value = setting.setting_values[0]
+        setting_value = setting.setting_values.get("value", False)
         if setting_value == True:
             assert (
                 customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id")
@@ -617,8 +604,7 @@ class StripeConnector(PaymentProvider):
         OrganizationSetting.objects.create(
             organization=organization,
             setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
-            setting_value="True",
-            setting_values=[True],
+            setting_values={"value": False},
             setting_group=PAYMENT_PROVIDERS.STRIPE,
         )
 

@@ -62,12 +62,12 @@ import {
   BacktestResultType,
 } from "../types/experiment-type";
 import {
-  OrganizationSettingsParams,
-  OrganizationSettings,
+  StripeSettingsParams,
+  StripeSetting,
   Source,
   StripeImportCustomerResponse,
   TransferSub,
-  UpdateOrganizationSettingsParams,
+  UpdateStripeSettingParams,
 } from "../types/stripe-type";
 import { DraftInvoiceType } from "../types/invoice-type";
 import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
@@ -426,18 +426,16 @@ export const Stripe = {
   ): Promise<StripeImportCustomerResponse> =>
     requests.post("app/transfer_subscriptions/", post),
 
-  //Get Organization Settings
-  getOrganizationSettings: (
-    data: OrganizationSettingsParams
-  ): Promise<OrganizationSettings[]> =>
+  //Get Stripe Setting
+  getStripeSettings: (data: StripeSettingsParams): Promise<StripeSetting[]> =>
     requests.get("app/organization_settings/", { params: data }),
 
-  //Update Organization Settings
-  updateOrganizationSettings: (
-    data: UpdateOrganizationSettingsParams
-  ): Promise<OrganizationSettings> =>
+  //Update Stripe Setting
+  updateStripeSetting: (
+    data: UpdateStripeSettingParams
+  ): Promise<StripeSetting> =>
     requests.patch(`app/organization_settings/${data.setting_id}/`, {
-      setting_value: data.setting_value,
+      setting_values: data.setting_values,
     }),
 };
 

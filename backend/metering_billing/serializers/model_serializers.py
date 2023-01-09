@@ -1383,13 +1383,41 @@ class ActionSerializer(serializers.ModelSerializer):
 class OrganizationSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSetting
-        fields = ("setting_id", "setting_name", "setting_value", "setting_group")
-        read_only_fields = ("setting_id", "setting_name", "setting_group")
+        fields = ("setting_id", "setting_name", "setting_values", "setting_group")
+        extra_kwargs = {
+            "setting_id": {"required": True},
+            "setting_name": {"required": True},
+            "setting_group": {"required": True},
+            "setting_values": {"required": True},
+        }
+
+
+class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationSetting
+        fields = ("setting_values",)
 
     def update(self, instance, validated_data):
-        instance.setting_value = validated_data.get(
-            "setting_value", instance.setting_value
-        )
+        setting_values = validated_data.get("setting_values")
+        if instance.setting_name == ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS:
+            if not isinstance(setting_values, list):
+                raise serializers.ValidationError(
+                    "Setting values must be a list of strings"
+                )
+            if not all(isinstance(item, str) for item in setting_values):
+                raise serializers.ValidationError(
+                    "Setting values must be a list of strings"
+                )
+        elif (
+            instance.setting_name
+            == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
+        ):
+            if not isinstance(setting_values, bool):
+                raise serializers.ValidationError(
+                    "Setting values must be a boolean"
+                )
+            setting_values = {"value": setting_values}
+        instance.setting_values = setting_values
         instance.save()
         return instance
 
