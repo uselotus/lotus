@@ -16,9 +16,9 @@ const Badge = ({
     onClick={onClick}
     className={
       !className
-        ? "inline-flex items-center rounded-full bg-emerald-100 px-4 py-1 text-sm font-medium text-emerald-800"
+        ? "flex items-center rounded-full bg-emerald-100 px-4 py-1 text-sm font-medium text-emerald-800"
         : [
-            "inline-flex items-center rounded-full  px-4 py-1 text-sm font-medium",
+            "flex items-center rounded-full  px-4 py-1 text-sm font-medium",
             className,
           ].join(" ")
     }

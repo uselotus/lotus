@@ -1,6 +1,7 @@
 import { Layout, PageHeader, PageHeaderProps } from "antd";
 // @ts-ignore
 import React from "react";
+import Heading from "./Heading/Heading";
 
 const headingText: string =
   import.meta.env.VITE_IS_DEMO === "true"
@@ -19,11 +20,12 @@ export const PageLayout = ({
   return (
     <div>
       {/* {hasBackButton && backButton} */}
+      <Heading hasBackButton={hasBackButton} backButton={backButton} />
       <PageHeader
         title={
           <div>
-            {backButton}
-            <h1 className=" text-xl">{headingText}</h1>
+            {/* {backButton} */}
+            <h1 className=" text-xl mt-10">{headingText}</h1>
           </div>
         }
       />

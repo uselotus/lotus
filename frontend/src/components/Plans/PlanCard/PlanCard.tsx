@@ -166,7 +166,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
                         (el) => el.tag_name === tag.tag_name
                       );
                       const tags = [...planTags, ...planTagsFromOrg];
-                      console.log(tags);
+                   
                       createTagMutation({
                         plan_id: plan.plan_id,
                         tags,

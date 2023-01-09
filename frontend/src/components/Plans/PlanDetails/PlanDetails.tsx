@@ -201,20 +201,23 @@ const PlanDetails: FC = () => {
             }
             hasBackButton
             backButton={
-              <Button
-                onClick={() => navigate(-1)}
-                type="primary"
-                size="large"
-                key="create-custom-plan"
-                style={{
-                  background: "#FAFAFA",
-                  borderColor: "#FAFAFA",
-                }}
-              >
-                <div className="flex items-center justify-between text-black">
-                  <div>&larr; Go back</div>
-                </div>
-              </Button>
+              <div>
+                <Button
+                  onClick={() => navigate(-1)}
+                  type="primary"
+                  size="large"
+                  className="ml-[10px]"
+                  key="create-custom-plan"
+                  style={{
+                    background: "#FAFAFA",
+                    borderColor: "#FAFAFA",
+                  }}
+                >
+                  <div className="flex items-center justify-between text-black">
+                    <div>&larr; Go back</div>
+                  </div>
+                </Button>
+              </div>
             }
             backIcon
             extra={

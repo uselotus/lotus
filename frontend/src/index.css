@@ -129,6 +129,9 @@ color: #C3986B !important;
 .ant-switch-checked {
   background-color: #cca43b;
 }
+.ant-page-header.ant-page-header-ghost {
+ height: 0px;
+}
 .ant-table-row.ant-table-row-level-0  td.arr:not(:first-of-type) {
 text-align: right  !important;
 }
