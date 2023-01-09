@@ -159,8 +159,15 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
                 plan_tags.map((tag, index) => (
                   <DropdownComponent.MenuItem
                     onSelect={() => {
-                      // should actually serve as delete
-                      const tags = [...plan.tags];
+                      const tags = [...plan_tags];
+                      const planTags = tags.filter(
+                        (el) => el.tag_name === tag.tag_name
+                      );
+
+                      createTagMutation({
+                        plan_id: plan.plan_id,
+                        tags: planTags,
+                      });
                     }}
                   >
                     <span key={index} className="flex gap-2 justify-between">
