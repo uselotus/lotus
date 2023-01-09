@@ -311,4 +311,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             return url
         except Exception as e:
             print(e)
+    # # else:
+    # invoice_number = invoice["invoice_number"]
+    # doc.save("image_files/invoice_pdf_" + invoice_number + ".pdf")
     return ""
