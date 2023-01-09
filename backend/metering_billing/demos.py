@@ -12,6 +12,7 @@ from faker import Faker
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
     calculate_end_date,
@@ -100,6 +101,7 @@ def setup_demo3(
             organization.delete()
             return
     organization = user.organization
+    PAYMENT_PROVIDER_MAP[PAYMENT_PROVIDERS.STRIPE].initialize_settings(organization)
     big_customers = []
     for _ in range(1):
         customer = Customer.objects.create(
