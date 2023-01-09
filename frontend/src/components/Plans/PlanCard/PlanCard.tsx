@@ -159,14 +159,17 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
                 plan_tags.map((tag, index) => (
                   <DropdownComponent.MenuItem
                     onSelect={() => {
-                      const tags = [...plan_tags];
-                      const planTags = tags.filter(
+                      const planTags = [...plan.tags];
+                      const orgTags = [...plan_tags];
+
+                      const planTagsFromOrg = orgTags.filter(
                         (el) => el.tag_name === tag.tag_name
                       );
-
+                      const tags = [...planTags, ...planTagsFromOrg];
+                      console.log(tags);
                       createTagMutation({
                         plan_id: plan.plan_id,
-                        tags: planTags,
+                        tags,
                       });
                     }}
                   >
