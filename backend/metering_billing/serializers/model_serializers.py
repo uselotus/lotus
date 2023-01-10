@@ -238,6 +238,7 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
             data["organization_type"] = Organization.OrganizationType.DEVELOPMENT
         elif data["organization_type"] == "production":
             data["organization_type"] = Organization.OrganizationType.PRODUCTION
+        return data
 
     def create(self, validated_data):
         existing_organization = self.context["organization"]
