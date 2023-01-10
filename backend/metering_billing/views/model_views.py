@@ -644,14 +644,6 @@ class PlanViewSet(api_views.PlanViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @extend_schema(responses=PlanDetailSerializer(many=True))
-    def list(self, request, *args, **kwargs):
-        super(PlanViewSet, self).list(request, *args, **kwargs)
-
-    @extend_schema(responses=PlanDetailSerializer)
-    def retrieve(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
-
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
             user = self.request.user
