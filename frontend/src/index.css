@@ -92,7 +92,9 @@ a {
   color: #cca43b;
   text-decoration: none;
 }
-
+.ant-modal {
+  min-height: 60%;
+}
 .ant-modal-title {
   font-style: normal;
   font-weight: 700;

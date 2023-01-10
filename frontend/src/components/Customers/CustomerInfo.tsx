@@ -194,7 +194,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col mb-8 ">
+    <div className="flex flex-col mb-8">
       <div className="grid grid-cols-2 items-center justify-between mb-2 pb-4 pt-4 ">
         <h2 className="pb-4 pt-4 font-bold text-main">Customer Details</h2>
         <div className="">

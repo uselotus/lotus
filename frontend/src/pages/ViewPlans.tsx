@@ -14,6 +14,7 @@ import {
 import { PageLayout } from "../components/base/PageLayout";
 import { FeatureType } from "../types/feature-type";
 import PlanCard from "../components/Plans/PlanCard/PlanCard";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const ViewPlans: FC = () => {
   const navigate = useNavigate();
@@ -123,15 +124,22 @@ const ViewPlans: FC = () => {
       <Tabs defaultActiveKey="0" size="large">
         <Tabs.TabPane tab="All" key="0">
           <div className="flex flex-col">
-            <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-              {allPlans?.map((item, key) => (
-                <PlanCard
-                  createTagMutation={createTag.mutate}
-                  plan={item}
-                  key={key}
-                />
-              ))}
-            </div>
+            {data ? (
+              <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                {allPlans?.map((item, key) => (
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
             <div className="mt-12">
               {allCustom?.length > 0 && (
                 <h2 className="text-center text-bold mb-4">Custom Plans</h2>
@@ -152,15 +160,22 @@ const ViewPlans: FC = () => {
 
         <Tabs.TabPane tab="Monthly" key="1">
           <div className="flex flex-col">
-            <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-              {monthlyPlans?.map((item, key) => (
-                <PlanCard
-                  createTagMutation={createTag.mutate}
-                  plan={item}
-                  key={key}
-                />
-              ))}
-            </div>
+            {data ? (
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                {monthlyPlans?.map((item, key) => (
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
             <div className="mt-12">
               {monthlyCustom?.length > 0 && (
                 <h2 className="text-center">Custom Plans</h2>
@@ -181,15 +196,22 @@ const ViewPlans: FC = () => {
 
         <Tabs.TabPane tab="Quarterly" key="2">
           <div className="flex flex-col">
-            <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-              {quarterlyPlans?.map((item, key) => (
-                <PlanCard
-                  createTagMutation={createTag.mutate}
-                  plan={item}
-                  key={key}
-                />
-              ))}
-            </div>
+            {data ? (
+              <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                {quarterlyPlans?.map((item, key) => (
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
             <div className="mt-12">
               {quarterlyCustom?.length > 0 && (
                 <h2 className="text-center">Custom Plans</h2>
@@ -208,15 +230,22 @@ const ViewPlans: FC = () => {
         </Tabs.TabPane>
         <Tabs.TabPane tab="Yearly" key="3">
           <div className="flex flex-col">
-            <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-              {yearlyPlans?.map((item, key) => (
-                <PlanCard
-                  createTagMutation={createTag.mutate}
-                  plan={item}
-                  key={key}
-                />
-              ))}
-            </div>
+            {data ? (
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                {yearlyPlans?.map((item, key) => (
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
             <div className="mt-12">
               {yearlyCustom?.length > 0 && (
                 <h2 className="text-center">Custom Plans</h2>
