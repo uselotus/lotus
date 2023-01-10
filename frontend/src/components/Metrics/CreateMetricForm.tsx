@@ -223,7 +223,7 @@ const CreateMetricForm = (props: {
             >
               <Radio value="counter">Counter</Radio>
               <Radio value="gauge">Gauge</Radio>
-              {/* <Radio value="custom">Custom</Radio> */}
+              <Radio value="custom">Custom</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item label="Does this metric represent a cost?">
