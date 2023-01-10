@@ -309,7 +309,7 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             new_properties = {**cur_properties, "address": address}
             instance.properties = new_properties
         plan_tags = validated_data.pop("plan_tags", None)
-        if plan_tags:
+        if plan_tags is not None:
             plan_tag_names_lower = [x["tag_name"].lower() for x in plan_tags]
             existing_tags = instance.tags.filter(tag_group=TAG_GROUP.PLAN)
             existing_tags_lower = [x.tag_name.lower() for x in existing_tags]
