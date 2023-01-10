@@ -213,7 +213,11 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
         </div>
 
         <div className="px-4 py-2">
-          <PlanComponents components={selectedVersion.components} />
+          <PlanComponents
+            components={selectedVersion.components}
+            alerts={selectedVersion.alerts}
+            plan_version_id={selectedVersion.version_id}
+          />
         </div>
         <div className="px-4 py-2">
           <PlanFeatures features={selectedVersion.features} />

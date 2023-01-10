@@ -1,12 +1,13 @@
 // @ts-ignore
 import React, { FC, useState } from "react";
 import "./PlanDetails.css";
-import { InputNumber, Table, Modal } from "antd";
+import { InputNumber, Table, Modal, Button } from "antd";
 import { Component, Tier } from "../../../types/plan-type";
 import { PricingUnit } from "../../../types/pricing-unit-type";
 import { useMutation, QueryClient } from "react-query";
 import { Plan } from "../../../api/api";
 import { AlertType, CreateAlertType } from "../../../types/alert-type";
+import { toast } from "react-toastify";
 
 interface PlanComponentsProps {
   components?: Component[];
@@ -95,17 +96,19 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   const submitAlertModal = (component: Component, usage_alert_id?: string) => {
     if (isCreateAlert) {
       createAlertMutation.mutate({
-        plan_version_id: "s",
-        metric_id: "Test",
+        plan_version_id: plan_version_id,
+        metric_id: component.billable_metric.metric_id,
         threshold: alertThreshold,
       });
     } else {
-      deleteAlertMutation.mutate({
-        usage_alert_id: "2",
-      });
+      if (usage_alert_id !== undefined) {
+        deleteAlertMutation.mutate({
+          usage_alert_id: usage_alert_id,
+        });
+      }
       createAlertMutation.mutate({
-        plan_version_id: "s",
-        metric_id: "Test",
+        plan_version_id: plan_version_id,
+        metric_id: component.billable_metric.metric_id,
         threshold: alertThreshold,
       });
     }
@@ -161,12 +164,17 @@ const PlanComponents: FC<PlanComponentsProps> = ({
               </div>
               <div>
                 <div
-                  className="flex hover:bg-background hover:bg-opacity-30"
+                  className="flex hover:bg-black hover:bg-opacity-10 w-full"
                   onClick={() => {
-                    findAlertForComponent(component, alerts) !== undefined
-                      ? setIsCreateAlert(false)
-                      : setIsCreateAlert(true);
-                    showModal();
+                    if (component.billable_metric.metric_type !== "counter") {
+                      toast.error("Only counter metrics can create alerts");
+                    } else {
+                      findAlertForComponent(component, alerts) !== undefined
+                        ? setIsCreateAlert(false)
+                        : setIsCreateAlert(true);
+                      setCurrentComponent(component);
+                      showModal();
+                    }
                   }}
                 >
                   <svg
@@ -174,13 +182,14 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     viewBox="0 0 24 24"
                     width="24"
                     height="24"
+                    className="mr-2"
                   >
                     <path fill="none" d="M0 0h24v24H0z" />
                     <path d="M20 17h2v2H2v-2h2v-7a8 8 0 1 1 16 0v7zm-2 0v-7a6 6 0 1 0-12 0v7h12zm-9 4h6v2H9v-2z" />
                   </svg>
                   {findAlertForComponent(component, alerts) !== undefined ? (
                     <p>
-                      Reaches{" "}
+                      Reaches:{" "}
                       {findAlertForComponent(component, alerts).threshold}
                     </p>
                   ) : (
@@ -188,29 +197,35 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                   )}
                 </div>
               </div>
-              <Modal
-                title="Set Alert"
-                visible={isModalVisible}
-                onOk={() => submitAlertModal(component)}
-                okText={isCreateAlert ? "Create" : "Update"}
-                onCancel={() => setIsModalVisible(false)}
-              >
-                <div>
-                  <div> {component.billable_metric.metric_name}</div> reaches{" "}
-                  <InputNumber
-                    min={0}
-                    defaultValue={0}
-                    onChange={(value) => {
-                      if (value) {
-                        setAlertThreshold(value);
-                      }
-                    }}
-                    value={alertThreshold}
-                  />
-                </div>
-              </Modal>
             </div>
           ))}
+          <Modal
+            title="Set Alert"
+            visible={isModalVisible}
+            onOk={() => submitAlertModal(currentComponent)}
+            okText={isCreateAlert ? "Create" : "Update"}
+            onCancel={() => setIsModalVisible(false)}
+            footer={[
+              <Button key="back" onClick={() => setIsModalVisible(false)}>
+                Delete
+              </Button>,
+            ]}
+          >
+            <div className="flex flex-row justify-center items-center">
+              {currentComponent?.billable_metric.metric_name} reaches:{"  "}
+              <InputNumber
+                min={0}
+                defaultValue={0}
+                className="ml-2 mr-2"
+                onChange={(value) => {
+                  if (value) {
+                    setAlertThreshold(value);
+                  }
+                }}
+                value={alertThreshold}
+              />
+            </div>
+          </Modal>
         </div>
       ) : (
         <div className="flex items-center justify-start flex-wrap">
