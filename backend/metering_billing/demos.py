@@ -991,26 +991,23 @@ def setup_demo4(
                 sub_start = beginning + relativedelta(months=months)
                 plan = plan_dict[cust_set_name][months]
                 if cust_set_name == "big":
-                    users_mean, users_sd = 4.5, 0.5
-                    scale = (
-                        1.1
-                        if plan == bp_basic_events
-                        else (0.95 if plan == bp_pro_events else 0.80)
-                    )
-                    ct_mean, ct_sd = 0.1, 0.02
+                    if plan == bp_basic_both:
+                        n_analytics = max(
+                            min(int(random.gauss(1500, 300) // 1), 2000), 1
+                        )
+                        n_recordings = max(
+                            int(random.gauss(200, 20) // 1), 1
+                        )
+                    elif plan == bp_pro_both:
+                        n_analytics = max(
+                            min(int(random.gauss(8500, 750) // 1), 10_000), 1
+                        )
+                        n_recordings = max(
+                            int(random.gauss(600, 20) // 1), 1
+                        )
                 elif cust_set_name == "medium":
-                    scale = (
-                        1.2
-                        if plan == bp_pro_both
-                        else (1 if plan == bp_experimental else 0.85)
-                    )
                     ct_mean, ct_sd = 0.075, 0.01
                 elif cust_set_name == "small":
-                    scale = (
-                        1.4
-                        if plan == bp_pro_both
-                        else (1.1 if plan == bp_experimental else 0.95)
-                    )
                     ct_mean, ct_sd = 0.065, 0.01
 
                 sub, sr = make_subscription_and_subscription_record(
@@ -1020,45 +1017,45 @@ def setup_demo4(
                     start_date=sub_start,
                     is_new=months == 0,
                 )
-                word_count = 0
-                while word_count < word_limit:
-                    event_words = random.gauss(325, 60)
-                    if word_count + event_words > word_limit:
-                        break
-                    compute_time = event_words * random.gauss(0.1, 0.02)
-                    language = random.choice(languages)
-                    subsection = (
-                        1 if plan == free_bp else np.random.exponential(scale=scale)
-                    )
-                    subsection = str(subsection // 1)
-                    for tc in random_date(sub.start_date, sub.end_date, 1):
-                        tc = tc
-                    Event.objects.create(
-                        organization=organization,
-                        customer=customer,
-                        event_name="generate_text",
-                        time_created=tc,
-                        idempotency_id=str(uuid.uuid4().hex),
-                        properties={
-                            "language": language,
-                            "subsection": subsection,
-                            "compute_time": compute_time,
-                            "words": event_words,
-                        },
-                        cust_id=customer.customer_id,
-                    )
-                    Event.objects.create(
-                        organization=organization,
-                        customer=customer,
-                        event_name="computation",
-                        time_created=tc,
-                        idempotency_id=str(uuid.uuid4().hex),
-                        properties={
-                            "cost": abs(compute_time * random.gauss(ct_mean, ct_sd)),
-                        },
-                        cust_id=customer.customer_id,
-                    )
-                    word_count += event_words
+                n = max(int(random.gauss(6, 1.5) // 1), 1)
+                baker.make(
+                    Event,
+                    organization=organization,
+                    customer=customer,
+                    event_name="log_num_seats",
+                    properties=gaussian_users(n, users_mean, users_sd, max_users),
+                    time_created=random_date(sub.start_date, sub.end_date, n),
+                    idempotency_id=itertools.cycle(
+                        [str(uuid.uuid4().hex) for _ in range(n)]
+                    ),
+                    _quantity=n,
+                    cust_id=customer.customer_id,
+                )
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="generate_text",
+                    time_created=tc,
+                    idempotency_id=str(uuid.uuid4().hex),
+                    properties={
+                        "language": language,
+                        "subsection": subsection,
+                        "compute_time": compute_time,
+                        "words": event_words,
+                    },
+                    cust_id=customer.customer_id,
+                )
+                Event.objects.create(
+                    organization=organization,
+                    customer=customer,
+                    event_name="computation",
+                    time_created=tc,
+                    idempotency_id=str(uuid.uuid4().hex),
+                    properties={
+                        "cost": abs(compute_time * random.gauss(ct_mean, ct_sd)),
+                    },
+                    cust_id=customer.customer_id,
+                )
                 max_users = max(
                     x.range_end
                     for x in plan.plan_components.get(
