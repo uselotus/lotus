@@ -89,13 +89,6 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         if ((e.target as HTMLInputElement).nodeName === "DIV") gotoPlanDetail();
       }}
     >
-      <div className="absolute right-3" onClick={(e) => e.stopPropagation()}>
-        <Dropdown overlay={planMenu} trigger={["click"]}>
-          <Button type="text" size="small" onClick={(e) => e.preventDefault()}>
-            <MoreOutlined />
-          </Button>
-        </Dropdown>
-      </div>
       <Typography.Title className="pt-4 flex font-alliance" level={2}>
         <span>{plan.plan_name}</span>
         <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
