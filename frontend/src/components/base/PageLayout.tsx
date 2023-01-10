@@ -21,13 +21,13 @@ export const PageLayout = ({
   return (
     <div>
       <SlideOver />
-      {/* {hasBackButton && backButton} */}
+
       <Heading />
       <PageHeader
         title={
           <div>
             {hasBackButton && backButton}
-            <h1 className=" text-xl">{headingText}</h1>
+            <h1 className="text-xl">{headingText}</h1>
           </div>
         }
       />
@@ -35,7 +35,11 @@ export const PageLayout = ({
       <div className="mx-10 mt-16">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (
-            <h1 className={hasBackButton ? "font-main mt-20" : "font-main"}>
+            <h1
+              className={
+                hasBackButton ? "font-main mt-20 ml-[10px]" : "font-main"
+              }
+            >
               {props.title}
             </h1>
           ) : (

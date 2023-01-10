@@ -190,7 +190,7 @@ const PlanDetails: FC = () => {
               ) : (
                 <div>
                   {plan.plan_name}
-                  <span className="block mt-4 text-neutral-500 text-base">
+                  <span className="block mt-4 ml-2 text-neutral-500 text-base">
                     {plan.display_version.description}
                   </span>
                 </div>
@@ -224,6 +224,7 @@ const PlanDetails: FC = () => {
                   type="primary"
                   size="large"
                   key="create-custom-plan"
+                  className="hover:!bg-primary-700"
                   style={{ background: "#C3986B", borderColor: "#C3986B" }}
                 >
                   <div className="flex items-center justify-between text-white">

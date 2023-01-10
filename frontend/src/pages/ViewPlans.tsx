@@ -107,6 +107,7 @@ const ViewPlans: FC = () => {
           type="primary"
           size="large"
           key="create-plan"
+          className="hover:!bg-primary-700"
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
         >
           <div className="flex items-center  justify-between text-white">

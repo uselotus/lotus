@@ -69,7 +69,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
     },
     {
       onSuccess: () => {
-        queryClient.invalidateQueries("organization");
+        queryClient.invalidateQueries();
         toast.success("Successfully switched environment");
       },
       onError: (error: ErrorResponseMessage) => {
