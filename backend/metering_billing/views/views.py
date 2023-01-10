@@ -459,7 +459,7 @@ class ChangeUserOrganizationView(APIView):
         Get the current settings for the organization.
         """
         user = request.user
-        new_organization_id = request.query_params.get("transfer_to_organization_id")
+        new_organization_id = request.data.get("transfer_to_organization_id")
         if not new_organization_id:
             raise ValidationError("No organization ID provided")
         new_organization = Organization.objects.filter(
