@@ -127,6 +127,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "linked_organizations",
             "current_user",
             "address",
+            "team_name",
         )
 
     users = serializers.SerializerMethodField()
@@ -137,6 +138,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
     linked_organizations = serializers.SerializerMethodField()
     current_user = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField(required=False, allow_null=True)
+    team_name = serializers.SerializerMethodField()
+
+    def get_team_name(self, obj) -> str:
+        team = obj.team
+        if team is None:
+            return obj.organization_name
+        return team.name
 
     def get_address(
         self, obj
