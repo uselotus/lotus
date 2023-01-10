@@ -96,8 +96,19 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
           </Button>
         </Dropdown>
       </div>
-      <Typography.Title className="pt-4 font-alliance" level={2}>
-        {plan.plan_name}
+      <Typography.Title className="pt-4 flex font-alliance" level={2}>
+        <span>{plan.plan_name}</span>
+        <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+          <Dropdown overlay={planMenu} trigger={["click"]}>
+            <Button
+              type="text"
+              size="small"
+              onClick={(e) => e.preventDefault()}
+            >
+              <MoreOutlined />
+            </Button>
+          </Dropdown>
+        </span>
       </Typography.Title>
 
       <div>

@@ -95,10 +95,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
             {record.payment_status.toUpperCase()}
           </Tag>
           {!record.external_payment_obj_type && (
-            <div
-              className="absolute right-3"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
               <Dropdown
                 overlay={
                   <Menu>

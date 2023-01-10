@@ -192,7 +192,9 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
         <div className="separator pt-4" />
 
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
-          <Typography.Title level={2}>Price Adjustments</Typography.Title>
+          <Typography.Title className="!text-[18px]" level={2}>
+            Price Adjustments
+          </Typography.Title>
           <div className="mb-5 mt-3 px-4 font-main self-center">
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
             <div className="text-card-grey">
