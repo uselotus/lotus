@@ -1,6 +1,7 @@
 import { Layout, PageHeader, PageHeaderProps } from "antd";
 // @ts-ignore
 import React from "react";
+import SlideOver from "../SlideOver/SlideOver";
 import Heading from "./Heading/Heading";
 
 const headingText: string =
@@ -19,6 +20,7 @@ export const PageLayout = ({
 }: PageLayoutProps) => {
   return (
     <div>
+      <SlideOver />
       {/* {hasBackButton && backButton} */}
       <Heading hasBackButton={hasBackButton} backButton={backButton} />
       <PageHeader
@@ -29,6 +31,7 @@ export const PageLayout = ({
           </div>
         }
       />
+
       <div className="mx-10 mt-10">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (

@@ -4,6 +4,7 @@ import { RightOutlined } from "@ant-design/icons";
 import Avatar from "../Avatar/Avatar";
 import Badge from "../Badges/Badges";
 import useGlobalStore from "../../../stores/useGlobalstore";
+import useToggleSlideOver from "../../../stores/useToggleSlideOver";
 interface HeadingProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;
@@ -12,6 +13,7 @@ interface HeadingProps {
 const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
   const { current_user, environment } = useGlobalStore((state) => state.org);
   const { pathname } = useLocation();
+  const setOpen = useToggleSlideOver((state) => state.setOpen);
   const currentPath = pathname.split("/")[1];
   const isPlansPage = currentPath === "plans";
   return (
@@ -30,27 +32,20 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
         </div>
         <div className="flex items-center ml-[58%]">
           <div className="mr-10">
-            {environment === "production" ? (
-              <Badge>
-                <Badge.Dot />
-                <Badge.Content>
-                  <span className="flex gap-2 ml-2 justify-center items-center">
-                    <span className="text-sm">Live</span>
-                    <RightOutlined className="text-[10px]" />
-                  </span>
-                </Badge.Content>
-              </Badge>
-            ) : (
-              <Badge className="bg-blue-100 text-blue-800">
-                <Badge.Dot fill="#60A5FA" />
-                <Badge.Content>
-                  <span className="flex gap-2 ml-2 justify-center items-center">
-                    <span className="text-sm">{environment}</span>
-                    <RightOutlined className="text-[10px]" />
-                  </span>
-                </Badge.Content>
-              </Badge>
-            )}
+            <Badge
+              onClick={setOpen}
+              className={
+                environment !== "production" ? "bg-blue-100 text-blue-800" : ""
+              }
+            >
+              <Badge.Dot fill={environment !== "production" ? "#60A5FA" : ""} />
+              <Badge.Content>
+                <span className="flex gap-2 ml-2 justify-center items-center">
+                  <span className="text-sm">{environment}</span>
+                  <RightOutlined className="text-[10px]" />
+                </span>
+              </Badge.Content>
+            </Badge>
           </div>
           <div
             className={`flex gap-4 items-center p-4 ${

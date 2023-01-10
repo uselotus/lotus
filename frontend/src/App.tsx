@@ -48,6 +48,7 @@ function App() {
             .organization_type,
           plan_tags: data.plan_tags,
           current_user: data.current_user,
+          linked_organizations: data.linked_organizations,
         };
 
         setOrgInfoToStore(storeOrgObject);

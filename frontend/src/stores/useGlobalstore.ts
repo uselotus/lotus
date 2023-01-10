@@ -16,6 +16,7 @@ interface IOrgStoreType {
   environment?: string;
   plan_tags: PlanType["tags"];
   current_user: { username: string };
+  linked_organizations?: OrganizationType["linked_organizations"];
 }
 
 const useGlobalStore = create<GlobalStoreState>((set) => ({
@@ -27,6 +28,7 @@ const useGlobalStore = create<GlobalStoreState>((set) => ({
     environment: undefined,
     current_user: { username: "" },
     plan_tags: [],
+    linked_organizations: undefined,
   },
   setUsername: (username: string) => set({ username }),
   setOrgInfo: (org: IOrgStoreType) => set({ org }),
