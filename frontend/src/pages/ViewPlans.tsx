@@ -100,7 +100,7 @@ const ViewPlans: FC = () => {
   return (
     <PageLayout
       title="Plans"
-      className="font-arimo text-[24px]"
+      className="text-[24px]"
       extra={[
         <Button
           onClick={navigateCreatePlan}
@@ -119,7 +119,7 @@ const ViewPlans: FC = () => {
         </Button>,
       ]}
     >
-      <Tabs className="font-arimo" defaultActiveKey="0" size="large">
+      <Tabs defaultActiveKey="0" size="large">
         <Tabs.TabPane tab="All" key="0">
           <div className="flex flex-col">
             <div className="grid gap-6  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">

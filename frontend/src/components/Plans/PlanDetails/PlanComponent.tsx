@@ -217,7 +217,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
 
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
-      <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 font-arimo !text-[18px] items-center grid-cols-1 md:grid-cols-2">
+      <Typography.Title className="pt-4 whitespace-pre-wrap grid gap-4 !text-[18px] items-center grid-cols-1 md:grid-cols-2">
         <div>Plan Information</div>
         <div>
           <StateTabs
@@ -233,7 +233,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
       <div className="grid  items-center grid-cols-1 md:grid-cols-2">
         <div className="w-[240px]">
           <div className="flex items-center text-card-text justify-between mb-1">
-            <div className=" font-normal font-arimo whitespace-nowrap leading-4">
+            <div className=" font-normal whitespace-nowrap leading-4">
               Recurring Price
             </div>
             <div className="flex gap-1">
@@ -243,7 +243,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal font-arimo whitespace-nowrap leading-4">
+            <div className="font-normal whitespace-nowrap leading-4">
               Plan Duration
             </div>
             <div className="!text-card-grey">
@@ -252,7 +252,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal font-arimo whitespace-nowrap leading-4">
+            <div className="font-normal whitespace-nowrap leading-4">
               Created At
             </div>
             <div className="!text-card-grey">
@@ -264,7 +264,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
 
         <div className="w-[254px] ml-auto">
           <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-normal font-arimo whitespace-nowrap leading-4">
+            <div className=" font-normal whitespace-nowrap leading-4">
               Plan on next cycle
             </div>
             <div className="flex gap-1 ">
@@ -278,7 +278,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal font-arimo whitespace-nowrap leading-4">
+            <div className="font-normal whitespace-nowrap leading-4">
               Recurring Bill Type
             </div>
             <div>
@@ -297,7 +297,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
           </div>
 
           <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-            <div className="font-normal font-arimo whitespace-nowrap leading-4">
+            <div className="font-normal whitespace-nowrap leading-4">
               Schedule
             </div>
             <div>
@@ -321,7 +321,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     <div className="">
       {components && components.length > 0 ? (
         <div className="min-h-[200px] mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
-          <Typography.Title className="pt-4 whitespace-pre-wrap font-arimo !text-[18px]">
+          <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px]">
             Added Components
           </Typography.Title>
           <div>

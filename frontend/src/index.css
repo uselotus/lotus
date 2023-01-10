@@ -6,6 +6,8 @@
 @tailwind utilities;
 
 
+
+
 @font-face {
     font-family: 'Menlo Regular';
     font-style: normal;
@@ -34,7 +36,7 @@
     font-family: Satoshi, serif;
 }
 .font-alliance {
-  font-family: 'Alliance No.2 Regular';
+  font-family:  "Alliance No.2";
 }
 
 
@@ -45,6 +47,7 @@ svg {
 
 :root {
   --toastify-color-success: #cca43b;
+  font-family: "Alliance No.2", sans-serif !important;
 }
 
 h1 {
@@ -52,6 +55,7 @@ h1 {
   font-weight: 700;
   font-size: 32px;
   line-height: 100%;
+  font-family: "Alliance No.2", sans-serif;
   /* identical to box height, or 32px */
 
   /* Black */
@@ -63,6 +67,7 @@ h2 {
   font-size: 26px;
   line-height: 100%;
   color: #1d1d1f;
+  font-family: "Alliance No.2", sans-serif;
   font-weight: 700;
   font-style: normal;
 }
@@ -70,13 +75,14 @@ h2 {
 h3 {
   font-style: normal;
   font-weight: 500;
+  font-family: "Alliance No.2", sans-serif;
   font-size: 16px;
   line-height: 100%;
 }
 
 html,
 body {
-  font-family: 'Alliance No 2', sans-serif;
+  font-family:  "Alliance No.2", sans-serif;
   padding: 0;
   margin: 0;
   font-weight: 500;
