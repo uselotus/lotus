@@ -1013,7 +1013,7 @@ class UsageAlertSerializer(serializers.ModelSerializer):
     plan_version = LightweightPlanVersionSerializer()
 
 
-class PlanVersionSerializer(api_serializers.PlanVersionSerializer):
+class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
     class Meta(api_serializers.PlanVersionSerializer.Meta):
         fields = api_serializers.PlanVersionSerializer.Meta.fields + (
             "version_id",
@@ -1056,14 +1056,15 @@ class LightweightCustomerSerializer(api_serializers.LightweightCustomerSerialize
         fields = api_serializers.LightweightCustomerSerializer.Meta.fields
 
 
-class PlanSerializer(api_serializers.PlanSerializer):
+class PlanDetailSerializer(api_serializers.PlanSerializer):
     class Meta(api_serializers.PlanSerializer.Meta):
         fields = api_serializers.PlanSerializer.Meta.fields + ("versions",)
 
+    display_version = PlanVersionDetailSerializer()
     versions = serializers.SerializerMethodField()
 
-    def get_versions(self, obj) -> PlanVersionSerializer(many=True):
-        return PlanVersionSerializer(
+    def get_versions(self, obj) -> PlanVersionDetailSerializer(many=True):
+        return PlanVersionDetailSerializer(
             obj.versions.all().order_by("version"), many=True
         ).data
 
@@ -1291,10 +1292,13 @@ class UserActionSerializer(OrganizationUserSerializer):
         return obj.username
 
 
-class PlanVersionActionSerializer(PlanVersionSerializer):
-    class Meta(PlanVersionSerializer.Meta):
+class PlanVersionActionSerializer(PlanVersionDetailSerializer):
+    class Meta(PlanVersionDetailSerializer.Meta):
         model = PlanVersion
-        fields = PlanVersionSerializer.Meta.fields + ("string_repr", "object_type")
+        fields = PlanVersionDetailSerializer.Meta.fields + (
+            "string_repr",
+            "object_type",
+        )
 
     string_repr = serializers.SerializerMethodField()
     object_type = serializers.SerializerMethodField()
@@ -1306,10 +1310,10 @@ class PlanVersionActionSerializer(PlanVersionSerializer):
         return "Plan Version"
 
 
-class PlanActionSerializer(PlanSerializer):
-    class Meta(PlanSerializer.Meta):
+class PlanActionSerializer(PlanDetailSerializer):
+    class Meta(PlanDetailSerializer.Meta):
         model = Plan
-        fields = PlanSerializer.Meta.fields + ("string_repr", "object_type")
+        fields = PlanDetailSerializer.Meta.fields + ("string_repr", "object_type")
 
     string_repr = serializers.SerializerMethodField()
     object_type = serializers.SerializerMethodField()
