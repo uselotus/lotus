@@ -27,7 +27,7 @@ const SlideOverCard: React.FC<SlideOverCardProps> = () => {
                   : "text-emerald-800"
               }
             >
-              {org.organization_type} Environment
+              {org.organization_name} Environment
             </span>
           </div>
           <div className="ml-auto">

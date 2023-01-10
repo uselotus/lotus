@@ -21,11 +21,12 @@ import {
 interface SlideOverProps {}
 
 const SlideOver: React.FC<SlideOverProps> = () => {
-  const { environment, organization_name, linked_organizations } =
+  const { environment, linked_organizations, organization_name } =
     useGlobalStore((state) => state.org);
   const open = useToggleSlideOver((state) => state.open);
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const [isCreating, setIsCreating] = useState(false);
+  const [orgName, setOrgName] = useState("");
   const [orgType, setOrgType] = useState("");
   const [currencyCode, setCurrencyCode] = useState("");
   const queryClient = useQueryClient();
@@ -65,7 +66,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   const switchOrgMutation = useMutation(
     () => {
       const org_id = linked_organizations!.filter(
-        (org) => org.organization_type === environment
+        (org) => org.organization_type === organization_name
       )[0].organization_id;
       return Organization.switchOrg(org_id);
     },
@@ -81,7 +82,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   );
   const submitHandler = () => {
     const variables = {
-      organization_name,
+      organization_name: orgName,
       default_currency_code: currencyCode,
       organization_type: orgType as "development" | "production",
     };
@@ -165,6 +166,24 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                     <SlideOverCard />
                   ) : (
                     <div className="flex flex-col gap-6">
+                      <div>
+                        <label
+                          htmlFor="organization_name"
+                          className="block text-sm font-medium text-[#9E9E9E]"
+                        >
+                          Name
+                        </label>
+                        <div className="mt-1">
+                          <input
+                            type="text"
+                            name="organization_name"
+                            id="organization_name"
+                            onChange={(e) => setOrgName(e.target.value)}
+                            className="block w-[90%] rounded-md  text-[#9E9E9E] p-6 bg-gold-100 outline-none  shadow-sm  sm:text-sm"
+                            placeholder="Enter name here..."
+                          />
+                        </div>
+                      </div>
                       <Select>
                         <Select.Label className="text-[#9E9E9E] mb-2">
                           Name
@@ -202,6 +221,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                         onClick={submitHandler}
                         type="primary"
                         size="large"
+                        className="hover:!bg-primary-700"
                         key="create-org"
                         style={{
                           background: "#C3986B",
