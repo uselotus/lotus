@@ -22,7 +22,7 @@ export const createTags = (tag: string) => {
     },
     {
       tag_color: "bg-blue-600",
-      tag_hex: "##2563eb",
+      tag_hex: "#2563eb",
       tag_name: "",
     },
     {
