@@ -10,7 +10,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
-from metering_billing.demos import setup_demo3
+from metering_billing.demos import setup_demo4
 from metering_billing.exceptions import (
     DuplicateOrganization,
     DuplicateUser,
@@ -378,14 +378,14 @@ class DemoRegisterView(LoginViewMixin, APIView):
         if existing_user_num > 0:
             raise DuplicateUser("User with email already exists")
 
-        user = setup_demo3(
+        user = setup_demo4(
             company_name,
             username,
             email,
             password,
             org_type=Organization.OrganizationType.EXTERNAL_DEMO,
         )
-        logger.info("setup_demo3 took %s seconds", time.time() - start)
+        logger.info("setup_demo4 took %s seconds", time.time() - start)
         logger.info(f"Demo user {user} created")
         user.organization.organization_type = (
             Organization.OrganizationType.EXTERNAL_DEMO
