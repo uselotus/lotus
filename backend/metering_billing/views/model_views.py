@@ -987,3 +987,36 @@ class OrganizationViewSet(
 
 class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSet):
     pass
+
+
+class AddOnViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated & ValidOrganization]
+    http_method_names = ["get", "head", "post"]
+    lookup_field = "addon_id"
+    queryset = Plan.addons.all()
+
+    def get_object(self):
+        if "pk" in self.kwargs:
+            self.lookup_field = "pk"
+        elif "addon_id" in self.kwargs:
+            self.lookup_field = "plan_id"
+
+        return super(AddOnViewSet, self).get_object()
+
+    def get_serializer_class(self):
+        # if self.action == "create":
+        #     return AddOnCreateSerializer
+        return AddOnSerializer
+
+    def get_queryset(self):
+        filter_kwargs = {"organization": self.request.organization}
+        qs = self.queryset
+        return qs.filter(**filter_kwargs)
+
+    @extend_schema(responses=AddOnSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        addon_data = AddOnSerializer(instance).data
+        return Response(addon_data, status=status.HTTP_201_CREATED)

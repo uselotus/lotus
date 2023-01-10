@@ -19,7 +19,7 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )
-from metering_billing.utils import calculate_end_date, now_utc
+from metering_billing.utils import addon_uuid, addon_version_uuid, now_utc
 from metering_billing.utils.enums import *
 from rest_framework import serializers
 from rest_framework.exceptions import APIException, ValidationError
@@ -1051,7 +1051,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
         )
         extra_kwargs = {
             "plan_name": {"write_only": True},
-            "plan_duration": {"write_only": True},
+            "plan_duration": {"write_only": True, "required": True},
             "plan_id": {"write_only": True},
             "status": {"write_only": True},
             "initial_external_links": {"write_only": True},
@@ -1425,9 +1425,7 @@ class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
             == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
         ):
             if not isinstance(setting_values, bool):
-                raise serializers.ValidationError(
-                    "Setting values must be a boolean"
-                )
+                raise serializers.ValidationError("Setting values must be a boolean")
             setting_values = {"value": setting_values}
         instance.setting_values = setting_values
         instance.save()
@@ -1524,3 +1522,146 @@ class CustomerBalanceAdjustmentSerializer(
 ):
     class Meta(api_serializers.CustomerBalanceAdjustmentSerializer.Meta):
         fields = api_serializers.CustomerBalanceAdjustmentSerializer.Meta.fields
+
+
+class AddOnSerializer(api_serializers.AddOnSerializer):
+    pass
+
+
+class AddOnCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = (
+            "addon_name",
+            "description",
+            "flat_fee_billing_type",
+            "flat_rate",
+            "components",
+            "features",
+            "currency_code",
+        )
+        extra_kwargs = {
+            "addon_name": {"write_only": True},
+            "description": {"write_only": True},
+            "flat_fee_billing_type": {"write_only": True},
+            "flat_rate": {"write_only": True},
+            "components": {"write_only": True},
+            "features": {"write_only": True},
+            "currency_code": {"write_only": True},
+        }
+
+    addon_name = serializers.CharField(
+        help_text="The name of the add-on plan.",
+        source="plan_name",
+    )
+    description = serializers.CharField(
+        help_text="The description of the add-on plan.",
+    )
+    flat_fee_billing_type = serializers.CharField(
+        help_text="The flat fee billing type of the add-on plan.",
+    )
+    flat_rate = serializers.DecimalField(
+        help_text="The flat rate of the add-on plan.",
+        decimal_places=10,
+        max_digits=20,
+        default=0.0,
+    )
+    components = PlanComponentSerializer(many=True, allow_null=True, required=False)
+    features = FeatureSerializer(many=True, allow_null=True, required=False)
+    currency_code = SlugRelatedFieldWithOrganization(
+        slug_field="code",
+        queryset=PricingUnit.objects.all(),
+        allow_null=True,
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        # make sure every plan component has a unique metric
+        if data.get("plan_components"):
+            component_metrics = []
+            for component in data.get("plan_components"):
+                if component.get("billable_metric") in component_metrics:
+                    raise serializers.ValidationError(
+                        "Plan components must have unique metrics."
+                    )
+                else:
+                    component_metrics.append(component.get("metric"))
+        pricing_unit = data.pop("currency_code", None)
+        if pricing_unit is None:
+            no_flat_rate = data.get("flat_rate") == Decimal(0)
+            no_paid_components = True
+            for component in data.get("plan_components", []):
+                for tier in component["tiers"]:
+                    if tier["type"] != PRICE_TIER_TYPE.FREE:
+                        no_paid_components = False
+                        break
+                if not no_paid_components:
+                    break
+            if not (no_flat_rate and no_paid_components):
+                raise serializers.ValidationError(
+                    "A currency code is required for paid add-ons."
+                )
+        return data
+
+    def create(self, validated_data):
+        now = now_utc()
+        org = validated_data["organization"]
+        plan_create_data = {
+            "organization": org,
+            "plan_name": validated_data["addon_name"],
+            "status": PLAN_STATUS.ACTIVE,
+            "plan_id": addon_uuid(),
+            "created_by": validated_data["created_by"],
+            "created_on": now,
+            "plan_type": Plan.PlanType.addon,
+        }
+        plan = Plan.addons.create(**plan_create_data)
+
+        plan_version_data = {
+            "organization": org,
+            "plan": plan,
+            "description": validated_data["description"],
+            "flat_fee_billing_type": validated_data["flat_fee_billing_type"],
+            "status": PLAN_VERSION_STATUS.ACTIVE,
+            "flat_rate": validated_data["flat_rate"],
+            "created_by": validated_data["created_by"],
+            "created_on": now,
+            "version_id": addon_version_uuid(),
+            "version": 1,
+        }
+
+        pricing_unit = validated_data.pop("currency_code", None)
+        components_data = validated_data.pop("plan_components", [])
+        if len(components_data) > 0:
+            if pricing_unit is not None:
+                data = [
+                    {**component_data, "pricing_unit": pricing_unit}
+                    for component_data in components_data
+                ]
+            else:
+                data = components_data
+            components = PlanComponentSerializer(many=True).create(data)
+        else:
+            components = []
+        features_data = validated_data.pop("features", [])
+        billing_plan = PlanVersion.objects.create(
+            **plan_version_data, pricing_unit=pricing_unit
+        )
+        for component in components:
+            component.plan_version = billing_plan
+            component.save()
+        for feature_data in features_data:
+            feature_data["organization"] = org
+            description = feature_data.pop("description", None)
+            try:
+                f, created = Feature.objects.get_or_create(**feature_data)
+                if created and description:
+                    f.description = description
+                    f.save()
+            except Feature.MultipleObjectsReturned:
+                f = Feature.objects.filter(**feature_data).first()
+            billing_plan.features.add(f)
+        billing_plan.save()
+        plan.display_version = billing_plan
+        plan.save()
+        return plan

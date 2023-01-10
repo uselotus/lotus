@@ -453,6 +453,18 @@ def customer_balance_adjustment_uuid():
     return "custbaladj_" + str(uuid.uuid4().hex)
 
 
+def addon_uuid():
+    return "addon_" + str(uuid.uuid4().hex)
+
+
+def addon_version_uuid():
+    return "addon_vrs_" + str(uuid.uuid4().hex)
+
+
+def addon_sr_uuid():
+    return "addon_sr_" + str(uuid.uuid4().hex)
+
+
 def random_uuid():
     return str(uuid.uuid4().hex)
 

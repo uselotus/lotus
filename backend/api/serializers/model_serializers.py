@@ -10,6 +10,7 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )
+from metering_billing.utils import addon_sr_uuid
 from metering_billing.utils.enums import *
 from rest_framework import serializers
 
@@ -909,8 +910,6 @@ class SubscriptionRecordCreateSerializer(
             "subscription_filters",
             "customer_id",
             "plan_id",
-            "customer",
-            "billing_plan",
         )
 
     start_date = serializers.DateTimeField(
@@ -945,15 +944,6 @@ class SubscriptionRecordCreateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         help_text="The Lotus plan_id, found in the billing plan object",
-    )
-    # READ-ONLY
-    customer = LightweightCustomerSerializer(
-        read_only=True,
-        help_text="The customer object associated with this subscription.",
-    )
-    billing_plan = LightweightPlanVersionSerializer(
-        read_only=True,
-        help_text="The billing plan object associated with this subscription.",
     )
 
     def validate(self, data):
@@ -1389,3 +1379,326 @@ class CustomerBalanceAdjustmentFilterSerializer(serializers.Serializer):
         source="pricing_unit",
         help_text="Filter to adjustments in a specific currency",
     )
+
+
+class AddOnSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = (
+            "addon_name",
+            "addon_id",
+            "description",
+            "flat_fee_billing_type",
+            "flat_rate",
+            "components",
+            "features",
+            "currency",
+            "active_instances",
+        )
+        extra_kwargs = {
+            "addon_name": {"required": True},
+            "addon_id": {"required": True},
+            "description": {"required": True},
+            "flat_fee_billing_type": {"required": True},
+            "flat_rate": {"required": True},
+            "components": {"required": True},
+            "features": {"required": True},
+            "currency": {"required": True, "allow_null": True},
+            "active_subscriptions": {"required": True},
+        }
+
+    addon_name = serializers.CharField(
+        help_text="The name of the add-on plan.",
+        source="plan_name",
+    )
+    addon_id = serializers.CharField(
+        help_text="The ID of the add-on plan.",
+        source="plan_id",
+    )
+    description = serializers.CharField(
+        source="display_version.description",
+        help_text="The description of the add-on plan.",
+    )
+    flat_fee_billing_type = serializers.CharField(
+        source="display_version.flat_fee_billing_type",
+        help_text="The flat fee billing type of the add-on plan.",
+    )
+    flat_rate = serializers.DecimalField(
+        source="display_version.flat_rate",
+        help_text="The flat rate of the add-on plan.",
+        decimal_places=10,
+        max_digits=20,
+    )
+    components = PlanComponentSerializer(
+        many=True, source="display_version.plan_components"
+    )
+    features = FeatureSerializer(many=True, source="display_version.features")
+    currency = PricingUnitSerializer(
+        source="display_version.pricing_unit",
+        help_text="Currency of the plan. Can only be null if the flat fee is 0 and all components are of type free.",
+    )
+    active_instances = serializers.SerializerMethodField(
+        help_text="The number of active instances of the add-on plan."
+    )
+
+    def get_active_instances(self, obj) -> int:
+        return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+
+
+class AddOnUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "attached_customer_id",
+            "attached_plan_id",
+            "attached_subscription_filters",
+            "addon_id",
+            "quantity",
+            "flat_fee_behavior",
+            "turn_off_auto_renew",
+            "end_now",
+        )
+        extra_kwargs = {
+            "attached_customer_id": {"required": True, "write_only": True},
+            "attached_plan_id": {"required": True, "write_only": True},
+            "attached_subscription_filters": {"required": False, "write_only": True},
+            "addon_id": {"required": True, "write_only": True},
+            "quantity": {"required": False, "write_only": True},
+            "flat_fee_behavior": {"required": False, "write_only": True},
+            "turn_off_auto_renew": {"required": False, "write_only": True},
+            "end_now": {"required": False, "write_only": True},
+        }
+
+    attached_customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        help_text="The add-on will be applied to this customer's subscription.",
+    )
+    attached_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.objects.all(),
+        required=True,
+        help_text="The add-on will be applied to the subscription with this plan ID.",
+    )
+    attached_subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
+        required=False,
+        help_text="In the case the customer has multiple subscriptions with the same plan ID, the subscription filters should be used to specify which subscription to apply the add-on to.",
+    )
+    addon_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.addons.all(),
+        required=True,
+        help_text="The add-on to be applied to the subscription.",
+    )
+    flat_fee_behavior = serializers.ChoiceField(
+        choices=[
+            FLAT_FEE_BEHAVIOR.PRORATE,
+            FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+            FLAT_FEE_BEHAVIOR.REFUND,
+        ],
+        required=False,
+    )
+    turn_off_auto_renew = serializers.BooleanField(default=False)
+    end_now = serializers.BooleanField(default=False)
+    quantity = serializers.IntegerField(
+        allow_null=True,
+        help_text="In the case that multiple of the same add-on is attached, you can specify how many of the instances of the add on to edit. This parameter will grab the first `quantity` add-ons when ordered by `start_date` `ascending`. If left `null`, will apply the update operation to all instances",
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        to_attach_sr = (
+            SubscriptionRecord.objects.active()
+            .filter(
+                customer=data["attached_customer_id"],
+                billing_plan__plan=data["attached_plan_id"],
+            )
+            .prefetch_related("filters")
+        )
+        valid = []
+        sub_filter_set = set()
+        for sf in data["attached_subscription_filters"]:
+            sub_filter_set.add((sf["property_name"], sf["value"]))
+        if len(sub_filter_set) > 0:
+            for sr in to_attach_sr:
+                sr_filter_set = set()
+                for sf in sr.filters.all():
+                    sr_filter_set.add((sf.property_name, sf.comparison_value[0]))
+                if sr_filter_set == sub_filter_set:
+                    valid.append(sr)
+        else:
+            valid = to_attach_sr
+        if len(valid) == 0:
+            raise ValidationError(
+                "No subscriptions found for the given customer ID, plan ID, and subscription filters."
+            )
+        if len(valid) > 1:
+            raise ValidationError(
+                "Multiple subscriptions found for the given customer ID, plan ID, and subscription filters."
+            )
+        data["attached_subscription_record"] = valid[0]
+        addons = valid[0].add_ons.filter(plan_id=data["addon_id"])
+        if len(addons) == 0:
+            raise ValidationError(
+                "No add-ons found for the given customer ID, plan ID, subscription filters, and add-on ID."
+            )
+        data["add_ons_to_edit"] = addons.order_by("start_date")[
+            : data["quantity"] or len(addons)
+        ]
+        return data
+
+
+class AddOnAttachSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "attach_to_customer_id",
+            "attach_to_plan_id",
+            "attach_to_subscription_filters",
+            "addon_id",
+            "quantity",
+            "flat_fee_behavior",
+            "auto_renew",
+        )
+        extra_kwargs = {
+            "attach_to_customer_id": {"required": True, "write_only": True},
+            "attach_to_plan_id": {"required": True, "write_only": True},
+            "attach_to_subscription_filters": {"required": False, "write_only": True},
+            "addon_id": {"required": True, "write_only": True},
+            "quantity": {"required": False, "write_only": True},
+            "flat_fee_behavior": {"required": False, "write_only": True},
+            "auto_renew": {"required": False, "write_only": True},
+        }
+
+    attach_to_customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=True,
+        help_text="The add-on will be applied to this customer's subscription.",
+    )
+    attach_to_plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.objects.all(),
+        required=True,
+        help_text="The add-on will be applied to the subscription with this plan ID.",
+    )
+    attach_to_subscription_filters = SubscriptionCategoricalFilterSerializer(
+        many=True,
+        required=False,
+        help_text="In the case the customer has multiple subscriptions with the same plan ID, the subscription filters should be used to specify which subscription to apply the add-on to.",
+    )
+    addon_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        queryset=Plan.addons.all(),
+        required=True,
+        help_text="The add-on to be applied to the subscription.",
+    )
+    flat_fee_behavior = serializers.ChoiceField(
+        choices=[FLAT_FEE_BEHAVIOR.PRORATE, FLAT_FEE_BEHAVIOR.CHARGE_FULL],
+        default=FLAT_FEE_BEHAVIOR.CHARGE_FULL,
+    )
+    auto_renew = serializers.BooleanField(
+        default=False,
+    )
+    quantity = serializers.IntegerField(
+        default=1,
+    )
+
+    def validate(self, data):
+        data = super().validate(data)
+        to_attach_sr = (
+            SubscriptionRecord.objects.active()
+            .filter(
+                customer=data["attach_to_customer_id"],
+                billing_plan__plan=data["attach_to_plan_id"],
+            )
+            .prefetch_related("filters")
+        )
+        valid = []
+        sub_filter_set = set()
+        for sf in data["attach_to_subscription_filters"]:
+            sub_filter_set.add((sf["property_name"], sf["value"]))
+        if len(sub_filter_set) > 0:
+            for sr in to_attach_sr:
+                sr_filter_set = set()
+                for sf in sr.filters.all():
+                    sr_filter_set.add((sf.property_name, sf.comparison_value[0]))
+                if sr_filter_set == sub_filter_set:
+                    valid.append(sr)
+        else:
+            valid = to_attach_sr
+        if len(valid) == 0:
+            raise ValidationError(
+                "No subscriptions found for the given customer ID, plan ID, and subscription filters."
+            )
+        if len(valid) > 1:
+            raise ValidationError(
+                "Multiple subscriptions found for the given customer ID, plan ID, and subscription filters."
+            )
+        data["attach_to_subscription_record"] = valid[0]
+        return data
+
+    def create(self, validated_data):
+        now = now_utc()
+        attach_to_sr = validated_data["attach_to_subscription_record"]
+        customer = validated_data["attach_to_customer_id"]
+        addon = validated_data["addon_id"]
+        addon_version = addon.display_version
+        srs = []
+        for _ in range(validated_data["quantity"]):
+            sr = SubscriptionRecord.objects.create(
+                organization=validated_data["organization"],
+                customer=customer,
+                billing_plan=addon_version,
+                usage_start_date=now,
+                start_date=now,
+                end_date=attach_to_sr.end_date,
+                next_billing_date=attach_to_sr.next_billing_date,
+                last_billing_date=attach_to_sr.last_billing_date,
+                unadjusted_duration_seconds=attach_to_sr.unadjusted_duration_seconds,
+                auto_renew=validated_data["auto_renew"],
+                subscription_record_id=addon_sr_uuid(),
+                flat_fee_behavior=validated_data["flat_fee_behavior"],
+                parent=attach_to_sr,
+                fully_billed=addon_version.flat_fee_billing_type
+                == FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+            )
+            srs.append(sr)
+        if (
+            validated_data["addon_id"].display_version.flat_fee_billing_type
+            == FLAT_FEE_BILLING_TYPE.IN_ADVANCE
+        ):
+            sub, _ = customer.get_subscription_and_records()
+            generate_invoice(sub, srs)
+        return srs
+
+
+class AddOnRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionRecord
+        fields = (
+            "customer",
+            "addon",
+            "start_date",
+            "end_date",
+            "auto_renew",
+            "flat_fee_behavior",
+            "parent",
+            "fully_billed",
+        )
+        extra_kwargs = {
+            "customer": {"read_only": True, "required": True},
+            "addon": {"read_only": True, "required": True},
+            "start_date": {"read_only": True, "required": True},
+            "end_date": {"read_only": True, "required": True},
+            "auto_renew": {"read_only": True, "required": True},
+            "flat_fee_behavior": {"read_only": True, "required": True},
+            "parent": {"read_only": True, "required": True},
+            "fully_billed": {"read_only": True, "required": True},
+        }
+
+    customer = LightweightCustomerSerializer()
+    addon = AddOnSerializer()
+    parent = LightweightSubscriptionRecordSerializer()

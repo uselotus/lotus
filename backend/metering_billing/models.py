@@ -1590,13 +1590,30 @@ class PriceAdjustment(models.Model):
             return self.price_adjustment_amount
 
 
+class BasePlanManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(plan_type=Plan.PlanType.BASE)
+
+
+class AddOnPlanManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(plan_type=Plan.PlanType.ADDON)
+
+
 class Plan(models.Model):
+    class PlanType(models.IntegerChoices):
+        BASE = (1, _("Base"))
+        ADDON = (2, _("Add-on"))
+
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="plans"
     )
     plan_name = models.CharField(max_length=100, help_text="Name of the plan")
     plan_duration = models.CharField(
-        choices=PLAN_DURATION.choices, max_length=40, help_text="Duration of the plan"
+        choices=PLAN_DURATION.choices,
+        max_length=40,
+        help_text="Duration of the plan",
+        null=True,
     )
     display_version = models.ForeignKey(
         "PlanVersion",
@@ -1642,6 +1659,14 @@ class Plan(models.Model):
         related_name="custom_plans",
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
+    plan_type = models.PositiveSmallIntegerField(
+        choices=PlanType.choices,
+        default=PlanType.BASE,
+        help_text="The type of the plan: Base plan or add-on",
+    )
+
+    objects = BasePlanManager()
+    addons = AddOnPlanManager()
 
     history = HistoricalRecords()
 
@@ -2094,6 +2119,14 @@ class SubscriptionRecord(models.Model):
     fully_billed = models.BooleanField(
         default=False,
         help_text="Whether the subscription has been fully billed and finalized.",
+    )
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="addons",
+        help_text="The parent subscription record.",
     )
     objects = SubscriptionRecordManager()
     history = HistoricalRecords()
