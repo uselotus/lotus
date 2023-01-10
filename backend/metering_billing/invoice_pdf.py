@@ -183,7 +183,7 @@ def write_line_item(
 
     doc.drawString(475, offset, billing_type)
 
-    draw_hr(doc, line_item_start + 35)
+    # draw_hr(doc, line_item_start + 35)
     draw_vr(doc, 85, line_item_start - 10, 35)
 
     return line_item_start + 35
