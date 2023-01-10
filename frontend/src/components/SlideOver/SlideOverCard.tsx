@@ -21,11 +21,15 @@ const SlideOverCard: React.FC<SlideOverCardProps> = ({ switchOrg }) => {
         >
           <div className="flex gap-2 items-center">
             <Badge.Dot
-              fill={org.organization_type !== "production" ? "#60A5FA" : ""}
+              fill={
+                org.organization_type.toLowerCase() !== "production"
+                  ? "#60A5FA"
+                  : ""
+              }
             />
             <span
               className={
-                org.organization_type !== "production"
+                org.organization_type.toLowerCase() !== "production"
                   ? " text-blue-800"
                   : "text-emerald-800"
               }
