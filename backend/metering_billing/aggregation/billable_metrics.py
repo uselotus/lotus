@@ -703,7 +703,7 @@ class CustomHandler(MetricHandler):
             (x.property_name, x.operator, x.comparison_value)
             for x in metric.categorical_filters.all()
         ]
-        query = Template(COUNTER_UNIQUE_TOTAL).render(**injection_dict)
+        query = Template(CUSTOM_BASE_QUERY).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
             results = namedtuplefetchall(cursor)
