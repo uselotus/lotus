@@ -21,6 +21,7 @@ import Badge from "../../base/Badges/Badges";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
+import createPlanTagsList from "../helpers/createPlanTagsList";
 
 interface PlanCardProps {
   plan: PlanType;
@@ -32,6 +33,7 @@ interface PlanCardProps {
 
 const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
   const { plan_tags } = useGlobalStore((state) => state.org);
+
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const windowWidth = useMediaQuery();
@@ -157,21 +159,33 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
             </DropdownComponent.Trigger>
             <DropdownComponent.Container>
               {plan_tags &&
-                plan_tags.map((tag, index) => (
+                createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
                   <DropdownComponent.MenuItem
                     onSelect={() => {
-                      const planTags = [...plan.tags];
-                      const orgTags = [...plan_tags];
+                      if (tag.from !== "plans") {
+                        const planTags = [...plan.tags];
+                        const orgTags = [...plan_tags];
 
-                      const planTagsFromOrg = orgTags.filter(
-                        (el) => el.tag_name === tag.tag_name
-                      );
-                      const tags = [...planTags, ...planTagsFromOrg];
-                   
-                      createTagMutation({
-                        plan_id: plan.plan_id,
-                        tags,
-                      });
+                        const planTagsFromOrg = orgTags.filter(
+                          (el) => el.tag_name === tag.tag_name
+                        );
+                        const tags = [...planTags, ...planTagsFromOrg];
+
+                        createTagMutation({
+                          plan_id: plan.plan_id,
+                          tags,
+                        });
+                      } else {
+                        const planTags = [...plan.tags];
+
+                        const tags = planTags.filter(
+                          (el) => el.tag_name !== tag.tag_name
+                        );
+                        createTagMutation({
+                          plan_id: plan.plan_id,
+                          tags,
+                        });
+                      }
                     }}
                   >
                     <span key={index} className="flex gap-2 justify-between">
@@ -179,7 +193,9 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
                         <Badge.Dot fill={tag.tag_hex} />
                         <span className="text-black">{tag.tag_name}</span>
                       </span>
-                      <CheckCircleOutlined className="!text-gold" />
+                      {tag.from === "plans" && (
+                        <CheckCircleOutlined className="!text-gold" />
+                      )}
                     </span>
                   </DropdownComponent.MenuItem>
                 ))}

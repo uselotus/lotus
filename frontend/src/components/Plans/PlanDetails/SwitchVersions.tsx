@@ -71,8 +71,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
   const isSelectedVersion = (other_id: string) =>
     selectedVersion.version_id === other_id;
   const createTag = useMutation(
-    (tags: PlanType["tags"]) =>
-      Plan.updatePlan(plan.plan_id, {
+    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+      Plan.updatePlan(plan_id, {
         tags,
       }),
     {

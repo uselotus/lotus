@@ -25,11 +25,12 @@ import Select from "../../base/Select/Select";
 import useMediaQuery from "../../../hooks/useWindowQuery";
 import createTags from "../helpers/createTags";
 import useGlobalStore from "../../../stores/useGlobalstore";
+import createPlanTagsList from "../helpers/createPlanTagsList";
 interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
   updateBillingFrequencyMutation: (
-    billing_frequency: "Monthly" | "Quarterly" | "Yearly"
+    billing_frequency: "monthly" | "quarterly" | "yearly"
   ) => void;
 }
 
@@ -59,7 +60,10 @@ interface PlanSummaryProps {
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
   plan: PlanDetailType;
-  createTagMutation: (variables: PlanType["tags"]) => void;
+  createTagMutation: (variables: {
+    plan_id: string;
+    tags: PlanType["tags"];
+  }) => void;
 }
 export const PlanSummary = ({
   plan,
@@ -117,22 +121,47 @@ export const PlanSummary = ({
             {" "}
             <DropdownComponent>
               <DropdownComponent.Trigger>
-                <PlansTags tags={plan_tags} />
+                <PlansTags tags={plan.tags} />
               </DropdownComponent.Trigger>
               <DropdownComponent.Container>
                 {plan_tags &&
-                  plan_tags.map((tag, index) => (
+                  createPlanTagsList(plan.tags, plan_tags).map((tag, index) => (
                     <DropdownComponent.MenuItem
                       onSelect={() => {
-                        //should actually serve as a delete
+                        if (tag.from !== "plans") {
+                          const planTags = [...plan.tags];
+                          const orgTags = [...plan_tags];
+
+                          const planTagsFromOrg = orgTags.filter(
+                            (el) => el.tag_name === tag.tag_name
+                          );
+                          const tags = [...planTags, ...planTagsFromOrg];
+
+                          createTagMutation({
+                            plan_id: plan.plan_id,
+                            tags,
+                          });
+                        } else {
+                          const planTags = [...plan.tags];
+
+                          const tags = planTags.filter(
+                            (el) => el.tag_name !== tag.tag_name
+                          );
+                          createTagMutation({
+                            plan_id: plan.plan_id,
+                            tags,
+                          });
+                        }
                       }}
                     >
                       <span key={index} className="flex gap-2 justify-between">
-                        <span className="flex gap-2 ">
+                        <span className="flex gap-2 items-center">
                           <Badge.Dot fill={tag.tag_hex} />
                           <span className="text-black">{tag.tag_name}</span>
                         </span>
-                        <CheckCircleOutlined className="!text-gold" />
+                        {tag.from === "plans" && (
+                          <CheckCircleOutlined className="!text-gold" />
+                        )}
                       </span>
                     </DropdownComponent.MenuItem>
                   ))}
@@ -141,7 +170,7 @@ export const PlanSummary = ({
                     const tags = [...plan.tags];
                     const newTag = createTags(inputRef.current!.value);
                     tags.push(newTag);
-                    createTagMutation(tags);
+                    createTagMutation({ plan_id: plan.plan_id, tags });
                   }}
                 >
                   <input
