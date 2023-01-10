@@ -106,14 +106,14 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         ) : null}
         <div>
           <div className="mb-2">
-            <div className="pr-1 font-normal font-arimo not-italic whitespace-nowrap  text-darkgold">
+            <div className="pr-1 font-normal font-alliance not-italic whitespace-nowrap  text-darkgold">
               Total Active Subscriptions: {plan.active_subscriptions}
             </div>
             <div className=" w-full h-[1.5px] mt-6 bg-card-divider" />
           </div>
 
           <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-            <div className=" font-normal font-arimo whitespace-nowrap leading-4">
+            <div className=" font-normal whitespace-nowrap leading-4">
               Plan ID
             </div>
             <div className="flex gap-1 text-card-grey font-menlo">
@@ -127,14 +127,14 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-          <div className="font-normal font-arimo whitespace-nowrap leading-4">
+          <div className="font-normal whitespace-nowrap leading-4">
             # of versions:
           </div>
           <div className="text-card-grey font-main">{plan.num_versions}</div>
         </div>
 
         <div className="flex items-center justify-between text-card-text gap-2 mb-1">
-          <div className="font-normal font-arimo whitespace-nowrap leading-4">
+          <div className="font-normal whitespace-nowrap leading-4">
             Active Versions
           </div>
           <div className="text-card-grey font-main">
@@ -144,7 +144,7 @@ const PlanCard: FC<PlanCardProps> = ({ plan, createTagMutation }) => {
         </div>
 
         <div className="flex items-center text-card-text justify-between gap-2 mb-1">
-          <div className="font-normal font-arimo text-card-text whitespace-nowrap leading-4xs">
+          <div className="font-normal text-card-text whitespace-nowrap leading-4xs">
             Plan duration:
           </div>
           <div className="text-card-grey font-main">
