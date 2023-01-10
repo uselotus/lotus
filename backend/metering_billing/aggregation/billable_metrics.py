@@ -673,115 +673,45 @@ class CounterHandler(MetricHandler):
 
 
 class CustomHandler(MetricHandler):
-    def __init__(self, billable_metric: Metric):
-        self.organization = billable_metric.organization
-        self.event_name = billable_metric.event_name
-        self.billable_metric = billable_metric
-        if billable_metric.metric_type != METRIC_TYPE.CUSTOM:
-            raise AggregationEngineFailure(
-                f"Billable metric of type {billable_metric.metric_type} can't be handled by a CustomHandler."
-            )
-        self.custom_sql = billable_metric.custom_sql
-
-    def _build_groupby_kwargs(
-        self, customer, results_granularity, start, group_by=None, proration=None
-    ):
-        groupby_kwargs = super()._build_groupby_kwargs(
-            customer, results_granularity, start, group_by, proration
+    @staticmethod
+    def get_subscription_record_total_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        from metering_billing.aggregation.custom_query_templates import (
+            CUSTOM_BASE_QUERY,
         )
-        if self.property_name is not None:
-            groupby_kwargs["property_name"] = F(self.property_name)
-        return groupby_kwargs
+        from metering_billing.models import Organization, OrganizationSetting
 
-    def _build_pre_groupby_annotation_kwargs(self, customer, start, end):
-        pre_groupby_annotation_kwargs = super()._build_pre_groupby_annotation_kwargs(
-            customer, start, end
+        organization = Organization.objects.prefetch_related("settings").get(
+            id=metric.organization.id
         )
-        if self.property_name is not None:
-            pre_groupby_annotation_kwargs[self.property_name] = F(
-                f"properties__{self.property_name}"
-            )
-        return pre_groupby_annotation_kwargs
-
-    def _build_queryset(self, customer, start, end, group_by=None, proration=None):
-        queryset = (
-            super()
-            ._build_queryset(customer, start, end, group_by, proration)
-            .annotate(**self._build_pre_groupby_annotation_kwargs(customer, start, end))
+        start = subscription_record.usage_start_date
+        end = subscription_record.end_date
+        injection_dict = CounterHandler._prepare_injection_dict(
+            metric, subscription_record, organization
         )
-        return queryset
-
-    def _build_aggregation_kwargs(self, customer, start, end, group_by=None):
-        aggregation_kwargs = super()._build_aggregation_kwargs(
-            customer, start, end, group_by
-        )
-        if self.property_name is not None:
-            aggregation_kwargs["property_name"] = F(self.property_name)
-        return aggregation_kwargs
-
-    def _build_aggregation_queryset(self, customer, start, end, group_by=None):
-        aggregation_queryset = super
+        injection_dict["start_date"] = start
+        injection_dict["end_date"] = end
+        injection_dict["property_name"] = metric.property_name
+        injection_dict["event_name"] = metric.event_name
+        injection_dict["organization_id"] = organization.id
+        injection_dict["numeric_filters"] = [
+            (x.property_name, x.operator, x.comparison_value)
+            for x in metric.numeric_filters.all()
+        ]
+        injection_dict["categorical_filters"] = [
+            (x.property_name, x.operator, x.comparison_value)
+            for x in metric.categorical_filters.all()
+        ]
+        query = Template(COUNTER_UNIQUE_TOTAL).render(**injection_dict)
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            results = namedtuplefetchall(cursor)
+        return results[0]["usage_qty"]
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
-        from metering_billing.models import OrganizationSetting
-
-        if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
-            # unfortunately there's no good way to make caggs for unique
-            # if we're refreshing the matview, then we need to drop the last
-            # one and recreate it
-            from .counter_query_templates import (
-                COUNTER_CAGG_COMPRESSION,
-                COUNTER_CAGG_QUERY,
-                COUNTER_CAGG_REFRESH,
-            )
-
-            if refresh is True:
-                CustomHandler.archive_metric(metric)
-            try:
-                groupby = metric.organization.settings.get(
-                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
-                )
-                groupby = groupby.setting_values
-            except OrganizationSetting.DoesNotExist:
-                metric.organization.provision_subscription_filter_settings()
-                groupby = []
-            sql_injection_data = {
-                "query_type": metric.usage_aggregation_type,
-                "property_name": metric.property_name,
-                "group_by": groupby,
-                "event_name": metric.event_name,
-                "organization_id": metric.organization.id,
-                "numeric_filters": [
-                    (x.property_name, x.operator, x.comparison_value)
-                    for x in metric.numeric_filters.all()
-                ],
-                "categorical_filters": [
-                    (x.property_name, x.operator, x.comparison_value)
-                    for x in metric.categorical_filters.all()
-                ],
-            }
-            for continuous_agg_type in ["day", "second"]:
-                sql_injection_data["cagg_name"] = (
-                    metric.organization.organization_id[:22]
-                    + "___"
-                    + metric.metric_id[:22]
-                    + "___"
-                    + continuous_agg_type
-                )
-                sql_injection_data["bucket_size"] = continuous_agg_type
-                query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
-                refresh_query = Template(COUNTER_CAGG_REFRESH).render(
-                    **sql_injection_data
-                )
-                compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
-                    **sql_injection_data
-                )
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
-                    cursor.execute(refresh_query)
-                    if continuous_agg_type == "second":
-                        cursor.execute(compression_query)
+        pass
 
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
@@ -791,19 +721,7 @@ class CustomHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
-        from .common_query_templates import CAGG_DROP
-
-        for continuous_agg_type in ["day", "second"]:
-            sql_injection_data = {
-                "cagg_name": metric.organization.organization_id[:22]
-                + "___"
-                + metric.metric_id[:22]
-                + "___"
-                + continuous_agg_type
-            }
-            query = Template(CAGG_DROP).render(**sql_injection_data)
-            with connection.cursor() as cursor:
-                cursor.execute(query)
+        pass
 
     @staticmethod
     def validate_data(data: dict) -> dict:
