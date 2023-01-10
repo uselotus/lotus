@@ -64,10 +64,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
     }
   );
   const switchOrgMutation = useMutation(
-    () => {
-      const org_id = linked_organizations!.filter(
-        (org) => org.organization_type === organization_name
-      )[0].organization_id;
+    (org_id: string) => {
       return Organization.switchOrg(org_id);
     },
     {
@@ -80,12 +77,16 @@ const SlideOver: React.FC<SlideOverProps> = () => {
       },
     }
   );
+  const switchOrgHandler = (org_id: string) => {
+    switchOrgMutation.mutate(org_id);
+  };
   const submitHandler = () => {
     const variables = {
       organization_name: orgName,
       default_currency_code: currencyCode,
       organization_type: orgType as "development" | "production",
     };
+
     createOrgMutation.mutate(variables);
   };
   return (
@@ -163,7 +164,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                 <div className="relative mt-6 flex-1 px-4 sm:px-6">
                   {/* replace w your content */}
                   {!isCreating ? (
-                    <SlideOverCard />
+                    <SlideOverCard switchOrg={switchOrgHandler} />
                   ) : (
                     <div className="flex flex-col gap-6">
                       <div>
@@ -194,8 +195,8 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                           }
                           className="bg-gold-100 text-[#9e9e9e] !w-[90%]"
                         >
-                          <Select.Option selected>{environment}</Select.Option>
-                          {["Development", "Production"].map((opt) => (
+                          <Select.Option selected>Development</Select.Option>
+                          {["Production"].map((opt) => (
                             <Select.Option>{opt}</Select.Option>
                           ))}
                         </Select.Select>

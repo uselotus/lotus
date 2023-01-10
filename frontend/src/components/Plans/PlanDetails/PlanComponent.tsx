@@ -76,12 +76,12 @@ export const PlanSummary = ({
   const inputRef = useRef<HTMLInputElement | null>(null!);
   return (
     <div className="min-h-[200px]  min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
-      <Typography.Title className="pt-4 whitespace-pre-wrap" level={2}>
+      <Typography.Title className="pt-4 whitespace-pre-wrap !text-[18px] level={2}">
         Summary
       </Typography.Title>
 
       <div>
-        <div className=" w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
+        <div className="w-full h-[1.5px] mt-6 bg-card-divider mb-2" />
         <div className="flex items-center text-card-text justify-between gap-2 mb-1">
           <div className=" font-normal whitespace-nowrap leading-4">
             Plan ID

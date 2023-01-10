@@ -2,18 +2,21 @@ import React from "react";
 import { CheckCircleOutlined } from "@ant-design/icons";
 import useGlobalStore from "../../stores/useGlobalstore";
 import Badge from "../base/Badges/Badges";
-interface SlideOverCardProps {}
+interface SlideOverCardProps {
+  switchOrg: (org_id: string) => void;
+}
 
-const SlideOverCard: React.FC<SlideOverCardProps> = () => {
+const SlideOverCard: React.FC<SlideOverCardProps> = ({ switchOrg }) => {
   const { linked_organizations } = useGlobalStore((state) => state.org);
   return (
     <>
       {linked_organizations?.map((org) => (
         <div
+          onClick={() => switchOrg(org.organization_id)}
           className={
             org.current
-              ? "bg-[#C3986B1A] p-8 flex cursor-pointer"
-              : "bg-gold-100 p-8 flex cursor-pointer"
+              ? "bg-[#C3986B1A] p-8 flex cursor-pointer mb-4"
+              : "bg-gold-100 p-8 flex cursor-pointer mb-4"
           }
         >
           <div className="flex gap-2 items-center">
@@ -31,7 +34,7 @@ const SlideOverCard: React.FC<SlideOverCardProps> = () => {
             </span>
           </div>
           <div className="ml-auto">
-            <CheckCircleOutlined className="!text-gold" />
+            {org.current && <CheckCircleOutlined className="!text-gold" />}
           </div>
         </div>
       ))}
