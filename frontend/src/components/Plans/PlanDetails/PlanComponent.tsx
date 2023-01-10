@@ -1,13 +1,31 @@
 // @ts-ignore
-import React, { FC } from "react";
+import React, { FC, useState } from "react";
 import "./PlanDetails.css";
-import { Table } from "antd";
+import { InputNumber, Table, Modal } from "antd";
 import { Component, Tier } from "../../../types/plan-type";
 import { PricingUnit } from "../../../types/pricing-unit-type";
+import { useMutation, QueryClient } from "react-query";
+import { Plan } from "../../../api/api";
+import { AlertType, CreateAlertType } from "../../../types/alert-type";
 
 interface PlanComponentsProps {
   components?: Component[];
+  alerts?: AlertType[];
+  plan_version_id: string;
 }
+
+const findAlertForComponent = (
+  component: Component,
+  alerts: AlertType[] | undefined
+): AlertType | undefined => {
+  if (alerts === undefined) {
+    return undefined;
+  }
+  return alerts.find((alert) => {
+    return alert.metric.metric_id === component.billable_metric.metric_id;
+  });
+};
+
 const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
   switch (record.type) {
     case "per_unit":
@@ -31,7 +49,68 @@ const renderCost = (record: Tier, pricing_unit: PricingUnit) => {
   }
 };
 
-const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
+const PlanComponents: FC<PlanComponentsProps> = ({
+  components,
+  alerts,
+  plan_version_id,
+}) => {
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [alertThreshold, setAlertThreshold] = useState(0);
+  const [isCreateAlert, setIsCreateAlert] = useState(true);
+  const [currentComponent, setCurrentComponent] = useState<Component>();
+
+  const queryClient = new QueryClient();
+
+  const createAlertMutation = useMutation(
+    (post: CreateAlertType) => Plan.createAlert(post),
+    {
+      onSuccess: () => {
+        setIsModalVisible(false);
+        queryClient.invalidateQueries("plan_details");
+        setAlertThreshold(0);
+      },
+    }
+  );
+
+  const deleteAlertMutation = useMutation(
+    (post: { usage_alert_id: string }) => Plan.deleteAlert(post),
+    {
+      onSuccess: () => {
+        setIsModalVisible(false);
+        queryClient.invalidateQueries("plan_details");
+      },
+    }
+  );
+
+  const showModal = () => {
+    setIsModalVisible(true);
+  };
+
+  const handleDeleteAlert = (usage_alert_id) => {
+    deleteAlertMutation.mutate({
+      usage_alert_id: usage_alert_id,
+    });
+  };
+
+  const submitAlertModal = (component: Component, usage_alert_id?: string) => {
+    if (isCreateAlert) {
+      createAlertMutation.mutate({
+        plan_version_id: "s",
+        metric_id: "Test",
+        threshold: alertThreshold,
+      });
+    } else {
+      deleteAlertMutation.mutate({
+        usage_alert_id: "2",
+      });
+      createAlertMutation.mutate({
+        plan_version_id: "s",
+        metric_id: "Test",
+        threshold: alertThreshold,
+      });
+    }
+  };
+
   return (
     <div className="">
       <div className="pb-5 pt-3 font-main font-bold text-[20px]">
@@ -80,6 +159,47 @@ const PlanComponents: FC<PlanComponentsProps> = ({ components }) => {
                   ]}
                 />
               </div>
+              <div>
+                <div className="flex" onClick={showModal}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    height="24"
+                  >
+                    <path fill="none" d="M0 0h24v24H0z" />
+                    <path d="M20 17h2v2H2v-2h2v-7a8 8 0 1 1 16 0v7zm-2 0v-7a6 6 0 1 0-12 0v7h12zm-9 4h6v2H9v-2z" />
+                  </svg>
+                  {findAlertForComponent(component, alerts) !== undefined ? (
+                    <p>
+                      Reaches{" "}
+                      {findAlertForComponent(component, alerts).threshold}
+                    </p>
+                  ) : (
+                    <p className=" text-small text-g">Set Alert</p>
+                  )}
+                </div>
+              </div>
+              <Modal
+                title="Set Alert"
+                visible={isModalVisible}
+                onOk={() => submitAlertModal(component)}
+                onCancel={() => setIsModalVisible(false)}
+              >
+                <div>
+                  <div> {component.billable_metric.metric_name}</div> reaches{" "}
+                  <InputNumber
+                    min={0}
+                    defaultValue={0}
+                    onChange={(value) => {
+                      if (value) {
+                        setAlertThreshold(value);
+                      }
+                    }}
+                    value={alertThreshold}
+                  />
+                </div>
+              </Modal>
             </div>
           ))}
         </div>
