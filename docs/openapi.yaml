@@ -70,8 +70,8 @@ paths:
             - inactive
             type: string
           default:
-          - inactive
           - active
+          - inactive
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -1032,8 +1032,8 @@ paths:
             - inactive
             type: string
           default:
-          - inactive
           - active
+          - inactive
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -4083,34 +4083,34 @@ components:
     DraftInvoice:
       type: object
       properties:
-        end_date:
+        due_date:
           type: string
-          format: date
-          readOnly: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
+          format: date-time
+          nullable: true
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
+        end_date:
+          type: string
+          format: date
+          readOnly: true
         issue_date:
           type: string
           format: date-time
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
         cost_due:
           type: number
           format: double
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        start_date:
+          type: string
+          format: date
+          readOnly: true
       required:
       - cost_due
       - currency
@@ -4460,6 +4460,12 @@ components:
           minimum: 1
           writeOnly: true
           nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
         flat_rate:
           type: number
           format: double
@@ -4467,7 +4473,13 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
-        currency_code:
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        transition_to_plan_id:
           type: string
           minLength: 1
         components:
@@ -4485,32 +4497,20 @@ components:
           type: string
           writeOnly: true
           nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureRequest'
-          nullable: true
-        description:
-          type: string
-          writeOnly: true
-          nullable: true
         flat_fee_billing_type:
           enum:
           - in_arrears
           - in_advance
           type: string
           writeOnly: true
-        transition_to_plan_id:
+        currency_code:
           type: string
           minLength: 1
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureRequest'
+          nullable: true
       required:
       - flat_fee_billing_type
     InviteRequestRequest:
@@ -4725,22 +4725,14 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        seller:
-          $ref: '#/components/schemas/Seller'
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
         end_date:
           type: string
           format: date
           readOnly: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        external_payment_obj_id:
-          type: string
-          nullable: true
-          maxLength: 100
         issue_date:
           type: string
           format: date-time
@@ -4756,10 +4748,6 @@ components:
           - null
           type: string
           nullable: true
-        due_date:
-          type: string
-          format: date-time
-          nullable: true
         payment_status:
           enum:
           - draft
@@ -4767,9 +4755,21 @@ components:
           - paid
           - unpaid
           type: string
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        seller:
+          $ref: '#/components/schemas/Seller'
         invoice_number:
           type: string
           maxLength: 13
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        external_payment_obj_id:
+          type: string
+          nullable: true
+          maxLength: 100
       required:
       - cost_due
       - currency
@@ -4785,14 +4785,17 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
+        plan:
+          type: string
         end_date:
           type: string
           format: date-time
+        name:
+          type: string
+          maxLength: 100
         start_date:
           type: string
           format: date-time
-        plan:
-          type: string
         quantity:
           type: number
           format: double
@@ -4800,9 +4803,6 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
-        name:
-          type: string
-          maxLength: 100
         subscription_filters:
           type: array
           items:
