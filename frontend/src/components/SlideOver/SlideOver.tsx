@@ -1,18 +1,96 @@
-import React from "react";
+import React, { useState } from "react";
 import useToggleSlideOver from "../../stores/useToggleSlideOver";
-import { PlusOutlined, CloseOutlined } from "@ant-design/icons";
+import { PlusOutlined, CloseOutlined, LeftOutlined } from "@ant-design/icons";
 import useGlobalStore from "../../stores/useGlobalstore";
+import { Button } from "antd";
 import SlideOverCard from "./SlideOverCard";
+import Select from "../base/Select/Select";
+import { PricingUnit } from "../../types/pricing-unit-type";
+import {
+  useQuery,
+  UseQueryResult,
+  useMutation,
+  useQueryClient,
+} from "react-query";
+import { Organization, PricingUnits } from "../../api/api";
+import { toast } from "react-toastify";
+import {
+  ErrorResponse,
+  ErrorResponseMessage,
+} from "../../types/error-response-types";
 interface SlideOverProps {}
 
 const SlideOver: React.FC<SlideOverProps> = () => {
-  const { linked_organizations } = useGlobalStore((state) => state.org);
-  console.log(linked_organizations);
+  const { environment, company_name, linked_organizations } = useGlobalStore(
+    (state) => state.org
+  );
   const open = useToggleSlideOver((state) => state.open);
   const setOpen = useToggleSlideOver((state) => state.setOpen);
+  const [isCreating, setIsCreating] = useState(false);
+  const [orgType, setOrgType] = useState("");
+  const [currencyCode, setCurrencyCode] = useState("");
+  const queryClient = useQueryClient();
+  const { data: pricingUnits }: UseQueryResult<PricingUnit[]> = useQuery<
+    PricingUnit[]
+  >(["pricing_unit_list"], () =>
+    PricingUnits.list().then((res) => {
+      return res;
+    })
+  );
+  const createOrgMutation = useMutation(
+    ({
+      company_name,
+      default_currency_code,
+      organization_type,
+    }: {
+      company_name: string;
+      default_currency_code: string;
+      organization_type: "development" | "production";
+    }) =>
+      Organization.createOrg(
+        company_name,
+        default_currency_code,
+        organization_type
+      ),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("organization");
+        setIsCreating(false);
+        toast.success("Successfully created new environment");
+      },
+      onError: (error: ErrorResponseMessage) => {
+        toast.error(error.response.data.detail);
+      },
+    }
+  );
+  const switchOrgMutation = useMutation(
+    () => {
+      const org_id = linked_organizations!.filter(
+        (org) => org.organization_type === environment
+      )[0].organization_id;
+      return Organization.switchOrg(org_id);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("organization");
+        toast.success("Successfully switched environment");
+      },
+      onError: (error: ErrorResponseMessage) => {
+        toast.error(error.response.data.detail);
+      },
+    }
+  );
+  const submitHandler = () => {
+    const variables = {
+      company_name,
+      default_currency_code: currencyCode,
+      organization_type: orgType as "development" | "production",
+    };
+    createOrgMutation.mutate(variables);
+  };
   return (
     <div
-      className="relative z-20"
+      className={open ? "relative z-20" : "relative z-20 sr-only"}
       aria-labelledby="slide-over-title"
       role="dialog"
       aria-modal="true"
@@ -20,27 +98,124 @@ const SlideOver: React.FC<SlideOverProps> = () => {
       <div className="fixed inset-0"></div>
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute inset-0  overflow-hidden">
-          <div className="pointer-events-none fixed inset-y-0 right-[0px] flex max-w-full">
+          <div
+            className={
+              open
+                ? "pointer-events-none fixed inset-y-0 right-[0px] flex max-w-full"
+                : "pointer-events-none fixed inset-y-0 right-[0px] flex max-w-full sr-only"
+            }
+          >
             <div className="pointer-events-auto w-screen h-screen max-w-md">
               <div className="flex h-full flex-col overflow-y-scroll bg-white py-6 shadow-xl">
                 <div className="px-4 sm:px-6">
-                  <div className="flex items-baseline mt-4">
-                    <h2
-                      className="text-lg font-medium text-gray-900 font-arimo"
-                      id="slide-over-title"
-                    >
-                      Account Environments
-                    </h2>
-                    <div className="ml-auto flex flex-row  items-center ">
-                      <PlusOutlined className="!text-gold w-12 h-12 cursor-pointer" />
-                      <CloseOutlined className="w-12 h-12 cursor-pointer" />
+                  {!isCreating ? (
+                    <div className="flex items-baseline mt-4">
+                      <h2
+                        className="text-lg font-medium text-gray-900 font-arimo"
+                        id="slide-over-title"
+                      >
+                        Account Environments
+                      </h2>
+                      <div className="ml-auto flex flex-row  items-center ">
+                        <PlusOutlined
+                          onClick={() => setIsCreating(true)}
+                          className="!text-gold w-12 h-12 cursor-pointer"
+                        />
+                        <CloseOutlined
+                          onClick={() => setOpen()}
+                          className="w-12 h-12 cursor-pointer"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className=" w-full h-[1.5px] mt-2 bg-card-divider" />
+                  ) : (
+                    <div>
+                      <div className="flex items-baseline mt-4">
+                        <div className="flex items-baseline gap-8">
+                          <LeftOutlined
+                            className="text-[12px] cursor-pointer"
+                            onClick={() => setIsCreating(false)}
+                          />
+                          <h2
+                            className="text-[20px] font-medium text-gray-900 font-arimo"
+                            id="slide-over-title"
+                          >
+                            Create environment
+                          </h2>
+                        </div>
+                        <div className="ml-auto flex flex-row  items-center ">
+                          <CloseOutlined
+                            onClick={() => setOpen()}
+                            className="w-12 h-12 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                      <span className="text-card-grey text-base leading-4 Inter">
+                        Create a new account environment in less than 10s by
+                        filling the inputs below
+                      </span>
+                      <div className=" w-full h-[1.5px] mt-2 bg-card-divider" />
+                    </div>
+                  )}
+                  {!isCreating && (
+                    <div className=" w-full h-[1.5px] mt-2 bg-card-divider" />
+                  )}
                 </div>
                 <div className="relative mt-6 flex-1 px-4 sm:px-6">
                   {/* replace w your content */}
-                  <SlideOverCard />
+                  {!isCreating ? (
+                    <SlideOverCard />
+                  ) : (
+                    <div className="flex flex-col gap-6">
+                      <Select>
+                        <Select.Label className="text-[#9E9E9E] mb-2">
+                          Name
+                        </Select.Label>
+                        <Select.Select
+                          onChange={(e) =>
+                            setOrgType(e.target.value.toLowerCase())
+                          }
+                          className="bg-gold-100 text-[#9e9e9e] !w-[90%]"
+                        >
+                          <Select.Option selected>{environment}</Select.Option>
+                          {["Development", "Production"].map((opt) => (
+                            <Select.Option>{opt}</Select.Option>
+                          ))}
+                        </Select.Select>
+                      </Select>
+
+                      <Select>
+                        <Select.Label className="text-[#9E9E9E] mb-2">
+                          Currency
+                        </Select.Label>
+                        <Select.Select
+                          onChange={(e) => setCurrencyCode(e.target.value)}
+                          className="bg-gold-100 text-[#9e9e9e] !w-[90%]"
+                        >
+                          <Select.Option selected>
+                            Select an option
+                          </Select.Option>
+                          {pricingUnits?.map((pc) => (
+                            <Select.Option>{pc.code}</Select.Option>
+                          ))}
+                        </Select.Select>
+                      </Select>
+                      <Button
+                        onClick={submitHandler}
+                        type="primary"
+                        size="large"
+                        key="create-org"
+                        style={{
+                          background: "#C3986B",
+                          borderColor: "#C3986B",
+                          width: "20%",
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-white">
+                          <div>Create</div>
+                        </div>
+                      </Button>
+                    </div>
+                  )}
                   <div className="absolute inset-0 px-4 sm:px-6">
                     <div
                       className="h-full border-2 border-dashed border-gray-200"

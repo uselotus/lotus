@@ -319,6 +319,20 @@ export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("app/organization/invite/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
+  createOrg: (
+    company_name: string,
+    default_currency_code: string,
+    organization_type: "development" | "production"
+  ): Promise<OrganizationType> =>
+    requests.post("app/organizations/", {
+      company_name,
+      default_currency_code,
+      organization_type,
+    }),
+  switchOrg: (org_id: string): Promise<OrganizationType> =>
+    requests.post("/app/switch_organization/", {
+      transfer_to_organization_id: org_id,
+    }),
   getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
