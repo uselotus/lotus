@@ -37,6 +37,12 @@ export interface OrganizationType {
   tax_rate: null | number;
   invoice_grace_period: number;
   current_user: { username: string };
+  linked_organizations: {
+    current: boolean;
+    organization_id: string;
+    organization_type: string;
+    company_name: string;
+  }[];
 }
 
 export interface ActionUserType extends UserType {

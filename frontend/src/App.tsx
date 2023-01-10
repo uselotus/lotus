@@ -44,7 +44,8 @@ function App() {
           default_currency: data.default_currency
             ? data.default_currency
             : undefined,
-          environment: undefined,
+          environment: data.linked_organizations.filter((el) => el.current)[0]
+            .organization_type,
           plan_tags: data.plan_tags,
           current_user: data.current_user,
         };
