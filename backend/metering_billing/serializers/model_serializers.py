@@ -1252,7 +1252,7 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
         instance.status = validated_data.get("status", instance.status)
         tags = validated_data.get("tags")
-        if tags:
+        if tags is not None:
             tags_lower = [tag["tag_name"].lower() for tag in tags]
             existing_tags = instance.tags.all()
             existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]

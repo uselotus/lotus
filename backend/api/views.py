@@ -42,7 +42,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Prefetch, Q
+from django.db.models import F, Prefetch, Q
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -200,7 +200,9 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = PlanSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "head"]
-    queryset = Plan.objects.all()
+    queryset = Plan.objects.all().order_by(
+        F("created_on").desc(nulls_last=False), F("plan_name")
+    )
 
     def get_queryset(self):
         organization = self.request.organization

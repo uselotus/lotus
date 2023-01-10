@@ -1643,12 +1643,15 @@ class Plan(models.Model):
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
     tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
+    created_on = models.DateTimeField(default=now_utc, null=True)
 
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         if not self.pk and self.target_customer:
             self.plan_name = self.plan_name + " - " + self.target_customer.customer_name
+        if not self.created_on:
+            self.created_on = now_utc()
         super().save(*args, **kwargs)
 
     class Meta:
