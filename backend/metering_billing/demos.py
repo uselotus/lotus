@@ -49,8 +49,11 @@ def setup_demo3(
     if mode == "create":
         try:
             org = Organization.objects.get(organization_name=organization_name)
+            team = org.team
             Event.objects.filter(organization=org).delete()
             org.delete()
+            if team is not None:
+                team.delete()
             logger.info("[DEMO3]: Deleted existing organization, replacing")
         except Organization.DoesNotExist:
             logger.info("[DEMO3]: creating from scratch")
@@ -66,6 +69,7 @@ def setup_demo3(
             )
             organization.organization_type = org_type
             user.organization = organization
+            user.team = organization.team
             user.save()
             organization.save()
     elif mode == "regenerate":

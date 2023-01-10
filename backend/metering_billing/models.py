@@ -143,10 +143,7 @@ class Organization(models.Model):
             raise NotEditable(
                 "Organization type cannot be changed once an organization is created."
             )
-        if (
-            self.team is None
-            and self.organization_type != self.OrganizationType.EXTERNAL_DEMO
-        ):
+        if self.team is None:
             self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
         if new:
@@ -361,6 +358,11 @@ class User(AbstractUser):
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        if not self.team and self.organization:
+            self.team = self.organization.team
+        super(User, self).save(*args, **kwargs)
 
 
 class Product(models.Model):

@@ -190,7 +190,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(team=obj.team)
-        users_data = list(OrganizationUserSerializer(users, many=True).data)
+        users_data = OrganizationUserSerializer(users, many=True).data
         now = now_utc()
         invited_users = TeamInviteToken.objects.filter(team=obj.team, expire_at__gt=now)
         invited_users_data = OrganizationInvitedUserSerializer(
