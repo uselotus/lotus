@@ -77,9 +77,10 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
 class LightweightOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("organization_id", "company_name", "organization_type")
+        fields = ("organization_id", "company_name", "organization_type", "current")
 
     organization_type = serializers.SerializerMethodField()
+    current = serializers.SerializerMethodField()
 
     def get_organization_type(
         self, obj
@@ -93,6 +94,9 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
             return Organization.OrganizationType.INTERNAL_DEMO.label
         elif org_type == Organization.OrganizationType.EXTERNAL_DEMO:
             return Organization.OrganizationType.EXTERNAL_DEMO.label
+
+    def get_current(self, obj) -> serializers.BooleanField():
+        return obj == self.context.get("organization")
 
 
 class LightweightUserSerializer(serializers.ModelSerializer):
@@ -151,7 +155,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
             linked = [obj]
         else:
             linked = team.organizations.all()
-        return LightweightOrganizationSerializer(linked, many=True).data
+        return LightweightOrganizationSerializer(
+            linked, many=True, context={"organization": obj}
+        ).data
 
     def get_invoice_grace_period(
         self, obj
@@ -1513,9 +1519,7 @@ class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
             == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
         ):
             if not isinstance(setting_values, bool):
-                raise serializers.ValidationError(
-                    "Setting values must be a boolean"
-                )
+                raise serializers.ValidationError("Setting values must be a boolean")
             setting_values = {"value": setting_values}
         instance.setting_values = setting_values
         instance.save()

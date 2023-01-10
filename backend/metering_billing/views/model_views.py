@@ -973,7 +973,7 @@ class OrganizationViewSet(
     """
 
     permission_classes = [IsAuthenticated & ValidOrganization]
-    http_method_names = ["get", "patch", "head"]
+    http_method_names = ["get", "patch", "head", "post"]
     permission_classes_per_method = {
         "list": [IsAuthenticated & ValidOrganization],
         "partial_update": [IsAuthenticated & ValidOrganization],
@@ -993,6 +993,8 @@ class OrganizationViewSet(
     def get_serializer_class(self):
         if self.action == "partial_update":
             return OrganizationUpdateSerializer
+        elif self.action == "create":
+            return OrganizationCreateSerializer
         return OrganizationSerializer
 
     def get_serializer_context(self):
@@ -1001,6 +1003,34 @@ class OrganizationViewSet(
         user = self.request.user
         context.update({"organization": organization, "user": user})
         return context
+
+    @extend_schema(responses=OrganizationSerializer)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = self.perform_create(serializer)
+        org_data = OrganizationSerializer(instance).data
+        return Response(org_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(responses=OrganizationSerializer)
+    def update(self, request, *args, **kwargs):
+        org = self.get_object()
+        serializer = self.get_serializer(org, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(org, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            org._prefetched_objects_cache = {}
+
+        return Response(
+            OrganizationSerializer(org, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(responses=OrganizationSerializer)
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
 
 class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSet):
