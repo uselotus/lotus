@@ -190,7 +190,7 @@ const PlanDetails: FC = () => {
               ) : (
                 <div>
                   {plan.plan_name}
-                  <span className="block mt-4 ml-2 text-neutral-500 text-base">
+                  <span className="block mt-4  text-neutral-500 text-base">
                     {plan.display_version.description}
                   </span>
                 </div>
