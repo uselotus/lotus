@@ -122,7 +122,7 @@ const ViewPlans: FC = () => {
       <Tabs defaultActiveKey="0" size="large">
         <Tabs.TabPane tab="All" key="0">
           <div className="flex flex-col">
-            <div className="grid gap-6  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
               {allPlans?.map((item, key) => (
                 <PlanCard
                   createTagMutation={createTag.mutate}
@@ -136,7 +136,7 @@ const ViewPlans: FC = () => {
                 <h2 className="text-center text-bold mb-4">Custom Plans</h2>
               )}
 
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-4">
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-4">
                 {allCustom?.map((item, key) => (
                   <PlanCard
                     createTagMutation={createTag.mutate}
@@ -151,7 +151,7 @@ const ViewPlans: FC = () => {
 
         <Tabs.TabPane tab="Monthly" key="1">
           <div className="flex flex-col">
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
               {monthlyPlans?.map((item, key) => (
                 <PlanCard
                   createTagMutation={createTag.mutate}
@@ -165,7 +165,7 @@ const ViewPlans: FC = () => {
                 <h2 className="text-center">Custom Plans</h2>
               )}
 
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {monthlyCustom?.map((item, key) => (
                   <PlanCard
                     createTagMutation={createTag.mutate}
@@ -180,7 +180,7 @@ const ViewPlans: FC = () => {
 
         <Tabs.TabPane tab="Quarterly" key="2">
           <div className="flex flex-col">
-            <div className="grid gap-6  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
               {quarterlyPlans?.map((item, key) => (
                 <PlanCard
                   createTagMutation={createTag.mutate}
@@ -193,7 +193,7 @@ const ViewPlans: FC = () => {
               {quarterlyCustom?.length > 0 && (
                 <h2 className="text-center">Custom Plans</h2>
               )}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {quarterlyCustom?.map((item, key) => (
                   <PlanCard
                     createTagMutation={createTag.mutate}
@@ -207,7 +207,7 @@ const ViewPlans: FC = () => {
         </Tabs.TabPane>
         <Tabs.TabPane tab="Yearly" key="3">
           <div className="flex flex-col">
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
               {yearlyPlans?.map((item, key) => (
                 <PlanCard
                   createTagMutation={createTag.mutate}
@@ -220,7 +220,7 @@ const ViewPlans: FC = () => {
               {yearlyCustom?.length > 0 && (
                 <h2 className="text-center">Custom Plans</h2>
               )}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {yearlyCustom?.map((item, key) => (
                   <PlanCard
                     createTagMutation={createTag.mutate}
