@@ -594,6 +594,531 @@ def setup_demo3(
     return user
 
 
+def setup_demo4(
+    organization_name,
+    username=None,
+    email=None,
+    password=None,
+    mode="create",
+    org_type=Organization.OrganizationType.EXTERNAL_DEMO,
+):
+    if mode == "create":
+        try:
+            org = Organization.objects.get(organization_name=organization_name)
+            Event.objects.filter(organization=org).delete()
+            org.delete()
+            logger.info("[DEMO3]: Deleted existing organization, replacing")
+        except Organization.DoesNotExist:
+            logger.info("[DEMO3]: creating from scratch")
+        try:
+            user = User.objects.get(username=username, email=email)
+        except:
+            user = User.objects.create_user(
+                username=username, email=email, password=password
+            )
+        if user.organization is None:
+            organization, _ = Organization.objects.get_or_create(
+                organization_name=organization_name
+            )
+            organization.organization_type = org_type
+            user.organization = organization
+            user.save()
+            organization.save()
+    elif mode == "regenerate":
+        organization = Organization.objects.get(organization_name=organization_name)
+        user = organization.users.all().first()
+        WebhookEndpoint.objects.filter(organization=organization).delete()
+        WebhookTrigger.objects.filter(organization=organization).delete()
+        Subscription.objects.filter(organization=organization).delete()
+        PlanVersion.objects.filter(organization=organization).delete()
+        Plan.objects.filter(organization=organization).delete()
+        Customer.objects.filter(organization=organization).delete()
+        Event.objects.filter(organization=organization).delete()
+        Metric.objects.filter(organization=organization).delete()
+        Product.objects.filter(organization=organization).delete()
+        CustomerBalanceAdjustment.objects.filter(organization=organization).delete()
+        Feature.objects.filter(organization=organization).delete()
+        Invoice.objects.filter(organization=organization).delete()
+        APIToken.objects.filter(organization=organization).delete()
+        TeamInviteToken.objects.filter(organization=organization).delete()
+        PriceAdjustment.objects.filter(organization=organization).delete()
+        ExternalPlanLink.objects.filter(organization=organization).delete()
+        SubscriptionRecord.objects.filter(organization=organization).delete()
+        Backtest.objects.filter(organization=organization).delete()
+        PricingUnit.objects.filter(organization=organization).delete()
+        NumericFilter.objects.filter(organization=organization).delete()
+        CategoricalFilter.objects.filter(organization=organization).delete()
+        PriceTier.objects.filter(organization=organization).delete()
+        PlanComponent.objects.filter(organization=organization).delete()
+        InvoiceLineItem.objects.filter(organization=organization).delete()
+        BacktestSubstitution.objects.filter(organization=organization).delete()
+        CustomPricingUnitConversion.objects.filter(organization=organization).delete()
+        if user is None:
+            organization.delete()
+            return
+    organization = user.organization
+    big_customers = []
+    for _ in range(2):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="BigCompany " + str(uuid.uuid4().hex)[:6],
+            email=f"{str(uuid.uuid4().hex)}@{str(uuid.uuid4().hex)}.com",
+        )
+        big_customers.append(customer)
+    medium_customers = []
+    for _ in range(3):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="MediumCompany " + str(uuid.uuid4().hex)[:6],
+            email=f"{str(uuid.uuid4().hex)}@{str(uuid.uuid4().hex)}.com",
+        )
+        medium_customers.append(customer)
+    small_customers = []
+    for _ in range(5):
+        customer = Customer.objects.create(
+            organization=organization,
+            customer_name="SmallCompany " + str(uuid.uuid4().hex)[:6],
+            email=f"{str(uuid.uuid4().hex)}@{str(uuid.uuid4().hex)}.com",
+        )
+        small_customers.append(customer)
+    metrics_map = {}
+    for property_name, usage_aggregation_type, billable_metric_name, name in zip(
+        [None, "user_id"],
+        ["count", "unique"],
+        ["Analytics Events", "Unique Users Tracked"],
+        ["calls", "unique_users"],
+    ):
+        validated_data = {
+            "organization": organization,
+            "event_name": "generate_text",
+            "property_name": property_name,
+            "usage_aggregation_type": usage_aggregation_type,
+            "billable_metric_name": billable_metric_name,
+            "metric_type": METRIC_TYPE.COUNTER,
+        }
+        metric = METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(validated_data)
+        metrics_map[name] = metric
+    for property_name, usage_aggregation_type, billable_metric_name, name in zip(
+        [None, "recording_length"],
+        [
+            "count",
+            "sum",
+        ],
+        ["Session Recordings", "Session Recording Time"],
+        ["session_recordings", "sum_time"],
+    ):
+        validated_data = {
+            "organization": organization,
+            "event_name": "session_recording",
+            "property_name": property_name,
+            "usage_aggregation_type": usage_aggregation_type,
+            "billable_metric_name": billable_metric_name,
+            "metric_type": METRIC_TYPE.COUNTER,
+        }
+        metric = METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(validated_data)
+        metrics_map[name] = metric
+    for property_name, usage_aggregation_type, billable_metric_name, name in zip(
+        ["qty"], ["max"], ["User Seats"], ["num_seats"]
+    ):
+        validated_data = {
+            "organization": organization,
+            "event_name": "log_num_seats",
+            "property_name": property_name,
+            "usage_aggregation_type": usage_aggregation_type,
+            "billable_metric_name": billable_metric_name,
+            "metric_type": METRIC_TYPE.GAUGE,
+            "event_type": EVENT_TYPE.TOTAL,
+        }
+        metric = METRIC_HANDLER_MAP[METRIC_TYPE.GAUGE].create_metric(validated_data)
+        metrics_map[name] = metric
+    calls = metrics_map["calls"]
+    unique_users = metrics_map["unique_users"]
+    session_recordings = metrics_map["session_recordings"]
+    sum_time = metrics_map["sum_time"]
+    num_seats = metrics_map["num_seats"]
+    # SET THE BILLING PLANS
+    plan = Plan.objects.create(
+        plan_name="Free Plan",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    free_bp = PlanVersion.objects.create(
+        organization=organization,
+        description="The free tier",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=0,
+        version_id=plan_version_uuid(),
+    )
+    create_pc_and_tiers(
+        organization, plan_version=free_bp, billable_metric=calls, free_units=150
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=free_bp,
+        billable_metric=num_seats,
+        free_units=1,
+        max_units=1,
+    )
+    plan.display_version = free_bp
+    plan.save()
+    plan = Plan.objects.create(
+        plan_name="Events-only - Basic",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    bp_basic_events = PlanVersion.objects.create(
+        organization=organization,
+        description="Basic plan, with access to only analytics events. $19/month flat fee + half a cent per_usage charge for events over 500",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=19,
+        version_id=plan_version_uuid(),
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_basic_events,
+        billable_metric=calls,
+        free_units=500,
+        max_units=2_000,
+        cost_per_batch=0.005,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_basic_events,
+        billable_metric=num_seats,
+        free_units=3,
+    )
+    plan.display_version = bp_basic_events
+    plan.save()
+    plan = Plan.objects.create(
+        plan_name="Events-only - Pro",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    bp_pro_events = PlanVersion.objects.create(
+        organization=organization,
+        description="Pro plan, with access to only analytics events. $39/month flat fee + quarter a cent per_usage charge for events over 500",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=39,
+        version_id=plan_version_uuid(),
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_events,
+        billable_metric=calls,
+        free_units=1000,
+        max_units=10_000,
+        cost_per_batch=0.0025,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_events,
+        billable_metric=num_seats,
+        free_units=5,
+    )
+    plan.display_version = bp_pro_events
+    plan.save()
+    plan = Plan.objects.create(
+        plan_name="Events + Recordings - Basic",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    bp_basic_both = PlanVersion.objects.create(
+        organization=organization,
+        description="Basic plan, with access to analytics events + session recordings. $29/month flat fee + half a cent per_usage charge for events over 500 + $0.05 per session recording",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=29,
+        version_id=plan_version_uuid(),
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_basic_both,
+        billable_metric=calls,
+        free_units=500,
+        max_units=2_000,
+        cost_per_batch=0.005,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_basic_both,
+        billable_metric=session_recordings,
+        cost_per_batch=0.05,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_basic_both,
+        billable_metric=num_seats,
+        free_units=3,
+    )
+    plan.display_version = bp_basic_both
+    plan.save()
+    plan = Plan.objects.create(
+        plan_name="Events + Recordings - Pro",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    bp_pro_both = PlanVersion.objects.create(
+        organization=organization,
+        description="Pro plan, with access to analytics events + session recordings. $99/month flat fee + quarter a cent per_usage charge for events over 500 + $0.025 per session recording",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=99,
+        version_id=plan_version_uuid(),
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_both,
+        billable_metric=calls,
+        free_units=1000,
+        max_units=10_000,
+        cost_per_batch=0.0025,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_both,
+        billable_metric=session_recordings,
+        cost_per_batch=0.025,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_both,
+        billable_metric=num_seats,
+        free_units=5,
+    )
+    plan.display_version = bp_pro_both
+    plan.save()
+    plan = Plan.objects.create(
+        plan_name="Experimental - Events + Recording Time",
+        organization=organization,
+        plan_duration=PLAN_DURATION.MONTHLY,
+        status=PLAN_STATUS.ACTIVE,
+    )
+    bp_experimental = PlanVersion.objects.create(
+        organization=organization,
+        description="Experimental Plan for charging based on Recording Time instead of number of recordings",
+        version=1,
+        flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
+        plan=plan,
+        status=PLAN_VERSION_STATUS.ACTIVE,
+        flat_rate=59,
+        version_id=plan_version_uuid(),
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_both,
+        billable_metric=calls,
+        free_units=1000,
+        max_units=10_000,
+        cost_per_batch=0.0025,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_both,
+        billable_metric=sum_time,
+        cost_per_batch=0.025 / 60,
+        metric_units_per_batch=1,
+    )
+    create_pc_and_tiers(
+        organization,
+        plan_version=bp_pro_both,
+        billable_metric=num_seats,
+        free_units=5,
+    )
+    plan.display_version = bp_experimental
+    plan.save()
+    six_months_ago = now_utc() - relativedelta(months=6) - relativedelta(days=5)
+    for cust_set_name, cust_set in [
+        ("big", big_customers),
+        ("medium", medium_customers),
+        ("small", small_customers),
+    ]:
+        plan_dict = {
+            "big": {
+                0: bp_basic_both,
+                1: bp_basic_both,
+                2: bp_pro_both,
+                3: bp_pro_both,
+                4: bp_pro_both,
+                5: bp_pro_both,
+            },
+            "medium": {
+                0: bp_basic_events,
+                1: bp_pro_events,
+                2: bp_pro_events,
+                3: bp_pro_events,
+                4: bp_pro_both,
+                5: bp_pro_both,
+            },
+            "small": {
+                0: free_bp,
+                1: free_bp,
+                2: bp_basic_events,
+                3: bp_basic_events,
+                4: bp_basic_events,
+                5: bp_basic_events,
+            },
+        }
+        for i, customer in enumerate(cust_set):
+            beginning = six_months_ago
+            offset = np.random.randint(0, 30)
+            beginning = beginning + relativedelta(days=offset)
+            for months in range(6):
+                sub_start = beginning + relativedelta(months=months)
+                plan = plan_dict[cust_set_name][months]
+                if cust_set_name == "big":
+                    users_mean, users_sd = 4.5, 0.5
+                    scale = (
+                        1.1
+                        if plan == bp_basic_events
+                        else (0.95 if plan == bp_pro_events else 0.80)
+                    )
+                    ct_mean, ct_sd = 0.1, 0.02
+                elif cust_set_name == "medium":
+                    scale = (
+                        1.2
+                        if plan == bp_pro_both
+                        else (1 if plan == bp_experimental else 0.85)
+                    )
+                    ct_mean, ct_sd = 0.075, 0.01
+                elif cust_set_name == "small":
+                    scale = (
+                        1.4
+                        if plan == bp_pro_both
+                        else (1.1 if plan == bp_experimental else 0.95)
+                    )
+                    ct_mean, ct_sd = 0.065, 0.01
+
+                sub, sr = make_subscription_and_subscription_record(
+                    organization=organization,
+                    customer=customer,
+                    plan=plan,
+                    start_date=sub_start,
+                    is_new=months == 0,
+                )
+                word_count = 0
+                while word_count < word_limit:
+                    event_words = random.gauss(325, 60)
+                    if word_count + event_words > word_limit:
+                        break
+                    compute_time = event_words * random.gauss(0.1, 0.02)
+                    language = random.choice(languages)
+                    subsection = (
+                        1 if plan == free_bp else np.random.exponential(scale=scale)
+                    )
+                    subsection = str(subsection // 1)
+                    for tc in random_date(sub.start_date, sub.end_date, 1):
+                        tc = tc
+                    Event.objects.create(
+                        organization=organization,
+                        customer=customer,
+                        event_name="generate_text",
+                        time_created=tc,
+                        idempotency_id=str(uuid.uuid4().hex),
+                        properties={
+                            "language": language,
+                            "subsection": subsection,
+                            "compute_time": compute_time,
+                            "words": event_words,
+                        },
+                        cust_id=customer.customer_id,
+                    )
+                    Event.objects.create(
+                        organization=organization,
+                        customer=customer,
+                        event_name="computation",
+                        time_created=tc,
+                        idempotency_id=str(uuid.uuid4().hex),
+                        properties={
+                            "cost": abs(compute_time * random.gauss(ct_mean, ct_sd)),
+                        },
+                        cust_id=customer.customer_id,
+                    )
+                    word_count += event_words
+                max_users = max(
+                    x.range_end
+                    for x in plan.plan_components.get(
+                        billable_metric=num_seats
+                    ).tiers.all()
+                )
+                n = max(int(random.gauss(6, 1.5) // 1), 1)
+                baker.make(
+                    Event,
+                    organization=organization,
+                    customer=customer,
+                    event_name="log_num_seats",
+                    properties=gaussian_users(n, users_mean, users_sd, max_users),
+                    time_created=random_date(sub.start_date, sub.end_date, n),
+                    idempotency_id=itertools.cycle(
+                        [str(uuid.uuid4().hex) for _ in range(n)]
+                    ),
+                    _quantity=n,
+                    cust_id=customer.customer_id,
+                )
+
+                next_plan = (
+                    bp_pro_both
+                    if months + 1 == 0
+                    else (bp_experimental if months + 1 == 1 else bp_50_compute_seats)
+                )
+                if months == 0:
+                    run_generate_invoice.delay(
+                        sub.pk,
+                        [sr.pk],
+                        issue_date=sub.start_date,
+                    )
+                if months != 5:
+                    cur_replace_with = sr.billing_plan.replace_with
+                    sr.billing_plan.replace_with = next_plan
+                    sr.save()
+                    run_generate_invoice.delay(
+                        sub.pk, [sr.pk], issue_date=sub.end_date, charge_next_plan=True
+                    )
+                    sr.billing_plan.replace_with = cur_replace_with
+                    sr.save()
+    now = now_utc()
+    backtest = Backtest.objects.create(
+        backtest_name=organization,
+        start_date="2022-08-01",
+        end_date="2022-11-01",
+        organization=organization,
+        time_created=now,
+        kpis=[BACKTEST_KPI.TOTAL_REVENUE],
+    )
+    BacktestSubstitution.objects.create(
+        backtest=backtest,
+        original_plan=bp_pro_both,
+        new_plan=bp_basic_events,
+        organization=organization,
+    )
+    run_backtest.delay(backtest.backtest_id)
+    return user
+
+
 def setup_paas_demo(
     company_name="paas",
     username="paas",
