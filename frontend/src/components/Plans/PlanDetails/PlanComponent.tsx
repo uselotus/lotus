@@ -160,7 +160,15 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 />
               </div>
               <div>
-                <div className="flex" onClick={showModal}>
+                <div
+                  className="flex hover:bg-background hover:bg-opacity-30"
+                  onClick={() => {
+                    findAlertForComponent(component, alerts) !== undefined
+                      ? setIsCreateAlert(false)
+                      : setIsCreateAlert(true);
+                    showModal();
+                  }}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -184,6 +192,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                 title="Set Alert"
                 visible={isModalVisible}
                 onOk={() => submitAlertModal(component)}
+                okText={isCreateAlert ? "Create" : "Update"}
                 onCancel={() => setIsModalVisible(false)}
               >
                 <div>
