@@ -134,13 +134,18 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       <div className={className}>
         {versions.map((version) => (
           <div
-            onClick={() => setSelectedVersion(version)}
-            className={
-              isSelectedVersion(version.version_id) &&
-              version.status === "active"
-                ? "flex items-center justify-center p-4 text-sm mx-1 bg-[#c3986b] text-white opacity-100 border-2 border-[#c3986b] border-opacity-100"
-                : "flex items-center justify-center p-4 text-sm mx-1 bg-[#EAEAEB] text-black"
-            }
+            onClick={(e) => {
+              console.log(e.target);
+              setSelectedVersion(version);
+            }}
+            className={[
+              "flex items-center justify-center p-4 cursor-pointer mx-1",
+              isSelectedVersion(version.version_id)
+                ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
+                : "bg-[#EAEAEB] text-black ml-2 mr-2",
+              version.status === "active" &&
+                "border-2 border-[#c3986b] border-opacity-100 ml-2 mr-2",
+            ].join(" ")}
           >
             v{version.version}
           </div>
