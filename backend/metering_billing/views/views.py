@@ -432,7 +432,7 @@ class SettingsView(APIView):
         """
         organization = request.organization
         return Response(
-            {"organization": organization.company_name}, status=status.HTTP_200_OK
+            {"organization": organization.organization_name}, status=status.HTTP_200_OK
         )
 
 

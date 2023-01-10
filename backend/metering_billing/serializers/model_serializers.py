@@ -77,7 +77,12 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
 class LightweightOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("organization_id", "company_name", "organization_type", "current")
+        fields = (
+            "organization_id",
+            "organization_name",
+            "organization_type",
+            "current",
+        )
 
     organization_type = serializers.SerializerMethodField()
     current = serializers.SerializerMethodField()
@@ -110,7 +115,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = (
             "organization_id",
-            "company_name",
+            "organization_name",
             "payment_plan",
             "payment_provider_ids",
             "users",
@@ -202,7 +207,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 class OrganizationCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("company_name", "default_currency_code", "organization_type")
+        fields = ("organization_name", "default_currency_code", "organization_type")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
@@ -217,7 +222,7 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         data = super().validate(data)
         existing_org_num = Organization.objects.filter(
-            company_name=data["company_name"],
+            organization_name=data["organization_name"],
         ).count()
         if existing_org_num > 0:
             raise DuplicateOrganization("Organization with company name already exists")
@@ -230,7 +235,7 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         existing_organization = self.context["organization"]
         team = existing_organization.team
         organization = Organization.objects.create(
-            company_name=validated_data["company_name"],
+            organization_name=validated_data["organization_name"],
             default_currency=validated_data.get("default_currency", None),
             organization_type=validated_data["organization_type"],
             team=team,
@@ -449,10 +454,10 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "email", "company_name", "organization_id")
+        fields = ("username", "email", "organization_name", "organization_id")
 
     organization_id = serializers.CharField(source="organization.organization_id")
-    company_name = serializers.CharField(source="organization.company_name")
+    organization_name = serializers.CharField(source="organization.organization_name")
 
 
 # CUSTOMER

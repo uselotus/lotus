@@ -182,10 +182,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name_name_name + " (API Key)"
                 ),
                 event=f"{self.action}_customer",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -217,10 +219,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -620,10 +624,12 @@ class SubscriptionViewSet(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_subscription",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
             # if username:
             #     if self.action == "plans":
@@ -692,10 +698,12 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_invoice",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -860,10 +868,12 @@ class CustomerBalanceAdjustmentViewSet(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_balance_adjustment",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
             # if username:
             #     if self.action == "plans":
@@ -904,9 +914,9 @@ class GetCustomerEventAccessView(APIView):
         # posthog.capture(
         #     POSTHOG_PERSON
         #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     else (username if username else organization.organization_name + " (Unknown)"),
         #     event="get_access",
-        #     properties={"organization": organization.company_name},
+        #     properties={"organization": organization.organization_name},
         # )
         customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
@@ -1003,9 +1013,9 @@ class GetCustomerFeatureAccessView(APIView):
         # posthog.capture(
         #     POSTHOG_PERSON
         #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     else (username if username else organization.organization_name + " (Unknown)"),
         #     event="get_access",
-        #     properties={"organization": organization.company_name},
+        #     properties={"organization": organization.organization_name},
         # )
         customer = serializer.validated_data["customer"]
         feature_name = serializer.validated_data.get("feature_name")

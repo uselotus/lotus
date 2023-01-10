@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 
 class RegistrationDetailSerializer(serializers.Serializer):
-    company_name = serializers.CharField(allow_blank=True)
+    organization_name_name = serializers.CharField(allow_blank=True)
     industry = serializers.CharField(allow_blank=True)
     email = serializers.CharField()
     password = serializers.CharField()
@@ -10,7 +10,7 @@ class RegistrationDetailSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         token = self.context.get("token", None)
-        if not token and attrs.get("company_name") is None:
+        if not token and attrs.get("organization_name") is None:
             raise serializers.ValidationError(
                 "Company name is required for registration"
             )

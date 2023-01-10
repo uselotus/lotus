@@ -11,7 +11,7 @@ type GlobalStoreState = {
 
 interface IOrgStoreType {
   organization_id: string;
-  company_name: string;
+  organization_name: string;
   default_currency?: PricingUnit;
   environment?: string;
   plan_tags: PlanType["tags"];
@@ -23,7 +23,7 @@ const useGlobalStore = create<GlobalStoreState>((set) => ({
   username: "",
   org: {
     organization_id: "",
-    company_name: "N/A",
+    organization_name: "N/A",
     default_currency: undefined,
     environment: undefined,
     current_user: { username: "" },

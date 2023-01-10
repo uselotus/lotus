@@ -274,7 +274,7 @@ def generate_invoice(
                 subscription_record.save()
             # if META:
             # lotus_python.track_event(
-            #     customer_id=organization.company_name + str(organization.pk),
+            #     customer_id=organization.organization_name + str(organization.pk),
             #     event_name='create_invoice',
             #     properties={
             #         'amount': float(invoice.cost_due.amount),
@@ -476,7 +476,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
                     break
         # if META:
         # lotus_python.track_event(
-        #     customer_id=organization.company_name + str(organization.pk),
+        #     customer_id=organization.organization_name + str(organization.pk),
         #     event_name='create_invoice',
         #     properties={
         #         'amount': float(invoice.cost_due.amount),

@@ -191,7 +191,7 @@ const GeneralTab: FC = () => {
         <div className="flex flex-col w-6/12 justify-between">
           {mutation.isLoading && <LoadingSpinner />}
           <p className=" text-[16px]">
-            <b>Company Name:</b> {org.company_name}
+            <b>Company Name:</b> {org.organization_name}
           </p>
           <p className=" text-[16px]">
             <b className="">Default Organization Currency:</b>{" "}
@@ -279,13 +279,13 @@ const GeneralTab: FC = () => {
           <Form
             form={form}
             initialValues={{
-              company_name: org?.company_name,
+              organization_name: org?.organization_name,
               default_currency: org?.default_currency?.code,
             }}
           >
             <Form.Item
               label="Company Name"
-              name="company_name"
+              name="organization_name"
               rules={[
                 {
                   required: true,

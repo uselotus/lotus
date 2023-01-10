@@ -5,7 +5,7 @@ export interface CreateOrgAccountType {
   username: string;
   password: string;
   email: string;
-  company_name: string;
+  organization_name: string;
   industry: string;
   invite_token?: string | null;
 }
@@ -18,7 +18,7 @@ export interface UserType {
 }
 
 export interface OrganizationType {
-  company_name: string;
+  organization_name: string;
   payment_plan: string;
   payment_provider_ids: object;
   address?: {
@@ -41,7 +41,7 @@ export interface OrganizationType {
     current: boolean;
     organization_id: string;
     organization_type: string;
-    company_name: string;
+    organization_name: string;
   }[];
 }
 

@@ -23,7 +23,7 @@ const steps = [
 ];
 
 const defaultOrg: Organizaton = {
-  company_name: "",
+  organization_name: "",
   industry: "",
 };
 
@@ -66,7 +66,7 @@ const Register: React.FC = () => {
     // const pwBitArray = sjcl.hash.sha256.hash(user.password);
     // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
     const register_object: CreateOrgAccountType = {
-      company_name: organization.company_name,
+      organization_name: organization.organization_name,
       industry: organization.industry,
       email: user.email,
       password: user.password,

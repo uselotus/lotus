@@ -258,10 +258,12 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_webhook",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -387,10 +389,12 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_metric",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -461,10 +465,12 @@ class FeatureViewSet(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_feature",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -526,10 +532,12 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan_version",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -726,10 +734,12 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_backtest",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -773,10 +783,12 @@ class ProductViewSet(viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_product",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -850,10 +862,12 @@ class ExternalPlanLinkViewSet(viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_external_plan_link",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 

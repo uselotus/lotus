@@ -273,7 +273,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> => requests.post("app/login/", { username, password }),
   logout: (): Promise<{}> => requests.post("app/logout/", {}),
@@ -286,7 +286,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> =>
     requests.post("app/register/", {
@@ -301,7 +301,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> => requests.post("app/demo_register/", { register }),
 
@@ -320,12 +320,12 @@ export const Organization = {
     requests.post("app/organization/invite/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
   createOrg: (
-    company_name: string,
+    organization_name: string,
     default_currency_code: string,
     organization_type: "development" | "production"
   ): Promise<OrganizationType> =>
     requests.post("app/organizations/", {
-      company_name,
+      organization_name,
       default_currency_code,
       organization_type,
     }),

@@ -21,9 +21,8 @@ import {
 interface SlideOverProps {}
 
 const SlideOver: React.FC<SlideOverProps> = () => {
-  const { environment, company_name, linked_organizations } = useGlobalStore(
-    (state) => state.org
-  );
+  const { environment, organization_name, linked_organizations } =
+    useGlobalStore((state) => state.org);
   const open = useToggleSlideOver((state) => state.open);
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const [isCreating, setIsCreating] = useState(false);
@@ -39,16 +38,16 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   );
   const createOrgMutation = useMutation(
     ({
-      company_name,
+      organization_name,
       default_currency_code,
       organization_type,
     }: {
-      company_name: string;
+      organization_name: string;
       default_currency_code: string;
       organization_type: "development" | "production";
     }) =>
       Organization.createOrg(
-        company_name,
+        organization_name,
         default_currency_code,
         organization_type
       ),
@@ -82,7 +81,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   );
   const submitHandler = () => {
     const variables = {
-      company_name,
+      organization_name,
       default_currency_code: currencyCode,
       organization_type: orgType as "development" | "production",
     };

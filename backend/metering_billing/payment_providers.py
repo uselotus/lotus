@@ -341,7 +341,9 @@ class StripeConnector(PaymentProvider):
             # "automatic_tax": {
             #     "enabled": True,
             # },
-            "description": "Invoice from {}".format(customer.organization.company_name),
+            "description": "Invoice from {}".format(
+                customer.organization.organization_name
+            ),
             "currency": invoice.currency.code.lower(),
         }
         if not self.self_hosted:

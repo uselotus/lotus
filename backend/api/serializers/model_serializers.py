@@ -283,7 +283,7 @@ class SellerSerializer(
         model = Organization
         fields = ("name", "address", "phone", "email")
 
-    name = serializers.CharField(source="company_name")
+    name = serializers.CharField(source="organization_name")
     address = serializers.SerializerMethodField(required=False, allow_null=True)
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):

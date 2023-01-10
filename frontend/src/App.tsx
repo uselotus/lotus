@@ -40,7 +40,7 @@ function App() {
       onSuccess: (data) => {
         const storeOrgObject: IOrgStoreType = {
           organization_id: data.organization_id,
-          company_name: data.company_name,
+          organization_name: data.organization_name,
           default_currency: data.default_currency
             ? data.default_currency
             : undefined,

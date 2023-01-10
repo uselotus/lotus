@@ -103,7 +103,7 @@ class LoginView(LoginViewMixin, APIView):
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else username,
             event="succesful login",
-            properties={"organization": user.organization.company_name},
+            properties={"organization": user.organization.organization_name},
         )
         token = AuthToken.objects.create(user)
         return Response(
@@ -268,7 +268,7 @@ class RegisterView(LoginViewMixin, APIView):
         username = reg_dict["username"]
         email = reg_dict["email"]
         password = reg_dict["password"]
-        company_name = reg_dict["company_name"]
+        organization_name = reg_dict["organization_name"]
 
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
@@ -296,15 +296,15 @@ class RegisterView(LoginViewMixin, APIView):
         else:
             # Organization doesn't exist yet
             existing_org_num = Organization.objects.filter(
-                company_name=company_name,
+                organization_name=organization_name,
             ).count()
             if existing_org_num > 0:
                 raise DuplicateOrganization(
                     "Organization with company name already exists"
                 )
-            team = Team.objects.create(name=company_name)
+            team = Team.objects.create(name=organization_name)
             org = Organization.objects.create(
-                company_name=company_name,
+                organization_name=organization_name,
                 team=team,
                 organization_type=Organization.OrganizationType.DEVELOPMENT,
             )
@@ -312,7 +312,7 @@ class RegisterView(LoginViewMixin, APIView):
             if META:
                 lotus_python.create_customer(
                     customer_id=org.organization_id,
-                    name=org.company_name,
+                    name=org.organization_name,
                 )
 
         user = User.objects.create_user(
@@ -325,7 +325,7 @@ class RegisterView(LoginViewMixin, APIView):
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else username,
             event="register",
-            properties={"organization": org.company_name},
+            properties={"organization": org.organization_name},
         )
         if token:
             token.delete()
@@ -369,7 +369,7 @@ class DemoRegisterView(LoginViewMixin, APIView):
         username = reg_dict["username"]
         email = reg_dict["email"]
         password = reg_dict["password"]
-        company_name = "demo_" + username  # different
+        organization_name = "demo_" + username  # different
 
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
@@ -379,7 +379,7 @@ class DemoRegisterView(LoginViewMixin, APIView):
             raise DuplicateUser("User with email already exists")
 
         user = setup_demo3(
-            company_name,
+            organization_name,
             username,
             email,
             password,
@@ -395,7 +395,7 @@ class DemoRegisterView(LoginViewMixin, APIView):
         posthog.capture(
             username,
             event="demo_register",
-            properties={"organization": user.organization.company_name},
+            properties={"organization": user.organization.organization_name},
         )
         _, token = AuthToken.objects.create(user)
         user_data = UserSerializer(user).data

@@ -86,7 +86,7 @@ class Organization(models.Model):
         Team, on_delete=models.CASCADE, null=True, related_name="organizations"
     )
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
-    company_name = models.CharField(max_length=100, blank=False, null=False)
+    organization_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
     payment_plan = models.CharField(
@@ -124,7 +124,7 @@ class Organization(models.Model):
     history = HistoricalRecords()
 
     def __str__(self):
-        return self.company_name
+        return self.organization_name
 
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
@@ -147,7 +147,7 @@ class Organization(models.Model):
             self.team is None
             and self.organization_type != self.OrganizationType.EXTERNAL_DEMO
         ):
-            self.team = Team.objects.create(name=self.company_name)
+            self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
         if new:
             self.provision_currencies()
@@ -191,7 +191,7 @@ class Organization(models.Model):
             logger.log("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
-                ApplicationIn(uid=self.organization_id, name=self.company_name)
+                ApplicationIn(uid=self.organization_id, name=self.organization_name)
             )
             self.webhooks_provisioned = True
         self.save()
@@ -1439,7 +1439,7 @@ class APIToken(AbstractAPIKey):
         verbose_name_plural = "API Tokens"
 
     def __str__(self):
-        return str(self.name) + " " + str(self.organization.company_name)
+        return str(self.name) + " " + str(self.organization.organization_name)
 
 
 class TeamInviteToken(models.Model):
