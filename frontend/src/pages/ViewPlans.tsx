@@ -2,8 +2,8 @@
 import React, { FC, useEffect, useState } from "react";
 import { Button, Row, Col, Tabs } from "antd";
 import { Plan } from "../api/api";
-import { ArrowRightOutlined } from "@ant-design/icons";
-import { Component, PlanType } from "../types/plan-type";
+import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import { PlanType } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
 import {
   useQuery,
@@ -110,7 +110,10 @@ const ViewPlans: FC = () => {
           style={{ background: "#C3986B", borderColor: "#C3986B" }}
         >
           <div className="flex items-center  justify-between text-white">
-            <div>Create Plan</div>
+            <div>
+              <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+              Create Plan
+            </div>
             <ArrowRightOutlined className="pl-2" />
           </div>
         </Button>,

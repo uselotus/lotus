@@ -11,13 +11,10 @@ import {
   CreatePlanExternalLinkType,
   InitialExternalLinks,
   PlanDetailType,
-  PlanType,
 } from "../../../types/plan-type";
+import { PlusOutlined } from "@ant-design/icons";
 import LoadingSpinner from "../../LoadingSpinner";
-import LinkExternalIds from "../LinkExternalIds";
 import { toast } from "react-toastify";
-import CopyText from "../../base/CopytoClipboard";
-import { createDescription } from "./planDescription";
 
 type PlanDetailParams = {
   planId: string;
@@ -201,7 +198,7 @@ const PlanDetails: FC = () => {
             }
             hasBackButton
             backButton={
-              <div>
+              <div className="mt-10">
                 <Button
                   onClick={() => navigate(-1)}
                   type="primary"
@@ -230,7 +227,10 @@ const PlanDetails: FC = () => {
                   style={{ background: "#C3986B", borderColor: "#C3986B" }}
                 >
                   <div className="flex items-center justify-between text-white">
-                    <div>Create Custom Plan</div>
+                    <div>
+                      <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+                      Create Custom Plan
+                    </div>
                   </div>
                 </Button>,
               ]

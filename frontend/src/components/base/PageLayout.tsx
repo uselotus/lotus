@@ -22,20 +22,20 @@ export const PageLayout = ({
     <div>
       <SlideOver />
       {/* {hasBackButton && backButton} */}
-      <Heading hasBackButton={hasBackButton} backButton={backButton} />
+      <Heading />
       <PageHeader
         title={
           <div>
-            {/* {backButton} */}
-            <h1 className=" text-xl mt-10">{headingText}</h1>
+            {hasBackButton && backButton}
+            <h1 className=" text-xl">{headingText}</h1>
           </div>
         }
       />
 
-      <div className="mx-10 mt-10">
+      <div className="mx-10 mt-16">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (
-            <h1 className="font-main">{props.title}</h1>
+            <h1 className="font-main mt-20">{props.title}</h1>
           ) : (
             <h1>{props.title}</h1>
           )}

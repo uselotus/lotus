@@ -18,18 +18,18 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
   const isPlansPage = currentPath === "plans";
   return (
     <div className="mt-16">
-      <div className="flex cursor-pointer">
-        <div className="bg-red">
+      <div className="flex cursor-pointer justify-end">
+        {/* <div className="bg-red">
           <input
             type="text"
             name="search"
             id="search"
-            className={`block w-[120%] ml-[10px] rounded ${
+            className={`w-[120%]  ml-[10px] hidden rounded ${
               isPlansPage ? "bg-gold-50" : "bg-white"
             } p-4 outline-none sm:text-sm`}
             placeholder="Search..."
           />
-        </div>
+        </div> */}
         <div className="flex items-center ml-[58%]">
           <div className="mr-10">
             <Badge
