@@ -11,6 +11,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from reportlab.lib.colors import HexColor
 
 FONT_XL = 26
 FONT_L = 24
@@ -18,6 +19,7 @@ FONT_M = 16
 FONT_S = 14
 FONT_XS = 12
 FONT_XXS = 10
+
 
 
 def transform_date(date: datetime) -> str:
@@ -28,15 +30,23 @@ def transform_date(date: datetime) -> str:
 
 
 def draw_hr(doc, vertical_offset):
-    doc.setStrokeColor("gray")
+    doc.setStrokeColor(HexColor("#9CA3AF"))
     doc.setLineWidth(1)
     doc.line(75, vertical_offset, 550, vertical_offset)
+    doc.setStrokeColor("black")
+
+def draw_vr(doc, x, y , offset):
+    doc.setStrokeColor(HexColor("#9CA3AF"))
+    doc.setLineWidth(1)
+    doc.line(x, y , x, y + offset)
     doc.setStrokeColor("black")
 
 
 def write_invoice_title(doc):
     doc.setFont("Times-Bold", FONT_L)
     doc.drawString(50, 50, "Invoice")
+    doc.setFont("Times-Roman", FONT_XXS)
+    doc.drawString(475, 750, "Thank you for your buisness.")   
 
 
 def write_seller_details(
@@ -44,9 +54,9 @@ def write_seller_details(
 ):
     if email is None:
         email = ""
-    doc.setFont("Times-Bold", FONT_M)
+    doc.setFont("Times-Bold", FONT_XS)
     doc.drawString(75, 130, name[:12] + "...")
-    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFont("Times-Roman", FONT_XXS)
     doc.drawString(75, 145, line1)
     doc.drawString(75, 160, f"{city} {state}, {postal_code}")
     doc.drawString(75, 175, country)
@@ -57,9 +67,9 @@ def write_seller_details(
 def write_customer_details(doc, name, line1, city, state, country, postal_code, email):
     if email is None:
         email = ""
-    doc.setFont("Times-Bold", FONT_M)
+    doc.setFont("Times-Bold", FONT_XS)
     doc.drawString(225, 130, "Billed To")
-    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFont("Times-Roman", FONT_XXS)
     doc.drawString(225, 145, name)
     doc.drawString(225, 160, line1)
     doc.drawString(225, 175, f"{city} {state}, {postal_code}")
@@ -68,34 +78,65 @@ def write_customer_details(doc, name, line1, city, state, country, postal_code, 
 
 
 def write_invoice_details(doc, invoice_number, issue_date, due_date):
-    doc.setFont("Times-Bold", FONT_M)
+    doc.setFont("Times-Bold", FONT_XS)
     doc.drawString(375, 130, "Invoice Details")
-    doc.setFont("Times-Roman", FONT_XS)
-    doc.drawString(375, 145, f"Invoice No. {invoice_number}")
-    doc.drawString(375, 160, f'Date Issued {issue_date.replace("-", "/")}')
+    doc.setFont("Times-Roman", FONT_XXS)
+    doc.drawString(375, 145, f"Invoice No.")
+    doc.drawString(440, 145, f"{invoice_number}")
+
+    doc.drawString(375, 160, f"Date Issued")
+    doc.drawString(440, 160, f'{issue_date.replace("-", "/")}')
+
+    doc.drawString(375, 175, f"Due Date")
     if due_date:
-        doc.drawString(375, 175, f'Due Date {due_date.replace("-", "/")}')
+        doc.drawString(440, 175, f'{due_date.replace("-", "/")}')
     else:
-        doc.drawString(375, 175, f'Due Date {issue_date.replace("-", "/")}')
+        doc.drawString(440, 175, f'{issue_date.replace("-", "/")}')
+    doc.setFont("Times-Roman", FONT_XXS)
+
+    doc.setFillColor(HexColor("#9CA3AF"))
+    doc.drawString(50, 750, f"#{invoice_number}")
 
 
 def write_summary_header(doc):
-    doc.setFont("Times-Roman", FONT_L)
-    doc.drawString(75, 255, "Summary")
-    doc.setFont("Times-Roman", FONT_S)
-    doc.setFillColor("gray")
-    # doc.drawString(
-    #     200, 253.5, f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}'
-    # )
+    doc.setFont("Times-Roman", 22)
+    doc.setFillColor('black')
+    doc.drawString(75, 245, "Summary")
+    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFillColor(HexColor("#9CA3AF"))
+    doc.drawString(175, 245, f'{"MM/DD/YYYY".replace("-", "/")} - {"MM/DD/YYYY".replace("-", "/")}')
     doc.setFillColor("black")
-    doc.setFont("Times-Roman", FONT_S)
-    doc.setFillColor("gray")
+    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFillColor(HexColor("#9CA3AF"))
     doc.drawString(75, 280, "Services")
-    doc.drawString(350, 280, "Quantity")
     doc.drawString(475, 280, "Amount")
     doc.setFillColor("black")
-    draw_hr(doc, 290)
+    draw_hr(doc, 295)
 
+
+def write_line_item_group(
+    doc,
+    name,
+    amount,
+    currency,
+    line_item_start
+):
+    title_offset = line_item_start + 20
+    doc.setFont("Times-Roman", FONT_S)
+    doc.drawString(75, title_offset, name)
+    doc.drawString(475, title_offset, f'{currency}{"{:g}".format(float(amount))}')
+    return line_item_start + 40
+
+def write_line_item_headers(doc, line_item_start):
+    offset = line_item_start + 5
+    doc.setFont("Times-Roman", FONT_XS)
+    doc.setFillColor(HexColor("#9CA3AF"))
+    doc.drawString(90, offset, "Item")
+    doc.drawString(250, offset, "Dates")
+    doc.drawString(350, offset, "Quantity")
+    doc.drawString(412.5, offset, "Subtotal")
+    doc.drawString(475, offset, "Billing Type")
+    return line_item_start + 10
 
 def write_line_item(
     doc,
@@ -105,40 +146,56 @@ def write_line_item(
     quantity,
     subtotal,
     currency_symbol,
+    billing_type,
     line_item_start,
 ):
-    title_offset = line_item_start + 20
-    datespan_offset = line_item_start + 27
-    doc.setFont("Times-Roman", FONT_S)
-    doc.drawString(75, title_offset, name)
-    doc.setFillColor("gray")
-    doc.setFont("Times-Italic", FONT_XXS)
-    doc.drawString(
-        75,
-        line_item_start + 35,
-        f'{start_date.replace("-", "/")} - {end_date.replace("-", "/")}',
-    )
-    doc.setFont("Times-Roman", FONT_S)
     doc.setFillColor("black")
+    offset = line_item_start + 12
+    doc.setFont("Times-Roman", FONT_XXS)
+
+    #simple text wrap
+    words = name.split()
+    line = ""
+    for word in words:
+        w = doc.stringWidth(line + " " + word)
+        if w > 130:
+            doc.drawString(90, offset, line)
+            offset+= 12
+            line = word
+        else:
+            line += " " + word
+    doc.drawString(90, offset, line)
+
+
+    doc.drawString(250, offset, f'{start_date.replace("-", "/")} - ')
+    doc.drawString(250, offset + 12, f'{end_date.replace("-", "/")}')
+
     if quantity:
         new_quantity = "{:g}".format(float(quantity))
-        doc.drawString(350, datespan_offset, str(new_quantity))
+        doc.drawString(350, offset, str(new_quantity))
     else:
-        doc.drawString(350, datespan_offset, str(quantity))
+        doc.drawString(350, offset, str(quantity))
     if subtotal:
         new_subtotal = "{:g}".format(float(subtotal))
-        doc.drawString(475, datespan_offset, f"{currency_symbol}{str(new_subtotal)}")
+        doc.drawString(412.5, offset, f"{currency_symbol}{str(new_subtotal)}")
     else:
-        doc.drawString(475, datespan_offset, f"{currency_symbol}{str(subtotal)}")
-    doc.setFillColor("black")
-    draw_hr(doc, line_item_start + 45)
-    return line_item_start + 45
+        doc.drawString(412.5, offset, f"{currency_symbol}{str(subtotal)}")
+
+    doc.drawString(475, offset, billing_type)
+
+    draw_hr(doc, line_item_start + 35)
+    draw_vr(doc, 85, line_item_start - 10, 35)
+
+    return line_item_start + 35
 
 
 def write_total(doc, currency_symbol, total, current_y):
-    offset = current_y + 50
+    offset = current_y + 75
     doc.setFont("Times-Roman", FONT_S)
-    doc.drawString(75, offset, "Total Due")
+    doc.drawString(75, offset, "TAX")
+    doc.drawString(75, offset + 24, "Credits")
+    doc.setFont("Times-Roman", FONT_M)
+    doc.drawString(75, offset + 48, "Total")
     doc.drawString(475, offset, f"{currency_symbol}{total}")
 
 
@@ -214,12 +271,14 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             transform_date(invoice["issue_date"]),
             transform_date(invoice["issue_date"]),
         )
+
     write_summary_header(doc)
 
     grouped_line_items = {}
     for line_item in line_items:
         sr = line_item.associated_subscription_record
         if sr is not None:
+            plan_name = line_item.associated_subscription_record.billing_plan.plan.plan_name
             plan_id = line_item.associated_subscription_record.billing_plan.id
             subscription_filters = list(
                 (
@@ -233,7 +292,8 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
         else:
             plan_id = None
             subscription_filters = None
-        key = (subscription_filters, plan_id)
+            plan_name = None
+        key = (subscription_filters, plan_id, plan_name)
         if key not in grouped_line_items:
             grouped_line_items[key] = []
 
@@ -243,6 +303,10 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     line_item_start_y = 290
     taxes = []
     for group in grouped_line_items:
+        amount = sum(model_to_dict(line_item)["subtotal"] for line_item in grouped_line_items[group])
+        line_item_start_y = write_line_item_group(doc, group[2], amount, currency["symbol"], line_item_start_y)
+        line_item_start_y = write_line_item_headers(doc, line_item_start_y)
+
         for line_item_model in grouped_line_items[group]:
             if line_item_model.chargeable_item_type == CHARGEABLE_ITEM_TYPE.TAX:
                 taxes.append(line_item_model)
@@ -256,11 +320,19 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
                 line_item["quantity"],
                 line_item["subtotal"],
                 currency["symbol"],
+                line_item["billing_type"],
                 line_item_start_y,
             )
             if line_item_start_y > 680:
                 doc.showPage()
                 line_item_start_y = 40
+
+                invoice_number = invoice["invoice_number"]
+                doc.setFillColor(HexColor("#9CA3AF"))
+                doc.drawString(50, 800, f"#{invoice_number}")
+                doc.setFillColor('black')
+                doc.setFont("Times-Roman", FONT_XXS)
+                doc.drawString(475, 800, "Thank you for your buisness.")   
 
     for tax_line_item in taxes:
         line_item = model_to_dict(tax_line_item)
@@ -272,11 +344,20 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             line_item["quantity"],
             line_item["subtotal"],
             currency["symbol"],
+            line_item["billing_type"],
             line_item_start_y,
         )
         if line_item_start_y > 680:
             doc.showPage()
             line_item_start_y = 40
+
+            invoice_number = invoice["invoice_number"]
+            doc.setFillColor(HexColor("#9CA3AF"))
+            doc.drawString(50, 800, f"#{invoice_number}")
+            doc.setFillColor('black')
+            doc.setFont("Times-Roman", FONT_XXS)
+            doc.drawString(475, 800, "Thank you for your buisness.")   
+
     write_total(
         doc, currency["symbol"], round(invoice["cost_due"], 2), line_item_start_y
     )
