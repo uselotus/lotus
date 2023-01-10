@@ -6,7 +6,7 @@ WITH filtered_table AS
         "metering_billing_usageevent"."time_created"::timestamptz as time_created,
         "metering_billing_usageevent"."event_name" as event_name,
         '{{ start_date }}'::timestamptz as start_date,
-        '{{ end_date }}'::timestamptz as end_date,
+        '{{ end_date }}'::timestamptz as end_date
     FROM "metering_billing_usageevent"
     WHERE 
         "metering_billing_usageevent"."organization_id" = {{ organization_id }}

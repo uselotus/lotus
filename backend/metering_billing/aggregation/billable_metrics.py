@@ -674,39 +674,53 @@ class CounterHandler(MetricHandler):
 
 class CustomHandler(MetricHandler):
     @staticmethod
-    def get_subscription_record_total_billable_usage(
-        metric: Metric, subscription_record: SubscriptionRecord
-    ) -> Decimal:
+    def _run_query(custom_sql, injection_dict: dict):
         from metering_billing.aggregation.custom_query_templates import (
             CUSTOM_BASE_QUERY,
         )
-        from metering_billing.models import Organization, OrganizationSetting
+
+        combined_query = CUSTOM_BASE_QUERY
+        if custom_sql.lower().lstrip().startswith("WITH"):
+            custom_sql = custom_sql.replace("WITH", ",")
+        combined_query += custom_sql
+        query = Template(combined_query).render(**injection_dict)
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            results = namedtuplefetchall(cursor)
+        return results
+
+    @staticmethod
+    def get_subscription_record_current_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        return CounterHandler.get_subscription_record_total_billable_usage(
+            metric, subscription_record
+        )
+
+    @staticmethod
+    def get_subscription_record_total_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+
+        from metering_billing.models import Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
+        injection_dict = {
+            "filter_properties": {},
+            "customer_id": subscription_record.customer.id,
+        }
         start = subscription_record.usage_start_date
         end = subscription_record.end_date
-        injection_dict = CounterHandler._prepare_injection_dict(
-            metric, subscription_record, organization
-        )
         injection_dict["start_date"] = start
         injection_dict["end_date"] = end
-        injection_dict["property_name"] = metric.property_name
-        injection_dict["event_name"] = metric.event_name
         injection_dict["organization_id"] = organization.id
-        injection_dict["numeric_filters"] = [
-            (x.property_name, x.operator, x.comparison_value)
-            for x in metric.numeric_filters.all()
-        ]
-        injection_dict["categorical_filters"] = [
-            (x.property_name, x.operator, x.comparison_value)
-            for x in metric.categorical_filters.all()
-        ]
-        query = Template(CUSTOM_BASE_QUERY).render(**injection_dict)
-        with connection.cursor() as cursor:
-            cursor.execute(query)
-            results = namedtuplefetchall(cursor)
+        for filter in subscription_record.filters.all():
+            injection_dict["filter_properties"][
+                filter.property_name
+            ] = filter.comparison_value[0]
+        results = CustomHandler._run_query(metric.custom_sql, injection_dict)
         return results[0]["usage_qty"]
 
     @staticmethod
@@ -785,6 +799,21 @@ class CustomHandler(MetricHandler):
             raise MetricValidationFailed(
                 "Custom SQL query must be a SELECT statement and cannot contain any prohibited keywords"
             )
+        try:
+            injection_dict = {
+                "filter_properties": {},
+                "customer_id": 1,
+            }
+            start = now_utc()
+            end = now_utc()
+            injection_dict["start_date"] = start
+            injection_dict["end_date"] = end
+            injection_dict["organization_id"] = 1
+            _ = CustomHandler._run_query(custom_sql, injection_dict)
+        except Exception as e:
+            raise MetricValidationFailed(
+                "Custom SQL query could not be executed successfully: {}".format(e)
+            )
         return data
 
     @staticmethod
@@ -811,6 +840,8 @@ class CustomHandler(MetricHandler):
                 token.ttype is sqlparse.tokens.Keyword
                 and token.value.lower() in prohibited_keywords
             ):
+                return False
+            if token.value.lower == "metering_billing_usageevent":
                 return False
         return True
 
