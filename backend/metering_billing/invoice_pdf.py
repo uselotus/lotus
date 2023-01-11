@@ -112,15 +112,13 @@ def write_invoice_details(doc, invoice_number, issue_date, due_date):
     doc.drawString(25, 770, f"#{invoice_number}")
 
 
-def write_summary_header(doc):
+def write_summary_header(doc, start_date, end_date):
     doc.setFont("Times-Roman", 22)
     doc.setFillColor("black")
     doc.drawString(75, 255, "Summary")
     doc.setFont("Times-Roman", FONT_XXS)
     doc.setFillColor(HexColor("#9CA3AF"))
-    doc.drawString(
-        167, 255, f'{"MM/DD/YYYY".replace("-", "/")} - {"MM/DD/YYYY".replace("-", "/")}'
-    )
+    doc.drawString(167, 255, f"{start_date} - {end_date}")
     doc.setFillColor("black")
     doc.setFont("Times-Roman", FONT_XS)
     doc.setFillColor(HexColor("#9CA3AF"))
@@ -288,7 +286,11 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
 
     draw_big_hr(doc, 200)
 
-    write_summary_header(doc)
+    write_summary_header(
+        doc,
+        transform_date(subscription["start_date"]),
+        transform_date(subscription["end_date"]),
+    )
 
     grouped_line_items = {}
     for line_item in line_items:
