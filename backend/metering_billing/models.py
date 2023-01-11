@@ -2503,8 +2503,8 @@ class Tag(models.Model):
 
     constraints = [
         UniqueConstraint(
-            fields=["organization", "usage_alert_id"],
-            name="unique_alert_id_per_org",
+            fields=["organization", "tag_name", "tag_group"],
+            name="unique_with_tag_group",
         ),
     ]
 
@@ -2525,8 +2525,8 @@ class UsageAlert(models.Model):
     class Meta:
         constraints = [
             UniqueConstraint(
-                fields=["organization", "tag_name", "tag_group"],
-                name="unique_with_tag_group",
+                fields=["organization", "usage_alert_id"],
+                name="unique_alert_id_per_org",
             ),
         ]
 
