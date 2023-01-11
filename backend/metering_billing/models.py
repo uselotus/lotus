@@ -7,7 +7,7 @@ from decimal import Decimal
 from random import choices
 from typing import TypedDict
 
-import lotus_python
+# import lotus_python
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser

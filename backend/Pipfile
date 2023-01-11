@@ -42,7 +42,6 @@ django-anymail = {extras = ["mailgun"], version = "*"}
 numpy = "*"
 pytz = "*"
 django-activity-stream = "*"
-lotus-python = ">=0.9.0"
 kafka-python = "*"
 kafka-helper = "*"
 cronitor = "*"

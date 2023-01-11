@@ -1,7 +1,7 @@
 import json
 import time
 
-import lotus_python
+# import lotus_python
 import posthog
 from django.conf import settings
 from django.contrib.auth import authenticate, login
