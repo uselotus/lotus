@@ -16,7 +16,7 @@ services:
       SVIX_REDIS_DSN: redis://redis
       SVIX_DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db
     env_file:
-      - ./env/.env.dev
+      - ./env/.env.prod
     ports:
       - "8071:8071"
     depends_on:
