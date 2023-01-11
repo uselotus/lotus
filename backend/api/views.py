@@ -184,7 +184,7 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 else (
                     username
                     if username
-                    else organization.organization_name_name_name + " (API Key)"
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_customer",
                 properties={"organization": organization.organization_name},

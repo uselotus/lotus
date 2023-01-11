@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 
 class RegistrationDetailSerializer(serializers.Serializer):
-    organization_name_name = serializers.CharField(allow_blank=True)
+    organization_name = serializers.CharField(allow_blank=True)
     industry = serializers.CharField(allow_blank=True)
     email = serializers.CharField()
     password = serializers.CharField()
