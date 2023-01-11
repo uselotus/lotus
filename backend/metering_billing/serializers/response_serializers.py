@@ -1,4 +1,8 @@
-from metering_billing.serializers.model_serializers import MetricSerializer
+from metering_billing.serializers.model_serializers import (
+    LightweightSubscriptionRecordSerializer,
+    MetricSerializer,
+    UsageAlertSerializer,
+)
 from rest_framework import serializers
 
 
@@ -65,3 +69,10 @@ class CostAnalysisSerializer(serializers.Serializer):
     total_cost = serializers.DecimalField(decimal_places=10, max_digits=20)
     total_revenue = serializers.DecimalField(decimal_places=10, max_digits=20)
     margin = serializers.DecimalField(decimal_places=10, max_digits=20)
+
+
+class UsageAlertTriggeredSerializer(serializers.Serializer):
+    subscription = LightweightSubscriptionRecordSerializer()
+    usage_alert = UsageAlertSerializer()
+    usage = serializers.DecimalField(decimal_places=10, max_digits=20)
+    time_triggered = serializers.DateTimeField()

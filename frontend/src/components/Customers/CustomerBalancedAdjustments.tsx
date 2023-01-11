@@ -7,7 +7,12 @@ import { BalanceAdjustmentType } from "../../types/balance-adjustment";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import { useMutation, useQuery, UseQueryResult } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "react-query";
 import { BalanceAdjustment } from "../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
@@ -32,6 +37,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   const [showCreateCredit, setShowCreateCredit] = useState(false);
   const [transformedData, setTransformedData] = useState<DataType[]>([]);
   const [sumOfCredits, setSumOfCredits] = useState(0);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let total: number = 0;
@@ -215,7 +221,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
     <div>
       <h2 className="mb-2 pb-4 pt-4 font-bold text-main">Credits</h2>
 
-      <div className="flex items-center justify-between pb-5">
+      <div className="flex items-center justify-between pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-between pr-6">
             <div className="mr-4">Currency:</div>
