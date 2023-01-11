@@ -151,7 +151,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                         </div>
                       </div>
                       <span className="text-card-grey text-base leading-4 Inter">
-                        Create a new account environment
+                        Create a new organization environment
                       </span>
                       <div className=" w-full h-[1.5px] mt-2 bg-card-divider" />
                     </div>
@@ -186,7 +186,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                       </div>
                       <Select>
                         <Select.Label className="text-[#9E9E9E] mb-2">
-                          Name
+                          Type
                         </Select.Label>
                         <Select.Select
                           onChange={(e) =>

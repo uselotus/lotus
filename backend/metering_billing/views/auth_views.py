@@ -300,7 +300,7 @@ class RegisterView(LoginViewMixin, APIView):
             ).count()
             if existing_org_num > 0:
                 raise DuplicateOrganization(
-                    "Organization with company name already exists"
+                    "Organization environment with company name already exists"
                 )
             team = Team.objects.create(name=organization_name)
             org = Organization.objects.create(
