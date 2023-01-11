@@ -351,6 +351,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
         setIsModalVisible(false);
         queryClient.invalidateQueries("plan_details");
         setAlertThreshold(0);
+        toast("Successful. Please the refresh page.");
       },
     }
   );

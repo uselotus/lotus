@@ -181,8 +181,7 @@ const PlanDetails: FC = () => {
               plan.target_customer !== null ? (
                 <div>
                   {" "}
-                  plan.plan_name + ": " + (plan.target_customer?.name ??
-                  plan.target_customer?.customer_id.substring(0, 8))
+                  {plan.plan_name}
                   <span className="block mt-4 text-neutral-500 text-base">
                     {plan.display_version.description}
                   </span>

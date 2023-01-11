@@ -14,7 +14,6 @@ import { integrationsMap } from "../../types/payment-processor-type";
 import axios from "axios";
 
 const downloadFile = async (s3link) => {
-  console.log(s3link);
   if (!s3link) {
     toast.error("No file to download");
     return;
