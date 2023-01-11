@@ -1,7 +1,7 @@
 import json
 import time
 
-import lotus_python
+# import lotus_python
 import posthog
 from django.conf import settings
 from django.contrib.auth import authenticate, login
@@ -393,11 +393,11 @@ class RegisterView(LoginViewMixin, APIView):
                 organization_type=Organization.OrganizationType.DEVELOPMENT,
             )
             token = None
-            if META:
-                lotus_python.create_customer(
-                    customer_id=org.organization_id,
-                    name=org.organization_name,
-                )
+            # if META:
+            #     lotus_python.create_customer(
+            #         customer_id=org.organization_id,
+            #         name=org.organization_name,
+            #     )
 
         user = User.objects.create_user(
             email=email,
