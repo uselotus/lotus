@@ -151,8 +151,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                         </div>
                       </div>
                       <span className="text-card-grey text-base leading-4 Inter">
-                        Create a new account environment in less than 10s by
-                        filling the inputs below
+                        Create a new account environment
                       </span>
                       <div className=" w-full h-[1.5px] mt-2 bg-card-divider" />
                     </div>

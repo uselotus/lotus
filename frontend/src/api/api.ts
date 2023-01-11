@@ -240,7 +240,7 @@ export const Plan = {
   createAlert: (post: CreateAlertType): Promise<AlertType> =>
     requests.post("app/usage_alerts/", post),
   deleteAlert: (post: { usage_alert_id: string }): Promise<AlertType> =>
-    requests.delete(`app/alerts/${post.usage_alert_id}/`),
+    requests.delete(`app/usage_alerts/${post.usage_alert_id}/`),
 };
 
 export const Webhook = {

@@ -16,7 +16,7 @@
 }
 @font-face {
   font-family: "Alliance No.2";
-  src:   url('../fonts/Alliance-No.2-Regular.woff') format('woff');
+  src: local url('../fonts/Alliance-No.2-Regular.woff') format('woff');
 }
 .Inter {
   font-family: 'Inter', sans-serif;
@@ -36,7 +36,7 @@
     font-family: Satoshi, serif;
 }
 .font-alliance {
-  font-family:  "Alliance No.2";
+  font-family:  "Alliance No.2", sans-serif;
 }
 
 

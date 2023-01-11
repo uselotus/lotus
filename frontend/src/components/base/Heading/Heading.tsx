@@ -48,6 +48,7 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
             </Badge>
           </div>
           <div
+            onClick={setOpen}
             className={`flex gap-4 items-center p-4 ${
               isPlansPage ? "hover:bg-gold-50" : "hover:bg-white"
             }`}

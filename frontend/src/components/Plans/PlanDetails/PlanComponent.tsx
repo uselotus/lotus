@@ -340,6 +340,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   const [alertThreshold, setAlertThreshold] = useState(0);
   const [isCreateAlert, setIsCreateAlert] = useState(true);
   const [currentComponent, setCurrentComponent] = useState<Component>();
+  const [currentAlertId, setCurrentAlertId] = useState<string>();
 
   const queryClient = new QueryClient();
 
@@ -364,14 +365,21 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     }
   );
 
+  const deleteAlert = (usage_alert_id: string) => {
+    deleteAlertMutation.mutate({
+      usage_alert_id: usage_alert_id,
+    });
+  };
+
   const showModal = () => {
     setIsModalVisible(true);
   };
 
-  const handleDeleteAlert = (usage_alert_id) => {
+  const handleDeleteAlert = () => {
     deleteAlertMutation.mutate({
-      usage_alert_id: usage_alert_id,
+      usage_alert_id: currentAlertId,
     });
+    queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
   };
 
   const submitAlertModal = (component: Component, usage_alert_id?: string) => {
@@ -393,6 +401,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
         threshold: alertThreshold,
       });
     }
+    queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
   };
 
   return (
@@ -451,16 +460,28 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]}
                   />
                 </div>
-                <div>
+                <div className=" w-full h-[1.5px] mt-4 bg-card-divider mb-2" />
+
+                <div className="mt-4">
                   <div
-                    className="flex hover:bg-black hover:bg-opacity-10 w-full"
+                    className="flex"
                     onClick={() => {
                       if (component.billable_metric.metric_type !== "counter") {
                         toast.error("Only counter metrics can create alerts");
                       } else {
-                        findAlertForComponent(component, alerts) !== undefined
-                          ? setIsCreateAlert(false)
-                          : setIsCreateAlert(true);
+                        if (
+                          findAlertForComponent(component, alerts) !== undefined
+                        ) {
+                          const alert = findAlertForComponent(
+                            component,
+                            alerts
+                          );
+                          setIsCreateAlert(false);
+                          setAlertThreshold(alert?.threshold);
+                          setCurrentAlertId(alert?.usage_alert_id);
+                        } else {
+                          setIsCreateAlert(true);
+                        }
                         setCurrentComponent(component);
                         showModal();
                       }
@@ -477,12 +498,14 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <path d="M20 17h2v2H2v-2h2v-7a8 8 0 1 1 16 0v7zm-2 0v-7a6 6 0 1 0-12 0v7h12zm-9 4h6v2H9v-2z" />
                     </svg>
                     {findAlertForComponent(component, alerts) !== undefined ? (
-                      <p>
+                      <p className="align-middle">
                         Reaches:{" "}
                         {findAlertForComponent(component, alerts).threshold}
                       </p>
                     ) : (
-                      <p className=" text-small text-g">Set Alert</p>
+                      <p className=" text-small align-middle self-center">
+                        Set Alert
+                      </p>
                     )}
                   </div>
                 </div>
@@ -491,14 +514,43 @@ const PlanComponents: FC<PlanComponentsProps> = ({
             <Modal
               title="Set Alert"
               visible={isModalVisible}
-              onOk={() => submitAlertModal(currentComponent)}
-              okText={isCreateAlert ? "Create" : "Update"}
               onCancel={() => setIsModalVisible(false)}
-              footer={[
-                <Button key="back" onClick={() => setIsModalVisible(false)}>
-                  Delete
-                </Button>,
-              ]}
+              footer={
+                isCreateAlert
+                  ? [
+                      <Button
+                        key="back"
+                        onClick={() => setIsModalVisible(false)}
+                      >
+                        Cancel
+                      </Button>,
+                      <Button
+                        key="submit"
+                        type="primary"
+                        onClick={() => submitAlertModal(currentComponent)}
+                      >
+                        Create
+                      </Button>,
+                    ]
+                  : [
+                      <Button
+                        key="delete"
+                        className=" bg-red-600"
+                        onClick={() => deleteAlert(currentAlertId)}
+                      >
+                        Delete
+                      </Button>,
+                      <Button
+                        key="submit"
+                        type="primary"
+                        onClick={() =>
+                          submitAlertModal(currentComponent, currentAlertId)
+                        }
+                      >
+                        Update
+                      </Button>,
+                    ]
+              }
             >
               <div className="flex flex-row justify-center items-center">
                 {currentComponent?.billable_metric.metric_name} reaches:{"  "}
