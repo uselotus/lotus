@@ -76,7 +76,8 @@
       "pages": [
         "subscription-lifecycle/creating-subscriptions",
         "subscription-lifecycle/invoicing",
-        "subscription-lifecycle/managing-access"
+        "subscription-lifecycle/managing-access",
+        "subscription-lifecycle/alerts"
       ]
     },
     {
