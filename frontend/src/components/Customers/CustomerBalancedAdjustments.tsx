@@ -7,7 +7,12 @@ import { BalanceAdjustmentType } from "../../types/balance-adjustment";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import PricingUnitDropDown from "../PricingUnitDropDown";
-import { useMutation, useQuery, UseQueryResult } from "react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  UseQueryResult,
+} from "react-query";
 import { BalanceAdjustment } from "../../api/api";
 import { MoreOutlined } from "@ant-design/icons";
 import { toast } from "react-toastify";
@@ -32,6 +37,7 @@ const CustomerBalancedAdjustments: FC<Props> = ({ customerId }) => {
   const [showCreateCredit, setShowCreateCredit] = useState(false);
   const [transformedData, setTransformedData] = useState<DataType[]>([]);
   const [sumOfCredits, setSumOfCredits] = useState(0);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let total: number = 0;

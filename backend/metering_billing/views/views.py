@@ -560,7 +560,7 @@ class DraftInvoiceView(APIView):
         sub, sub_records = customer.get_subscription_and_records()
         response = {"invoice": None}
         if sub is None or sub_records is None:
-            pass
+            response = {"invoices": []}
         else:
             sub_records = sub_records.select_related("billing_plan").prefetch_related(
                 "billing_plan__plan_components",
@@ -578,7 +578,7 @@ class DraftInvoiceView(APIView):
             serializer = DraftInvoiceSerializer(invoices, many=True).data
             for invoice in invoices:
                 invoice.delete()
-            response = {"invoices": serializer}
+            response = {"invoices": serializer or []}
         return Response(response, status=status.HTTP_200_OK)
 
 

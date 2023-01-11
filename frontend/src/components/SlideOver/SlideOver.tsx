@@ -192,7 +192,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                           onChange={(e) =>
                             setOrgType(e.target.value.toLowerCase())
                           }
-                          className="bg-gold-100 text-[#9e9e9e] !w-[90%]"
+                          className="bg-gold-100 text-[#9E9E9E] !w-[90%]"
                         >
                           <Select.Option selected>Development</Select.Option>
                           {["Production"].map((opt) => (

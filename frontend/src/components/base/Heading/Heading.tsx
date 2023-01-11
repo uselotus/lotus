@@ -35,10 +35,14 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
             <Badge
               onClick={setOpen}
               className={
-                environment !== "production" ? "bg-blue-100 text-blue-800" : ""
+                environment !== "Production"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-emerald-100 text-emerald-800"
               }
             >
-              <Badge.Dot fill={environment !== "production" ? "#60A5FA" : ""} />
+              <Badge.Dot
+                fill={environment !== "Production" ? "#60A5FA" : "#34D399"}
+              />
               <Badge.Content>
                 <span className="flex gap-2 ml-2 justify-center items-center">
                   <span className="text-sm">{environment}</span>

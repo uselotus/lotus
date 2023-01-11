@@ -715,6 +715,8 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def list(self, request):
         return super().list(request)
 
+class EmptySerializer(serializers.Serializer):
+    pass
 
 class CustomerBalanceAdjustmentViewSet(
     PermissionPolicyMixin,
@@ -742,7 +744,7 @@ class CustomerBalanceAdjustmentViewSet(
         elif self.action == "create":
             return CustomerBalanceAdjustmentCreateSerializer
         elif self.action == "void":
-            return None
+            return EmptySerializer
         elif self.action == "edit":
             return CustomerBalanceAdjustmentUpdateSerializer
         return CustomerBalanceAdjustmentSerializer

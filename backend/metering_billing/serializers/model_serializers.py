@@ -224,7 +224,7 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         required=False,
     )
     organization_type = serializers.ChoiceField(
-        choices=["development", "production"], default="development"
+        choices=["development", "production"], default="development", required=False
     )
 
     def validate(self, data):
@@ -238,6 +238,8 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
             data["organization_type"] = Organization.OrganizationType.DEVELOPMENT
         elif data["organization_type"] == "production":
             data["organization_type"] = Organization.OrganizationType.PRODUCTION
+        else:
+            raise ValidationError("Invalid organization type")
         return data
 
     def create(self, validated_data):
@@ -1286,13 +1288,20 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
             existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
             for tag in tags:
                 if tag["tag_name"].lower() not in existing_tag_names:
-                    tag_obj, _ = Tag.objects.get_or_create(
-                        organization=instance.organization,
-                        tag_name=tag["tag_name"],
-                        tag_group=TAG_GROUP.PLAN,
-                        tag_hex=tag["tag_hex"],
-                        tag_color=tag["tag_color"],
-                    )
+                    try:
+                        tag_obj = Tag.objects.get(
+                            organization=instance.organization,
+                            tag_name__iexact=tag["tag_name"].lower(),
+                            tag_group=TAG_GROUP.PLAN,
+                        )
+                    except Tag.DoesNotExist:
+                        tag_obj = Tag.objects.create(
+                            organization=instance.organization,
+                            tag_name=tag["tag_name"],
+                            tag_group=TAG_GROUP.PLAN,
+                            tag_hex=tag["tag_hex"],
+                            tag_color=tag["tag_color"],
+                        )
                     instance.tags.add(tag_obj)
             for existing_tag in existing_tags:
                 if existing_tag.tag_name.lower() not in tags_lower:

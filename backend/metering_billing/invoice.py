@@ -452,7 +452,6 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     )
 
     apply_taxes(invoice, customer, organization)
-    apply_customer_balance_adjustments(invoice, customer, organization, draft)
 
     invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if abs(invoice.cost_due) < 0.01 and not draft:

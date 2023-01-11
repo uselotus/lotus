@@ -24,13 +24,13 @@ const SlideOverCard: React.FC<SlideOverCardProps> = ({ switchOrg }) => {
               fill={
                 org.organization_type.toLowerCase() !== "production"
                   ? "#60A5FA"
-                  : ""
+                  : "#34D399"
               }
             />
             <span
               className={
                 org.organization_type.toLowerCase() !== "production"
-                  ? " text-blue-800"
+                  ? "text-blue-800"
                   : "text-emerald-800"
               }
             >
