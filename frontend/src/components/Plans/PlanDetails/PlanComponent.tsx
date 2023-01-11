@@ -351,7 +351,8 @@ const PlanComponents: FC<PlanComponentsProps> = ({
         setIsModalVisible(false);
         queryClient.invalidateQueries("plan_details");
         setAlertThreshold(0);
-        toast("Successful. Please the refresh page.");
+        toast.success("Successfully created alert. Please the refresh page.");
+        window.location.reload(false);
       },
     }
   );
@@ -362,6 +363,8 @@ const PlanComponents: FC<PlanComponentsProps> = ({
       onSuccess: () => {
         setIsModalVisible(false);
         queryClient.invalidateQueries("plan_details");
+        toast.success("Deleted alert");
+        window.location.reload(false);
       },
     }
   );
@@ -384,6 +387,10 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   };
 
   const submitAlertModal = (component: Component, usage_alert_id?: string) => {
+    if (typeof alertThreshold !== "number") {
+      toast.error("Must input a number");
+      return;
+    }
     if (isCreateAlert) {
       createAlertMutation.mutate({
         plan_version_id: plan_version_id,
@@ -553,15 +560,17 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]
               }
             >
-              <div className="flex flex-row justify-center items-center">
+              <div className="flex flex-row justify-center items-center gap-4">
                 {currentComponent?.billable_metric.metric_name} reaches:{"  "}
                 <InputNumber
-                  min={0}
-                  defaultValue={0}
                   className="ml-2 mr-2"
                   onChange={(value) => {
-                    if (value) {
+                    console.log(typeof value);
+                    if (value && typeof value === "number") {
                       setAlertThreshold(value);
+                    }
+                    if (typeof value === "string") {
+                      toast.success("Please enter a number");
                     }
                   }}
                   value={alertThreshold}
