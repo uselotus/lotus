@@ -600,7 +600,7 @@ def setup_demo3(
 
 
 def setup_demo4(
-    company_name,
+    organization_name,
     username=None,
     email=None,
     password=None,
@@ -609,7 +609,7 @@ def setup_demo4(
 ):
     if mode == "create":
         try:
-            org = Organization.objects.get(company_name=company_name)
+            org = Organization.objects.get(organization_name=organization_name)
             Event.objects.filter(organization=org).delete()
             org.delete()
             logger.info("[DEMO4]: Deleted existing organization, replacing")
@@ -623,14 +623,14 @@ def setup_demo4(
             )
         if user.organization is None:
             organization, _ = Organization.objects.get_or_create(
-                company_name=company_name
+                organization_name=organization_name
             )
             organization.organization_type = org_type
             user.organization = organization
             user.save()
             organization.save()
     elif mode == "regenerate":
-        organization = Organization.objects.get(company_name=company_name)
+        organization = Organization.objects.get(organization_name=organization_name)
         user = organization.users.all().first()
         WebhookEndpoint.objects.filter(organization=organization).delete()
         WebhookTrigger.objects.filter(organization=organization).delete()
@@ -793,12 +793,12 @@ def setup_demo4(
     )
     bp_basic_events = PlanVersion.objects.create(
         organization=organization,
-        description="Basic plan, with access to only analytics events. $19/month flat fee + 10 cents per_usage",
+        description="Basic plan, with access to only analytics events. $29/month flat fee + 20 cents per_usage",
         version=1,
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=19,
+        flat_rate=29,
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
@@ -807,7 +807,7 @@ def setup_demo4(
         billable_metric=calls,
         free_units=10,
         max_units=100,
-        cost_per_batch=0.10,
+        cost_per_batch=0.20,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
@@ -826,12 +826,12 @@ def setup_demo4(
     )
     bp_pro_events = PlanVersion.objects.create(
         organization=organization,
-        description="Pro plan, with access to only analytics events. $49/month flat fee + 2.5 cents charge for events",
+        description="Pro plan, with access to only analytics events. $69/month flat fee + 25 cents charge for events",
         version=1,
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=49,
+        flat_rate=69,
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
@@ -840,7 +840,7 @@ def setup_demo4(
         billable_metric=calls,
         free_units=100,
         max_units=500,
-        cost_per_batch=0.075,
+        cost_per_batch=0.25,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
@@ -859,12 +859,12 @@ def setup_demo4(
     )
     bp_basic_both = PlanVersion.objects.create(
         organization=organization,
-        description="Basic plan, with access to analytics events + session recordings. $39/month flat fee + half a cent per_usage charge for events over 500 + $0.15 per session recording",
+        description="Basic plan, with access to analytics events + session recordings. $59/month flat fee + 20 cent per_usage charge for events + $0.35 per session recording",
         version=1,
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=39,
+        flat_rate=59,
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
@@ -873,14 +873,14 @@ def setup_demo4(
         billable_metric=calls,
         free_units=10,
         max_units=100,
-        cost_per_batch=0.10,
+        cost_per_batch=0.20,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
         organization,
         plan_version=bp_basic_both,
         billable_metric=session_recordings,
-        cost_per_batch=0.15,
+        cost_per_batch=0.35,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
@@ -899,12 +899,12 @@ def setup_demo4(
     )
     bp_pro_both = PlanVersion.objects.create(
         organization=organization,
-        description="Pro plan, with access to analytics events + session recordings. $99/month flat fee + 7.5 cent per_usage charge + $0.15 per session recording",
+        description="Pro plan, with access to analytics events + session recordings. $119/month flat fee + 25 cent per_usage charge + $0.35 per session recording",
         version=1,
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=99,
+        flat_rate=119,
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
@@ -913,14 +913,14 @@ def setup_demo4(
         billable_metric=calls,
         free_units=100,
         max_units=500,
-        cost_per_batch=0.075,
+        cost_per_batch=0.25,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
         organization,
         plan_version=bp_pro_both,
         billable_metric=session_recordings,
-        cost_per_batch=0.15,
+        cost_per_batch=0.35,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
@@ -944,7 +944,7 @@ def setup_demo4(
         flat_fee_billing_type=FLAT_FEE_BILLING_TYPE.IN_ADVANCE,
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
-        flat_rate=59,
+        flat_rate=89,
         version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
@@ -953,14 +953,14 @@ def setup_demo4(
         billable_metric=calls,
         free_units=100,
         max_units=500,
-        cost_per_batch=0.075,
+        cost_per_batch=0.25,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
         organization,
         plan_version=bp_experimental,
         billable_metric=sum_time,
-        cost_per_batch=0.15 / 60,
+        cost_per_batch=0.35 / 60,
         metric_units_per_batch=1,
     )
     create_pc_and_tiers(
