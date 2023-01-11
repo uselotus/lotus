@@ -730,11 +730,8 @@ class CustomHandler(MetricHandler):
             # unfortunately there's no good way to make caggs for unique
             # if we're refreshing the matview, then we need to drop the last
             # one and recreate it
-            from .counter_query_templates import (
-                COUNTER_CAGG_COMPRESSION,
-                COUNTER_CAGG_QUERY,
-                COUNTER_CAGG_REFRESH,
-            )
+            from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
+            from .counter_query_templates import COUNTER_CAGG_QUERY
 
             if refresh is True:
                 CustomHandler.archive_metric(metric)
@@ -771,10 +768,8 @@ class CustomHandler(MetricHandler):
                 )
                 sql_injection_data["bucket_size"] = continuous_agg_type
                 query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
-                refresh_query = Template(COUNTER_CAGG_REFRESH).render(
-                    **sql_injection_data
-                )
-                compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
+                refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
+                compression_query = Template(CAGG_COMPRESSION).render(
                     **sql_injection_data
                 )
                 with connection.cursor() as cursor:

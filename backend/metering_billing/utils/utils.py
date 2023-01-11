@@ -453,6 +453,10 @@ def customer_balance_adjustment_uuid():
     return "custbaladj_" + str(uuid.uuid4().hex)
 
 
+def usage_alert_uuid():
+    return "usgalert_" + str(uuid.uuid4().hex)
+
+
 def random_uuid():
     return str(uuid.uuid4().hex)
 

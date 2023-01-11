@@ -39,6 +39,7 @@ from metering_billing.views.model_views import (
     PricingUnitViewSet,
     ProductViewSet,
     SubscriptionViewSet,
+    UsageAlertViewSet,
     UserViewSet,
     WebhookViewSet,
 )
@@ -94,6 +95,8 @@ router.register(
     basename="balance_adjustment",
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
+router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
+
 
 # api router
 api_router = routers.DefaultRouter()

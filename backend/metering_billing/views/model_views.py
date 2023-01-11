@@ -477,7 +477,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     A simple ViewSet for viewing and editing PlanVersions.
     """
 
-    serializer_class = PlanVersionSerializer
+    serializer_class = PlanVersionDetailSerializer
     lookup_field = "version_id"
     http_method_names = [
         "post",
@@ -495,7 +495,7 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return PlanVersionUpdateSerializer
         elif self.action == "create":
             return PlanVersionCreateSerializer
-        return PlanVersionSerializer
+        return PlanVersionDetailSerializer
 
     def get_queryset(self):
         organization = self.request.organization
@@ -533,13 +533,29 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             )
         return response
 
-    @extend_schema(responses=PlanVersionSerializer)
+    @extend_schema(responses=PlanVersionDetailSerializer)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        plan_version_data = PlanVersionSerializer(instance).data
+        plan_version_data = PlanVersionDetailSerializer(instance).data
         return Response(plan_version_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(responses=PlanVersionDetailSerializer)
+    def update(self, request, *args, **kwargs):
+        pv = self.get_object()
+        serializer = self.get_serializer(pv, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(pv, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            pv._prefetched_objects_cache = {}
+
+        return Response(
+            PlanVersionDetailSerializer(pv, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -558,35 +574,13 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         #     )
         return instance
 
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        # if self.request.user.is_authenticated:
-        #     user = self.request.user
-        # else:
-        #     user = None
-        # if user:
-        #     if instance.status == PLAN_VERSION_STATUS.ACTIVE:
-        #         action.send(
-        #             user,
-        #             verb="activated",
-        #             action_object=instance,
-        #             target=instance.plan,
-        #         )
-        #     elif instance.status == PLAN_VERSION_STATUS.ARCHIVED:
-        #         action.send(
-        #             user,
-        #             verb="archived",
-        #             action_object=instance,
-        #             target=instance.plan,
-        #         )
-
 
 class PlanViewSet(api_views.PlanViewSet):
     """
-    A simple ViewSet for viewing and editing Products.
+    ViewSet for viewing and editing Plans.
     """
 
-    serializer_class = PlanSerializer
+    serializer_class = PlanDetailSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "post", "patch", "head"]
     queryset = Plan.objects.all()
@@ -624,15 +618,31 @@ class PlanViewSet(api_views.PlanViewSet):
             return PlanUpdateSerializer
         elif self.action == "create":
             return PlanCreateSerializer
-        return PlanSerializer
+        return PlanDetailSerializer
 
-    @extend_schema(responses=PlanSerializer)
+    @extend_schema(responses=PlanDetailSerializer)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = self.perform_create(serializer)
-        metric_data = PlanSerializer(instance).data
+        metric_data = PlanDetailSerializer(instance).data
         return Response(metric_data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(responses=PlanDetailSerializer)
+    def update(self, request, *args, **kwargs):
+        plan = self.get_object()
+        serializer = self.get_serializer(plan, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(plan, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            plan._prefetched_objects_cache = {}
+
+        return Response(
+            PlanDetailSerializer(plan, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -649,9 +659,6 @@ class PlanViewSet(api_views.PlanViewSet):
         #         action_object=instance,
         #     )
         return instance
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
 
 
 class SubscriptionViewSet(api_views.SubscriptionViewSet):
@@ -1017,3 +1024,33 @@ class OrganizationViewSet(
 
 class CustomerBalanceAdjustmentViewSet(api_views.CustomerBalanceAdjustmentViewSet):
     pass
+
+
+class UsageAlertViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for viewing and editing UsageAlerts.
+    """
+
+    serializer_class = UsageAlertSerializer
+    permission_classes = [IsAuthenticated & ValidOrganization]
+    http_method_names = ["get", "post", "head", "delete"]
+    queryset = UsageAlert.objects.all()
+    lookup_field = "usage_alert_id"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UsageAlertCreateSerializer
+        return UsageAlertSerializer
+
+    def get_queryset(self):
+        organization = self.request.organization
+        return UsageAlert.objects.filter(organization=organization)
+
+    def perform_create(self, serializer):
+        serializer.save(organization=self.request.organization)
+
+    def get_serializer_context(self):
+        context = super(UsageAlertViewSet, self).get_serializer_context()
+        organization = self.request.organization
+        context.update({"organization": organization})
+        return context
