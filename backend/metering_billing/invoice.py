@@ -54,6 +54,7 @@ def generate_invoice(
     """
     from metering_billing.models import (
         Customer,
+        CustomerBalanceAdjustment,
         Invoice,
         InvoiceLineItem,
         Organization,

@@ -29,14 +29,12 @@ class Command(BaseCommand):
             defaults={"interval": every_hour, "crontab": None},
         )
 
+        PeriodicTask.objects.filter(
+            name="Check start of subscriptions",
+        ).delete()
+
         PeriodicTask.objects.update_or_create(
             name="Check Payment Intent status and update invoice",
             task="metering_billing.tasks.update_invoice_status",
             defaults={"interval": every_15_mins, "crontab": None},
-        )
-
-        PeriodicTask.objects.update_or_create(
-            name="Run Alert Refreshes",
-            task="metering_billing.tasks.refresh_alerts",
-            defaults={"interval": every_3_minutes, "crontab": None},
         )
