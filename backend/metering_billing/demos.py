@@ -1157,21 +1157,21 @@ def setup_demo4(
                 end_time = time.time()
                 print("Time to generate 1 month data: ", end_time - start_time)
     now = now_utc()
-    backtest = Backtest.objects.create(
-        backtest_name=organization,
-        start_date="2022-08-01",
-        end_date="2022-11-01",
-        organization=organization,
-        time_created=now,
-        kpis=[BACKTEST_KPI.TOTAL_REVENUE],
-    )
-    BacktestSubstitution.objects.create(
-        backtest=backtest,
-        original_plan=bp_pro_both,
-        new_plan=bp_experimental,
-        organization=organization,
-    )
-    run_backtest.delay(backtest.backtest_id)
+    # backtest = Backtest.objects.create(
+    #     backtest_name=organization,
+    #     start_date="2022-08-01",
+    #     end_date="2022-11-01",
+    #     organization=organization,
+    #     time_created=now,
+    #     kpis=[BACKTEST_KPI.TOTAL_REVENUE],
+    # )
+    # BacktestSubstitution.objects.create(
+    #     backtest=backtest,
+    #     original_plan=bp_pro_both,
+    #     new_plan=bp_experimental,
+    #     organization=organization,
+    # )
+    # run_backtest.delay(backtest.backtest_id)
     return user
 
 
