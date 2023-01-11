@@ -11,6 +11,29 @@ import { toast } from "react-toastify";
 import { MoreOutlined } from "@ant-design/icons";
 import { integrationsMap } from "../../types/payment-processor-type";
 
+import axios from "axios";
+
+const downloadFile = async (s3link) => {
+  console.log(s3link);
+  if (!s3link) {
+    toast.error("No file to download");
+    return;
+  }
+  try {
+    const response = await axios.get(s3link, {
+      responseType: "blob",
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "file_name.pdf");
+    document.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 // @ts-ignore
 const lotusUrl = new URL("./lotusIcon.svg", import.meta.url).href;
 
@@ -99,7 +122,10 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
               <Dropdown
                 overlay={
                   <Menu>
-                    <Menu.Item key="1">
+                    <Menu.Item
+                      key="1"
+                      onClick={() => downloadFile(record.invoice_pdf)}
+                    >
                       <div className="archiveLabel">
                         Download Invoice Information
                       </div>
