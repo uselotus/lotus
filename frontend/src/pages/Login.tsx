@@ -48,9 +48,11 @@ const Login: FC = () => {
     navigate("/dashboard");
   };
 
+  const isDemo = import.meta.env.VITE_IS_DEMO === "true";
+
   const mutation = useMutation(
     (data: { username: string; password: string }) =>
-      import.meta.env.VITE_IS_DEMO === "true"
+      isDemo
         ? Authentication.demo_login(username, password)
         : Authentication.login(username, password),
 
