@@ -10,7 +10,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
-from metering_billing.demos import setup_demo3
+from metering_billing.demos import setup_demo4
 from metering_billing.exceptions import (
     DuplicateOrganization,
     DuplicateUser,
@@ -45,6 +45,90 @@ class LogoutViewMixin(KnoxLogoutView):
 
 
 class LoginView(LoginViewMixin, APIView):
+    @extend_schema(
+        request=inline_serializer(
+            name="LoginRequest",
+            fields={
+                "username": serializers.CharField(),
+                "password": serializers.CharField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="LoginSuccess",
+                fields={
+                    "detail": serializers.CharField(),
+                    "token": serializers.CharField(),
+                    "user": UserSerializer(),
+                },
+            ),
+            400: inline_serializer(
+                name="LoginFailure",
+                fields={
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return Response(
+                {"detail": "Invalid JSON."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if data is None:
+            return Response(
+                {"detail": "No data provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        username = data.get("username")
+        password = data.get("password")
+
+        if username is None or password is None:
+            return Response(
+                {"detail": "Please provide username and password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return JsonResponse(
+                {"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user_team = user.team
+        if not all(
+            [
+                x != Organization.OrganizationType.EXTERNAL_DEMO
+                for x in user_team.organizations.all().values_list(
+                    "organization_type", flat=True
+                )
+            ]
+        ):
+            return JsonResponse(
+                {"detail": "Cannot login in to Lotus app with a demo account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        login(request, user)
+        posthog.capture(
+            POSTHOG_PERSON if POSTHOG_PERSON else username,
+            event="succesful login",
+            properties={"organization": user.organization.organization_name},
+        )
+        token = AuthToken.objects.create(user)
+        return Response(
+            {
+                "detail": "Successfully logged in.",
+                "token": token[1],
+                "user": UserSerializer(user).data,
+            }
+        )
+
+
+class DemoLoginView(LoginViewMixin, APIView):
     @extend_schema(
         request=inline_serializer(
             name="LoginRequest",
@@ -378,14 +462,14 @@ class DemoRegisterView(LoginViewMixin, APIView):
         if existing_user_num > 0:
             raise DuplicateUser("User with email already exists")
 
-        user = setup_demo3(
+        user = setup_demo4(
             organization_name,
             username,
             email,
             password,
             org_type=Organization.OrganizationType.EXTERNAL_DEMO,
         )
-        logger.info("setup_demo3 took %s seconds", time.time() - start)
+        logger.info("setup_demo4 took %s seconds", time.time() - start)
         logger.info(f"Demo user {user} created")
         user.organization.organization_type = (
             Organization.OrganizationType.EXTERNAL_DEMO

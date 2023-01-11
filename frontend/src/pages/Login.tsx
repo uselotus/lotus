@@ -50,7 +50,10 @@ const Login: FC = () => {
 
   const mutation = useMutation(
     (data: { username: string; password: string }) =>
-      Authentication.login(username, password),
+      import.meta.env.VITE_IS_DEMO === "true"
+        ? Authentication.demo_login(username, password)
+        : Authentication.login(username, password),
+
     {
       onSuccess: (response) => {
         setIsAuthenticated(true);
