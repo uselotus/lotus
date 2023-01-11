@@ -39,7 +39,7 @@ logger = logging.getLogger("django.server")
 
 
 def setup_demo3(
-    company_name,
+    organization_name,
     username=None,
     email=None,
     password=None,
@@ -48,9 +48,12 @@ def setup_demo3(
 ):
     if mode == "create":
         try:
-            org = Organization.objects.get(company_name=company_name)
+            org = Organization.objects.get(organization_name=organization_name)
+            team = org.team
             Event.objects.filter(organization=org).delete()
             org.delete()
+            if team is not None:
+                team.delete()
             logger.info("[DEMO3]: Deleted existing organization, replacing")
         except Organization.DoesNotExist:
             logger.info("[DEMO3]: creating from scratch")
@@ -62,14 +65,15 @@ def setup_demo3(
             )
         if user.organization is None:
             organization, _ = Organization.objects.get_or_create(
-                company_name=company_name
+                organization_name=organization_name
             )
             organization.organization_type = org_type
             user.organization = organization
+            user.team = organization.team
             user.save()
             organization.save()
     elif mode == "regenerate":
-        organization = Organization.objects.get(company_name=company_name)
+        organization = Organization.objects.get(organization_name=organization_name)
         user = organization.users.all().first()
         WebhookEndpoint.objects.filter(organization=organization).delete()
         WebhookTrigger.objects.filter(organization=organization).delete()
@@ -595,14 +599,14 @@ def setup_demo3(
 
 
 def setup_paas_demo(
-    company_name="paas",
+    organization_name="paas",
     username="paas",
     email="paas@paas.com",
     password="paas",
     org_type=Organization.OrganizationType.EXTERNAL_DEMO,
 ):
     try:
-        org = Organization.objects.get(company_name=company_name)
+        org = Organization.objects.get(organization_name=organization_name)
         Event.objects.filter(organization=org).delete()
         org.delete()
         logger.info("[PAAS DEMO]: Deleted existing organization, replacing")
@@ -615,7 +619,9 @@ def setup_paas_demo(
             username=username, email=email, password=password
         )
     if user.organization is None:
-        organization, _ = Organization.objects.get_or_create(company_name=company_name)
+        organization, _ = Organization.objects.get_or_create(
+            organization_name=organization_name
+        )
         user.organization = organization
         organization.organization_type = org_type
         user.save()

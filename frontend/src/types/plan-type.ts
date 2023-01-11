@@ -18,9 +18,10 @@ export interface PlanType {
   display_version: PlanVersionType;
   num_versions: number;
   active_subscriptions: number;
+  tags: { tag_color: string; tag_hex: string; tag_name: string }[];
 }
 
-export interface PlanDetailType extends Omit<PlanType, "display_version"> {
+export interface PlanDetailType extends PlanType {
   versions: PlanVersionType[];
 }
 
@@ -193,4 +194,6 @@ export interface ReplaceLaterType extends PlanVersionUpdateType {
 export interface UpdatePlanType {
   plan_name?: string;
   status?: "active" | "archived";
+  plan_duration?: "monthly" | "quarterly" | "yearly";
+  tags?: PlanType["tags"];
 }

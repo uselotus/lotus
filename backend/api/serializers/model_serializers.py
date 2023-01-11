@@ -1,3 +1,4 @@
+import re
 from typing import Optional, Union
 
 from django.conf import settings
@@ -14,6 +15,18 @@ from metering_billing.utils.enums import *
 from rest_framework import serializers
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ("tag_name", "tag_hex", "tag_color")
+
+    def validate(self, data):
+        match = re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", data["tag_hex"])
+        if not match:
+            raise serializers.ValidationError("Invalid hex code")
+        return data
 
 
 class ConvertEmptyStringToSerializerMixin:
@@ -270,7 +283,7 @@ class SellerSerializer(
         model = Organization
         fields = ("name", "address", "phone", "email")
 
-    name = serializers.CharField(source="company_name")
+    name = serializers.CharField(source="organization_name")
     address = serializers.SerializerMethodField(required=False, allow_null=True)
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
@@ -841,6 +854,7 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
             "display_version",
             "num_versions",
             "active_subscriptions",
+            "tags",
         )
         extra_kwargs = {
             "plan_name": {"required": True},
@@ -853,6 +867,7 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
             "display_version": {"required": True},
             "num_versions": {"required": True},
             "active_subscriptions": {"required": True},
+            "tags": {"required": True},
         }
 
     parent_plan = PlanNameAndIDSerializer(allow_null=True)
@@ -867,12 +882,17 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
     external_links = InitialExternalPlanLinkSerializer(
         many=True, help_text="The external links that this plan has."
     )
+    tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
 
     def get_num_versions(self, obj) -> int:
         return len(obj.version_numbers())
 
     def get_active_subscriptions(self, obj) -> int:
         return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+
+    def get_tags(self, obj) -> TagSerializer(many=True):
+        data = TagSerializer(obj.tags.all(), many=True).data
+        return data
 
 
 class EventSerializer(serializers.ModelSerializer):

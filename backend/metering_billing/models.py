@@ -88,7 +88,7 @@ class Organization(models.Model):
         Team, on_delete=models.CASCADE, null=True, related_name="organizations"
     )
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
-    company_name = models.CharField(max_length=100, blank=False, null=False)
+    organization_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
     payment_plan = models.CharField(
@@ -126,7 +126,7 @@ class Organization(models.Model):
     history = HistoricalRecords()
 
     def __str__(self):
-        return self.company_name
+        return self.organization_name
 
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
@@ -145,11 +145,8 @@ class Organization(models.Model):
             raise NotEditable(
                 "Organization type cannot be changed once an organization is created."
             )
-        if (
-            self.team is None
-            and self.organization_type != self.OrganizationType.EXTERNAL_DEMO
-        ):
-            self.team = Team.objects.create(name=self.company_name)
+        if self.team is None:
+            self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
         if new:
             self.provision_currencies()
@@ -193,7 +190,7 @@ class Organization(models.Model):
             logger.log("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
-                ApplicationIn(uid=self.organization_id, name=self.company_name)
+                ApplicationIn(uid=self.organization_id, name=self.organization_name)
             )
             self.webhooks_provisioned = True
         self.save()
@@ -363,6 +360,11 @@ class User(AbstractUser):
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        if not self.team and self.organization:
+            self.team = self.organization.team
+        super(User, self).save(*args, **kwargs)
 
 
 class Product(models.Model):
@@ -1441,7 +1443,7 @@ class APIToken(AbstractAPIKey):
         verbose_name_plural = "API Tokens"
 
     def __str__(self):
-        return str(self.name) + " " + str(self.organization.company_name)
+        return str(self.name) + " " + str(self.organization.organization_name)
 
 
 class TeamInviteToken(models.Model):
@@ -1644,12 +1646,16 @@ class Plan(models.Model):
         related_name="custom_plans",
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
+    tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
+    created_on = models.DateTimeField(default=now_utc, null=True)
 
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         if not self.pk and self.target_customer:
             self.plan_name = self.plan_name + " - " + self.target_customer.customer_name
+        if not self.created_on:
+            self.created_on = now_utc()
         super().save(*args, **kwargs)
 
     class Meta:
@@ -2481,6 +2487,26 @@ class AccountsReceivableTransaction(models.Model):
     due = models.DateTimeField(null=True)
     amount = models.DecimalField(max_digits=20, decimal_places=10)
     related_txns = models.ManyToManyField("self")
+
+
+class Tag(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="tags"
+    )
+    tag_name = models.CharField(max_length=50)
+    tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
+    tag_hex = models.CharField(max_length=7, null=True)
+    tag_color = models.CharField(max_length=20, null=True)
+
+    def __str__(self):
+        return f"{self.tag_name} [{self.tag_group}]"
+
+    constraints = [
+        UniqueConstraint(
+            fields=["organization", "tag_name", "tag_group"],
+            name="unique_with_tag_group",
+        ),
+    ]
 
 
 class UsageAlert(models.Model):

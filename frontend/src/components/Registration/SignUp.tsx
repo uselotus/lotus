@@ -51,7 +51,7 @@ const SignUp = (props: SignupProps) => {
             <label htmlFor="username">Username</label>
             <Input
               type="text"
-              name="company_name"
+              name="organization_name"
               value={username}
               defaultValue="username123"
               onChange={handleUserNameChange}

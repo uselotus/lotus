@@ -27,6 +27,10 @@ from rest_framework.exceptions import APIException, ValidationError
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
 
+class TagSerializer(api_serializers.TagSerializer):
+    pass
+
+
 class OrganizationUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -73,7 +77,12 @@ class PricingUnitSerializer(api_serializers.PricingUnitSerializer):
 class LightweightOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("organization_id", "company_name", "organization_type", "current")
+        fields = (
+            "organization_id",
+            "organization_name",
+            "organization_type",
+            "current",
+        )
 
     organization_type = serializers.SerializerMethodField()
     current = serializers.SerializerMethodField()
@@ -106,26 +115,36 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = (
             "organization_id",
-            "company_name",
+            "organization_name",
             "payment_plan",
             "payment_provider_ids",
             "users",
             "default_currency",
             "available_currencies",
+            "plan_tags",
             "tax_rate",
             "invoice_grace_period",
             "linked_organizations",
             "current_user",
             "address",
+            "team_name",
         )
 
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
+    plan_tags = serializers.SerializerMethodField()
     invoice_grace_period = serializers.SerializerMethodField()
     linked_organizations = serializers.SerializerMethodField()
     current_user = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField(required=False, allow_null=True)
+    team_name = serializers.SerializerMethodField()
+
+    def get_team_name(self, obj) -> str:
+        team = obj.team
+        if team is None:
+            return obj.organization_name
+        return team.name
 
     def get_address(
         self, obj
@@ -171,7 +190,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def get_users(self, obj) -> OrganizationUserSerializer(many=True):
         users = User.objects.filter(team=obj.team)
-        users_data = list(OrganizationUserSerializer(users, many=True).data)
+        users_data = OrganizationUserSerializer(users, many=True).data
         now = now_utc()
         invited_users = TeamInviteToken.objects.filter(team=obj.team, expire_at__gt=now)
         invited_users_data = OrganizationInvitedUserSerializer(
@@ -188,11 +207,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
             PricingUnit.objects.filter(organization=obj), many=True
         ).data
 
+    def get_plan_tags(self, obj) -> TagSerializer(many=True):
+        data = TagSerializer(obj.tags.filter(tag_group=TAG_GROUP.PLAN), many=True).data
+        return data
+
 
 class OrganizationCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
-        fields = ("company_name", "default_currency_code", "organization_type")
+        fields = ("organization_name", "default_currency_code", "organization_type")
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
@@ -201,13 +224,13 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
         required=False,
     )
     organization_type = serializers.ChoiceField(
-        choices=["development", "production"], default="development"
+        choices=["development", "production"], default="development", required=False
     )
 
     def validate(self, data):
         data = super().validate(data)
         existing_org_num = Organization.objects.filter(
-            company_name=data["company_name"],
+            organization_name=data["organization_name"],
         ).count()
         if existing_org_num > 0:
             raise DuplicateOrganization("Organization with company name already exists")
@@ -215,12 +238,15 @@ class OrganizationCreateSerializer(serializers.ModelSerializer):
             data["organization_type"] = Organization.OrganizationType.DEVELOPMENT
         elif data["organization_type"] == "production":
             data["organization_type"] = Organization.OrganizationType.PRODUCTION
+        else:
+            raise ValidationError("Invalid organization type")
+        return data
 
     def create(self, validated_data):
         existing_organization = self.context["organization"]
         team = existing_organization.team
         organization = Organization.objects.create(
-            company_name=validated_data["company_name"],
+            organization_name=validated_data["organization_name"],
             default_currency=validated_data.get("default_currency", None),
             organization_type=validated_data["organization_type"],
             team=team,
@@ -260,12 +286,14 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             "address",
             "tax_rate",
             "invoice_grace_period",
+            "plan_tags",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code", queryset=PricingUnit.objects.all(), source="default_currency"
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
+    plan_tags = serializers.ListField(child=TagSerializer(), required=False)
     invoice_grace_period = serializers.IntegerField(
         min_value=0, max_value=365, required=False, allow_null=True
     )
@@ -283,6 +311,24 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             cur_properties = instance.properties or {}
             new_properties = {**cur_properties, "address": address}
             instance.properties = new_properties
+        plan_tags = validated_data.pop("plan_tags", None)
+        if plan_tags is not None:
+            plan_tag_names_lower = [x["tag_name"].lower() for x in plan_tags]
+            existing_tags = instance.tags.filter(tag_group=TAG_GROUP.PLAN)
+            existing_tags_lower = [x.tag_name.lower() for x in existing_tags]
+            for tag in existing_tags:
+                if tag.tag_name.lower() not in plan_tag_names_lower:
+                    tag.delete()
+            for plan_tag in plan_tags:
+                if plan_tag["tag_name"].lower() not in existing_tags_lower:
+                    tag, _ = Tag.objects.get_or_create(
+                        organization=instance,
+                        tag_name=plan_tag["tag_name"],
+                        tag_group=TAG_GROUP.PLAN,
+                        tag_hex=plan_tag["tag_hex"],
+                        tag_color=plan_tag["tag_color"],
+                    )
+
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
         invoice_grace_period = validated_data.get("invoice_grace_period", None)
         if invoice_grace_period is not None:
@@ -419,10 +465,10 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "email", "company_name", "organization_id")
+        fields = ("username", "email", "organization_name", "organization_id")
 
     organization_id = serializers.CharField(source="organization.organization_id")
-    company_name = serializers.CharField(source="organization.company_name")
+    organization_name = serializers.CharField(source="organization.organization_name")
 
 
 # CUSTOMER
@@ -1081,6 +1127,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             "initial_version",
             "parent_plan_id",
             "target_customer_id",
+            "tags",
         )
         extra_kwargs = {
             "plan_name": {"write_only": True},
@@ -1091,6 +1138,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             "initial_version": {"write_only": True},
             "parent_plan_id": {"write_only": True},
             "target_customer_id": {"write_only": True},
+            "tags": {"write_only": True},
         }
 
     initial_version = InitialPlanVersionSerializer()
@@ -1109,6 +1157,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
     initial_external_links = InitialExternalPlanLinkSerializer(
         many=True, required=False
     )
+    tags = serializers.ListField(child=TagSerializer(), required=False)
 
     def validate(self, data):
         # we'll feed the version data into the serializer later, checking now breaks it
@@ -1144,10 +1193,13 @@ class PlanCreateSerializer(serializers.ModelSerializer):
         display_version_data = validated_data.pop("initial_version")
         initial_external_links = validated_data.get("initial_external_links")
         transition_to_plan_id = validated_data.get("transition_to_plan_id")
+        tags = validated_data.get("tags")
         if initial_external_links:
             validated_data.pop("initial_external_links")
         if transition_to_plan_id:
             display_version_data.pop("transition_to_plan_id")
+        if tags:
+            validated_data.pop("tags")
         plan = Plan.objects.create(**validated_data)
         try:
             display_version_data["status"] = PLAN_VERSION_STATUS.ACTIVE
@@ -1163,6 +1215,31 @@ class PlanCreateSerializer(serializers.ModelSerializer):
                         context={"organization": validated_data["organization"]}
                     ).validate(link_data)
                     ExternalPlanLinkSerializer().create(link_data)
+            if tags and len(tags) > 0:
+                cond = Q(tag_name__iexact=tags[0]["tag_name"].lower())
+                for tag in tags[1:]:
+                    cond |= Q(tag_name__iexact=tag["tag_name"].lower())
+                existing_tags = Tag.objects.filter(
+                    cond,
+                    organization=plan.organization,
+                    tag_group=TAG_GROUP.PLAN,
+                )
+                for tag in tags:
+                    if not existing_tags.filter(
+                        tag_name__iexact=tag["tag_name"].lower()
+                    ).exists():
+                        tag_obj = Tag.objects.create(
+                            organization=plan.organization,
+                            tag_name=tag["tag_name"],
+                            tag_group=TAG_GROUP.PLAN,
+                            tag_color=tag["tag_color"],
+                            tag_hex=tag["tag_hex"],
+                        )
+                    else:
+                        tag_obj = existing_tags.get(
+                            tag_name__iexact=tag["tag_name"].lower()
+                        )
+                    plan.tags.add(tag_obj)
             plan.display_version = plan_version
             plan.save()
             return plan
@@ -1177,9 +1254,18 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
         fields = (
             "plan_name",
             "status",
+            "tags",
         )
+        extra_kwargs = {
+            "plan_name": {"required": False},
+            "status": {"required": False},
+            "tags": {"required": False},
+        }
 
-    status = serializers.ChoiceField(choices=[PLAN_STATUS.ACTIVE, PLAN_STATUS.ARCHIVED])
+    status = serializers.ChoiceField(
+        choices=[PLAN_STATUS.ACTIVE, PLAN_STATUS.ARCHIVED], required=False
+    )
+    tags = serializers.ListField(child=TagSerializer(), required=False, source=None)
 
     def validate(self, data):
         data = super().validate(data)
@@ -1195,6 +1281,31 @@ class PlanUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.plan_name = validated_data.get("plan_name", instance.plan_name)
         instance.status = validated_data.get("status", instance.status)
+        tags = validated_data.get("tags")
+        if tags is not None:
+            tags_lower = [tag["tag_name"].lower() for tag in tags]
+            existing_tags = instance.tags.all()
+            existing_tag_names = [tag.tag_name.lower() for tag in existing_tags]
+            for tag in tags:
+                if tag["tag_name"].lower() not in existing_tag_names:
+                    try:
+                        tag_obj = Tag.objects.get(
+                            organization=instance.organization,
+                            tag_name__iexact=tag["tag_name"].lower(),
+                            tag_group=TAG_GROUP.PLAN,
+                        )
+                    except Tag.DoesNotExist:
+                        tag_obj = Tag.objects.create(
+                            organization=instance.organization,
+                            tag_name=tag["tag_name"],
+                            tag_group=TAG_GROUP.PLAN,
+                            tag_hex=tag["tag_hex"],
+                            tag_color=tag["tag_color"],
+                        )
+                    instance.tags.add(tag_obj)
+            for existing_tag in existing_tags:
+                if existing_tag.tag_name.lower() not in tags_lower:
+                    instance.tags.remove(existing_tag)
         instance.save()
         return instance
 

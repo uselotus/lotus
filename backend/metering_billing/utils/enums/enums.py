@@ -261,5 +261,10 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
     SUBSCRIPTION_FILTERS = ("subscription_filters", _("Subscription Filters"))
 
 
+
+class TAG_GROUP(models.TextChoices):
+    PLAN = ("plan", _("Plan"))
+
 class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
+

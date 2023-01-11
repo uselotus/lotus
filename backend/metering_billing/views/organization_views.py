@@ -53,7 +53,7 @@ class InviteView(APIView):
 
         send_invite_email(
             reset_url=password_reset_url,
-            organization_name=organization.company_name,
+            organization_name=organization.organization_name,
             to=email,
         )
 

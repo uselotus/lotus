@@ -58,6 +58,7 @@ const CreateCredit = ({ customerId, onSubmit }) => {
         form.resetFields();
         queryClient.invalidateQueries(["customer_list"]);
         queryClient.invalidateQueries(["balance_adjustments"]);
+        queryClient.invalidateQueries(["customer_detail", customerId]);
       },
       onError: () => {
         toast.error("Failed to create Credit", {

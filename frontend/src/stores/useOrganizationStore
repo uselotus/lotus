@@ -4,14 +4,14 @@ import { persist } from "zustand/middleware";
 const useOrganizationStore = create(
   persist(
     (set) => ({
-      company_name: "", //company name
+      organization_name: "", //company name
       changeCompanyName: () =>
         set((state) => ({
-          company_name: state.company,
+          organization_name: state.company,
         })),
     }),
     {
-      name: "company_name",
+      name: "organization_name",
     }
   )
 );

@@ -1,5 +1,5 @@
 import React, { FC, useState, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Dashboard from "../components/Dashboard/Dashboard";
 import ViewPlans from "../pages/ViewPlans";
 import ViewCustomers from "../pages/ViewCustomers";
@@ -27,12 +27,12 @@ const getSettingsTab = (component) => {
 
 const AppRoutes: FC = () => {
   const [collapse, setCollapse] = useState(false);
-
+  const { pathname } = useLocation();
   const handleToggle = (event: any) => {
     event.preventDefault();
     collapse ? setCollapse(false) : setCollapse(true);
   };
-
+  const currentPath = pathname.split("/")[1];
   useEffect(() => {
     window.innerWidth <= 760 ? setCollapse(true) : setCollapse(false);
   }, []);
@@ -48,7 +48,13 @@ const AppRoutes: FC = () => {
           <SideBar />
         </Sider>
 
-        <Layout style={{ background: "#FAFAFA" }}>
+        <Layout
+          style={
+            currentPath === "plans"
+              ? { background: "#ffffff" }
+              : { background: "#FAFAFA" }
+          }
+        >
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/" element={<Dashboard />} />

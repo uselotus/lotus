@@ -9,7 +9,7 @@ class Command(BaseCommand):
         from metering_billing.models import Organization
 
         setup_demo3(
-            company_name="demo3",
+            organization_name="demo3",
             username="demo3",
             email="demo3@demo3.com",
             password="demo3",

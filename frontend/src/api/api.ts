@@ -240,7 +240,7 @@ export const Plan = {
   createAlert: (post: CreateAlertType): Promise<AlertType> =>
     requests.post("app/usage_alerts/", post),
   deleteAlert: (post: { usage_alert_id: string }): Promise<AlertType> =>
-    requests.delete(`app/alerts/${post.usage_alert_id}/`),
+    requests.delete(`app/usage_alerts/${post.usage_alert_id}/`),
 };
 
 export const Webhook = {
@@ -278,7 +278,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> => requests.post("app/login/", { username, password }),
   logout: (): Promise<{}> => requests.post("app/logout/", {}),
@@ -291,7 +291,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> =>
     requests.post("app/register/", {
@@ -306,7 +306,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> => requests.post("app/demo_register/", { register }),
 
@@ -324,6 +324,20 @@ export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("app/organization/invite/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
+  createOrg: (
+    organization_name: string,
+    default_currency_code: string,
+    organization_type: "development" | "production"
+  ): Promise<OrganizationType> =>
+    requests.post("app/organizations/", {
+      organization_name,
+      default_currency_code,
+      organization_type,
+    }),
+  switchOrg: (org_id: string): Promise<OrganizationType> =>
+    requests.post("/app/switch_organization/", {
+      transfer_to_organization_id: org_id,
+    }),
   getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
