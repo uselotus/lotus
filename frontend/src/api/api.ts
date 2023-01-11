@@ -76,6 +76,7 @@ import {
   BalanceAdjustmentType,
 } from "../types/balance-adjustment";
 import { PricingUnit } from "../types/pricing-unit-type";
+import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
 
@@ -236,6 +237,10 @@ export const Plan = {
     post: ArchivePlanVersionType
   ): Promise<ArchivePlanVersionType> =>
     requests.patch(`app/plan_versions/${version_id}/`, post),
+  createAlert: (post: CreateAlertType): Promise<AlertType> =>
+    requests.post("app/usage_alerts/", post),
+  deleteAlert: (post: { usage_alert_id: string }): Promise<AlertType> =>
+    requests.delete(`app/alerts/${post.usage_alert_id}/`),
 };
 
 export const Webhook = {

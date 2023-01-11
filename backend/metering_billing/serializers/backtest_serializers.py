@@ -1,6 +1,6 @@
 from django.db.models import Q
 from metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
-from metering_billing.serializers.model_serializers import PlanVersionSerializer
+from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
 from metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
 from rest_framework import serializers
 
@@ -72,8 +72,8 @@ class BacktestSubstitutionSerializer(serializers.ModelSerializer):
         model = BacktestSubstitution
         fields = ("new_plan", "original_plan")
 
-    new_plan = PlanVersionSerializer()
-    original_plan = PlanVersionSerializer()
+    new_plan = PlanVersionDetailSerializer()
+    original_plan = PlanVersionDetailSerializer()
 
 
 class PlanRepresentationSerializer(serializers.Serializer):

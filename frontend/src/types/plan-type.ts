@@ -2,6 +2,7 @@ import { MetricType } from "./metric-type";
 import { FeatureType } from "./feature-type";
 import { PricingUnit } from "./pricing-unit-type";
 import { LightweightCustomerType } from "./customer-type";
+import { AlertType } from "./alert-type";
 
 export interface PlanType {
   plan_name: string;
@@ -68,6 +69,7 @@ export interface PlanVersionType
   plan_name?: string;
   usage_billing_frequency?: "monthly" | "quarterly" | "yearly";
   currency: PricingUnit;
+  alerts: AlertType[];
 }
 
 export interface LightweightPlanVersionType {

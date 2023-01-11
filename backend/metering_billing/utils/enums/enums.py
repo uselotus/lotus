@@ -189,6 +189,7 @@ class ORGANIZATION_STATUS(models.TextChoices):
 class WEBHOOK_TRIGGER_EVENTS(models.TextChoices):
     INVOICE_CREATED = ("invoice.created", _("invoice.created"))
     INVOICE_PAID = ("invoice.paid", _("invoice.paid"))
+    USAGE_ALERT_TRIGGERED = ("usage_alert.triggered", _("usage_alert.triggered"))
 
 
 class FLAT_FEE_BEHAVIOR(models.TextChoices):
