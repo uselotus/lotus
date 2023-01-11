@@ -349,18 +349,14 @@ class InvoiceSerializer(
     seller = SellerSerializer(source="organization")
 
     def get_start_date(self, obj) -> datetime.date:
-        return min(
-            [
-                convert_to_date(x.start_date)
-                for x in obj.line_items.all()
-                if x.start_date
-            ]
-        )
+        seq = [
+            convert_to_date(x.start_date) for x in obj.line_items.all() if x.start_date
+        ]
+        return min(seq) if len(seq) > 0 else None
 
     def get_end_date(self, obj) -> datetime.date:
-        return max(
-            [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
-        )
+        seq = [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
+        return max(seq) if len(seq) > 0 else None
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):

@@ -281,6 +281,19 @@ export const Authentication = {
       organization_name: string;
     };
   }> => requests.post("app/login/", { username, password }),
+  demo_login: (
+    username: string,
+    password: string
+  ): Promise<{
+    detail: any;
+    token: string;
+    user: {
+      username: string;
+      email: string;
+      organization_id: string;
+      organization_name: string;
+    };
+  }> => requests.post("app/demo_login/", { username, password }),
   logout: (): Promise<{}> => requests.post("app/logout/", {}),
   registerCreate: (
     register: CreateOrgAccountType

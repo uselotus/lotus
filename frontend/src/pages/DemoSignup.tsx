@@ -8,10 +8,9 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
+import { useEffect } from "react";
 
 const cookies = new Cookies();
-
-// import sjcl from "sjcl";
 
 export interface DemoSignupProps {
   username: string;
@@ -34,6 +33,7 @@ const DemoSignup: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [form] = Form.useForm();
+  const [timeOutId, setTimeOutId] = useState<number | undefined>();
 
   const queryClient = useQueryClient();
   const next = () => {
@@ -62,6 +62,7 @@ const DemoSignup: React.FC = () => {
         toast.error(error.response.data.detail, {
           position: "top-center",
         });
+        navigate("/login");
       },
     }
   );
@@ -92,6 +93,16 @@ const DemoSignup: React.FC = () => {
     });
   };
 
+  useEffect(() => {
+    if (mutation.isLoading) {
+      setTimeOutId(setTimeout(() => navigate("/login"), 15000));
+    }
+
+    return () => {
+      clearTimeout(timeOutId);
+    };
+  }, [mutation.isLoading]);
+
   return (
     <div className="grid h-screen place-items-center">
       {mutation.isLoading ? (
@@ -100,7 +111,7 @@ const DemoSignup: React.FC = () => {
           <LoadingSpinner />
         </div>
       ) : (
-        <div className="space-y-4 w-2/12">
+        <div className="space-y-4 w-3/12">
           <div className="">
             <div>
               <Card

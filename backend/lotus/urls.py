@@ -207,6 +207,7 @@ urlpatterns = [
     #     name="expertimental-to-active",
     # ),
     path("app/login/", auth_views.LoginView.as_view(), name="api-login"),
+    path("app/demo_login/", auth_views.DemoLoginView.as_view(), name="api-demo-login"),
     path("app/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
     path("app/session/", auth_views.SessionView.as_view(), name="api-session"),
     path("app/register/", auth_views.RegisterView.as_view(), name="register"),
