@@ -77,7 +77,8 @@
         "subscription-lifecycle/creating-subscriptions",
         "subscription-lifecycle/invoicing",
         "subscription-lifecycle/managing-access",
-        "subscription-lifecycle/alerts"
+        "subscription-lifecycle/alerts",
+        "subscription-lifecycle/addons"
       ]
     },
     {

@@ -1,30 +1,15 @@
 ---
-title: "Managing Feature Access"
+title: "Managing Entitlements"
 ---
 
-While pricing is the obvious variable to tweak, packaging is potentially even
-more important to iterate on and match the evolving customer segments your SaaS
-serves.
+Lotus' entitlement management feature allows you to control and manage access to your product's features and components. Our platform provides a central location to store customer entitlements, giving you the flexibility to easily adjust access as your packaging and plans change. This makes it easier to iterate your pricing strategies without having to overhaul custom code.
 
-Lotus is built to enable the management of packaging as well as pricing
-and can plug into your product's code to accomplish this.
+## Managing Component Entitlements
 
-Since Lotus acts as a source of truth for your pricing plans, you can pull
-information about what features a customer currently has access to.
+With Lotus, you can manage access to your plan's components by controlling usage entitlements. You can view this information by following [this guide](<(/api-reference/customers/get-customer-access)>) which provides a comprehensive overview of all usage entitlements, including current usage and tier limits for a customer's plan.
 
-By storing the feature and usage entitlements of each customer in Lotus, you are now free
-to change packaging in one place without completely overhauling custom code in
-your application.
+By using component entitlements, you can set usage limits, create free-trial periods, and more. You can also manage free usage limits within a paid plan, gate access to certain features based on usage levels, and much more.
 
-You can implement this core capability programmatically by following this
-([guide](/api-reference/customers/get-customer-access)).
+## Managing Feature Entitlements
 
-You can check if a customer has access to both:
-
-- Components: Checking if a customer has access to free units as part of their
-  current plan or checking the max limit on their units.
-- Features: Checking if a customer has access to a boolean feature like a
-  certain integration or page in the application.
-
-This feature access is meant to augment existing authorization infrastructure so
-that entitlements can change flexibly as you change your plans in Lotus.
+In addition to managing component entitlements, you can also check what feature entitlements a customer has. For example, if you have a premium support plan, you can check if a customer has access to this feature through one of the plans they are subscribed to. This allows you to provide your customers with the specific benefits they have paid for, and also use this information to make strategic decisions about your pricing plans. You can access this information by following [this guide](/api-reference/customers/customer-feature-access).
