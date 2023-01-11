@@ -83,6 +83,9 @@ def draft_invoice_test_common_setup(
         )
         metric_set = baker.make(
             Metric,
+            billable_metric_name=itertools.cycle(
+                ["Email Character Count", "Peak Bandwith", "Email Count"]
+            ),
             organization=org,
             event_name="email_sent",
             property_name=itertools.cycle(["num_characters", "peak_bandwith", ""]),
@@ -260,6 +263,7 @@ class TestGenerateInvoice:
         setup_dict = draft_invoice_test_common_setup(auth_method="api_key")
         SubscriptionRecord.objects.all().delete()
         Subscription.objects.all().delete()
+        Event.objects.all().delete()
         setup_dict["org"].update_subscription_filter_settings(["email"])
         payload = {
             "start_date": now_utc() - timedelta(days=5),
@@ -290,6 +294,7 @@ class TestGenerateInvoice:
                 event_name="email_sent",
                 time_created=now_utc() - timedelta(days=1),
                 properties=itertools.cycle(event_properties),
+                cust_id=setup_dict["customer"].customer_id,
                 _quantity=3,
             )
 
@@ -302,6 +307,8 @@ class TestGenerateInvoice:
             SubscriptionRecord.objects.all(),
             draft=False,
         )
+        for x in result_invoices[0].line_items.all().values():
+            print(x)
 
         assert len(result_invoices) == 1
 
