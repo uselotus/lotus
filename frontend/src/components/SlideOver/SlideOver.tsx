@@ -27,8 +27,8 @@ const SlideOver: React.FC<SlideOverProps> = () => {
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const [isCreating, setIsCreating] = useState(false);
   const [orgName, setOrgName] = useState("");
-  const [orgType, setOrgType] = useState("");
-  const [currencyCode, setCurrencyCode] = useState("");
+  const [orgType, setOrgType] = useState("development");
+  const [currencyCode, setCurrencyCode] = useState("USD");
   const queryClient = useQueryClient();
   const { data: pricingUnits }: UseQueryResult<PricingUnit[]> = useQuery<
     PricingUnit[]
@@ -171,7 +171,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                           htmlFor="organization_name"
                           className="block text-sm font-medium text-[#9E9E9E]"
                         >
-                          Name
+                          Name*
                         </label>
                         <div className="mt-1">
                           <input
@@ -186,7 +186,7 @@ const SlideOver: React.FC<SlideOverProps> = () => {
                       </div>
                       <Select>
                         <Select.Label className="text-[#9E9E9E] mb-2">
-                          Type
+                          Type*
                         </Select.Label>
                         <Select.Select
                           onChange={(e) =>
