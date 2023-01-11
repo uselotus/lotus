@@ -1341,18 +1341,18 @@ class Invoice(models.Model):
         return str(self.invoice_number)
 
     def save(self, *args, **kwargs):
-        if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due > 0:
-            lotus_python.track_event(
-                customer_id=self.organization.organization_id,
-                event_name="create_invoice",
-                properties={
-                    "amount": float(self.cost_due),
-                    "currency": self.pricing_unit.code,
-                    "customer": self.customer.customer_id,
-                    "subscription": self.subscription.subscription_id,
-                    "external_type": self.external_payment_obj_type,
-                },
-            )
+        # if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due > 0:
+        #     lotus_python.track_event(
+        #         customer_id=self.organization.organization_id,
+        #         event_name="create_invoice",
+        #         properties={
+        #             "amount": float(self.cost_due),
+        #             "currency": self.pricing_unit.code,
+        #             "customer": self.customer.customer_id,
+        #             "subscription": self.subscription.subscription_id,
+        #             "external_type": self.external_payment_obj_type,
+        #         },
+        #     )
         if not self.currency:
             self.currency = self.organization.default_currency
 
