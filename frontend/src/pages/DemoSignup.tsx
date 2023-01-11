@@ -17,11 +17,11 @@ export interface DemoSignupProps {
   username: string;
   email: string;
   password: string;
-  company_name: string;
+  organization_name: string;
 }
 
 const defaultOrg: Organizaton = {
-  company_name: "",
+  organization_name: "",
   industry: "",
 };
 
@@ -82,7 +82,7 @@ const DemoSignup: React.FC = () => {
     // const hashedPassword = sjcl.codec.hex.fromBits(pwBitArray);
     form.validateFields().then(() => {
       const register_object: DemoSignupProps = {
-        company_name: organization.company_name,
+        organization_name: organization.organization_name,
         email: email,
         password: password,
         username: username,
@@ -119,7 +119,7 @@ const DemoSignup: React.FC = () => {
                     <label htmlFor="username">Username</label>
                     <Input
                       type="text"
-                      name="company_name"
+                      name="organization_name"
                       value={username}
                       defaultValue="username123"
                       onChange={handleUserNameChange}

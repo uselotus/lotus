@@ -3,7 +3,7 @@ import React, { FC, Fragment } from "react";
 import "./PlanDetails.css";
 import { PageLayout } from "../../base/PageLayout";
 import { Button } from "antd";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import SwitchVersions from "./SwitchVersions";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { Plan } from "../../../api/api";
@@ -12,18 +12,17 @@ import {
   InitialExternalLinks,
   PlanDetailType,
 } from "../../../types/plan-type";
+import { PlusOutlined } from "@ant-design/icons";
 import LoadingSpinner from "../../LoadingSpinner";
-import LinkExternalIds from "../LinkExternalIds";
 import { toast } from "react-toastify";
-import CopyText from "../../base/CopytoClipboard";
 
 type PlanDetailParams = {
   planId: string;
 };
 
 const PlanDetails: FC = () => {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
   const { planId } = useParams<PlanDetailParams>();
   const queryClient = useQueryClient();
 
@@ -169,7 +168,7 @@ const PlanDetails: FC = () => {
       )}
       {isError && (
         <div className="flex flex-col items-center justify-center h-full">
-          <h2 className="mb-5">Could Not Load Plan</h2>
+          <h2 className="4">Could Not Load Plan</h2>
           <Button type="primary" onClick={() => navigate(-1)}>
             Go Back
           </Button>
@@ -178,7 +177,44 @@ const PlanDetails: FC = () => {
       {plan && (
         <div>
           <PageLayout
-            title={plan.plan_name}
+            title={
+              plan.target_customer !== null ? (
+                <div>
+                  {" "}
+                  {plan.plan_name}
+                  <span className="block mt-4 text-neutral-500 text-base">
+                    {plan.display_version.description}
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  {plan.plan_name}
+                  <span className="block mt-4  text-neutral-500 text-base">
+                    {plan.display_version.description}
+                  </span>
+                </div>
+              )
+            }
+            hasBackButton
+            backButton={
+              <div className="mt-10">
+                <Button
+                  onClick={() => navigate(-1)}
+                  type="primary"
+                  size="large"
+                  className="ml-[10px]"
+                  key="create-custom-plan"
+                  style={{
+                    background: "#FAFAFA",
+                    borderColor: "#FAFAFA",
+                  }}
+                >
+                  <div className="flex items-center justify-between text-black">
+                    <div>&larr; Go back</div>
+                  </div>
+                </Button>
+              </div>
+            }
             backIcon
             extra={
               plan.target_customer === null && [
@@ -187,47 +223,31 @@ const PlanDetails: FC = () => {
                   type="primary"
                   size="large"
                   key="create-custom-plan"
+                  className="hover:!bg-primary-700"
+                  style={{ background: "#C3986B", borderColor: "#C3986B" }}
                 >
                   <div className="flex items-center justify-between text-white">
-                    <div>Create Custom Plan</div>
+                    <div>
+                      <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+                      Create Custom Plan
+                    </div>
                   </div>
                 </Button>,
               ]
             }
           ></PageLayout>
           <div className="mx-10">
-            <div className="planDetails">
-              <div className="pr-1 planDetailsLabel">Plan ID:</div>
-              <div className="planDetailsValue">
-                {" "}
-                <CopyText showIcon textToCopy={plan.plan_id} />
-              </div>
-            </div>
-            <div className="planDetails">
-              <div className="pr-1 planDetailsLabel">Plan Duration:</div>
-              <div className="planDetailsValue"> {plan.plan_duration}</div>
-            </div>
-            <div className="planDetails">
-              <div className="pr-1 planDetailsLabel">Linked External Ids:</div>
-              <div className="pl-2 mb-2">
-                <LinkExternalIds
-                  createExternalLink={createPlanExternalLink}
-                  deleteExternalLink={deletePlanExternalLink}
-                  externalIds={plan.external_links.map(
-                    (l) => l.external_plan_id
-                  )}
-                />
-              </div>
-            </div>
+            {plan.versions.length > 0 && (
+              <SwitchVersions
+                versions={plan.versions}
+                createPlanExternalLink={createPlanExternalLink}
+                deletePlanExternalLink={deletePlanExternalLink}
+                plan={plan}
+                className="flex items-center mx-10 my-5"
+              />
+            )}
           </div>
           <div className="separator mt-4" />
-
-          {plan.versions.length > 0 && (
-            <SwitchVersions
-              versions={plan.versions}
-              className="flex items-center mx-10 my-5"
-            />
-          )}
         </div>
       )}
     </Fragment>

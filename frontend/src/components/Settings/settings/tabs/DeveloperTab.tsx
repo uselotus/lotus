@@ -50,6 +50,8 @@ export const DeveloperTab = () => {
   const [apiKeySelected, setApiKeySelected] = useState<APIKeyType>();
   const [isInvoiceGenerated, setIsInvoiceGenerated] = useState<boolean>(false);
   const [isInvoicePaid, setIsInvoicePaid] = useState<boolean>(false);
+  const [isUsageAlertTriggered, setIsUsageAlertTriggered] =
+    useState<boolean>(false);
   const closeModal = () => {
     setVisible(false);
     setApiKey("");
@@ -117,6 +119,7 @@ export const DeveloperTab = () => {
         setWebhookName("");
         setIsInvoiceGenerated(false);
         setIsInvoicePaid(false);
+        setIsUsageAlertTriggered(false);
         toast.success("Webhook URL added successfully");
         setVisibleWebhook(false);
         setWebhookSelected(undefined);
@@ -157,7 +160,7 @@ export const DeveloperTab = () => {
       return;
     }
 
-    if (!isInvoiceGenerated && !isInvoicePaid) {
+    if (!isInvoiceGenerated && !isInvoicePaid && !isUsageAlertTriggered) {
       toast.error("Please select at-least one trigger");
       return;
     }
@@ -168,6 +171,9 @@ export const DeveloperTab = () => {
     }
     if (isInvoicePaid) {
       triggers.push("invoice.paid");
+    }
+    if (isUsageAlertTriggered) {
+      triggers.push("usage_alert.triggered");
     }
     let endpointPost: WebhookEndpointCreate = {
       name: webhookName,
@@ -431,6 +437,12 @@ export const DeveloperTab = () => {
               value={isInvoicePaid}
             >
               <p className="text-lg font-main">invoice.paid</p>
+            </Checkbox>
+            <Checkbox
+              onChange={(e) => setIsUsageAlertTriggered(e.target.checked)}
+              value={isUsageAlertTriggered}
+            >
+              <p className="text-lg font-main">usage_alert.triggered</p>
             </Checkbox>
           </div>
         </div>

@@ -1,13 +1,19 @@
 // @ts-ignore
+
 import React, { FC, Fragment, useEffect, useState } from "react";
+
 import "./SwitchVersions.css";
 import { PlusOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-import { PlanVersionType } from "../../../types/plan-type";
-import PlanComponents from "./PlanComponent";
+import {
+  PlanDetailType,
+  PlanType,
+  PlanVersionType,
+} from "../../../types/plan-type";
+import PlanComponents, { PlanInfo, PlanSummary } from "./PlanComponent";
 import PlanFeatures from "./PlanFeatures";
 import StateTabs from "./StateTabs";
-import { Dropdown, Menu, Button } from "antd";
+import { Dropdown, Menu, Button, Typography } from "antd";
 import { MoreOutlined } from "@ant-design/icons";
 // @ts-ignore
 import dayjs from "dayjs";
@@ -17,7 +23,10 @@ import { useMutation, useQueryClient } from "react-query";
 
 interface SwitchVersionProps {
   versions: PlanVersionType[];
+  plan: PlanDetailType;
   className: string;
+  createPlanExternalLink: (link: string) => void;
+  deletePlanExternalLink: (link: string) => void;
 }
 
 //function that takes in a string and returns a string based on the cases of the string equals percentage, flat, or override
@@ -34,7 +43,7 @@ function getPriceAdjustmentEnding(
     case "price_override":
       return `${code} ${amount}`;
     default:
-      return "No Adjustment";
+      return "No discount added";
   }
 }
 
@@ -42,11 +51,18 @@ function capitalize(word: string) {
   return word[0].toUpperCase() + word.slice(1).toLowerCase();
 }
 
-const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
+const SwitchVersions: FC<SwitchVersionProps> = ({
+  versions,
+  plan,
+  createPlanExternalLink,
+  deletePlanExternalLink,
+  className,
+}) => {
   const activePlanVersion = versions.find((x) => x.status === "active");
   if (!activePlanVersion) {
     return <div>No Active Plan</div>;
   }
+
   const [selectedVersion, setSelectedVersion] =
     useState<PlanVersionType>(activePlanVersion);
   const [capitalizedState, setCapitalizedState] = useState<string>("");
@@ -54,7 +70,31 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
 
   const isSelectedVersion = (other_id: string) =>
     selectedVersion.version_id === other_id;
-
+  const createTag = useMutation(
+    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+      Plan.updatePlan(plan_id, {
+        tags,
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+      },
+    }
+  );
+  const updateBillingFrequency = useMutation(
+    (plan_duration: "monthly" | "quarterly" | "yearly") =>
+      Plan.updatePlan(plan.plan_id, {
+        plan_duration,
+      }),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan.plan_id]);
+        queryClient.invalidateQueries("organization");
+      },
+    }
+  );
   const archivemutation = useMutation(
     (version_id: string) =>
       Plan.archivePlanVersion(version_id, { status: "archived" }),
@@ -94,14 +134,17 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
       <div className={className}>
         {versions.map((version) => (
           <div
-            onClick={() => setSelectedVersion(version)}
+            onClick={(e) => {
+              console.log(e.target);
+              setSelectedVersion(version);
+            }}
             className={[
-              "flex items-center justify-center versionChip mx-1",
+              "flex items-center justify-center p-4 cursor-pointer mx-1",
               isSelectedVersion(version.version_id)
-                ? "bg-[#c3986b] text-white opacity-100"
-                : "bg-[#EAEAEB] text-black",
+                ? "bg-[#c3986b] text-white opacity-100 ml-2 mr-2"
+                : "bg-[#EAEAEB] text-black ml-2 mr-2",
               version.status === "active" &&
-                "border-2 border-[#c3986b] border-opacity-100",
+                "border-2 border-[#c3986b] border-opacity-100 ml-2 mr-2",
             ].join(" ")}
           >
             v{version.version}
@@ -120,118 +163,45 @@ const SwitchVersions: FC<SwitchVersionProps> = ({ versions, className }) => {
           </div>
         </Link>
       </div>
-      <div className="bg-white mb-5 mx-10 py-4 px-10 rounded-lg">
-        <div className="py-4 flex justify-between">
-          <div className="text-2xl font-main px-4 flex items-center">
-            <span className="pr-6">Plan Information</span>
-            <StateTabs
-              activeTab={capitalizedState}
-              version_id={selectedVersion.version_id}
-              version={selectedVersion.version}
-              activeVersion={activePlanVersion.version}
-              tabs={["Active", "Grandfathered", "Retiring", "Inactive"]}
+      <div className="bg-white mb-5 flex flex-col py-4 px-10 rounded-lg">
+        <div className="grid gap-6 grid-cols-1  md:grid-cols-3">
+          <div className="col-span-1">
+            <PlanSummary
+              plan={plan}
+              createPlanExternalLink={createPlanExternalLink}
+              createTagMutation={createTag.mutate}
+              deletePlanExternalLink={deletePlanExternalLink}
             />
           </div>
-
-          <div className="right-3" onClick={(e) => e.stopPropagation()}>
-            <Dropdown overlay={menu} trigger={["click"]}>
-              <Button
-                type="text"
-                size="small"
-                onClick={(e) => e.preventDefault()}
-              >
-                <MoreOutlined />
-              </Button>
-            </Dropdown>
-          </div>
-        </div>
-        <div className="separator" />
-        <div className="px-4 py-2">
-          <div className="planDetails">
-            <div className="infoLabel">{selectedVersion?.description}</div>
+          <div className="col-span-2">
+            <PlanInfo plan={plan} version={selectedVersion} />
           </div>
         </div>
 
-        <div className="flex items-center px-4 py-2">
-          <div className="w-2/5">
-            <div className="flex items-baseline py-2">
-              <div className="planCost">
-                {selectedVersion?.currency.symbol}
-                {selectedVersion?.flat_rate}
-              </div>
-              <div className="pl-2 infoLabel">Recurring price</div>
-            </div>
-            <div className="py-2">
-              <div className="flex activeSubscriptions">
-                <div className="pr-1">
-                  Total Active Subscriptions:{" "}
-                  {selectedVersion?.active_subscriptions}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-start w-30">
-            <div className="flex items-center planInfo py-2">
-              <div className="pr-2 infoLabel">Date Created:</div>
-              <div className="infoValue">
-                {" "}
-                {dayjs(selectedVersion?.created_on).format("YYYY/MM/DD")}
-              </div>
-            </div>
-            <div className="flex items-center planInfo py-2 mt-2">
-              <div className="pr-2 infoLabel">Plan on next cycle:</div>
-              <div className="infoValue">
-                {selectedVersion?.transition_to
-                  ? selectedVersion.transition_to
-                  : "self"}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col items-start w-30">
-            <div className="flex items-center planInfo py-2">
-              <div className="pr-2 infoLabel">Recurring Billing Type:</div>
-              <div className="infoValue">
-                {selectedVersion.flat_fee_billing_type}
-              </div>
-            </div>
-            <div className="flex items-center planInfo py-2 mt-2">
-              {selectedVersion?.usage_billing_frequency ? (
-                <Fragment>
-                  <div className="pr-2 infoLabel">
-                    Components Billing Frequency:
-                  </div>
-                  <div className="infoValue">
-                    {" "}
-                    {selectedVersion.usage_billing_frequency}
-                  </div>
-                </Fragment>
-              ) : null}
-            </div>
-          </div>
+        <div>
+          <PlanComponents
+            updateBillingFrequencyMutation={updateBillingFrequency.mutate}
+            plan={plan}
+            components={selectedVersion.components}
+            alerts={selectedVersion.alerts}
+            plan_version_id={selectedVersion.version_id}
+          />
         </div>
-
-        <div className="px-4 py-2">
-          <PlanComponents components={selectedVersion.components} />
-        </div>
-        <div className="px-4 py-2">
+        <div>
           <PlanFeatures features={selectedVersion.features} />
         </div>
 
         <div className="separator pt-4" />
 
-        <div className="px-4 py-4 flex justify-start align-middle ">
-          <div className="pb-5 pt-3 font-main font-bold text-[20px]">
-            Price Adjustments:
-          </div>
-          <div className="mb-5 mt-3 px-4 font-main font-bold text-[20px] self-center">
+        <div className=" mt-4 min-w-[246px] p-8 cursor-pointer font-main rounded-sm bg-card  shadow-lg ">
+          <Typography.Title className="!text-[18px]" level={2}>
+            Price Adjustments:{" "}
             {getPriceAdjustmentEnding(
               selectedVersion.price_adjustment?.price_adjustment_type,
               selectedVersion.price_adjustment?.price_adjustment_amount,
               selectedVersion.currency.symbol
             )}
-          </div>
+          </Typography.Title>
         </div>
 
         {/* <div className="px-4 flex justify-start align-middle ">

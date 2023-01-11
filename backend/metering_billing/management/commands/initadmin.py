@@ -23,7 +23,7 @@ class Command(BaseCommand):
                 email=email, username=username, password=password
             )
 
-            org = Organization.objects.create(company_name="Lotus Default")
+            org = Organization.objects.create(organization_name="Lotus Default")
             admin.organization = org
             admin.save()
 

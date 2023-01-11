@@ -302,7 +302,7 @@ const CreateMetricForm = (props: {
                   ) : null
                 }
               </Form.Item>
-              <div className="mb-5">
+              <div className="mb-4">
                 <h4>
                   Add Rate. This will allow you to track the metric over windows
                   of time.

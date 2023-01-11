@@ -19,6 +19,7 @@ from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
+from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -50,11 +51,12 @@ from metering_billing.utils import (
     random_uuid,
     subscription_record_uuid,
     subscription_uuid,
+    usage_alert_uuid,
     webhook_endpoint_uuid,
     webhook_secret_uuid,
 )
 from metering_billing.utils.enums import *
-from metering_billing.webhooks import invoice_paid_webhook
+from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
 from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
@@ -86,7 +88,7 @@ class Organization(models.Model):
         Team, on_delete=models.CASCADE, null=True, related_name="organizations"
     )
     organization_id = models.SlugField(default=organization_uuid, max_length=100)
-    company_name = models.CharField(max_length=100, blank=False, null=False)
+    organization_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
     payment_plan = models.CharField(
@@ -124,7 +126,7 @@ class Organization(models.Model):
     history = HistoricalRecords()
 
     def __str__(self):
-        return self.company_name
+        return self.organization_name
 
     def save(self, *args, **kwargs):
         for k, _ in self.payment_provider_ids.items():
@@ -143,11 +145,8 @@ class Organization(models.Model):
             raise NotEditable(
                 "Organization type cannot be changed once an organization is created."
             )
-        if (
-            self.team is None
-            and self.organization_type != self.OrganizationType.EXTERNAL_DEMO
-        ):
-            self.team = Team.objects.create(name=self.company_name)
+        if self.team is None:
+            self.team = Team.objects.create(name=self.organization_name)
         super(Organization, self).save(*args, **kwargs)
         if new:
             self.provision_currencies()
@@ -191,7 +190,7 @@ class Organization(models.Model):
             logger.log("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
-                ApplicationIn(uid=self.organization_id, name=self.company_name)
+                ApplicationIn(uid=self.organization_id, name=self.organization_name)
             )
             self.webhooks_provisioned = True
         self.save()
@@ -361,6 +360,11 @@ class User(AbstractUser):
     )
     email = models.EmailField(unique=True)
     history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        if not self.team and self.organization:
+            self.team = self.organization.team
+        super(User, self).save(*args, **kwargs)
 
 
 class Product(models.Model):
@@ -1375,7 +1379,7 @@ class Invoice(models.Model):
         paid_before = self.payment_status == INVOICE_STATUS.PAID
         super().save(*args, **kwargs)
         paid_after = self.payment_status == INVOICE_STATUS.PAID
-        if not paid_before and paid_after:
+        if not paid_before and paid_after and self.cost_due > 0:
             invoice_paid_webhook(self, self.organization)
 
 
@@ -1439,7 +1443,7 @@ class APIToken(AbstractAPIKey):
         verbose_name_plural = "API Tokens"
 
     def __str__(self):
-        return str(self.name) + " " + str(self.organization.company_name)
+        return str(self.name) + " " + str(self.organization.organization_name)
 
 
 class TeamInviteToken(models.Model):
@@ -1642,12 +1646,16 @@ class Plan(models.Model):
         related_name="custom_plans",
         help_text="If you are using our plan templating feature to create a new plan, this field will be set to the customer for which this plan is designed for. Keep in mind that this field and the parent_plan field are mutually necessary.",
     )
+    tags = models.ManyToManyField("Tag", blank=True, related_name="plans")
+    created_on = models.DateTimeField(default=now_utc, null=True)
 
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):
         if not self.pk and self.target_customer:
             self.plan_name = self.plan_name + " - " + self.target_customer.customer_name
+        if not self.created_on:
+            self.created_on = now_utc()
         super().save(*args, **kwargs)
 
     class Meta:
@@ -2163,7 +2171,8 @@ class SubscriptionRecord(models.Model):
                     )
         if not self.usage_start_date:
             self.usage_start_date = self.start_date
-        if not self.pk:
+        new = not self.pk
+        if new:
             overlapping_subscriptions = SubscriptionRecord.objects.filter(
                 Q(start_date__range=(self.start_date, self.end_date))
                 | Q(end_date__range=(self.start_date, self.end_date)),
@@ -2188,6 +2197,19 @@ class SubscriptionRecord(models.Model):
             if not filter.organization:
                 filter.organization = self.organization
                 filter.save()
+        if new:
+            alerts = UsageAlert.objects.filter(
+                organization=self.organization, plan_version=self.billing_plan
+            )
+            now = now_utc()
+            for alert in alerts:
+                UsageAlertResult.objects.create(
+                    organization=self.organization,
+                    alert=alert,
+                    subscription_record=self,
+                    last_run_value=0,
+                    last_run_timestamp=now,
+                )
 
     def get_filters_dictionary(self):
         filters_dict = {}
@@ -2465,3 +2487,111 @@ class AccountsReceivableTransaction(models.Model):
     due = models.DateTimeField(null=True)
     amount = models.DecimalField(max_digits=20, decimal_places=10)
     related_txns = models.ManyToManyField("self")
+
+
+class Tag(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="tags"
+    )
+    tag_name = models.CharField(max_length=50)
+    tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
+    tag_hex = models.CharField(max_length=7, null=True)
+    tag_color = models.CharField(max_length=20, null=True)
+
+    def __str__(self):
+        return f"{self.tag_name} [{self.tag_group}]"
+
+    constraints = [
+        UniqueConstraint(
+            fields=["organization", "tag_name", "tag_group"],
+            name="unique_with_tag_group",
+        ),
+    ]
+
+
+class UsageAlert(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="usage_alerts"
+    )
+    usage_alert_id = models.SlugField(default=usage_alert_uuid, max_length=50)
+    metric = models.ForeignKey(
+        Metric, on_delete=models.CASCADE, related_name="usage_alerts"
+    )
+    plan_version = models.ForeignKey(
+        PlanVersion, on_delete=models.CASCADE, related_name="usage_alerts"
+    )
+    threshold = models.DecimalField(max_digits=20, decimal_places=10)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "usage_alert_id"],
+                name="unique_alert_id_per_org",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.metric.metric_type != METRIC_TYPE.COUNTER:
+            raise ValidationError(
+                "Only counter metrics can be used for alerts at this time"
+            )
+        super(UsageAlert, self).save(*args, **kwargs)
+        active_sr = SubscriptionRecord.objects.active().filter(
+            organization=self.organization,
+            billing_plan=self.plan_version,
+        )
+        for subscription_record in active_sr:
+            UsageAlertResult.objects.create(
+                organization=self.organization,
+                alert=self,
+                subscription_record=subscription_record,
+                last_run_value=0,
+                last_run_timestamp=now_utc(),
+            )
+
+
+class UsageAlertResult(models.Model):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="alert_results"
+    )
+    alert = models.ForeignKey(
+        UsageAlert, on_delete=models.CASCADE, related_name="alert_results"
+    )
+    subscription_record = models.ForeignKey(
+        SubscriptionRecord, on_delete=models.CASCADE, related_name="alert_results"
+    )
+    last_run_value = models.DecimalField(max_digits=20, decimal_places=10)
+    last_run_timestamp = models.DateTimeField(default=now_utc)
+    triggered_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=["organization", "alert", "subscription_record"],
+                name="unique_alert_result_per_org",
+            ),
+        ]
+
+    def refresh(self):
+        # calculate the value for the alert
+        # update the last_run_value and last_run_timestamp
+        # save the object
+
+        metric = self.alert.metric
+        subscription_record = self.subscription_record
+        now = now_utc()
+        new_value = metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+        if (
+            new_value >= self.alert.threshold
+            and self.last_run_value < self.alert.threshold
+        ):
+            # send alert
+            usage_alert_webhook(
+                self.alert, self, subscription_record, self.organization
+            )
+            self.triggered_count = self.triggered_count + 1
+        self.last_run_value = new_value
+        self.last_run_timestamp = now
+        self.save()

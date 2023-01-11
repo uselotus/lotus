@@ -11,6 +11,9 @@ import Cookies from "universal-cookie";
 import posthog from "posthog-js";
 import { QueryErrors } from "../types/error-response-types";
 import useGlobalStore from "../stores/useGlobalstore";
+import Tooltip from "../components/base/Tooltip/Tooltip";
+import Avatar from "../components/base/Avatar/Avatar";
+import Dropdown from "../components/base/Dropdown/Dropdown";
 
 const cookies = new Cookies();
 
@@ -55,7 +58,7 @@ const Login: FC = () => {
         setUsernameToStore(user.username);
         if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
           posthog.group("company", user.organization_id, {
-            company_name: user.company_name,
+            organization_name: user.organization_name,
           });
           posthog.identify(
             user.email, // distinct_id, required

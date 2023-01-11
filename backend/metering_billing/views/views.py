@@ -432,7 +432,7 @@ class SettingsView(APIView):
         """
         organization = request.organization
         return Response(
-            {"organization": organization.company_name}, status=status.HTTP_200_OK
+            {"organization": organization.organization_name}, status=status.HTTP_200_OK
         )
 
 
@@ -459,7 +459,7 @@ class ChangeUserOrganizationView(APIView):
         Get the current settings for the organization.
         """
         user = request.user
-        new_organization_id = request.query_params.get("transfer_to_organization_id")
+        new_organization_id = request.data.get("transfer_to_organization_id")
         if not new_organization_id:
             raise ValidationError("No organization ID provided")
         new_organization = Organization.objects.filter(
@@ -560,7 +560,7 @@ class DraftInvoiceView(APIView):
         sub, sub_records = customer.get_subscription_and_records()
         response = {"invoice": None}
         if sub is None or sub_records is None:
-            pass
+            response = {"invoices": []}
         else:
             sub_records = sub_records.select_related("billing_plan").prefetch_related(
                 "billing_plan__plan_components",
@@ -578,7 +578,7 @@ class DraftInvoiceView(APIView):
             serializer = DraftInvoiceSerializer(invoices, many=True).data
             for invoice in invoices:
                 invoice.delete()
-            response = {"invoices": serializer}
+            response = {"invoices": serializer or []}
         return Response(response, status=status.HTTP_200_OK)
 
 

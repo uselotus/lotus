@@ -10,4 +10,4 @@ class Command(BaseCommand):
         for org in Organization.objects.filter(
             organization_type=Organization.OrganizationType.EXTERNAL_DEMO
         ):
-            setup_demo4(company_name=org.company_name, mode="regenerate")
+            setup_demo4(organization_name=org.organization_name, mode="regenerate")
