@@ -183,6 +183,8 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
             updateBillingFrequencyMutation={updateBillingFrequency.mutate}
             plan={plan}
             components={selectedVersion.components}
+            alerts={selectedVersion.alerts}
+            plan_version_id={selectedVersion.version_id}
           />
         </div>
         <div>
