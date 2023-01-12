@@ -14,9 +14,10 @@ import {
 import { MetricType } from "../../types/metric-type";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
-
-import "ace-builds/src-noconflict/mode-sql";
+import "ace-builds/src-noconflict/mode-mysql";
 import "ace-builds/src-noconflict/theme-github";
+import "ace-builds/src-noconflict/ext-language_tools";
+
 const { Option } = Select;
 const { Panel } = Collapse;
 
@@ -228,7 +229,7 @@ const CreateMetricForm = (props: {
             >
               <Radio value="counter">Counter</Radio>
               <Radio value="gauge">Gauge</Radio>
-              <Radio value="custom">Custom</Radio>
+              <Radio value="custom">Custom (Beta)</Radio>
             </Radio.Group>
           </Form.Item>
           <Form.Item label="Does this metric represent a cost?">
@@ -500,11 +501,14 @@ const CreateMetricForm = (props: {
               and window functions.
             </p>
             <AceEditor
-              mode="sql"
+              mode="mysql"
               theme="github"
+              placeholder="SELECT * FROM events"
               onChange={(newValue) => setCustomSQL(newValue)}
+              name="custom_sql"
+              highlightActiveLine={true}
               value={customSQL ? customSQL : ""}
-              editorProps={{ $blockScrolling: true }}
+              showGutter={true}
               setOptions={{
                 enableBasicAutocompletion: true,
                 enableLiveAutocompletion: true,
