@@ -853,6 +853,9 @@ class CustomHandler(MetricHandler):
             injection_dict["end_date"] = end
             injection_dict["organization_id"] = 1
             _ = CustomHandler._run_query(custom_sql, injection_dict)
+            assert (
+                "usage_qty" in custom_sql
+            ), "Custom SQL query must return a column named 'usage_qty'"
         except Exception as e:
             raise MetricValidationFailed(
                 "Custom SQL query could not be executed successfully: {}".format(e)

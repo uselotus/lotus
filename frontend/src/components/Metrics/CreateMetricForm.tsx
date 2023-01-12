@@ -432,26 +432,73 @@ const CreateMetricForm = (props: {
         </Form.Item>
         {eventType === "custom" && (
           <div>
+            <p>
+              The query you're building should calculate the raw usage number
+              for a customer's subscription; you'll define the price of the
+              accumulated usage later. You'll have access to a table containing
+              all of the events for the customer whose subscription usage you're
+              calculating. Each row represents an event and has the following
+              columns available:
+            </p>
             <h4>
-              Use the <Tag>events</Tag>field to select event_names.
+              <Tag>
+                event_name (
+                <a href="https://www.postgresql.org/docs/current/datatype-character.html">
+                  string
+                </a>
+                )
+              </Tag>{" "}
+              the name of the event.
             </h4>
             <h4>
-              Use the <Tag>properties</Tag>field (which is filled with JSON
-              objects) to filter and aggregate specific properties.
+              <Tag>
+                properties (
+                <a href="https://www.postgresql.org/docs/current/datatype-json.html">
+                  jsonb
+                </a>
+                )
+              </Tag>{" "}
+              the properties you specified when you sent the event.
             </h4>
             <h4>
-              Use the <Tag>time_created</Tag>field to specify logic based on
-              when the event occurred.
+              <Tag>
+                time_created (
+                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                  timestamptz
+                </a>
+                )
+              </Tag>{" "}
+              the time the event happened.
             </h4>
             <h4>
-              Use the <Tag>start_date</Tag>variable to work with the
-              subscription start date.
+              <Tag>
+                start_date (
+                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                  timestamptz
+                </a>
+                )
+              </Tag>{" "}
+              the start time of the current subscription.
             </h4>
             <h4>
-              Use the <Tag>end_date</Tag>variable to work with the subscription
-              end date.
+              <Tag>
+                end_date (
+                <a href="https://www.postgresql.org/docs/current/datatype-datetime.html">
+                  timestamptz
+                </a>
+                )
+              </Tag>
+              the end time of the current subscription.
             </h4>
-
+            <p>
+              Please return a single row with a a column named `usage_qty`. If
+              you return more than one, we will use the first one. If you return
+              none, we will assume the usage is 0.{" "}
+            </p>
+            <p>
+              Full SQL support is available, including joins, subqueries, CTEs,
+              and window functions.
+            </p>
             <AceEditor
               mode="sql"
               theme="github"
