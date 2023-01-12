@@ -24,6 +24,7 @@ import { useMutation, useQueryClient } from "react-query";
 interface SwitchVersionProps {
   versions: PlanVersionType[];
   plan: PlanDetailType;
+  refetch: VoidFunction;
   className: string;
   createPlanExternalLink: (link: string) => void;
   deletePlanExternalLink: (link: string) => void;
@@ -54,6 +55,7 @@ function capitalize(word: string) {
 const SwitchVersions: FC<SwitchVersionProps> = ({
   versions,
   plan,
+  refetch,
   createPlanExternalLink,
   deletePlanExternalLink,
   className,
@@ -104,7 +106,14 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
       },
     }
   );
-
+  // useEffect(() => {
+  //   console.log("veif", versions);
+  //   setSelectedVersion(versions.find((x) => x.status === "active")!);
+  // }, [versions]);
+  useEffect(() => {
+    console.log("aveg", plan.versions);
+    setSelectedVersion(plan.versions.find((x) => x.status === "active")!);
+  }, [plan]);
   useEffect(() => {
     setCapitalizedState(capitalize(selectedVersion.status));
   }, [selectedVersion.status]);
@@ -136,6 +145,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
           <div
             onClick={(e) => {
               console.log(e.target);
+              refetch();
               setSelectedVersion(version);
             }}
             className={[
@@ -180,6 +190,7 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
 
         <div>
           <PlanComponents
+            refetch={refetch}
             updateBillingFrequencyMutation={updateBillingFrequency.mutate}
             plan={plan}
             components={selectedVersion.components}
