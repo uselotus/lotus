@@ -45,7 +45,9 @@ const CreateMetricForm = (props: {
   const [rate, setRate] = useState(false);
   const [preset, setPreset] = useState("none");
   const [filters, setFilters] = useState();
-  const [customSQL, setCustomSQL] = useState<null | string>();
+  const [customSQL, setCustomSQL] = useState<null | string>(
+    "SELECT COUNT(*) as usage_qty FROM events"
+  );
 
   // useEffect(() => {
   //   if (props.visible === false) {
