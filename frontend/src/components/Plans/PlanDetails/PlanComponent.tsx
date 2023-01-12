@@ -353,7 +353,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
 
         setAlertThreshold(0);
         refetch();
-        toast.success("Successfully created alert. Please the refresh page.");
+        toast.success("Successfully created alert.");
         // window.location.reload(false);
       },
     }
