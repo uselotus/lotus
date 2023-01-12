@@ -1541,8 +1541,11 @@ class TestCustomSQLMetrics:
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
 
-    def test_count_with_filter(
-        self, get_billable_metrics_in_org, billable_metric_test_common_setup
+    def test_count_all(
+        self,
+        get_billable_metrics_in_org,
+        billable_metric_test_common_setup,
+        add_subscription_to_org,
     ):
         num_billable_metrics = 0
         setup_dict = billable_metric_test_common_setup(
@@ -1554,7 +1557,7 @@ class TestCustomSQLMetrics:
         insert_billable_metric_payload = {
             "metric_type": METRIC_TYPE.CUSTOM,
             "metric_name": "test_billable_metric",
-            "custom_sql": "SELECT COUNT(*) FROM filtered_table",
+            "custom_sql": "SELECT COUNT(*) AS usage_qty FROM filtered_table",
         }
 
         response = setup_dict["client"].post(
@@ -1566,19 +1569,730 @@ class TestCustomSQLMetrics:
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
 
+        billable_metric = Metric.objects.all().first()
+        time_created = now_utc()
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test_customer"
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "foo"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "bar"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        billing_plan.plan.display_version = billing_plan
+        billing_plan.plan.save()
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
         payload = {
             "name": "test_subscription",
-            "start_date": now_utc() - timedelta(days=5),
+            "start_date": now_utc() - relativedelta(days=5),
             "customer_id": customer.customer_id,
             "plan_id": billing_plan.plan.plan_id,
         }
         response = setup_dict["client"].post(
             reverse("subscription-add"),
-            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
 
-        Event.objects.create()
+        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        assert total_usage == 10
+
+    def test_count_distinct(
+        self,
+        get_billable_metrics_in_org,
+        billable_metric_test_common_setup,
+        add_subscription_to_org,
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": "SELECT COUNT(DISTINCT properties ->> 'test_property') AS usage_qty FROM filtered_table",
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
+
+        billable_metric = Metric.objects.all().first()
+        time_created = now_utc()
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test_customer"
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "foo"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "bar"},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        billing_plan.plan.display_version = billing_plan
+        billing_plan.plan.save()
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        payload = {
+            "name": "test_subscription",
+            "start_date": now_utc() - relativedelta(days=5),
+            "customer_id": customer.customer_id,
+            "plan_id": billing_plan.plan.plan_id,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        assert total_usage == 2
+
+    def test_max_with_filters(
+        self,
+        get_billable_metrics_in_org,
+        billable_metric_test_common_setup,
+        add_subscription_to_org,
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": "SELECT MAX((properties ->> 'qty_property')::text::decimal) AS usage_qty FROM filtered_table WHERE properties ->> 'test_property' = 'foo'",
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
+
+        billable_metric = Metric.objects.all().first()
+        time_created = now_utc()
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test_customer"
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "foo", "qty_property": 5},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "bar", "qty_property": 10},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        billing_plan.plan.display_version = billing_plan
+        billing_plan.plan.save()
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        payload = {
+            "name": "test_subscription",
+            "start_date": now_utc() - relativedelta(days=5),
+            "customer_id": customer.customer_id,
+            "plan_id": billing_plan.plan.plan_id,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        assert total_usage == 5
+
+    def test_cte_with_partitions(
+        self,
+        get_billable_metrics_in_org,
+        billable_metric_test_common_setup,
+        add_subscription_to_org,
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": """
+            WITH new_filter AS (
+                SELECT 
+                    properties ->> 'test_property' AS test_property,
+                    SUM((properties ->> 'qty_property')::text::decimal) 
+                    OVER(PARTITION BY properties ->> 'test_property') AS qty_partition
+                FROM filtered_table
+            ), sum_per_partition AS (
+                SELECT
+                    SUM(qty_partition) AS total_sum,
+                    test_property
+                FROM 
+                    new_filter
+                GROUP BY
+                    test_property
+                HAVING
+                    SUM(qty_partition) < 250
+            )
+            SELECT 
+                MAX(total_sum) AS usage_qty
+            FROM 
+                sum_per_partition
+            """,
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
+
+        billable_metric = Metric.objects.all().first()
+        time_created = now_utc()
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test_customer"
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "foo", "qty_property": 5},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={"test_property": "bar", "qty_property": 10},
+            organization=setup_dict["org"],
+            time_created=time_created,
+            customer=customer,
+            _quantity=5,
+        )
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        billing_plan.plan.display_version = billing_plan
+        billing_plan.plan.save()
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        payload = {
+            "name": "test_subscription",
+            "start_date": now_utc() - relativedelta(days=5),
+            "customer_id": customer.customer_id,
+            "plan_id": billing_plan.plan.plan_id,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        assert total_usage == 125
+
+    def test_realistic_use_case_with_end_dates(
+        self,
+        get_billable_metrics_in_org,
+        billable_metric_test_common_setup,
+        add_subscription_to_org,
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": """
+            WITH experiment_key_days AS (
+            SELECT 
+                properties ->> 'experiment_key' as experiment_key,
+                date_trunc('day', time_created) AS day 
+            FROM
+                filtered_table
+            WHERE
+                properties ->> 'status' = 'successful_refresh'
+                AND (properties ->> 'assignment_volume')::text::decimal > 1000
+                AND time_created < end_date
+                AND date_trunc('day', time_created) > start_date - INTERVAL '2 days'
+            )
+            , second_table as (
+            SELECT 
+                COUNT(DISTINCT day) AS num_days,
+                experiment_key
+            FROM experiment_key_days
+            GROUP BY experiment_key
+            )
+            SELECT 
+                COUNT(*) AS usage_qty
+            FROM 
+                second_table
+            WHERE
+                num_days >= 3
+            """,
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
+
+        billable_metric = Metric.objects.all().first()
+        time_created = now_utc()
+        customer = baker.make(
+            Customer, organization=setup_dict["org"], customer_name="test_customer"
+        )
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={
+                "experiment_key": "1",
+                "status": "successful_refresh",
+                "assignment_volume": 2000,
+            },
+            organization=setup_dict["org"],
+            time_created=itertools.cycle(
+                [time_created - relativedelta(days=i) for i in range(5)]
+            ),
+            customer=customer,
+            _quantity=5,
+        )  # this one should count
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties={
+                "experiment_key": "2",
+                "status": "successful_refresh",
+                "assignment_volume": 2000,
+            },
+            organization=setup_dict["org"],
+            time_created=itertools.cycle(
+                [time_created - relativedelta(days=i) for i in range(2, 7)]
+            ),
+            customer=customer,
+            _quantity=5,
+        )  # this one shouldn't as it goes before teh start_date
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties=itertools.cycle(
+                [
+                    {
+                        "experiment_key": "3",
+                        "status": "successful_refresh" if i < 3 else "failed_refresh",
+                        "assignment_volume": 2000,
+                    }
+                    for i in range(5)
+                ]
+            ),
+            organization=setup_dict["org"],
+            time_created=itertools.cycle(
+                [time_created - relativedelta(days=i) for i in range(5)]
+            ),
+            customer=customer,
+            _quantity=5,
+        )  # this one should work as the failed refresh is before the start date
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties=itertools.cycle(
+                [
+                    {
+                        "experiment_key": "4",
+                        "status": "successful_refresh" if i > 3 else "failed_refresh",
+                        "assignment_volume": 2000,
+                    }
+                    for i in range(5)
+                ]
+            ),
+            organization=setup_dict["org"],
+            time_created=itertools.cycle(
+                [time_created - relativedelta(days=i) for i in range(5)]
+            ),
+            customer=customer,
+            _quantity=5,
+        )  # this one shouldnt as it fails
+        baker.make(
+            Event,
+            event_name="test_event",
+            properties=itertools.cycle(
+                [
+                    {
+                        "experiment_key": "5",
+                        "status": "successful_refresh",
+                        "assignment_volume": 2000 if i != 2 else 50,
+                    }
+                    for i in range(5)
+                ]
+            ),
+            organization=setup_dict["org"],
+            time_created=itertools.cycle(
+                [time_created - relativedelta(days=i) for i in range(5)]
+            ),
+            customer=customer,
+            _quantity=5,
+        )  # this one also shouldnt as it doesn't have the volume on one of the days in the query
+        billing_plan = PlanVersion.objects.create(
+            organization=setup_dict["org"],
+            flat_rate=0,
+            version=1,
+            plan=setup_dict["plan"],
+        )
+        plan_component = PlanComponent.objects.create(
+            billable_metric=billable_metric,
+            plan_version=billing_plan,
+        )
+        free_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.FREE,
+            range_start=0,
+            range_end=3,
+        )
+        paid_tier = PriceTier.objects.create(
+            plan_component=plan_component,
+            type=PRICE_TIER_TYPE.PER_UNIT,
+            range_start=3,
+            cost_per_batch=100,
+            metric_units_per_batch=1,
+        )
+        billing_plan.plan.display_version = billing_plan
+        billing_plan.plan.save()
+        now = now_utc()
+        with (
+            mock.patch(
+                "metering_billing.models.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+            mock.patch(
+                "metering_billing.tests.test_billable_metric.now_utc",
+                return_value=now - relativedelta(days=1),
+            ),
+        ):
+            subscription, subscription_record = add_subscription_to_org(
+                setup_dict["org"],
+                billing_plan,
+                customer,
+                now - relativedelta(days=1),
+            )
+        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        payload = {
+            "name": "test_subscription",
+            "start_date": now_utc() - relativedelta(days=5),
+            "customer_id": customer.customer_id,
+            "plan_id": billing_plan.plan.plan_id,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        total_usage = billable_metric.get_subscription_record_total_billable_usage(
+            subscription_record
+        )
+
+        assert total_usage == 2
+
+    def test_reject_if_using_table_name(
+        self,
+        get_billable_metrics_in_org,
+        billable_metric_test_common_setup,
+        add_subscription_to_org,
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": """SELECT COUNT(*) AS usage_qty FROM \"metering_billing_usageevent\"""",
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 0
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": """SELECT COUNT(*) AS usage_qty FROM metering_billing_usageevent""",
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 0
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": """SELECT COUNT(*) AS usage_qty FROM metering_billing_customer""",
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 0
 
 
 @pytest.mark.django_db(transaction=True)

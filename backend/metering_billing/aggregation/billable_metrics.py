@@ -690,10 +690,11 @@ class CustomHandler(MetricHandler):
         )
 
         combined_query = CUSTOM_BASE_QUERY
-        if custom_sql.lower().lstrip().startswith("WITH"):
-            custom_sql = custom_sql.replace("WITH", ",")
+        if custom_sql.lower().lstrip().startswith("with"):
+            custom_sql = custom_sql.lower().replace("with", ",")
         combined_query += custom_sql
         query = Template(combined_query).render(**injection_dict)
+        print("query: ", query)
         with connection.cursor() as cursor:
             cursor.execute(query)
             results = namedtuplefetchall(cursor)
@@ -730,7 +731,34 @@ class CustomHandler(MetricHandler):
                 filter.property_name
             ] = filter.comparison_value[0]
         results = CustomHandler._run_query(metric.custom_sql, injection_dict)
-        return results[0]["usage_qty"]
+        if len(results) == 0:
+            return Decimal(0)
+        return results[0].usage_qty
+
+    @staticmethod
+    def get_subscription_record_current_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        return CustomHandler.get_subscription_record_total_billable_usage(
+            metric, subscription_record
+        )
+
+    @staticmethod
+    def get_subscription_record_daily_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> dict[datetime.date, Decimal]:
+        usage_qty = CustomHandler.get_subscription_record_total_billable_usage(
+            metric, subscription_record
+        )
+        dates_bwn = [
+            x
+            for x in dates_bwn_two_dts(
+                subscription_record.usage_start_date, subscription_record.end_date
+            )
+        ]
+        dates_dict = {x: usage_qty / len(dates_bwn) for x in dates_bwn}
+
+        return dates_dict
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
@@ -856,7 +884,7 @@ class CustomHandler(MetricHandler):
                 and token.value.lower() in prohibited_keywords
             ):
                 return False
-            if token.value.lower == "metering_billing_usageevent":
+            if "metering_billing_" in token.value.lower():
                 return False
         return True
 
