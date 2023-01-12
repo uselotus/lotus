@@ -29,8 +29,6 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     PRICE_TIER_TYPE,
-    REPLACE_IMMEDIATELY_TYPE,
-    SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
@@ -1071,7 +1069,6 @@ class TestSubscriptionAndSubscriptionRecord:
     def test_adding_yearly_plan_makes_monthly_plan_conform_to_day_anchor(
         self, subscription_test_common_setup
     ):
-
         setup_dict = subscription_test_common_setup(
             num_subscriptions=0, auth_method="session_auth"
         )

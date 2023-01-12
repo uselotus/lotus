@@ -79,7 +79,6 @@ class TestOrganizationTags:
             payload,
             format="json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_200_OK
         assert sorted(
             list(
