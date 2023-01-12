@@ -537,6 +537,7 @@ class CounterHandler(MetricHandler):
         # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
@@ -557,6 +558,10 @@ class CounterHandler(MetricHandler):
                 "[METRIC TYPE: COUNTER] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
+            )
+        if event_name is None:
+            raise MetricValidationFailed(
+                "[METRIC TYPE: COUNTER] Must specify event name"
             )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             if property_name is None:
@@ -746,6 +751,7 @@ class CustomHandler(MetricHandler):
         # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
@@ -757,6 +763,11 @@ class CustomHandler(MetricHandler):
         custom_sql = data.get("custom_sql", None)
 
         # now validate
+        if event_name is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Event name specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("event_name", None)
         if usg_agg_type is not None:
             logger.info(
                 "[METRIC TYPE: CUSTOM] Usage aggregation type specified but not needed for CUSTOM aggregation"
@@ -861,6 +872,7 @@ class GaugeHandler(MetricHandler):
         # certain fields are there and ignore others as needed
 
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
@@ -872,6 +884,8 @@ class GaugeHandler(MetricHandler):
         proration = data.get("proration", None)
 
         # now validate
+        if not event_name:
+            raise MetricValidationFailed("[METRIC TYPE: GAUGE] Must specify event name")
         if metric_type != METRIC_TYPE.GAUGE:
             raise MetricValidationFailed("Metric type must be GAUGE for GaugeHandler")
         if usg_agg_type not in GaugeHandler._allowed_usage_aggregation_types():
@@ -1278,6 +1292,7 @@ class RateHandler(MetricHandler):
         # certain fields are there and ignore others as needed
 
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
@@ -1289,6 +1304,8 @@ class RateHandler(MetricHandler):
         proration = data.get("proration", None)
 
         # now validate
+        if event_name is None:
+            raise MetricValidationFailed("[METRIC TYPE: RATE] Must specify event name.")
         if metric_type != METRIC_TYPE.RATE:
             raise MetricValidationFailed("Metric type must be RATE for a RateHandler.")
         if usg_agg_type not in RateHandler._allowed_usage_aggregation_types():

@@ -4118,10 +4118,18 @@ components:
     DraftInvoice:
       type: object
       properties:
+<<<<<<< Updated upstream
+=======
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+>>>>>>> Stashed changes
         start_date:
           type: string
           format: date
           readOnly: true
+<<<<<<< Updated upstream
         due_date:
           type: string
           format: date-time
@@ -4132,11 +4140,17 @@ components:
           maximum: 10000000000
           minimum: 0
           exclusiveMaximum: true
+=======
+        issue_date:
+          type: string
+          format: date-time
+>>>>>>> Stashed changes
         line_items:
           type: array
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
+<<<<<<< Updated upstream
         end_date:
           type: string
           format: date
@@ -4146,6 +4160,20 @@ components:
           format: date-time
         currency:
           $ref: '#/components/schemas/PricingUnit'
+=======
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+>>>>>>> Stashed changes
       required:
       - cost_due
       - currency
@@ -4489,6 +4517,7 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
+<<<<<<< Updated upstream
         usage_billing_frequency:
           enum:
           - monthly
@@ -4513,11 +4542,17 @@ components:
           items:
             $ref: '#/components/schemas/FeatureRequest'
           nullable: true
+=======
+        currency_code:
+          type: string
+          minLength: 1
+>>>>>>> Stashed changes
         components:
           type: array
           items:
             $ref: '#/components/schemas/PlanComponentRequest'
           nullable: true
+<<<<<<< Updated upstream
         month_anchor:
           type: integer
           maximum: 12
@@ -4546,6 +4581,57 @@ components:
         transition_to_plan_id:
           type: string
           minLength: 1
+=======
+        transition_to_plan_id:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          writeOnly: true
+          nullable: true
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        usage_billing_frequency:
+          enum:
+          - monthly
+          - quarterly
+          - end_of_period
+          - ''
+          - null
+          type: string
+          writeOnly: true
+          nullable: true
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          writeOnly: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureRequest'
+          nullable: true
+>>>>>>> Stashed changes
       required:
       - flat_fee_billing_type
     InviteRequestRequest:
@@ -4760,12 +4846,43 @@ components:
     LightweightInvoice:
       type: object
       properties:
+<<<<<<< Updated upstream
+=======
+        external_payment_obj_id:
+          type: string
+          nullable: true
+          maxLength: 100
+        invoice_number:
+          type: string
+          maxLength: 13
+        end_date:
+          type: string
+          format: date
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        issue_date:
+          type: string
+          format: date-time
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+>>>>>>> Stashed changes
         external_payment_obj_type:
           enum:
           - stripe
           - null
           type: string
           nullable: true
+        cost_due:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+        seller:
+          $ref: '#/components/schemas/Seller'
         payment_status:
           enum:
           - draft
@@ -4773,14 +4890,18 @@ components:
           - paid
           - unpaid
           type: string
+<<<<<<< Updated upstream
         start_date:
           type: string
           format: date
           readOnly: true
+=======
+>>>>>>> Stashed changes
         due_date:
           type: string
           format: date-time
           nullable: true
+<<<<<<< Updated upstream
         seller:
           $ref: '#/components/schemas/Seller'
         cost_due:
@@ -4805,6 +4926,8 @@ components:
           format: date-time
         currency:
           $ref: '#/components/schemas/PricingUnit'
+=======
+>>>>>>> Stashed changes
       required:
       - cost_due
       - currency
@@ -4844,9 +4967,13 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
+<<<<<<< Updated upstream
         plan:
           type: string
         end_date:
+=======
+        start_date:
+>>>>>>> Stashed changes
           type: string
           format: date-time
         billing_type:
@@ -4856,6 +4983,21 @@ components:
           - null
           type: string
           nullable: true
+<<<<<<< Updated upstream
+=======
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        name:
+          type: string
+          maxLength: 100
+        plan:
+          type: string
+>>>>>>> Stashed changes
       required:
       - billing_type
       - end_date
