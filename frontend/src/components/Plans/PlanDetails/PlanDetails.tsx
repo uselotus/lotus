@@ -144,6 +144,7 @@ const PlanDetails: FC = () => {
     data: plan,
     isLoading,
     isError,
+    refetch,
   } = useQuery<PlanDetailType>(
     ["plan_detail", planId],
     () =>
@@ -239,6 +240,7 @@ const PlanDetails: FC = () => {
           <div className="mx-10">
             {plan.versions.length > 0 && (
               <SwitchVersions
+                refetch={refetch}
                 versions={plan.versions}
                 createPlanExternalLink={createPlanExternalLink}
                 deletePlanExternalLink={deletePlanExternalLink}

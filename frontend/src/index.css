@@ -105,7 +105,12 @@ a {
 .ant-descriptions-header {
   margin-bottom: 0;
 }
-
+.ant-input-number-input:invalid {
+  border: 2px solid red;
+}
+.ant-input-number-input-wrap:has( > .ant-input-number-input:invalid) {
+  border: 2px solid red;
+}
 .ant-descriptions-title {
   font-size: 26px;
   line-height: 30px;

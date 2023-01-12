@@ -262,7 +262,6 @@ const CreatePlan = () => {
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
-
         const links = values.initial_external_links;
         if (links?.length) {
           plan.initial_external_links = links.map((link) => ({
