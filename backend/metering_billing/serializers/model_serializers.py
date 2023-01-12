@@ -620,7 +620,7 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "custom_sql",
         )
         extra_kwargs = {
-            "event_name": {"write_only": True, "required": True},
+            "event_name": {"write_only": True},
             "property_name": {"write_only": True},
             "usage_aggregation_type": {"write_only": True},
             "billable_aggregation_type": {"write_only": True},

@@ -1515,6 +1515,35 @@ class TestCalculateMetricWithFilters:
 
 
 @pytest.mark.django_db(transaction=True)
+class TestCustomSQLMetrics:
+    def test_insert_custom(
+        self, get_billable_metrics_in_org, billable_metric_test_common_setup
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": "SELECT COUNT(*) FROM filtered_table",
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        print(response.data)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
+
+
+@pytest.mark.django_db(transaction=True)
 class TestRegressions:
     def test_granularity_ratio_total_fails(
         self, billable_metric_test_common_setup, add_subscription_to_org

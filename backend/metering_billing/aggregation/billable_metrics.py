@@ -628,25 +628,29 @@ class CounterHandler(MetricHandler):
                     for x in metric.categorical_filters.all()
                 ],
             }
-            for continuous_agg_type in ["day", "second"]:
-                sql_injection_data["cagg_name"] = (
-                    organization.organization_id[:22]
-                    + "___"
-                    + metric.metric_id[:22]
-                    + "___"
-                    + continuous_agg_type
-                )
-                sql_injection_data["bucket_size"] = continuous_agg_type
-                query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
-                refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
-                compression_query = Template(CAGG_COMPRESSION).render(
-                    **sql_injection_data
-                )
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
-                    cursor.execute(refresh_query)
-                    if continuous_agg_type == "second":
-                        cursor.execute(compression_query)
+            base_name = (
+                organization.organization_id[:22]
+                + "___"
+                + metric.metric_id[:22]
+                + "___"
+            )
+            sql_injection_data["cagg_name"] = base_name + "day"
+            sql_injection_data["bucket_size"] = "day"
+            day_query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+            day_refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
+            sql_injection_data["cagg_name"] = base_name + "second"
+            sql_injection_data["bucket_size"] = "second"
+            second_query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+            second_refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
+            second_compression_query = Template(CAGG_COMPRESSION).render(
+                **sql_injection_data
+            )
+            with connection.cursor() as cursor:
+                cursor.execute(day_query)
+                cursor.execute(day_refresh_query)
+                cursor.execute(second_query)
+                cursor.execute(second_refresh_query)
+                cursor.execute(second_compression_query)
 
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
