@@ -1537,10 +1537,48 @@ class TestCustomSQLMetrics:
             data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
+
+    def test_count_with_filter(
+        self, get_billable_metrics_in_org, billable_metric_test_common_setup
+    ):
+        num_billable_metrics = 0
+        setup_dict = billable_metric_test_common_setup(
+            num_billable_metrics=num_billable_metrics,
+            auth_method="session_auth",
+            user_org_and_api_key_org_different=False,
+        )
+
+        insert_billable_metric_payload = {
+            "metric_type": METRIC_TYPE.CUSTOM,
+            "metric_name": "test_billable_metric",
+            "custom_sql": "SELECT COUNT(*) FROM filtered_table",
+        }
+
+        response = setup_dict["client"].post(
+            reverse("metric-list"),
+            data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) > 0  # check that the response is not empty
+        assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
+
+        payload = {
+            "name": "test_subscription",
+            "start_date": now_utc() - timedelta(days=5),
+            "customer_id": customer.customer_id,
+            "plan_id": billing_plan.plan.plan_id,
+        }
+        response = setup_dict["client"].post(
+            reverse("subscription-add"),
+            data=json.dumps(setup_dict["payload"], cls=DjangoJSONEncoder),
+            content_type="application/json",
+        )
+
+        Event.objects.create()
 
 
 @pytest.mark.django_db(transaction=True)
