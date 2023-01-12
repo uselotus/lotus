@@ -53,7 +53,6 @@ function MetricBarGraph(props: { range: any }) {
     setChartData(compressedArray);
   };
   useEffect(() => {
-    console.log("data", data);
     if (data?.metrics && Object.keys(data.metrics).length > 0) {
       setMetricList(Object.keys(data.metrics));
       setSelectedMetric(Object.keys(data.metrics)[0]);

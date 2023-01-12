@@ -1156,7 +1156,6 @@ def setup_demo4(
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
                 end_time = time.time()
-                print("Time to generate 1 month data: ", end_time - start_time)
     now = now_utc()
     # backtest = Backtest.objects.create(
     #     backtest_name=organization,

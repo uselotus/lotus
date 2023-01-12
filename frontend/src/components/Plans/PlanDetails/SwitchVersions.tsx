@@ -107,11 +107,9 @@ const SwitchVersions: FC<SwitchVersionProps> = ({
     }
   );
   // useEffect(() => {
-  //   console.log("veif", versions);
   //   setSelectedVersion(versions.find((x) => x.status === "active")!);
   // }, [versions]);
   useEffect(() => {
-    console.log("aveg", plan.versions);
     setSelectedVersion(plan.versions.find((x) => x.status === "active")!);
   }, [plan]);
   useEffect(() => {
