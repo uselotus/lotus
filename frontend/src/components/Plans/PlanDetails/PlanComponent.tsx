@@ -572,7 +572,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     if (value && typeof value === "number") {
                       setAlertThreshold(value);
                     }
-                    if (typeof value === "string") {
+                    if (value === null) {
                       toast.success("Please enter a number");
                     }
                   }}
