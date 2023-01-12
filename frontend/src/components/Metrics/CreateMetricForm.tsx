@@ -9,10 +9,12 @@ import {
   Switch,
   Collapse,
   Button,
+  Tag,
 } from "antd";
 import { MetricType } from "../../types/metric-type";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import AceEditor from "react-ace";
+
 import "ace-builds/src-noconflict/mode-sql";
 import "ace-builds/src-noconflict/theme-github";
 const { Option } = Select;
@@ -429,20 +431,42 @@ const CreateMetricForm = (props: {
           )}
         </Form.Item>
         {eventType === "custom" && (
-          <AceEditor
-            mode="sql"
-            theme="github"
-            onChange={(newValue) => setCustomSQL(newValue)}
-            value={customSQL ? customSQL : ""}
-            editorProps={{ $blockScrolling: true }}
-            setOptions={{
-              enableBasicAutocompletion: true,
-              enableLiveAutocompletion: true,
-              enableSnippets: true,
-              showLineNumbers: true,
-              tabSize: 2,
-            }}
-          />
+          <div>
+            <h4>
+              Use the <Tag>events</Tag>field to select event_names.
+            </h4>
+            <h4>
+              Use the <Tag>properties</Tag>field (which is filled with JSON
+              objects) to filter and aggregate specific properties.
+            </h4>
+            <h4>
+              Use the <Tag>time_created</Tag>field to specify logic based on
+              when the event occurred.
+            </h4>
+            <h4>
+              Use the <Tag>start_date</Tag>variable to work with the
+              subscription start date.
+            </h4>
+            <h4>
+              Use the <Tag>end_date</Tag>variable to work with the subscription
+              end date.
+            </h4>
+
+            <AceEditor
+              mode="sql"
+              theme="github"
+              onChange={(newValue) => setCustomSQL(newValue)}
+              value={customSQL ? customSQL : ""}
+              editorProps={{ $blockScrolling: true }}
+              setOptions={{
+                enableBasicAutocompletion: true,
+                enableLiveAutocompletion: true,
+                enableSnippets: true,
+                showLineNumbers: true,
+                tabSize: 2,
+              }}
+            />
+          </div>
         )}
 
         {eventType !== "custom" && (
