@@ -183,18 +183,21 @@ const CreateMetricForm = (props: {
               <Input />
             </Form.Item>
           </Tooltip>
-          <Form.Item
-            name="event_name"
-            label="Event Name"
-            rules={[
-              {
-                required: true,
-                message: "Please input the name of the event you want to track",
-              },
-            ]}
-          >
-            <Input />
-          </Form.Item>
+          {eventType !== "custom" && (
+            <Form.Item
+              name="event_name"
+              label="Event Name"
+              rules={[
+                {
+                  required: true,
+                  message:
+                    "Please input the name of the event you want to track",
+                },
+              ]}
+            >
+              <Input />
+            </Form.Item>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
