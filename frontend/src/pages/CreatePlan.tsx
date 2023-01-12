@@ -262,14 +262,16 @@ const CreatePlan = () => {
           plan_duration: values.plan_duration,
           initial_version: initialPlanVersion,
         };
-
+        console.log(plan);
         const links = values.initial_external_links;
+        console.log(links);
         if (links?.length) {
           plan.initial_external_links = links.map((link) => ({
             source: "stripe",
             external_plan_id: link,
           }));
         }
+        console.log(plan);
         mutation.mutate(plan);
       })
       .catch((info) => {});
