@@ -580,7 +580,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                   value={alertThreshold}
                 />
                 {isInvalid && (
-                  <div className="bg-red-800">Please enter a number</div>
+                  <div className="text-red-800">Please enter a number</div>
                 )}
               </div>
             </Modal>
