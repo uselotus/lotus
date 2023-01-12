@@ -1,5 +1,5 @@
 CUSTOM_BASE_QUERY = """
-WITH filtered_table AS
+WITH events AS
 (
     SELECT
         "metering_billing_usageevent"."properties" as properties,

@@ -694,7 +694,6 @@ class CustomHandler(MetricHandler):
             custom_sql = custom_sql.lower().replace("with", ",")
         combined_query += custom_sql
         query = Template(combined_query).render(**injection_dict)
-        print("query: ", query)
         with connection.cursor() as cursor:
             cursor.execute(query)
             results = namedtuplefetchall(cursor)
@@ -750,11 +749,13 @@ class CustomHandler(MetricHandler):
         usage_qty = CustomHandler.get_subscription_record_total_billable_usage(
             metric, subscription_record
         )
+        now = now_utc().date()
         dates_bwn = [
             x
             for x in dates_bwn_two_dts(
                 subscription_record.usage_start_date, subscription_record.end_date
             )
+            if x <= now
         ]
         dates_dict = {x: usage_qty / len(dates_bwn) for x in dates_bwn}
 

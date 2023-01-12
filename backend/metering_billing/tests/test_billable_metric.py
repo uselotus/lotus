@@ -1529,7 +1529,7 @@ class TestCustomSQLMetrics:
         insert_billable_metric_payload = {
             "metric_type": METRIC_TYPE.CUSTOM,
             "metric_name": "test_billable_metric",
-            "custom_sql": "SELECT COUNT(*) FROM filtered_table",
+            "custom_sql": "SELECT COUNT(*) FROM events",
         }
 
         response = setup_dict["client"].post(
@@ -1557,7 +1557,7 @@ class TestCustomSQLMetrics:
         insert_billable_metric_payload = {
             "metric_type": METRIC_TYPE.CUSTOM,
             "metric_name": "test_billable_metric",
-            "custom_sql": "SELECT COUNT(*) AS usage_qty FROM filtered_table",
+            "custom_sql": "SELECT COUNT(*) AS usage_qty FROM events",
         }
 
         response = setup_dict["client"].post(
@@ -1672,7 +1672,7 @@ class TestCustomSQLMetrics:
         insert_billable_metric_payload = {
             "metric_type": METRIC_TYPE.CUSTOM,
             "metric_name": "test_billable_metric",
-            "custom_sql": "SELECT COUNT(DISTINCT properties ->> 'test_property') AS usage_qty FROM filtered_table",
+            "custom_sql": "SELECT COUNT(DISTINCT properties ->> 'test_property') AS usage_qty FROM events",
         }
 
         response = setup_dict["client"].post(
@@ -1787,7 +1787,7 @@ class TestCustomSQLMetrics:
         insert_billable_metric_payload = {
             "metric_type": METRIC_TYPE.CUSTOM,
             "metric_name": "test_billable_metric",
-            "custom_sql": "SELECT MAX((properties ->> 'qty_property')::text::decimal) AS usage_qty FROM filtered_table WHERE properties ->> 'test_property' = 'foo'",
+            "custom_sql": "SELECT MAX((properties ->> 'qty_property')::text::decimal) AS usage_qty FROM events WHERE properties ->> 'test_property' = 'foo'",
         }
 
         response = setup_dict["client"].post(
@@ -1908,7 +1908,7 @@ class TestCustomSQLMetrics:
                     properties ->> 'test_property' AS test_property,
                     SUM((properties ->> 'qty_property')::text::decimal) 
                     OVER(PARTITION BY properties ->> 'test_property') AS qty_partition
-                FROM filtered_table
+                FROM events
             ), sum_per_partition AS (
                 SELECT
                     SUM(qty_partition) AS total_sum,
@@ -2045,7 +2045,7 @@ class TestCustomSQLMetrics:
                 properties ->> 'experiment_key' as experiment_key,
                 date_trunc('day', time_created) AS day 
             FROM
-                filtered_table
+                events
             WHERE
                 properties ->> 'status' = 'successful_refresh'
                 AND (properties ->> 'assignment_volume')::text::decimal > 1000

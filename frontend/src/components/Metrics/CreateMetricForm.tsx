@@ -435,11 +435,11 @@ const CreateMetricForm = (props: {
           <div>
             <p>
               The query you're building should calculate the raw usage number
-              for a customer's subscription; you'll define the price of the
-              accumulated usage later. You'll have access to a table containing
-              all of the events for the customer whose subscription usage you're
-              calculating. Each row represents an event and has the following
-              columns available:
+              for a customer's subscription. You'll define the price of the
+              accumulated usage later. You'll have access to a table called{" "}
+              <Tag>events</Tag>containing all of the events for the customer
+              whose subscription usage you're calculating. Each row represents
+              an event and has the following columns available:
             </p>
             <h4>
               <Tag>
@@ -492,9 +492,9 @@ const CreateMetricForm = (props: {
               the end time of the current subscription.
             </h4>
             <p>
-              Please return a single row with a a column named `usage_qty`. If
-              you return more than one, we will use the first one. If you return
-              none, we will assume the usage is 0.{" "}
+              Please return a single row with a a column named{" "}
+              <Tag>usage_qty</Tag>. If you return more than one, we will use the
+              first one. If you return none, we will assume the usage is 0.{" "}
             </p>
             <p>
               Full SQL support is available, including joins, subqueries, CTEs,

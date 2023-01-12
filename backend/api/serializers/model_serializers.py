@@ -979,7 +979,6 @@ class SubscriptionRecordCreateSerializer(
     )
 
     def validate(self, data):
-        print("data", data)
         # extract the plan version from the plan
         data["billing_plan"] = data["billing_plan"]["plan"].display_version
         # check that if the plan is designed for a specific customer, that the customer is that customer
