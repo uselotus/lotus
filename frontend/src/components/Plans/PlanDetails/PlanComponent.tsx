@@ -537,6 +537,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
+                        disabled={isInvalid}
                         onClick={() => submitAlertModal(currentComponent)}
                       >
                         Create
