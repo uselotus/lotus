@@ -343,7 +343,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   const [isCreateAlert, setIsCreateAlert] = useState(true);
   const [currentComponent, setCurrentComponent] = useState<Component>();
   const [currentAlertId, setCurrentAlertId] = useState<string>();
-
+  const [isInvalid, setIsInvalid] = useState(false);
   const queryClient = new QueryClient();
   const createAlertMutation = useMutation(
     (post: CreateAlertType) => Plan.createAlert(post),
@@ -553,6 +553,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
+                        disabled={isInvalid}
                         onClick={() =>
                           submitAlertModal(currentComponent, currentAlertId)
                         }
@@ -568,16 +569,19 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                   type={"number"}
                   pattern="[0-9]+"
                   onChange={(value) => {
-                    console.log(value);
                     if (value && typeof value === "number") {
                       setAlertThreshold(value);
+                      setIsInvalid(false);
                     }
                     if (value === null) {
-                      toast.success("Please enter a number");
+                      setIsInvalid(true);
                     }
                   }}
                   value={alertThreshold}
                 />
+                {isInvalid && (
+                  <div className="bg-red-800">Please enter a number</div>
+                )}
               </div>
             </Modal>
           </div>
