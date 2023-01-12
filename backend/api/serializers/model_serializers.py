@@ -604,10 +604,15 @@ class MetricSerializer(
             "proration",
         )
         extra_kwargs = {
-            "metric_id": {"required": True, "read_only": True},
+            "metric_id": {"required": True, "read_only": True, "allow_blank": False},
             "event_name": {"required": True, "read_only": True},
             "property_name": {"required": True, "read_only": True},
-            "aggregation_type": {"required": True, "read_only": True},
+            "aggregation_type": {
+                "required": True,
+                "read_only": True,
+                "allow_blank": False,
+                "allow_null": True,
+            },
             "granularity": {
                 "required": True,
                 "allow_null": True,
@@ -626,6 +631,7 @@ class MetricSerializer(
             "categorical_filters": {"required": True, "read_only": True},
             "is_cost_metric": {"required": True, "read_only": True},
             "custom_sql": {"required": True, "read_only": True},
+            "proration": {"required": True, "read_only": True},
         }
 
     numeric_filters = NumericFilterSerializer(

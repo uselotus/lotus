@@ -1,5 +1,6 @@
 import api.views as api_views
-import lotus_python
+
+# import lotus_python
 import posthog
 from actstream import action
 from actstream.models import Action

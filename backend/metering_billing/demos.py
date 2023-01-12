@@ -1152,10 +1152,10 @@ def setup_demo4(
                     run_generate_invoice.delay(
                         sub.pk, [sr.pk], issue_date=sub.end_date, charge_next_plan=True
                     )
+                    sr.fully_billed = True
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
                 end_time = time.time()
-                print("Time to generate 1 month data: ", end_time - start_time)
     now = now_utc()
     # backtest = Backtest.objects.create(
     #     backtest_name=organization,
@@ -1483,7 +1483,6 @@ def make_subscription_and_subscription_record(
     start_date,
     is_new,
 ):
-
     end_date = calculate_end_date(
         plan.plan.plan_duration,
         start_date,
@@ -1495,7 +1494,10 @@ def make_subscription_and_subscription_record(
         end_date=end_date,
     )
     sub.handle_attach_plan(
-        plan.day_anchor, plan.month_anchor, start_date, plan.plan.plan_duration
+        plan_day_anchor=plan.day_anchor,
+        plan_month_anchor=plan.month_anchor,
+        plan_start_date=start_date,
+        plan_duration=plan.plan.plan_duration,
     )
     sr = SubscriptionRecord.objects.create(
         organization=organization,

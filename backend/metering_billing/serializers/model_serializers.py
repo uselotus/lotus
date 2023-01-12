@@ -620,18 +620,26 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "custom_sql",
         )
         extra_kwargs = {
-            "event_name": {"write_only": True, "required": True},
-            "property_name": {"write_only": True},
-            "usage_aggregation_type": {"write_only": True},
-            "billable_aggregation_type": {"write_only": True},
-            "granularity": {"write_only": True},
-            "event_type": {"write_only": True},
+            "event_name": {"write_only": True, "required": False, "allow_blank": False},
+            "property_name": {
+                "write_only": True,
+                "allow_blank": False,
+            },
+            "usage_aggregation_type": {"write_only": True, "allow_null": True},
+            "billable_aggregation_type": {"write_only": True, "allow_blank": False},
+            "granularity": {"write_only": True, "allow_blank": False},
+            "event_type": {"write_only": True, "allow_blank": False},
             "metric_type": {"required": True, "write_only": True},
             "metric_name": {"write_only": True},
             "properties": {"write_only": True},
-            "is_cost_metric": {"write_only": True},
+            "is_cost_metric": {"write_only": True, "default": False},
             "custom_sql": {"write_only": True},
-            "proration": {"write_only": True, "required": False, "allow_null": True},
+            "proration": {
+                "write_only": True,
+                "required": False,
+                "allow_null": True,
+                "allow_blank": False,
+            },
         }
 
     metric_name = serializers.CharField(source="billable_metric_name")

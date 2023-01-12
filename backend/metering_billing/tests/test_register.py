@@ -82,7 +82,6 @@ class TestRegister:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
 
         users_after = User.objects.all().count()
         organizations_after = Organization.objects.all().count()

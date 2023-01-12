@@ -43,6 +43,9 @@
 </p>
 
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
+<div align="center">
+   <a href="https://www.producthunt.com/posts/lotus-6109ec1a-4e40-4280-8af3-c698da29e79e?utm_source=badge-top-post-badge&utm_medium=badge&utm_souce=badge-lotus&#0045;6109ec1a&#0045;4e40&#0045;4280&#0045;8af3&#0045;c698da29e79e" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=374178&theme=neutral&period=daily" alt="Lotus - Open&#0045;source&#0032;pricing&#0032;&#0038;&#0032;billing | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+</div>
 
 <br/>
 
