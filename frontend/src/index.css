@@ -105,7 +105,9 @@ a {
 .ant-descriptions-header {
   margin-bottom: 0;
 }
-
+.ant-form-item .w-full {
+  background-color: red;
+}
 .ant-descriptions-title {
   font-size: 26px;
   line-height: 30px;
