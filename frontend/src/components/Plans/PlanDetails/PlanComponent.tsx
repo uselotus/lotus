@@ -563,7 +563,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]
               }
             >
-              <div className="flex flex-row justify-center items-center gap-4">
+              <div className="flex flex-col justify-center items-center gap-4">
                 {currentComponent?.billable_metric.metric_name} reaches:{"  "}
                 <InputNumber
                   type={"number"}

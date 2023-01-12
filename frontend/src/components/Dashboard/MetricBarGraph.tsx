@@ -32,13 +32,36 @@ function MetricBarGraph(props: { range: any }) {
         return res;
       })
     );
+  const changeMetric = (value: string) => {
+    let compressedArray: ChartDataType[] = [];
+    setSelectedMetric(value);
 
+    if (data?.metrics && Object.keys(data.metrics).length > 0) {
+      const daily_data = data?.metrics[value].data;
+
+      for (let i = 0; i < daily_data.length; i++) {
+        const date = daily_data[i].date;
+        for (const k in daily_data[i].customer_usages) {
+          compressedArray.push({
+            date: date,
+            metric_amount: daily_data[i].customer_usages[k],
+            type: k,
+          });
+        }
+      }
+    }
+    setChartData(compressedArray);
+  };
   useEffect(() => {
     console.log("data", data);
     if (data?.metrics && Object.keys(data.metrics).length > 0) {
       setMetricList(Object.keys(data.metrics));
       setSelectedMetric(Object.keys(data.metrics)[0]);
       changeMetric(Object.keys(data.metrics)[0]);
+    } else {
+      setMetricList([]);
+      setSelectedMetric(undefined);
+      changeMetric("");
     }
   }, [data]);
 
@@ -74,25 +97,6 @@ function MetricBarGraph(props: { range: any }) {
       </div>
     );
   }
-
-  const changeMetric = (value: string) => {
-    let compressedArray: ChartDataType[] = [];
-    setSelectedMetric(value);
-
-    const daily_data = data.metrics[value].data;
-
-    for (let i = 0; i < daily_data.length; i++) {
-      const date = daily_data[i].date;
-      for (const k in daily_data[i].customer_usages) {
-        compressedArray.push({
-          date: date,
-          metric_amount: daily_data[i].customer_usages[k],
-          type: k,
-        });
-      }
-    }
-    setChartData(compressedArray);
-  };
 
   return (
     <Paper border={true} color="white">
