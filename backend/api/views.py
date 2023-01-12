@@ -9,7 +9,6 @@ from datetime import timezone
 from functools import reduce
 from typing import Dict, Union
 
-import lotus_python
 import posthog
 from actstream import action
 from api.serializers.model_serializers import (
@@ -42,7 +41,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Prefetch, Q
+from django.db.models import F, Prefetch, Q
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -182,10 +181,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_customer",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -198,7 +199,9 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = PlanSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "head"]
-    queryset = Plan.objects.all()
+    queryset = Plan.objects.all().order_by(
+        F("created_on").desc(nulls_last=False), F("plan_name")
+    )
 
     def get_queryset(self):
         organization = self.request.organization
@@ -217,10 +220,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -620,10 +625,12 @@ class SubscriptionViewSet(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_subscription",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
             # if username:
             #     if self.action == "plans":
@@ -692,10 +699,12 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_invoice",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -704,6 +713,10 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def list(self, request):
         return super().list(request)
+
+
+class EmptySerializer(serializers.Serializer):
+    pass
 
 
 class CustomerBalanceAdjustmentViewSet(
@@ -732,7 +745,7 @@ class CustomerBalanceAdjustmentViewSet(
         elif self.action == "create":
             return CustomerBalanceAdjustmentCreateSerializer
         elif self.action == "void":
-            return None
+            return EmptySerializer
         elif self.action == "edit":
             return CustomerBalanceAdjustmentUpdateSerializer
         return CustomerBalanceAdjustmentSerializer
@@ -860,10 +873,12 @@ class CustomerBalanceAdjustmentViewSet(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_balance_adjustment",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
             # if username:
             #     if self.action == "plans":
@@ -904,9 +919,9 @@ class GetCustomerEventAccessView(APIView):
         # posthog.capture(
         #     POSTHOG_PERSON
         #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     else (username if username else organization.organization_name + " (Unknown)"),
         #     event="get_access",
-        #     properties={"organization": organization.company_name},
+        #     properties={"organization": organization.organization_name},
         # )
         customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
@@ -1003,9 +1018,9 @@ class GetCustomerFeatureAccessView(APIView):
         # posthog.capture(
         #     POSTHOG_PERSON
         #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     else (username if username else organization.organization_name + " (Unknown)"),
         #     event="get_access",
-        #     properties={"organization": organization.company_name},
+        #     properties={"organization": organization.organization_name},
         # )
         customer = serializer.validated_data["customer"]
         feature_name = serializer.validated_data.get("feature_name")

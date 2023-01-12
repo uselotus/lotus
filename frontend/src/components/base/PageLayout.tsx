@@ -1,20 +1,34 @@
 import { Layout, PageHeader, PageHeaderProps } from "antd";
 // @ts-ignore
 import React from "react";
+import SlideOver from "../SlideOver/SlideOver";
+import Heading from "./Heading/Heading";
 
-const headingText: string =
-  import.meta.env.VITE_IS_DEMO === "true"
-    ? "Welcome To The Lotus Cloud Demo"
-    : "";
-
-export const PageLayout = ({ children, ...props }: PageHeaderProps) => {
+interface PageLayoutProps extends PageHeaderProps {
+  hasBackButton?: boolean;
+  backButton?: React.ReactNode;
+}
+export const PageLayout = ({
+  children,
+  hasBackButton,
+  backButton,
+  ...props
+}: PageLayoutProps) => {
   return (
     <div>
-      <PageHeader title={<h1 className=" text-xl">{headingText}</h1>} />
-      <div className="mx-10 mt-10">
+      <SlideOver />
+
+      <Heading />
+      <PageHeader />
+
+      <div className="mx-10 mt-16">
         <div className="flex items-center justify-between mb-6">
           {props.title ? (
-            <h1 className="font-main">{props.title}</h1>
+            <h1
+              className={hasBackButton ? "font-main mt-20 mx-10" : "font-main"}
+            >
+              {props.title}
+            </h1>
           ) : (
             <h1>{props.title}</h1>
           )}

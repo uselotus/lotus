@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from metering_billing.demos import setup_demo3, setup_paas_demo
+from metering_billing.demos import setup_demo3, setup_demo4, setup_paas_demo
 from metering_billing.models import Organization
 
 
@@ -10,4 +10,4 @@ class Command(BaseCommand):
         for org in Organization.objects.filter(
             organization_type=Organization.OrganizationType.EXTERNAL_DEMO
         ):
-            setup_demo3(company_name=org.company_name, mode="regenerate")
+            setup_demo4(organization_name=org.organization_name, mode="regenerate")

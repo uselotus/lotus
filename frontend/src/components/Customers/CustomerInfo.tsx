@@ -194,7 +194,7 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
   };
 
   return (
-    <div className="flex flex-col mb-8 ">
+    <div className="flex flex-col mb-8">
       <div className="grid grid-cols-2 items-center justify-between mb-2 pb-4 pt-4 ">
         <h2 className="pb-4 pt-4 font-bold text-main">Customer Details</h2>
         <div className="">
@@ -275,7 +275,9 @@ const CustomerInfoView: FC<CustomerInfoViewProps> = ({
               <p>
                 <b>Amount Due On Next Invoice:</b>{" "}
                 {data?.default_currency?.symbol}
-                {invoiceData?.invoices[0].cost_due.toFixed(2)}
+                {invoiceData?.invoices !== undefined &&
+                  invoiceData?.invoices.length > 0 &&
+                  invoiceData?.invoices[0].cost_due.toFixed(2)}
               </p>
               {!isEditing && (
                 <Button

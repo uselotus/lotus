@@ -154,7 +154,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     if address:
         write_seller_details(
             doc,
-            organization["company_name"],
+            organization["organization_name"],
             organization["properties"]["address"]["line1"],
             organization["properties"]["city"],
             organization["properties"]["state"],
@@ -166,7 +166,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     else:
         write_seller_details(
             doc,
-            organization["company_name"],
+            organization["organization_name"],
             "",
             "",
             "",

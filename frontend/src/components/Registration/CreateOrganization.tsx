@@ -9,7 +9,7 @@ interface LoginForm extends HTMLFormControlsCollection {
 }
 
 export interface Organizaton {
-  company_name: string;
+  organization_name: string;
   industry: string;
 }
 
@@ -46,7 +46,7 @@ const CreateOrganization = (props: { onSave: (org: Organizaton) => void }) => {
   };
 
   const handleOrganizationSubmit = (event: React.FormEvent<FormElements>) => {
-    props.onSave({ company_name: companyName, industry });
+    props.onSave({ organization_name: companyName, industry });
   };
 
   return (
@@ -62,10 +62,10 @@ const CreateOrganization = (props: { onSave: (org: Organizaton) => void }) => {
               },
             ]}
           >
-            <label htmlFor="company_name">Organization Name</label>
+            <label htmlFor="organization_name">Organization Name</label>
             <Input
               type="text"
-              name="company_name"
+              name="organization_name"
               value={companyName}
               defaultValue="username123"
               onChange={handleNameChange}

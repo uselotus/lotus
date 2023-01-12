@@ -111,10 +111,10 @@ def write_batch_events_to_db(events_list, org_pk):
         cache.delete_many(cache_keys_to_invalidate)
     for org, num_events in event_org_map.items():
         posthog.capture(
-            POSTHOG_PERSON if POSTHOG_PERSON else org.company_name + " (API Key)",
+            POSTHOG_PERSON if POSTHOG_PERSON else org.organization_name + " (API Key)",
             event="track_event",
             properties={
                 "ingested_events": num_events,
-                "organization": org.company_name,
+                "organization": org.organization_name,
             },
         )

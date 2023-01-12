@@ -21,9 +21,7 @@ import { Organization, PricingUnits } from "../../../../api/api";
 import { PricingUnit } from "../../../../types/pricing-unit-type";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../../../LoadingSpinner";
-import useGlobalStore, {
-  IOrgStoreType,
-} from "../../../../stores/useGlobalstore";
+import useGlobalStore from "../../../../stores/useGlobalstore";
 import { QueryErrors } from "../../../../types/error-response-types";
 import { OrganizationType } from "../../../../types/account-type";
 import { country_json } from "../../../../assets/country_codes";
@@ -43,7 +41,6 @@ const GeneralTab: FC = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const org = useGlobalStore((state) => state.org);
-  const setOrgInfoToStore = useGlobalStore((state) => state.setOrgInfo);
   const [currentCurrency, setCurrentCurrency] = useState("");
   const [taxRate, setTaxRate] = useState(0);
   const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
@@ -103,16 +100,7 @@ const GeneralTab: FC = () => {
         ) {
           setCurrentCurrency(data.default_currency.code);
         }
-        const storeOrgObject: IOrgStoreType = {
-          organization_id: data.organization_id,
-          company_name: data.company_name,
-          default_currency: data.default_currency
-            ? data.default_currency
-            : undefined,
-          environment: undefined,
-        };
 
-        setOrgInfoToStore(storeOrgObject);
         setLine1(data.address ? data.address.line1 : "");
         setLine2(data.address && data.address.line2 ? data.address.line2 : "");
         setCity(data.address ? data.address.city : "");
@@ -203,7 +191,7 @@ const GeneralTab: FC = () => {
         <div className="flex flex-col w-6/12 justify-between">
           {mutation.isLoading && <LoadingSpinner />}
           <p className=" text-[16px]">
-            <b>Company Name:</b> {org.company_name}
+            <b>Company Name:</b> {org.organization_name}
           </p>
           <p className=" text-[16px]">
             <b className="">Default Organization Currency:</b>{" "}
@@ -291,13 +279,13 @@ const GeneralTab: FC = () => {
           <Form
             form={form}
             initialValues={{
-              company_name: org?.company_name,
+              organization_name: org?.organization_name,
               default_currency: org?.default_currency?.code,
             }}
           >
             <Form.Item
               label="Company Name"
-              name="company_name"
+              name="organization_name"
               rules={[
                 {
                   required: true,

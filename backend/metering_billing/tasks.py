@@ -15,14 +15,12 @@ from metering_billing.exceptions.exceptions import AlignmentEngineFailure
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Backtest,
-    Customer,
     CustomerBalanceAdjustment,
-    Event,
     Invoice,
-    Organization,
     PlanComponent,
     Subscription,
     SubscriptionRecord,
+    UsageAlertResult,
 )
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
@@ -40,9 +38,7 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
-    FLAT_FEE_BILLING_TYPE,
     INVOICE_STATUS,
-    SUBSCRIPTION_STATUS,
 )
 
 logger = logging.getLogger("django.server")
@@ -111,17 +107,28 @@ def calculate_invoice():
         # if everything ends, delete the new sub
         if new_sub:
             num_subscription_records_active = (
-                SubscriptionRecord.objects.active()
-                .filter(
-                    organization=old_subscription.organization,
-                    end_date__gte=old_subscription.end_date,
-                )
-                .count()
+                new_sub.customer.subscription_records.active().count()
             )
             if not (num_subscription_records_active > 0):
                 new_sub.delete()
             else:
                 new_sub.handle_remove_plan()
+
+
+def refresh_alerts_inner():
+    # get all UsageAlertResults
+    now = now_utc()
+    UsageAlertResult.objects.filter(subscription_record__end_date__lt=now).delete()
+    alert_results = UsageAlertResult.objects.filter(
+        subscription_record__end_date__gte=now
+    ).prefetch_related("alert", "subscription_record", "alert__metric")
+    for alert_result in alert_results:
+        alert_result.refresh()
+
+
+@shared_task
+def refresh_alerts():
+    refresh_alerts_inner()
 
 
 @shared_task

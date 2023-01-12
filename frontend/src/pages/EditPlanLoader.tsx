@@ -63,7 +63,7 @@ const EditPlanLoader = ({ type }: EditPlanLoaderProps) => {
       )}
       {isError && (
         <div className="flex flex-col items-center justify-center h-full">
-          <h2 className="mb-5">Could Not Load Plan</h2>
+          <h2 className="mb-4">Could Not Load Plan</h2>
           <Button type="primary" onClick={() => navigate(-1)}>
             Go Back
           </Button>

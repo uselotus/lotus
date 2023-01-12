@@ -2,8 +2,8 @@
 import React, { FC, useEffect, useState } from "react";
 import { Button, Row, Col, Tabs } from "antd";
 import { Plan } from "../api/api";
-import { ArrowRightOutlined } from "@ant-design/icons";
-import { Component, PlanType } from "../types/plan-type";
+import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import { PlanType } from "../types/plan-type";
 import { useNavigate } from "react-router-dom";
 import {
   useQuery,
@@ -14,6 +14,7 @@ import {
 import { PageLayout } from "../components/base/PageLayout";
 import { FeatureType } from "../types/feature-type";
 import PlanCard from "../components/Plans/PlanCard/PlanCard";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const ViewPlans: FC = () => {
   const navigate = useNavigate();
@@ -62,7 +63,19 @@ const ViewPlans: FC = () => {
     setQuarterlyPlans(quarterlystandard);
     setQuarterlyCustom(quarterlycustom);
   };
-
+  const createTag = useMutation(
+    ({ plan_id, tags }: { plan_id: string; tags: PlanType["tags"] }) =>
+      Plan.updatePlan(plan_id, {
+        tags,
+      }),
+    {
+      onSuccess: (_, { plan_id }) => {
+        queryClient.invalidateQueries("plan_list");
+        queryClient.invalidateQueries(["plan_detail", plan_id]);
+        queryClient.invalidateQueries("organization");
+      },
+    }
+  );
   const { data, isLoading, isError }: UseQueryResult<PlanType[]> = useQuery<
     PlanType[]
   >(
@@ -86,106 +99,171 @@ const ViewPlans: FC = () => {
   }, []);
 
   return (
-    <div>
-      <PageLayout
-        title="Plans"
-        extra={[
-          <Button
-            onClick={navigateCreatePlan}
-            type="primary"
-            size="large"
-            key="create-plan"
-          >
-            <div className="flex items-center justify-between text-white">
-              <div>Create new Plan</div>
-              <ArrowRightOutlined className="pl-2" />
+    <PageLayout
+      title="Plans"
+      className="text-[24px]"
+      extra={[
+        <Button
+          onClick={navigateCreatePlan}
+          type="primary"
+          size="large"
+          key="create-plan"
+          className="hover:!bg-primary-700"
+          style={{ background: "#C3986B", borderColor: "#C3986B" }}
+        >
+          <div className="flex items-center  justify-between text-white">
+            <div>
+              <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
+              Create Plan
             </div>
-          </Button>,
-        ]}
-      >
-        <Tabs defaultActiveKey="0" size="large">
-          <Tabs.TabPane tab="All" key="0">
-            <div className=" flex flex-col space-y-6 ">
-              <Row gutter={[24, 32]}>
+            <ArrowRightOutlined className="pl-2" />
+          </div>
+        </Button>,
+      ]}
+    >
+      <Tabs defaultActiveKey="0" size="large">
+        <Tabs.TabPane tab="All" key="0">
+          <div className="flex flex-col">
+            {data ? (
+              <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {allPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
-              {allCustom?.length > 0 && <h2>Custom Plans</h2>}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
+            <div className="mt-12">
+              {allCustom?.length > 0 && (
+                <h2 className="text-center text-bold mb-4">Custom Plans</h2>
+              )}
 
-              <Row gutter={[24, 32]}>
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 mt-4">
                 {allCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
+              </div>
             </div>
-          </Tabs.TabPane>
+          </div>
+        </Tabs.TabPane>
 
-          <Tabs.TabPane tab="Monthly" key="1">
-            <div className=" flex flex-col space-y-6 ">
-              <Row gutter={[24, 32]}>
+        <Tabs.TabPane tab="Monthly" key="1">
+          <div className="flex flex-col">
+            {data ? (
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {monthlyPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
-              {monthlyCustom?.length > 0 && <h2>Custom Plans</h2>}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
+            <div className="mt-12">
+              {monthlyCustom?.length > 0 && (
+                <h2 className="text-center">Custom Plans</h2>
+              )}
 
-              <Row gutter={[24, 32]}>
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {monthlyCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
+              </div>
             </div>
-          </Tabs.TabPane>
-          <Tabs.TabPane tab="Quarterly" key="2">
-            <div className=" flex flex-col space-y-6 ">
-              <Row gutter={[24, 32]}>
+          </div>
+        </Tabs.TabPane>
+
+        <Tabs.TabPane tab="Quarterly" key="2">
+          <div className="flex flex-col">
+            {data ? (
+              <div className="grid gap-20  grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {quarterlyPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
-              {quarterlyCustom?.length > 0 && <h2>Custom Plans</h2>}
-              <Row gutter={[24, 32]}>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
+            <div className="mt-12">
+              {quarterlyCustom?.length > 0 && (
+                <h2 className="text-center">Custom Plans</h2>
+              )}
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {quarterlyCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
+              </div>
             </div>
-          </Tabs.TabPane>
-          <Tabs.TabPane tab="Yearly" key="3">
-            <div className=" flex flex-col space-y-6 ">
-              <Row gutter={[24, 32]}>
+          </div>
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Yearly" key="3">
+          <div className="flex flex-col">
+            {data ? (
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {yearlyPlans?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
-              {yearlyCustom?.length > 0 && <h2>Custom Plans</h2>}
-              <Row gutter={[24, 32]}>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center">
+                <div className="mt-[40%]" />
+                <LoadingSpinner />
+              </div>
+            )}
+            <div className="mt-12">
+              {yearlyCustom?.length > 0 && (
+                <h2 className="text-center">Custom Plans</h2>
+              )}
+              <div className="grid gap-20 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
                 {yearlyCustom?.map((item, key) => (
-                  <Col span={8} key={key}>
-                    <PlanCard plan={item} />
-                  </Col>
+                  <PlanCard
+                    createTagMutation={createTag.mutate}
+                    plan={item}
+                    key={key}
+                  />
                 ))}
-              </Row>
+              </div>
             </div>
-          </Tabs.TabPane>
-        </Tabs>
-      </PageLayout>
-    </div>
+          </div>
+        </Tabs.TabPane>
+      </Tabs>
+    </PageLayout>
   );
 };
 

@@ -54,7 +54,7 @@ Lotus provides a flexible and modular control panel on top of your existing quot
 
 <br/>
 
-[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/overview/why-lotus) · [Contact Us](founders@uselotus.io)
+[Website](https://www.uselotus.io/) · [Issues](https://github.com/uselotus/lotus/issues) · [Docs](https://docs.uselotus.io/docs/overview/why-lotus)
 
 <br/>
 
@@ -78,7 +78,7 @@ Best if you want to keep your data local or want full control and extensibility.
 
 #### :computer: Local Instance
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and start Docker
 2. Clone the repo and navigate to the project
    ```sh
    git clone https://github.com/uselotus/lotus.git && cd lotus

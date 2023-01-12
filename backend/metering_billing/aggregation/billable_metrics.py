@@ -71,7 +71,8 @@ class MetricHandler(abc.ABC):
     ) -> dict[datetime.datetime, float]:
         """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
 
-        Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day."""
+        Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day.
+        """
         pass
 
     @abc.abstractmethod
@@ -701,7 +702,6 @@ class CustomHandler(MetricHandler):
     def get_subscription_record_total_billable_usage(
         metric: Metric, subscription_record: SubscriptionRecord
     ) -> Decimal:
-
         from metering_billing.models import Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
