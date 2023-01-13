@@ -16,6 +16,10 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
   const setOpen = useToggleSlideOver((state) => state.setOpen);
   const currentPath = pathname.split("/")[1];
   const isPlansPage = currentPath === "plans";
+  const headingText: string =
+    import.meta.env.VITE_IS_DEMO === "true"
+      ? "Welcome To The Lotus Cloud Demo"
+      : "";
   return (
     <div className="mt-16">
       <div className="flex cursor-pointer justify-end">
@@ -30,6 +34,7 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
             placeholder="Search..."
           />
         </div> */}
+        <h1 className="text-xl">{headingText}</h1>
         <div className="flex items-center ml-[58%]">
           <div className="mr-10">
             <Badge
@@ -68,9 +73,9 @@ const Heading: React.FC<HeadingProps> = ({ hasBackButton, backButton }) => {
                 aria-hidden="true"
               >
                 <path
-                  fill-rule="evenodd"
+                  fillRule="evenodd"
                   d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                  clip-rule="evenodd"
+                  clipRule="evenodd"
                 />
               </svg>
             </span>

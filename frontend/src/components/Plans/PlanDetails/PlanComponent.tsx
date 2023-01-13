@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useRef, useState } from "react";
+import React, { FC, useEffect, useRef, useState } from "react";
 import "./PlanDetails.css";
 import { Table, Typography, Tag, Modal, Button, InputNumber } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
@@ -33,6 +33,7 @@ import { toast } from "react-toastify";
 interface PlanComponentsProps {
   components?: Component[];
   plan: PlanType;
+  refetch: VoidFunction;
   updateBillingFrequencyMutation: (
     billing_frequency: "monthly" | "quarterly" | "yearly"
   ) => void;
@@ -331,6 +332,7 @@ export const PlanInfo = ({ version, plan }: PlanInfoProps) => {
 const PlanComponents: FC<PlanComponentsProps> = ({
   components,
   plan,
+  refetch,
   updateBillingFrequencyMutation,
   alerts,
   plan_version_id,
@@ -341,18 +343,18 @@ const PlanComponents: FC<PlanComponentsProps> = ({
   const [isCreateAlert, setIsCreateAlert] = useState(true);
   const [currentComponent, setCurrentComponent] = useState<Component>();
   const [currentAlertId, setCurrentAlertId] = useState<string>();
-
+  const [isInvalid, setIsInvalid] = useState(false);
   const queryClient = new QueryClient();
-
   const createAlertMutation = useMutation(
     (post: CreateAlertType) => Plan.createAlert(post),
     {
       onSuccess: () => {
         setIsModalVisible(false);
-        queryClient.invalidateQueries("plan_details");
+
         setAlertThreshold(0);
-        toast.success("Successfully created alert. Please the refresh page.");
-        window.location.reload(false);
+        refetch();
+        toast.success("Successfully created alert.");
+        // window.location.reload(false);
       },
     }
   );
@@ -362,13 +364,13 @@ const PlanComponents: FC<PlanComponentsProps> = ({
     {
       onSuccess: () => {
         setIsModalVisible(false);
-        queryClient.invalidateQueries("plan_details");
-        toast.success("Deleted alert");
-        window.location.reload(false);
+
+        refetch();
+        // toast.success("Deleted alert");
       },
     }
   );
-
+  useEffect(() => {}, [plan]);
   const deleteAlert = (usage_alert_id: string) => {
     deleteAlertMutation.mutate({
       usage_alert_id: usage_alert_id,
@@ -535,6 +537,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
+                        disabled={isInvalid}
                         onClick={() => submitAlertModal(currentComponent)}
                       >
                         Create
@@ -551,6 +554,7 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                       <Button
                         key="submit"
                         type="primary"
+                        disabled={isInvalid}
                         onClick={() =>
                           submitAlertModal(currentComponent, currentAlertId)
                         }
@@ -560,21 +564,25 @@ const PlanComponents: FC<PlanComponentsProps> = ({
                     ]
               }
             >
-              <div className="flex flex-row justify-center items-center gap-4">
+              <div className="flex flex-col justify-center items-center gap-4">
                 {currentComponent?.billable_metric.metric_name} reaches:{"  "}
                 <InputNumber
-                  className="ml-2 mr-2"
+                  type={"number"}
+                  pattern="[0-9]+"
                   onChange={(value) => {
-                    console.log(typeof value);
                     if (value && typeof value === "number") {
                       setAlertThreshold(value);
+                      setIsInvalid(false);
                     }
-                    if (typeof value === "string") {
-                      toast.success("Please enter a number");
+                    if (value === null) {
+                      setIsInvalid(true);
                     }
                   }}
                   value={alertThreshold}
                 />
+                {isInvalid && (
+                  <div className="text-red-800">Please enter a number</div>
+                )}
               </div>
             </Modal>
           </div>

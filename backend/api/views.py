@@ -9,7 +9,6 @@ from datetime import timezone
 from functools import reduce
 from typing import Dict, Union
 
-import lotus_python
 import posthog
 from actstream import action
 from api.serializers.model_serializers import (
@@ -715,8 +714,10 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def list(self, request):
         return super().list(request)
 
+
 class EmptySerializer(serializers.Serializer):
     pass
+
 
 class CustomerBalanceAdjustmentViewSet(
     PermissionPolicyMixin,

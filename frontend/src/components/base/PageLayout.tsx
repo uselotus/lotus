@@ -4,10 +4,6 @@ import React from "react";
 import SlideOver from "../SlideOver/SlideOver";
 import Heading from "./Heading/Heading";
 
-const headingText: string =
-  import.meta.env.VITE_IS_DEMO === "true"
-    ? "Welcome To The Lotus Cloud Demo"
-    : "";
 interface PageLayoutProps extends PageHeaderProps {
   hasBackButton?: boolean;
   backButton?: React.ReactNode;
@@ -23,14 +19,7 @@ export const PageLayout = ({
       <SlideOver />
 
       <Heading />
-      <PageHeader
-        title={
-          <div>
-            {hasBackButton && backButton}
-            <h1 className="text-xl">{headingText}</h1>
-          </div>
-        }
-      />
+      <PageHeader />
 
       <div className="mx-10 mt-16">
         <div className="flex items-center justify-between mb-6">

@@ -107,12 +107,7 @@ def calculate_invoice():
         # if everything ends, delete the new sub
         if new_sub:
             num_subscription_records_active = (
-                SubscriptionRecord.objects.active()
-                .filter(
-                    organization=old_subscription.organization,
-                    end_date__gte=old_subscription.end_date,
-                )
-                .count()
+                new_sub.customer.subscription_records.active().count()
             )
             if not (num_subscription_records_active > 0):
                 new_sub.delete()

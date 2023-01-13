@@ -27,11 +27,12 @@ function RevenueDisplay(props: {
   isLoading: boolean;
 }) {
   const [percentageChange, setPercentageChange] = useState<number>(0);
+
   useEffect(() => {
     setPercentageChange(
       computePercentageChange(props.earned_revenue_1, props.earned_revenue_2)
     );
-  }, [props.total_revenue_1, props.total_revenue_2]);
+  }, [props.earned_revenue_1, props.earned_revenue_2]);
   return (
     <Paper color="white" border={true}>
       <div className="grid grid-flow-col auto-cols-auto	 justify-between">

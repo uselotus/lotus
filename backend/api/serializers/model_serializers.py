@@ -349,18 +349,14 @@ class InvoiceSerializer(
     seller = SellerSerializer(source="organization")
 
     def get_start_date(self, obj) -> datetime.date:
-        return min(
-            [
-                convert_to_date(x.start_date)
-                for x in obj.line_items.all()
-                if x.start_date
-            ]
-        )
+        seq = [
+            convert_to_date(x.start_date) for x in obj.line_items.all() if x.start_date
+        ]
+        return min(seq) if len(seq) > 0 else None
 
     def get_end_date(self, obj) -> datetime.date:
-        return max(
-            [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
-        )
+        seq = [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
+        return max(seq) if len(seq) > 0 else None
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):
@@ -608,10 +604,15 @@ class MetricSerializer(
             "proration",
         )
         extra_kwargs = {
-            "metric_id": {"required": True, "read_only": True},
+            "metric_id": {"required": True, "read_only": True, "allow_blank": False},
             "event_name": {"required": True, "read_only": True},
             "property_name": {"required": True, "read_only": True},
-            "aggregation_type": {"required": True, "read_only": True},
+            "aggregation_type": {
+                "required": True,
+                "read_only": True,
+                "allow_blank": False,
+                "allow_null": True,
+            },
             "granularity": {
                 "required": True,
                 "allow_null": True,
@@ -630,6 +631,7 @@ class MetricSerializer(
             "categorical_filters": {"required": True, "read_only": True},
             "is_cost_metric": {"required": True, "read_only": True},
             "custom_sql": {"required": True, "read_only": True},
+            "proration": {"required": True, "read_only": True},
         }
 
     numeric_filters = NumericFilterSerializer(

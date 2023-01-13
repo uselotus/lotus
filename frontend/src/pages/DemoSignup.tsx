@@ -8,10 +8,9 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { instance } from "../api/api";
 import Cookies from "universal-cookie";
 import { toast } from "react-toastify";
+import { useEffect } from "react";
 
 const cookies = new Cookies();
-
-// import sjcl from "sjcl";
 
 export interface DemoSignupProps {
   username: string;
@@ -43,6 +42,7 @@ const DemoSignup: React.FC = () => {
       setIsDesktop(false);
     }
   }, []);
+  const [timeOutId, setTimeOutId] = useState<number | undefined>();
 
   const queryClient = useQueryClient();
   const next = () => {
@@ -71,6 +71,7 @@ const DemoSignup: React.FC = () => {
         toast.error(error.response.data.detail, {
           position: "top-center",
         });
+        navigate("/login");
       },
     }
   );
@@ -101,6 +102,16 @@ const DemoSignup: React.FC = () => {
     });
   };
 
+  useEffect(() => {
+    if (mutation.isLoading) {
+      setTimeOutId(setTimeout(() => navigate("/login"), 15000));
+    }
+
+    return () => {
+      clearTimeout(timeOutId);
+    };
+  }, [mutation.isLoading]);
+
   return (
     <div>
       {isDesktop ? (
@@ -111,7 +122,7 @@ const DemoSignup: React.FC = () => {
               <LoadingSpinner />
             </div>
           ) : (
-            <div className="space-y-4 w-2/12">
+            <div className="space-y-4 w-4/12">
               <div className="">
                 <div>
                   <Card

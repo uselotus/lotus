@@ -4,7 +4,7 @@ import datetime
 from decimal import Decimal
 from io import BytesIO
 
-import lotus_python
+# import lotus_python
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.files.base import ContentFile
