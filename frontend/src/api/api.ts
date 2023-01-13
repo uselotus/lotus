@@ -70,7 +70,7 @@ import {
   UpdateStripeSettingParams,
 } from "../types/stripe-type";
 import { DraftInvoiceType } from "../types/invoice-type";
-import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
+import { MarkPaymentStatusAsPaid } from "../types/invoice-type";
 import {
   CreateBalanceAdjustmentType,
   BalanceAdjustmentType,
@@ -488,7 +488,7 @@ export const PaymentProcessorIntegration = {
 };
 
 export const Invoices = {
-  changeStatus: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
+  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> => {
     return requests.patch(`app/invoices/${data.invoice_number}/`, {
       payment_status: data.payment_status,
     });

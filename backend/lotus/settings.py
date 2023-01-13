@@ -561,7 +561,6 @@ SPECTACULAR_SETTINGS = {
         "PlanStatusEnum": "metering_billing.utils.enums.PLAN_STATUS.choices",
         "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
         "ProductStatusEnum": "metering_billing.utils.enums.PRODUCT_STATUS.choices",
-        "InvoiceStatusEnum": "metering_billing.utils.enums.INVOICE_STATUS.choices",
         "FailureStatusEnum": ["eror"],
         "SuccessStatusEnum": ["success"],
         "TrackEventSuccessEnum": ["all", "some"],

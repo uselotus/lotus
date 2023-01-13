@@ -2,7 +2,7 @@ import { Button, Dropdown, Menu, Table, Tag, Tooltip } from "antd";
 import { FC } from "react";
 // @ts-ignore
 import React from "react";
-import { InvoiceType, MarkInvoiceStatusAsPaid } from "../../types/invoice-type";
+import { InvoiceType, MarkPaymentStatusAsPaid } from "../../types/invoice-type";
 // @ts-ignore
 import dayjs from "dayjs";
 import { useMutation } from "react-query";
@@ -42,7 +42,7 @@ interface Props {
 
 const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
   const changeStatus = useMutation(
-    (post: MarkInvoiceStatusAsPaid) => Invoices.changeStatus(post),
+    (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
       onSuccess: (data) => {
         const status = data.payment_status.toUpperCase();

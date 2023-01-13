@@ -1,5 +1,5 @@
 import re
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 from django.conf import settings
 from django.db.models import Q
@@ -317,25 +317,27 @@ class InvoiceSerializer(
             "invoice_pdf",
         )
         extra_kwargs = {
-            "invoice_number": {"required": True},
-            "cost_due": {"required": True},
-            "issue_date": {"required": True},
-            "payment_status": {"required": True},
-            "due_date": {"required": True, "allow_null": True},
+            "invoice_number": {"required": True, "read_only": True},
+            "cost_due": {"required": True, "read_only": True},
+            "issue_date": {"required": True, "read_only": True},
+            "payment_status": {"required": True, "read_only": True},
+            "due_date": {"required": True, "allow_null": True, "read_only": True},
             "external_payment_obj_id": {
                 "required": True,
                 "allow_null": True,
                 "allow_blank": False,
+                "read_only": True,
             },
             "external_payment_obj_type": {
                 "required": True,
                 "allow_null": True,
                 "allow_blank": False,
+                "read_only": True,
             },
-            "start_date": {"required": True},
-            "end_date": {"required": True},
-            "seller": {"required": True},
-            "invoice_pdf": {"required": True, "allow_null": True},
+            "start_date": {"required": True, "read_only": True},
+            "end_date": {"required": True, "read_only": True},
+            "seller": {"required": True, "read_only": True},
+            "invoice_pdf": {"required": True, "allow_null": True, "read_only": True},
         }
 
     external_payment_obj_type = serializers.ChoiceField(
@@ -347,6 +349,20 @@ class InvoiceSerializer(
     start_date = serializers.SerializerMethodField()
     end_date = serializers.SerializerMethodField()
     seller = SellerSerializer(source="organization")
+    payment_status = serializers.SerializerMethodField()
+
+    def get_payment_status(
+        self, obj
+    ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
+        ps = obj.payment_status
+        if ps == Invoice.PaymentStatus.PAID:
+            return INVOICE_STATUS_ENUM.PAID
+        elif ps == Invoice.PaymentStatus.UNPAID:
+            return INVOICE_STATUS_ENUM.UNPAID
+        elif ps == Invoice.PaymentStatus.VOIDED:
+            return INVOICE_STATUS_ENUM.VOIDED
+        elif ps == Invoice.PaymentStatus.DRAFT:
+            return INVOICE_STATUS_ENUM.DRAFT
 
     def get_start_date(self, obj) -> datetime.date:
         seq = [
@@ -470,7 +486,7 @@ class CustomerSerializer(
     def get_invoices(self, obj) -> LightweightInvoiceSerializer(many=True):
         timeline = (
             obj.invoices.filter(
-                ~Q(payment_status=INVOICE_STATUS.DRAFT),
+                ~Q(payment_status=Invoice.PaymentStatus.DRAFT),
                 organization=self.context.get("organization"),
             )
             .order_by("-issue_date")
@@ -815,7 +831,8 @@ class InvoiceUpdateSerializer(
         fields = ("payment_status",)
 
     payment_status = serializers.ChoiceField(
-        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID], required=True
+        choices=[Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID],
+        required=True,
     )
 
     def validate(self, data):
@@ -1246,15 +1263,30 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
 
 
 class InvoiceListFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(
-        required=False, help_text="A filter for invoices for a specific customer"
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=False,
+        source="customer",
+        help_text="A filter for invoices for a specific customer",
     )
     payment_status = serializers.MultipleChoiceField(
-        choices=[INVOICE_STATUS.UNPAID, INVOICE_STATUS.PAID],
+        choices=[INVOICE_STATUS_ENUM.UNPAID, INVOICE_STATUS_ENUM.PAID],
         required=False,
-        default=[INVOICE_STATUS.PAID],
+        default=[INVOICE_STATUS_ENUM.PAID],
         help_text="A filter for invoices with a specific payment status",
     )
+
+    def validate(self, data):
+        data = super().validate(data)
+        payment_status_str = data.get("payment_status", [])
+        payment_status = []
+        if INVOICE_STATUS_ENUM.PAID in payment_status_str:
+            payment_status.append(Invoice.PaymentStatus.PAID)
+        if INVOICE_STATUS_ENUM.UNPAID in payment_status_str:
+            payment_status.append(Invoice.PaymentStatus.UNPAID)
+        data["payment_status"] = payment_status
+        return data
 
 
 class CustomerBalanceAdjustmentSerializer(

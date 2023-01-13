@@ -578,7 +578,6 @@ class SubscriptionViewSet(
                 subscription_record.invoice_usage_charges = keep_separate
                 subscription_record.auto_renew = False
                 subscription_record.end_date = now
-                subscription_record.status = SUBSCRIPTION_STATUS.ENDED
                 subscription_record.fully_billed = (
                     billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
                 )
@@ -659,20 +658,17 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         args = [
-            ~Q(payment_status=INVOICE_STATUS.DRAFT),
+            ~Q(payment_status=Invoice.PaymentStatus.DRAFT),
             Q(organization=self.request.organization),
         ]
         if self.action == "list":
-            args = []
             serializer = InvoiceListFilterSerializer(data=self.request.query_params)
             serializer.is_valid(raise_exception=True)
             args.append(
                 Q(payment_status__in=serializer.validated_data["payment_status"])
             )
-            if serializer.validated_data.get("customer_id"):
-                args.append(
-                    Q(customer__customer_id=serializer.validated_data["customer_id"])
-                )
+            if serializer.validated_data.get("customer"):
+                args.append(Q(customer=serializer.validated_data["customer_"]))
 
         return Invoice.objects.filter(*args)
 

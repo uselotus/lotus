@@ -22,7 +22,7 @@ from metering_billing.models import (
 )
 from metering_billing.tasks import calculate_invoice, update_invoice_status
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import INVOICE_STATUS, PAYMENT_PROVIDERS
+from metering_billing.utils.enums import PAYMENT_PROVIDERS
 from model_bakery import baker
 from rest_framework.test import APIClient
 
@@ -137,7 +137,7 @@ class TestStripeIntegration:
             end_date=now_utc() - timedelta(days=5),
         )
         invoice = generate_invoice(subscription, subscription_record)[0]
-        assert invoice.payment_status == INVOICE_STATUS.UNPAID
+        assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
         assert invoice.external_payment_obj_type == PAYMENT_PROVIDERS.STRIPE
         try:
             stripe_pi = stripe.Invoice.retrieve(invoice.external_payment_obj_id)
@@ -148,7 +148,7 @@ class TestStripeIntegration:
         new_status = stripe_connector.update_payment_object_status(
             invoice.external_payment_obj_id
         )
-        assert new_status == INVOICE_STATUS.UNPAID
+        assert new_status == Invoice.PaymentStatus.UNPAID
         # now add payment method
         stripe.Invoice.pay(
             invoice.external_payment_obj_id,
@@ -157,7 +157,7 @@ class TestStripeIntegration:
         new_status = stripe_connector.update_payment_object_status(
             invoice.external_payment_obj_id
         )
-        assert new_status == INVOICE_STATUS.PAID
+        assert new_status == Invoice.PaymentStatus.PAID
         # try adding a new payment intent and loading it
         stripe_connector.import_payment_objects(setup_dict["org"])
         pi_before = (

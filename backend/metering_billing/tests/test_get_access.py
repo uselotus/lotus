@@ -21,7 +21,6 @@ from metering_billing.utils.enums import (
     METRIC_GRANULARITY,
     METRIC_TYPE,
     PRICE_TIER_TYPE,
-    SUBSCRIPTION_STATUS,
 )
 from model_bakery import baker
 from rest_framework import status

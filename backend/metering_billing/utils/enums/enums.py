@@ -2,7 +2,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
-class INVOICE_STATUS(models.TextChoices):
+class INVOICE_STATUS_ENUM(models.TextChoices):
     DRAFT = ("draft", _("Draft"))
     VOIDED = ("voided", _("Voided"))
     PAID = ("paid", _("Paid"))
@@ -261,10 +261,9 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
     SUBSCRIPTION_FILTERS = ("subscription_filters", _("Subscription Filters"))
 
 
-
 class TAG_GROUP(models.TextChoices):
     PLAN = ("plan", _("Plan"))
 
+
 class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
-

@@ -38,7 +38,6 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     BACKTEST_STATUS,
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
-    INVOICE_STATUS,
 )
 
 logger = logging.getLogger("django.server")
@@ -100,7 +99,7 @@ def calculate_invoice():
         # delete draft invoices
         Invoice.objects.filter(
             issue_date__lt=now,
-            payment_status=INVOICE_STATUS.DRAFT,
+            payment_status=Invoice.PaymentStatus.DRAFT,
             subscription=old_subscription,
             organization=old_subscription.organization,
         ).delete()
@@ -146,7 +145,8 @@ def zero_out_expired_balance_adjustments():
 @shared_task
 def update_invoice_status():
     incomplete_invoices = Invoice.objects.filter(
-        Q(payment_status=INVOICE_STATUS.UNPAID), external_payment_obj_id__isnull=False
+        Q(payment_status=Invoice.PaymentStatus.UNPAID),
+        external_payment_obj_id__isnull=False,
     )
     for incomplete_invoice in incomplete_invoices:
         pp = incomplete_invoice.external_payment_obj_type
@@ -154,8 +154,8 @@ def update_invoice_status():
             status = PAYMENT_PROVIDER_MAP[pp].update_payment_object_status(
                 incomplete_invoice.external_payment_obj_id
             )
-            if status == INVOICE_STATUS.PAID:
-                incomplete_invoice.payment_status = INVOICE_STATUS.PAID
+            if status == Invoice.PaymentStatus.PAID:
+                incomplete_invoice.payment_status = Invoice.PaymentStatus.PAID
                 incomplete_invoice.save()
 
 

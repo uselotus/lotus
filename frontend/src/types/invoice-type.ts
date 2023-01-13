@@ -50,7 +50,7 @@ export interface LineItem {
   subscription_filters: { property_name: string; value: string }[];
 }
 
-export interface MarkInvoiceStatusAsPaid {
+export interface MarkPaymentStatusAsPaid {
   invoice_number: string;
   payment_status: "paid" | "unpaid" | "voided";
 }

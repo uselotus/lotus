@@ -32,7 +32,6 @@ from metering_billing.utils import (
 from metering_billing.utils.enums import (
     FLAT_FEE_BILLING_TYPE,
     PAYMENT_PROVIDERS,
-    SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
 )
 from rest_framework import serializers, status
@@ -76,13 +75,13 @@ class PeriodMetricRevenueView(APIView):
             organization=organization,
             issue_date__gte=p1_start,
             issue_date__lte=p1_end,
-            payment_status=INVOICE_STATUS.PAID,
+            payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("cost_due"))["tot"]
         p2_collected = Invoice.objects.filter(
             organization=organization,
             issue_date__gte=p2_start,
             issue_date__lte=p2_end,
-            payment_status=INVOICE_STATUS.PAID,
+            payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("cost_due"))["tot"]
         return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
         return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
@@ -289,7 +288,6 @@ class PeriodSubscriptionsView(APIView):
 
 
 class PeriodMetricUsageView(APIView):
-
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
@@ -507,7 +505,6 @@ class CustomersSummaryView(APIView):
 
 
 class CustomersWithRevenueView(APIView):
-
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
