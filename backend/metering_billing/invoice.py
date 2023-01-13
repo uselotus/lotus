@@ -1,23 +1,19 @@
 from __future__ import absolute_import
 
-import datetime
 from decimal import Decimal
 from io import BytesIO
 
 # import lotus_python
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.core.files.base import ContentFile
 from django.db.models import Sum
 from django.forms.models import model_to_dict
 from metering_billing.invoice_pdf import generate_invoice_pdf
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.utils import (
     calculate_end_date,
-    convert_to_date,
     convert_to_datetime,
     convert_to_decimal,
-    date_as_max_dt,
     date_as_min_dt,
     now_utc,
 )
@@ -26,8 +22,6 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
     FLAT_FEE_BILLING_TYPE,
-    INVOICE_STATUS,
-    SUBSCRIPTION_STATUS,
 )
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -84,7 +78,9 @@ def generate_invoice(
             "organization": organization,
             "customer": customer,
             "subscription": subscription,
-            "payment_status": INVOICE_STATUS.DRAFT if draft else INVOICE_STATUS.UNPAID,
+            "payment_status": Invoice.PaymentStatus.DRAFT
+            if draft
+            else Invoice.PaymentStatus.UNPAID,
             "currency": currency,
         }
         due_date = issue_date
@@ -251,7 +247,7 @@ def generate_invoice(
 
         invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
         if abs(invoice.cost_due) < 0.01 and not draft:
-            invoice.payment_status = INVOICE_STATUS.PAID
+            invoice.payment_status = Invoice.PaymentStatus.PAID
         invoice.save()
 
         if not draft:
@@ -303,9 +299,9 @@ def apply_taxes(invoice, customer, organization):
     """
     Apply taxes to an invoice
     """
-    from metering_billing.models import InvoiceLineItem
+    from metering_billing.models import Invoice, InvoiceLineItem
 
-    if invoice.payment_status == INVOICE_STATUS.PAID:
+    if invoice.payment_status == Invoice.PaymentStatus.PAID:
         return
     if customer.tax_rate is None and organization.tax_rate is None:
         return
@@ -343,11 +339,15 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
     """
     Apply customer balance adjustments to an invoice
     """
-    from metering_billing.models import CustomerBalanceAdjustment, InvoiceLineItem
+    from metering_billing.models import (
+        CustomerBalanceAdjustment,
+        Invoice,
+        InvoiceLineItem,
+    )
 
     issue_date = invoice.issue_date
     issue_date_fmt = issue_date.strftime("%Y-%m-%d")
-    if invoice.payment_status == INVOICE_STATUS.PAID or draft:
+    if invoice.payment_status == Invoice.PaymentStatus.PAID or draft:
         return
     subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0:
@@ -421,7 +421,9 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
         "issue_date": issue_date,
         "organization": organization,
         "customer": customer,
-        "payment_status": INVOICE_STATUS.DRAFT if draft else INVOICE_STATUS.UNPAID,
+        "payment_status": Invoice.PaymentStatus.DRAFT
+        if draft
+        else Invoice.PaymentStatus.UNPAID,
         "currency": balance_adjustment.amount_paid_currency,
     }
     due_date = issue_date
@@ -455,7 +457,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
     invoice.cost_due = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if abs(invoice.cost_due) < 0.01 and not draft:
-        invoice.payment_status = INVOICE_STATUS.PAID
+        invoice.payment_status = Invoice.PaymentStatus.PAID
     invoice.save()
 
     if not draft:

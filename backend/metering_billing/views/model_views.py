@@ -41,7 +41,6 @@ from metering_billing.utils.enums import (
     METRIC_STATUS,
     PAYMENT_PROVIDERS,
     PLAN_VERSION_STATUS,
-    SUBSCRIPTION_STATUS,
 )
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action

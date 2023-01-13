@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 import pytz
 import stripe
 from dateutil.relativedelta import relativedelta
+from django.apps import apps
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
 from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
@@ -17,7 +18,6 @@ from metering_billing.serializers.payment_provider_serializers import (
 )
 from metering_billing.utils import calculate_end_date, date_as_max_dt, now_utc
 from metering_billing.utils.enums import (
-    INVOICE_STATUS,
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
@@ -27,6 +27,7 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 
 logger = logging.getLogger("django.server")
+
 SELF_HOSTED = settings.SELF_HOSTED
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
 VITE_STRIPE_CLIENT = settings.VITE_STRIPE_CLIENT
@@ -55,9 +56,7 @@ class PaymentProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def update_payment_object_status(
-        self, payment_object_id: str
-    ) -> Union[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID]:
+    def update_payment_object_status(self, payment_object_id: str):
         """This method will be called periodically when the status of a payment object needs to be updated. It should return the status of the payment object, which should be either paid or unpaid."""
         pass
 
@@ -145,12 +144,14 @@ class StripeConnector(PaymentProvider):
             )
 
     def update_payment_object_status(self, payment_object_id):
+        from metering_billing.models import Invoice
+
         stripe.api_key = self.secret_key
         invoice = stripe.Invoice.retrieve(payment_object_id)
         if invoice.status == "paid":
-            return INVOICE_STATUS.PAID
+            return Invoice.PaymentStatus.PAID
         else:
-            return INVOICE_STATUS.UNPAID
+            return Invoice.PaymentStatus.UNPAID
 
     def import_customers(self, organization):
         """
@@ -277,9 +278,7 @@ class StripeConnector(PaymentProvider):
             lotus_invoices.append(lotus_invoice)
         return lotus_invoices
 
-    def create_customer(
-        self, customer
-    ) -> Union[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID]:
+    def create_customer(self, customer):
         stripe.api_key = self.secret_key
         from metering_billing.models import OrganizationSetting
 

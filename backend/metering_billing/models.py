@@ -548,7 +548,7 @@ class Customer(models.Model):
 
     def get_outstanding_revenue(self):
         unpaid_invoice_amount_due = (
-            self.invoices.filter(payment_status=INVOICE_STATUS.UNPAID)
+            self.invoices.filter(payment_status=Invoice.PaymentStatus.UNPAID)
             .aggregate(unpaid_inv_amount=Sum("cost_due"))
             .get("unpaid_inv_amount")
         )
@@ -1297,6 +1297,12 @@ class Feature(models.Model):
 
 
 class Invoice(models.Model):
+    class PaymentStatus(models.IntegerChoices):
+        DRAFT = (1, _("Draft"))
+        VOIDED = (2, _("Voided"))
+        PAID = (3, _("Paid"))
+        UNPAID = (4, _("Unpaid"))
+
     cost_due = models.DecimalField(
         decimal_places=10,
         max_digits=20,
@@ -1314,8 +1320,8 @@ class Invoice(models.Model):
     invoice_pdf = models.URLField(max_length=300, null=True, blank=True)
     org_connected_to_cust_payment_provider = models.BooleanField(default=False)
     cust_connected_to_payment_provider = models.BooleanField(default=False)
-    payment_status = models.CharField(
-        max_length=40, choices=INVOICE_STATUS.choices, default=INVOICE_STATUS.UNPAID
+    payment_status = models.PositiveSmallIntegerField(
+        choices=PaymentStatus.choices, default=PaymentStatus.UNPAID
     )
     due_date = models.DateTimeField(max_length=100, null=True, blank=True)
     invoice_number = models.CharField(max_length=13)
@@ -1341,23 +1347,11 @@ class Invoice(models.Model):
         return str(self.invoice_number)
 
     def save(self, *args, **kwargs):
-        # if self.payment_status != INVOICE_STATUS.DRAFT and META and self.cost_due > 0:
-        #     lotus_python.track_event(
-        #         customer_id=self.organization.organization_id,
-        #         event_name="create_invoice",
-        #         properties={
-        #             "amount": float(self.cost_due),
-        #             "currency": self.pricing_unit.code,
-        #             "customer": self.customer.customer_id,
-        #             "subscription": self.subscription.subscription_id,
-        #             "external_type": self.external_payment_obj_type,
-        #         },
-        #     )
         if not self.currency:
             self.currency = self.organization.default_currency
 
         ### Generate invoice number
-        if not self.pk and self.payment_status != INVOICE_STATUS.DRAFT:
+        if not self.pk and self.payment_status != Invoice.PaymentStatus.DRAFT:
             today = now_utc().date()
             today_string = today.strftime("%y%m%d")
             next_invoice_number = "000001"
@@ -1376,9 +1370,9 @@ class Invoice(models.Model):
             self.invoice_number = today_string + "-" + next_invoice_number
             # if not self.due_date:
             #     self.due_date = self.issue_date + datetime.timedelta(days=1)
-        paid_before = self.payment_status == INVOICE_STATUS.PAID
+        paid_before = self.payment_status == Invoice.PaymentStatus.PAID
         super().save(*args, **kwargs)
-        paid_after = self.payment_status == INVOICE_STATUS.PAID
+        paid_after = self.payment_status == Invoice.PaymentStatus.PAID
         if not paid_before and paid_after and self.cost_due > 0:
             invoice_paid_webhook(self, self.organization)
 
@@ -2219,8 +2213,8 @@ class SubscriptionRecord(models.Model):
 
     def amount_already_invoiced(self):
         billed_invoices = self.line_items.filter(
-            ~Q(invoice__payment_status=INVOICE_STATUS.VOIDED)
-            & ~Q(invoice__payment_status=INVOICE_STATUS.DRAFT),
+            ~Q(invoice__payment_status=Invoice.PaymentStatus.VOIDED)
+            & ~Q(invoice__payment_status=Invoice.PaymentStatus.DRAFT),
             subtotal__isnull=False,
         ).aggregate(tot=Sum("subtotal"))["tot"]
         return billed_invoices or 0
