@@ -21,6 +21,9 @@ if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
 
 const publicRoutes = [
   "/login",
+  "/authorize",
+  "/login",
+  "/login-legacy",
   "/register",
   "/reset-password",
   "/set-new-password",
@@ -115,7 +118,7 @@ function App() {
             toastClassName="rounded-md bg-background font-main"
             bodyClassName=" text-gold font-main"
           />
-          <ExternalRoutes />
+          <ExternalRoutes redirectTo={pathname} />
         </div>
       );
     }

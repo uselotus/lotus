@@ -80,9 +80,14 @@ import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
 
-axios.defaults.headers.common["Authorization"] = `Token ${cookies.get(
-  "Token"
-)}`;
+const bearerToken = cookies.get("Bearer");
+const token = cookies.get("Token");
+if (bearerToken) {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${bearerToken}`;
+}
+if (token) {
+  axios.defaults.headers.common["Authorization"] = `Token ${token}`;
+}
 
 // @ts-ignore
 const API_HOST = import.meta.env.VITE_API_URL;
