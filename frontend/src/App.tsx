@@ -22,7 +22,6 @@ if (import.meta.env.VITE_API_URL === "https://api.uselotus.io/") {
 const publicRoutes = [
   "/login",
   "/authorize",
-  "/login",
   "/login-legacy",
   "/register",
   "/reset-password",
