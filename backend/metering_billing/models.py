@@ -87,7 +87,9 @@ class Organization(models.Model):
     team = models.ForeignKey(
         Team, on_delete=models.CASCADE, null=True, related_name="organizations"
     )
-    organization_id = models.SlugField(default=organization_uuid, max_length=100)
+    organization_id = models.UUIDField(
+        default=uuid.uuid4, unique=True, help_text="Unique identifier for the object."
+    )
     organization_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
@@ -190,7 +192,7 @@ class Organization(models.Model):
             logger.log("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
-                ApplicationIn(uid=self.organization_id, name=self.organization_name)
+                ApplicationIn(uid=self.organization_id.hex, name=self.organization_name)
             )
             self.webhooks_provisioned = True
         self.save()
@@ -264,7 +266,7 @@ class WebhookEndpoint(models.Model):
                             trigger.webhook_endpoint = self
                             trigger.save()
                     svix_endpoint = svix.endpoint.create(
-                        self.organization.organization_id,
+                        self.organization.organization_id.hex,
                         EndpointIn(**endpoint_create_dict),
                     )
                 else:
@@ -272,7 +274,7 @@ class WebhookEndpoint(models.Model):
                         "trigger_name", flat=True
                     )
                     svix_endpoint = svix.endpoint.get(
-                        self.organization.organization_id,
+                        self.organization.organization_id.hex,
                         self.webhook_endpoint_id,
                     )
 
@@ -290,25 +292,25 @@ class WebhookEndpoint(models.Model):
                     svix_update_dict["filter_types"] = list(triggers)
                     svix_update_dict["version"] = version
                     updated_endpoint = svix.endpoint.update(
-                        self.organization.organization_id,
+                        self.organization.organization_id.hex,
                         self.webhook_endpoint_id,
                         EndpointUpdate(**svix_update_dict),
                     )
 
                     current_endpoint_secret = svix.endpoint.get_secret(
-                        self.organization.organization_id,
+                        self.organization.organization_id.hex,
                         self.webhook_endpoint_id,
                     )
                     if current_endpoint_secret.key != self.webhook_secret:
                         svix.endpoint.rotate_secret(
-                            self.organization.organization_id,
+                            self.organization.organization_id.hex,
                             self.webhook_endpoint_id,
                             EndpointSecretRotateIn(key=self.webhook_secret),
                         )
             except HttpError as e:
                 list_response_application_out = svix.application.list()
                 dt = list_response_application_out.data
-                lst = [x for x in dt if x.uid == self.organization.organization_id]
+                lst = [x for x in dt if x.uid == self.organization.organization_id.hex]
                 try:
                     svix_app = lst[0]
                 except IndexError:
@@ -320,7 +322,7 @@ class WebhookEndpoint(models.Model):
 
                 dictionary = {
                     "error": e,
-                    "organization_id": self.organization.organization_id,
+                    "organization_id": self.organization.organization_id.hex,
                     "webhook_endpoint_id": self.webhook_endpoint_id,
                     "svix_app": svix_app,
                     "endpoint data": list_response_endpoint_out,
@@ -328,7 +330,9 @@ class WebhookEndpoint(models.Model):
                 self.delete()
 
                 raise ExternalConnectionFailure(
-                    "Webhooks service failed to connect. Did not provision webhook endpoint."
+                    "Webhooks service failed to connect. Did not provision webhook endpoint. Error: {}".format(
+                        dictionary
+                    )
                 )
 
 

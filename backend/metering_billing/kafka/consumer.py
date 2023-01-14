@@ -28,7 +28,6 @@ class ConsumerConfig:
 
 
 class Consumer(metaclass=Singleton):
-
     __connection = None
 
     def __init__(self):
@@ -73,7 +72,7 @@ def write_batch_events_to_db(events_list, org_pk):
     idem_ids = [x.idempotency_id for x in event_obj_list]
     repeat_idem = Event.objects.filter(
         Q(time_created__gte=now_minus_45_days) | Q(inserted_at__gte=now_minus_7_days),
-        organization_id=organization,
+        organization=organization,
         idempotency_id__in=idem_ids,
     ).exists()
     events_to_insert = []
@@ -83,7 +82,7 @@ def write_batch_events_to_db(events_list, org_pk):
             event_idem_exists = Event.objects.filter(
                 Q(time_created__gte=now_minus_45_days)
                 | Q(inserted_at__gte=now_minus_7_days),
-                organization_id=organization,
+                organization=organization,
                 idempotency_id__in=idem_ids,
             ).exists()
             if not event_idem_exists:

@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count, OuterRef, Prefetch, Q
 from django.db.utils import IntegrityError
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateMetric, DuplicateWebhookEndpoint
@@ -241,7 +242,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if SVIX_CONNECTOR is not None:
             svix = SVIX_CONNECTOR
             svix.endpoint.delete(
-                instance.organization.organization_id,
+                instance.organization.organization_id.hex,
                 instance.webhook_endpoint_id,
             )
         instance.delete()
@@ -983,6 +984,18 @@ class OrganizationViewSet(
     }
     lookup_field = "organization_id"
     queryset = Organization.objects.all()
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        filter = {}
+        for field in self.multiple_lookup_fields:
+            string_uuid = self.kwargs[field]
+            uuid = OrganizationUUIDField().to_internal_value(string_uuid)
+            filter[field] = uuid
+
+        obj = get_object_or_404(queryset, **filter)
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def get_queryset(self):
         organization = self.request.organization

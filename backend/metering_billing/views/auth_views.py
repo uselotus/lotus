@@ -317,7 +317,9 @@ class SessionView(APIView):
             "isAuthenticated": request.user.is_authenticated,
         }
         if request.user.is_authenticated:
-            resp["organization_id"] = (request.user.organization.organization_id,)
+            resp["organization_id"] = (
+                "org_" + request.user.organization.organization_id.hex
+            )
         return JsonResponse(resp)
 
 
