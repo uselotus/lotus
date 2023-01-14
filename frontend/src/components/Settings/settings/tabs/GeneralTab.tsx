@@ -68,32 +68,32 @@ const GeneralTab: FC = () => {
     ["organization"],
     () =>
       Organization.get().then((res) => {
-        //if the default currency is null, then don't set it, otherwise setCurrentCurrency
-        if (
-          res[0].default_currency !== undefined &&
-          res[0].default_currency !== null
-        ) {
-          setCurrentCurrency(res[0].default_currency.code);
-        }
-        if (res[0].tax_rate === null) {
-          setTaxRate(0);
-          setDisplayTaxRate(0);
-        } else {
-          setTaxRate(res[0].tax_rate);
-          setDisplayTaxRate(res[0].tax_rate);
-        }
-        if (res[0].invoice_grace_period === null) {
-          setInvoiceGracePeriod(0);
-          setDisplayInvoiceGracePeriod(0);
-        } else {
-          setInvoiceGracePeriod(res[0].invoice_grace_period);
-          setDisplayInvoiceGracePeriod(res[0].invoice_grace_period);
-        }
-
         return res[0];
       }),
     {
       onSuccess: (data) => {
+        //if the default currency is null, then don't set it, otherwise setCurrentCurrency
+        if (
+          data.default_currency !== undefined &&
+          data.default_currency !== null
+        ) {
+          setCurrentCurrency(data.default_currency.code);
+        }
+        if (data.tax_rate === null) {
+          setTaxRate(0);
+          setDisplayTaxRate(0);
+        } else {
+          setTaxRate(data.tax_rate);
+          setDisplayTaxRate(data.tax_rate);
+        }
+        if (data.invoice_grace_period === null) {
+          setInvoiceGracePeriod(0);
+          setDisplayInvoiceGracePeriod(0);
+        } else {
+          setInvoiceGracePeriod(data.invoice_grace_period);
+          setDisplayInvoiceGracePeriod(data.invoice_grace_period);
+        }
+
         if (
           data.default_currency !== undefined &&
           data.default_currency !== null

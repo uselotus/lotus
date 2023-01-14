@@ -17,6 +17,7 @@ from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
+    OrganizationUUIDField,
     SlugRelatedFieldWithOrganization,
 )
 from metering_billing.utils import calculate_end_date, now_utc
@@ -84,6 +85,7 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
             "current",
         )
 
+    organization_id = OrganizationUUIDField()
     organization_type = serializers.SerializerMethodField()
     current = serializers.SerializerMethodField()
 
@@ -130,6 +132,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "team_name",
         )
 
+    organization_id = OrganizationUUIDField()
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
@@ -467,13 +470,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ("username", "email", "organization_name", "organization_id")
 
-    organization_id = serializers.CharField(source="organization.organization_id")
+    organization_id = OrganizationUUIDField(source="organization.organization_id")
     organization_name = serializers.CharField(source="organization.organization_name")
 
 
 # CUSTOMER
-
-
 class SubscriptionCustomerSummarySerializer(
     api_serializers.SubscriptionCustomerSummarySerializer
 ):

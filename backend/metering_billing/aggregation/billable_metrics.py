@@ -353,7 +353,7 @@ class CounterHandler(MetricHandler):
                 hour=23, minute=59, second=59, microsecond=999999
             )
             injection_dict["cagg_name"] = (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -368,7 +368,7 @@ class CounterHandler(MetricHandler):
             injection_dict["start_date"] = full_days_btwn_start
             injection_dict["end_date"] = full_days_btwn_end
             injection_dict["cagg_name"] = (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -385,7 +385,7 @@ class CounterHandler(MetricHandler):
             )
             injection_dict["end_date"] = end.replace(microsecond=0)
             injection_dict["cagg_name"] = (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -634,7 +634,7 @@ class CounterHandler(MetricHandler):
                 ],
             }
             base_name = (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -1055,7 +1055,7 @@ class GaugeHandler(MetricHandler):
             ],
         }
         sql_injection_data["cagg_name"] = (
-            organization.organization_id[:22]
+            ("org_" + organization.organization_id.hex)[:22]
             + "___"
             + metric.metric_id[:22]
             + "___"
@@ -1093,9 +1093,10 @@ class GaugeHandler(MetricHandler):
         from .common_query_templates import CAGG_DROP
         from .gauge_query_templates import GAUGE_DELTA_DROP_TRIGGER
 
+        organization = metric.organization
         sql_injection_data = {
             "cagg_name": (
-                metric.organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -1151,7 +1152,7 @@ class GaugeHandler(MetricHandler):
         injection_dict = {
             "proration_units": proration_units,
             "cumsum_cagg": (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -1216,7 +1217,7 @@ class GaugeHandler(MetricHandler):
         injection_dict = {
             "proration_units": proration_units,
             "cumsum_cagg": (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -1281,7 +1282,7 @@ class GaugeHandler(MetricHandler):
         injection_dict = {
             "proration_units": proration_units,
             "cumsum_cagg": (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
                 + metric.metric_id[:22]
                 + "___"
@@ -1484,7 +1485,7 @@ class RateHandler(MetricHandler):
             "customer_id": subscription_record.customer.id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
-            "cagg_name": organization.organization_id[:22]
+            "cagg_name": ("org_" + organization.organization_id.hex)[:22]
             + "___"
             + metric.metric_id[:22]
             + "___"
@@ -1543,7 +1544,7 @@ class RateHandler(MetricHandler):
             "customer_id": subscription_record.customer.id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
-            "cagg_name": organization.organization_id[:22]
+            "cagg_name": ("org_" + organization.organization_id.hex)[:22]
             + "___"
             + metric.metric_id[:22]
             + "___"

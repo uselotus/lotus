@@ -460,9 +460,8 @@ class ChangeUserOrganizationView(APIView):
         new_organization_id = request.data.get("transfer_to_organization_id")
         if not new_organization_id:
             raise ValidationError("No organization ID provided")
-        new_organization = Organization.objects.filter(
-            organization_id=new_organization_id
-        ).first()
+        org_uuid = OrganizationUUIDField().to_internal_value(new_organization_id)
+        new_organization = Organization.objects.filter(organization_id=org_uuid).first()
         if not new_organization:
             raise ValidationError("Organization not found")
         user.organization = new_organization
