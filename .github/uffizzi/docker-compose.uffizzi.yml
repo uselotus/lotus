@@ -1,0 +1,128 @@
+services:
+  db:
+    image: timescale/timescaledb-ha:pg14-latest
+    restart: on-failure
+    ports:
+      - 5433:5432
+    volumes:
+      - ./pgdata_dev:/var/lib/postgresql/data
+    env_file:
+      - ./.github/uffizzi/env.uffizzi
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server
+    env_file:
+      - ./.github/uffizzi/env.uffizzi
+
+  redpanda:
+    image: docker.redpanda.com/vectorized/redpanda:v22.2.2
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    ports:
+      - 8081:8081
+      - 8082:8082
+      - 9092:9092
+      - 9644:9644
+      - 29092:29092
+
+  svix-server:
+    image: svix/svix-server:v0.74
+    environment:
+      WAIT_FOR: "true"
+      SVIX_REDIS_DSN: redis://redis
+      SVIX_DB_DSN: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost
+    env_file:
+      - ./.github/uffizzi/env.uffizzi
+    ports:
+      - "8071:8071"
+    depends_on:
+    - db
+    - redis
+    links:
+    - db
+    - redis
+    restart: on-failure
+
+  backend: &backend
+    env_file:
+      - ./.github/uffizzi/env.uffizzi
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - 8000:8000
+    volumes:
+      - ./backend/lotus:/lotus/lotus
+      - ./backend/metering_billing:/lotus/metering_billing
+      - ./backend/api:/lotus/api
+      - ./.github/uffizzi/backend-scripts:/lotus/scripts
+    command: sh -c "/lotus/scripts/start_backend.dev.sh"
+    depends_on:
+      - db
+      - redis
+      - redpanda
+
+  event_consumer:
+    <<: *backend
+    ports:
+      - 7999:7999
+    command: sh -c "/lotus/scripts/start_consumer.sh"
+
+  frontend:
+    restart: always
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    env_file:
+      - ./.github/uffizzi/env.uffizzi
+    ports:
+      - 3000:3000
+    command: yarn run dev --host 0.0.0.0 --port 3000
+    volumes:
+      - ./frontend/src:/frontend/src:delegated
+      - ./frontend/public:/frontend/public:delegated
+      - /frontend/node_modules/
+      - ./.github/uffizzi/frontend-scripts:/frontend/scripts/
+    stdin_open: true
+    depends_on:
+      - backend
+
+  celery:
+    env_file:
+      - ./.github/uffizzi/env.uffizzi
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus worker -l info;"
+    depends_on:
+      - redis
+      - backend
+    restart: on-failure
+
+  celery-beat:
+    env_file:
+      - ./.github/uffizzi/env.uffizzi
+    restart: on-failure
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    command: bash -c "while ! nc -q 1 db 5432 </dev/null; do sleep 5; done; celery -A lotus beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler;"
+    depends_on:
+      - celery
+      - backend
+      - redis
+
+volumes:
+  pgdata_dev:
