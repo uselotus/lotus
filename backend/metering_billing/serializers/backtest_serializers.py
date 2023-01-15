@@ -4,7 +4,7 @@ from metering_billing.serializers.model_serializers import PlanVersionDetailSeri
 from metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
 from rest_framework import serializers
 
-from .serializer_utils import SlugRelatedFieldWithOrganization
+from .serializer_utils import BacktestUUIDField, SlugRelatedFieldWithOrganization
 
 
 class BacktestSubstitutionMultiSerializer(serializers.Serializer):
@@ -65,6 +65,8 @@ class BacktestSummarySerializer(serializers.ModelSerializer):
             "status",
             "backtest_id",
         )
+
+    backtest_id = BacktestUUIDField()
 
 
 class BacktestSubstitutionSerializer(serializers.ModelSerializer):
@@ -131,20 +133,11 @@ class AllSubstitutionResultsSerializer(serializers.Serializer):
 
 
 class BacktestDetailSerializer(BacktestSummarySerializer):
-    class Meta:
-        model = Backtest
-        fields = (
-            "backtest_name",
-            "start_date",
-            "end_date",
-            "time_created",
-            "kpis",
-            "status",
-            "backtest_id",
-            "backtest_substitutions",
-            "backtest_results",
+    class Meta(BacktestSummarySerializer.Meta):
+        fields = tuple(
+            set(BacktestSummarySerializer.Meta.fields)
+            | {"backtest_substitutions", "backtest_results"}
         )
 
     backtest_results = AllSubstitutionResultsSerializer()
-
     backtest_substitutions = BacktestSubstitutionSerializer(many=True)

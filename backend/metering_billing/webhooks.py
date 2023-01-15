@@ -31,10 +31,10 @@ def invoice_created_webhook(invoice, organization):
             invoice_data = make_all_decimals_floats(invoice_data)
             invoice_data = make_all_dates_times_strings(invoice_data)
             svix.message.create(
-                organization.organization_id,
+                organization.organization_id.hex,
                 MessageIn(
                     event_type=WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED,
-                    event_id=str(organization.organization_id)
+                    event_id=str(organization.organization_id.hex)
                     + "_"
                     + str(invoice_data["invoice_number"])
                     + "_"
@@ -66,10 +66,10 @@ def invoice_paid_webhook(invoice, organization):
             invoice_data = make_all_decimals_floats(invoice_data)
             invoice_data = make_all_dates_times_strings(invoice_data)
             svix.message.create(
-                organization.organization_id,
+                organization.organization_id.hex,
                 MessageIn(
                     event_type=WEBHOOK_TRIGGER_EVENTS.INVOICE_PAID,
-                    event_id=str(organization.organization_id)
+                    event_id=str(organization.organization_id.hex)
                     + "_"
                     + str(invoice_data["invoice_number"])
                     + "_"
@@ -115,9 +115,9 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
             event_id = (
                 str(organization.organization_id)[:50]
                 + "_"
-                + str(usage_alert.usage_alert_id)[:50]
+                + str(usage_alert.usage_alert_id.hex)[:50]
                 + "_"
-                + str(subscription_record.subscription_record_id)[:50]
+                + str(subscription_record.subscription_record_id.hex)[:50]
                 + "_"
                 + str(alert_result.last_run_timestamp)
                 + "_"

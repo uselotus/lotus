@@ -17,7 +17,14 @@ from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
+    OrganizationSettingUUIDField,
+    OrganizationUUIDField,
+    PlanUUIDField,
+    PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
+    UsageAlertUUIDField,
+    WebhookEndpointUUIDField,
+    WebhookSecretUUIDField,
 )
 from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import *
@@ -84,6 +91,7 @@ class LightweightOrganizationSerializer(serializers.ModelSerializer):
             "current",
         )
 
+    organization_id = OrganizationUUIDField()
     organization_type = serializers.SerializerMethodField()
     current = serializers.SerializerMethodField()
 
@@ -130,6 +138,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "team_name",
         )
 
+    organization_id = OrganizationUUIDField()
     users = serializers.SerializerMethodField()
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
@@ -419,6 +428,8 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
         many=True,
         read_only=True,
     )
+    webhook_endpoint_id = WebhookEndpointUUIDField(read_only=True)
+    webhook_secret = WebhookSecretUUIDField(read_only=True)
 
     def validate(self, attrs):
         if SVIX_CONNECTOR is None:
@@ -467,13 +478,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ("username", "email", "organization_name", "organization_id")
 
-    organization_id = serializers.CharField(source="organization.organization_id")
+    organization_id = OrganizationUUIDField(source="organization.organization_id")
     organization_name = serializers.CharField(source="organization.organization_name")
 
 
 # CUSTOMER
-
-
 class SubscriptionCustomerSummarySerializer(
     api_serializers.SubscriptionCustomerSummarySerializer
 ):
@@ -1063,6 +1072,7 @@ class UsageAlertSerializer(serializers.ModelSerializer):
             "threshold",
         )
 
+    usage_alert_id = UsageAlertUUIDField(read_only=True)
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()
 
@@ -1076,8 +1086,9 @@ class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):
         )
         extra_kwargs = {**api_serializers.PlanVersionSerializer.Meta.extra_kwargs}
 
-    plan_id = serializers.CharField(source="plan.plan_id", read_only=True)
+    plan_id = PlanUUIDField(source="plan.plan_id", read_only=True)
     alerts = serializers.SerializerMethodField()
+    version_id = PlanVersionUUIDField(read_only=True)
 
     def get_alerts(self, obj) -> UsageAlertSerializer(many=True):
         return UsageAlertSerializer(obj.usage_alerts, many=True).data
@@ -1129,7 +1140,6 @@ class PlanCreateSerializer(serializers.ModelSerializer):
         fields = (
             "plan_name",
             "plan_duration",
-            "plan_id",
             "status",
             "initial_external_links",
             "initial_version",
@@ -1140,7 +1150,6 @@ class PlanCreateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "plan_name": {"write_only": True},
             "plan_duration": {"write_only": True},
-            "plan_id": {"write_only": True},
             "status": {"write_only": True},
             "initial_external_links": {"write_only": True},
             "initial_version": {"write_only": True},
@@ -1550,6 +1559,8 @@ class OrganizationSettingSerializer(serializers.ModelSerializer):
             "setting_group": {"required": True},
             "setting_values": {"required": True},
         }
+
+    setting_id = OrganizationSettingUUIDField()
 
 
 class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):

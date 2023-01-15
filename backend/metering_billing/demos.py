@@ -198,7 +198,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=0,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=sum_words, free_units=2_000
@@ -222,7 +221,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=49,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -249,7 +247,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=99,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -276,7 +273,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=279,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -303,7 +299,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=19,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -343,7 +338,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=59,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -383,7 +377,6 @@ def setup_demo3(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=179,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -771,7 +764,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=0,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization, plan_version=free_bp, billable_metric=calls, free_units=50
@@ -799,7 +791,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=29,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -832,7 +823,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=69,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -865,7 +855,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=59,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -905,7 +894,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=119,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,
@@ -945,7 +933,6 @@ def setup_demo4(
         plan=plan,
         status=PLAN_VERSION_STATUS.ACTIVE,
         flat_rate=89,
-        version_id=plan_version_uuid(),
     )
     create_pc_and_tiers(
         organization,

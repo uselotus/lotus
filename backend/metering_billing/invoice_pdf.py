@@ -5,6 +5,7 @@ from io import BytesIO
 import boto3
 from django.conf import settings
 from django.forms.models import model_to_dict
+from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
@@ -220,7 +221,9 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     for line_item in line_items:
         sr = line_item.associated_subscription_record
         if sr is not None:
-            plan_id = line_item.associated_subscription_record.billing_plan.id
+            plan_id = PlanUUIDField().to_representation(
+                line_item.associated_subscription_record.billing_plan.plan.plan_id
+            )
             subscription_filters = list(
                 (
                     line_item.associated_subscription_record.get_filters_dictionary()

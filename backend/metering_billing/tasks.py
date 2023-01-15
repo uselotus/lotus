@@ -26,6 +26,7 @@ from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.backtest_serializers import (
     AllSubstitutionResultsSerializer,
 )
+from metering_billing.serializers.serializer_utils import PlanVersionUUIDField
 from metering_billing.utils import (
     date_as_max_dt,
     date_as_min_dt,
@@ -134,7 +135,7 @@ def refresh_alerts():
 def zero_out_expired_balance_adjustments():
     now = now_utc()
     expired_balance_adjustments = CustomerBalanceAdjustment.objects.filter(
-        expiration_date__lt=now,
+        expires_at__lt=now,
         amount__gt=0,
         status=CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE,
     )
@@ -192,12 +193,16 @@ def run_backtest(backtest_id):
                 "substitution_name": f"{str(subst.original_plan)} --> {str(subst.new_plan)}",
                 "original_plan": {
                     "plan_name": str(subst.original_plan),
-                    "plan_id": subst.original_plan.version_id,
+                    "plan_id": PlanVersionUUIDField().to_representation(
+                        subst.original_plan.version_id
+                    ),
                     "plan_revenue": Decimal(0),
                 },
                 "new_plan": {
                     "plan_name": str(subst.new_plan),
-                    "plan_id": subst.new_plan.version_id,
+                    "plan_id": PlanVersionUUIDField().to_representation(
+                        subst.new_plan.version_id
+                    ),
                     "plan_revenue": Decimal(0),
                 },
             }

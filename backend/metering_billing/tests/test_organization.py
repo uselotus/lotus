@@ -74,7 +74,7 @@ class TestOrganizationTags:
         response = client.patch(
             reverse(
                 "organization-detail",
-                kwargs={"organization_id": org.organization_id},
+                kwargs={"organization_id": "org_" + org.organization_id.hex},
             ),
             payload,
             format="json",
@@ -104,7 +104,7 @@ class TestOrganizationTags:
         response = client.patch(
             reverse(
                 "organization-detail",
-                kwargs={"organization_id": org.organization_id},
+                kwargs={"organization_id": "org_" + org.organization_id.hex},
             ),
             payload,
             format="json",
@@ -128,7 +128,7 @@ class TestOrganizationTags:
         response = client.patch(
             reverse(
                 "organization-detail",
-                kwargs={"organization_id": org.organization_id},
+                kwargs={"organization_id": "org_" + org.organization_id.hex},
             ),
             payload,
             format="json",

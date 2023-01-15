@@ -12,25 +12,6 @@ from metering_billing.utils.enums import (
 from rest_framework import serializers
 
 
-class CancelSubscriptionRequestSerializer(serializers.Serializer):
-    subscription_id = serializers.CharField(required=True)
-    bill_now = serializers.BooleanField(default=False)
-    revoke_access = serializers.BooleanField(default=False)
-
-
-class UpdateSubscriptionPlanVersionRequestSerializer(serializers.Serializer):
-    subscription_id = serializers.CharField(required=True)
-    new_version_id = serializers.CharField(required=True)
-    update_behavior = serializers.ChoiceField(
-        choices=["replace_immediately", "replace_on_renewal"]
-    )
-
-
-class MergeCustomersRequestSerializer(serializers.Serializer):
-    customer1_id = serializers.CharField(required=True)
-    customer2_id = serializers.CharField(required=True)
-
-
 class PeriodComparisonRequestSerializer(serializers.Serializer):
     period_1_start_date = serializers.DateField()
     period_1_end_date = serializers.DateField()

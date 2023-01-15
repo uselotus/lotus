@@ -272,7 +272,10 @@ class TestArchiveMetric:
             or all_pcs[2].billable_metric == metric_set[0]
         )
         response = setup_dict["client"].patch(
-            reverse("metric-detail", kwargs={"metric_id": metric_set[0].metric_id}),
+            reverse(
+                "metric-detail",
+                kwargs={"metric_id": "metric_" + metric_set[0].metric_id.hex},
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -286,7 +289,10 @@ class TestArchiveMetric:
         billing_plan.save()
 
         response = setup_dict["client"].patch(
-            reverse("metric-detail", kwargs={"metric_id": metric_set[0].metric_id}),
+            reverse(
+                "metric-detail",
+                kwargs={"metric_id": "metric_" + metric_set[0].metric_id.hex},
+            ),
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
@@ -1537,7 +1543,6 @@ class TestCustomSQLMetrics:
             data=json.dumps(insert_billable_metric_payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        print(response.data)
         assert response.status_code == status.HTTP_201_CREATED
         assert len(response.data) > 0  # check that the response is not empty
         assert len(get_billable_metrics_in_org(setup_dict["org"])) == 1
