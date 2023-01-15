@@ -444,6 +444,7 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Webhook endpoints are not supported in this environment or are not currently available."
             )
+        print("validated_data", validated_data)
         triggers_in = validated_data.pop("triggers_in")
         trigger_objs = []
         for trigger in triggers_in:

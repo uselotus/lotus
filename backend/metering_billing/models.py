@@ -49,6 +49,9 @@ from rest_framework_api_key.models import AbstractAPIKey
 from simple_history.models import HistoricalRecords
 from svix.api import ApplicationIn, EndpointIn, EndpointSecretRotateIn, EndpointUpdate
 from svix.internal.openapi_client.models.http_error import HttpError
+from svix.internal.openapi_client.models.http_validation_error import (
+    HTTPValidationError,
+)
 
 logger = logging.getLogger("django.server")
 META = settings.META
@@ -246,7 +249,7 @@ class WebhookEndpoint(models.Model):
                         "description": self.name,
                         "url": self.webhook_url,
                         "version": 1,
-                        "secret": self.webhook_secret.hex,
+                        "secret": "whsec_" + self.webhook_secret.hex,
                     }
                     if len(triggers) > 0:
                         endpoint_create_dict["filter_types"] = []
@@ -298,7 +301,7 @@ class WebhookEndpoint(models.Model):
                             self.webhook_endpoint_id.hex,
                             EndpointSecretRotateIn(key=self.webhook_secret.hex),
                         )
-            except HttpError as e:
+            except (HttpError, HTTPValidationError) as e:
                 list_response_application_out = svix.application.list()
                 dt = list_response_application_out.data
                 lst = [x for x in dt if x.uid == self.organization.organization_id.hex]
