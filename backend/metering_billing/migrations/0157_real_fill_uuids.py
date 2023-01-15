@@ -56,7 +56,7 @@ def transfer_text_to_uuid(apps, schema_editor):
 
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     for plan_version in PlanVersion.objects.all():
-        plan_version.plan_version_id = uuid.uuid4()
+        plan_version.version_id = uuid.uuid4()
         plan_version.save()
 
     Subscription = apps.get_model("metering_billing", "Subscription")
@@ -66,7 +66,7 @@ def transfer_text_to_uuid(apps, schema_editor):
 
     SubscriptionRecord = apps.get_model("metering_billing", "SubscriptionRecord")
     for subscription_record in SubscriptionRecord.objects.all():
-        subscription_record.subscription_id = uuid.uuid4()
+        subscription_record.subscription_record_id = uuid.uuid4()
         subscription_record.save()
 
     Tag = apps.get_model("metering_billing", "Tag")
@@ -76,7 +76,7 @@ def transfer_text_to_uuid(apps, schema_editor):
 
     UsageAlert = apps.get_model("metering_billing", "UsageAlert")
     for usage_alert in UsageAlert.objects.all():
-        usage_alert.alert_id = uuid.uuid4()
+        usage_alert.usage_alert_id = uuid.uuid4()
         usage_alert.save()
 
     WebhookEndpoint = apps.get_model("metering_billing", "WebhookEndpoint")
