@@ -1132,7 +1132,6 @@ class PriceTier(models.Model):
         null=True,
         blank=True,
     )
-    type_old = models.CharField(choices=PRICE_TIER_TYPE.choices, max_length=10)
     type = models.PositiveSmallIntegerField(choices=PriceTierType.choices)
     range_start = models.DecimalField(
         max_digits=20, decimal_places=10, validators=[MinValueValidator(0)]
@@ -1158,13 +1157,6 @@ class PriceTier(models.Model):
         null=True,
         default=1.0,
         validators=[MinValueValidator(0)],
-    )
-    batch_rounding_type_old = models.CharField(
-        choices=BATCH_ROUNDING_TYPE.choices,
-        max_length=20,
-        default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
-        blank=True,
-        null=True,
     )
     batch_rounding_type = models.PositiveSmallIntegerField(
         choices=BatchRoundingType.choices,
