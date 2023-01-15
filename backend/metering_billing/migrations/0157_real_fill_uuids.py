@@ -119,13 +119,6 @@ def transfer_text_to_uuid(apps, schema_editor):
         webhook.webhook_secret = uuid_instance
         webhook.save()
 
-    WebhookSecret = apps.get_model("metering_billing", "WebhookSecret")
-    for webhook_secret in WebhookSecret.objects.all():
-        uuid_string = webhook_secret.webhook_secret_old.replace("whsec_", "")
-        uuid_instance = UUID(uuid_string)
-        webhook_secret.webhook_secret = uuid_instance
-        webhook_secret.save()
-
 
 class Migration(migrations.Migration):
     dependencies = [
