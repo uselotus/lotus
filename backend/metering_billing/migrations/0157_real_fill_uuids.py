@@ -9,10 +9,7 @@ from django.db import migrations
 def transfer_text_to_uuid(apps, schema_editor):
     Organization = apps.get_model("metering_billing", "Organization")
     for org in Organization.objects.all():
-        uuid_string = org.organization_id_old.replace("org_", "")
-        uuid_instance = UUID(uuid_string)
-        org.organization_id = uuid_instance
-        org.webhooks_provisioned = False
+        org.organization_id = uuid.uuid4()
         org.save()
 
     Backtest = apps.get_model("metering_billing", "Backtest")
@@ -26,9 +23,7 @@ def transfer_text_to_uuid(apps, schema_editor):
         "metering_billing", "CustomerBalanceAdjustment"
     )
     for adjustment in CustomerBalanceAdjustment.objects.all():
-        uuid_string = adjustment.adjustment_id_old.replace("custbaladj_", "")
-        uuid_instance = UUID(uuid_string)
-        adjustment.adjustment_id = uuid_instance
+        adjustment.adjustment_id = uuid.uuid4()
         adjustment.save()
 
     Feature = apps.get_model("metering_billing", "Feature")
@@ -38,9 +33,7 @@ def transfer_text_to_uuid(apps, schema_editor):
 
     Metric = apps.get_model("metering_billing", "Metric")
     for metric in Metric.objects.all():
-        uuid_string = metric.metric_id_old.replace("metric_", "")
-        uuid_instance = UUID(uuid_string)
-        metric.metric_id = uuid_instance
+        metric.metric_id = uuid.uuid4()
         metric.save()
 
     Invoice = apps.get_model("metering_billing", "Invoice")
@@ -53,70 +46,45 @@ def transfer_text_to_uuid(apps, schema_editor):
         line_item.invoice_line_item_id = uuid.uuid4()
         line_item.save()
 
-    Organization = apps.get_model("metering_billing", "Organization")
-    for org in Organization.objects.all():
-        org.organization_id = uuid.uuid4()
-        org.save()
-
     OrganizationSetting = apps.get_model("metering_billing", "OrganizationSetting")
     for setting in OrganizationSetting.objects.all():
-        uuid_string = setting.setting_id_old
-        uuid_instance = UUID(uuid_string)
-        setting.setting_id = uuid_instance
+        setting.setting_id = uuid.uuid4()
         setting.save()
 
     Plan = apps.get_model("metering_billing", "Plan")
     for plan in Plan.objects.all():
-        uuid_string = plan.plan_id.replace("plan_", "")
-        uuid_instance = UUID(uuid_string)
-        plan.plan_id = uuid_instance
+        plan.plan_id = uuid.uuid4()
         plan.save()
 
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     for plan_version in PlanVersion.objects.all():
-        uuid_string = plan_version.version_id_old.replace("plnvrs_", "")
-        uuid_instance = UUID(uuid_string)
-        plan_version.plan_version_id = uuid_instance
+        plan_version.plan_version_id = uuid.uuid4()
         plan_version.save()
 
     Subscription = apps.get_model("metering_billing", "Subscription")
     for subscription in Subscription.objects.all():
-        uuid_string = subscription.subscription_id_old.replace("subs_", "")
-        uuid_instance = UUID(uuid_string)
-        subscription.subscription_id = uuid_instance
+        subscription.subscription_id = uuid.uuid4()
         subscription.save()
 
     SubscriptionRecord = apps.get_model("metering_billing", "SubscriptionRecord")
     for subscription_record in SubscriptionRecord.objects.all():
-        uuid_string = subscription_record.subscription_record_id_old.replace(
-            "subsrec_", ""
-        )
-        uuid_instance = UUID(uuid_string)
-        subscription.subscription_id = uuid_instance
-        subscription.save()
+        subscription_record.subscription_id = uuid.uuid4()
+        subscription_record.save()
 
     Tag = apps.get_model("metering_billing", "Tag")
     for tag in Tag.objects.all():
-        uuid_string = tag.tag_id_old.replace("tag_", "")
-        uuid_instance = UUID(uuid_string)
-        tag.tag_id = uuid_instance
+        tag.tag_id = uuid.uuid4()
         tag.save()
 
     UsageAlert = apps.get_model("metering_billing", "UsageAlert")
     for usage_alert in UsageAlert.objects.all():
-        uuid_string = usage_alert.alert_id_old.replace("usgalert_", "")
-        uuid_instance = UUID(uuid_string)
-        usage_alert.alert_id = uuid_instance
+        usage_alert.alert_id = uuid.uuid4()
         usage_alert.save()
 
     WebhookEndpoint = apps.get_model("metering_billing", "WebhookEndpoint")
     for webhook in WebhookEndpoint.objects.all():
-        uuid_string = webhook.webhook_endpoint_id_old.replace("whend_", "")
-        uuid_instance = UUID(uuid_string)
-        webhook.webhook_endpoint_id = uuid_instance
-        uuid_string = webhook.webhook_secret_old.replace("whsec_", "")
-        uuid_instance = UUID(uuid_string)
-        webhook.webhook_secret = uuid_instance
+        webhook.webhook_endpoint_id = uuid.uuid4()
+        webhook.webhook_secret = uuid.uuid4()
         webhook.save()
 
 
