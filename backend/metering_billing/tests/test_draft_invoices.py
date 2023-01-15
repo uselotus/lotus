@@ -16,7 +16,7 @@ from metering_billing.models import (
     Subscription,
 )
 from metering_billing.utils import now_utc
-from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE, PRICE_TIER_TYPE
+from metering_billing.utils.enums import PRICE_ADJUSTMENT_TYPE
 from model_bakery import baker
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -99,14 +99,14 @@ def draft_invoice_test_common_setup(
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 cost_per_batch=cpb,
                 metric_units_per_batch=mupb,

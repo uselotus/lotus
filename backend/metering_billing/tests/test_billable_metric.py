@@ -30,7 +30,6 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
-    PRICE_TIER_TYPE,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -247,14 +246,14 @@ class TestArchiveMetric:
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 cost_per_batch=cpb,
                 metric_units_per_batch=mupb,
@@ -358,13 +357,13 @@ class TestCalculateMetric:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -448,13 +447,13 @@ class TestCalculateMetric:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -540,13 +539,13 @@ class TestCalculateMetric:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -649,13 +648,13 @@ class TestCalculateMetric:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=1,
             metric_units_per_batch=1,
@@ -735,13 +734,13 @@ class TestCalculateMetric:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -833,13 +832,13 @@ class TestCalculateMetricProrationForGauge:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=1,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=1,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -946,13 +945,13 @@ class TestCalculateMetricProrationForGauge:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=1,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=1,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1065,13 +1064,13 @@ class TestCalculateMetricProrationForGauge:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=1,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=1,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1189,13 +1188,13 @@ class TestCalculateMetricWithFilters:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1287,13 +1286,13 @@ class TestCalculateMetricWithFilters:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1376,13 +1375,13 @@ class TestCalculateMetricWithFilters:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1497,13 +1496,13 @@ class TestCalculateMetricWithFilters:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=1,
             metric_units_per_batch=1,
@@ -1610,13 +1609,13 @@ class TestCustomSQLMetrics:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1725,13 +1724,13 @@ class TestCustomSQLMetrics:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1840,13 +1839,13 @@ class TestCustomSQLMetrics:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -1977,13 +1976,13 @@ class TestCustomSQLMetrics:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -2190,13 +2189,13 @@ class TestCustomSQLMetrics:
         )
         free_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
             cost_per_batch=100,
             metric_units_per_batch=1,
@@ -2367,7 +2366,7 @@ class TestRegressions:
         )
         paid_tier = PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=0,
             cost_per_batch=100,
             metric_units_per_batch=1,

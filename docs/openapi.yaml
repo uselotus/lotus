@@ -70,8 +70,8 @@ paths:
             - inactive
             type: string
           default:
-          - inactive
           - active
+          - inactive
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -530,7 +530,6 @@ paths:
           type: string
           format: uuid
         description: Filter to a specific plan.
-        required: true
       - in: query
         name: range_end
         schema:
@@ -622,7 +621,6 @@ paths:
           format: uuid
         description: Filter to a specific plan. If not specified, all plans will be
           included in the cancellation request.
-        required: true
       - in: query
         name: subscription_filters
         schema:
@@ -1037,8 +1035,8 @@ paths:
             - inactive
             type: string
           default:
-          - inactive
           - active
+          - inactive
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -2625,7 +2623,6 @@ paths:
           type: string
           format: uuid
         description: Filter to a specific plan.
-        required: true
       - in: query
         name: range_end
         schema:
@@ -2745,7 +2742,6 @@ paths:
           format: uuid
         description: Filter to a specific plan. If not specified, all plans will be
           included in the cancellation request.
-        required: true
       - in: query
         name: subscription_filters
         schema:
@@ -3464,29 +3460,29 @@ components:
         backtest_name:
           type: string
           maxLength: 100
-        kpis:
-          type: object
-          additionalProperties: {}
+        start_date:
+          type: string
+          format: date
+        backtest_id:
+          type: string
+        time_created:
+          type: string
+          format: date-time
         backtest_substitutions:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitution'
+        backtest_results:
+          $ref: '#/components/schemas/AllSubstitutionResults'
+        kpis:
+          type: object
+          additionalProperties: {}
         status:
           enum:
           - running
           - completed
           - failed
           type: string
-        backtest_results:
-          $ref: '#/components/schemas/AllSubstitutionResults'
-        time_created:
-          type: string
-          format: date-time
-        backtest_id:
-          type: string
-        start_date:
-          type: string
-          format: date
       required:
       - backtest_id
       - backtest_name
@@ -4142,15 +4138,15 @@ components:
           items:
             $ref: '#/components/schemas/GroupedLineItem'
           readOnly: true
-        issue_date:
-          type: string
-          format: date-time
-          readOnly: true
         due_date:
           type: string
           format: date-time
           readOnly: true
           nullable: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
         cost_due:
           type: number
           format: double
@@ -4159,9 +4155,9 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        start_date:
+        issue_date:
           type: string
-          format: date
+          format: date-time
           readOnly: true
       required:
       - cost_due
@@ -4506,10 +4502,18 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
-        description:
+        transition_to_plan_id:
           type: string
+          format: uuid
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureRequest'
+          nullable: true
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
           writeOnly: true
           nullable: true
         components:
@@ -4517,14 +4521,28 @@ components:
           items:
             $ref: '#/components/schemas/PlanComponentRequest'
           nullable: true
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureRequest'
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
+          writeOnly: true
           nullable: true
         currency_code:
           type: string
           minLength: 1
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+        flat_rate:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          writeOnly: true
         usage_billing_frequency:
           enum:
           - monthly
@@ -4535,32 +4553,10 @@ components:
           type: string
           writeOnly: true
           nullable: true
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        description:
           type: string
-          writeOnly: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        transition_to_plan_id:
-          type: string
-          format: uuid
-        flat_rate:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          writeOnly: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
           writeOnly: true
           nullable: true
       required:
@@ -4780,38 +4776,44 @@ components:
     LightweightInvoice:
       type: object
       properties:
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - null
-          type: string
-          nullable: true
         end_date:
           type: string
           format: date
           readOnly: true
         currency:
           $ref: '#/components/schemas/PricingUnit'
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - null
+          type: string
+          nullable: true
+        invoice_number:
+          type: string
+          readOnly: true
         payment_status:
           enum:
           - paid
           - unpaid
           type: string
           readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        external_payment_obj_id:
+          type: string
+          readOnly: true
+          nullable: true
         issue_date:
           type: string
           format: date-time
           readOnly: true
-        invoice_number:
-          type: string
-          readOnly: true
-        due_date:
-          type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        seller:
-          $ref: '#/components/schemas/Seller'
         cost_due:
           type: number
           format: double
@@ -4820,14 +4822,8 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        external_payment_obj_id:
-          type: string
-          readOnly: true
-          nullable: true
-        start_date:
-          type: string
-          format: date
-          readOnly: true
+        seller:
+          $ref: '#/components/schemas/Seller'
       required:
       - cost_due
       - currency
@@ -4843,32 +4839,16 @@ components:
     LightweightInvoiceLineItem:
       type: object
       properties:
-        quantity:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: 0
-          exclusiveMaximum: true
-          nullable: true
         end_date:
+          type: string
+          format: date-time
+        start_date:
           type: string
           format: date-time
         subscription_filters:
           type: array
           items:
             $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-        name:
-          type: string
-          maxLength: 100
-        plan:
-          type: string
-        subtotal:
-          type: number
-          format: double
-          maximum: 10000000000
-          minimum: -10000000000
-          exclusiveMaximum: true
-          exclusiveMinimum: true
         billing_type:
           enum:
           - in_arrears
@@ -4876,9 +4856,25 @@ components:
           - null
           type: string
           nullable: true
-        start_date:
+        plan:
           type: string
-          format: date-time
+        name:
+          type: string
+          maxLength: 100
+        subtotal:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        quantity:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: 0
+          exclusiveMaximum: true
+          nullable: true
       required:
       - billing_type
       - end_date
@@ -5281,12 +5277,6 @@ components:
         organization_name:
           type: string
           maxLength: 100
-        payment_plan:
-          enum:
-          - self_hosted_free
-          - cloud
-          - self_hosted_enterprise
-          type: string
         payment_provider_ids:
           type: object
           additionalProperties: {}
@@ -6317,10 +6307,9 @@ components:
           - round_down
           - round_nearest
           - no_rounding
-          - null
           type: string
-          readOnly: true
           nullable: true
+          readOnly: true
       required:
       - batch_rounding_type
       - cost_per_batch
@@ -6370,10 +6359,7 @@ components:
           - round_down
           - round_nearest
           - no_rounding
-          - ''
-          - null
           type: string
-          nullable: true
       required:
       - range_start
       - type

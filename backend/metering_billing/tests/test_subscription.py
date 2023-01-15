@@ -28,7 +28,6 @@ from metering_billing.utils.enums import (
     INVOICING_BEHAVIOR,
     PLAN_DURATION,
     PLAN_STATUS,
-    PRICE_TIER_TYPE,
     USAGE_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
@@ -115,14 +114,14 @@ def subscription_test_common_setup(
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 cost_per_batch=cpb,
                 metric_units_per_batch=mupb,

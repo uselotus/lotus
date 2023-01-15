@@ -124,7 +124,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = (
             "organization_id",
             "organization_name",
-            "payment_plan",
             "payment_provider_ids",
             "users",
             "default_currency",
@@ -445,6 +444,7 @@ class WebhookEndpointSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Webhook endpoints are not supported in this environment or are not currently available."
             )
+        print("validated_data", validated_data)
         triggers_in = validated_data.pop("triggers_in")
         trigger_objs = []
         for trigger in triggers_in:
@@ -714,9 +714,26 @@ class FeatureSerializer(api_serializers.FeatureSerializer):
         fields = api_serializers.FeatureSerializer.Meta.fields
 
 
-class PriceTierSerializer(api_serializers.PriceTierSerializer):
-    class Meta(api_serializers.PriceTierSerializer.Meta):
-        fields = api_serializers.PriceTierSerializer.Meta.fields
+class PriceTierCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PriceTier
+        fields = (
+            "type",
+            "range_start",
+            "range_end",
+            "cost_per_batch",
+            "metric_units_per_batch",
+            "batch_rounding_type",
+        )
+
+    type = serializers.ChoiceField(
+        choices=PRICE_TIER_TYPE.choices,
+        required=True,
+    )
+    batch_rounding_type = serializers.ChoiceField(
+        choices=BATCH_ROUNDING_TYPE.choices,
+        required=False,
+    )
 
     def validate(self, data):
         data = super().validate(data)
@@ -730,35 +747,37 @@ class PriceTierSerializer(api_serializers.PriceTierSerializer):
             assert data.get("cost_per_batch") is not None
             data["metric_units_per_batch"] = None
             data["batch_rounding_type"] = None
+            data["type"] = PriceTier.PriceTierType.FLAT
         elif data.get("type") == PRICE_TIER_TYPE.FREE:
             data["cost_per_batch"] = None
             data["metric_units_per_batch"] = None
             data["batch_rounding_type"] = None
+            data["type"] = PriceTier.PriceTierType.FREE
         elif data.get("type") == PRICE_TIER_TYPE.PER_UNIT:
             assert data.get("metric_units_per_batch")
             assert data.get("cost_per_batch") is not None
             data["batch_rounding_type"] = data.get(
-                "batch_rounding_type", BATCH_ROUNDING_TYPE.NO_ROUNDING
+                "batch_rounding_type", PriceTier.BatchRoundingType.NO_ROUNDING
             )
+            if data["batch_rounding_type"] == BATCH_ROUNDING_TYPE.NO_ROUNDING:
+                data["batch_rounding_type"] = PriceTier.BatchRoundingType.NO_ROUNDING
+            elif data["batch_rounding_type"] == BATCH_ROUNDING_TYPE.ROUND_UP:
+                data["batch_rounding_type"] = PriceTier.BatchRoundingType.ROUND_UP
+            elif data["batch_rounding_type"] == BATCH_ROUNDING_TYPE.ROUND_DOWN:
+                data["batch_rounding_type"] = PriceTier.BatchRoundingType.ROUND_DOWN
+            elif data["batch_rounding_type"] == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
+                data["batch_rounding_type"] = PriceTier.BatchRoundingType.ROUND_NEAREST
+            else:
+                raise serializers.ValidationError(
+                    "Invalid batch rounding type for price tier"
+                )
+            data["type"] = PriceTier.PriceTierType.PER_UNIT
         else:
             raise serializers.ValidationError("Invalid price tier type")
         return data
 
     def create(self, validated_data):
         return PriceTier.objects.create(**validated_data)
-
-
-class PriceTierCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PriceTier
-        fields = (
-            "type",
-            "range_start",
-            "range_end",
-            "cost_per_batch",
-            "metric_units_per_batch",
-            "batch_rounding_type",
-        )
 
 
 # PLAN COMPONENT
@@ -800,7 +819,7 @@ class PlanComponentSerializer(api_serializers.PlanComponentSerializer):
         tiers = validated_data.pop("tiers")
         pc = PlanComponent.objects.create(**validated_data)
         for tier in tiers:
-            tier = PriceTierSerializer().create(tier)
+            tier = PriceTierCreateSerializer().create(tier)
             assert type(tier) is PriceTier
             tier.plan_component = pc
             tier.save()

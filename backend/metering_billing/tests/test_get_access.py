@@ -20,7 +20,6 @@ from metering_billing.utils.enums import (
     METRIC_AGGREGATION,
     METRIC_GRANULARITY,
     METRIC_TYPE,
-    PRICE_TIER_TYPE,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -143,14 +142,14 @@ def get_access_test_common_setup(
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 range_end=range_end,
                 cost_per_batch=cpb,
@@ -316,7 +315,7 @@ class TestGetAccess:
         )
         PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=0,
             range_end=10,
             cost_per_batch=5,
@@ -486,7 +485,7 @@ class TestGetAccessWithMetricID:
         )
         PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=0,
             range_end=10,
             cost_per_batch=5,
