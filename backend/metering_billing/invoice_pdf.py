@@ -58,6 +58,8 @@ def write_seller_details(
 def write_customer_details(doc, name, line1, city, state, country, postal_code, email):
     if email is None:
         email = ""
+    if name is None:
+        name = ""
     doc.setFont("Times-Bold", FONT_M)
     doc.drawString(225, 130, "Billed To")
     doc.setFont("Times-Roman", FONT_XS)
