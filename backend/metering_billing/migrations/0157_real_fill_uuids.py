@@ -14,9 +14,7 @@ def transfer_text_to_uuid(apps, schema_editor):
 
     Backtest = apps.get_model("metering_billing", "Backtest")
     for backtest in Backtest.objects.all():
-        uuid_string = backtest.backtest_id_old.replace("btst_", "")
-        uuid_instance = UUID(uuid_string)
-        backtest.backtest_id = uuid_instance
+        backtest.backtest_id = uuid.uuid4()
         backtest.save()
 
     CustomerBalanceAdjustment = apps.get_model(
