@@ -294,7 +294,8 @@ function UsageComponentForm({
     editComponentItem?.tiers ?? initialTier
   );
   const [rangeEnd, setRangeEnd] = useState<number | undefined>(
-    editComponentItem?.tiers[-1]?.range_end ?? undefined
+    editComponentItem?.tiers[editComponentItem?.tiers.length - 1]?.range_end ??
+      undefined
   );
 
   /// Ouput accepted proration grandularities for a given metric
