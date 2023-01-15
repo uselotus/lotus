@@ -56,7 +56,7 @@ def transfer_text_to_uuid(apps, schema_editor):
 
     PlanVersion = apps.get_model("metering_billing", "PlanVersion")
     for plan_version in PlanVersion.objects.all():
-        plan_version.plan_version_id = uuid.uuid4()
+        plan_version.version_id = uuid.uuid4()
         plan_version.save()
 
     Subscription = apps.get_model("metering_billing", "Subscription")
