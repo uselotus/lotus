@@ -8,7 +8,6 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count, OuterRef, Prefetch, Q
 from django.db.utils import IntegrityError
-from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, inline_serializer
 from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateMetric, DuplicateWebhookEndpoint
@@ -31,10 +30,17 @@ from metering_billing.serializers.backtest_serializers import (
     BacktestCreateSerializer,
     BacktestDetailSerializer,
     BacktestSummarySerializer,
+    BacktestUUIDField,
 )
 from metering_billing.serializers.model_serializers import *
 from metering_billing.serializers.request_serializers import (
     OrganizationSettingFilterSerializer,
+)
+from metering_billing.serializers.serializer_utils import (
+    MetricUUIDField,
+    OrganizationSettingUUIDField,
+    PlanVersionUUIDField,
+    WebhookEndpointUUIDField,
 )
 from metering_billing.tasks import run_backtest
 from metering_billing.utils import now_utc
@@ -220,6 +226,12 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
     queryset = WebhookEndpoint.objects.all()
 
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = WebhookEndpointUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
     def get_queryset(self):
         organization = self.request.organization
         return WebhookEndpoint.objects.filter(organization=organization)
@@ -241,10 +253,13 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         if SVIX_CONNECTOR is not None:
             svix = SVIX_CONNECTOR
-            svix.endpoint.delete(
-                instance.organization.organization_id.hex,
-                instance.webhook_endpoint_id,
-            )
+            try:
+                svix.endpoint.delete(
+                    instance.organization.organization_id.hex,
+                    instance.webhook_endpoint_id.hex,
+                )
+            except:
+                pass
         instance.delete()
 
     def dispatch(self, request, *args, **kwargs):
@@ -359,6 +374,12 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     }
     queryset = Metric.objects.all()
 
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = MetricUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
     def get_queryset(self):
         organization = self.request.organization
         return Metric.objects.filter(
@@ -413,10 +434,7 @@ class MetricViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             return instance
         except IntegrityError as e:
             cause = e.__cause__
-            if "unique_org_metric_id" in str(cause):
-                error_message = "Metric ID already exists for this organization. This usually happens if you try to specify an ID instead of letting the Lotus backend handle ID creation."
-                raise DuplicateMetric(error_message)
-            elif "unique_org_billable_metric_name" in str(cause):
+            if "unique_org_billable_metric_name" in str(cause):
                 error_message = "A billable metric with the same name already exists for this organization. Please choose a different name."
                 raise DuplicateMetric(error_message)
             elif "uq_metric_w_null__" in str(cause):
@@ -496,6 +514,12 @@ class PlanVersionViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
     queryset = PlanVersion.objects.all()
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = PlanVersionUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -598,6 +622,12 @@ class PlanViewSet(api_views.PlanViewSet):
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
 
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
     def get_queryset(self):
         organization = self.request.organization
         now = now_utc()
@@ -694,6 +724,12 @@ class BacktestViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "destroy": [IsAuthenticated & ValidOrganization],
     }
     queryset = Backtest.objects.all()
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = BacktestUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -894,6 +930,12 @@ class OrganizationSettingViewSet(viewsets.ModelViewSet):
     lookup_field = "setting_id"
     queryset = OrganizationSetting.objects.all()
 
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = OrganizationSettingUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
     def get_serializer_class(self):
         if self.action == "partial_update":
             return OrganizationSettingUpdateSerializer
@@ -986,25 +1028,14 @@ class OrganizationViewSet(
     queryset = Organization.objects.all()
 
     def get_object(self):
-        queryset = self.get_queryset()
-        filter = {}
-        for field in self.multiple_lookup_fields:
-            string_uuid = self.kwargs[field]
-            uuid = OrganizationUUIDField().to_internal_value(string_uuid)
-            filter[field] = uuid
-
-        obj = get_object_or_404(queryset, **filter)
-        self.check_object_permissions(self.request, obj)
-        return obj
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = OrganizationUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_queryset(self):
         organization = self.request.organization
         return Organization.objects.filter(pk=organization.pk)
-
-    def get_object(self):
-        queryset = self.get_queryset()
-        obj = queryset.first()
-        return obj
 
     def get_serializer_class(self):
         if self.action == "partial_update":
@@ -1063,6 +1094,12 @@ class UsageAlertViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head", "delete"]
     queryset = UsageAlert.objects.all()
     lookup_field = "usage_alert_id"
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = UsageAlertUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_serializer_class(self):
         if self.action == "create":

@@ -115,9 +115,9 @@ def usage_alert_webhook(usage_alert, alert_result, subscription_record, organiza
             event_id = (
                 str(organization.organization_id)[:50]
                 + "_"
-                + str(usage_alert.usage_alert_id)[:50]
+                + str(usage_alert.usage_alert_id.hex)[:50]
                 + "_"
-                + str(subscription_record.subscription_record_id)[:50]
+                + str(subscription_record.subscription_record_id.hex)[:50]
                 + "_"
                 + str(alert_result.last_run_timestamp)
                 + "_"

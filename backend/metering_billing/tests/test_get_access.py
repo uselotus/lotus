@@ -363,7 +363,11 @@ class TestGetAccess:
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = [x for x in response.json() if x["plan_id"] == billing_plan.plan_id]
+        response = [
+            x
+            for x in response.json()
+            if x["plan_id"] == "plan_" + billing_plan.plan.plan_id.hex
+        ]
         assert len(response) == 1
         assert response[0]["usage_per_component"][0]["event_name"] == "log_num_users"
         assert (
@@ -378,7 +382,7 @@ class TestGetAccessWithMetricID:
         setup_dict = get_access_test_common_setup(auth_method="api_key")
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["allow_limit_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["allow_limit_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
@@ -398,7 +402,7 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["deny_limit_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["deny_limit_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
@@ -418,7 +422,7 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["allow_free_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["allow_free_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
@@ -439,7 +443,7 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["allow_limit_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["allow_limit_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
@@ -524,12 +528,16 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": metric.metric_id,
+            "metric_id": "metric_" + metric.metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = [x for x in response.json() if x["plan_id"] == billing_plan.plan_id]
+        response = [
+            x
+            for x in response.json()
+            if x["plan_id"] == "plan_" + billing_plan.plan.plan_id.hex
+        ]
         assert len(response) == 1
         assert response[0]["usage_per_component"][0]["event_name"] == "log_num_users"
         assert (

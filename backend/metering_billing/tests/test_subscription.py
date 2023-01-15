@@ -534,7 +534,6 @@ class TestUpdateSub:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
         before_invoices = Invoice.objects.all().count()
 
@@ -620,7 +619,6 @@ class TestUpdateSub:
             plan_duration=PLAN_DURATION.MONTHLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
         before_invoices = Invoice.objects.all().count()
 
@@ -714,7 +712,6 @@ class TestUpdateSub:
             plan_duration=PLAN_DURATION.MONTHLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
         before_invoices = Invoice.objects.all().count()
 
@@ -882,7 +879,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
 
         billing_plan = baker.make(
@@ -967,7 +963,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
 
         billing_plan = baker.make(
@@ -1079,7 +1074,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
 
         billing_plan = baker.make(
@@ -1183,7 +1177,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
         cur_payload = setup_dict["payload"]
         setup_dict["org"].update_subscription_filter_settings(["email"])
@@ -1265,7 +1258,8 @@ class TestSubscriptionAndSubscriptionRecord:
         before_active_subs = Subscription.objects.active().count()
         before_active_sub_records = SubscriptionRecord.objects.active().count()
         before_invoices = Invoice.objects.all().count()
-
+        assert before_active_subs == 1
+        assert before_active_sub_records == 2
         params = {
             "customer_id": setup_dict["customer"].customer_id,
             "plan_id": setup_dict["plan"].plan_id,
@@ -1287,8 +1281,6 @@ class TestSubscriptionAndSubscriptionRecord:
         assert response.status_code == status.HTTP_200_OK
         assert after_active_subs == 1
         assert after_active_sub_records == 1
-        assert before_active_subs == 1
-        assert before_active_sub_records == 2
         assert after_invoices == before_invoices + 1
 
         assert active_sub.billing_cadence == PLAN_DURATION.QUARTERLY

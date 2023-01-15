@@ -30,30 +30,18 @@ from metering_billing.exceptions.exceptions import (
 )
 from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
-    backtest_uuid,
     calculate_end_date,
     convert_to_date,
     convert_to_datetime,
     convert_to_decimal,
-    customer_balance_adjustment_uuid,
     customer_uuid,
     date_as_min_dt,
     dates_bwn_two_dts,
     event_uuid,
-    metric_uuid,
     now_plus_day,
     now_utc,
-    organization_uuid,
     periods_bwn_twodates,
-    plan_uuid,
-    plan_version_uuid,
     product_uuid,
-    random_uuid,
-    subscription_record_uuid,
-    subscription_uuid,
-    usage_alert_uuid,
-    webhook_endpoint_uuid,
-    webhook_secret_uuid,
 )
 from metering_billing.utils.enums import *
 from metering_billing.webhooks import invoice_paid_webhook, usage_alert_webhook
@@ -87,9 +75,7 @@ class Organization(models.Model):
     team = models.ForeignKey(
         Team, on_delete=models.CASCADE, null=True, related_name="organizations"
     )
-    organization_id = models.UUIDField(
-        default=uuid.uuid4, unique=True, help_text="Unique identifier for the object."
-    )
+    organization_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     organization_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
@@ -126,6 +112,14 @@ class Organization(models.Model):
         null=True,
     )
     history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization_name"]),
+            models.Index(fields=["organization_type"]),
+            models.Index(fields=["organization_id"]),
+            models.Index(fields=["team"]),
+        ]
 
     def __str__(self):
         return self.organization_name
@@ -221,17 +215,15 @@ class WebhookEndpointManager(models.Manager):
 
 
 class WebhookEndpoint(models.Model):
-    webhook_endpoint_id = models.SlugField(
-        default=webhook_endpoint_uuid,
-        max_length=100,
-        unique=True,
+    webhook_endpoint_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True
     )
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="webhook_endpoints"
     )
     name = models.CharField(max_length=100, blank=True, null=True)
     webhook_url = models.CharField(max_length=100)
-    webhook_secret = models.SlugField(max_length=100, default=webhook_secret_uuid)
+    webhook_secret = models.UUIDField(default=uuid.uuid4, editable=False)
 
     objects = WebhookEndpointManager()
 
@@ -240,6 +232,11 @@ class WebhookEndpoint(models.Model):
             models.UniqueConstraint(
                 fields=["organization", "webhook_url"], name="unique_webhook_url"
             )
+        ]
+        indexes = [
+            models.Index(
+                fields=["organization", "webhook_endpoint_id"]
+            ),  # for single lookup
         ]
 
     def save(self, *args, **kwargs):
@@ -251,11 +248,11 @@ class WebhookEndpoint(models.Model):
                 svix = SVIX_CONNECTOR
                 if new:
                     endpoint_create_dict = {
-                        "uid": self.webhook_endpoint_id,
+                        "uid": self.webhook_endpoint_id.hex,
                         "description": self.name,
                         "url": self.webhook_url,
                         "version": 1,
-                        "secret": self.webhook_secret,
+                        "secret": self.webhook_secret.hex,
                     }
                     if len(triggers) > 0:
                         endpoint_create_dict["filter_types"] = []
@@ -275,12 +272,12 @@ class WebhookEndpoint(models.Model):
                     )
                     svix_endpoint = svix.endpoint.get(
                         self.organization.organization_id.hex,
-                        self.webhook_endpoint_id,
+                        self.webhook_endpoint_id.hex,
                     )
 
                     svix_endpoint = svix_endpoint.__dict__
                     svix_update_dict = {}
-                    svix_update_dict["uid"] = self.webhook_endpoint_id
+                    svix_update_dict["uid"] = self.webhook_endpoint_id.hex
                     svix_update_dict["description"] = self.name
                     svix_update_dict["url"] = self.webhook_url
 
@@ -293,19 +290,19 @@ class WebhookEndpoint(models.Model):
                     svix_update_dict["version"] = version
                     updated_endpoint = svix.endpoint.update(
                         self.organization.organization_id.hex,
-                        self.webhook_endpoint_id,
+                        self.webhook_endpoint_id.hex,
                         EndpointUpdate(**svix_update_dict),
                     )
 
                     current_endpoint_secret = svix.endpoint.get_secret(
                         self.organization.organization_id.hex,
-                        self.webhook_endpoint_id,
+                        self.webhook_endpoint_id.hex,
                     )
-                    if current_endpoint_secret.key != self.webhook_secret:
+                    if current_endpoint_secret.key != self.webhook_secret.hex:
                         svix.endpoint.rotate_secret(
                             self.organization.organization_id.hex,
-                            self.webhook_endpoint_id,
-                            EndpointSecretRotateIn(key=self.webhook_secret),
+                            self.webhook_endpoint_id.hex,
+                            EndpointSecretRotateIn(key=self.webhook_secret.hex),
                         )
             except HttpError as e:
                 list_response_application_out = svix.application.list()
@@ -323,7 +320,7 @@ class WebhookEndpoint(models.Model):
                 dictionary = {
                     "error": e,
                     "organization_id": self.organization.organization_id.hex,
-                    "webhook_endpoint_id": self.webhook_endpoint_id,
+                    "webhook_endpoint_id": self.webhook_endpoint_id.hex,
                     "svix_app": svix_app,
                     "endpoint data": list_response_endpoint_out,
                 }
@@ -349,6 +346,14 @@ class WebhookTrigger(models.Model):
     trigger_name = models.CharField(
         choices=WEBHOOK_TRIGGER_EVENTS.choices, max_length=40
     )
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["organization", "webhook_endpoint", "trigger_name"],
+                name="unique_webhook_trigger",
+            )
+        ]
 
 
 class User(AbstractUser):
@@ -565,9 +570,7 @@ class CustomerBalanceAdjustment(models.Model):
     This model is used to store the customer balance adjustments.
     """
 
-    adjustment_id = models.SlugField(
-        max_length=100, default=customer_balance_adjustment_uuid
-    )
+    adjustment_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="+", null=True
     )
@@ -615,6 +618,15 @@ class CustomerBalanceAdjustment(models.Model):
     class Meta:
         ordering = ["-created"]
         unique_together = ("customer", "created")
+        indexes = [
+            models.Index(
+                fields=["organization", "adjustment_id"]
+            ),  # for lookup for single
+            models.Index(
+                fields=["organization", "customer", "pricing_unit", "-expires_at"]
+            ),  # for lookup for drawdowns
+            models.Index(fields=["status", "expires_at"]),  # for lookup for expired
+        ]
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -909,7 +921,7 @@ class Metric(models.Model):
     )
     properties = models.JSONField(default=dict, blank=True, null=True)
     billable_metric_name = models.CharField(max_length=50, blank=True, null=True)
-    metric_id = models.SlugField(max_length=100, default=metric_uuid)
+    metric_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     event_type = models.CharField(
         max_length=20,
         choices=EVENT_TYPE.choices,
@@ -979,10 +991,6 @@ class Metric(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["organization", "metric_id"],
-                name="unique_org_metric_id",
-            ),
-            models.UniqueConstraint(
                 fields=["organization", "billable_metric_name"],
                 condition=Q(status=METRIC_STATUS.ACTIVE),
                 name="unique_org_billable_metric_name",
@@ -1045,6 +1053,11 @@ class Metric(models.Model):
                     ),
                 )
             )
+        ]
+        indexes = [
+            models.Index(fields=["organization", "status"]),
+            models.Index(fields=["organization", "is_cost_metric"]),
+            models.Index(fields=["organization", "metric_id"]),
         ]
 
     def __str__(self):
@@ -1283,6 +1296,7 @@ class PlanComponent(models.Model):
 
 
 class Feature(models.Model):
+    feature_id = models.UUIDField(default=uuid.uuid4, unique=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="features"
     )
@@ -1329,6 +1343,7 @@ class Invoice(models.Model):
     )
     due_date = models.DateTimeField(max_length=100, null=True, blank=True)
     invoice_number = models.CharField(max_length=13)
+    invoice_id = models.UUIDField(default=uuid.uuid4, unique=True)
     external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, blank=True, null=True
@@ -1346,6 +1361,16 @@ class Invoice(models.Model):
         related_name="invoices",
     )
     history = HistoricalRecords()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization", "payment_status"]),
+            models.Index(fields=["organization", "customer"]),
+            models.Index(fields=["organization", "invoice_number"]),
+            models.Index(fields=["organization", "invoice_id"]),
+            models.Index(fields=["organization", "external_payment_obj_id"]),
+            models.Index(fields=["organization", "subscription", "-issue_date"]),
+        ]
 
     def __str__(self):
         return str(self.invoice_number)
@@ -1382,6 +1407,7 @@ class Invoice(models.Model):
 
 
 class InvoiceLineItem(models.Model):
+    invoice_line_item_id = models.UUIDField(default=uuid.uuid4, unique=True)
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -1510,7 +1536,7 @@ class PlanVersion(models.Model):
         null=True,
         blank=True,
     )
-    version_id = models.SlugField(max_length=250, default=plan_version_uuid)
+    version_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
@@ -1525,9 +1551,10 @@ class PlanVersion(models.Model):
             models.UniqueConstraint(
                 fields=["plan", "version"], name="unique_plan_version"
             ),
-            models.UniqueConstraint(
-                fields=["organization", "version_id"], name="unique_version_id"
-            ),
+        ]
+        indexes = [
+            models.Index(fields=["organization", "status", "plan"]),
+            models.Index(fields=["organization", "version_id"]),
         ]
 
     def __str__(self) -> str:
@@ -1619,7 +1646,7 @@ class Plan(models.Model):
     status = models.CharField(
         choices=PLAN_STATUS.choices, max_length=40, default=PLAN_STATUS.ACTIVE
     )
-    plan_id = models.SlugField(default=plan_uuid, max_length=100, unique=True)
+    plan_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_on = models.DateTimeField(default=now_utc)
     created_by = models.ForeignKey(
         User,
@@ -1663,6 +1690,10 @@ class Plan(models.Model):
                 | Q(parent_plan__isnull=False) & Q(target_customer__isnull=False),
                 name="both_null_or_both_not_null",
             )
+        ]
+        indexes = [
+            models.Index(fields=["organization", "status"]),
+            models.Index(fields=["organization", "plan_id"]),
         ]
 
     def __str__(self):
@@ -1858,7 +1889,7 @@ class Subscription(models.Model):
     )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
-    subscription_id = models.SlugField(max_length=100, default=subscription_uuid)
+    subscription_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     objects = SubscriptionManager()
 
     class Meta:
@@ -1868,13 +1899,13 @@ class Subscription(models.Model):
                 name="start_date_less_than_end_date",
             ),
             models.UniqueConstraint(
-                fields=["subscription_id", "organization"],
-                name="unique_subscription_id",
-            ),
-            models.UniqueConstraint(
                 fields=["customer", "start_date", "end_date"],
                 name="unique_customer_start_end_date",
             ),
+        ]
+        indexes = [
+            models.Index(fields=["-end_date"]),
+            models.Index(fields=["organization", "customer", "start_date", "end_date"]),
         ]
 
     def __str__(self):
@@ -1952,6 +1983,7 @@ class Subscription(models.Model):
 
     def handle_remove_plan(self):
         active_sub_records = self.customer.subscription_records.active()
+
         active_subs_with_yearly_quarterly = active_sub_records.filter(
             billing_plan__plan__plan_duration__in=[
                 PLAN_DURATION.YEARLY,
@@ -2083,8 +2115,8 @@ class SubscriptionRecord(models.Model):
         default=True,
         help_text="Whether this subscription came from a renewal or from a first-time. Defaults to true on creation.",
     )
-    subscription_record_id = models.SlugField(
-        max_length=100, default=subscription_record_uuid
+    subscription_record_id = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True
     )
     filters = models.ManyToManyField(
         CategoricalFilter,
@@ -2106,10 +2138,6 @@ class SubscriptionRecord(models.Model):
 
     class Meta:
         constraints = [
-            UniqueConstraint(
-                fields=["organization", "subscription_record_id"],
-                name="unique_subscription_record_id",
-            ),
             CheckConstraint(
                 check=Q(start_date__lte=F("end_date")), name="end_date_gte_start_date"
             ),
@@ -2319,7 +2347,7 @@ class Backtest(models.Model):
         Organization, on_delete=models.CASCADE, related_name="backtests"
     )
     time_created = models.DateTimeField(default=now_utc)
-    backtest_id = models.SlugField(max_length=100, default=backtest_uuid, unique=True)
+    backtest_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     kpis = models.JSONField(default=list)
     backtest_results = models.JSONField(default=dict, blank=True)
     status = models.CharField(
@@ -2367,7 +2395,7 @@ class OrganizationSetting(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="settings"
     )
-    setting_id = models.SlugField(default=random_uuid, max_length=100, unique=True)
+    setting_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     setting_name = models.CharField(
         max_length=100,
     )
@@ -2491,6 +2519,7 @@ class Tag(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="tags"
     )
+    tag_id = models.UUIDField(default=uuid.uuid4, unique=True)
     tag_name = models.CharField(max_length=50)
     tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
     tag_hex = models.CharField(max_length=7, null=True)
@@ -2511,7 +2540,7 @@ class UsageAlert(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="usage_alerts"
     )
-    usage_alert_id = models.SlugField(default=usage_alert_uuid, max_length=50)
+    usage_alert_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     metric = models.ForeignKey(
         Metric, on_delete=models.CASCADE, related_name="usage_alerts"
     )
@@ -2521,12 +2550,7 @@ class UsageAlert(models.Model):
     threshold = models.DecimalField(max_digits=20, decimal_places=10)
 
     class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=["organization", "usage_alert_id"],
-                name="unique_alert_id_per_org",
-            ),
-        ]
+        constraints = []
 
     def save(self, *args, **kwargs):
         if self.metric.metric_type != METRIC_TYPE.COUNTER:

@@ -59,7 +59,6 @@ from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
 from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
-    APIToken,
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -72,6 +71,11 @@ from metering_billing.models import (
     SubscriptionRecord,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
+from metering_billing.serializers.serializer_utils import (
+    BalanceAdjustmentUUIDField,
+    MetricUUIDField,
+    PlanUUIDField,
+)
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -202,6 +206,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     queryset = Plan.objects.all().order_by(
         F("created_on").desc(nulls_last=False), F("plan_name")
     )
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_queryset(self):
         organization = self.request.organization
@@ -335,7 +345,7 @@ class SubscriptionViewSet(
             args = []
             args.append(Q(start_date__lte=now, end_date__gte=now))
             args.append(Q(customer=serializer.validated_data["customer"]))
-            if serializer.validated_data.get("plan_id"):
+            if serializer.validated_data.get("plan"):
                 args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
             organization = self.request.organization
             args.append(Q(organization=organization))
@@ -483,6 +493,7 @@ class SubscriptionViewSet(
     @action(detail=False, methods=["post"])
     def cancel(self, request, *args, **kwargs):
         qs = self.get_queryset()
+        print("qs", qs)
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         organization = self.request.organization
         serializer = self.get_serializer(data=request.data)
@@ -490,7 +501,6 @@ class SubscriptionViewSet(
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
         usage_behavior = serializer.validated_data["usage_behavior"]
         invoicing_behavior = serializer.validated_data["invoicing_behavior"]
-
         now = now_utc()
         qs_pks = list(qs.values_list("pk", flat=True))
         qs.update(
@@ -735,6 +745,12 @@ class CustomerBalanceAdjustmentViewSet(
     lookup_field = "adjustment_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
     def get_serializer_class(self):
         if self.action == "list":
             return CustomerBalanceAdjustmentSerializer
@@ -954,7 +970,9 @@ class GetCustomerEventAccessView(APIView):
                     }
                 )
             single_sub_dict = {
-                "plan_id": sr.billing_plan.plan_id,
+                "plan_id": PlanUUIDField().to_representation(
+                    sr.billing_plan.plan.plan_id
+                ),
                 "subscription_filters": subscription_filters,
                 "usage_per_component": [],
             }
@@ -976,7 +994,9 @@ class GetCustomerEventAccessView(APIView):
                         "metric_usage": current_usage,
                         "metric_free_limit": free_limit,
                         "metric_total_limit": total_limit,
-                        "metric_id": metric.metric_id,
+                        "metric_id": MetricUUIDField().to_representation(
+                            metric.metric_id
+                        ),
                     }
                     single_sub_dict["usage_per_component"].append(unique_tup_dict)
             metrics.append(single_sub_dict)
@@ -1048,7 +1068,9 @@ class GetCustomerFeatureAccessView(APIView):
                 )
             sub_dict = {
                 "feature_name": feature_name,
-                "plan_id": sub.billing_plan.plan_id,
+                "plan_id": PlanUUIDField().to_representation(
+                    sub.billing_plan.plan.plan_id
+                ),
                 "subscription_filters": subscription_filters,
                 "access": False,
             }

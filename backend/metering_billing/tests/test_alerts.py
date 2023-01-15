@@ -125,8 +125,8 @@ def alerts_test_common_setup(
                 org, billing_plan, customer
             )
         payload = {
-            "metric_id": metric_set[0].metric_id,
-            "plan_version_id": billing_plan.version_id,
+            "metric_id": "metric_" + metric_set[0].metric_id.hex,
+            "plan_version_id": billing_plan.version_id.hex,
             "threshold": 50,
         }
         setup_dict["payload"] = payload

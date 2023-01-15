@@ -110,7 +110,7 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
@@ -148,7 +148,7 @@ class TestCreatePlanVersion:
         assert set(PlanVersion.objects.values_list("version", "status")) == set(
             [(1, PLAN_VERSION_STATUS.ACTIVE)]
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
 
         # now add in the plan ID to the payload, and send a post request for the new version
         setup_dict["plan_version_payload"]["plan_id"] = plan.plan_id
@@ -179,7 +179,7 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
@@ -216,7 +216,7 @@ class TestCreatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
@@ -262,7 +262,6 @@ class TestUpdatePlan:
             data=json.dumps(setup_dict["plan_update_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-
         plan_after = Plan.objects.all().count()
         plan_test_plan_after = Plan.objects.filter(plan_name="change_plan_name").count()
         assert response.status_code == status.HTTP_200_OK
@@ -307,7 +306,7 @@ class TestUpdatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
@@ -340,7 +339,7 @@ class TestUpdatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
@@ -359,7 +358,9 @@ class TestUpdatePlan:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan_obj_after = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_obj_after = Plan.objects.get(
+            plan_id=response.data["plan_id"].replace("plan_", "")
+        )
         tags_after = plan_obj_after.tags.all()
         assert response.status_code == status.HTTP_200_OK
         assert tags_before == 0
@@ -376,7 +377,7 @@ class TestUpdatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
@@ -395,7 +396,9 @@ class TestUpdatePlan:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan_obj_after = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_obj_after = Plan.objects.get(
+            plan_id=response.data["plan_id"].replace("plan_", "")
+        )
         tags_after = plan_obj_after.tags.all()
         assert response.status_code == status.HTTP_200_OK
         assert tags_before == 0
@@ -411,7 +414,9 @@ class TestUpdatePlan:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan_obj_after_remove = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_obj_after_remove = Plan.objects.get(
+            plan_id=response.data["plan_id"].replace("plan_", "")
+        )
         tags_after_remove = plan_obj_after_remove.tags.all()
         assert response.status_code == status.HTTP_200_OK
         assert len(tags_after_remove) == 1
@@ -428,7 +433,7 @@ class TestUpdatePlan:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
@@ -447,7 +452,9 @@ class TestUpdatePlan:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan_obj_after = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_obj_after = Plan.objects.get(
+            plan_id=response.data["plan_id"].replace("plan_", "")
+        )
         tags_after = plan_obj_after.tags.all()
         assert response.status_code == status.HTTP_200_OK
         assert tags_before == 0
@@ -464,7 +471,9 @@ class TestUpdatePlan:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan_obj_after_remove = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan_obj_after_remove = Plan.objects.get(
+            plan_id=response.data["plan_id"].replace("plan_", "")
+        )
         tags_after_remove = plan_obj_after_remove.tags.all()
         assert response.status_code == status.HTTP_200_OK
         assert len(tags_after_remove) == 2
@@ -551,7 +560,7 @@ class TestUpdatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
@@ -592,7 +601,7 @@ class TestUpdatePlanVersion:
             data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        plan = Plan.objects.get(plan_id=response.data["plan_id"])
+        plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         first_plan_version = plan.display_version
         sub = add_subscription_to_org(
             setup_dict["org"], first_plan_version, setup_dict["customer"], now_utc()
@@ -640,7 +649,7 @@ class TestUpdatePlanVersion:
     #         data=json.dumps(setup_dict["plan_payload"], cls=DjangoJSONEncoder),
     #         content_type="application/json",
     #     )
-    #     plan = Plan.objects.get(plan_id=response.data["plan_id"])
+    #     plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
     #     first_plan_version = plan.display_version
 
     #     # now add in the plan ID to the payload, and send a post request for the new version

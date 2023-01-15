@@ -38,8 +38,12 @@ class ValidOrganization(permissions.BasePermission):
         return org is not None
 
     def has_object_permission(self, request, view, obj):
+        from metering_billing.models import Organization
+
         # Instance must have an attribute named `owner`.
         org = request.organization
         if org is None and request.user.is_authenticated:
             org = request.user.organization
+        if isinstance(obj, Organization):
+            return obj == org
         return obj.organization == org

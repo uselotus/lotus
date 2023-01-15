@@ -9,7 +9,12 @@ from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
+    BalanceAdjustmentUUIDField,
+    MetricUUIDField,
+    PlanUUIDField,
+    PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
+    SubscriptionUUIDField,
 )
 from metering_billing.utils.enums import *
 from rest_framework import serializers
@@ -130,7 +135,7 @@ class LightweightPlanVersionSerializer(
         }
 
     plan_name = serializers.CharField(source="plan.plan_name")
-    plan_id = serializers.CharField(source="plan.plan_id")
+    plan_id = PlanUUIDField(source="plan.plan_id")
 
 
 class CategoricalFilterSerializer(
@@ -650,6 +655,7 @@ class MetricSerializer(
             "proration": {"required": True, "read_only": True},
         }
 
+    metric_id = MetricUUIDField()
     numeric_filters = NumericFilterSerializer(
         many=True,
     )
@@ -822,6 +828,8 @@ class PlanNameAndIDSerializer(
             "plan_id": {"required": True},
         }
 
+    plan_id = PlanUUIDField()
+
 
 class InvoiceUpdateSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
@@ -889,6 +897,7 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
             "tags": {"required": True},
         }
 
+    plan_id = PlanUUIDField()
     parent_plan = PlanNameAndIDSerializer(allow_null=True)
     target_customer = LightweightCustomerSerializer(allow_null=True)
     display_version = PlanVersionSerializer()
@@ -948,8 +957,6 @@ class SubscriptionRecordCreateSerializer(
             "subscription_filters",
             "customer_id",
             "plan_id",
-            "customer",
-            "billing_plan",
         )
 
     start_date = serializers.DateTimeField(
@@ -984,15 +991,6 @@ class SubscriptionRecordCreateSerializer(
         queryset=Plan.objects.all(),
         write_only=True,
         help_text="The Lotus plan_id, found in the billing plan object",
-    )
-    # READ-ONLY
-    customer = LightweightCustomerSerializer(
-        read_only=True,
-        help_text="The customer object associated with this subscription.",
-    )
-    billing_plan = LightweightPlanVersionSerializer(
-        read_only=True,
-        help_text="The billing plan object associated with this subscription.",
     )
 
     def validate(self, data):
@@ -1053,7 +1051,8 @@ class LightweightPlanVersionSerializer(PlanVersionSerializer):
         fields = ("plan_id", "plan_name", "version_id")
 
     plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
-    plan_id = serializers.CharField(read_only=True, source="plan.plan_id")
+    plan_id = PlanUUIDField(read_only=True, source="plan.plan_id")
+    version_id = PlanVersionUUIDField(read_only=True)
 
 
 class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):
@@ -1087,6 +1086,7 @@ class SubscriptionSerializer(
             "plans",
         )
 
+    subscription_id = SubscriptionUUIDField(read_only=True)
     customer = LightweightCustomerSerializer(read_only=True)
     plans = serializers.SerializerMethodField()
 
@@ -1162,12 +1162,19 @@ class SubscriptionRecordUpdateSerializer(
 
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        source="customer",
+        queryset=Customer.objects.all(),
         required=True,
         help_text="Filter to a specific customer.",
     )
-    plan_id = serializers.CharField(
-        required=True, help_text="Filter to a specific plan."
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
+        required=True,
+        help_text="Filter to a specific plan.",
     )
     subscription_filters = SubscriptionCategoricalFilterSerializer(
         many=True,
@@ -1177,33 +1184,18 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
 
     def validate(self, data):
         data = super().validate(data)
-        # check that the customer ID matches an existing customer
-        try:
-            cust_id = data.pop("customer_id")
-            data["customer"] = Customer.objects.get(
-                customer_id=cust_id, organization=self.context["organization"]
-            )
-        except Customer.DoesNotExist:
-            raise serializers.ValidationError(
-                f"Customer with customer_id {cust_id} does not exist"
-            )
-        # check that the plan ID matches an existing plan
-        if data.get("plan_id"):
-            try:
-                data["plan"] = Plan.objects.get(
-                    plan_id=data["plan_id"], organization=self.context["organization"]
-                )
-            except Plan.DoesNotExist:
-                raise serializers.ValidationError(
-                    f"Plan with plan_id {data['plan_id']} does not exist"
-                )
+        if data.get("billing_plan"):
+            data["plan"] = data["billing_plan"]["plan"]
         return data
 
 
 class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerializer):
-    plan_id = serializers.CharField(
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
         required=False,
-        help_text="Filter to a specific plan. If not specified, all plans will be canceled.",
+        help_text="Filter to a specific plan. If not specified, all plans will be included in the cancellation request.",
     )
 
 
@@ -1233,9 +1225,12 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
         default=[SUBSCRIPTION_STATUS.ACTIVE],
         help_text="Filter to a specific set of subscription statuses. Defaults to active.",
     )
-    plan_id = serializers.CharField(
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
         required=False,
-        help_text="Filter to a specific plan. If not specified, all plans will be canceled.",
+        help_text="Filter to a specific plan.",
     )
     range_start = serializers.DateTimeField(
         required=False,
@@ -1249,16 +1244,6 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
     def validate(self, data):
         # check that the customer ID matches an existing customer
         data = super().validate(data)
-        if data.get("customer_id"):
-            try:
-                data["customer"] = Customer.objects.get(
-                    customer_id=data["customer_id"],
-                    organization=self.context["organization"],
-                )
-            except Customer.DoesNotExist:
-                raise serializers.ValidationError(
-                    f"Customer with customer_id {data['customer_id']} does not exist"
-                )
         return data
 
 
@@ -1308,6 +1293,7 @@ class CustomerBalanceAdjustmentSerializer(
             "amount_paid_currency",
         )
 
+    adjustment_id = BalanceAdjustmentUUIDField()
     customer = LightweightCustomerSerializer(read_only=True)
     pricing_unit = PricingUnitSerializer(read_only=True)
     parent_adjustment_id = SlugRelatedFieldWithOrganization(
@@ -1325,18 +1311,25 @@ class CustomerBalanceAdjustmentCreateSerializer(
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
-            "adjustment_id",
             "customer_id",
             "amount",
             "pricing_unit_code",
-            "pricing_unit",
             "description",
             "effective_at",
             "expires_at",
-            "status",
             "amount_paid",
             "amount_paid_currency_code",
         )
+        extra_kwargs = {
+            "customer_id": {"required": True, "write_only": True},
+            "amount": {"required": True, "write_only": True},
+            "pricing_unit_code": {"required": True, "write_only": True},
+            "description": {"required": False, "write_only": True},
+            "effective_at": {"required": False, "write_only": True},
+            "expires_at": {"required": False, "write_only": True},
+            "amount_paid": {"required": False, "write_only": True},
+            "amount_paid_currency_code": {"required": False, "write_only": True},
+        }
 
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",

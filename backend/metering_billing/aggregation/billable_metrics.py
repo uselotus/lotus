@@ -355,7 +355,7 @@ class CounterHandler(MetricHandler):
             injection_dict["cagg_name"] = (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "second"
             )
@@ -370,7 +370,7 @@ class CounterHandler(MetricHandler):
             injection_dict["cagg_name"] = (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "day"
             )
@@ -387,7 +387,7 @@ class CounterHandler(MetricHandler):
             injection_dict["cagg_name"] = (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "second"
             )
@@ -636,7 +636,7 @@ class CounterHandler(MetricHandler):
             base_name = (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
             )
             sql_injection_data["cagg_name"] = base_name + "day"
@@ -668,9 +668,9 @@ class CounterHandler(MetricHandler):
         from .common_query_templates import CAGG_DROP
 
         base_name = (
-            metric.organization.organization_id[:22]
+            ("org_" + metric.organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
         )
         sql_injection_data = {"cagg_name": base_name + "day"}
@@ -1057,7 +1057,7 @@ class GaugeHandler(MetricHandler):
         sql_injection_data["cagg_name"] = (
             ("org_" + organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
             + "cumsum"
         )
@@ -1098,7 +1098,7 @@ class GaugeHandler(MetricHandler):
             "cagg_name": (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1154,7 +1154,7 @@ class GaugeHandler(MetricHandler):
             "cumsum_cagg": (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1219,7 +1219,7 @@ class GaugeHandler(MetricHandler):
             "cumsum_cagg": (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1284,7 +1284,7 @@ class GaugeHandler(MetricHandler):
             "cumsum_cagg": (
                 ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1427,7 +1427,7 @@ class RateHandler(MetricHandler):
         #     sql_injection_data["cagg_name"] = (
         #         metric.organization.organization_id[:22]
         #         + "___"
-        #         + metric.metric_id[:22]
+        #         + ("metric_" + metric.metric_id.hex)[:22]
         #         + "___"
         #         + continuous_agg_type
         #     )
@@ -1455,7 +1455,7 @@ class RateHandler(MetricHandler):
         #     "cagg_name": (
         #         organization.organization_id[:22]
         #         + "___"
-        #         + metric.metric_id[:22]
+        #         + ("metric_" + metric.metric_id.hex)[:22]
         #         + "___"
         #         + "second"
         #     ),
@@ -1487,7 +1487,7 @@ class RateHandler(MetricHandler):
             "end_date": end.replace(microsecond=0),
             "cagg_name": ("org_" + organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
             + "second",
             "lookback_qty": 1,
@@ -1546,7 +1546,7 @@ class RateHandler(MetricHandler):
             "end_date": end.replace(microsecond=0),
             "cagg_name": ("org_" + organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
             + "second",
             "property_name": metric.property_name,
