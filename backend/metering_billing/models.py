@@ -1296,7 +1296,7 @@ class PlanComponent(models.Model):
 
 
 class Feature(models.Model):
-    feature_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    feature_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="features"
     )
@@ -1343,7 +1343,7 @@ class Invoice(models.Model):
     )
     due_date = models.DateTimeField(max_length=100, null=True, blank=True)
     invoice_number = models.CharField(max_length=13)
-    invoice_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    invoice_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     external_payment_obj_id = models.CharField(max_length=100, blank=True, null=True)
     external_payment_obj_type = models.CharField(
         choices=PAYMENT_PROVIDERS.choices, max_length=40, blank=True, null=True
@@ -1407,7 +1407,9 @@ class Invoice(models.Model):
 
 
 class InvoiceLineItem(models.Model):
-    invoice_line_item_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    invoice_line_item_id = models.UUIDField(
+        default=uuid.uuid4, unique=True, editable=False
+    )
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -2519,7 +2521,7 @@ class Tag(models.Model):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="tags"
     )
-    tag_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    tag_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     tag_name = models.CharField(max_length=50)
     tag_group = models.CharField(choices=TAG_GROUP.choices, max_length=15)
     tag_hex = models.CharField(max_length=7, null=True)
