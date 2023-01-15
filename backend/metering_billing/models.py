@@ -183,7 +183,7 @@ class Organization(models.Model):
 
     def provision_webhooks(self):
         if SVIX_CONNECTOR is not None:
-            logger.log("provisioning webhooks")
+            logger.info("provisioning webhooks")
             svix = SVIX_CONNECTOR
             svix.application.create(
                 ApplicationIn(uid=self.organization_id.hex, name=self.organization_name)
