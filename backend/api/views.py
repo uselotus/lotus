@@ -983,7 +983,7 @@ class GetCustomerEventAccessView(APIView):
                     tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
                     free_limit = (
                         tiers[0].range_end
-                        if tiers[0].type == PRICE_TIER_TYPE.FREE
+                        if tiers[0].type == PriceTier.PriceTierType.FREE
                         else None
                     )
                     total_limit = tiers[-1].range_end

@@ -683,5 +683,13 @@ if SVIX_CONNECTOR is not None:
                     name="invoice.paid",
                 )
             )
+        if "usage_alert.triggered" not in list_response_event_type_out:
+            event_type_out = svix.event_type.create(
+                EventTypeIn(
+                    description="Usage alert is triggered",
+                    archived=False,
+                    name="usage_alert.triggered",
+                )
+            )
     except:
         SVIX_CONNECTOR = None

@@ -32,7 +32,6 @@ from metering_billing.utils.enums import (
     PLAN_DURATION,
     PLAN_STATUS,
     PLAN_VERSION_STATUS,
-    PRICE_TIER_TYPE,
 )
 from model_bakery import baker
 
@@ -1412,7 +1411,7 @@ def create_pc_and_tiers(
             plan_component=pc,
             range_start=0,
             range_end=free_units,
-            type=PRICE_TIER_TYPE.FREE,
+            type=PriceTier.PriceTierType.FREE,
             organization=organization,
         )
         range_start = free_units
@@ -1421,7 +1420,7 @@ def create_pc_and_tiers(
             plan_component=pc,
             range_start=range_start,
             range_end=max_units,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             cost_per_batch=cost_per_batch,
             metric_units_per_batch=metric_units_per_batch,
             organization=organization,

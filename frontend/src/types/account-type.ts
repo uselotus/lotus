@@ -19,7 +19,6 @@ export interface UserType {
 
 export interface OrganizationType {
   organization_name: string;
-  payment_plan: string;
   payment_provider_ids: object;
   address?: {
     city: string;

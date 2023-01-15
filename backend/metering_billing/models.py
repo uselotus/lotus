@@ -79,12 +79,6 @@ class Organization(models.Model):
     organization_name = models.CharField(max_length=100, blank=False, null=False)
     payment_provider_ids = models.JSONField(default=dict, blank=True, null=True)
     created = models.DateField(default=now_utc)
-    payment_plan = models.CharField(
-        max_length=40,
-        choices=PAYMENT_PLANS.choices,
-        default=PAYMENT_PLANS.SELF_HOSTED_FREE,
-        null=False,
-    )
     organization_type = models.PositiveSmallIntegerField(
         choices=OrganizationType.choices, default=OrganizationType.DEVELOPMENT
     )
@@ -1117,6 +1111,17 @@ class UsageRevenueSummary(TypedDict):
 
 
 class PriceTier(models.Model):
+    class PriceTierType(models.IntegerChoices):
+        FLAT = (1, _("Flat"))
+        PER_UNIT = (2, _("Per Unit"))
+        FREE = (3, _("Free"))
+
+    class BatchRoundingType(models.IntegerChoices):
+        ROUND_UP = (1, _("Round Up"))
+        ROUND_DOWN = (2, _("Round Down"))
+        ROUND_NEAREST = (3, _("Round Nearest"))
+        NO_ROUNDING = (4, _("No Rounding"))
+
     organization = models.ForeignKey(
         "Organization", on_delete=models.CASCADE, related_name="price_tiers", null=True
     )
@@ -1127,7 +1132,8 @@ class PriceTier(models.Model):
         null=True,
         blank=True,
     )
-    type = models.CharField(choices=PRICE_TIER_TYPE.choices, max_length=10)
+    type_old = models.CharField(choices=PRICE_TIER_TYPE.choices, max_length=10)
+    type = models.PositiveSmallIntegerField(choices=PriceTierType.choices)
     range_start = models.DecimalField(
         max_digits=20, decimal_places=10, validators=[MinValueValidator(0)]
     )
@@ -1153,10 +1159,15 @@ class PriceTier(models.Model):
         default=1.0,
         validators=[MinValueValidator(0)],
     )
-    batch_rounding_type = models.CharField(
+    batch_rounding_type_old = models.CharField(
         choices=BATCH_ROUNDING_TYPE.choices,
         max_length=20,
         default=BATCH_ROUNDING_TYPE.NO_ROUNDING,
+        blank=True,
+        null=True,
+    )
+    batch_rounding_type = models.PositiveSmallIntegerField(
+        choices=BatchRoundingType.choices,
         blank=True,
         null=True,
     )
@@ -1176,9 +1187,9 @@ class PriceTier(models.Model):
             else self.range_start < usage or self.range_start == 0
         )
         if usage_in_range:
-            if self.type == PRICE_TIER_TYPE.FLAT:
+            if self.type == PriceTier.PriceTierType.FLAT:
                 revenue += self.cost_per_batch
-            elif self.type == PRICE_TIER_TYPE.PER_UNIT:
+            elif self.type == PriceTier.PriceTierType.PER_UNIT:
                 if self.range_end is not None:
                     billable_units = min(
                         usage - self.range_start, self.range_end - self.range_start
@@ -1188,11 +1199,14 @@ class PriceTier(models.Model):
                 if discontinuous_range:
                     billable_units += 1
                 billable_batches = billable_units / self.metric_units_per_batch
-                if self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_UP:
+                if self.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_UP:
                     billable_batches = math.ceil(billable_batches)
-                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_DOWN:
+                elif self.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_DOWN:
                     billable_batches = math.floor(billable_batches)
-                elif self.batch_rounding_type == BATCH_ROUNDING_TYPE.ROUND_NEAREST:
+                elif (
+                    self.batch_rounding_type
+                    == PriceTier.BatchRoundingType.ROUND_NEAREST
+                ):
                     billable_batches = round(billable_batches)
                 revenue += self.cost_per_batch * billable_batches
         return revenue

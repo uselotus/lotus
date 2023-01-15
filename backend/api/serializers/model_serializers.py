@@ -712,6 +712,41 @@ class PriceTierSerializer(
             },
         }
 
+    type = serializers.SerializerMethodField()
+    batch_rounding_type = serializers.SerializerMethodField()
+
+    def get_type(
+        self, obj
+    ) -> Literal[PRICE_TIER_TYPE.FLAT, PRICE_TIER_TYPE.PER_UNIT, PRICE_TIER_TYPE.FREE]:
+        if obj.type == PriceTier.PriceTierType.FLAT:
+            return PRICE_TIER_TYPE.FLAT
+        elif obj.type == PriceTier.PriceTierType.PER_UNIT:
+            return PRICE_TIER_TYPE.PER_UNIT
+        elif obj.type == PriceTier.PriceTierType.FREE:
+            return PRICE_TIER_TYPE.FREE
+        else:
+            raise ValueError("Invalid price tier type")
+
+    def get_batch_rounding_type(
+        self, obj
+    ) -> Optional[
+        Literal[
+            BATCH_ROUNDING_TYPE.ROUND_UP,
+            BATCH_ROUNDING_TYPE.ROUND_DOWN,
+            BATCH_ROUNDING_TYPE.ROUND_NEAREST,
+            BATCH_ROUNDING_TYPE.NO_ROUNDING,
+        ]
+    ]:
+        if obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_UP:
+            return BATCH_ROUNDING_TYPE.ROUND_UP
+        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_DOWN:
+            return BATCH_ROUNDING_TYPE.ROUND_DOWN
+        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_NEAREST:
+            return BATCH_ROUNDING_TYPE.ROUND_NEAREST
+        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.NO_ROUNDING:
+            return BATCH_ROUNDING_TYPE.NO_ROUNDING
+        else:
+            return None
 
 class PlanComponentSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer

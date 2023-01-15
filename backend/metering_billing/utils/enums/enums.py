@@ -9,12 +9,6 @@ class INVOICE_STATUS_ENUM(models.TextChoices):
     UNPAID = ("unpaid", _("Unpaid"))
 
 
-class PAYMENT_PLANS(models.TextChoices):
-    SELF_HOSTED_FREE = ("self_hosted_free", _("Self-Hosted Free"))
-    CLOUD = ("cloud", _("Cloud"))
-    SELF_HOSTED_ENTERPRISE = ("self_hosted_enterprise", _("Self-Hosted Enterprise"))
-
-
 class PRICE_TIER_TYPE(models.TextChoices):
     FLAT = ("flat", _("Flat"))
     PER_UNIT = ("per_unit", _("Per Unit"))
