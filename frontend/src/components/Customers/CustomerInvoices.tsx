@@ -41,6 +41,7 @@ interface Props {
 }
 
 const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
+  const [selectedRecord, setSelectedRecord] = React.useState();
   const changeStatus = useMutation(
     (post: MarkPaymentStatusAsPaid) => Invoices.changeStatus(post),
     {
@@ -49,6 +50,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
         toast.success(`Successfully Changed Invoice Status to ${status}`, {
           position: toast.POSITION.TOP_CENTER,
         });
+        selectedRecord.payment_status = data.payment_status;
       },
       onError: () => {
         toast.error("Failed to Changed Invoice Status", {
@@ -132,6 +134,7 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                     <Menu.Item
                       key="2"
                       onClick={() => {
+                        setSelectedRecord(record);
                         changeStatus.mutate({
                           invoice_number: record.invoice_number,
                           payment_status:
@@ -139,10 +142,6 @@ const CustomerInvoiceView: FC<Props> = ({ invoices }) => {
                               ? "paid"
                               : "unpaid",
                         });
-                        record.payment_status =
-                          record.payment_status === "unpaid"
-                            ? "paid"
-                            : "unpaid";
                       }}
                     >
                       <div className="archiveLabel">
