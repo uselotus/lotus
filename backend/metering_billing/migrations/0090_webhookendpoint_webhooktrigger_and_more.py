@@ -6,7 +6,6 @@ import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0089_alter_metric_unique_together"),
     ]

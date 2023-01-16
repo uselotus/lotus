@@ -355,13 +355,13 @@ class TestCalculateMetric:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -445,13 +445,13 @@ class TestCalculateMetric:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -537,13 +537,13 @@ class TestCalculateMetric:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -646,13 +646,13 @@ class TestCalculateMetric:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -732,13 +732,13 @@ class TestCalculateMetric:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -830,13 +830,13 @@ class TestCalculateMetricProrationForGauge:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=1,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=1,
@@ -863,7 +863,7 @@ class TestCalculateMetricProrationForGauge:
         calculated_amt = (Decimal(87) - Decimal(60)) / Decimal(60) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - calculated_amt) < Decimal(0.01)
 
-        payload = {}
+        {}
         response = setup_dict["client"].get(
             reverse("cost_analysis"),
             {
@@ -943,13 +943,13 @@ class TestCalculateMetricProrationForGauge:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=1,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=1,
@@ -975,7 +975,7 @@ class TestCalculateMetricProrationForGauge:
         supposed_revenue = (Decimal(72) - Decimal(24)) / Decimal(24) * Decimal(100)
         assert abs(usage_revenue_dict["revenue"] - supposed_revenue) < Decimal(0.01)
 
-        payload = {}
+        {}
         response = setup_dict["client"].get(
             reverse("cost_analysis"),
             {
@@ -1062,13 +1062,13 @@ class TestCalculateMetricProrationForGauge:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=1,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=1,
@@ -1094,7 +1094,7 @@ class TestCalculateMetricProrationForGauge:
         usage_revenue_dict = plan_component.calculate_total_revenue(subscription_record)
         assert Decimal(100) > usage_revenue_dict["revenue"] > Decimal(0)
 
-        payload = {}
+        {}
         response = setup_dict["client"].get(
             reverse("cost_analysis"),
             {
@@ -1186,13 +1186,13 @@ class TestCalculateMetricWithFilters:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -1284,13 +1284,13 @@ class TestCalculateMetricWithFilters:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -1373,13 +1373,13 @@ class TestCalculateMetricWithFilters:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -1494,13 +1494,13 @@ class TestCalculateMetricWithFilters:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -1607,13 +1607,13 @@ class TestCustomSQLMetrics:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -1639,7 +1639,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+        billable_metric.get_subscription_record_total_billable_usage(
             subscription_record
         )
 
@@ -1722,13 +1722,13 @@ class TestCustomSQLMetrics:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -1754,7 +1754,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+        billable_metric.get_subscription_record_total_billable_usage(
             subscription_record
         )
 
@@ -1837,13 +1837,13 @@ class TestCustomSQLMetrics:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -1869,7 +1869,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+        billable_metric.get_subscription_record_total_billable_usage(
             subscription_record
         )
 
@@ -1909,25 +1909,25 @@ class TestCustomSQLMetrics:
             "metric_name": "test_billable_metric",
             "custom_sql": """
             WITH new_filter AS (
-                SELECT 
+                SELECT
                     properties ->> 'test_property' AS test_property,
-                    SUM((properties ->> 'qty_property')::text::decimal) 
+                    SUM((properties ->> 'qty_property')::text::decimal)
                     OVER(PARTITION BY properties ->> 'test_property') AS qty_partition
                 FROM events
             ), sum_per_partition AS (
                 SELECT
                     SUM(qty_partition) AS total_sum,
                     test_property
-                FROM 
+                FROM
                     new_filter
                 GROUP BY
                     test_property
                 HAVING
                     SUM(qty_partition) < 250
             )
-            SELECT 
+            SELECT
                 MAX(total_sum) AS usage_qty
-            FROM 
+            FROM
                 sum_per_partition
             """,
         }
@@ -1974,13 +1974,13 @@ class TestCustomSQLMetrics:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -2006,7 +2006,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+        billable_metric.get_subscription_record_total_billable_usage(
             subscription_record
         )
 
@@ -2046,9 +2046,9 @@ class TestCustomSQLMetrics:
             "metric_name": "test_billable_metric",
             "custom_sql": """
             WITH experiment_key_days AS (
-            SELECT 
+            SELECT
                 properties ->> 'experiment_key' as experiment_key,
-                date_trunc('day', time_created) AS day 
+                date_trunc('day', time_created) AS day
             FROM
                 events
             WHERE
@@ -2058,15 +2058,15 @@ class TestCustomSQLMetrics:
                 AND date_trunc('day', time_created) > start_date - INTERVAL '2 days'
             )
             , second_table as (
-            SELECT 
+            SELECT
                 COUNT(DISTINCT day) AS num_days,
                 experiment_key
             FROM experiment_key_days
             GROUP BY experiment_key
             )
-            SELECT 
+            SELECT
                 COUNT(*) AS usage_qty
-            FROM 
+            FROM
                 second_table
             WHERE
                 num_days >= 3
@@ -2187,13 +2187,13 @@ class TestCustomSQLMetrics:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        free_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.FREE,
             range_start=0,
             range_end=3,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=3,
@@ -2219,7 +2219,7 @@ class TestCustomSQLMetrics:
                 customer,
                 now - relativedelta(days=1),
             )
-        metric_usage = billable_metric.get_subscription_record_total_billable_usage(
+        billable_metric.get_subscription_record_total_billable_usage(
             subscription_record
         )
 
@@ -2364,7 +2364,7 @@ class TestRegressions:
             billable_metric=billable_metric,
             plan_version=billing_plan,
         )
-        paid_tier = PriceTier.objects.create(
+        PriceTier.objects.create(
             plan_component=plan_component,
             type=PriceTier.PriceTierType.PER_UNIT,
             range_start=0,

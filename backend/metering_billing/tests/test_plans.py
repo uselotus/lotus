@@ -3,11 +3,10 @@ import json
 import pytest
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from metering_billing.models import Plan, PlanVersion, Subscription, SubscriptionRecord
+from metering_billing.models import Plan, PlanVersion
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import *
-from model_bakery import baker
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.test import APIClient
 
 
@@ -181,7 +180,7 @@ class TestCreatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         # now add in the plan ID to the payload, and send a post request for the new version
@@ -218,7 +217,7 @@ class TestCreatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
 
@@ -308,7 +307,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_before = Plan.objects.all().count()
@@ -341,7 +340,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_obj_before = Plan.objects.all()[0]
@@ -379,7 +378,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_obj_before = Plan.objects.all()[0]
@@ -435,7 +434,7 @@ class TestUpdatePlan:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_obj_before = Plan.objects.all()[0]
@@ -562,7 +561,7 @@ class TestUpdatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], plan_version, setup_dict["customer"], now_utc()
         )
         plan_before = Plan.objects.all().count()
@@ -603,7 +602,7 @@ class TestUpdatePlanVersion:
         )
         plan = Plan.objects.get(plan_id=response.data["plan_id"].replace("plan_", ""))
         first_plan_version = plan.display_version
-        sub = add_subscription_to_org(
+        add_subscription_to_org(
             setup_dict["org"], first_plan_version, setup_dict["customer"], now_utc()
         )
 

@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0042_backtest_remove_customer_billing_address_and_more"),
     ]

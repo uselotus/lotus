@@ -2,14 +2,11 @@ import abc
 import datetime
 import logging
 from decimal import Decimal
-from re import S
-from typing import Union
 from urllib.parse import urlencode
 
 import pytz
 import stripe
 from dateutil.relativedelta import relativedelta
-from django.apps import apps
 from django.conf import settings
 from django.db.models import F, Prefetch, Q
 from metering_billing.exceptions.exceptions import ExternalConnectionInvalid
@@ -126,7 +123,7 @@ class StripeConnector(PaymentProvider):
             self.redirect_url = ""
 
     def working(self) -> bool:
-        return self.secret_key != "" and self.secret_key != None
+        return self.secret_key != "" and self.secret_key is not None
 
     def customer_connected(self, customer) -> bool:
         pp_ids = customer.integrations
@@ -136,7 +133,7 @@ class StripeConnector(PaymentProvider):
 
     def organization_connected(self, organization) -> bool:
         if self.self_hosted:
-            return self.secret_key != "" and self.secret_key != None
+            return self.secret_key != "" and self.secret_key is not None
         else:
             return (
                 organization.payment_provider_ids.get(PAYMENT_PROVIDERS.STRIPE, "")
@@ -157,7 +154,7 @@ class StripeConnector(PaymentProvider):
         """
         Imports customers from Stripe. If they already exist (by checking that either they already have their Stripe ID in our system, or seeing that they have the same email address), then we update the Stripe section of payment_providers dict to reflect new information. If they don't exist, we create them (not as a Lotus customer yet, just as a Stripe customer).
         """
-        from metering_billing.models import Customer, SubscriptionRecord
+        from metering_billing.models import Customer
 
         stripe.api_key = self.secret_key
 
@@ -288,7 +285,7 @@ class StripeConnector(PaymentProvider):
             setting_group=PAYMENT_PROVIDERS.STRIPE,
         )
         setting_value = setting.setting_values.get("value", False)
-        if setting_value == True:
+        if setting_value is True:
             assert (
                 customer.integrations.get(PAYMENT_PROVIDERS.STRIPE, {}).get("id")
                 is None
@@ -316,7 +313,7 @@ class StripeConnector(PaymentProvider):
                 customer.save()
             except:
                 pass
-        elif setting_value == False:
+        elif setting_value is False:
             pass
         else:
             raise Exception(
@@ -324,8 +321,6 @@ class StripeConnector(PaymentProvider):
             )
 
     def create_payment_object(self, invoice) -> str:
-        from metering_billing.models import Customer, Organization
-
         stripe.api_key = self.secret_key
         # check everything works as expected + build invoice item
         assert invoice.external_payment_obj_id is None
@@ -586,9 +581,7 @@ class StripeConnector(PaymentProvider):
                     validated_data[
                         "next_billing_date"
                     ] = tentative_nbd  # end_date - i * relativedelta(months=num_months)
-                subscription_record = SubscriptionRecord.objects.create(
-                    **validated_data
-                )
+                SubscriptionRecord.objects.create(**validated_data)
             else:  # error if multiple plans match
                 err_msg = "Multiple Lotus plans match Stripe subscription {}.".format(
                     subscription

@@ -4,7 +4,6 @@ import logging
 import math
 import uuid
 from decimal import Decimal
-from random import choices
 from typing import TypedDict
 
 # import lotus_python
@@ -12,14 +11,12 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.core.files.base import ContentFile
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Count, F, FloatField, Q, Sum
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from django.db.models.functions import Cast, Coalesce
 from django.utils.translation import gettext_lazy as _
-from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
 from metering_billing.exceptions.exceptions import (
     AlignmentEngineFailure,
     ExternalConnectionFailure,
@@ -284,7 +281,7 @@ class WebhookEndpoint(models.Model):
                         version += 1
                     svix_update_dict["filter_types"] = list(triggers)
                     svix_update_dict["version"] = version
-                    updated_endpoint = svix.endpoint.update(
+                    svix.endpoint.update(
                         self.organization.organization_id.hex,
                         self.webhook_endpoint_id.hex,
                         EndpointUpdate(**svix_update_dict),
@@ -492,7 +489,7 @@ class Customer(models.Model):
         ).update(customer=self)
 
     def get_subscription_and_records(self):
-        now = now_utc()
+        now_utc()
         active_subscription = self.subscriptions.active().first()
         if active_subscription:
             active_subscription_records = self.subscription_records.filter(
@@ -698,7 +695,7 @@ class CustomerBalanceAdjustment(models.Model):
             fmt = now_utc().strftime("%Y-%m-%d %H:%M")
             description = f"Voiding remaining credit at {fmt} UTC"
         else:
-            description = f"Zeroing out remaining credit"
+            description = "Zeroing out remaining credit"
         remaining_balance = self.get_remaining_balance()
         if remaining_balance > 0:
             CustomerBalanceAdjustment.objects.create(
@@ -1016,7 +1013,7 @@ class Metric(models.Model):
                     **{f"{nullable}__in": [None, ""] for nullable in sorted(nullables)}
                 )
                 & Q(status=METRIC_STATUS.ACTIVE),
-                name=f"uq_metric_w_null__"
+                name="uq_metric_w_null__"
                 + "_".join(
                     [
                         "_".join([x[:2] for x in nullable.split("_")])
@@ -1941,7 +1938,7 @@ class Subscription(models.Model):
                     overlapping_subscriptions,
                 )
                 raise AlignmentEngineFailure(
-                    f"An unexpected error in the alignment engine has occurred. Please contact support."
+                    "An unexpected error in the alignment engine has occurred. Please contact support."
                 )
         super(Subscription, self).save(*args, **kwargs)
 
@@ -2268,10 +2265,10 @@ class SubscriptionRecord(models.Model):
         # set up the billing plan for this subscription
         plan = self.billing_plan
         # set up other details of the subscription
-        plan_start_date = self.start_date
-        plan_end_date = self.end_date
+        self.start_date
+        self.end_date
         # extract other objects that we need when calculating usage
-        customer = self.customer
+        self.customer
         plan_components_qs = plan.plan_components.all()
         # For each component of the plan, calculate usage/revenue
         for plan_component in plan_components_qs:
@@ -2340,7 +2337,7 @@ class SubscriptionRecord(models.Model):
             rev_per_day = component.calculate_revenue_per_day(self)
             for period, d in rev_per_day.items():
                 period = convert_to_date(period)
-                usage_qty = d["usage_qty"]
+                d["usage_qty"]
                 revenue = d["revenue"]
                 if period in return_dict:
                     return_dict[period] += revenue

@@ -100,7 +100,7 @@ def generate_invoice(
                     usg_rev = plan_component.calculate_total_revenue(
                         subscription_record
                     )
-                    ili = InvoiceLineItem.objects.create(
+                    InvoiceLineItem.objects.create(
                         name=str(plan_component.billable_metric.billable_metric_name),
                         start_date=subscription_record.usage_start_date,
                         end_date=subscription_record.end_date,
@@ -195,7 +195,7 @@ def generate_invoice(
                     new_start = date_as_min_dt(
                         subscription_record.end_date + relativedelta(days=1)
                     )
-                    ili = InvoiceLineItem.objects.create(
+                    InvoiceLineItem.objects.create(
                         name=f"{next_bp.plan.plan_name} v{next_bp.version} Flat Fee - Next Period",
                         start_date=new_start,
                         end_date=calculate_end_date(
@@ -324,7 +324,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
     subtotal = invoice.line_items.aggregate(tot=Sum("subtotal"))["tot"] or 0
     if subtotal < 0:
         InvoiceLineItem.objects.create(
-            name=f"Balance Adjustment [CREDIT]",
+            name="Balance Adjustment [CREDIT]",
             start_date=invoice.issue_date,
             end_date=invoice.issue_date,
             quantity=None,
@@ -358,7 +358,7 @@ def apply_customer_balance_adjustments(invoice, customer, organization, draft):
                 )
             if -balance_adjustment + leftover != 0:
                 InvoiceLineItem.objects.create(
-                    name=f"Balance Adjustment [DEBIT]",
+                    name="Balance Adjustment [DEBIT]",
                     start_date=issue_date,
                     end_date=issue_date,
                     quantity=None,
@@ -406,7 +406,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
 
     # Create the invoice line item
     InvoiceLineItem.objects.create(
-        name=f"Balance Adjustment Grant",
+        name="Balance Adjustment Grant",
         start_date=issue_date,
         end_date=issue_date,
         quantity=balance_adjustment.amount,

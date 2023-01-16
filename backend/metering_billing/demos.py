@@ -6,21 +6,15 @@ import time
 import uuid
 
 import numpy as np
-import pytz
 from dateutil.relativedelta import relativedelta
-from django.core.management.base import BaseCommand
-from faker import Faker
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.invoice import generate_invoice
 from metering_billing.models import *
-from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.tasks import run_backtest, run_generate_invoice
 from metering_billing.utils import (
     calculate_end_date,
     date_as_max_dt,
     date_as_min_dt,
     now_utc,
-    plan_version_uuid,
 )
 from metering_billing.utils.enums import (
     BACKTEST_KPI,
@@ -175,13 +169,13 @@ def setup_demo3(
         metric = METRIC_HANDLER_MAP[METRIC_TYPE.COUNTER].create_metric(validated_data)
         assert metric is not None
         metrics_map[name] = metric
-    calls = metrics_map["calls"]
+    metrics_map["calls"]
     sum_words = metrics_map["sum_words"]
     sum_compute = metrics_map["sum_compute"]
-    unique_lang = metrics_map["unique_lang"]
-    unique_subsections = metrics_map["unique_subsections"]
+    metrics_map["unique_lang"]
+    metrics_map["unique_subsections"]
     num_seats = metrics_map["num_seats"]
-    compute_cost = metrics_map["compute_cost"]
+    metrics_map["compute_cost"]
     # SET THE BILLING PLANS
     plan = Plan.objects.create(
         plan_name="Free Plan",
@@ -744,7 +738,7 @@ def setup_demo4(
         assert metric is not None
         metrics_map[name] = metric
     calls = metrics_map["calls"]
-    unique_users = metrics_map["unique_users"]
+    metrics_map["unique_users"]
     session_recordings = metrics_map["session_recordings"]
     sum_time = metrics_map["sum_time"]
     num_seats = metrics_map["num_seats"]
@@ -994,7 +988,7 @@ def setup_demo4(
             offset = np.random.randint(0, 30)
             beginning = beginning + relativedelta(days=offset)
             for months in range(6):
-                start_time = time.time()
+                time.time()
                 sub_start = beginning + relativedelta(months=months)
                 plan = plan_dict[cust_set_name][months]
                 if cust_set_name == "big":
@@ -1141,8 +1135,8 @@ def setup_demo4(
                     sr.fully_billed = True
                     sr.billing_plan.replace_with = cur_replace_with
                     sr.save()
-                end_time = time.time()
-    now = now_utc()
+                time.time()
+    now_utc()
     # backtest = Backtest.objects.create(
     #     backtest_name=organization,
     #     start_date="2022-08-01",

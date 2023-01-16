@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
+from django_celery_beat.models import IntervalSchedule, PeriodicTask
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,7 +7,6 @@ load_dotenv()
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-
         # Create schedules
         every_hour, _ = IntervalSchedule.objects.get_or_create(
             every=1,

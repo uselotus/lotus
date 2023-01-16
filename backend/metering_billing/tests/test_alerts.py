@@ -1,12 +1,8 @@
 import itertools
 import json
-import urllib.parse
 from datetime import timedelta
-from decimal import Decimal
-from urllib.parse import urlencode
 
 import pytest
-from dateutil.relativedelta import relativedelta
 from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
