@@ -406,6 +406,7 @@ const GeneralTab: FC = () => {
 
             <Input
               value={newSubscriptionFilter}
+              placeholder="Enter New Subscription Filter"
               onChange={(e) => setNewSubscriptionFilter(e.target.value)}
             ></Input>
             <Button
@@ -420,13 +421,13 @@ const GeneralTab: FC = () => {
               type="primary"
               size="small"
               key="create-plan"
-              className="hover:!bg-primary-700"
+              className="hover:!bg-primary-700 mt-4 float-right py-4"
               style={{ background: "#C3986B", borderColor: "#C3986B" }}
             >
               <div className="flex items-center  justify-between text-white">
                 <div>
                   <PlusOutlined className="!text-white w-12 h-12 cursor-pointer" />
-                  Create
+                  Create Filter
                 </div>
               </div>
             </Button>
