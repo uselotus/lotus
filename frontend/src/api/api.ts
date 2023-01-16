@@ -359,13 +359,14 @@ export const Organization = {
     tax_rate: number,
     payment_grace_period: number,
     address: OrganizationType["address"],
-    subscription_filters: string[]
+    subscription_filter_keys: string[]
   ): Promise<OrganizationType> =>
     requests.patch(`app/organizations/${org_id}/`, {
       default_currency_code: default_currency_code,
       tax_rate,
       payment_grace_period,
       address,
+      subscription_filter_keys,
     }),
 };
 

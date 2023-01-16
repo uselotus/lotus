@@ -95,12 +95,12 @@ const GeneralTab: FC = () => {
         setTaxRate(orgData.tax_rate);
         setDisplayTaxRate(orgData.tax_rate);
       }
-      if (orgData.invoice_grace_period === null) {
+      if (orgData.payment_grace_period === null) {
         setInvoiceGracePeriod(0);
         setDisplayInvoiceGracePeriod(0);
       } else {
-        setInvoiceGracePeriod(orgData.invoice_grace_period);
-        setDisplayInvoiceGracePeriod(orgData.invoice_grace_period);
+        setInvoiceGracePeriod(orgData.payment_grace_period);
+        setDisplayInvoiceGracePeriod(orgData.payment_grace_period);
       }
 
       if (
@@ -118,7 +118,7 @@ const GeneralTab: FC = () => {
       setState(orgData.address ? orgData.address.state : "");
       setCountry(orgData.address ? orgData.address.country : "");
       setPostalCode(orgData.address ? orgData.address.postal_code : "");
-      setSubscriptionFilters(orgData.subscription_filters_keys);
+      setSubscriptionFilters(orgData.subscription_filter_keys);
     }
   }, [orgData]);
 
@@ -153,7 +153,7 @@ const GeneralTab: FC = () => {
       address: OrganizationType["address"];
       tax_rate: number;
       payment_grace_period: number;
-      subscription_filters: string[];
+      subscription_filter_keys: string[];
     }) =>
       Organization.updateOrganization(
         obj.org_id,
@@ -161,15 +161,16 @@ const GeneralTab: FC = () => {
         obj.tax_rate,
         obj.payment_grace_period,
         obj.address,
-        obj.subscription_filters
+        obj.subscription_filter_keys
       ),
     {
       onSuccess: () => {
+        setIsEdit(false);
+
         toast.success("Successfully Updated Organization Settings", {
           position: toast.POSITION.TOP_CENTER,
         });
-        queryClient.invalidateQueries("organization");
-        setIsEdit(false);
+        queryClient.invalidateQueries(["organization"]);
         form.resetFields();
       },
       onError: () => {
@@ -242,7 +243,7 @@ const GeneralTab: FC = () => {
           )}
           <p className="text-[16px]">
             <b>Subscription Filters:</b>{" "}
-            {subscriptionFilters.map((filter) => {
+            {orgData?.subscription_filter_keys.map((filter) => {
               return <Tag key={filter}>{filter}</Tag>;
             })}
           </p>
@@ -283,15 +284,8 @@ const GeneralTab: FC = () => {
               tax_rate: fourDP(taxRate),
               payment_grace_period: invoiceGracePeriod,
               address: submittedAddress,
-              subscription_filters: formSubscriptionFilters,
+              subscription_filter_keys: subscriptionFilters,
             });
-
-            // updateOrg.mutate({
-            //   org_id: org.organization_id,
-            //   default_currency_code: currentCurrency,
-            //   tax_rate: fourDP(taxRate),
-            //   payment_grace_period: invoiceGracePeriod,
-            // });
           }
         }}
       >
@@ -396,9 +390,9 @@ const GeneralTab: FC = () => {
             <Form.Item label="Subscription Filters" name="subscription_filters">
               <Select
                 mode="multiple"
-                value={formSubscriptionFilters.map((filter) => filter)}
+                value={subscriptionFilters.map((filter) => filter)}
                 placeholder="Select subscription filters"
-                onChange={(e) => setFormSubscriptionFilters(e)}
+                onChange={(e) => setSubscriptionFilters(e)}
                 optionLabelProp="label"
                 options={formSubscriptionFilters.map((filter) => {
                   return { label: filter, value: filter };
@@ -413,12 +407,14 @@ const GeneralTab: FC = () => {
             ></Input>
             <Button
               onClick={() => {
-                setFormSubscriptionFilters([
-                  ...formSubscriptionFilters,
-                  newSubscriptionFilter,
-                ]);
+                if (newSubscriptionFilter.length !== 0) {
+                  setFormSubscriptionFilters([
+                    ...formSubscriptionFilters,
+                    newSubscriptionFilter,
+                  ]);
 
-                setNewSubscriptionFilter("");
+                  setNewSubscriptionFilter("");
+                }
               }}
               type="primary"
               size="small"
