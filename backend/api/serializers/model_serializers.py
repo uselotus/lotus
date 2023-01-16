@@ -748,6 +748,7 @@ class PriceTierSerializer(
         else:
             return None
 
+
 class PlanComponentSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
 ):
@@ -1040,6 +1041,8 @@ class SubscriptionRecordCreateSerializer(
         return data
 
     def create(self, validated_data):
+        from metering_billing.invoice import generate_invoice
+
         filters = validated_data.pop("subscription_filters", [])
         subscription_filters = []
         for filter_data in filters:
