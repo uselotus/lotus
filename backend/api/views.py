@@ -250,6 +250,7 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             "versions__plan_components__billable_metric__categorical_filters",
             "versions__plan_components__tiers",
             "created_by",
+            "display_version",
             "external_links",
             "parent_plan",
             "target_customer",
