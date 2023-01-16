@@ -493,7 +493,6 @@ class SubscriptionViewSet(
     @action(detail=False, methods=["post"])
     def cancel(self, request, *args, **kwargs):
         qs = self.get_queryset()
-        print("qs", qs)
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         organization = self.request.organization
         serializer = self.get_serializer(data=request.data)
@@ -686,6 +685,22 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if self.action == "partial_update":
             return InvoiceUpdateSerializer
         return InvoiceSerializer
+
+    @extend_schema(responses=InvoiceSerializer)
+    def update(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        serializer = self.get_serializer(invoice, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(invoice, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            invoice._prefetched_objects_cache = {}
+
+        return Response(
+            InvoiceSerializer(invoice, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
 
     def get_serializer_context(self):
         context = super(InvoiceViewSet, self).get_serializer_context()

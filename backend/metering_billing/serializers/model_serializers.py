@@ -118,6 +118,26 @@ class LightweightUserSerializer(serializers.ModelSerializer):
         fields = ("username", "email")
 
 
+class OrganizationSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationSetting
+        fields = ("setting_id", "setting_name", "setting_values", "setting_group")
+        extra_kwargs = {
+            "setting_id": {"required": True},
+            "setting_name": {"required": True},
+            "setting_group": {"required": True},
+            "setting_values": {"required": True},
+        }
+
+    setting_id = OrganizationSettingUUIDField()
+    setting_name = serializers.ChoiceField(
+        choices=ORGANIZATION_SETTING_NAMES.choices, required=True
+    )
+    setting_group = serializers.ChoiceField(
+        choices=ORGANIZATION_SETTING_GROUPS.choices, required=False
+    )
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
@@ -135,6 +155,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "current_user",
             "address",
             "team_name",
+            "settings",
         )
 
     organization_id = OrganizationUUIDField()
@@ -147,6 +168,16 @@ class OrganizationSerializer(serializers.ModelSerializer):
     current_user = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField(required=False, allow_null=True)
     team_name = serializers.SerializerMethodField()
+    settings = serializers.SerializerMethodField()
+
+    def get_settings(
+        self, obj
+    ) -> serializers.DictField(child=OrganizationSettingSerializer()):
+        settings = obj.settings.all()
+        ret = {}
+        for setting in settings:
+            ret[setting.setting_name] = OrganizationSettingSerializer(setting).data
+        return ret
 
     def get_team_name(self, obj) -> str:
         team = obj.team
@@ -1568,20 +1599,6 @@ class ActionSerializer(serializers.ModelSerializer):
         )
 
 
-class OrganizationSettingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = OrganizationSetting
-        fields = ("setting_id", "setting_name", "setting_values", "setting_group")
-        extra_kwargs = {
-            "setting_id": {"required": True},
-            "setting_name": {"required": True},
-            "setting_group": {"required": True},
-            "setting_values": {"required": True},
-        }
-
-    setting_id = OrganizationSettingUUIDField()
-
-
 class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSetting
@@ -1598,6 +1615,11 @@ class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "Setting values must be a list of strings"
                 )
+            current_setting_values = set(instance.setting_values)
+            new_setting_values = set(setting_values)
+            validated_data["setting_values"] = list(
+                current_setting_values.union(new_setting_values)
+            )
         elif (
             instance.setting_name
             == ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS
