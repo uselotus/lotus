@@ -424,7 +424,9 @@ class StripeConnector(PaymentProvider):
     def get_redirect_url(self) -> str:
         return self.redirect_url
 
-    def transfer_subscriptions(self, organization, end_now=False) -> int:
+    def transfer_subscriptions(
+        self, organization, end_now=False
+    ) -> list[stripe.Subscription]:
         from metering_billing.models import (
             Customer,
             ExternalPlanLink,
@@ -472,7 +474,8 @@ class StripeConnector(PaymentProvider):
             (plan_id, external_plan_ids)
             for plan_id, external_plan_ids in plan_dict.items()
         ]
-        for subscription in stripe_subscriptions.auto_paging_iter():
+        ret_subs = []
+        for i, subscription in enumerate(stripe_subscriptions.auto_paging_iter()):
             if (
                 subscription.cancel_at_period_end
             ):  # don't transfer subscriptions that are ending
@@ -506,7 +509,7 @@ class StripeConnector(PaymentProvider):
                 }
                 if end_now:
                     validated_data["start_date"] = now_utc()
-                    stripe.Subscription.delete(
+                    sub = stripe.Subscription.delete(
                         subscription.id,
                         prorate=True,
                         invoice_now=True,
@@ -515,10 +518,11 @@ class StripeConnector(PaymentProvider):
                     validated_data["start_date"] = datetime.datetime.utcfromtimestamp(
                         subscription.current_period_end
                     ).replace(tzinfo=pytz.utc)
-                    stripe.Subscription.modify(
+                    sub = stripe.Subscription.modify(
                         subscription.id,
                         cancel_at_period_end=True,
                     )
+                ret_subs.append(sub)
                 subscription = (
                     Subscription.objects.active()
                     .filter(
@@ -592,14 +596,18 @@ class StripeConnector(PaymentProvider):
                         plan_id, item_ids.intersection(linked_ids)
                     )
                 raise ValueError(err_msg)
+        return ret_subs
 
-    def initialize_settings(self, organization):
+    def initialize_settings(self, organization, **kwargs):
         from metering_billing.models import OrganizationSetting
 
+        generate_stripe_after_lotus_value = kwargs.get(
+            "generate_stripe_after_lotus", False
+        )
         OrganizationSetting.objects.create(
             organization=organization,
             setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
-            setting_values={"value": False},
+            setting_values={"value": generate_stripe_after_lotus_value},
             setting_group=PAYMENT_PROVIDERS.STRIPE,
         )
 
