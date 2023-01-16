@@ -28,7 +28,6 @@ from metering_billing.exceptions.exceptions import (
     OverlappingPlans,
     ServerError,
 )
-from metering_billing.invoice import generate_invoice
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_date,
@@ -528,6 +527,8 @@ class Customer(models.Model):
         return subscription_usages
 
     def get_active_sub_drafts_revenue(self):
+        from metering_billing.invoice import generate_invoice
+
         total = 0
         sub, sub_records = self.get_subscription_and_records()
         if sub is not None and sub_records is not None:
