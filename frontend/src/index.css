@@ -130,7 +130,7 @@ a {
   height: 88px;
   border-bottom: 1px solid rgba(29, 29, 31, 0.1);
 }
-/* tabs */ 
+/* tabs */
 .ant-tabs-tab.ant-tabs-tab-active {
   border-bottom: 2px solid #C3986B !important;
   z-index: 2;

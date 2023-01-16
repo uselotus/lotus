@@ -11,14 +11,12 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    Subscription,
     SubscriptionRecord,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     EVENT_TYPE,
     METRIC_AGGREGATION,
-    METRIC_GRANULARITY,
     METRIC_TYPE,
 )
 from model_bakery import baker
@@ -63,7 +61,7 @@ def get_access_test_common_setup(
         setup_dict["client"] = client
         (customer,) = add_customers_to_org(org, n=1)
         setup_dict["customer"] = customer
-        event_set = baker.make(
+        baker.make(
             Event,
             organization=org,
             customer=customer,
@@ -84,7 +82,7 @@ def get_access_test_common_setup(
             deny_limit_metric_set[0].metric_type
         ].create_continuous_aggregate(deny_limit_metric_set[0])
         setup_dict["deny_limit_metrics"] = deny_limit_metric_set
-        event_set = baker.make(
+        baker.make(
             Event,
             organization=org,
             customer=customer,
@@ -321,14 +319,14 @@ class TestGetAccess:
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        subscription = SubscriptionRecord.objects.create(
+        SubscriptionRecord.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
         )
         # initial value, just 1 user
-        event1 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -337,7 +335,7 @@ class TestGetAccess:
             idempotency_id="1",
         )
         # now we suddenly have 10!
-        event2 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -346,7 +344,7 @@ class TestGetAccess:
             idempotency_id="2",
         )
         # now we go back to 1, so should still have access
-        event3 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -491,14 +489,14 @@ class TestGetAccessWithMetricID:
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        subscription = SubscriptionRecord.objects.create(
+        SubscriptionRecord.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
         )
         # initial value, just 1 user
-        event1 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -507,7 +505,7 @@ class TestGetAccessWithMetricID:
             idempotency_id="1",
         )
         # now we suddenly have 10!
-        event2 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -516,7 +514,7 @@ class TestGetAccessWithMetricID:
             idempotency_id="2",
         )
         # now we go back to 1, so should still have access
-        event3 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
