@@ -1418,6 +1418,7 @@ def create_pc_and_tiers(
             cost_per_batch=cost_per_batch,
             metric_units_per_batch=metric_units_per_batch,
             organization=organization,
+            batch_rounding_type=PriceTier.BatchRoundingType.NO_ROUNDING,
         )
 
 

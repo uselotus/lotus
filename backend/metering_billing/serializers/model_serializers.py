@@ -5,10 +5,7 @@ from actstream.models import Action
 from django.conf import settings
 from django.db.models import Q
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import (
-    DuplicateOrganization,
-    ServerError,
-)
+from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import *
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
