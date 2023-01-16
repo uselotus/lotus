@@ -12,7 +12,7 @@ set -e
 # ./run_tests.sh tests.appname.test_models.TestClass.test_a_thing
 # In this case Flake8 and Coverage will NOT be run.
 
-#still need to add: pipenv run flake8; pipenv run coverage html run coverage
+#still need to add: pipenv run flake8; pipenv run coverage html run coverage 
 TESTS_TO_RUN=${1:-run_all_tests}
 
 if [[ "$TESTS_TO_RUN" == "run_all_tests" ]]; then

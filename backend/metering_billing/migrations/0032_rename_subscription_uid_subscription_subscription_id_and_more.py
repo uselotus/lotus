@@ -4,6 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0031_subscription_auto_renew_billing_plan_and_more"),
     ]

@@ -4,39 +4,40 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("metering_billing", "0132_alter_subscriptionrecord_unique_together_and_more"),
+        ('metering_billing', '0132_alter_subscriptionrecord_unique_together_and_more'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name="historicalorganization",
-            name="email",
+            model_name='historicalorganization',
+            name='email',
             field=models.EmailField(blank=True, max_length=254, null=True),
         ),
         migrations.AddField(
-            model_name="historicalorganization",
-            name="phone",
+            model_name='historicalorganization',
+            name='phone',
             field=models.CharField(blank=True, max_length=20, null=True),
         ),
         migrations.AddField(
-            model_name="historicalorganization",
-            name="properties",
+            model_name='historicalorganization',
+            name='properties',
             field=models.JSONField(blank=True, default=dict, null=True),
         ),
         migrations.AddField(
-            model_name="organization",
-            name="email",
+            model_name='organization',
+            name='email',
             field=models.EmailField(blank=True, max_length=254, null=True),
         ),
         migrations.AddField(
-            model_name="organization",
-            name="phone",
+            model_name='organization',
+            name='phone',
             field=models.CharField(blank=True, max_length=20, null=True),
         ),
         migrations.AddField(
-            model_name="organization",
-            name="properties",
+            model_name='organization',
+            name='properties',
             field=models.JSONField(blank=True, default=dict, null=True),
         ),
     ]

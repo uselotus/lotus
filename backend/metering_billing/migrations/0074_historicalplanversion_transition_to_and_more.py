@@ -5,6 +5,7 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0073_event_cust_id_alter_event_customer_and_more"),
     ]

@@ -4,6 +4,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0048_remove_organizationinvitetoken_is_valid_and_more"),
     ]

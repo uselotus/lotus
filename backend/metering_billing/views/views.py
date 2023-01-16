@@ -1,12 +1,18 @@
+import datetime
 import logging
 from decimal import Decimal
 
+import posthog
+from dateutil import parser
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
+from metering_billing.auth import parse_organization
+from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import Customer, Metric, SubscriptionRecord
+from metering_billing.models import APIToken, Customer, Metric, SubscriptionRecord
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.auth_serializers import *
@@ -24,6 +30,7 @@ from metering_billing.utils import (
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
+    FLAT_FEE_BILLING_TYPE,
     PAYMENT_PROVIDERS,
     USAGE_CALC_GRANULARITY,
 )
@@ -157,7 +164,9 @@ class CostAnalysisView(APIView):
                 "cost_data": {},
                 "revenue": Decimal(0),
             }
-        Metric.objects.filter(organization=organization, is_cost_metric=True)
+        cost_metrics = Metric.objects.filter(
+            organization=organization, is_cost_metric=True
+        )
         for metric in []:
             usage_ret = metric.get_usage(
                 start_date,

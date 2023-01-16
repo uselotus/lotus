@@ -5,6 +5,7 @@ import uuid
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0036_categoricalfilter_numericfilter_and_more"),
     ]

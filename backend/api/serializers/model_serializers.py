@@ -3,6 +3,8 @@ from typing import Literal, Optional, Union
 
 from django.conf import settings
 from django.db.models import Q
+from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+from metering_billing.exceptions import ServerError
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
@@ -473,7 +475,7 @@ class CustomerSerializer(
                 d[PAYMENT_PROVIDERS.STRIPE] = self._format_stripe_integration(
                     d[PAYMENT_PROVIDERS.STRIPE]
                 )
-            except (KeyError, TypeError):
+            except (KeyError, TypeError) as e:
                 d[PAYMENT_PROVIDERS.STRIPE] = None
         else:
             d[PAYMENT_PROVIDERS.STRIPE] = None
@@ -831,19 +833,19 @@ class PlanVersionSerializer(
     currency = PricingUnitSerializer(source="pricing_unit")
 
     def get_created_by(self, obj) -> str:
-        if obj.created_by is not None:
+        if obj.created_by != None:
             return obj.created_by.username
         else:
             return None
 
     def get_replace_with(self, obj) -> Union[int, None]:
-        if obj.replace_with is not None:
+        if obj.replace_with != None:
             return obj.replace_with.version
         else:
             return None
 
     def get_transition_to(self, obj) -> Union[str, None]:
-        if obj.transition_to is not None:
+        if obj.transition_to != None:
             return str(obj.transition_to.display_version)
         else:
             return None
@@ -1408,7 +1410,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
     def validate(self, data):
         data = super().validate(data)
         amount = data.get("amount", 0)
-        data["customer"]
+        customer = data["customer"]
         if amount <= 0:
             raise serializers.ValidationError("Amount must be greater than 0")
         if data.get("amount_paid") and data.get("amount_paid") <= 0:

@@ -4,6 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0125_delete_historicalsubscription"),
         ("metering_billing", "0127_pricingunit_custom"),

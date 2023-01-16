@@ -20,6 +20,7 @@ def transfer_events(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         (
             "metering_billing",

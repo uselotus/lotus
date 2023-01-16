@@ -1,3 +1,10 @@
+from collections import namedtuple
+
+from dateutil.relativedelta import relativedelta
+from jinja2 import Template
+from metering_billing.utils import now_utc
+from metering_billing.utils.enums import EVENT_TYPE, METRIC_AGGREGATION
+
 ### INFRASTRUCTURE TABLES
 
 # This table is for GAUGE metrics with delta events, since the cumulative sum since
@@ -6,7 +13,7 @@
 # THIS IS A MATERIALIZED VIEW
 GAUGE_DELTA_CUMULATIVE_SUM = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }} AS
-SELECT
+SELECT 
     "metering_billing_usageevent"."customer_id" AS customer_id
     {%- for group_by_field in group_by %}
     ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
@@ -29,15 +36,15 @@ WHERE
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
-        {% if operator == "gt" %}
-        >
-        {% elif operator == "gte" %}
-        >=
-        {% elif operator == "lt" %}
-        <
-        {% elif operator == "lte" %}
-        <=
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -48,11 +55,11 @@ WHERE
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN (
-            {%- for pval in comparison %}
+        IN ( 
+            {%- for pval in comparison %} 
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %}
-            {%- endfor %}
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
         )
     {%- endfor %}
 """
@@ -81,15 +88,15 @@ WHEN  (
     NEW."organization_id" = {{ organization_id }}
     AND NEW."event_name" = '{{ event_name }}'
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND (NEW."properties" ->> '{{ property_name }}')::text::decimal
-        {% if operator == "gt" %}
-        >
-        {% elif operator == "gte" %}
-        >=
-        {% elif operator == "lt" %}
-        <
-        {% elif operator == "lte" %}
-        <=
+    AND (NEW."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -100,11 +107,11 @@ WHEN  (
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN (
-            {%- for pval in comparison %}
+        IN ( 
+            {%- for pval in comparison %} 
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %}
-            {%- endfor %}
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
         )
     {%- endfor %}
 )
@@ -114,20 +121,20 @@ EXECUTE PROCEDURE tg_refresh_{{ cagg_name }}();
 GAUGE_DELTA_DELETE_TRIGGER = """
 CREATE TRIGGER tg_{{ cagg_name }}_delete AFTER DELETE
 ON "metering_billing_usageevent"
-FOR EACH ROW
+FOR EACH ROW 
 WHEN  (
     OLD."organization_id" = {{ organization_id }}
     AND OLD."event_name" = '{{ event_name }}'
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND (OLD."properties" ->> '{{ property_name }}')::text::decimal
-        {% if operator == "gt" %}
-        >
-        {% elif operator == "gte" %}
-        >=
-        {% elif operator == "lt" %}
-        <
-        {% elif operator == "lte" %}
-        <=
+    AND (OLD."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -138,11 +145,11 @@ WHEN  (
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN (
-            {%- for pval in comparison %}
+        IN ( 
+            {%- for pval in comparison %} 
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %}
-            {%- endfor %}
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
         )
     {%- endfor %}
 )
@@ -157,15 +164,15 @@ WHEN  (
     (OLD."organization_id" = {{ organization_id }} OR NEW."organization_id" = {{ organization_id }})
     AND (OLD."event_name" = '{{ event_name }}' OR NEW."event_name" = '{{ event_name }}')
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ( (OLD."properties" ->> '{{ property_name }}')::text::decimal
-        {% if operator == "gt" %}
-        >
-        {% elif operator == "gte" %}
-        >=
-        {% elif operator == "lt" %}
-        <
-        {% elif operator == "lte" %}
-        <=
+    AND ( (OLD."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -190,11 +197,11 @@ WHEN  (
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN (
-            {%- for pval in comparison %}
+        IN ( 
+            {%- for pval in comparison %} 
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %}
-            {%- endfor %}
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
         )
         OR (NEW."properties" ->> '{{ property_name }}')
         {% if operator == "isnotin" %}
@@ -219,7 +226,7 @@ EXECUTE PROCEDURE tg_refresh_{{ cagg_name }}();
 GAUGE_TOTAL_CUMULATIVE_SUM = """
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{ cagg_name }}
 WITH (timescaledb.continuous) AS
-SELECT
+SELECT 
     "metering_billing_usageevent"."customer_id" AS customer_id
     {%- for group_by_field in group_by %}
     ,"metering_billing_usageevent"."properties" ->> '{{ group_by_field }}' AS {{ group_by_field }}
@@ -235,15 +242,15 @@ WHERE
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
-        {% if operator == "gt" %}
-        >
-        {% elif operator == "gte" %}
-        >=
-        {% elif operator == "lt" %}
-        <
-        {% elif operator == "lte" %}
-        <=
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
+        {% if operator == "gt" %} 
+        > 
+        {% elif operator == "gte" %} 
+        >= 
+        {% elif operator == "lt" %} 
+        < 
+        {% elif operator == "lte" %} 
+        <= 
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -254,11 +261,11 @@ WHERE
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN (
-            {%- for pval in comparison %}
+        IN ( 
+            {%- for pval in comparison %} 
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %}
-            {%- endfor %}
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
         )
     {%- endfor %}
 GROUP BY
@@ -283,11 +290,11 @@ WHERE
     customer_id = {{ customer_id }}
     {%- for property_name, property_values in filter_properties.items() %}
     AND {{ property_name }}
-        IN (
-            {%- for pval in property_values %}
-            '{{ pval }}'
-            {%- if not loop.last %},{% endif %}
-            {%- endfor %}
+        IN ( 
+            {%- for pval in property_values %} 
+            '{{ pval }}' 
+            {%- if not loop.last %},{% endif %} 
+            {%- endfor %} 
         )
     {%- endfor %}
     AND time_bucket <= NOW()
@@ -325,11 +332,11 @@ WITH prev_state AS (
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
-),
+), 
 prev_value AS (
-    SELECT
+    SELECT 
         COALESCE(
-            (select prev_usage_qty from prev_state limit 1),
+            (select prev_usage_qty from prev_state limit 1), 
             0
         ) AS prev_usage_qty
     FROM
@@ -347,11 +354,11 @@ proration_level_query AS (
         , '{{ start_date }}'::timestamptz AS time
         {%- else %}
         , time_bucket_gapfill('1 {{ proration_units }}', time_bucket) AS time
-        , locf(
-            value => MAX(cumulative_usage_qty),
+        , locf( 
+            value => MAX(cumulative_usage_qty), 
             prev => (
                 SELECT COALESCE(
-                    (select prev_usage_qty from prev_state limit 1),
+                    (select prev_usage_qty from prev_state limit 1), 
                     0
                 ) AS prev_usage_qty
             )
@@ -383,49 +390,49 @@ proration_level_query AS (
 normalized_query AS (
 SELECT
     {%- if proration_units is not none %}
-    CASE
+    CASE 
     WHEN time < '{{ start_date }}'::timestamptz
-        THEN
+        THEN 
             (
-                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) -
+                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) - 
                 EXTRACT( EPOCH FROM '{{ start_date }}'::timestamptz)
             )
-            /
+            / 
             (
-                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) -
+                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) - 
                 EXTRACT( EPOCH FROM time)
             )
     WHEN time > '{{ end_date }}'::timestamptz
-        THEN
+        THEN 
             (
-                EXTRACT( EPOCH FROM '{{ end_date }}'::timestamptz) -
+                EXTRACT( EPOCH FROM '{{ end_date }}'::timestamptz) - 
                 EXTRACT( EPOCH FROM time)
             )
-            /
+            / 
             (
-                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) -
+                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) - 
                 EXTRACT( EPOCH FROM time)
             )
     ELSE 1
-    END
+    END 
     {%- else %}
     1
     {%- endif %} AS time_ratio,
     time,
     usage_qty
-FROM
+FROM 
     proration_level_query
 )
 SELECT
     COALESCE(
         (
-            select
+            select 
                 SUM(usage_qty * time_ratio) / {{ granularity_ratio }}
             from normalized_query
-        ),
+        ), 
         (
-            select prev_usage_qty
-            from prev_value
+            select prev_usage_qty 
+            from prev_value 
             limit 1
         )
     ) AS usage_qty
@@ -458,11 +465,11 @@ WITH prev_state AS (
         {%- for group_by_field in group_by %}
         , {{ group_by_field }}
         {%- endfor %}
-),
+), 
 prev_value AS (
-    SELECT
+    SELECT 
         COALESCE(
-            (select prev_usage_qty from prev_state limit 1),
+            (select prev_usage_qty from prev_state limit 1), 
             0
         ) AS prev_usage_qty
     FROM
@@ -480,11 +487,11 @@ proration_level_query AS (
         , '{{ start_date }}'::timestamptz AS time
         {%- else %}
         , time_bucket_gapfill('1 {{ proration_units }}', time_bucket) AS time
-        , locf(
-            value => MAX(cumulative_usage_qty),
+        , locf( 
+            value => MAX(cumulative_usage_qty), 
             prev => (
                 SELECT COALESCE(
-                    (select prev_usage_qty from prev_state limit 1),
+                    (select prev_usage_qty from prev_state limit 1), 
                     0
                 ) AS prev_usage_qty
             )
@@ -516,37 +523,37 @@ proration_level_query AS (
 normalized_query AS (
 SELECT
     {%- if proration_units is not none %}
-    CASE
+    CASE 
     WHEN time < '{{ start_date }}'::timestamptz
-        THEN
+        THEN 
             (
-                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) -
+                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) - 
                 EXTRACT( EPOCH FROM '{{ start_date }}'::timestamptz)
             )
-            /
+            / 
             (
-                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) -
+                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) - 
                 EXTRACT( EPOCH FROM time)
             )
     WHEN time > '{{ end_date }}'::timestamptz
-        THEN
+        THEN 
             (
-                EXTRACT( EPOCH FROM '{{ end_date }}'::timestamptz) -
+                EXTRACT( EPOCH FROM '{{ end_date }}'::timestamptz) - 
                 EXTRACT( EPOCH FROM time)
             )
-            /
+            / 
             (
-                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) -
+                EXTRACT( EPOCH FROM (time + '1 {{ proration_units }}'::interval)) - 
                 EXTRACT( EPOCH FROM time)
             )
     ELSE 1
-    END
+    END 
     {%- else %}
     1
     {%- endif %} AS time_ratio,
     time,
     usage_qty
-FROM
+FROM 
     proration_level_query
 )
 SELECT

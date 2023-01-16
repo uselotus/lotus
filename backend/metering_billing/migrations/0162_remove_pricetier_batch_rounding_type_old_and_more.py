@@ -4,17 +4,18 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
-        ("metering_billing", "0161_price_tier_types_to_int"),
+        ('metering_billing', '0161_price_tier_types_to_int'),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name="pricetier",
-            name="batch_rounding_type_old",
+            model_name='pricetier',
+            name='batch_rounding_type_old',
         ),
         migrations.RemoveField(
-            model_name="pricetier",
-            name="type_old",
+            model_name='pricetier',
+            name='type_old',
         ),
     ]
