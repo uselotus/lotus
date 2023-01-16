@@ -4,6 +4,7 @@ import datetime
 import logging
 from datetime import timezone
 from decimal import Decimal, InvalidOperation
+from io import BytesIO
 
 import posthog
 from celery import shared_task
@@ -11,8 +12,10 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count, Q
+from django.forms.models import model_to_dict
 from metering_billing.exceptions.exceptions import AlignmentEngineFailure
 from metering_billing.invoice import generate_invoice
+from metering_billing.invoice_pdf import generate_invoice_pdf
 from metering_billing.models import (
     Backtest,
     CustomerBalanceAdjustment,
@@ -45,6 +48,23 @@ logger = logging.getLogger("django.server")
 EVENT_CACHE_FLUSH_COUNT = settings.EVENT_CACHE_FLUSH_COUNT
 EVENT_CACHE_FLUSH_SECONDS = settings.EVENT_CACHE_FLUSH_SECONDS
 POSTHOG_PERSON = settings.POSTHOG_PERSON
+
+
+@shared_task
+def generate_invoice_pdf(invoice_pk):
+    invoice = Invoice.objects.get(pk=invoice_pk).select_related(
+        "customer", "organization"
+    )
+    line_items = invoice.line_items.all()
+    pdf_url = generate_invoice_pdf(
+        invoice,
+        model_to_dict(invoice.organization),
+        model_to_dict(invoice.customer),
+        line_items,
+        BytesIO(),
+    )
+    invoice.invoice_pdf = pdf_url
+    invoice.save()
 
 
 @shared_task

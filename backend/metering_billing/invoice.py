@@ -1,15 +1,13 @@
 from __future__ import absolute_import
 
 from decimal import Decimal
-from io import BytesIO
 
 # import lotus_python
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
-from django.forms.models import model_to_dict
-from metering_billing.invoice_pdf import generate_invoice_pdf
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
+from metering_billing.tasks import generate_invoice_pdf
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -47,22 +45,17 @@ def generate_invoice(
     Generate an invoice for a subscription.
     """
     from metering_billing.models import (
-        Customer,
         Invoice,
         InvoiceLineItem,
-        Organization,
         OrganizationSetting,
         SubscriptionRecord,
     )
-    from metering_billing.serializers.model_serializers import InvoiceSerializer
 
     if not issue_date:
         issue_date = now_utc()
 
     customer = subscription.customer
     organization = subscription.organization
-    organization_model = Organization.objects.get(id=organization.id)
-    customer_model = Customer.objects.get(id=customer.id)
     try:
         _ = (e for e in subscription_records)
     except TypeError:
@@ -267,28 +260,7 @@ def generate_invoice(
             for subscription_record in subscription_records:
                 subscription_record.fully_billed = True
                 subscription_record.save()
-            # if META:
-            # lotus_python.track_event(
-            #     customer_id=organization.organization_name + str(organization.pk),
-            #     event_name='create_invoice',
-            #     properties={
-            #         'amount': float(invoice.cost_due.amount),
-            #         'currency': str(invoice.cost_due.currency),
-            #         'customer': customer.customer_id,
-            #         'subscription': subscription.subscription_id,
-            #         'external_type': invoice.external_payment_obj_type,
-            #         },
-            # )
-            line_items = invoice.line_items.all()
-            pdf_url = generate_invoice_pdf(
-                invoice,
-                model_to_dict(organization_model),
-                model_to_dict(customer_model),
-                line_items,
-                BytesIO(),
-            )
-            invoice.invoice_pdf = pdf_url
-            invoice.save()
+            generate_invoice_pdf(invoice.pk)
             invoice_created_webhook(invoice, organization)
         invoices.append(invoice)
 
@@ -402,16 +374,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     """
     Generate an invoice for a subscription.
     """
-    from metering_billing.models import (
-        Customer,
-        CustomerBalanceAdjustment,
-        Invoice,
-        InvoiceLineItem,
-        Organization,
-        OrganizationSetting,
-        SubscriptionRecord,
-    )
-    from metering_billing.serializers.model_serializers import InvoiceSerializer
+    from metering_billing.models import Invoice, InvoiceLineItem, OrganizationSetting
 
     issue_date = balance_adjustment.created
     customer = balance_adjustment.customer
@@ -474,28 +437,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
                     invoice.save()
 
                     break
-        # if META:
-        # lotus_python.track_event(
-        #     customer_id=organization.organization_name + str(organization.pk),
-        #     event_name='create_invoice',
-        #     properties={
-        #         'amount': float(invoice.cost_due.amount),
-        #         'currency': str(invoice.cost_due.currency),
-        #         'customer': customer.customer_id,
-        #         'subscription': subscription.subscription_id,
-        #         'external_type': invoice.external_payment_obj_type,
-        #         },
-        # )
-        line_items = invoice.line_items.all()
-        pdf_url = generate_invoice_pdf(
-            invoice,
-            model_to_dict(organization),
-            model_to_dict(customer),
-            line_items,
-            BytesIO(),
-        )
-        invoice.invoice_pdf = pdf_url
-        invoice.save()
+        generate_invoice_pdf(invoice.pk)
         invoice_created_webhook(invoice, organization)
 
     return invoice
