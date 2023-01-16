@@ -961,7 +961,15 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
         return obj.versions.all().count()
 
     def get_active_subscriptions(self, obj) -> int:
-        return sum(x.active_subscriptions for x in obj.versions.all())
+        try:
+            return sum(x.active_subscriptions for x in obj.versions.all())
+        except AttributeError:
+            return (
+                obj.active_subs_by_version().aggregate(res=Sum("active_subscriptions"))[
+                    "res"
+                ]
+                or 0
+            )
 
     def get_tags(self, obj) -> TagSerializer(many=True):
         data = TagSerializer(obj.tags.all(), many=True).data
