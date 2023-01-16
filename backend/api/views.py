@@ -41,7 +41,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import F, Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -214,8 +214,47 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return super().get_object()
 
     def get_queryset(self):
+        from metering_billing.models import PlanVersion
+
+        now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        qs = Plan.objects.filter(
+            organization=organization, status=PLAN_STATUS.ACTIVE
+        ).prefetch_related(
+            Prefetch(
+                "versions",
+                queryset=PlanVersion.objects.filter(
+                    organization=organization,
+                ).annotate(
+                    active_subscriptions=Count(
+                        "subscription_record",
+                        filter=Q(
+                            subscription_record__start_date__lte=now,
+                            subscription_record__end_date__gte=now,
+                        ),
+                        output_field=models.IntegerField(),
+                    )
+                ),
+            ),
+            "versions__subscription_records",
+            "versions__usage_alerts",
+            "versions__features",
+            "versions__price_adjustment",
+            "versions__created_by",
+            "versions__pricing_unit",
+            "versions__plan_components",
+            "versions__plan_components__pricing_unit",
+            "versions__plan_components__billable_metric",
+            "versions__plan_components__billable_metric__usage_alerts",
+            "versions__plan_components__billable_metric__numeric_filters",
+            "versions__plan_components__billable_metric__categorical_filters",
+            "versions__plan_components__tiers",
+            "created_by",
+            "external_links",
+            "parent_plan",
+            "target_customer",
+            "tags",
+        )
         return qs
 
     def dispatch(self, request, *args, **kwargs):

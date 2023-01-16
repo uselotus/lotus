@@ -949,10 +949,10 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
     tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
 
     def get_num_versions(self, obj) -> int:
-        return len(obj.version_numbers())
+        return obj.versions.all().count()
 
     def get_active_subscriptions(self, obj) -> int:
-        return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+        return sum(x.active_subscriptions for x in obj.versions.all())
 
     def get_tags(self, obj) -> TagSerializer(many=True):
         data = TagSerializer(obj.tags.all(), many=True).data
