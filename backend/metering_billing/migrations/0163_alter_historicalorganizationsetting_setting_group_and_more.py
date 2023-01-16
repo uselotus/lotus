@@ -3,6 +3,17 @@
 from django.db import migrations, models
 
 
+def change_organization_setting_names(apps, schema_editor):
+    OrganizationSetting = apps.get_model("metering_billing", "OrganizationSetting")
+    for setting in OrganizationSetting.objects.all():
+        if setting.setting_name == "subscription_filters":
+            setting.setting_name = "subscription_filter_keys"
+            setting.save()
+        elif setting.setting_name == "invoice_grace_period":
+            setting.setting_name = "payment_grace_period"
+            setting.save()
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("metering_billing", "0162_remove_pricetier_batch_rounding_type_old_and_more"),
@@ -58,5 +69,8 @@ class Migration(migrations.Migration):
                 ],
                 max_length=64,
             ),
+        ),
+        migrations.RunPython(
+            change_organization_setting_names, migrations.RunPython.noop
         ),
     ]
