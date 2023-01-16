@@ -112,22 +112,12 @@ class OIDCAuthentication(BaseAuthentication):
         """
         msg = _("Invalid token.")
         token = token.decode("utf-8")
-        jwt.decode(encoded_jwt, "secret", algorithms=["HS256"])
-        for auth_token in get_token_model().objects.filter(
-            token_key=token[: CONSTANTS.TOKEN_KEY_LENGTH]
-        ):
-            if self._cleanup_token(auth_token):
-                continue
-
-            try:
-                digest = hash_token(token)
-            except (TypeError, binascii.Error):
-                raise exceptions.AuthenticationFailed(msg)
-            if compare_digest(digest, auth_token.digest):
-                if knox_settings.AUTO_REFRESH and auth_token.expiry:
-                    self.renew_token(auth_token)
-                return self.validate_user(auth_token)
-        raise exceptions.AuthenticationFailed(msg)
+        secret = settings.SECRET_KEY
+        jwt.decode(token, "secret", algorithms=["HS256"])
+        try:
+            return self.validate_user(auth_token)
+        except:
+            raise exceptions.AuthenticationFailed(msg)
 
     def renew_token(self, auth_token):
         current_expiry = auth_token.expiry
@@ -142,28 +132,6 @@ class OIDCAuthentication(BaseAuthentication):
         if not auth_token.user.is_active:
             raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
         return (auth_token.user, auth_token)
-
-    def authenticate_header(self, request):
-        return knox_settings.AUTH_HEADER_PREFIX
-
-    def _cleanup_token(self, auth_token):
-        for other_token in auth_token.user.auth_token_set.all():
-            if other_token.digest != auth_token.digest and other_token.expiry:
-                if other_token.expiry < timezone.now():
-                    other_token.delete()
-                    username = other_token.user.get_username()
-                    token_expired.send(
-                        sender=self.__class__, username=username, source="other_token"
-                    )
-        if auth_token.expiry is not None:
-            if auth_token.expiry < timezone.now():
-                username = auth_token.user.get_username()
-                auth_token.delete()
-                token_expired.send(
-                    sender=self.__class__, username=username, source="auth_token"
-                )
-                return True
-        return False
 
 
 # AUTH METHODS
