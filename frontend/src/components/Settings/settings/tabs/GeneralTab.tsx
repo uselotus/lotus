@@ -118,7 +118,7 @@ const GeneralTab: FC = () => {
       setState(orgData.address ? orgData.address.state : "");
       setCountry(orgData.address ? orgData.address.country : "");
       setPostalCode(orgData.address ? orgData.address.postal_code : "");
-      // setSubscriptionFilters(orgData.subscription_filters);
+      setSubscriptionFilters(orgData.subscription_filters_keys);
     }
   }, [orgData]);
 
@@ -396,16 +396,14 @@ const GeneralTab: FC = () => {
             <Form.Item label="Subscription Filters" name="subscription_filters">
               <Select
                 mode="multiple"
-                value={formSubscriptionFilters.map((filter) => {
-                  return filter;
-                })}
+                value={formSubscriptionFilters.map((filter) => filter)}
                 placeholder="Select subscription filters"
                 onChange={(e) => setFormSubscriptionFilters(e)}
-              >
-                {formSubscriptionFilters.map((filter) => (
-                  <Select.Option value={filter}>{filter}</Select.Option>
-                ))}
-              </Select>
+                optionLabelProp="label"
+                options={formSubscriptionFilters.map((filter) => {
+                  return { label: filter, value: filter };
+                })}
+              />
             </Form.Item>
 
             <Input
