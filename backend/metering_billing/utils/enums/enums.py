@@ -252,7 +252,11 @@ class ORGANIZATION_SETTING_NAMES(models.TextChoices):
         "generate_customer_after_creating_in_lotus",
         _("Generate in Stripe after Lotus"),
     )
-    SUBSCRIPTION_FILTERS = ("subscription_filters", _("Subscription Filters"))
+    SUBSCRIPTION_FILTER_KEYS = (
+        "subscription_filter_keys",
+        _("Subscription Filter Keys"),
+    )
+    PAYMENT_GRACE_PERIOD = ("payment_grace_period", _("Payment Grace Period"))
 
 
 class TAG_GROUP(models.TextChoices):
@@ -261,3 +265,4 @@ class TAG_GROUP(models.TextChoices):
 
 class ORGANIZATION_SETTING_GROUPS(models.TextChoices):
     STRIPE = ("stripe", _("Stripe"))
+    BILLING = ("billing", _("Billing"))

@@ -150,12 +150,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "available_currencies",
             "plan_tags",
             "tax_rate",
-            "invoice_grace_period",
+            "payment_grace_period",
             "linked_organizations",
             "current_user",
             "address",
             "team_name",
-            "settings",
+            "subscription_filter_keys",
         )
 
     organization_id = OrganizationUUIDField()
@@ -163,21 +163,25 @@ class OrganizationSerializer(serializers.ModelSerializer):
     default_currency = PricingUnitSerializer()
     available_currencies = serializers.SerializerMethodField()
     plan_tags = serializers.SerializerMethodField()
-    invoice_grace_period = serializers.SerializerMethodField()
+    payment_grace_period = serializers.SerializerMethodField()
     linked_organizations = serializers.SerializerMethodField()
     current_user = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField(required=False, allow_null=True)
     team_name = serializers.SerializerMethodField()
-    settings = serializers.SerializerMethodField()
+    subscription_filter_keys = serializers.SerializerMethodField()
 
-    def get_settings(
+    def get_subscription_filter_keys(
         self, obj
-    ) -> serializers.DictField(child=OrganizationSettingSerializer()):
-        settings = obj.settings.all()
-        ret = {}
-        for setting in settings:
-            ret[setting.setting_name] = OrganizationSettingSerializer(setting).data
-        return ret
+    ) -> serializers.ListField(child=serializers.CharField()):
+        subscription_filter_keys_setting = OrganizationSetting.objects.filter(
+            organization=obj,
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
+        ).first()
+        if subscription_filter_keys_setting:
+            val = subscription_filter_keys_setting.setting_values
+        else:
+            val = []
+        return val
 
     def get_team_name(self, obj) -> str:
         team = obj.team
@@ -211,15 +215,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
             linked, many=True, context={"organization": obj}
         ).data
 
-    def get_invoice_grace_period(
+    def get_payment_grace_period(
         self, obj
     ) -> serializers.IntegerField(
         min_value=0, max_value=365, required=False, allow_null=True
     ):
         grace_period_setting = OrganizationSetting.objects.filter(
             organization=obj,
-            setting_name="invoice_grace_period",
-            setting_group="billing",
+            setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
+            setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
         ).first()
         if grace_period_setting:
             val = grace_period_setting.setting_values.get("value")
@@ -324,8 +328,9 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
             "default_currency_code",
             "address",
             "tax_rate",
-            "invoice_grace_period",
+            "payment_grace_period",
             "plan_tags",
+            "subscription_filter_keys",
         )
 
     default_currency_code = SlugRelatedFieldWithOrganization(
@@ -333,8 +338,11 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
     )
     address = api_serializers.AddressSerializer(required=False, allow_null=True)
     plan_tags = serializers.ListField(child=TagSerializer(), required=False)
-    invoice_grace_period = serializers.IntegerField(
+    payment_grace_period = serializers.IntegerField(
         min_value=0, max_value=365, required=False, allow_null=True
+    )
+    subscription_filter_keys = serializers.ListField(
+        child=serializers.CharField(), required=False
     )
 
     def update(self, instance, validated_data):
@@ -369,23 +377,26 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
                     )
 
         instance.tax_rate = validated_data.get("tax_rate", instance.tax_rate)
-        invoice_grace_period = validated_data.get("invoice_grace_period", None)
-        if invoice_grace_period is not None:
+        payment_grace_period = validated_data.get("payment_grace_period", None)
+        if payment_grace_period is not None:
             grace_period_setting = OrganizationSetting.objects.filter(
                 organization=instance,
-                setting_name="invoice_grace_period",
-                setting_group="billing",
+                setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
+                setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
             ).first()
             if grace_period_setting:
-                grace_period_setting.setting_values = {"value": invoice_grace_period}
+                grace_period_setting.setting_values = {"value": payment_grace_period}
                 grace_period_setting.save()
             else:
                 OrganizationSetting.objects.create(
                     organization=instance,
-                    setting_name="invoice_grace_period",
-                    setting_group="billing",
-                    setting_values={"value": invoice_grace_period},
+                    setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
+                    setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
+                    setting_values={"value": payment_grace_period},
                 )
+        subscription_filter_keys = validated_data.get("subscription_filter_keys", None)
+        if subscription_filter_keys is not None:
+            instance.update_subscription_filter_settings(subscription_filter_keys)
         instance.save()
         return instance
 
@@ -1606,7 +1617,7 @@ class OrganizationSettingUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         setting_values = validated_data.get("setting_values")
-        if instance.setting_name == ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS:
+        if instance.setting_name == ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS:
             if not isinstance(setting_values, list):
                 raise serializers.ValidationError(
                     "Setting values must be a list of strings"

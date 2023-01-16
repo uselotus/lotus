@@ -152,14 +152,14 @@ const GeneralTab: FC = () => {
       default_currency_code: string;
       address: OrganizationType["address"];
       tax_rate: number;
-      invoice_grace_period: number;
+      payment_grace_period: number;
       subscription_filters: string[];
     }) =>
       Organization.updateOrganization(
         obj.org_id,
         obj.default_currency_code,
         obj.tax_rate,
-        obj.invoice_grace_period,
+        obj.payment_grace_period,
         obj.address,
         obj.subscription_filters
       ),
@@ -281,7 +281,7 @@ const GeneralTab: FC = () => {
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
               tax_rate: fourDP(taxRate),
-              invoice_grace_period: invoiceGracePeriod,
+              payment_grace_period: invoiceGracePeriod,
               address: submittedAddress,
               subscription_filters: formSubscriptionFilters,
             });
@@ -290,7 +290,7 @@ const GeneralTab: FC = () => {
             //   org_id: org.organization_id,
             //   default_currency_code: currentCurrency,
             //   tax_rate: fourDP(taxRate),
-            //   invoice_grace_period: invoiceGracePeriod,
+            //   payment_grace_period: invoiceGracePeriod,
             // });
           }
         }}
@@ -385,7 +385,7 @@ const GeneralTab: FC = () => {
                 />
               </div>
             </Form.Item>
-            <Form.Item label="Payment Grace Period" name="invoice_grace_period">
+            <Form.Item label="Payment Grace Period" name="payment_grace_period">
               <Input
                 type="number"
                 step="1"

@@ -399,7 +399,7 @@ class SubscriptionViewSet(
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
         sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
         )
         for sf in subscription_filters:
             if sf["property_name"] not in sf_setting.setting_values:

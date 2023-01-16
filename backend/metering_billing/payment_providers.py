@@ -18,6 +18,7 @@ from metering_billing.serializers.payment_provider_serializers import (
 )
 from metering_billing.utils import calculate_end_date, date_as_max_dt, now_utc
 from metering_billing.utils.enums import (
+    ORGANIZATION_SETTING_GROUPS,
     ORGANIZATION_SETTING_NAMES,
     PAYMENT_PROVIDERS,
     PLAN_STATUS,
@@ -283,9 +284,9 @@ class StripeConnector(PaymentProvider):
         from metering_billing.models import OrganizationSetting
 
         setting = OrganizationSetting.objects.get(
-            setting_name="generate_customer_after_creating_in_lotus",
+            setting_name=ORGANIZATION_SETTING_NAMES.GENERATE_CUSTOMER_IN_STRIPE_AFTER_LOTUS,
             organization=customer.organization,
-            setting_group=PAYMENT_PROVIDERS.STRIPE,
+            setting_group=ORGANIZATION_SETTING_GROUPS.STRIPE,
         )
         setting_value = setting.setting_values.get("value", False)
         if setting_value == True:
