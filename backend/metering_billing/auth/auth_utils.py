@@ -1,3 +1,4 @@
+import jwt
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponseBadRequest
@@ -16,7 +17,7 @@ from rest_framework import exceptions
 from rest_framework.authentication import BaseAuthentication, get_authorization_header
 
 
-class TokenAuthentication(BaseAuthentication):
+class OIDCAuthentication(BaseAuthentication):
     """
     // This example was originally taken from the Zitadel docs at https://zitadel.com/docs/examples/secure-api/go
     //
@@ -86,7 +87,7 @@ class TokenAuthentication(BaseAuthentication):
 
     def authenticate(self, request):
         auth = get_authorization_header(request).split()
-        prefix = knox_settings.AUTH_HEADER_PREFIX.encode()
+        prefix = "BEARER"
 
         if not auth:
             return None
@@ -111,6 +112,7 @@ class TokenAuthentication(BaseAuthentication):
         """
         msg = _("Invalid token.")
         token = token.decode("utf-8")
+        jwt.decode(encoded_jwt, "secret", algorithms=["HS256"])
         for auth_token in get_token_model().objects.filter(
             token_key=token[: CONSTANTS.TOKEN_KEY_LENGTH]
         ):
