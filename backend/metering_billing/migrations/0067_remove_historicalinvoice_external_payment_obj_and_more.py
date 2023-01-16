@@ -4,6 +4,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0066_change_unique_rate_to_count"),
     ]

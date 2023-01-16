@@ -5,6 +5,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0093_historicalplanversion_day_anchor_and_more"),
     ]

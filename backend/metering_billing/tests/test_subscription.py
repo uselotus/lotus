@@ -2,6 +2,8 @@ import itertools
 import json
 import urllib.parse
 from datetime import timedelta
+from decimal import Decimal
+from urllib.parse import urlencode
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -512,9 +514,9 @@ class TestUpdateSub:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
 
-        baker.make(
+        events = baker.make(
             Event,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
@@ -532,9 +534,9 @@ class TestUpdateSub:
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
         )
-        Invoice.objects.all().count()
+        before_invoices = Invoice.objects.all().count()
 
-        baker.make(
+        billing_plan = baker.make(
             PlanVersion,
             organization=setup_dict["org"],
             description="test_plan for testing",
@@ -558,7 +560,7 @@ class TestUpdateSub:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        Invoice.objects.all().count()
+        after_invoices = Invoice.objects.all().count()
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_switch_plan_transfers_usage_by_default(
@@ -597,9 +599,9 @@ class TestUpdateSub:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
 
-        baker.make(
+        events = baker.make(
             Event,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
@@ -690,9 +692,9 @@ class TestUpdateSub:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
 
-        baker.make(
+        events = baker.make(
             Event,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
@@ -783,7 +785,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
 
     def test_dont_create_subscription_if_already_exists(
         self, subscription_test_common_setup
@@ -823,7 +825,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -860,7 +862,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert (new_sub_record.end_date + relativedelta(day=sub.day_anchor)).day == (
             new_sub_record.end_date + relativedelta(days=1)
         ).day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
 
     def test_month_anchor_is_none_after_adding_monthly_plan_not_none_after_adding_yearly_plan(
         self,
@@ -912,7 +914,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -996,7 +998,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -1150,7 +1152,7 @@ class TestSubscriptionAndSubscriptionRecord:
         new_sub_record = (
             SubscriptionRecord.objects.all().order_by("-start_date").first()
         )
-        SubscriptionRecord.objects.all().order_by("-start_date").last()
+        old_sub_record = SubscriptionRecord.objects.all().order_by("-start_date").last()
         assert sub.start_date != new_sub_record.start_date
         assert sub.end_date == new_sub_record.next_billing_date
         assert sub.end_date == new_sub_record.end_date
@@ -1217,7 +1219,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -1314,7 +1316,7 @@ class TestRegressions:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
@@ -1357,7 +1359,7 @@ class TestRegressions:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor is None
+        assert sub.month_anchor == None
 
         # assert normal customer is chilling
         payload = {}

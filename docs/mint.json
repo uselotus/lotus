@@ -108,7 +108,7 @@
         },
         {
           "group": "Events",
-          "pages": ["api-reference/events/tracking",
+          "pages": ["api-reference/events/tracking",          
             "api-reference/events/verify-ingestion"
         ]
         },

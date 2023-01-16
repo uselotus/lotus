@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from django_celery_beat.models import IntervalSchedule, PeriodicTask
+from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -5,6 +5,7 @@ import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0051_alter_customer_customer_id_and_more"),
     ]

@@ -5,6 +5,7 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0112_merge_20221211_2248"),
     ]

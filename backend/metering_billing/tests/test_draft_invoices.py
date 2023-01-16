@@ -4,11 +4,13 @@ from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Event,
     Invoice,
     Metric,
     PlanComponent,
+    PlanVersion,
     PriceAdjustment,
     PriceTier,
     Subscription,
@@ -63,7 +65,7 @@ def draft_invoice_test_common_setup(
             {"num_characters": 125, "peak_bandwith": 148},
             {"num_characters": 543, "peak_bandwith": 16},
         )
-        baker.make(
+        event_set = baker.make(
             Event,
             organization=org,
             customer=customer,

@@ -1,14 +1,16 @@
 import abc
 import datetime
 import logging
+from datetime import timedelta
 from typing import Optional, TypedDict
 
 import sqlparse
+from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.apps import apps
 from django.db import connection
 from django.db.models import *
-from django.db.models.functions import Trunc
+from django.db.models.functions import Cast, Trunc
 from jinja2 import Template
 from metering_billing.exceptions.exceptions import *
 from metering_billing.utils import *
@@ -403,7 +405,7 @@ class CounterHandler(MetricHandler):
         from metering_billing.aggregation.counter_query_templates import (
             COUNTER_UNIQUE_TOTAL,
         )
-        from metering_billing.models import Organization
+        from metering_billing.models import Organization, OrganizationSetting
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -541,8 +543,8 @@ class CounterHandler(MetricHandler):
         metric_type = data.get("metric_type", None)
         event_type = data.get("event_type", None)
         granularity = data.get("granularity", None)
-        data.get("numeric_filters", None)
-        data.get("categorical_filters", None)
+        numeric_filters = data.get("numeric_filters", None)
+        categorical_filters = data.get("categorical_filters", None)
         property_name = data.get("property_name", None)
         proration = data.get("proration", None)
 
@@ -915,8 +917,8 @@ class GaugeHandler(MetricHandler):
         metric_type = data.get("metric_type", None)
         event_type = data.get("event_type", None)
         granularity = data.get("granularity", None)
-        data.get("numeric_filters", None)
-        data.get("categorical_filters", None)
+        numeric_filters = data.get("numeric_filters", None)
+        categorical_filters = data.get("categorical_filters", None)
         property_name = data.get("property_name", None)
         proration = data.get("proration", None)
 
@@ -1341,8 +1343,8 @@ class RateHandler(MetricHandler):
         metric_type = data.get("metric_type", None)
         event_type = data.get("event_type", None)
         granularity = data.get("granularity", None)
-        data.get("numeric_filters", None)
-        data.get("categorical_filters", None)
+        numeric_filters = data.get("numeric_filters", None)
+        categorical_filters = data.get("categorical_filters", None)
         property_name = data.get("property_name", None)
         proration = data.get("proration", None)
 

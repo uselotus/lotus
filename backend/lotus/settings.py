@@ -27,11 +27,11 @@ import posthog
 import sentry_sdk
 from decouple import config
 from dotenv import load_dotenv
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, KafkaProducer
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from sentry_sdk.integrations.django import DjangoIntegration
-from svix.api import EventTypeIn, Svix, SvixOptions
+from svix.api import EventTypeIn, Svix, SvixAsync, SvixOptions
 
 logger = logging.getLogger("django.server")
 
@@ -345,9 +345,9 @@ if os.environ.get("REDIS_URL"):
         else os.environ.get("REDIS_URL")
     )
 elif DOCKERIZED:
-    REDIS_URL = "redis://redis:6379"
+    REDIS_URL = f"redis://redis:6379"
 else:
-    REDIS_URL = "redis://localhost:6379"
+    REDIS_URL = f"redis://localhost:6379"
 
 # Celery Settings
 CELERY_BROKER_URL = f"{REDIS_URL}/0"
@@ -559,6 +559,7 @@ SPECTACULAR_SETTINGS = {
         "MetricGranularityEnum": "metering_billing.utils.enums.METRIC_GRANULARITY.choices",
         "PlanVersionStatusEnum": "metering_billing.utils.enums.PLAN_VERSION_STATUS.choices",
         "PlanStatusEnum": "metering_billing.utils.enums.PLAN_STATUS.choices",
+        "BacktestStatusEnum": "metering_billing.utils.enums.BACKTEST_STATUS.choices",
         "ProductStatusEnum": "metering_billing.utils.enums.PRODUCT_STATUS.choices",
         "FailureStatusEnum": ["eror"],
         "SuccessStatusEnum": ["success"],
@@ -656,7 +657,7 @@ elif SVIX_API_KEY == "" and SVIX_JWT_SECRET != "":
         SVIX_API_KEY = encoded
         hostname, _, ips = socket.gethostbyname_ex("svix-server")
         svix = Svix(SVIX_API_KEY, SvixOptions(server_url=f"http://{ips[0]}:8071"))
-    except Exception:
+    except Exception as e:
         svix = None
 else:
     svix = None

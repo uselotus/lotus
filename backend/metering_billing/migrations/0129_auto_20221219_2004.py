@@ -15,6 +15,7 @@ def make_all_emails_nonnull(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0128_merge_20221215_2207"),
     ]

@@ -8,6 +8,7 @@ import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0076_merge_20221115_0704"),
     ]

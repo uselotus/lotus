@@ -4,6 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0045_alter_billingplan_status_and_more"),
     ]

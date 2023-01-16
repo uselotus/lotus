@@ -4,6 +4,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0110_alter_metric_unique_together_and_more"),
     ]

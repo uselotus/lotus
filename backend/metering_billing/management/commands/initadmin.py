@@ -2,8 +2,8 @@ import os
 
 from django.core.management.base import BaseCommand
 from dotenv import load_dotenv
-from metering_billing.models import Metric, Organization, User
-from metering_billing.utils.enums import METRIC_STATUS
+from metering_billing.models import Metric, Organization, PricingUnit, User
+from metering_billing.utils.enums import METRIC_STATUS, SUPPORTED_CURRENCIES
 
 load_dotenv()
 
