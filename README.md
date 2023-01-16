@@ -61,7 +61,7 @@ Test out Lotus with a demo account [here](https://demo.uselotus.io/register).
 
 The cloud version is best for convenience and fast deployment. This version also gets access to features faster than the self-hosted version.
 
-Sign up for our `beta` [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
+Sign up for a hosted account [here](https://dsl2wm77apy.typeform.com/to/pehx2YSQ?typeform-source=www.uselotus.io) or email us at founders@uselotus.io for more details.
 
 ### :bust_in_silhouette: Self-Hosted Version
 
