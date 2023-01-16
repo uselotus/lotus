@@ -221,6 +221,8 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         qs = Plan.objects.filter(
             organization=organization, status=PLAN_STATUS.ACTIVE
         ).prefetch_related(
+            "organization",
+            "organization__pricing_units",
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
