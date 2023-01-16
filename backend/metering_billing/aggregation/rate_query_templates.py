@@ -1,10 +1,3 @@
-from collections import namedtuple
-
-from dateutil.relativedelta import relativedelta
-from jinja2 import Template
-from metering_billing.utils import now_utc
-from metering_billing.utils.enums import METRIC_AGGREGATION
-
 RATE_GET_CURRENT_USAGE = """
 SELECT
     "metering_billing_usageevent"."customer_id" AS customer_id,
@@ -40,15 +33,15 @@ WHERE
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
-        {% if operator == "gt" %} 
-        > 
-        {% elif operator == "gte" %} 
-        >= 
-        {% elif operator == "lt" %} 
-        < 
-        {% elif operator == "lte" %} 
-        <= 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+        {% if operator == "gt" %}
+        >
+        {% elif operator == "gte" %}
+        >=
+        {% elif operator == "lt" %}
+        <
+        {% elif operator == "lte" %}
+        <=
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -59,23 +52,23 @@ WHERE
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN ( 
-            {%- for pval in comparison %} 
+        IN (
+            {%- for pval in comparison %}
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
     AND "metering_billing_usageevent"."customer_id" = {{ customer_id }}
     AND "metering_billing_usageevent"."time_created" <= '{{ reference_time }}'::timestamp
     AND "metering_billing_usageevent"."time_created" >= '{{ reference_time }}'::timestamp + INTERVAL '-1 {{ lookback_units }}' * {{ lookback_qty }}
     {%- for property_name, property_values in filter_properties.items() %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}') 
-        IN ( 
-            {%- for pval in property_values %} 
-            '{{ pval }}' 
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+        IN (
+            {%- for pval in property_values %}
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 GROUP BY
@@ -139,15 +132,15 @@ FROM
             AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
             AND "metering_billing_usageevent"."time_created" <= NOW()
             {%- for property_name, operator, comparison in numeric_filters %}
-            AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
-                {% if operator == "gt" %} 
-                > 
-                {% elif operator == "gte" %} 
-                >= 
-                {% elif operator == "lt" %} 
-                < 
-                {% elif operator == "lte" %} 
-                <= 
+            AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+                {% if operator == "gt" %}
+                >
+                {% elif operator == "gte" %}
+                >=
+                {% elif operator == "lt" %}
+                <
+                {% elif operator == "lte" %}
+                <=
                 {% elif operator == "eq" %}
                 =
                 {% endif %}
@@ -158,11 +151,11 @@ FROM
                 {% if operator == "isnotin" %}
                 NOT
                 {% endif %}
-                IN ( 
-                    {%- for pval in comparison %} 
+                IN (
+                    {%- for pval in comparison %}
                     '{{ pval }}'
-                    {%- if not loop.last %},{% endif %} 
-                    {%- endfor %} 
+                    {%- if not loop.last %},{% endif %}
+                    {%- endfor %}
                 )
             {%- endfor %}
         GROUP BY
@@ -227,15 +220,15 @@ WHERE
     AND time_created >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
     AND time_created <= '{{ end_date }}'::timestamptz
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
-        {% if operator == "gt" %} 
-        > 
-        {% elif operator == "gte" %} 
-        >= 
-        {% elif operator == "lt" %} 
-        < 
-        {% elif operator == "lte" %} 
-        <= 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+        {% if operator == "gt" %}
+        >
+        {% elif operator == "gte" %}
+        >=
+        {% elif operator == "lt" %}
+        <
+        {% elif operator == "lte" %}
+        <=
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -246,11 +239,11 @@ WHERE
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN ( 
-            {%- for pval in comparison %} 
+        IN (
+            {%- for pval in comparison %}
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 )
@@ -274,15 +267,15 @@ WHERE
     AND time_created >= '{{ start_date }}'::timestamptz
     AND time_created <= '{{ end_date }}'::timestamptz
     {%- for property_name, property_values in filter_properties.items() %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}') 
-        IN ( 
-            {%- for pval in property_values %} 
-            '{{ pval }}' 
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+        IN (
+            {%- for pval in property_values %}
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
-ORDER BY 
+ORDER BY
     customer_id
     {%- for group_by_field in group_by %}
     , {{ group_by_field }}

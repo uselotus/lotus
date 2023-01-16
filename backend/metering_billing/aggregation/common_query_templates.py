@@ -13,7 +13,7 @@ DROP MATERIALIZED VIEW IF EXISTS {{ cagg_name }};
 CAGG_COMPRESSION = """
 ALTER MATERIALIZED VIEW {{ cagg_name }} set (timescaledb.compress = true);
 SELECT add_compression_policy(
-    '{{ cagg_name }}', 
+    '{{ cagg_name }}',
     compress_after=>'33 days'::interval,
     if_not_exists=>true
 );

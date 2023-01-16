@@ -1,11 +1,9 @@
 import logging
 
 from django.core.cache import cache
-from django.core.exceptions import ObjectDoesNotExist
 from metering_billing.models import APIToken, Organization
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.utils import now_utc
-from rest_framework.authentication import BaseAuthentication
 
 logger = logging.getLogger("django.server")
 

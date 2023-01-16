@@ -41,7 +41,6 @@ def migrate_plancomponetns_to_price_tiers(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0073_plancomponent_plan_version_and_more"),
     ]

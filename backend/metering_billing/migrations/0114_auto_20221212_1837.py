@@ -9,7 +9,6 @@ def mark_as_demo(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         (
             "metering_billing",

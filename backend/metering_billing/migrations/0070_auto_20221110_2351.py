@@ -69,7 +69,6 @@ def migrate_jsonfields_to_fk(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0069_historicalinvoice_customer_and_more"),
     ]

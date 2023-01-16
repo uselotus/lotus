@@ -12,7 +12,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0037_alter_billablemetric_billable_metric_name"),
     ]

@@ -1,6 +1,3 @@
-import json
-
-import requests
 from django.conf import settings
 from metering_billing.utils import (
     make_all_dates_times_strings,
@@ -8,7 +5,7 @@ from metering_billing.utils import (
     now_utc,
 )
 from metering_billing.utils.enums import WEBHOOK_TRIGGER_EVENTS
-from svix.api import MessageIn, Svix
+from svix.api import MessageIn
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
