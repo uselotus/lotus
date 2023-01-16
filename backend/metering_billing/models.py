@@ -87,7 +87,7 @@ class Organization(models.Model):
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="organizations",
         null=True,
         blank=True,
     )
@@ -434,7 +434,7 @@ class Customer(models.Model):
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="customers",
         null=True,
         blank=True,
         help_text="The currency the customer will be invoiced in",
@@ -578,7 +578,7 @@ class CustomerBalanceAdjustment(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="adjustments",
         null=True,
         blank=True,
     )
@@ -599,7 +599,7 @@ class CustomerBalanceAdjustment(models.Model):
     amount_paid_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="paid_adjustments",
         null=True,
         blank=True,
     )
@@ -1231,7 +1231,7 @@ class PlanComponent(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="components",
         null=True,
         blank=True,
     )
@@ -1339,7 +1339,7 @@ class Invoice(models.Model):
     currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="invoices",
         null=True,
         blank=True,
     )
@@ -1441,7 +1441,7 @@ class InvoiceLineItem(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="line_items",
         null=True,
         blank=True,
     )
@@ -1551,7 +1551,7 @@ class PlanVersion(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="versions",
         null=True,
         blank=True,
     )
@@ -1724,9 +1724,6 @@ class Plan(models.Model):
             )
         )
         return versions_count
-
-    def version_numbers(self):
-        return self.versions.all().values_list("version", flat=True)
 
     def make_version_active(
         self, plan_version, make_active_type=None, replace_immediately_type=None

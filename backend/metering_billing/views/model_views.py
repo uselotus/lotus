@@ -629,27 +629,7 @@ class PlanViewSet(api_views.PlanViewSet):
         return super().get_object()
 
     def get_queryset(self):
-        organization = self.request.organization
-        now = now_utc()
         qs = super(PlanViewSet, self).get_queryset()
-        if self.action == "retrieve" or self.action == "list":
-            qs = qs.prefetch_related(
-                Prefetch(
-                    "versions",
-                    queryset=PlanVersion.objects.filter(
-                        ~Q(status=PLAN_VERSION_STATUS.ARCHIVED),
-                        organization=organization,
-                    ).annotate(
-                        active_subscriptions=Count(
-                            "subscription_record",
-                            filter=Q(
-                                subscription_record__start_date__lte=now,
-                                subscription_record__end_date__gte=now,
-                            ),
-                        )
-                    ),
-                )
-            )
         return qs
 
     def get_serializer_class(self):

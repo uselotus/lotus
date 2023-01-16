@@ -7,7 +7,6 @@ load_dotenv()
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-
         # Create schedules
         every_hour, _ = IntervalSchedule.objects.get_or_create(
             every=1,
@@ -15,6 +14,10 @@ class Command(BaseCommand):
         )
         every_15_mins, _ = IntervalSchedule.objects.get_or_create(
             every=15,
+            period=IntervalSchedule.MINUTES,
+        )
+        every_5_mins, _ = IntervalSchedule.objects.get_or_create(
+            every=5,
             period=IntervalSchedule.MINUTES,
         )
         every_3_minutes, _ = IntervalSchedule.objects.get_or_create(
@@ -39,4 +42,10 @@ class Command(BaseCommand):
             name="Run Alert Refreshes",
             task="metering_billing.tasks.refresh_alerts",
             defaults={"interval": every_3_minutes, "crontab": None},
+        )
+
+        PeriodicTask.objects.update_or_create(
+            name="Run Zero Out Expired Balances",
+            task="metering_billing.tasks.zero_out_expired_balance_adjustments",
+            defaults={"interval": every_5_mins, "crontab": None},
         )

@@ -346,6 +346,8 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
     )
 
     def update(self, instance, validated_data):
+        from metering_billing.tasks import update_subscription_filter_settings_task
+
         assert (
             type(validated_data.get("default_currency")) == PricingUnit
             or validated_data.get("default_currency") is None
@@ -396,7 +398,9 @@ class OrganizationUpdateSerializer(serializers.ModelSerializer):
                 )
         subscription_filter_keys = validated_data.get("subscription_filter_keys", None)
         if subscription_filter_keys is not None:
-            instance.update_subscription_filter_settings(subscription_filter_keys)
+            update_subscription_filter_settings_task.delay(
+                instance.pk, subscription_filter_keys
+            )
         instance.save()
         return instance
 
