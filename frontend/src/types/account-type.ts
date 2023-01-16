@@ -34,7 +34,7 @@ export interface OrganizationType {
   organization_id: string;
   plan_tags: PlanType["tags"];
   tax_rate: null | number;
-  invoice_grace_period: number;
+  payment_grace_period: number;
   current_user: { username: string };
   linked_organizations: {
     current: boolean;

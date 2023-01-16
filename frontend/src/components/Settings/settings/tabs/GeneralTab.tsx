@@ -86,12 +86,12 @@ const GeneralTab: FC = () => {
           setTaxRate(data.tax_rate);
           setDisplayTaxRate(data.tax_rate);
         }
-        if (data.invoice_grace_period === null) {
+        if (data.payment_grace_period === null) {
           setInvoiceGracePeriod(0);
           setDisplayInvoiceGracePeriod(0);
         } else {
-          setInvoiceGracePeriod(data.invoice_grace_period);
-          setDisplayInvoiceGracePeriod(data.invoice_grace_period);
+          setInvoiceGracePeriod(data.payment_grace_period);
+          setDisplayInvoiceGracePeriod(data.payment_grace_period);
         }
 
         if (
@@ -141,13 +141,13 @@ const GeneralTab: FC = () => {
       default_currency_code: string;
       address: OrganizationType["address"];
       tax_rate: number;
-      invoice_grace_period: number;
+      payment_grace_period: number;
     }) =>
       Organization.updateOrganization(
         obj.org_id,
         obj.default_currency_code,
         obj.tax_rate,
-        obj.invoice_grace_period,
+        obj.payment_grace_period,
         obj.address
       ),
     {
@@ -263,14 +263,14 @@ const GeneralTab: FC = () => {
               org_id: org.organization_id,
               default_currency_code: currentCurrency,
               tax_rate: fourDP(taxRate),
-              invoice_grace_period: invoiceGracePeriod,
+              payment_grace_period: invoiceGracePeriod,
               address: submittedAddress,
             });
             // updateOrg.mutate({
             //   org_id: org.organization_id,
             //   default_currency_code: currentCurrency,
             //   tax_rate: fourDP(taxRate),
-            //   invoice_grace_period: invoiceGracePeriod,
+            //   payment_grace_period: invoiceGracePeriod,
             // });
           }
         }}
@@ -365,7 +365,7 @@ const GeneralTab: FC = () => {
                 />
               </div>
             </Form.Item>
-            <Form.Item label="Payment Grace Period" name="invoice_grace_period">
+            <Form.Item label="Payment Grace Period" name="payment_grace_period">
               <Input
                 type="number"
                 step="1"
