@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0039_alter_historicalalert_options_and_more"),
     ]

@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0053_historicalplan_parent_plan_and_more"),
     ]

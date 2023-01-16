@@ -32,15 +32,15 @@ WHERE
     AND "metering_billing_usageevent"."organization_id" = {{ organization_id }}
     AND "metering_billing_usageevent"."time_created" <= NOW()
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
-        {% if operator == "gt" %} 
-        > 
-        {% elif operator == "gte" %} 
-        >= 
-        {% elif operator == "lt" %} 
-        < 
-        {% elif operator == "lte" %} 
-        <= 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+        {% if operator == "gt" %}
+        >
+        {% elif operator == "gte" %}
+        >=
+        {% elif operator == "lt" %}
+        <
+        {% elif operator == "lte" %}
+        <=
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -51,11 +51,11 @@ WHERE
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN ( 
-            {%- for pval in comparison %} 
+        IN (
+            {%- for pval in comparison %}
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 GROUP BY
@@ -93,11 +93,11 @@ WHERE
     AND bucket <= NOW()
     {%- for property_name, property_values in filter_properties.items() %}
     AND {{ property_name }}
-        IN ( 
-            {%- for pval in property_values %} 
-            '{{ pval }}' 
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+        IN (
+            {%- for pval in property_values %}
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 GROUP BY
@@ -130,23 +130,23 @@ WHERE
     {% endif %}
     {%- for property_name, property_values in filter_properties.items() %}
     AND {{ property_name }}
-        IN ( 
-            {%- for pval in property_values %} 
-            '{{ pval }}' 
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+        IN (
+            {%- for pval in property_values %}
+            '{{ pval }}'
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
     {%- for property_name, operator, comparison in numeric_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal 
-        {% if operator == "gt" %} 
-        > 
-        {% elif operator == "gte" %} 
-        >= 
-        {% elif operator == "lt" %} 
-        < 
-        {% elif operator == "lte" %} 
-        <= 
+    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')::text::decimal
+        {% if operator == "gt" %}
+        >
+        {% elif operator == "gte" %}
+        >=
+        {% elif operator == "lt" %}
+        <
+        {% elif operator == "lte" %}
+        <=
         {% elif operator == "eq" %}
         =
         {% endif %}
@@ -157,11 +157,11 @@ WHERE
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
-        IN ( 
-            {%- for pval in comparison %} 
+        IN (
+            {%- for pval in comparison %}
             '{{ pval }}'
-            {%- if not loop.last %},{% endif %} 
-            {%- endfor %} 
+            {%- if not loop.last %},{% endif %}
+            {%- endfor %}
         )
     {%- endfor %}
 GROUP BY

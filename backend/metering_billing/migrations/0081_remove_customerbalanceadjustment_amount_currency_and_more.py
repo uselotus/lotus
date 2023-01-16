@@ -6,7 +6,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0080_historicalmetric_is_cost_metric_and_more"),
     ]

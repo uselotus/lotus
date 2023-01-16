@@ -8,7 +8,7 @@ services:
       - ./pgdata_prod:/var/lib/postgresql/data
     env_file:
       - ./env/.env.prod
-  
+
   svix-server:
     image: svix/svix-server
     environment:
@@ -22,7 +22,7 @@ services:
     depends_on:
     - db
     - redis
-    links: 
+    links:
     - db
     - redis
     restart: on-failure

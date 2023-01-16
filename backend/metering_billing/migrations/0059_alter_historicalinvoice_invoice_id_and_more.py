@@ -5,7 +5,6 @@ import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0058_remove_customer_balance_and_more"),
     ]

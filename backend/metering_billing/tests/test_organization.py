@@ -1,14 +1,7 @@
-import json
-import re
-
 import pytest
-from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
-from metering_billing.models import Plan, PlanVersion, Subscription, SubscriptionRecord
-from metering_billing.utils import now_utc
 from metering_billing.utils.enums import *
-from model_bakery import baker
-from rest_framework import serializers, status
+from rest_framework import status
 from rest_framework.test import APIClient
 
 
