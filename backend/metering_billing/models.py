@@ -152,9 +152,8 @@ class Organization(models.Model):
         if not self.subscription_filters_setting_provisioned:
             OrganizationSetting.objects.create(
                 organization=self,
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
                 setting_values=[],
-                setting_group=None,
             )
             self.subscription_filters_setting_provisioned = True
             self.save()
@@ -164,7 +163,7 @@ class Organization(models.Model):
 
         setting, _ = OrganizationSetting.objects.get_or_create(
             organization=self,
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
         )
         if not isinstance(filter_keys, list) and all(
             isinstance(key, str) for key in filter_keys
@@ -2409,10 +2408,15 @@ class OrganizationSetting(models.Model):
     )
     setting_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     setting_name = models.CharField(
-        max_length=100,
+        choices=ORGANIZATION_SETTING_NAMES.choices, max_length=64
     )
     setting_values = models.JSONField(default=dict, blank=True)
-    setting_group = models.CharField(max_length=100, blank=True, null=True)
+    setting_group = models.CharField(
+        choices=ORGANIZATION_SETTING_GROUPS.choices,
+        blank=True,
+        null=True,
+        max_length=64,
+    )
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):

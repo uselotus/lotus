@@ -399,7 +399,7 @@ class SubscriptionViewSet(
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
         sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
         )
         for sf in subscription_filters:
             if sf["property_name"] not in sf_setting.setting_values:
@@ -685,6 +685,22 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if self.action == "partial_update":
             return InvoiceUpdateSerializer
         return InvoiceSerializer
+
+    @extend_schema(responses=InvoiceSerializer)
+    def update(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        serializer = self.get_serializer(invoice, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(invoice, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            invoice._prefetched_objects_cache = {}
+
+        return Response(
+            InvoiceSerializer(invoice, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
 
     def get_serializer_context(self):
         context = super(InvoiceViewSet, self).get_serializer_context()

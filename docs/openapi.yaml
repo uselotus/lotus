@@ -70,8 +70,8 @@ paths:
             - inactive
             type: string
           default:
-          - active
           - inactive
+          - active
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -1035,8 +1035,8 @@ paths:
             - inactive
             type: string
           default:
-          - active
           - inactive
+          - active
         description: Filter to a specific set of adjustment statuses. Defaults to
           both active and inactive.
       tags:
@@ -1920,6 +1920,7 @@ paths:
         schema:
           enum:
           - stripe
+          - billing
           type: string
           minLength: 1
         description: Filters organization_settings to a single setting_group. Defaults
@@ -1931,7 +1932,8 @@ paths:
           items:
             enum:
             - generate_customer_after_creating_in_lotus
-            - subscription_filters
+            - subscription_filter_keys
+            - payment_grace_period
             type: string
         description: Filters organization_settings by setting_name. Defaults to returning
           all settings.
@@ -3457,6 +3459,18 @@ components:
         end_date:
           type: string
           format: date
+        time_created:
+          type: string
+          format: date-time
+        status:
+          enum:
+          - running
+          - completed
+          - failed
+          type: string
+        kpis:
+          type: object
+          additionalProperties: {}
         backtest_name:
           type: string
           maxLength: 100
@@ -3465,24 +3479,12 @@ components:
           format: date
         backtest_id:
           type: string
-        time_created:
-          type: string
-          format: date-time
         backtest_substitutions:
           type: array
           items:
             $ref: '#/components/schemas/BacktestSubstitution'
         backtest_results:
           $ref: '#/components/schemas/AllSubstitutionResults'
-        kpis:
-          type: object
-          additionalProperties: {}
-        status:
-          enum:
-          - running
-          - completed
-          - failed
-          type: string
       required:
       - backtest_id
       - backtest_name
@@ -4131,18 +4133,10 @@ components:
           type: string
           format: date
           readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        line_items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GroupedLineItem'
-          readOnly: true
-        due_date:
+        issue_date:
           type: string
           format: date-time
           readOnly: true
-          nullable: true
         start_date:
           type: string
           format: date
@@ -4155,10 +4149,18 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
-        issue_date:
+        line_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupedLineItem'
+          readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        due_date:
           type: string
           format: date-time
           readOnly: true
+          nullable: true
       required:
       - cost_due
       - currency
@@ -4502,40 +4504,6 @@ components:
     InitialPlanVersionRequest:
       type: object
       properties:
-        transition_to_plan_id:
-          type: string
-          format: uuid
-        features:
-          type: array
-          items:
-            $ref: '#/components/schemas/FeatureRequest'
-          nullable: true
-        month_anchor:
-          type: integer
-          maximum: 12
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        components:
-          type: array
-          items:
-            $ref: '#/components/schemas/PlanComponentRequest'
-          nullable: true
-        day_anchor:
-          type: integer
-          maximum: 31
-          minimum: 1
-          writeOnly: true
-          nullable: true
-        currency_code:
-          type: string
-          minLength: 1
-        flat_fee_billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          type: string
-          writeOnly: true
         flat_rate:
           type: number
           format: double
@@ -4543,6 +4511,15 @@ components:
           minimum: 0
           exclusiveMaximum: true
           writeOnly: true
+        flat_fee_billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          type: string
+          writeOnly: true
+        transition_to_plan_id:
+          type: string
+          format: uuid
         usage_billing_frequency:
           enum:
           - monthly
@@ -4553,10 +4530,35 @@ components:
           type: string
           writeOnly: true
           nullable: true
-        price_adjustment:
-          $ref: '#/components/schemas/PriceAdjustmentRequest'
         description:
           type: string
+          writeOnly: true
+          nullable: true
+        currency_code:
+          type: string
+          minLength: 1
+        components:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanComponentRequest'
+          nullable: true
+        price_adjustment:
+          $ref: '#/components/schemas/PriceAdjustmentRequest'
+        month_anchor:
+          type: integer
+          maximum: 12
+          minimum: 1
+          writeOnly: true
+          nullable: true
+        features:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureRequest'
+          nullable: true
+        day_anchor:
+          type: integer
+          maximum: 31
+          minimum: 1
           writeOnly: true
           nullable: true
       required:
@@ -4713,9 +4715,9 @@ components:
       properties:
         payment_status:
           enum:
-          - 3
-          - 4
-          type: integer
+          - paid
+          - unpaid
+          type: string
       required:
       - payment_status
     LightweightCustomer:
@@ -4780,39 +4782,16 @@ components:
           type: string
           format: date
           readOnly: true
-        currency:
-          $ref: '#/components/schemas/PricingUnit'
-        due_date:
+        issue_date:
           type: string
           format: date-time
-          readOnly: true
-          nullable: true
-        external_payment_obj_type:
-          enum:
-          - stripe
-          - null
-          type: string
-          nullable: true
-        invoice_number:
-          type: string
-          readOnly: true
-        payment_status:
-          enum:
-          - paid
-          - unpaid
-          type: string
           readOnly: true
         start_date:
           type: string
           format: date
           readOnly: true
-        external_payment_obj_id:
+        invoice_number:
           type: string
-          readOnly: true
-          nullable: true
-        issue_date:
-          type: string
-          format: date-time
           readOnly: true
         cost_due:
           type: number
@@ -4822,8 +4801,31 @@ components:
           exclusiveMaximum: true
           exclusiveMinimum: true
           readOnly: true
+        currency:
+          $ref: '#/components/schemas/PricingUnit'
+        external_payment_obj_id:
+          type: string
+          readOnly: true
+          nullable: true
         seller:
           $ref: '#/components/schemas/Seller'
+        external_payment_obj_type:
+          enum:
+          - stripe
+          - null
+          type: string
+          nullable: true
+        payment_status:
+          enum:
+          - paid
+          - unpaid
+          type: string
+          readOnly: true
+        due_date:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
       required:
       - cost_due
       - currency
@@ -4842,25 +4844,6 @@ components:
         end_date:
           type: string
           format: date-time
-        start_date:
-          type: string
-          format: date-time
-        subscription_filters:
-          type: array
-          items:
-            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
-        billing_type:
-          enum:
-          - in_arrears
-          - in_advance
-          - null
-          type: string
-          nullable: true
-        plan:
-          type: string
-        name:
-          type: string
-          maxLength: 100
         subtotal:
           type: number
           format: double
@@ -4868,6 +4851,20 @@ components:
           minimum: -10000000000
           exclusiveMaximum: true
           exclusiveMinimum: true
+        subscription_filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionCategoricalFilter'
+        start_date:
+          type: string
+          format: date-time
+        billing_type:
+          enum:
+          - in_arrears
+          - in_advance
+          - null
+          type: string
+          nullable: true
         quantity:
           type: number
           format: double
@@ -4875,6 +4872,11 @@ components:
           minimum: 0
           exclusiveMaximum: true
           nullable: true
+        name:
+          type: string
+          maxLength: 100
+        plan:
+          type: string
       required:
       - billing_type
       - end_date
@@ -5305,7 +5307,7 @@ components:
           minimum: 0
           nullable: true
           description: Tax rate as percentage. For example, 10.5 for 10.5%
-        invoice_grace_period:
+        payment_grace_period:
           type: integer
           maximum: 365
           minimum: 0
@@ -5328,16 +5330,22 @@ components:
         team_name:
           type: string
           readOnly: true
+        subscription_filter_keys:
+          type: array
+          items:
+            type: string
+          readOnly: true
       required:
       - address
       - available_currencies
       - current_user
       - default_currency
-      - invoice_grace_period
       - linked_organizations
       - organization_id
       - organization_name
+      - payment_grace_period
       - plan_tags
+      - subscription_filter_keys
       - team_name
       - users
     OrganizationCreateRequest:
@@ -5364,17 +5372,20 @@ components:
         setting_id:
           type: string
         setting_name:
+          enum:
+          - generate_customer_after_creating_in_lotus
+          - subscription_filter_keys
+          - payment_grace_period
           type: string
-          maxLength: 100
         setting_values:
           type: object
           additionalProperties: {}
         setting_group:
+          enum:
+          - stripe
+          - billing
           type: string
-          nullable: true
-          maxLength: 100
       required:
-      - setting_group
       - setting_id
       - setting_name
       - setting_values
@@ -5458,9 +5469,9 @@ components:
       properties:
         payment_status:
           enum:
-          - 3
-          - 4
-          type: integer
+          - paid
+          - unpaid
+          type: string
     PatchedMetricUpdateRequest:
       type: object
       properties:
@@ -5496,7 +5507,7 @@ components:
           minimum: 0
           nullable: true
           description: Tax rate as percentage. For example, 10.5 for 10.5%
-        invoice_grace_period:
+        payment_grace_period:
           type: integer
           maximum: 365
           minimum: 0
@@ -5505,6 +5516,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TagRequest'
+        subscription_filter_keys:
+          type: array
+          items:
+            type: string
+            minLength: 1
     PatchedPlanUpdateRequest:
       type: object
       properties:
