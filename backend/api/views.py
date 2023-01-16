@@ -493,7 +493,6 @@ class SubscriptionViewSet(
     @action(detail=False, methods=["post"])
     def cancel(self, request, *args, **kwargs):
         qs = self.get_queryset()
-        print("qs", qs)
         original_qs = list(copy.copy(qs).values_list("pk", flat=True))
         organization = self.request.organization
         serializer = self.get_serializer(data=request.data)

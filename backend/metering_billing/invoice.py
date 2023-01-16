@@ -7,7 +7,6 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Sum
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
-from metering_billing.tasks import generate_invoice_pdf
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -50,6 +49,7 @@ def generate_invoice(
         OrganizationSetting,
         SubscriptionRecord,
     )
+    from metering_billing.tasks import generate_invoice_pdf_async
 
     if not issue_date:
         issue_date = now_utc()
@@ -260,7 +260,7 @@ def generate_invoice(
             for subscription_record in subscription_records:
                 subscription_record.fully_billed = True
                 subscription_record.save()
-            generate_invoice_pdf(invoice.pk)
+            generate_invoice_pdf_async.delay(invoice.pk)
             invoice_created_webhook(invoice, organization)
         invoices.append(invoice)
 
@@ -375,6 +375,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     Generate an invoice for a subscription.
     """
     from metering_billing.models import Invoice, InvoiceLineItem, OrganizationSetting
+    from metering_billing.tasks import generate_invoice_pdf_async
 
     issue_date = balance_adjustment.created
     customer = balance_adjustment.customer
@@ -437,7 +438,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
                     invoice.save()
 
                     break
-        generate_invoice_pdf(invoice.pk)
+        generate_invoice_pdf_async.delay(invoice.pk)
         invoice_created_webhook(invoice, organization)
 
     return invoice
