@@ -18,6 +18,7 @@ from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (

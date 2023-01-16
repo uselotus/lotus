@@ -1,21 +1,29 @@
+import base64
+import itertools
+import json
 import time
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 import stripe
 from django.conf import settings
-from django.db.models import Q
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import F, Prefetch, Q
+from django.urls import reverse
 from metering_billing.invoice import generate_invoice
 from metering_billing.models import (
     Customer,
     ExternalPlanLink,
     Invoice,
+    Organization,
     Subscription,
     SubscriptionRecord,
 )
+from metering_billing.tasks import calculate_invoice, update_invoice_status
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import PAYMENT_PROVIDERS
+from model_bakery import baker
 from rest_framework.test import APIClient
 
 STRIPE_SECRET_KEY = settings.STRIPE_SECRET_KEY
@@ -38,6 +46,11 @@ def integration_test_common_setup(
         setup_dict["org"] = org
         (customer,) = add_customers_to_org(org, n=1)
         setup_dict["customer"] = customer
+        event_properties = (
+            {"num_characters": 350, "peak_bandwith": 65},
+            {"num_characters": 125, "peak_bandwith": 148},
+            {"num_characters": 543, "peak_bandwith": 16},
+        )
         product = add_product_to_org(org)
         setup_dict["product"] = product
         plan = add_plan_to_product(product)
@@ -127,7 +140,7 @@ class TestStripeIntegration:
         assert invoice.payment_status == Invoice.PaymentStatus.UNPAID
         assert invoice.external_payment_obj_type == PAYMENT_PROVIDERS.STRIPE
         try:
-            stripe.Invoice.retrieve(invoice.external_payment_obj_id)
+            stripe_pi = stripe.Invoice.retrieve(invoice.external_payment_obj_id)
         except Exception as e:
             assert False, "Payment intent not found for reason: {}".format(e)
 
@@ -152,13 +165,13 @@ class TestStripeIntegration:
             .exclude(external_payment_obj_id__exact="")
             .count()
         )
-        stripe.InvoiceItem.create(
+        bogus_invoice_item = stripe.InvoiceItem.create(
             customer=new_cust.integrations["stripe"]["id"],
             amount=1000,
             currency="usd",
             description="Bogus Invoice Item",
         )
-        stripe.Invoice.create(
+        bogus_invoice = stripe.Invoice.create(
             currency="usd",
             # payment_method="pm_card_visa",
             customer=new_cust.integrations["stripe"]["id"],

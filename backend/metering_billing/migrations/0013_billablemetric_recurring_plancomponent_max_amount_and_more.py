@@ -6,6 +6,7 @@ import uuid
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0012_alter_billablemetric_aggregation_type_and_more"),
     ]

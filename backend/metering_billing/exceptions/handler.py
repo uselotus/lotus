@@ -1,8 +1,14 @@
+import logging
+
 from django.db import DataError
 from drf_standardized_errors.formatter import ExceptionFormatter
 from drf_standardized_errors.handler import ExceptionHandler
 from drf_standardized_errors.types import ErrorResponse, ErrorType
 from metering_billing.exceptions.exceptions import DatabaseOperationFailed
+from requests import ConnectionError
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import exception_handler
 
 
 class CustomHandler(ExceptionHandler):

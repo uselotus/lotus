@@ -2,12 +2,14 @@ import api.views as api_views
 
 # import lotus_python
 import posthog
+from actstream import action
 from actstream.models import Action
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, OuterRef, Prefetch, Q
 from django.db.utils import IntegrityError
 from drf_spectacular.utils import extend_schema, inline_serializer
+from metering_billing.auth import parse_organization
 from metering_billing.exceptions import DuplicateMetric, DuplicateWebhookEndpoint
 from metering_billing.models import (
     Backtest,
@@ -49,9 +51,11 @@ from metering_billing.utils.enums import (
 )
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from svix.api import MessageIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -243,7 +247,7 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             serializer.save(organization=self.request.organization)
         except ValueError as e:
             raise ServerError(e)
-        except IntegrityError:
+        except IntegrityError as e:
             raise DuplicateWebhookEndpoint("Webhook endpoint already exists")
 
     def perform_destroy(self, instance):

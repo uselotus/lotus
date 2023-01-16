@@ -4,6 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0079_alter_event_idempotency_id"),
         ("metering_billing", "0081_remove_historicalinvoice_line_items_and_more"),

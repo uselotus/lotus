@@ -5,6 +5,7 @@ import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0096_historicalsubscription_subscription_and_more"),
     ]

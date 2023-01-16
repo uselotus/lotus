@@ -1,4 +1,5 @@
 from drf_spectacular.utils import extend_schema
+from metering_billing.auth import parse_organization
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import ValidOrganization
 from metering_billing.serializers.payment_provider_serializers import (

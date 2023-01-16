@@ -1,3 +1,7 @@
+import sys
+
+from django.conf import settings
+
 # import lotus
 
 # current_lotus = lotus

@@ -46,7 +46,7 @@ services:
     depends_on:
     - db
     - redis
-    links:
+    links: 
     - db
     - redis
     restart: on-failure

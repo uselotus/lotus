@@ -1,12 +1,16 @@
+from datetime import timedelta
 from decimal import Decimal
+from typing import Literal, Union
 
 import api.serializers.model_serializers as api_serializers
 from actstream.models import Action
+from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.db.models import Q
 from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
 from metering_billing.exceptions import DuplicateOrganization, ServerError
 from metering_billing.models import *
+from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
     OrganizationSettingUUIDField,
     OrganizationUUIDField,
@@ -17,10 +21,10 @@ from metering_billing.serializers.serializer_utils import (
     WebhookEndpointUUIDField,
     WebhookSecretUUIDField,
 )
-from metering_billing.utils import now_utc
+from metering_billing.utils import calculate_end_date, now_utc
 from metering_billing.utils.enums import *
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
 
@@ -572,7 +576,7 @@ class CustomerSerializer(api_serializers.CustomerSerializer):
             else validated_data.get("properties", {})
         )
         if "payment_provider_id" in validated_data:
-            if instance.payment_provider not in instance.integrations:
+            if not (instance.payment_provider in instance.integrations):
                 instance.integrations[instance.payment_provider] = {}
             instance.integrations[instance.payment_provider]["id"] = validated_data.get(
                 "payment_provider_id"
@@ -899,7 +903,7 @@ class PlanVersionUpdateSerializer(serializers.ModelSerializer):
     )
 
     def validate(self, data):
-        data.get("transition_to_plan_id")
+        transition_to_plan_id = data.get("transition_to_plan_id")
         data = super().validate(data)
         if (
             data.get("status") == PLAN_VERSION_STATUS.ARCHIVED
@@ -1248,7 +1252,7 @@ class PlanCreateSerializer(serializers.ModelSerializer):
             )
         data["initial_version"] = plan_version
         for component in plan_version.get("components", {}):
-            component.proration_granularity
+            proration_granularity = component.proration_granularity
             metric_granularity = component.metric.granularity
             if plan_version.plan_duration == PLAN_DURATION.MONTHLY:
                 assert metric_granularity not in [

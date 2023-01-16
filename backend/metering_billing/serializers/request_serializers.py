@@ -1,4 +1,7 @@
 from metering_billing.models import Customer
+from metering_billing.serializers.model_serializers import (
+    SubscriptionCategoricalFilterSerializer,
+)
 from metering_billing.serializers.serializer_utils import (
     SlugRelatedFieldWithOrganization,
 )

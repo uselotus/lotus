@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from io import BytesIO
 
 import boto3
 from django.conf import settings
@@ -7,6 +8,9 @@ from django.forms.models import model_to_dict
 from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.pagesizes import letter
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
 FONT_XL = 26
@@ -300,7 +304,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             buffer.seek(0)
             s3.Bucket(bucket_name).upload_fileobj(buffer, key)
 
-            s3.Object(bucket_name, key)
+            s3_object = s3.Object(bucket_name, key)
 
             s3 = boto3.client("s3")
 

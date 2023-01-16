@@ -20,6 +20,7 @@ def reverse_transfer_component_granularity_to_metric(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0142_alter_historicalmetric_event_type_and_more"),
     ]

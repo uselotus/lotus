@@ -4,6 +4,7 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0121_alter_customer_default_currency"),
         ("metering_billing", "0124_auto_20221215_0521"),

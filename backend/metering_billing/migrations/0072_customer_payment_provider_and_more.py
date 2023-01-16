@@ -5,6 +5,7 @@ import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):
+
     dependencies = [
         ("metering_billing", "0071_remove_historicalinvoice_old_customer_and_more"),
     ]

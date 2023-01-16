@@ -52,7 +52,6 @@ boto3 = "*"
 reportlab = "*"
 jinja2 = "*"
 sqlparse = "*"
-ruff = "*"
 
 [dev-packages]
 platformdirs = "*"

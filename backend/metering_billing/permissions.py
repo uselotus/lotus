@@ -1,5 +1,6 @@
 import logging
 
+from django.utils.translation import gettext_lazy as _
 from metering_billing.exceptions import NoAPIKeyProvided
 from metering_billing.models import APIToken
 from rest_framework import permissions
