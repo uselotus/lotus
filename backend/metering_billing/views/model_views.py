@@ -1015,7 +1015,9 @@ class OrganizationViewSet(
 
     def get_queryset(self):
         organization = self.request.organization
-        return Organization.objects.filter(pk=organization.pk)
+        return Organization.objects.filter(pk=organization.pk).prefetch_related(
+            "settings"
+        )
 
     def get_serializer_class(self):
         if self.action == "partial_update":

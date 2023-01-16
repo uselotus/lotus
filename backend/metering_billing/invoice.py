@@ -19,6 +19,8 @@ from metering_billing.utils.enums import (
     CUSTOMER_BALANCE_ADJUSTMENT_STATUS,
     FLAT_FEE_BEHAVIOR,
     FLAT_FEE_BILLING_TYPE,
+    ORGANIZATION_SETTING_GROUPS,
+    ORGANIZATION_SETTING_NAMES,
 )
 from metering_billing.webhooks import invoice_created_webhook
 
@@ -79,8 +81,8 @@ def generate_invoice(
         due_date = issue_date
         grace_period_setting = OrganizationSetting.objects.filter(
             organization=organization,
-            setting_name="invoice_grace_period",
-            setting_group="billing",
+            setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
+            setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
         ).first()
         if grace_period_setting:
             due_date += relativedelta(
@@ -375,6 +377,7 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     Generate an invoice for a subscription.
     """
     from metering_billing.models import Invoice, InvoiceLineItem, OrganizationSetting
+    from metering_billing.serializers.model_serializers import InvoiceSerializer
     from metering_billing.tasks import generate_invoice_pdf_async
 
     issue_date = balance_adjustment.created
@@ -393,8 +396,8 @@ def generate_balance_adjustment_invoice(balance_adjustment, draft=False):
     due_date = issue_date
     grace_period_setting = OrganizationSetting.objects.filter(
         organization=organization,
-        setting_name="invoice_grace_period",
-        setting_group="billing",
+        setting_name=ORGANIZATION_SETTING_NAMES.PAYMENT_GRACE_PERIOD,
+        setting_group=ORGANIZATION_SETTING_GROUPS.BILLING,
     ).first()
     if grace_period_setting:
         due_date += relativedelta(
