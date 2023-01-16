@@ -49,6 +49,7 @@ jobs:
       DJANGO_SETTINGS_MODULE: "lotus.settings"
       PYTHONPATH: "."
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       DEBUG: False
       KAFKA_URL: "localhost:9092"
 
@@ -69,12 +70,18 @@ jobs:
         run: |
           python -m pip install --upgrade pipenv wheel && pipenv update
 
+      - id: cache-pipenv
+        uses: actions/cache@v1
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
       - name: Install dependencies
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
         run: |
-          pipenv install --dev
+          pipenv install --deploy --dev
 
       - name: Migrate
-
         run: |
           pipenv run python manage.py migrate --noinput
 
