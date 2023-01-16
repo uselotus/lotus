@@ -360,6 +360,7 @@ class InvoiceSerializer(
         self, obj
     ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
         ps = obj.payment_status
+        print("PSSSSS", ps, Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID)
         if ps == Invoice.PaymentStatus.PAID:
             return INVOICE_STATUS_ENUM.PAID
         elif ps == Invoice.PaymentStatus.UNPAID:
@@ -748,6 +749,7 @@ class PriceTierSerializer(
         else:
             return None
 
+
 class PlanComponentSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
 ):
@@ -874,7 +876,7 @@ class InvoiceUpdateSerializer(
         fields = ("payment_status",)
 
     payment_status = serializers.ChoiceField(
-        choices=[Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID],
+        choices=[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID],
         required=True,
     )
 
@@ -884,6 +886,14 @@ class InvoiceUpdateSerializer(
             raise serializers.ValidationError(
                 f"Can't manually update connected invoices. This invoice is connected to {self.instance.external_payment_obj_type}"
             )
+        if data["payment_status"] == INVOICE_STATUS_ENUM.PAID:
+            data["payment_status"] = Invoice.PaymentStatus.PAID
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.UNPAID:
+            data["payment_status"] = Invoice.PaymentStatus.UNPAID
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.VOIDED:
+            data["payment_status"] = Invoice.PaymentStatus.VOIDED
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.DRAFT:
+            data["payment_status"] = Invoice.PaymentStatus.DRAFT
         return data
 
     def update(self, instance, validated_data):
