@@ -602,14 +602,16 @@ class CounterHandler(MetricHandler):
             # one and recreate it
             from metering_billing.models import Organization
 
-            from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
+            from .common_query_templates import (
+                CAGG_COMPRESSION,
+                CAGG_DROP,
+                CAGG_REFRESH,
+            )
             from .counter_query_templates import COUNTER_CAGG_QUERY
 
             organization = Organization.objects.prefetch_related("settings").get(
                 id=metric.organization.id
             )
-            if refresh is True:
-                CounterHandler.archive_metric(metric)
             try:
                 groupby = organization.settings.get(
                     setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
@@ -642,15 +644,20 @@ class CounterHandler(MetricHandler):
             sql_injection_data["cagg_name"] = base_name + "day"
             sql_injection_data["bucket_size"] = "day"
             day_query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+            day_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
             day_refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
             sql_injection_data["cagg_name"] = base_name + "second"
             sql_injection_data["bucket_size"] = "second"
             second_query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+            second_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
             second_refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
             second_compression_query = Template(CAGG_COMPRESSION).render(
                 **sql_injection_data
             )
             with connection.cursor() as cursor:
+                if refresh is True:
+                    cursor.execute(day_drop_query)
+                    cursor.execute(second_drop_query)
                 cursor.execute(day_query)
                 cursor.execute(day_refresh_query)
                 cursor.execute(second_query)
@@ -674,12 +681,12 @@ class CounterHandler(MetricHandler):
             + "___"
         )
         sql_injection_data = {"cagg_name": base_name + "day"}
-        day_query = Template(CAGG_DROP).render(**sql_injection_data)
+        day_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
         sql_injection_data = {"cagg_name": base_name + "second"}
-        second_query = Template(CAGG_DROP).render(**sql_injection_data)
+        second_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
         with connection.cursor() as cursor:
-            cursor.execute(day_query)
-            cursor.execute(second_query)
+            cursor.execute(day_drop_query)
+            cursor.execute(second_drop_query)
 
 
 class CustomHandler(MetricHandler):
@@ -1017,7 +1024,7 @@ class GaugeHandler(MetricHandler):
     def create_continuous_aggregate(metric: Metric, refresh=False):
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
+        from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .gauge_query_templates import (
             GAUGE_DELTA_CREATE_TRIGGER_FN,
             GAUGE_DELTA_CUMULATIVE_SUM,
@@ -1030,8 +1037,6 @@ class GaugeHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        if refresh is True:
-            GaugeHandler.archive_metric(metric)
         try:
             groupby = organization.settings.get(
                 setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
@@ -1063,6 +1068,9 @@ class GaugeHandler(MetricHandler):
         )
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_CUMULATIVE_SUM).render(**sql_injection_data)
+            drop_trigger = Template(GAUGE_DELTA_CREATE_TRIGGER_FN).render(
+                **sql_injection_data
+            )
             trigger_fn = Template(GAUGE_DELTA_CREATE_TRIGGER_FN).render(
                 **sql_injection_data
             )
@@ -1078,6 +1086,10 @@ class GaugeHandler(MetricHandler):
         refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
         compression_query = Template(CAGG_COMPRESSION).render(**sql_injection_data)
         with connection.cursor() as cursor:
+            if refresh:
+                cursor.execute(Template(CAGG_DROP).render(**sql_injection_data))
+                if metric.event_type == "delta":
+                    cursor.execute(drop_trigger)
             cursor.execute(query)
             if metric.event_type == "delta":
                 cursor.execute(trigger_fn)
