@@ -358,6 +358,7 @@ class InvoiceSerializer(
         self, obj
     ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
         ps = obj.payment_status
+        print("PSSSSS", ps, Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID)
         if ps == Invoice.PaymentStatus.PAID:
             return INVOICE_STATUS_ENUM.PAID
         elif ps == Invoice.PaymentStatus.UNPAID:
@@ -873,7 +874,7 @@ class InvoiceUpdateSerializer(
         fields = ("payment_status",)
 
     payment_status = serializers.ChoiceField(
-        choices=[Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID],
+        choices=[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID],
         required=True,
     )
 
@@ -883,6 +884,14 @@ class InvoiceUpdateSerializer(
             raise serializers.ValidationError(
                 f"Can't manually update connected invoices. This invoice is connected to {self.instance.external_payment_obj_type}"
             )
+        if data["payment_status"] == INVOICE_STATUS_ENUM.PAID:
+            data["payment_status"] = Invoice.PaymentStatus.PAID
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.UNPAID:
+            data["payment_status"] = Invoice.PaymentStatus.UNPAID
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.VOIDED:
+            data["payment_status"] = Invoice.PaymentStatus.VOIDED
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.DRAFT:
+            data["payment_status"] = Invoice.PaymentStatus.DRAFT
         return data
 
     def update(self, instance, validated_data):
@@ -947,10 +956,18 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
     tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
 
     def get_num_versions(self, obj) -> int:
-        return len(obj.version_numbers())
+        return obj.versions.all().count()
 
     def get_active_subscriptions(self, obj) -> int:
-        return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+        try:
+            return sum(x.active_subscriptions for x in obj.versions.all())
+        except AttributeError:
+            return (
+                obj.active_subs_by_version().aggregate(res=Sum("active_subscriptions"))[
+                    "res"
+                ]
+                or 0
+            )
 
     def get_tags(self, obj) -> TagSerializer(many=True):
         data = TagSerializer(obj.tags.all(), many=True).data

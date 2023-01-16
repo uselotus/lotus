@@ -84,7 +84,7 @@ class Organization(models.Model):
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="organizations",
         null=True,
         blank=True,
     )
@@ -149,9 +149,8 @@ class Organization(models.Model):
         if not self.subscription_filters_setting_provisioned:
             OrganizationSetting.objects.create(
                 organization=self,
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
                 setting_values=[],
-                setting_group=None,
             )
             self.subscription_filters_setting_provisioned = True
             self.save()
@@ -161,7 +160,7 @@ class Organization(models.Model):
 
         setting, _ = OrganizationSetting.objects.get_or_create(
             organization=self,
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS,
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS,
         )
         if not isinstance(filter_keys, list) and all(
             isinstance(key, str) for key in filter_keys
@@ -432,7 +431,7 @@ class Customer(models.Model):
     default_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="customers",
         null=True,
         blank=True,
         help_text="The currency the customer will be invoiced in",
@@ -576,7 +575,7 @@ class CustomerBalanceAdjustment(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="adjustments",
         null=True,
         blank=True,
     )
@@ -597,7 +596,7 @@ class CustomerBalanceAdjustment(models.Model):
     amount_paid_currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="paid_adjustments",
         null=True,
         blank=True,
     )
@@ -1229,7 +1228,7 @@ class PlanComponent(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="components",
         null=True,
         blank=True,
     )
@@ -1337,7 +1336,7 @@ class Invoice(models.Model):
     currency = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="invoices",
         null=True,
         blank=True,
     )
@@ -1439,7 +1438,7 @@ class InvoiceLineItem(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="line_items",
         null=True,
         blank=True,
     )
@@ -1549,7 +1548,7 @@ class PlanVersion(models.Model):
     pricing_unit = models.ForeignKey(
         "PricingUnit",
         on_delete=models.SET_NULL,
-        related_name="+",
+        related_name="versions",
         null=True,
         blank=True,
     )
@@ -1722,9 +1721,6 @@ class Plan(models.Model):
             )
         )
         return versions_count
-
-    def version_numbers(self):
-        return self.versions.all().values_list("version", flat=True)
 
     def make_version_active(
         self, plan_version, make_active_type=None, replace_immediately_type=None
@@ -2406,10 +2402,15 @@ class OrganizationSetting(models.Model):
     )
     setting_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     setting_name = models.CharField(
-        max_length=100,
+        choices=ORGANIZATION_SETTING_NAMES.choices, max_length=64
     )
     setting_values = models.JSONField(default=dict, blank=True)
-    setting_group = models.CharField(max_length=100, blank=True, null=True)
+    setting_group = models.CharField(
+        choices=ORGANIZATION_SETTING_GROUPS.choices,
+        blank=True,
+        null=True,
+        max_length=64,
+    )
     history = HistoricalRecords()
 
     def save(self, *args, **kwargs):

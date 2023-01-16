@@ -36,7 +36,8 @@ from api.serializers.nonmodel_serializers import (
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.db.models import F, Prefetch, Q
+from django.core.cache import cache
+from django.db.models import Count, F, Prefetch, Q
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -207,8 +208,50 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         return super().get_object()
 
     def get_queryset(self):
+        from metering_billing.models import PlanVersion
+
+        now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        qs = Plan.objects.filter(
+            organization=organization, status=PLAN_STATUS.ACTIVE
+        ).prefetch_related(
+            "organization",
+            "organization__pricing_units",
+            Prefetch(
+                "versions",
+                queryset=PlanVersion.objects.filter(
+                    organization=organization,
+                ).annotate(
+                    active_subscriptions=Count(
+                        "subscription_record",
+                        filter=Q(
+                            subscription_record__start_date__lte=now,
+                            subscription_record__end_date__gte=now,
+                        ),
+                        output_field=models.IntegerField(),
+                    )
+                ),
+            ),
+            "versions__subscription_records",
+            "versions__usage_alerts",
+            "versions__features",
+            "versions__price_adjustment",
+            "versions__created_by",
+            "versions__pricing_unit",
+            "versions__plan_components",
+            "versions__plan_components__pricing_unit",
+            "versions__plan_components__billable_metric",
+            "versions__plan_components__billable_metric__usage_alerts",
+            "versions__plan_components__billable_metric__numeric_filters",
+            "versions__plan_components__billable_metric__categorical_filters",
+            "versions__plan_components__tiers",
+            "created_by",
+            "display_version",
+            "external_links",
+            "parent_plan",
+            "target_customer",
+            "tags",
+        )
         return qs
 
     def dispatch(self, request, *args, **kwargs):
@@ -392,7 +435,7 @@ class SubscriptionViewSet(
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
         sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
         )
         for sf in subscription_filters:
             if sf["property_name"] not in sf_setting.setting_values:
@@ -678,6 +721,22 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if self.action == "partial_update":
             return InvoiceUpdateSerializer
         return InvoiceSerializer
+
+    @extend_schema(responses=InvoiceSerializer)
+    def update(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        serializer = self.get_serializer(invoice, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(invoice, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            invoice._prefetched_objects_cache = {}
+
+        return Response(
+            InvoiceSerializer(invoice, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
 
     def get_serializer_context(self):
         context = super(InvoiceViewSet, self).get_serializer_context()

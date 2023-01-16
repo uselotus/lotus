@@ -1185,7 +1185,7 @@ def setup_paas_demo(
         organization.save()
     organization = user.organization
     setting = organization.settings.get(
-        setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+        setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
     )
     setting.setting_values = ["shard_id"]
     big_customers = []

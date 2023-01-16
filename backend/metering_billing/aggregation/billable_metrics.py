@@ -283,7 +283,7 @@ class CounterHandler(MetricHandler):
         }
         try:
             sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = sf_setting.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -612,7 +612,7 @@ class CounterHandler(MetricHandler):
             )
             try:
                 groupby = organization.settings.get(
-                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
                 )
                 groupby = groupby.setting_values
             except OrganizationSetting.DoesNotExist:
@@ -1037,7 +1037,7 @@ class GaugeHandler(MetricHandler):
         )
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1135,7 +1135,7 @@ class GaugeHandler(MetricHandler):
         )
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1200,7 +1200,7 @@ class GaugeHandler(MetricHandler):
         )
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1265,7 +1265,7 @@ class GaugeHandler(MetricHandler):
         )
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1410,7 +1410,7 @@ class RateHandler(MetricHandler):
         #     RateHandler.archive_metric(metric)
         # try:
         #     groupby = metric.organization.settings.get(
-        #         setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+        #         setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
         #     )
         #     groupby = groupby.setting_values
         # except OrganizationSetting.DoesNotExist:
@@ -1507,7 +1507,7 @@ class RateHandler(MetricHandler):
         }
         try:
             sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = sf_setting.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1576,7 +1576,7 @@ class RateHandler(MetricHandler):
         }
         try:
             sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = sf_setting.setting_values
         except OrganizationSetting.DoesNotExist:
