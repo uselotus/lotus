@@ -1,6 +1,7 @@
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponseBadRequest
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from metering_billing.exceptions import (
@@ -11,6 +12,156 @@ from metering_billing.exceptions import (
 from metering_billing.models import APIToken
 from metering_billing.permissions import HasUserAPIKey
 from metering_billing.utils import now_utc
+from rest_framework import exceptions
+from rest_framework.authentication import BaseAuthentication, get_authorization_header
+
+
+class TokenAuthentication(BaseAuthentication):
+    """
+    // This example was originally taken from the Zitadel docs at https://zitadel.com/docs/examples/secure-api/go
+    //
+
+    //
+    // Backends need to protect their APIs by checking the headers of HTTP requests.
+    // Some application architectures perform these checks at the boundaries (ie,
+    // within nginx, Kong etc), but doing so provides less defense; it's much better to check
+    // at the application level - indeed, at every level - which also happens to give you the
+    // option of enabling *public* (non-protected) APIs from different microservices, which
+    // turns out to be pretty useful.
+    //
+    // **Great care must be taken with backend APIs to ensure that the endpoints are protected**.
+    // Typically, we would avoid problems by using prebuilt templates and patterns with default good
+    // behaviours to build new microservices, and any deviation from these patterns would require strict
+    // code review.
+    //
+    // All HTTP requests from clients to protected URLs need to contain an Authroization header which
+    // contains the access token. The access token must be validated by your code before you provide access to an API.
+    //
+    // Access tokens can be in one of two different formats: "opaque" or JWT. The format of the access token
+    // is defined by the server, but note that this version of the backend assumes JWTs only. (The original
+    // opaque token code has been commented out to provide clarity about how it works, while retaining a
+    // record of how to do it).
+    //
+    // # OPAQUE ACCESS TOKENS
+    //
+    // Opaque tokens are identifiers that can't be decoded by the
+    // client. To validate an opaque access token requires a round-trip call to
+    // Zitadel, which adds latency, and is potentially less reliable. On the other
+    // hand, opaque tokens reveal nothing at all to the client, and are relatively
+    // compact.
+    //
+    // # JWT ACCESS TOKENS
+    //
+    // JWT tokens, on the other hand, are **self-contained** - they are signed by
+    // the auth server - and therefore can be validated without an additional API round
+    // trip. JWT tokens contain signed information about the user and (optionally) the
+    // roles provided to the user, which we can use for authorization and auditing.
+    //
+    // The fact that JWTs are signed by the auth server means that they can be used
+    // securely, with much less latency, despite being provided by a client over
+    // which we have no control.
+    //
+    // For these reasons, we prefer JWT tokens, even though they are less compact.
+    //
+    // BACKEND APIS
+    //
+    // This server provides a single protected API, /backend/jwt, which uses offline validation to validate
+    // the token.
+    //
+    // It also includes a commented-out route called /backend/protected, which uses the Zitadel API call
+    // to validate the token.
+    //
+    // Both APIs will work with JWT tokens, but only the first will work for opaque tokens.
+    // You can see the token settings in Zitadel -> Projects -> [My Project] -> [Frontend Client] -> Token Settings
+    //
+    // NOTES:
+    // * Access Tokens can have a long lifetime; offline checking does not provide a means to cancel a
+    //   token. This means that some other method may be needed to cancel a token. This requires more consideration.
+    // * JWTs can become quite large if you try to fit too many claims (user parameters) and roles into them.
+    //   Care will need to be taken when extending the contents of a JWT.
+    //
+    // Auth0 has some more information on the different token formats; see
+    // https://auth0.com/docs/secure/tokens/access-tokens#management-api-access-tokens
+    """
+
+    def authenticate(self, request):
+        auth = get_authorization_header(request).split()
+        prefix = knox_settings.AUTH_HEADER_PREFIX.encode()
+
+        if not auth:
+            return None
+        if auth[0].lower() != prefix.lower():
+            # Authorization header is possibly for another backend
+            return None
+        if len(auth) == 1:
+            msg = _("Invalid token header. No credentials provided.")
+            raise exceptions.AuthenticationFailed(msg)
+        elif len(auth) > 2:
+            msg = _("Invalid token header. " "Token string should not contain spaces.")
+            raise exceptions.AuthenticationFailed(msg)
+
+        user, auth_token = self.authenticate_credentials(auth[1])
+        return (user, auth_token)
+
+    def authenticate_credentials(self, token):
+        """
+        Due to the random nature of hashing a value, this must inspect
+        each auth_token individually to find the correct one.
+        Tokens that have expired will be deleted and skipped
+        """
+        msg = _("Invalid token.")
+        token = token.decode("utf-8")
+        for auth_token in get_token_model().objects.filter(
+            token_key=token[: CONSTANTS.TOKEN_KEY_LENGTH]
+        ):
+            if self._cleanup_token(auth_token):
+                continue
+
+            try:
+                digest = hash_token(token)
+            except (TypeError, binascii.Error):
+                raise exceptions.AuthenticationFailed(msg)
+            if compare_digest(digest, auth_token.digest):
+                if knox_settings.AUTO_REFRESH and auth_token.expiry:
+                    self.renew_token(auth_token)
+                return self.validate_user(auth_token)
+        raise exceptions.AuthenticationFailed(msg)
+
+    def renew_token(self, auth_token):
+        current_expiry = auth_token.expiry
+        new_expiry = timezone.now() + knox_settings.TOKEN_TTL
+        auth_token.expiry = new_expiry
+        # Throttle refreshing of token to avoid db writes
+        delta = (new_expiry - current_expiry).total_seconds()
+        if delta > knox_settings.MIN_REFRESH_INTERVAL:
+            auth_token.save(update_fields=("expiry",))
+
+    def validate_user(self, auth_token):
+        if not auth_token.user.is_active:
+            raise exceptions.AuthenticationFailed(_("User inactive or deleted."))
+        return (auth_token.user, auth_token)
+
+    def authenticate_header(self, request):
+        return knox_settings.AUTH_HEADER_PREFIX
+
+    def _cleanup_token(self, auth_token):
+        for other_token in auth_token.user.auth_token_set.all():
+            if other_token.digest != auth_token.digest and other_token.expiry:
+                if other_token.expiry < timezone.now():
+                    other_token.delete()
+                    username = other_token.user.get_username()
+                    token_expired.send(
+                        sender=self.__class__, username=username, source="other_token"
+                    )
+        if auth_token.expiry is not None:
+            if auth_token.expiry < timezone.now():
+                username = auth_token.user.get_username()
+                auth_token.delete()
+                token_expired.send(
+                    sender=self.__class__, username=username, source="auth_token"
+                )
+                return True
+        return False
 
 
 # AUTH METHODS
