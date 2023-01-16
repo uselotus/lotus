@@ -44,6 +44,7 @@ export interface OrganizationType {
   plan_tags: PlanType["tags"];
   tax_rate: null | number;
   invoice_grace_period: number;
+  subscription_filters: [];
   current_user: { username: string };
   linked_organizations: {
     current: boolean;
@@ -51,7 +52,6 @@ export interface OrganizationType {
     organization_type: string;
     organization_name: string;
   }[];
-  settings: object;
 }
 
 export interface ActionUserType extends UserType {

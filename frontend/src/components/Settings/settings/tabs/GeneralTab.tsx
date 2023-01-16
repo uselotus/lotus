@@ -1,5 +1,5 @@
 // @ts-ignore
-import React, { FC, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
 import {
   useMutation,
   useQuery,
@@ -42,7 +42,6 @@ const GeneralTab: FC = () => {
   const [form] = Form.useForm();
   const queryClient = useQueryClient();
   const org = useGlobalStore((state) => state.org);
-  const [currentCurrency, setCurrentCurrency] = useState("");
   const [taxRate, setTaxRate] = useState(0);
   const [invoiceGracePeriod, setInvoiceGracePeriod] = useState(0);
   const [displayTaxRate, setDisplayTaxRate] = useState(0);
@@ -57,6 +56,7 @@ const GeneralTab: FC = () => {
   const [state, setState] = React.useState("");
   const [country, setCountry] = React.useState("");
   const [postalCode, setPostalCode] = React.useState("");
+  const [currentCurrency, setCurrentCurrency] = useState("");
   const [formSubscriptionFilters, setFormSubscriptionFilters] =
     React.useState<string[]>(subscriptionFilters);
 
@@ -77,49 +77,50 @@ const GeneralTab: FC = () => {
       Organization.get().then((res) => {
         return res[0];
       }),
-    {
-      onSuccess: (data) => {
-        //if the default currency is null, then don't set it, otherwise setCurrentCurrency
-        if (
-          data.default_currency !== undefined &&
-          data.default_currency !== null
-        ) {
-          setCurrentCurrency(data.default_currency.code);
-        }
-        if (data.tax_rate === null) {
-          setTaxRate(0);
-          setDisplayTaxRate(0);
-        } else {
-          setTaxRate(data.tax_rate);
-          setDisplayTaxRate(data.tax_rate);
-        }
-        if (data.invoice_grace_period === null) {
-          setInvoiceGracePeriod(0);
-          setDisplayInvoiceGracePeriod(0);
-        } else {
-          setInvoiceGracePeriod(data.invoice_grace_period);
-          setDisplayInvoiceGracePeriod(data.invoice_grace_period);
-        }
-
-        if (
-          data.default_currency !== undefined &&
-          data.default_currency !== null
-        ) {
-          setCurrentCurrency(data.default_currency.code);
-        }
-
-        setLine1(data.address ? data.address.line1 : "");
-        setLine2(data.address && data.address.line2 ? data.address.line2 : "");
-        setCity(data.address ? data.address.city : "");
-        setState(data.address ? data.address.state : "");
-        setCountry(data.address ? data.address.country : "");
-        setPostalCode(data.address ? data.address.postal_code : "");
-        setSubscriptionFilters(
-          data.settings["subscription_filters"]["setting_values"]
-        );
-      },
-    }
+    {}
   );
+
+  useEffect(() => {
+    if (orgData !== undefined) {
+      if (
+        orgData.default_currency !== undefined &&
+        orgData.default_currency !== null
+      ) {
+        setCurrentCurrency(orgData.default_currency.code);
+      }
+      if (orgData.tax_rate === null) {
+        setTaxRate(0);
+        setDisplayTaxRate(0);
+      } else {
+        setTaxRate(orgData.tax_rate);
+        setDisplayTaxRate(orgData.tax_rate);
+      }
+      if (orgData.invoice_grace_period === null) {
+        setInvoiceGracePeriod(0);
+        setDisplayInvoiceGracePeriod(0);
+      } else {
+        setInvoiceGracePeriod(orgData.invoice_grace_period);
+        setDisplayInvoiceGracePeriod(orgData.invoice_grace_period);
+      }
+
+      if (
+        orgData.default_currency !== undefined &&
+        orgData.default_currency !== null
+      ) {
+        setCurrentCurrency(orgData.default_currency.code);
+      }
+
+      setLine1(orgData.address ? orgData.address.line1 : "");
+      setLine2(
+        orgData.address && orgData.address.line2 ? orgData.address.line2 : ""
+      );
+      setCity(orgData.address ? orgData.address.city : "");
+      setState(orgData.address ? orgData.address.state : "");
+      setCountry(orgData.address ? orgData.address.country : "");
+      setPostalCode(orgData.address ? orgData.address.postal_code : "");
+      // setSubscriptionFilters(orgData.subscription_filters);
+    }
+  }, [orgData]);
 
   const handleEmailChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(event.target.value);
@@ -152,13 +153,15 @@ const GeneralTab: FC = () => {
       address: OrganizationType["address"];
       tax_rate: number;
       invoice_grace_period: number;
+      subscription_filters: string[];
     }) =>
       Organization.updateOrganization(
         obj.org_id,
         obj.default_currency_code,
         obj.tax_rate,
         obj.invoice_grace_period,
-        obj.address
+        obj.address,
+        obj.subscription_filters
       ),
     {
       onSuccess: () => {
@@ -280,6 +283,7 @@ const GeneralTab: FC = () => {
               tax_rate: fourDP(taxRate),
               invoice_grace_period: invoiceGracePeriod,
               address: submittedAddress,
+              subscription_filters: formSubscriptionFilters,
             });
 
             // updateOrg.mutate({
