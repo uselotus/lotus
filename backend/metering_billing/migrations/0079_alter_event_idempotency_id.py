@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0078_historicalorganization_organization_id_and_more"),
     ]

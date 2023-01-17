@@ -1,18 +1,12 @@
-import datetime
 import logging
 from decimal import Decimal
 
-import posthog
-from dateutil import parser
 from django.conf import settings
-from django.core.cache import cache
 from django.db.models import Count, F, Prefetch, Q, Sum
 from drf_spectacular.utils import extend_schema, inline_serializer
-from metering_billing.auth import parse_organization
-from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
-from metering_billing.models import APIToken, Customer, Metric, SubscriptionRecord
+from metering_billing.models import Customer, Metric, SubscriptionRecord
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
 from metering_billing.serializers.auth_serializers import *
@@ -30,9 +24,7 @@ from metering_billing.utils import (
     periods_bwn_twodates,
 )
 from metering_billing.utils.enums import (
-    FLAT_FEE_BILLING_TYPE,
     PAYMENT_PROVIDERS,
-    SUBSCRIPTION_STATUS,
     USAGE_CALC_GRANULARITY,
 )
 from rest_framework import serializers, status
@@ -76,13 +68,13 @@ class PeriodMetricRevenueView(APIView):
             organization=organization,
             issue_date__gte=p1_start,
             issue_date__lte=p1_end,
-            payment_status=INVOICE_STATUS.PAID,
+            payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("cost_due"))["tot"]
         p2_collected = Invoice.objects.filter(
             organization=organization,
             issue_date__gte=p2_start,
             issue_date__lte=p2_end,
-            payment_status=INVOICE_STATUS.PAID,
+            payment_status=Invoice.PaymentStatus.PAID,
         ).aggregate(tot=Sum("cost_due"))["tot"]
         return_dict["total_revenue_period_1"] = p1_collected or Decimal(0)
         return_dict["total_revenue_period_2"] = p2_collected or Decimal(0)
@@ -165,9 +157,7 @@ class CostAnalysisView(APIView):
                 "cost_data": {},
                 "revenue": Decimal(0),
             }
-        cost_metrics = Metric.objects.filter(
-            organization=organization, is_cost_metric=True
-        )
+        Metric.objects.filter(organization=organization, is_cost_metric=True)
         for metric in []:
             usage_ret = metric.get_usage(
                 start_date,
@@ -289,7 +279,6 @@ class PeriodSubscriptionsView(APIView):
 
 
 class PeriodMetricUsageView(APIView):
-
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
@@ -432,7 +421,7 @@ class SettingsView(APIView):
         """
         organization = request.organization
         return Response(
-            {"organization": organization.company_name}, status=status.HTTP_200_OK
+            {"organization": organization.organization_name}, status=status.HTTP_200_OK
         )
 
 
@@ -459,12 +448,11 @@ class ChangeUserOrganizationView(APIView):
         Get the current settings for the organization.
         """
         user = request.user
-        new_organization_id = request.query_params.get("transfer_to_organization_id")
+        new_organization_id = request.data.get("transfer_to_organization_id")
         if not new_organization_id:
             raise ValidationError("No organization ID provided")
-        new_organization = Organization.objects.filter(
-            organization_id=new_organization_id
-        ).first()
+        org_uuid = OrganizationUUIDField().to_internal_value(new_organization_id)
+        new_organization = Organization.objects.filter(organization_id=org_uuid).first()
         if not new_organization:
             raise ValidationError("Organization not found")
         user.organization = new_organization
@@ -507,7 +495,6 @@ class CustomersSummaryView(APIView):
 
 
 class CustomersWithRevenueView(APIView):
-
     permission_classes = [IsAuthenticated | ValidOrganization]
 
     @extend_schema(
@@ -560,7 +547,7 @@ class DraftInvoiceView(APIView):
         sub, sub_records = customer.get_subscription_and_records()
         response = {"invoice": None}
         if sub is None or sub_records is None:
-            pass
+            response = {"invoices": []}
         else:
             sub_records = sub_records.select_related("billing_plan").prefetch_related(
                 "billing_plan__plan_components",
@@ -578,7 +565,7 @@ class DraftInvoiceView(APIView):
             serializer = DraftInvoiceSerializer(invoices, many=True).data
             for invoice in invoices:
                 invoice.delete()
-            response = {"invoices": serializer}
+            response = {"invoices": serializer or []}
         return Response(response, status=status.HTTP_200_OK)
 
 

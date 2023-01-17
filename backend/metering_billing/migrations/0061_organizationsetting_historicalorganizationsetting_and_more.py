@@ -8,7 +8,6 @@ import uuid
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0060_rename_name_customer_customer_name_and_more"),
     ]

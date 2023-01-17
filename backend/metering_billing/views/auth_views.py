@@ -1,7 +1,7 @@
 import json
 import time
 
-import lotus_python
+# import lotus_python
 import posthog
 from django.conf import settings
 from django.contrib.auth import authenticate, login
@@ -10,7 +10,7 @@ from drf_spectacular.utils import extend_schema, inline_serializer
 from knox.models import AuthToken
 from knox.views import LoginView as KnoxLoginView
 from knox.views import LogoutView as KnoxLogoutView
-from metering_billing.demos import setup_demo3
+from metering_billing.demos import setup_demo4
 from metering_billing.exceptions import (
     DuplicateOrganization,
     DuplicateUser,
@@ -91,6 +91,90 @@ class LoginView(LoginViewMixin, APIView):
                 {"detail": "Please provide username and password."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return JsonResponse(
+                {"detail": "Invalid credentials."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user_team = user.team
+        if not all(
+            [
+                x != Organization.OrganizationType.EXTERNAL_DEMO
+                for x in user_team.organizations.all().values_list(
+                    "organization_type", flat=True
+                )
+            ]
+        ):
+            return JsonResponse(
+                {"detail": "Cannot login in to Lotus app with a demo account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        login(request, user)
+        posthog.capture(
+            POSTHOG_PERSON if POSTHOG_PERSON else username,
+            event="succesful login",
+            properties={"organization": user.organization.organization_name},
+        )
+        token = AuthToken.objects.create(user)
+        return Response(
+            {
+                "detail": "Successfully logged in.",
+                "token": token[1],
+                "user": UserSerializer(user).data,
+            }
+        )
+
+
+class DemoLoginView(LoginViewMixin, APIView):
+    @extend_schema(
+        request=inline_serializer(
+            name="LoginRequest",
+            fields={
+                "username": serializers.CharField(),
+                "password": serializers.CharField(),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="LoginSuccess",
+                fields={
+                    "detail": serializers.CharField(),
+                    "token": serializers.CharField(),
+                    "user": UserSerializer(),
+                },
+            ),
+            400: inline_serializer(
+                name="LoginFailure",
+                fields={
+                    "detail": serializers.CharField(),
+                },
+            ),
+        },
+    )
+    def post(self, request, format=None):
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return Response(
+                {"detail": "Invalid JSON."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if data is None:
+            return Response(
+                {"detail": "No data provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        username = data.get("username")
+        password = data.get("password")
+
+        if username is None or password is None:
+            return Response(
+                {"detail": "Please provide username and password."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user = authenticate(username=username, password=password)
 
@@ -103,7 +187,7 @@ class LoginView(LoginViewMixin, APIView):
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else username,
             event="succesful login",
-            properties={"organization": user.organization.company_name},
+            properties={"organization": user.organization.organization_name},
         )
         token = AuthToken.objects.create(user)
         return Response(
@@ -233,7 +317,9 @@ class SessionView(APIView):
             "isAuthenticated": request.user.is_authenticated,
         }
         if request.user.is_authenticated:
-            resp["organization_id"] = (request.user.organization.organization_id,)
+            resp["organization_id"] = (
+                "org_" + request.user.organization.organization_id.hex
+            )
         return JsonResponse(resp)
 
 
@@ -268,7 +354,7 @@ class RegisterView(LoginViewMixin, APIView):
         username = reg_dict["username"]
         email = reg_dict["email"]
         password = reg_dict["password"]
-        company_name = reg_dict["company_name"]
+        organization_name = reg_dict["organization_name"]
 
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
@@ -296,24 +382,24 @@ class RegisterView(LoginViewMixin, APIView):
         else:
             # Organization doesn't exist yet
             existing_org_num = Organization.objects.filter(
-                company_name=company_name,
+                organization_name=organization_name,
             ).count()
             if existing_org_num > 0:
                 raise DuplicateOrganization(
-                    "Organization with company name already exists"
+                    "Organization environment with company name already exists"
                 )
-            team = Team.objects.create(name=company_name)
+            team = Team.objects.create(name=organization_name)
             org = Organization.objects.create(
-                company_name=company_name,
+                organization_name=organization_name,
                 team=team,
                 organization_type=Organization.OrganizationType.DEVELOPMENT,
             )
             token = None
-            if META:
-                lotus_python.create_customer(
-                    customer_id=org.organization_id,
-                    name=org.company_name,
-                )
+            # if META:
+            #     lotus_python.create_customer(
+            #         customer_id=org.organization_id,
+            #         name=org.organization_name,
+            #     )
 
         user = User.objects.create_user(
             email=email,
@@ -325,7 +411,7 @@ class RegisterView(LoginViewMixin, APIView):
         posthog.capture(
             POSTHOG_PERSON if POSTHOG_PERSON else username,
             event="register",
-            properties={"organization": org.company_name},
+            properties={"organization": org.organization_name},
         )
         if token:
             token.delete()
@@ -369,7 +455,7 @@ class DemoRegisterView(LoginViewMixin, APIView):
         username = reg_dict["username"]
         email = reg_dict["email"]
         password = reg_dict["password"]
-        company_name = "demo_" + username  # different
+        organization_name = "demo_" + username  # different
 
         existing_user_num = User.objects.filter(username=username).count()
         if existing_user_num > 0:
@@ -378,14 +464,14 @@ class DemoRegisterView(LoginViewMixin, APIView):
         if existing_user_num > 0:
             raise DuplicateUser("User with email already exists")
 
-        user = setup_demo3(
-            company_name,
+        user = setup_demo4(
+            organization_name,
             username,
             email,
             password,
             org_type=Organization.OrganizationType.EXTERNAL_DEMO,
         )
-        logger.info("setup_demo3 took %s seconds", time.time() - start)
+        logger.info("setup_demo4 took %s seconds", time.time() - start)
         logger.info(f"Demo user {user} created")
         user.organization.organization_type = (
             Organization.OrganizationType.EXTERNAL_DEMO
@@ -395,7 +481,7 @@ class DemoRegisterView(LoginViewMixin, APIView):
         posthog.capture(
             username,
             event="demo_register",
-            properties={"organization": user.organization.company_name},
+            properties={"organization": user.organization.organization_name},
         )
         _, token = AuthToken.objects.create(user)
         user_data = UserSerializer(user).data

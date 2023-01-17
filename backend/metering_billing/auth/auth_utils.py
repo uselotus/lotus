@@ -1,5 +1,4 @@
 from django.core.cache import cache
-from django.db.models import Q
 from django.http import HttpResponseBadRequest
 from django.utils.translation import gettext_lazy as _
 from drf_spectacular.extensions import OpenApiAuthenticationExtension

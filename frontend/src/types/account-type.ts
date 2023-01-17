@@ -1,10 +1,11 @@
+import { PlanType } from "./plan-type";
 import { PricingUnit } from "./pricing-unit-type";
 
 export interface CreateOrgAccountType {
   username: string;
   password: string;
   email: string;
-  company_name: string;
+  organization_name: string;
   industry: string;
   invite_token?: string | null;
 }
@@ -16,9 +17,17 @@ export interface UserType {
   status: string;
 }
 
+export interface OrganizationSettingsType {
+  [key: string]: {
+    setting_values: object[];
+    setting_id: string;
+    setting_group: string;
+    setting_name: string;
+  };
+}
+
 export interface OrganizationType {
-  company_name: string;
-  payment_plan: string;
+  organization_name: string;
   payment_provider_ids: object;
   address?: {
     city: string;
@@ -32,8 +41,17 @@ export interface OrganizationType {
   default_currency: PricingUnit;
   available_currencies: PricingUnit[];
   organization_id: string;
+  plan_tags: PlanType["tags"];
   tax_rate: null | number;
-  invoice_grace_period: number;
+  payment_grace_period: number;
+  subscription_filter_keys: [];
+  current_user: { username: string };
+  linked_organizations: {
+    current: boolean;
+    organization_id: string;
+    organization_type: string;
+    organization_name: string;
+  }[];
 }
 
 export interface ActionUserType extends UserType {

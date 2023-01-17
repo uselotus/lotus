@@ -1,19 +1,35 @@
-from typing import Optional, Union
+import re
+from typing import Literal, Optional, Union
 
 from django.conf import settings
 from django.db.models import Q
-from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
-from metering_billing.exceptions import ServerError
 from metering_billing.invoice import generate_balance_adjustment_invoice
 from metering_billing.models import *
 from metering_billing.payment_providers import PAYMENT_PROVIDER_MAP
 from metering_billing.serializers.serializer_utils import (
+    BalanceAdjustmentUUIDField,
+    MetricUUIDField,
+    PlanUUIDField,
+    PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
+    SubscriptionUUIDField,
 )
 from metering_billing.utils.enums import *
 from rest_framework import serializers
 
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ("tag_name", "tag_hex", "tag_color")
+
+    def validate(self, data):
+        match = re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", data["tag_hex"])
+        if not match:
+            raise serializers.ValidationError("Invalid hex code")
+        return data
 
 
 class ConvertEmptyStringToSerializerMixin:
@@ -117,7 +133,7 @@ class LightweightPlanVersionSerializer(
         }
 
     plan_name = serializers.CharField(source="plan.plan_name")
-    plan_id = serializers.CharField(source="plan.plan_id")
+    plan_id = PlanUUIDField(source="plan.plan_id")
 
 
 class CategoricalFilterSerializer(
@@ -270,7 +286,7 @@ class SellerSerializer(
         model = Organization
         fields = ("name", "address", "phone", "email")
 
-    name = serializers.CharField(source="company_name")
+    name = serializers.CharField(source="organization_name")
     address = serializers.SerializerMethodField(required=False, allow_null=True)
 
     def get_address(self, obj) -> AddressSerializer(allow_null=True, required=False):
@@ -304,25 +320,27 @@ class InvoiceSerializer(
             "invoice_pdf",
         )
         extra_kwargs = {
-            "invoice_number": {"required": True},
-            "cost_due": {"required": True},
-            "issue_date": {"required": True},
-            "payment_status": {"required": True},
-            "due_date": {"required": True, "allow_null": True},
+            "invoice_number": {"required": True, "read_only": True},
+            "cost_due": {"required": True, "read_only": True},
+            "issue_date": {"required": True, "read_only": True},
+            "payment_status": {"required": True, "read_only": True},
+            "due_date": {"required": True, "allow_null": True, "read_only": True},
             "external_payment_obj_id": {
                 "required": True,
                 "allow_null": True,
                 "allow_blank": False,
+                "read_only": True,
             },
             "external_payment_obj_type": {
                 "required": True,
                 "allow_null": True,
                 "allow_blank": False,
+                "read_only": True,
             },
-            "start_date": {"required": True},
-            "end_date": {"required": True},
-            "seller": {"required": True},
-            "invoice_pdf": {"required": True, "allow_null": True},
+            "start_date": {"required": True, "read_only": True},
+            "end_date": {"required": True, "read_only": True},
+            "seller": {"required": True, "read_only": True},
+            "invoice_pdf": {"required": True, "allow_null": True, "read_only": True},
         }
 
     external_payment_obj_type = serializers.ChoiceField(
@@ -334,20 +352,31 @@ class InvoiceSerializer(
     start_date = serializers.SerializerMethodField()
     end_date = serializers.SerializerMethodField()
     seller = SellerSerializer(source="organization")
+    payment_status = serializers.SerializerMethodField()
+
+    def get_payment_status(
+        self, obj
+    ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
+        ps = obj.payment_status
+        print("PSSSSS", ps, Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID)
+        if ps == Invoice.PaymentStatus.PAID:
+            return INVOICE_STATUS_ENUM.PAID
+        elif ps == Invoice.PaymentStatus.UNPAID:
+            return INVOICE_STATUS_ENUM.UNPAID
+        elif ps == Invoice.PaymentStatus.VOIDED:
+            return INVOICE_STATUS_ENUM.VOIDED
+        elif ps == Invoice.PaymentStatus.DRAFT:
+            return INVOICE_STATUS_ENUM.DRAFT
 
     def get_start_date(self, obj) -> datetime.date:
-        return min(
-            [
-                convert_to_date(x.start_date)
-                for x in obj.line_items.all()
-                if x.start_date
-            ]
-        )
+        seq = [
+            convert_to_date(x.start_date) for x in obj.line_items.all() if x.start_date
+        ]
+        return min(seq) if len(seq) > 0 else None
 
     def get_end_date(self, obj) -> datetime.date:
-        return max(
-            [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
-        )
+        seq = [convert_to_date(x.end_date) for x in obj.line_items.all() if x.end_date]
+        return max(seq) if len(seq) > 0 else None
 
 
 class LightweightInvoiceSerializer(InvoiceSerializer):
@@ -443,7 +472,7 @@ class CustomerSerializer(
                 d[PAYMENT_PROVIDERS.STRIPE] = self._format_stripe_integration(
                     d[PAYMENT_PROVIDERS.STRIPE]
                 )
-            except (KeyError, TypeError) as e:
+            except (KeyError, TypeError):
                 d[PAYMENT_PROVIDERS.STRIPE] = None
         else:
             d[PAYMENT_PROVIDERS.STRIPE] = None
@@ -460,7 +489,7 @@ class CustomerSerializer(
     def get_invoices(self, obj) -> LightweightInvoiceSerializer(many=True):
         timeline = (
             obj.invoices.filter(
-                ~Q(payment_status=INVOICE_STATUS.DRAFT),
+                ~Q(payment_status=Invoice.PaymentStatus.DRAFT),
                 organization=self.context.get("organization"),
             )
             .order_by("-issue_date")
@@ -594,10 +623,15 @@ class MetricSerializer(
             "proration",
         )
         extra_kwargs = {
-            "metric_id": {"required": True, "read_only": True},
+            "metric_id": {"required": True, "read_only": True, "allow_blank": False},
             "event_name": {"required": True, "read_only": True},
             "property_name": {"required": True, "read_only": True},
-            "aggregation_type": {"required": True, "read_only": True},
+            "aggregation_type": {
+                "required": True,
+                "read_only": True,
+                "allow_blank": False,
+                "allow_null": True,
+            },
             "granularity": {
                 "required": True,
                 "allow_null": True,
@@ -616,8 +650,10 @@ class MetricSerializer(
             "categorical_filters": {"required": True, "read_only": True},
             "is_cost_metric": {"required": True, "read_only": True},
             "custom_sql": {"required": True, "read_only": True},
+            "proration": {"required": True, "read_only": True},
         }
 
+    metric_id = MetricUUIDField()
     numeric_filters = NumericFilterSerializer(
         many=True,
     )
@@ -673,6 +709,42 @@ class PriceTierSerializer(
                 "read_only": True,
             },
         }
+
+    type = serializers.SerializerMethodField()
+    batch_rounding_type = serializers.SerializerMethodField()
+
+    def get_type(
+        self, obj
+    ) -> Literal[PRICE_TIER_TYPE.FLAT, PRICE_TIER_TYPE.PER_UNIT, PRICE_TIER_TYPE.FREE]:
+        if obj.type == PriceTier.PriceTierType.FLAT:
+            return PRICE_TIER_TYPE.FLAT
+        elif obj.type == PriceTier.PriceTierType.PER_UNIT:
+            return PRICE_TIER_TYPE.PER_UNIT
+        elif obj.type == PriceTier.PriceTierType.FREE:
+            return PRICE_TIER_TYPE.FREE
+        else:
+            raise ValueError("Invalid price tier type")
+
+    def get_batch_rounding_type(
+        self, obj
+    ) -> Optional[
+        Literal[
+            BATCH_ROUNDING_TYPE.ROUND_UP,
+            BATCH_ROUNDING_TYPE.ROUND_DOWN,
+            BATCH_ROUNDING_TYPE.ROUND_NEAREST,
+            BATCH_ROUNDING_TYPE.NO_ROUNDING,
+        ]
+    ]:
+        if obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_UP:
+            return BATCH_ROUNDING_TYPE.ROUND_UP
+        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_DOWN:
+            return BATCH_ROUNDING_TYPE.ROUND_DOWN
+        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.ROUND_NEAREST:
+            return BATCH_ROUNDING_TYPE.ROUND_NEAREST
+        elif obj.batch_rounding_type == PriceTier.BatchRoundingType.NO_ROUNDING:
+            return BATCH_ROUNDING_TYPE.NO_ROUNDING
+        else:
+            return None
 
 
 class PlanComponentSerializer(
@@ -758,19 +830,19 @@ class PlanVersionSerializer(
     currency = PricingUnitSerializer(source="pricing_unit")
 
     def get_created_by(self, obj) -> str:
-        if obj.created_by != None:
+        if obj.created_by is not None:
             return obj.created_by.username
         else:
             return None
 
     def get_replace_with(self, obj) -> Union[int, None]:
-        if obj.replace_with != None:
+        if obj.replace_with is not None:
             return obj.replace_with.version
         else:
             return None
 
     def get_transition_to(self, obj) -> Union[str, None]:
-        if obj.transition_to != None:
+        if obj.transition_to is not None:
             return str(obj.transition_to.display_version)
         else:
             return None
@@ -790,6 +862,8 @@ class PlanNameAndIDSerializer(
             "plan_id": {"required": True},
         }
 
+    plan_id = PlanUUIDField()
+
 
 class InvoiceUpdateSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
@@ -799,7 +873,8 @@ class InvoiceUpdateSerializer(
         fields = ("payment_status",)
 
     payment_status = serializers.ChoiceField(
-        choices=[INVOICE_STATUS.PAID, INVOICE_STATUS.UNPAID], required=True
+        choices=[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID],
+        required=True,
     )
 
     def validate(self, data):
@@ -808,6 +883,14 @@ class InvoiceUpdateSerializer(
             raise serializers.ValidationError(
                 f"Can't manually update connected invoices. This invoice is connected to {self.instance.external_payment_obj_type}"
             )
+        if data["payment_status"] == INVOICE_STATUS_ENUM.PAID:
+            data["payment_status"] = Invoice.PaymentStatus.PAID
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.UNPAID:
+            data["payment_status"] = Invoice.PaymentStatus.UNPAID
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.VOIDED:
+            data["payment_status"] = Invoice.PaymentStatus.VOIDED
+        elif data["payment_status"] == INVOICE_STATUS_ENUM.DRAFT:
+            data["payment_status"] = Invoice.PaymentStatus.DRAFT
         return data
 
     def update(self, instance, validated_data):
@@ -840,6 +923,7 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
             "display_version",
             "num_versions",
             "active_subscriptions",
+            "tags",
         )
         extra_kwargs = {
             "plan_name": {"required": True},
@@ -852,8 +936,10 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
             "display_version": {"required": True},
             "num_versions": {"required": True},
             "active_subscriptions": {"required": True},
+            "tags": {"required": True},
         }
 
+    plan_id = PlanUUIDField()
     parent_plan = PlanNameAndIDSerializer(allow_null=True)
     target_customer = LightweightCustomerSerializer(allow_null=True)
     display_version = PlanVersionSerializer()
@@ -866,12 +952,25 @@ class PlanSerializer(ConvertEmptyStringToSerializerMixin, serializers.ModelSeria
     external_links = InitialExternalPlanLinkSerializer(
         many=True, help_text="The external links that this plan has."
     )
+    tags = serializers.SerializerMethodField(help_text="The tags that this plan has.")
 
     def get_num_versions(self, obj) -> int:
-        return len(obj.version_numbers())
+        return obj.versions.all().count()
 
     def get_active_subscriptions(self, obj) -> int:
-        return sum(x.active_subscriptions for x in obj.active_subs_by_version())
+        try:
+            return sum(x.active_subscriptions for x in obj.versions.all())
+        except AttributeError:
+            return (
+                obj.active_subs_by_version().aggregate(res=Sum("active_subscriptions"))[
+                    "res"
+                ]
+                or 0
+            )
+
+    def get_tags(self, obj) -> TagSerializer(many=True):
+        data = TagSerializer(obj.tags.all(), many=True).data
+        return data
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -908,8 +1007,6 @@ class SubscriptionRecordCreateSerializer(
             "subscription_filters",
             "customer_id",
             "plan_id",
-            "customer",
-            "billing_plan",
         )
 
     start_date = serializers.DateTimeField(
@@ -945,15 +1042,6 @@ class SubscriptionRecordCreateSerializer(
         write_only=True,
         help_text="The Lotus plan_id, found in the billing plan object",
     )
-    # READ-ONLY
-    customer = LightweightCustomerSerializer(
-        read_only=True,
-        help_text="The customer object associated with this subscription.",
-    )
-    billing_plan = LightweightPlanVersionSerializer(
-        read_only=True,
-        help_text="The billing plan object associated with this subscription.",
-    )
 
     def validate(self, data):
         # extract the plan version from the plan
@@ -967,6 +1055,8 @@ class SubscriptionRecordCreateSerializer(
         return data
 
     def create(self, validated_data):
+        from metering_billing.invoice import generate_invoice
+
         filters = validated_data.pop("subscription_filters", [])
         subscription_filters = []
         for filter_data in filters:
@@ -1013,7 +1103,8 @@ class LightweightPlanVersionSerializer(PlanVersionSerializer):
         fields = ("plan_id", "plan_name", "version_id")
 
     plan_name = serializers.CharField(read_only=True, source="plan.plan_name")
-    plan_id = serializers.CharField(read_only=True, source="plan.plan_id")
+    plan_id = PlanUUIDField(read_only=True, source="plan.plan_id")
+    version_id = PlanVersionUUIDField(read_only=True)
 
 
 class LightweightSubscriptionRecordSerializer(SubscriptionRecordSerializer):
@@ -1047,6 +1138,7 @@ class SubscriptionSerializer(
             "plans",
         )
 
+    subscription_id = SubscriptionUUIDField(read_only=True)
     customer = LightweightCustomerSerializer(read_only=True)
     plans = serializers.SerializerMethodField()
 
@@ -1122,12 +1214,19 @@ class SubscriptionRecordUpdateSerializer(
 
 
 class SubscriptionRecordFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        source="customer",
+        queryset=Customer.objects.all(),
         required=True,
         help_text="Filter to a specific customer.",
     )
-    plan_id = serializers.CharField(
-        required=True, help_text="Filter to a specific plan."
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
+        required=True,
+        help_text="Filter to a specific plan.",
     )
     subscription_filters = SubscriptionCategoricalFilterSerializer(
         many=True,
@@ -1137,33 +1236,18 @@ class SubscriptionRecordFilterSerializer(serializers.Serializer):
 
     def validate(self, data):
         data = super().validate(data)
-        # check that the customer ID matches an existing customer
-        try:
-            cust_id = data.pop("customer_id")
-            data["customer"] = Customer.objects.get(
-                customer_id=cust_id, organization=self.context["organization"]
-            )
-        except Customer.DoesNotExist:
-            raise serializers.ValidationError(
-                f"Customer with customer_id {cust_id} does not exist"
-            )
-        # check that the plan ID matches an existing plan
-        if data.get("plan_id"):
-            try:
-                data["plan"] = Plan.objects.get(
-                    plan_id=data["plan_id"], organization=self.context["organization"]
-                )
-            except Plan.DoesNotExist:
-                raise serializers.ValidationError(
-                    f"Plan with plan_id {data['plan_id']} does not exist"
-                )
+        if data.get("billing_plan"):
+            data["plan"] = data["billing_plan"]["plan"]
         return data
 
 
 class SubscriptionRecordFilterSerializerDelete(SubscriptionRecordFilterSerializer):
-    plan_id = serializers.CharField(
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
         required=False,
-        help_text="Filter to a specific plan. If not specified, all plans will be canceled.",
+        help_text="Filter to a specific plan. If not specified, all plans will be included in the cancellation request.",
     )
 
 
@@ -1193,9 +1277,12 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
         default=[SUBSCRIPTION_STATUS.ACTIVE],
         help_text="Filter to a specific set of subscription statuses. Defaults to active.",
     )
-    plan_id = serializers.CharField(
+    plan_id = SlugRelatedFieldWithOrganization(
+        slug_field="plan_id",
+        source="billing_plan.plan",
+        queryset=Plan.objects.all(),
         required=False,
-        help_text="Filter to a specific plan. If not specified, all plans will be canceled.",
+        help_text="Filter to a specific plan.",
     )
     range_start = serializers.DateTimeField(
         required=False,
@@ -1209,29 +1296,34 @@ class ListSubscriptionRecordFilter(SubscriptionRecordFilterSerializer):
     def validate(self, data):
         # check that the customer ID matches an existing customer
         data = super().validate(data)
-        if data.get("customer_id"):
-            try:
-                data["customer"] = Customer.objects.get(
-                    customer_id=data["customer_id"],
-                    organization=self.context["organization"],
-                )
-            except Customer.DoesNotExist:
-                raise serializers.ValidationError(
-                    f"Customer with customer_id {data['customer_id']} does not exist"
-                )
         return data
 
 
 class InvoiceListFilterSerializer(serializers.Serializer):
-    customer_id = serializers.CharField(
-        required=False, help_text="A filter for invoices for a specific customer"
+    customer_id = SlugRelatedFieldWithOrganization(
+        slug_field="customer_id",
+        queryset=Customer.objects.all(),
+        required=False,
+        source="customer",
+        help_text="A filter for invoices for a specific customer",
     )
     payment_status = serializers.MultipleChoiceField(
-        choices=[INVOICE_STATUS.UNPAID, INVOICE_STATUS.PAID],
+        choices=[INVOICE_STATUS_ENUM.UNPAID, INVOICE_STATUS_ENUM.PAID],
         required=False,
-        default=[INVOICE_STATUS.PAID],
+        default=[INVOICE_STATUS_ENUM.PAID],
         help_text="A filter for invoices with a specific payment status",
     )
+
+    def validate(self, data):
+        data = super().validate(data)
+        payment_status_str = data.get("payment_status", [])
+        payment_status = []
+        if INVOICE_STATUS_ENUM.PAID in payment_status_str:
+            payment_status.append(Invoice.PaymentStatus.PAID)
+        if INVOICE_STATUS_ENUM.UNPAID in payment_status_str:
+            payment_status.append(Invoice.PaymentStatus.UNPAID)
+        data["payment_status"] = payment_status
+        return data
 
 
 class CustomerBalanceAdjustmentSerializer(
@@ -1253,6 +1345,7 @@ class CustomerBalanceAdjustmentSerializer(
             "amount_paid_currency",
         )
 
+    adjustment_id = BalanceAdjustmentUUIDField()
     customer = LightweightCustomerSerializer(read_only=True)
     pricing_unit = PricingUnitSerializer(read_only=True)
     parent_adjustment_id = SlugRelatedFieldWithOrganization(
@@ -1270,18 +1363,25 @@ class CustomerBalanceAdjustmentCreateSerializer(
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
-            "adjustment_id",
             "customer_id",
             "amount",
             "pricing_unit_code",
-            "pricing_unit",
             "description",
             "effective_at",
             "expires_at",
-            "status",
             "amount_paid",
             "amount_paid_currency_code",
         )
+        extra_kwargs = {
+            "customer_id": {"required": True, "write_only": True},
+            "amount": {"required": True, "write_only": True},
+            "pricing_unit_code": {"required": True, "write_only": True},
+            "description": {"required": False, "write_only": True},
+            "effective_at": {"required": False, "write_only": True},
+            "expires_at": {"required": False, "write_only": True},
+            "amount_paid": {"required": False, "write_only": True},
+            "amount_paid_currency_code": {"required": False, "write_only": True},
+        }
 
     customer_id = SlugRelatedFieldWithOrganization(
         slug_field="customer_id",
@@ -1307,7 +1407,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
     def validate(self, data):
         data = super().validate(data)
         amount = data.get("amount", 0)
-        customer = data["customer"]
+        data["customer"]
         if amount <= 0:
             raise serializers.ValidationError("Amount must be greater than 0")
         if data.get("amount_paid") and data.get("amount_paid") <= 0:

@@ -70,12 +70,13 @@ import {
   UpdateStripeSettingParams,
 } from "../types/stripe-type";
 import { DraftInvoiceType } from "../types/invoice-type";
-import { MarkInvoiceStatusAsPaid } from "../types/invoice-type";
+import { MarkPaymentStatusAsPaid } from "../types/invoice-type";
 import {
   CreateBalanceAdjustmentType,
   BalanceAdjustmentType,
 } from "../types/balance-adjustment";
 import { PricingUnit } from "../types/pricing-unit-type";
+import { AlertType, CreateAlertType } from "../types/alert-type";
 
 const cookies = new Cookies();
 
@@ -236,6 +237,10 @@ export const Plan = {
     post: ArchivePlanVersionType
   ): Promise<ArchivePlanVersionType> =>
     requests.patch(`app/plan_versions/${version_id}/`, post),
+  createAlert: (post: CreateAlertType): Promise<AlertType> =>
+    requests.post("app/usage_alerts/", post),
+  deleteAlert: (post: { usage_alert_id: string }): Promise<AlertType> =>
+    requests.delete(`app/usage_alerts/${post.usage_alert_id}/`),
 };
 
 export const Webhook = {
@@ -273,9 +278,22 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> => requests.post("app/login/", { username, password }),
+  demo_login: (
+    username: string,
+    password: string
+  ): Promise<{
+    detail: any;
+    token: string;
+    user: {
+      username: string;
+      email: string;
+      organization_id: string;
+      organization_name: string;
+    };
+  }> => requests.post("app/demo_login/", { username, password }),
   logout: (): Promise<{}> => requests.post("app/logout/", {}),
   registerCreate: (
     register: CreateOrgAccountType
@@ -286,7 +304,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> =>
     requests.post("app/register/", {
@@ -301,7 +319,7 @@ export const Authentication = {
       username: string;
       email: string;
       organization_id: string;
-      company_name: string;
+      organization_name: string;
     };
   }> => requests.post("app/demo_register/", { register }),
 
@@ -319,20 +337,36 @@ export const Organization = {
   invite: (email: string): Promise<{ email: string }> =>
     requests.post("app/organization/invite/", { email }),
   get: (): Promise<OrganizationType[]> => requests.get("app/organizations/"),
+  createOrg: (
+    organization_name: string,
+    default_currency_code: string,
+    organization_type: "development" | "production"
+  ): Promise<OrganizationType> =>
+    requests.post("app/organizations/", {
+      organization_name,
+      default_currency_code,
+      organization_type,
+    }),
+  switchOrg: (org_id: string): Promise<OrganizationType> =>
+    requests.post("/app/switch_organization/", {
+      transfer_to_organization_id: org_id,
+    }),
   getActionStream: (cursor: string): Promise<PaginatedActionsType> =>
     requests.get("app/actions/", { params: { c: cursor } }),
   updateOrganization: (
     org_id: string,
     default_currency_code: string,
     tax_rate: number,
-    invoice_grace_period: number,
-    address: OrganizationType["address"]
+    payment_grace_period: number,
+    address: OrganizationType["address"],
+    subscription_filter_keys: string[]
   ): Promise<OrganizationType> =>
     requests.patch(`app/organizations/${org_id}/`, {
       default_currency_code: default_currency_code,
       tax_rate,
-      invoice_grace_period,
+      payment_grace_period,
       address,
+      subscription_filter_keys,
     }),
 };
 
@@ -456,7 +490,7 @@ export const PaymentProcessorIntegration = {
 };
 
 export const Invoices = {
-  changeStatus: (data: MarkInvoiceStatusAsPaid): Promise<any> => {
+  changeStatus: (data: MarkPaymentStatusAsPaid): Promise<any> => {
     return requests.patch(`app/invoices/${data.invoice_number}/`, {
       payment_status: data.payment_status,
     });

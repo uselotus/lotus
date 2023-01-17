@@ -1,6 +1,5 @@
 import json
 import logging
-from dataclasses import dataclass
 
 from django.conf import settings
 from kafka import KafkaProducer
@@ -14,7 +13,6 @@ logger = logging.getLogger("django.server")
 
 
 class Producer(metaclass=Singleton):
-
     __connection = None
 
     def __init__(self):

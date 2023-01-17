@@ -2,8 +2,6 @@ import itertools
 import json
 import urllib.parse
 from datetime import timedelta
-from decimal import Decimal
-from urllib.parse import urlencode
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -28,9 +26,6 @@ from metering_billing.utils.enums import (
     INVOICING_BEHAVIOR,
     PLAN_DURATION,
     PLAN_STATUS,
-    PRICE_TIER_TYPE,
-    REPLACE_IMMEDIATELY_TYPE,
-    SUBSCRIPTION_STATUS,
     USAGE_BEHAVIOR,
     USAGE_BILLING_FREQUENCY,
 )
@@ -117,14 +112,14 @@ def subscription_test_common_setup(
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 cost_per_batch=cpb,
                 metric_units_per_batch=mupb,
@@ -517,9 +512,9 @@ class TestUpdateSub:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
 
-        events = baker.make(
+        baker.make(
             Event,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
@@ -536,11 +531,10 @@ class TestUpdateSub:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
-        before_invoices = Invoice.objects.all().count()
+        Invoice.objects.all().count()
 
-        billing_plan = baker.make(
+        baker.make(
             PlanVersion,
             organization=setup_dict["org"],
             description="test_plan for testing",
@@ -564,7 +558,7 @@ class TestUpdateSub:
             data=json.dumps(payload, cls=DjangoJSONEncoder),
             content_type="application/json",
         )
-        after_invoices = Invoice.objects.all().count()
+        Invoice.objects.all().count()
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_switch_plan_transfers_usage_by_default(
@@ -603,9 +597,9 @@ class TestUpdateSub:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
 
-        events = baker.make(
+        baker.make(
             Event,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
@@ -622,7 +616,6 @@ class TestUpdateSub:
             plan_duration=PLAN_DURATION.MONTHLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
         before_invoices = Invoice.objects.all().count()
 
@@ -697,9 +690,9 @@ class TestUpdateSub:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
 
-        events = baker.make(
+        baker.make(
             Event,
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
@@ -716,7 +709,6 @@ class TestUpdateSub:
             plan_duration=PLAN_DURATION.MONTHLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
         before_invoices = Invoice.objects.all().count()
 
@@ -791,7 +783,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
 
     def test_dont_create_subscription_if_already_exists(
         self, subscription_test_common_setup
@@ -831,7 +823,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -868,7 +860,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert (new_sub_record.end_date + relativedelta(day=sub.day_anchor)).day == (
             new_sub_record.end_date + relativedelta(days=1)
         ).day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
 
     def test_month_anchor_is_none_after_adding_monthly_plan_not_none_after_adding_yearly_plan(
         self,
@@ -884,7 +876,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
 
         billing_plan = baker.make(
@@ -921,7 +912,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -969,7 +960,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
 
         billing_plan = baker.make(
@@ -1006,7 +996,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -1071,7 +1061,6 @@ class TestSubscriptionAndSubscriptionRecord:
     def test_adding_yearly_plan_makes_monthly_plan_conform_to_day_anchor(
         self, subscription_test_common_setup
     ):
-
         setup_dict = subscription_test_common_setup(
             num_subscriptions=0, auth_method="session_auth"
         )
@@ -1082,7 +1071,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
 
         billing_plan = baker.make(
@@ -1162,7 +1150,7 @@ class TestSubscriptionAndSubscriptionRecord:
         new_sub_record = (
             SubscriptionRecord.objects.all().order_by("-start_date").first()
         )
-        old_sub_record = SubscriptionRecord.objects.all().order_by("-start_date").last()
+        SubscriptionRecord.objects.all().order_by("-start_date").last()
         assert sub.start_date != new_sub_record.start_date
         assert sub.end_date == new_sub_record.next_billing_date
         assert sub.end_date == new_sub_record.end_date
@@ -1186,7 +1174,6 @@ class TestSubscriptionAndSubscriptionRecord:
             plan_duration=PLAN_DURATION.YEARLY,
             display_version=setup_dict["billing_plan"],
             status=PLAN_STATUS.ACTIVE,
-            plan_id="yearly-plan",
         )
         cur_payload = setup_dict["payload"]
         setup_dict["org"].update_subscription_filter_settings(["email"])
@@ -1230,7 +1217,7 @@ class TestSubscriptionAndSubscriptionRecord:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
         prev_subscriptions_len = after_subscriptions_len
         prev_subscription_records_len = after_subscription_records_len
 
@@ -1268,7 +1255,8 @@ class TestSubscriptionAndSubscriptionRecord:
         before_active_subs = Subscription.objects.active().count()
         before_active_sub_records = SubscriptionRecord.objects.active().count()
         before_invoices = Invoice.objects.all().count()
-
+        assert before_active_subs == 1
+        assert before_active_sub_records == 2
         params = {
             "customer_id": setup_dict["customer"].customer_id,
             "plan_id": setup_dict["plan"].plan_id,
@@ -1290,8 +1278,6 @@ class TestSubscriptionAndSubscriptionRecord:
         assert response.status_code == status.HTTP_200_OK
         assert after_active_subs == 1
         assert after_active_sub_records == 1
-        assert before_active_subs == 1
-        assert before_active_sub_records == 2
         assert after_invoices == before_invoices + 1
 
         assert active_sub.billing_cadence == PLAN_DURATION.QUARTERLY
@@ -1328,7 +1314,7 @@ class TestRegressions:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
@@ -1371,7 +1357,7 @@ class TestRegressions:
         assert sub.end_date == sub_record.end_date
         assert sub.billing_cadence == sub_record.billing_plan.plan.plan_duration
         assert sub.day_anchor == sub_record.start_date.day
-        assert sub.month_anchor == None
+        assert sub.month_anchor is None
 
         # assert normal customer is chilling
         payload = {}

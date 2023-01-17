@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from django_celery_beat.models import CrontabSchedule, IntervalSchedule, PeriodicTask
+from django_celery_beat.models import IntervalSchedule, PeriodicTask
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -7,7 +7,6 @@ load_dotenv()
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
-
         # Create schedules
         every_hour, _ = IntervalSchedule.objects.get_or_create(
             every=1,
@@ -15,6 +14,10 @@ class Command(BaseCommand):
         )
         every_15_mins, _ = IntervalSchedule.objects.get_or_create(
             every=15,
+            period=IntervalSchedule.MINUTES,
+        )
+        every_5_mins, _ = IntervalSchedule.objects.get_or_create(
+            every=5,
             period=IntervalSchedule.MINUTES,
         )
         every_3_minutes, _ = IntervalSchedule.objects.get_or_create(
@@ -29,12 +32,20 @@ class Command(BaseCommand):
             defaults={"interval": every_hour, "crontab": None},
         )
 
-        PeriodicTask.objects.filter(
-            name="Check start of subscriptions",
-        ).delete()
-
         PeriodicTask.objects.update_or_create(
             name="Check Payment Intent status and update invoice",
             task="metering_billing.tasks.update_invoice_status",
             defaults={"interval": every_15_mins, "crontab": None},
+        )
+
+        PeriodicTask.objects.update_or_create(
+            name="Run Alert Refreshes",
+            task="metering_billing.tasks.refresh_alerts",
+            defaults={"interval": every_3_minutes, "crontab": None},
+        )
+
+        PeriodicTask.objects.update_or_create(
+            name="Run Zero Out Expired Balances",
+            task="metering_billing.tasks.zero_out_expired_balance_adjustments",
+            defaults={"interval": every_5_mins, "crontab": None},
         )

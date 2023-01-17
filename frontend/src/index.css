@@ -1,6 +1,11 @@
-
+@import url('https://fonts.googleapis.com/css2?family=Arimo:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alliance+No+2&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
 
 
 @font-face {
@@ -9,7 +14,13 @@
     font-weight: normal;
     src: local('Menlo'), url('../fonts/Menlo-Regular.woff') format('woff');
 }
-
+@font-face {
+  font-family: "Alliance No.2";
+  src: local url('../fonts/Alliance-No.2-Regular.woff') format('woff');
+}
+.Inter {
+  font-family: 'Inter', sans-serif;
+}
 @font-face {
     font-family: 'Satoshi Regular';
     font-style: normal;
@@ -24,6 +35,9 @@
 .font-satoshi {
     font-family: Satoshi, serif;
 }
+.font-alliance {
+  font-family:  "Alliance No.2", sans-serif;
+}
 
 
 svg {
@@ -33,6 +47,7 @@ svg {
 
 :root {
   --toastify-color-success: #cca43b;
+  font-family: "Alliance No.2", sans-serif !important;
 }
 
 h1 {
@@ -40,6 +55,7 @@ h1 {
   font-weight: 700;
   font-size: 32px;
   line-height: 100%;
+  font-family: "Alliance No.2", sans-serif;
   /* identical to box height, or 32px */
 
   /* Black */
@@ -51,6 +67,7 @@ h2 {
   font-size: 26px;
   line-height: 100%;
   color: #1d1d1f;
+  font-family: "Alliance No.2", sans-serif;
   font-weight: 700;
   font-style: normal;
 }
@@ -58,23 +75,26 @@ h2 {
 h3 {
   font-style: normal;
   font-weight: 500;
+  font-family: "Alliance No.2", sans-serif;
   font-size: 16px;
   line-height: 100%;
 }
 
 html,
 body {
+  font-family:  "Alliance No.2", sans-serif;
   padding: 0;
   margin: 0;
   font-weight: 500;
-  font-family: Sati, sans-serif;
 }
 
 a {
   color: #cca43b;
   text-decoration: none;
 }
-
+.ant-modal {
+  min-height: 60%;
+}
 .ant-modal-title {
   font-style: normal;
   font-weight: 700;
@@ -85,7 +105,12 @@ a {
 .ant-descriptions-header {
   margin-bottom: 0;
 }
-
+.ant-input-number-input:invalid {
+  border: 2px solid red;
+}
+.ant-input-number-input-wrap:has( > .ant-input-number-input:invalid) {
+  border: 2px solid red;
+}
 .ant-descriptions-title {
   font-size: 26px;
   line-height: 30px;
@@ -105,14 +130,27 @@ a {
   height: 88px;
   border-bottom: 1px solid rgba(29, 29, 31, 0.1);
 }
-
+/* tabs */
+.ant-tabs-tab.ant-tabs-tab-active {
+  border-bottom: 2px solid #C3986B !important;
+  z-index: 2;
+  color: #C3986B!important;
+}
+.ant-tabs-tab.ant-tabs-tab-active>.ant-tabs-tab-btn {
+color: #C3986B !important;
+}
 .ant-switch {
   color: #fff;
 }
 .ant-switch-checked {
   background-color: #cca43b;
 }
-
+.ant-page-header.ant-page-header-ghost {
+ height: 0px;
+}
+.ant-table-row.ant-table-row-level-0  td.arr:not(:first-of-type) {
+text-align: right  !important;
+}
 .ant-picker {
   border-radius: 100px;
   border-color: #1d1d1d;

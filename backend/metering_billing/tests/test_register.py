@@ -35,10 +35,12 @@ def registration_test_common_setup(
 
 @pytest.fixture
 def register_payload():
-    def generate_register_payload(company_name, industry, email, password, username):
+    def generate_register_payload(
+        organization_name, industry, email, password, username
+    ):
         payload = {
             "register": {
-                "company_name": company_name,
+                "organization_name": organization_name,
                 "industry": industry,
                 "email": email,
                 "password": password,
@@ -68,7 +70,7 @@ class TestRegister:
         organizations_before = Organization.objects.all().count()
 
         payload = register_payload(
-            company_name="test",
+            organization_name="test",
             industry="test",
             email="test",
             password="test",
@@ -86,7 +88,7 @@ class TestRegister:
         assert response.status_code == status.HTTP_201_CREATED
         assert users_before + 1 == users_after
         assert organizations_before + 1 == organizations_after
-        organization = Organization.objects.get(company_name="test")
+        organization = Organization.objects.get(organization_name="test")
         user = User.objects.get(username="test", email="test")
         assert user.organization == organization
 
@@ -98,7 +100,7 @@ class TestRegister:
         organizations_before = Organization.objects.all().count()
 
         payload = register_payload(
-            company_name=setup_dict["org"].company_name,
+            organization_name=setup_dict["org"].organization_name,
             industry="test",
             email="test",
             password="test",
@@ -125,7 +127,7 @@ class TestRegister:
         organizations_before = Organization.objects.all().count()
 
         payload = register_payload(
-            company_name=setup_dict["org"].company_name,
+            organization_name=setup_dict["org"].organization_name,
             industry="test",
             email="test",
             password="test",
@@ -152,7 +154,7 @@ class TestRegister:
         organizations_before = Organization.objects.all().count()
 
         payload = register_payload(
-            company_name=setup_dict["org"].company_name,
+            organization_name=setup_dict["org"].organization_name,
             industry="test",
             email=setup_dict["user"].email,
             password="test",

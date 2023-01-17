@@ -5,7 +5,6 @@ import metering_billing.utils.utils
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0050_historicalplan_historicalplanversion_and_more"),
     ]

@@ -11,17 +11,13 @@ from metering_billing.models import (
     PlanComponent,
     PlanVersion,
     PriceTier,
-    Subscription,
     SubscriptionRecord,
 )
 from metering_billing.utils import now_utc
 from metering_billing.utils.enums import (
     EVENT_TYPE,
     METRIC_AGGREGATION,
-    METRIC_GRANULARITY,
     METRIC_TYPE,
-    PRICE_TIER_TYPE,
-    SUBSCRIPTION_STATUS,
 )
 from model_bakery import baker
 from rest_framework import status
@@ -65,7 +61,7 @@ def get_access_test_common_setup(
         setup_dict["client"] = client
         (customer,) = add_customers_to_org(org, n=1)
         setup_dict["customer"] = customer
-        event_set = baker.make(
+        baker.make(
             Event,
             organization=org,
             customer=customer,
@@ -86,7 +82,7 @@ def get_access_test_common_setup(
             deny_limit_metric_set[0].metric_type
         ].create_continuous_aggregate(deny_limit_metric_set[0])
         setup_dict["deny_limit_metrics"] = deny_limit_metric_set
-        event_set = baker.make(
+        baker.make(
             Event,
             organization=org,
             customer=customer,
@@ -144,14 +140,14 @@ def get_access_test_common_setup(
             if fmu > 0:
                 PriceTier.objects.create(
                     plan_component=pc,
-                    type=PRICE_TIER_TYPE.FREE,
+                    type=PriceTier.PriceTierType.FREE,
                     range_start=0,
                     range_end=fmu,
                 )
                 start = fmu
             PriceTier.objects.create(
                 plan_component=pc,
-                type=PRICE_TIER_TYPE.PER_UNIT,
+                type=PriceTier.PriceTierType.PER_UNIT,
                 range_start=start,
                 range_end=range_end,
                 cost_per_batch=cpb,
@@ -317,20 +313,20 @@ class TestGetAccess:
         )
         PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=0,
             range_end=10,
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        subscription = SubscriptionRecord.objects.create(
+        SubscriptionRecord.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
         )
         # initial value, just 1 user
-        event1 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -339,7 +335,7 @@ class TestGetAccess:
             idempotency_id="1",
         )
         # now we suddenly have 10!
-        event2 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -348,7 +344,7 @@ class TestGetAccess:
             idempotency_id="2",
         )
         # now we go back to 1, so should still have access
-        event3 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -364,7 +360,11 @@ class TestGetAccess:
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = [x for x in response.json() if x["plan_id"] == billing_plan.plan_id]
+        response = [
+            x
+            for x in response.json()
+            if x["plan_id"] == "plan_" + billing_plan.plan.plan_id.hex
+        ]
         assert len(response) == 1
         assert response[0]["usage_per_component"][0]["event_name"] == "log_num_users"
         assert (
@@ -379,7 +379,7 @@ class TestGetAccessWithMetricID:
         setup_dict = get_access_test_common_setup(auth_method="api_key")
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["allow_limit_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["allow_limit_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
@@ -399,7 +399,7 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["deny_limit_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["deny_limit_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
@@ -419,7 +419,7 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["allow_free_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["allow_free_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
@@ -440,7 +440,7 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": setup_dict["allow_limit_metrics"][0].metric_id,
+            "metric_id": "metric_" + setup_dict["allow_limit_metrics"][0].metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
         assert response.status_code == status.HTTP_200_OK
@@ -483,20 +483,20 @@ class TestGetAccessWithMetricID:
         )
         PriceTier.objects.create(
             plan_component=plan_component,
-            type=PRICE_TIER_TYPE.PER_UNIT,
+            type=PriceTier.PriceTierType.PER_UNIT,
             range_start=0,
             range_end=10,
             cost_per_batch=5,
             metric_units_per_batch=1,
         )
-        subscription = SubscriptionRecord.objects.create(
+        SubscriptionRecord.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             billing_plan=billing_plan,
             start_date=now_utc() - relativedelta(days=3),
         )
         # initial value, just 1 user
-        event1 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -505,7 +505,7 @@ class TestGetAccessWithMetricID:
             idempotency_id="1",
         )
         # now we suddenly have 10!
-        event2 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -514,7 +514,7 @@ class TestGetAccessWithMetricID:
             idempotency_id="2",
         )
         # now we go back to 1, so should still have access
-        event3 = Event.objects.create(
+        Event.objects.create(
             organization=setup_dict["org"],
             customer=setup_dict["customer"],
             event_name="log_num_users",
@@ -525,12 +525,16 @@ class TestGetAccessWithMetricID:
 
         payload = {
             "customer_id": setup_dict["customer"].customer_id,
-            "metric_id": metric.metric_id,
+            "metric_id": "metric_" + metric.metric_id.hex,
         }
         response = setup_dict["client"].get(reverse("customer_metric_access"), payload)
 
         assert response.status_code == status.HTTP_200_OK
-        response = [x for x in response.json() if x["plan_id"] == billing_plan.plan_id]
+        response = [
+            x
+            for x in response.json()
+            if x["plan_id"] == "plan_" + billing_plan.plan.plan_id.hex
+        ]
         assert len(response) == 1
         assert response[0]["usage_per_component"][0]["event_name"] == "log_num_users"
         assert (

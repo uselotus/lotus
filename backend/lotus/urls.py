@@ -18,7 +18,6 @@ from django.conf import settings
 from django.conf.urls import include
 from django.contrib import admin
 from django.urls import path, re_path
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView
 from metering_billing.views import auth_views, organization_views, webhook_views
 from metering_billing.views.model_views import (
@@ -39,6 +38,7 @@ from metering_billing.views.model_views import (
     PricingUnitViewSet,
     ProductViewSet,
     SubscriptionViewSet,
+    UsageAlertViewSet,
     UserViewSet,
     WebhookViewSet,
 )
@@ -94,6 +94,8 @@ router.register(
     basename="balance_adjustment",
 )
 router.register(r"api_tokens", APITokenViewSet, basename="api_token")
+router.register(r"usage_alerts", UsageAlertViewSet, basename="usage_alert")
+
 
 # api router
 api_router = routers.DefaultRouter()
@@ -204,6 +206,7 @@ urlpatterns = [
     #     name="expertimental-to-active",
     # ),
     path("app/login/", auth_views.LoginView.as_view(), name="api-login"),
+    path("app/demo_login/", auth_views.DemoLoginView.as_view(), name="api-demo-login"),
     path("app/logout/", auth_views.LogoutView.as_view(), name="api-logout"),
     path("app/session/", auth_views.SessionView.as_view(), name="api-session"),
     path("app/register/", auth_views.RegisterView.as_view(), name="register"),

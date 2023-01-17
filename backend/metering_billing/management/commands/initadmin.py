@@ -2,8 +2,8 @@ import os
 
 from django.core.management.base import BaseCommand
 from dotenv import load_dotenv
-from metering_billing.models import Metric, Organization, PricingUnit, User
-from metering_billing.utils.enums import METRIC_STATUS, SUPPORTED_CURRENCIES
+from metering_billing.models import Metric, Organization, User
+from metering_billing.utils.enums import METRIC_STATUS
 
 load_dotenv()
 
@@ -23,7 +23,7 @@ class Command(BaseCommand):
                 email=email, username=username, password=password
             )
 
-            org = Organization.objects.create(company_name="Lotus Default")
+            org = Organization.objects.create(organization_name="Lotus Default")
             admin.organization = org
             admin.save()
 

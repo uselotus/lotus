@@ -11,19 +11,19 @@ storage.
 
 Metrics can be as complex as you need to be and come in a few basic types.
 
-1. **Counter**  
+1. **Counter**
    A counter metric is an aggregation (think `SUM`, `COUNT`, `MAX`, or other
    SQL-like aggregations) over events or the properties of events. For example,
    you could keep track of the `COUNT` of API calls made to your service, or the
    `SUM` of bytes uploaded to your service.
-2. **Gauge**  
+2. **Gauge**
    The key difference between a counter and a gauge metric is what the
    events represent. Whereas in a counter we aggregate over the events, in a
    gauge, the events are simply informing us about updates to some
    underlying state. For example, the number of seats currently active, or the
    storage currently in use. We don't actually aggregate over the events
    themselves, but rather over the state that they represent
-3. **Rate**  
+3. **Rate**
    Rate metrics are very similar to counter metrics. Whereas counter metrics
    aggregate over events that occur in a billing period, a rate keeps track of
    windowed time periods of finer granularity than the entire billing period.

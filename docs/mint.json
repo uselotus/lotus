@@ -76,7 +76,9 @@
       "pages": [
         "subscription-lifecycle/creating-subscriptions",
         "subscription-lifecycle/invoicing",
-        "subscription-lifecycle/managing-access"
+        "subscription-lifecycle/managing-access",
+        "subscription-lifecycle/alerts",
+        "subscription-lifecycle/addons"
       ]
     },
     {
@@ -106,7 +108,7 @@
         },
         {
           "group": "Events",
-          "pages": ["api-reference/events/tracking",          
+          "pages": ["api-reference/events/tracking",
             "api-reference/events/verify-ingestion"
         ]
         },

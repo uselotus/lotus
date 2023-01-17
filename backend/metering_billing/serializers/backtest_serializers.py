@@ -1,10 +1,10 @@
 from django.db.models import Q
 from metering_billing.models import Backtest, BacktestSubstitution, PlanVersion
-from metering_billing.serializers.model_serializers import PlanVersionSerializer
+from metering_billing.serializers.model_serializers import PlanVersionDetailSerializer
 from metering_billing.utils.enums import BACKTEST_KPI, PLAN_VERSION_STATUS
 from rest_framework import serializers
 
-from .serializer_utils import SlugRelatedFieldWithOrganization
+from .serializer_utils import BacktestUUIDField, SlugRelatedFieldWithOrganization
 
 
 class BacktestSubstitutionMultiSerializer(serializers.Serializer):
@@ -66,14 +66,16 @@ class BacktestSummarySerializer(serializers.ModelSerializer):
             "backtest_id",
         )
 
+    backtest_id = BacktestUUIDField()
+
 
 class BacktestSubstitutionSerializer(serializers.ModelSerializer):
     class Meta:
         model = BacktestSubstitution
         fields = ("new_plan", "original_plan")
 
-    new_plan = PlanVersionSerializer()
-    original_plan = PlanVersionSerializer()
+    new_plan = PlanVersionDetailSerializer()
+    original_plan = PlanVersionDetailSerializer()
 
 
 class PlanRepresentationSerializer(serializers.Serializer):
@@ -131,20 +133,11 @@ class AllSubstitutionResultsSerializer(serializers.Serializer):
 
 
 class BacktestDetailSerializer(BacktestSummarySerializer):
-    class Meta:
-        model = Backtest
-        fields = (
-            "backtest_name",
-            "start_date",
-            "end_date",
-            "time_created",
-            "kpis",
-            "status",
-            "backtest_id",
-            "backtest_substitutions",
-            "backtest_results",
+    class Meta(BacktestSummarySerializer.Meta):
+        fields = tuple(
+            set(BacktestSummarySerializer.Meta.fields)
+            | {"backtest_substitutions", "backtest_results"}
         )
 
     backtest_results = AllSubstitutionResultsSerializer()
-
     backtest_substitutions = BacktestSubstitutionSerializer(many=True)

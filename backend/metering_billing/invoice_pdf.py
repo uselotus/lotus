@@ -1,15 +1,12 @@
 import os
 from datetime import datetime
-from io import BytesIO
 
 import boto3
 from django.conf import settings
 from django.forms.models import model_to_dict
+from metering_billing.serializers.serializer_utils import PlanUUIDField
 from metering_billing.utils.enums import CHARGEABLE_ITEM_TYPE
 from reportlab.lib.pagesizes import letter
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor
 from reportlab.lib.colors import PCMYKColor, PCMYKColorSep, Color, black, blue, red
@@ -81,14 +78,16 @@ def write_seller_details(
 def write_customer_details(doc, name, line1, city, state, country, postal_code, email):
     if email is None:
         email = ""
-    doc.setFont("Times-Bold", FONT_XS)
-    doc.drawString(250, 130, "Billed To")
-    doc.setFont("Times-Roman", FONT_XXS)
-    doc.drawString(250, 145, name)
-    doc.drawString(250, 160, line1)
-    doc.drawString(250, 175, f"{city} {state}, {postal_code}")
-    doc.drawString(250, 190, country)
-    doc.drawString(250, 205, email)
+    if name is None:
+        name = ""
+    doc.setFont("Times-Bold", FONT_M)
+    doc.drawString(225, 130, "Billed To")
+    doc.setFont("Times-Roman", FONT_XS)
+    doc.drawString(225, 145, name)
+    doc.drawString(225, 160, line1)
+    doc.drawString(225, 175, f"{city} {state}, {postal_code}")
+    doc.drawString(225, 190, country)
+    doc.drawString(225, 205, email)
 
 
 def write_invoice_details(doc, invoice_number, issue_date, due_date):
@@ -223,7 +222,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     if address:
         write_seller_details(
             doc,
-            organization["company_name"],
+            organization["organization_name"],
             organization["properties"]["address"]["line1"],
             organization["properties"]["city"],
             organization["properties"]["state"],
@@ -235,7 +234,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
     else:
         write_seller_details(
             doc,
-            organization["company_name"],
+            organization["organization_name"],
             "",
             "",
             "",
@@ -299,7 +298,9 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             plan_name = (
                 line_item.associated_subscription_record.billing_plan.plan.plan_name
             )
-            plan_id = line_item.associated_subscription_record.billing_plan.id
+            plan_id = PlanUUIDField().to_representation(
+                line_item.associated_subscription_record.billing_plan.plan.plan_id
+            )
             subscription_filters = list(
                 (
                     line_item.associated_subscription_record.get_filters_dictionary()
@@ -416,7 +417,7 @@ def generate_invoice_pdf(invoice_model, organization, customer, line_items, buff
             buffer.seek(0)
             s3.Bucket(bucket_name).upload_fileobj(buffer, key)
 
-            s3_object = s3.Object(bucket_name, key)
+            s3.Object(bucket_name, key)
 
             s3 = boto3.client("s3")
 

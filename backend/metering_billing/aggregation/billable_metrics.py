@@ -1,16 +1,14 @@
 import abc
 import datetime
 import logging
-from datetime import timedelta
 from typing import Optional, TypedDict
 
 import sqlparse
-from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.apps import apps
 from django.db import connection
 from django.db.models import *
-from django.db.models.functions import Cast, Trunc
+from django.db.models.functions import Trunc
 from jinja2 import Template
 from metering_billing.exceptions.exceptions import *
 from metering_billing.utils import *
@@ -71,7 +69,8 @@ class MetricHandler(abc.ABC):
     ) -> dict[datetime.datetime, float]:
         """This method will be used when calculating a concept known as "earned revenue" which is very important in accounting. It essentially states that revenue is "earned" not when someone pays, but when you deliver the goods/services at a previously agreed upon price. To accurately calculate accounting metrics, we will need to be able to tell for a given susbcription, where each cent of revenue came from, and the first step for that is to calculate how much billable usage was delivered each day. This method will be used to calculate that.
 
-        Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day."""
+        Similar to the get current usage method above, this might often look extremely similar to the get usage method, bu there's cases where it can differ quite a bit. For example, if your billable metric is Counter with a Unique aggregation, then your usage per day would naturally make sense to be the number of unique values seen on that day, but you only "earn" from the first time a unique value is seen, so you would attribute the earned usage to that day.
+        """
         pass
 
     @abc.abstractmethod
@@ -284,7 +283,7 @@ class CounterHandler(MetricHandler):
         }
         try:
             sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = sf_setting.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -352,9 +351,9 @@ class CounterHandler(MetricHandler):
                 hour=23, minute=59, second=59, microsecond=999999
             )
             injection_dict["cagg_name"] = (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "second"
             )
@@ -367,9 +366,9 @@ class CounterHandler(MetricHandler):
             injection_dict["start_date"] = full_days_btwn_start
             injection_dict["end_date"] = full_days_btwn_end
             injection_dict["cagg_name"] = (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "day"
             )
@@ -384,9 +383,9 @@ class CounterHandler(MetricHandler):
             )
             injection_dict["end_date"] = end.replace(microsecond=0)
             injection_dict["cagg_name"] = (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "second"
             )
@@ -404,7 +403,7 @@ class CounterHandler(MetricHandler):
         from metering_billing.aggregation.counter_query_templates import (
             COUNTER_UNIQUE_TOTAL,
         )
-        from metering_billing.models import Organization, OrganizationSetting
+        from metering_billing.models import Organization
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -536,13 +535,14 @@ class CounterHandler(MetricHandler):
         # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
         event_type = data.get("event_type", None)
         granularity = data.get("granularity", None)
-        numeric_filters = data.get("numeric_filters", None)
-        categorical_filters = data.get("categorical_filters", None)
+        data.get("numeric_filters", None)
+        data.get("categorical_filters", None)
         property_name = data.get("property_name", None)
         proration = data.get("proration", None)
 
@@ -556,6 +556,10 @@ class CounterHandler(MetricHandler):
                 "[METRIC TYPE: COUNTER] Usage aggregation type {} is not allowed.".format(
                     usg_agg_type
                 )
+            )
+        if event_name is None:
+            raise MetricValidationFailed(
+                "[METRIC TYPE: COUNTER] Must specify event name"
             )
         if usg_agg_type != METRIC_AGGREGATION.COUNT:
             if property_name is None:
@@ -596,17 +600,19 @@ class CounterHandler(MetricHandler):
             # one and recreate it
             from metering_billing.models import Organization
 
-            from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
+            from .common_query_templates import (
+                CAGG_COMPRESSION,
+                CAGG_DROP,
+                CAGG_REFRESH,
+            )
             from .counter_query_templates import COUNTER_CAGG_QUERY
 
             organization = Organization.objects.prefetch_related("settings").get(
                 id=metric.organization.id
             )
-            if refresh is True:
-                CounterHandler.archive_metric(metric)
             try:
                 groupby = organization.settings.get(
-                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
                 )
                 groupby = groupby.setting_values
             except OrganizationSetting.DoesNotExist:
@@ -627,25 +633,34 @@ class CounterHandler(MetricHandler):
                     for x in metric.categorical_filters.all()
                 ],
             }
-            for continuous_agg_type in ["day", "second"]:
-                sql_injection_data["cagg_name"] = (
-                    organization.organization_id[:22]
-                    + "___"
-                    + metric.metric_id[:22]
-                    + "___"
-                    + continuous_agg_type
-                )
-                sql_injection_data["bucket_size"] = continuous_agg_type
-                query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
-                refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
-                compression_query = Template(CAGG_COMPRESSION).render(
-                    **sql_injection_data
-                )
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
-                    cursor.execute(refresh_query)
-                    if continuous_agg_type == "second":
-                        cursor.execute(compression_query)
+            base_name = (
+                ("org_" + organization.organization_id.hex)[:22]
+                + "___"
+                + ("metric_" + metric.metric_id.hex)[:22]
+                + "___"
+            )
+            sql_injection_data["cagg_name"] = base_name + "day"
+            sql_injection_data["bucket_size"] = "day"
+            day_query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+            day_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
+            day_refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
+            sql_injection_data["cagg_name"] = base_name + "second"
+            sql_injection_data["bucket_size"] = "second"
+            second_query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
+            second_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
+            second_refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
+            second_compression_query = Template(CAGG_COMPRESSION).render(
+                **sql_injection_data
+            )
+            with connection.cursor() as cursor:
+                if refresh is True:
+                    cursor.execute(day_drop_query)
+                    cursor.execute(second_drop_query)
+                cursor.execute(day_query)
+                cursor.execute(day_refresh_query)
+                cursor.execute(second_query)
+                cursor.execute(second_refresh_query)
+                cursor.execute(second_compression_query)
 
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
@@ -658,130 +673,102 @@ class CounterHandler(MetricHandler):
         from .common_query_templates import CAGG_DROP
 
         base_name = (
-            metric.organization.organization_id[:22]
+            ("org_" + metric.organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
         )
         sql_injection_data = {"cagg_name": base_name + "day"}
-        day_query = Template(CAGG_DROP).render(**sql_injection_data)
+        day_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
         sql_injection_data = {"cagg_name": base_name + "second"}
-        second_query = Template(CAGG_DROP).render(**sql_injection_data)
+        second_drop_query = Template(CAGG_DROP).render(**sql_injection_data)
         with connection.cursor() as cursor:
-            cursor.execute(day_query)
-            cursor.execute(second_query)
+            cursor.execute(day_drop_query)
+            cursor.execute(second_drop_query)
 
 
 class CustomHandler(MetricHandler):
-    def __init__(self, billable_metric: Metric):
-        self.organization = billable_metric.organization
-        self.event_name = billable_metric.event_name
-        self.billable_metric = billable_metric
-        if billable_metric.metric_type != METRIC_TYPE.CUSTOM:
-            raise AggregationEngineFailure(
-                f"Billable metric of type {billable_metric.metric_type} can't be handled by a CustomHandler."
+    @staticmethod
+    def _run_query(custom_sql, injection_dict: dict):
+        from metering_billing.aggregation.custom_query_templates import (
+            CUSTOM_BASE_QUERY,
+        )
+
+        combined_query = CUSTOM_BASE_QUERY
+        if custom_sql.lower().lstrip().startswith("with"):
+            custom_sql = custom_sql.lower().replace("with", ",")
+        combined_query += custom_sql
+        query = Template(combined_query).render(**injection_dict)
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            results = namedtuplefetchall(cursor)
+        return results
+
+    @staticmethod
+    def get_subscription_record_current_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        return CounterHandler.get_subscription_record_total_billable_usage(
+            metric, subscription_record
+        )
+
+    @staticmethod
+    def get_subscription_record_total_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        from metering_billing.models import Organization
+
+        organization = Organization.objects.prefetch_related("settings").get(
+            id=metric.organization.id
+        )
+        injection_dict = {
+            "filter_properties": {},
+            "customer_id": subscription_record.customer.id,
+        }
+        start = subscription_record.usage_start_date
+        end = subscription_record.end_date
+        injection_dict["start_date"] = start
+        injection_dict["end_date"] = end
+        injection_dict["organization_id"] = organization.id
+        for filter in subscription_record.filters.all():
+            injection_dict["filter_properties"][
+                filter.property_name
+            ] = filter.comparison_value[0]
+        results = CustomHandler._run_query(metric.custom_sql, injection_dict)
+        if len(results) == 0:
+            return Decimal(0)
+        return results[0].usage_qty
+
+    @staticmethod
+    def get_subscription_record_current_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> Decimal:
+        return CustomHandler.get_subscription_record_total_billable_usage(
+            metric, subscription_record
+        )
+
+    @staticmethod
+    def get_subscription_record_daily_billable_usage(
+        metric: Metric, subscription_record: SubscriptionRecord
+    ) -> dict[datetime.date, Decimal]:
+        usage_qty = CustomHandler.get_subscription_record_total_billable_usage(
+            metric, subscription_record
+        )
+        now = now_utc().date()
+        dates_bwn = [
+            x
+            for x in dates_bwn_two_dts(
+                subscription_record.usage_start_date, subscription_record.end_date
             )
-        self.custom_sql = billable_metric.custom_sql
+            if x <= now
+        ]
+        dates_dict = {x: usage_qty / len(dates_bwn) for x in dates_bwn}
 
-    def _build_groupby_kwargs(
-        self, customer, results_granularity, start, group_by=None, proration=None
-    ):
-        groupby_kwargs = super()._build_groupby_kwargs(
-            customer, results_granularity, start, group_by, proration
-        )
-        if self.property_name is not None:
-            groupby_kwargs["property_name"] = F(self.property_name)
-        return groupby_kwargs
-
-    def _build_pre_groupby_annotation_kwargs(self, customer, start, end):
-        pre_groupby_annotation_kwargs = super()._build_pre_groupby_annotation_kwargs(
-            customer, start, end
-        )
-        if self.property_name is not None:
-            pre_groupby_annotation_kwargs[self.property_name] = F(
-                f"properties__{self.property_name}"
-            )
-        return pre_groupby_annotation_kwargs
-
-    def _build_queryset(self, customer, start, end, group_by=None, proration=None):
-        queryset = (
-            super()
-            ._build_queryset(customer, start, end, group_by, proration)
-            .annotate(**self._build_pre_groupby_annotation_kwargs(customer, start, end))
-        )
-        return queryset
-
-    def _build_aggregation_kwargs(self, customer, start, end, group_by=None):
-        aggregation_kwargs = super()._build_aggregation_kwargs(
-            customer, start, end, group_by
-        )
-        if self.property_name is not None:
-            aggregation_kwargs["property_name"] = F(self.property_name)
-        return aggregation_kwargs
-
-    def _build_aggregation_queryset(self, customer, start, end, group_by=None):
-        aggregation_queryset = super
+        return dates_dict
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
-        from metering_billing.models import OrganizationSetting
-
-        if metric.usage_aggregation_type != METRIC_AGGREGATION.UNIQUE:
-            # unfortunately there's no good way to make caggs for unique
-            # if we're refreshing the matview, then we need to drop the last
-            # one and recreate it
-            from .counter_query_templates import (
-                COUNTER_CAGG_COMPRESSION,
-                COUNTER_CAGG_QUERY,
-                COUNTER_CAGG_REFRESH,
-            )
-
-            if refresh is True:
-                CustomHandler.archive_metric(metric)
-            try:
-                groupby = metric.organization.settings.get(
-                    setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
-                )
-                groupby = groupby.setting_values
-            except OrganizationSetting.DoesNotExist:
-                metric.organization.provision_subscription_filter_settings()
-                groupby = []
-            sql_injection_data = {
-                "query_type": metric.usage_aggregation_type,
-                "property_name": metric.property_name,
-                "group_by": groupby,
-                "event_name": metric.event_name,
-                "organization_id": metric.organization.id,
-                "numeric_filters": [
-                    (x.property_name, x.operator, x.comparison_value)
-                    for x in metric.numeric_filters.all()
-                ],
-                "categorical_filters": [
-                    (x.property_name, x.operator, x.comparison_value)
-                    for x in metric.categorical_filters.all()
-                ],
-            }
-            for continuous_agg_type in ["day", "second"]:
-                sql_injection_data["cagg_name"] = (
-                    metric.organization.organization_id[:22]
-                    + "___"
-                    + metric.metric_id[:22]
-                    + "___"
-                    + continuous_agg_type
-                )
-                sql_injection_data["bucket_size"] = continuous_agg_type
-                query = Template(COUNTER_CAGG_QUERY).render(**sql_injection_data)
-                refresh_query = Template(COUNTER_CAGG_REFRESH).render(
-                    **sql_injection_data
-                )
-                compression_query = Template(COUNTER_CAGG_COMPRESSION).render(
-                    **sql_injection_data
-                )
-                with connection.cursor() as cursor:
-                    cursor.execute(query)
-                    cursor.execute(refresh_query)
-                    if continuous_agg_type == "second":
-                        cursor.execute(compression_query)
+        pass
 
     @staticmethod
     def create_metric(validated_data: dict) -> Metric:
@@ -791,25 +778,14 @@ class CustomHandler(MetricHandler):
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
-        from .common_query_templates import CAGG_DROP
-
-        for continuous_agg_type in ["day", "second"]:
-            sql_injection_data = {
-                "cagg_name": metric.organization.organization_id[:22]
-                + "___"
-                + metric.metric_id[:22]
-                + "___"
-                + continuous_agg_type
-            }
-            query = Template(CAGG_DROP).render(**sql_injection_data)
-            with connection.cursor() as cursor:
-                cursor.execute(query)
+        pass
 
     @staticmethod
     def validate_data(data: dict) -> dict:
         # has been top-level validated by the MetricSerializer, so we can assume
         # certain fields are there and ignore others as needed
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
@@ -821,6 +797,11 @@ class CustomHandler(MetricHandler):
         custom_sql = data.get("custom_sql", None)
 
         # now validate
+        if event_name is not None:
+            logger.info(
+                "[METRIC TYPE: CUSTOM] Event name specified but not needed for CUSTOM aggregation"
+            )
+            data.pop("event_name", None)
         if usg_agg_type is not None:
             logger.info(
                 "[METRIC TYPE: CUSTOM] Usage aggregation type specified but not needed for CUSTOM aggregation"
@@ -867,6 +848,24 @@ class CustomHandler(MetricHandler):
             raise MetricValidationFailed(
                 "Custom SQL query must be a SELECT statement and cannot contain any prohibited keywords"
             )
+        try:
+            injection_dict = {
+                "filter_properties": {},
+                "customer_id": 1,
+            }
+            start = now_utc()
+            end = now_utc()
+            injection_dict["start_date"] = start
+            injection_dict["end_date"] = end
+            injection_dict["organization_id"] = 1
+            _ = CustomHandler._run_query(custom_sql, injection_dict)
+            assert (
+                "usage_qty" in custom_sql
+            ), "Custom SQL query must return a column named 'usage_qty'"
+        except Exception as e:
+            raise MetricValidationFailed(
+                "Custom SQL query could not be executed successfully: {}".format(e)
+            )
         return data
 
     @staticmethod
@@ -894,6 +893,8 @@ class CustomHandler(MetricHandler):
                 and token.value.lower() in prohibited_keywords
             ):
                 return False
+            if "metering_billing_" in token.value.lower():
+                return False
         return True
 
 
@@ -908,17 +909,20 @@ class GaugeHandler(MetricHandler):
         # certain fields are there and ignore others as needed
 
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
         event_type = data.get("event_type", None)
         granularity = data.get("granularity", None)
-        numeric_filters = data.get("numeric_filters", None)
-        categorical_filters = data.get("categorical_filters", None)
+        data.get("numeric_filters", None)
+        data.get("categorical_filters", None)
         property_name = data.get("property_name", None)
         proration = data.get("proration", None)
 
         # now validate
+        if not event_name:
+            raise MetricValidationFailed("[METRIC TYPE: GAUGE] Must specify event name")
         if metric_type != METRIC_TYPE.GAUGE:
             raise MetricValidationFailed("Metric type must be GAUGE for GaugeHandler")
         if usg_agg_type not in GaugeHandler._allowed_usage_aggregation_types():
@@ -1018,7 +1022,7 @@ class GaugeHandler(MetricHandler):
     def create_continuous_aggregate(metric: Metric, refresh=False):
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
+        from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .gauge_query_templates import (
             GAUGE_DELTA_CREATE_TRIGGER_FN,
             GAUGE_DELTA_CUMULATIVE_SUM,
@@ -1031,11 +1035,9 @@ class GaugeHandler(MetricHandler):
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
-        if refresh is True:
-            GaugeHandler.archive_metric(metric)
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1056,14 +1058,17 @@ class GaugeHandler(MetricHandler):
             ],
         }
         sql_injection_data["cagg_name"] = (
-            organization.organization_id[:22]
+            ("org_" + organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
             + "cumsum"
         )
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_CUMULATIVE_SUM).render(**sql_injection_data)
+            drop_trigger = Template(GAUGE_DELTA_CREATE_TRIGGER_FN).render(
+                **sql_injection_data
+            )
             trigger_fn = Template(GAUGE_DELTA_CREATE_TRIGGER_FN).render(
                 **sql_injection_data
             )
@@ -1079,6 +1084,10 @@ class GaugeHandler(MetricHandler):
         refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
         compression_query = Template(CAGG_COMPRESSION).render(**sql_injection_data)
         with connection.cursor() as cursor:
+            if refresh:
+                cursor.execute(Template(CAGG_DROP).render(**sql_injection_data))
+                if metric.event_type == "delta":
+                    cursor.execute(drop_trigger)
             cursor.execute(query)
             if metric.event_type == "delta":
                 cursor.execute(trigger_fn)
@@ -1094,11 +1103,12 @@ class GaugeHandler(MetricHandler):
         from .common_query_templates import CAGG_DROP
         from .gauge_query_templates import GAUGE_DELTA_DROP_TRIGGER
 
+        organization = metric.organization
         sql_injection_data = {
             "cagg_name": (
-                metric.organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1125,7 +1135,7 @@ class GaugeHandler(MetricHandler):
         )
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1152,9 +1162,9 @@ class GaugeHandler(MetricHandler):
         injection_dict = {
             "proration_units": proration_units,
             "cumsum_cagg": (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1190,7 +1200,7 @@ class GaugeHandler(MetricHandler):
         )
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1217,9 +1227,9 @@ class GaugeHandler(MetricHandler):
         injection_dict = {
             "proration_units": proration_units,
             "cumsum_cagg": (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1255,7 +1265,7 @@ class GaugeHandler(MetricHandler):
         )
         try:
             groupby = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = groupby.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1282,9 +1292,9 @@ class GaugeHandler(MetricHandler):
         injection_dict = {
             "proration_units": proration_units,
             "cumsum_cagg": (
-                organization.organization_id[:22]
+                ("org_" + organization.organization_id.hex)[:22]
                 + "___"
-                + metric.metric_id[:22]
+                + ("metric_" + metric.metric_id.hex)[:22]
                 + "___"
                 + "cumsum"
             ),
@@ -1325,17 +1335,20 @@ class RateHandler(MetricHandler):
         # certain fields are there and ignore others as needed
 
         # unpack stuff first
+        event_name = data.get("event_name", None)
         usg_agg_type = data.get("usage_aggregation_type", None)
         bill_agg_type = data.get("billable_aggregation_type", None)
         metric_type = data.get("metric_type", None)
         event_type = data.get("event_type", None)
         granularity = data.get("granularity", None)
-        numeric_filters = data.get("numeric_filters", None)
-        categorical_filters = data.get("categorical_filters", None)
+        data.get("numeric_filters", None)
+        data.get("categorical_filters", None)
         property_name = data.get("property_name", None)
         proration = data.get("proration", None)
 
         # now validate
+        if event_name is None:
+            raise MetricValidationFailed("[METRIC TYPE: RATE] Must specify event name.")
         if metric_type != METRIC_TYPE.RATE:
             raise MetricValidationFailed("Metric type must be RATE for a RateHandler.")
         if usg_agg_type not in RateHandler._allowed_usage_aggregation_types():
@@ -1397,7 +1410,7 @@ class RateHandler(MetricHandler):
         #     RateHandler.archive_metric(metric)
         # try:
         #     groupby = metric.organization.settings.get(
-        #         setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+        #         setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
         #     )
         #     groupby = groupby.setting_values
         # except OrganizationSetting.DoesNotExist:
@@ -1424,7 +1437,7 @@ class RateHandler(MetricHandler):
         #     sql_injection_data["cagg_name"] = (
         #         metric.organization.organization_id[:22]
         #         + "___"
-        #         + metric.metric_id[:22]
+        #         + ("metric_" + metric.metric_id.hex)[:22]
         #         + "___"
         #         + continuous_agg_type
         #     )
@@ -1452,7 +1465,7 @@ class RateHandler(MetricHandler):
         #     "cagg_name": (
         #         organization.organization_id[:22]
         #         + "___"
-        #         + metric.metric_id[:22]
+        #         + ("metric_" + metric.metric_id.hex)[:22]
         #         + "___"
         #         + "second"
         #     ),
@@ -1482,9 +1495,9 @@ class RateHandler(MetricHandler):
             "customer_id": subscription_record.customer.id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
-            "cagg_name": organization.organization_id[:22]
+            "cagg_name": ("org_" + organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
             + "second",
             "lookback_qty": 1,
@@ -1494,7 +1507,7 @@ class RateHandler(MetricHandler):
         }
         try:
             sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = sf_setting.setting_values
         except OrganizationSetting.DoesNotExist:
@@ -1541,9 +1554,9 @@ class RateHandler(MetricHandler):
             "customer_id": subscription_record.customer.id,
             "start_date": start.replace(microsecond=0),
             "end_date": end.replace(microsecond=0),
-            "cagg_name": organization.organization_id[:22]
+            "cagg_name": ("org_" + organization.organization_id.hex)[:22]
             + "___"
-            + metric.metric_id[:22]
+            + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
             + "second",
             "property_name": metric.property_name,
@@ -1563,7 +1576,7 @@ class RateHandler(MetricHandler):
         }
         try:
             sf_setting = organization.settings.get(
-                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
             )
             groupby = sf_setting.setting_values
         except OrganizationSetting.DoesNotExist:

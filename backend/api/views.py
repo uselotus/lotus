@@ -1,17 +1,12 @@
 # Create your views here.
 import base64
 import copy
-import datetime
 import json
-import logging
 import operator
-from datetime import timezone
 from functools import reduce
 from typing import Dict, Union
 
-import lotus_python
 import posthog
-from actstream import action
 from api.serializers.model_serializers import (
     CustomerBalanceAdjustmentCreateSerializer,
     CustomerBalanceAdjustmentFilterSerializer,
@@ -42,7 +37,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Prefetch, Q
+from django.db.models import Count, F, Prefetch, Q
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -51,7 +46,6 @@ from metering_billing.auth.auth_utils import fast_api_key_validation_and_cache
 from metering_billing.exceptions import (
     DuplicateCustomer,
     MethodNotAllowed,
-    NotFoundException,
     ServerError,
     SwitchPlanDurationMismatch,
     SwitchPlanSamePlanException,
@@ -60,7 +54,6 @@ from metering_billing.exceptions.exceptions import NotFoundException
 from metering_billing.invoice import generate_invoice
 from metering_billing.kafka.producer import Producer
 from metering_billing.models import (
-    APIToken,
     CategoricalFilter,
     Customer,
     CustomerBalanceAdjustment,
@@ -73,6 +66,11 @@ from metering_billing.models import (
     SubscriptionRecord,
 )
 from metering_billing.permissions import HasUserAPIKey, ValidOrganization
+from metering_billing.serializers.serializer_utils import (
+    BalanceAdjustmentUUIDField,
+    MetricUUIDField,
+    PlanUUIDField,
+)
 from metering_billing.utils import (
     calculate_end_date,
     convert_to_datetime,
@@ -91,7 +89,6 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from svix.api import MessageIn, Svix
 
 POSTHOG_PERSON = settings.POSTHOG_PERSON
 SVIX_CONNECTOR = settings.SVIX_CONNECTOR
@@ -182,10 +179,12 @@ class CustomerViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_customer",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -198,11 +197,61 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     serializer_class = PlanSerializer
     lookup_field = "plan_id"
     http_method_names = ["get", "head"]
-    queryset = Plan.objects.all()
+    queryset = Plan.objects.all().order_by(
+        F("created_on").desc(nulls_last=False), F("plan_name")
+    )
+
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = PlanUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
 
     def get_queryset(self):
+        from metering_billing.models import PlanVersion
+
+        now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        qs = Plan.objects.filter(
+            organization=organization, status=PLAN_STATUS.ACTIVE
+        ).prefetch_related(
+            "organization",
+            "organization__pricing_units",
+            Prefetch(
+                "versions",
+                queryset=PlanVersion.objects.filter(
+                    organization=organization,
+                ).annotate(
+                    active_subscriptions=Count(
+                        "subscription_record",
+                        filter=Q(
+                            subscription_record__start_date__lte=now,
+                            subscription_record__end_date__gte=now,
+                        ),
+                        output_field=models.IntegerField(),
+                    )
+                ),
+            ),
+            "versions__subscription_records",
+            "versions__usage_alerts",
+            "versions__features",
+            "versions__price_adjustment",
+            "versions__created_by",
+            "versions__pricing_unit",
+            "versions__plan_components",
+            "versions__plan_components__pricing_unit",
+            "versions__plan_components__billable_metric",
+            "versions__plan_components__billable_metric__usage_alerts",
+            "versions__plan_components__billable_metric__numeric_filters",
+            "versions__plan_components__billable_metric__categorical_filters",
+            "versions__plan_components__tiers",
+            "created_by",
+            "display_version",
+            "external_links",
+            "parent_plan",
+            "target_customer",
+            "tags",
+        )
         return qs
 
     def dispatch(self, request, *args, **kwargs):
@@ -217,10 +266,12 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_plan",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -330,7 +381,7 @@ class SubscriptionViewSet(
             args = []
             args.append(Q(start_date__lte=now, end_date__gte=now))
             args.append(Q(customer=serializer.validated_data["customer"]))
-            if serializer.validated_data.get("plan_id"):
+            if serializer.validated_data.get("plan"):
                 args.append(Q(billing_plan__plan=serializer.validated_data["plan"]))
             organization = self.request.organization
             args.append(Q(organization=organization))
@@ -384,7 +435,7 @@ class SubscriptionViewSet(
         # make sure subscription filters are valid
         subscription_filters = serializer.validated_data.get("subscription_filters", [])
         sf_setting = organization.settings.get(
-            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTERS
+            setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
         )
         for sf in subscription_filters:
             if sf["property_name"] not in sf_setting.setting_values:
@@ -485,7 +536,6 @@ class SubscriptionViewSet(
         flat_fee_behavior = serializer.validated_data["flat_fee_behavior"]
         usage_behavior = serializer.validated_data["usage_behavior"]
         invoicing_behavior = serializer.validated_data["invoicing_behavior"]
-
         now = now_utc()
         qs_pks = list(qs.values_list("pk", flat=True))
         qs.update(
@@ -573,7 +623,6 @@ class SubscriptionViewSet(
                 subscription_record.invoice_usage_charges = keep_separate
                 subscription_record.auto_renew = False
                 subscription_record.end_date = now
-                subscription_record.status = SUBSCRIPTION_STATUS.ENDED
                 subscription_record.fully_billed = (
                     billing_behavior == INVOICING_BEHAVIOR.INVOICE_NOW
                 )
@@ -620,10 +669,12 @@ class SubscriptionViewSet(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_subscription",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
             # if username:
             #     if self.action == "plans":
@@ -652,20 +703,17 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         args = [
-            ~Q(payment_status=INVOICE_STATUS.DRAFT),
+            ~Q(payment_status=Invoice.PaymentStatus.DRAFT),
             Q(organization=self.request.organization),
         ]
         if self.action == "list":
-            args = []
             serializer = InvoiceListFilterSerializer(data=self.request.query_params)
             serializer.is_valid(raise_exception=True)
             args.append(
                 Q(payment_status__in=serializer.validated_data["payment_status"])
             )
-            if serializer.validated_data.get("customer_id"):
-                args.append(
-                    Q(customer__customer_id=serializer.validated_data["customer_id"])
-                )
+            if serializer.validated_data.get("customer"):
+                args.append(Q(customer=serializer.validated_data["customer_"]))
 
         return Invoice.objects.filter(*args)
 
@@ -673,6 +721,22 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         if self.action == "partial_update":
             return InvoiceUpdateSerializer
         return InvoiceSerializer
+
+    @extend_schema(responses=InvoiceSerializer)
+    def update(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        serializer = self.get_serializer(invoice, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(invoice, "_prefetched_objects_cache", None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            invoice._prefetched_objects_cache = {}
+
+        return Response(
+            InvoiceSerializer(invoice, context=self.get_serializer_context()).data,
+            status=status.HTTP_200_OK,
+        )
 
     def get_serializer_context(self):
         context = super(InvoiceViewSet, self).get_serializer_context()
@@ -692,10 +756,12 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_invoice",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
         return response
 
@@ -704,6 +770,10 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
     )
     def list(self, request):
         return super().list(request)
+
+
+class EmptySerializer(serializers.Serializer):
+    pass
 
 
 class CustomerBalanceAdjustmentViewSet(
@@ -726,13 +796,19 @@ class CustomerBalanceAdjustmentViewSet(
     lookup_field = "adjustment_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
+    def get_object(self):
+        string_uuid = self.kwargs[self.lookup_field]
+        uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
+        self.kwargs[self.lookup_field] = uuid
+        return super().get_object()
+
     def get_serializer_class(self):
         if self.action == "list":
             return CustomerBalanceAdjustmentSerializer
         elif self.action == "create":
             return CustomerBalanceAdjustmentCreateSerializer
         elif self.action == "void":
-            return None
+            return EmptySerializer
         elif self.action == "edit":
             return CustomerBalanceAdjustmentUpdateSerializer
         return CustomerBalanceAdjustmentSerializer
@@ -860,10 +936,12 @@ class CustomerBalanceAdjustmentViewSet(
                 POSTHOG_PERSON
                 if POSTHOG_PERSON
                 else (
-                    username if username else organization.company_name + " (API Key)"
+                    username
+                    if username
+                    else organization.organization_name + " (API Key)"
                 ),
                 event=f"{self.action}_balance_adjustment",
-                properties={"organization": organization.company_name},
+                properties={"organization": organization.organization_name},
             )
             # if username:
             #     if self.action == "plans":
@@ -904,9 +982,9 @@ class GetCustomerEventAccessView(APIView):
         # posthog.capture(
         #     POSTHOG_PERSON
         #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     else (username if username else organization.organization_name + " (Unknown)"),
         #     event="get_access",
-        #     properties={"organization": organization.company_name},
+        #     properties={"organization": organization.organization_name},
         # )
         customer = serializer.validated_data["customer"]
         event_name = serializer.validated_data.get("event_name")
@@ -943,7 +1021,9 @@ class GetCustomerEventAccessView(APIView):
                     }
                 )
             single_sub_dict = {
-                "plan_id": sr.billing_plan.plan_id,
+                "plan_id": PlanUUIDField().to_representation(
+                    sr.billing_plan.plan.plan_id
+                ),
                 "subscription_filters": subscription_filters,
                 "usage_per_component": [],
             }
@@ -954,7 +1034,7 @@ class GetCustomerEventAccessView(APIView):
                     tiers = sorted(component.tiers.all(), key=lambda x: x.range_start)
                     free_limit = (
                         tiers[0].range_end
-                        if tiers[0].type == PRICE_TIER_TYPE.FREE
+                        if tiers[0].type == PriceTier.PriceTierType.FREE
                         else None
                     )
                     total_limit = tiers[-1].range_end
@@ -965,7 +1045,9 @@ class GetCustomerEventAccessView(APIView):
                         "metric_usage": current_usage,
                         "metric_free_limit": free_limit,
                         "metric_total_limit": total_limit,
-                        "metric_id": metric.metric_id,
+                        "metric_id": MetricUUIDField().to_representation(
+                            metric.metric_id
+                        ),
                     }
                     single_sub_dict["usage_per_component"].append(unique_tup_dict)
             metrics.append(single_sub_dict)
@@ -1003,9 +1085,9 @@ class GetCustomerFeatureAccessView(APIView):
         # posthog.capture(
         #     POSTHOG_PERSON
         #     if POSTHOG_PERSON
-        #     else (username if username else organization.company_name + " (Unknown)"),
+        #     else (username if username else organization.organization_name + " (Unknown)"),
         #     event="get_access",
-        #     properties={"organization": organization.company_name},
+        #     properties={"organization": organization.organization_name},
         # )
         customer = serializer.validated_data["customer"]
         feature_name = serializer.validated_data.get("feature_name")
@@ -1037,7 +1119,9 @@ class GetCustomerFeatureAccessView(APIView):
                 )
             sub_dict = {
                 "feature_name": feature_name,
-                "plan_id": sub.billing_plan.plan_id,
+                "plan_id": PlanUUIDField().to_representation(
+                    sub.billing_plan.plan.plan_id
+                ),
                 "subscription_filters": subscription_filters,
                 "access": False,
             }

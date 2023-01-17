@@ -14,7 +14,6 @@ def delete_dups(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         (
             "metering_billing",

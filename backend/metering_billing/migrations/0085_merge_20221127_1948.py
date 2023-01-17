@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metering_billing", "0082_merge_20221127_0240"),
         ("metering_billing", "0084_plancomponent_proration_granularity_and_more"),

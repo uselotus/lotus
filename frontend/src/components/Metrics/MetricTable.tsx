@@ -116,6 +116,9 @@ const MetricTable: FC<Props> = ({ metricArray }) => {
           if (record.metric_type === "rate") {
             return "rate";
           }
+          if (record.metric_type === "custom") {
+            return "custom";
+          }
           return "counter";
         }
       },

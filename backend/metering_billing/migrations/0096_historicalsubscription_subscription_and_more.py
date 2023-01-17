@@ -9,7 +9,6 @@ import simple_history.models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         (
             "metering_billing",
