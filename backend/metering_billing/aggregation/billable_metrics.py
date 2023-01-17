@@ -1440,7 +1440,7 @@ class RateHandler(MetricHandler):
     def create_continuous_aggregate(metric: Metric, refresh=False):
         from metering_billing.models import OrganizationSetting
 
-        from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
+        from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .rate_query_templates import RATE_CAGG_QUERY
 
         if refresh is True:
@@ -1484,6 +1484,8 @@ class RateHandler(MetricHandler):
         refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
         compression_query = Template(CAGG_COMPRESSION).render(**sql_injection_data)
         with connection.cursor() as cursor:
+            if refresh:
+                cursor.execute(Template(CAGG_DROP).render(**sql_injection_data))
             cursor.execute(query)
             cursor.execute(refresh_query)
             cursor.execute(compression_query)
