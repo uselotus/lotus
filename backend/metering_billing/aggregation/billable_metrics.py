@@ -1443,8 +1443,6 @@ class RateHandler(MetricHandler):
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .rate_query_templates import RATE_CAGG_QUERY
 
-        if refresh is True:
-            RateHandler.archive_metric(metric)
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
         )
