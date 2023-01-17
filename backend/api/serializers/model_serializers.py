@@ -358,7 +358,6 @@ class InvoiceSerializer(
         self, obj
     ) -> Literal[INVOICE_STATUS_ENUM.PAID, INVOICE_STATUS_ENUM.UNPAID,]:
         ps = obj.payment_status
-        print("PSSSSS", ps, Invoice.PaymentStatus.PAID, Invoice.PaymentStatus.UNPAID)
         if ps == Invoice.PaymentStatus.PAID:
             return INVOICE_STATUS_ENUM.PAID
         elif ps == Invoice.PaymentStatus.UNPAID:

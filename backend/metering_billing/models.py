@@ -1057,6 +1057,11 @@ class Metric(models.Model):
     def __str__(self):
         return self.billable_metric_name or ""
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.status == METRIC_STATUS.ACTIVE and not self.mat_views_provisioned:
+            self.provision_materialized_views()
+
     def get_aggregation_type(self):
         return self.aggregation_type
 
@@ -1087,6 +1092,14 @@ class Metric(models.Model):
         usage = handler.get_subscription_record_current_usage(self, subscription_record)
 
         return usage
+
+    def refresh_materialized_views(self):
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        handler.create_continuous_aggregate(self, refresh=True)
+        self.mat_views_provisioned = True
+        self.save()
 
     def provision_materialized_views(self):
         from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
