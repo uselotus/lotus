@@ -160,4 +160,9 @@ Message Us on Slack: <a href="https://join.slack.com/t/lotus-community/shared_in
 
 Or visit www.uselotus.io
 
+<a href="https://github.com/uselotus/lotus/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=uselotus/lotus" />
+</a>
+
+
 <p align="right">(<a href="#lotus-pricing-and-billing-on-any-metric">back to top</a>)</p>
