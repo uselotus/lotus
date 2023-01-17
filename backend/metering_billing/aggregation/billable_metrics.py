@@ -202,7 +202,7 @@ class MetricHandler(abc.ABC):
         # edit custom name and pop filters + properties
         num_filter_data = validated_data.pop("numeric_filters", [])
         cat_filter_data = validated_data.pop("categorical_filters", [])
-        bm = Metric.objects.create(**validated_data)
+        bm = Metric.objects.create(**validated_data, mat_views_provisioned=True)
 
         # get filters
         for num_filter in num_filter_data:
@@ -226,6 +226,7 @@ class MetricHandler(abc.ABC):
                 ).first()
             bm.categorical_filters.add(cf)
         assert bm is not None
+        bm.refresh_materialized_views()
         return bm
 
     @staticmethod
@@ -1024,11 +1025,8 @@ class GaugeHandler(MetricHandler):
 
         from .common_query_templates import CAGG_COMPRESSION, CAGG_DROP, CAGG_REFRESH
         from .gauge_query_templates import (
-            GAUGE_DELTA_CREATE_TRIGGER_FN,
             GAUGE_DELTA_CUMULATIVE_SUM,
-            GAUGE_DELTA_DELETE_TRIGGER,
-            GAUGE_DELTA_INSERT_TRIGGER,
-            GAUGE_DELTA_UPDATE_TRIGGER,
+            GAUGE_DELTA_DROP_OLD,
             GAUGE_TOTAL_CUMULATIVE_SUM,
         )
 
@@ -1066,37 +1064,19 @@ class GaugeHandler(MetricHandler):
         )
         if metric.event_type == "delta":
             query = Template(GAUGE_DELTA_CUMULATIVE_SUM).render(**sql_injection_data)
-            drop_trigger = Template(GAUGE_DELTA_CREATE_TRIGGER_FN).render(
-                **sql_injection_data
-            )
-            trigger_fn = Template(GAUGE_DELTA_CREATE_TRIGGER_FN).render(
-                **sql_injection_data
-            )
-            trigger1 = Template(GAUGE_DELTA_DELETE_TRIGGER).render(**sql_injection_data)
-            trigger2 = Template(GAUGE_DELTA_INSERT_TRIGGER).render(**sql_injection_data)
-            trigger3 = Template(GAUGE_DELTA_UPDATE_TRIGGER).render(**sql_injection_data)
+            drop_old = Template(GAUGE_DELTA_DROP_OLD).render(**sql_injection_data)
         elif metric.event_type == "total":
             query = Template(GAUGE_TOTAL_CUMULATIVE_SUM).render(**sql_injection_data)
-        else:
-            raise ValueError(
-                "Invalid event type for gauge: {}".format(metric.event_type)
-            )
         refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
         compression_query = Template(CAGG_COMPRESSION).render(**sql_injection_data)
         with connection.cursor() as cursor:
+            if metric.event_type == "delta":
+                cursor.execute(drop_old)
             if refresh:
                 cursor.execute(Template(CAGG_DROP).render(**sql_injection_data))
-                if metric.event_type == "delta":
-                    cursor.execute(drop_trigger)
             cursor.execute(query)
-            if metric.event_type == "delta":
-                cursor.execute(trigger_fn)
-                cursor.execute(trigger1)
-                cursor.execute(trigger2)
-                cursor.execute(trigger3)
-            else:
-                cursor.execute(refresh_query)
-                cursor.execute(compression_query)
+            cursor.execute(refresh_query)
+            cursor.execute(compression_query)
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
@@ -1128,7 +1108,10 @@ class GaugeHandler(MetricHandler):
     ) -> Decimal:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .gauge_query_templates import GAUGE_GET_TOTAL_USAGE_WITH_PRORATION
+        from .gauge_query_templates import (
+            GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION,
+            GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION,
+        )
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1174,12 +1157,30 @@ class GaugeHandler(MetricHandler):
             "start_date": subscription_record.usage_start_date,
             "end_date": subscription_record.end_date,
             "granularity_ratio": granularity_ratio,
+            "event_name": metric.event_name,
+            "organization_id": organization.id,
+            "numeric_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.numeric_filters.all()
+            ],
+            "categorical_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.categorical_filters.all()
+            ],
+            "property_name": metric.property_name,
         }
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value[0]
-        query = Template(GAUGE_GET_TOTAL_USAGE_WITH_PRORATION).render(**injection_dict)
+        if metric.event_type == "delta":
+            query = Template(GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION).render(
+                **injection_dict
+            )
+        elif metric.event_type == "total":
+            query = Template(GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION).render(
+                **injection_dict
+            )
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
@@ -1193,7 +1194,10 @@ class GaugeHandler(MetricHandler):
     ) -> Decimal:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .gauge_query_templates import GAUGE_GET_CURRENT_USAGE
+        from .gauge_query_templates import (
+            GAUGE_DELTA_GET_CURRENT_USAGE,
+            GAUGE_TOTAL_GET_CURRENT_USAGE,
+        )
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1239,12 +1243,26 @@ class GaugeHandler(MetricHandler):
             "start_date": subscription_record.usage_start_date,
             "end_date": subscription_record.end_date,
             "granularity_ratio": granularity_ratio,
+            "event_name": metric.event_name,
+            "organization_id": organization.id,
+            "numeric_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.numeric_filters.all()
+            ],
+            "categorical_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.categorical_filters.all()
+            ],
+            "property_name": metric.property_name,
         }
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value[0]
-        query = Template(GAUGE_GET_CURRENT_USAGE).render(**injection_dict)
+        if metric.event_type == "delta":
+            query = Template(GAUGE_DELTA_GET_CURRENT_USAGE).render(**injection_dict)
+        elif metric.event_type == "total":
+            query = Template(GAUGE_TOTAL_GET_CURRENT_USAGE).render(**injection_dict)
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
@@ -1258,7 +1276,10 @@ class GaugeHandler(MetricHandler):
     ) -> dict[datetime.date, Decimal]:
         from metering_billing.models import Organization, OrganizationSetting
 
-        from .gauge_query_templates import GAUGE_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY
+        from .gauge_query_templates import (
+            GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY,
+            GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY,
+        )
 
         organization = Organization.objects.prefetch_related("settings").get(
             id=metric.organization.id
@@ -1304,14 +1325,30 @@ class GaugeHandler(MetricHandler):
             "start_date": subscription_record.usage_start_date,
             "end_date": subscription_record.end_date,
             "granularity_ratio": granularity_ratio,
+            "event_name": metric.event_name,
+            "organization_id": organization.id,
+            "numeric_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.numeric_filters.all()
+            ],
+            "categorical_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.categorical_filters.all()
+            ],
+            "property_name": metric.property_name,
         }
         for filter in subscription_record.filters.all():
             injection_dict["filter_properties"][
                 filter.property_name
             ] = filter.comparison_value[0]
-        query = Template(GAUGE_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY).render(
-            **injection_dict
-        )
+        if metric.event_type == "delta":
+            query = Template(GAUGE_DELTA_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY).render(
+                **injection_dict
+            )
+        elif metric.event_type == "total":
+            query = Template(GAUGE_TOTAL_GET_TOTAL_USAGE_WITH_PRORATION_PER_DAY).render(
+                **injection_dict
+            )
         with connection.cursor() as cursor:
             cursor.execute(query)
             result = namedtuplefetchall(cursor)
@@ -1401,80 +1438,78 @@ class RateHandler(MetricHandler):
 
     @staticmethod
     def create_continuous_aggregate(metric: Metric, refresh=False):
-        # from metering_billing.models import OrganizationSetting
+        from metering_billing.models import OrganizationSetting
 
-        # from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
-        # from .rate_query_templates import RATE_CAGG_QUERY
+        from .common_query_templates import CAGG_COMPRESSION, CAGG_REFRESH
+        from .rate_query_templates import RATE_CAGG_QUERY
 
-        # if refresh is True:
-        #     RateHandler.archive_metric(metric)
-        # try:
-        #     groupby = metric.organization.settings.get(
-        #         setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
-        #     )
-        #     groupby = groupby.setting_values
-        # except OrganizationSetting.DoesNotExist:
-        #     metric.organization.provision_subscription_filter_settings()
-        #     groupby = []
-        # sql_injection_data = {
-        #     "query_type": metric.usage_aggregation_type,
-        #     "property_name": metric.property_name,
-        #     "group_by": groupby,
-        #     "event_name": metric.event_name,
-        #     "organization_id": metric.organization.id,
-        #     "numeric_filters": [
-        #         (x.property_name, x.operator, x.comparison_value)
-        #         for x in metric.numeric_filters.all()
-        #     ],
-        #     "categorical_filters": [
-        #         (x.property_name, x.operator, x.comparison_value)
-        #         for x in metric.categorical_filters.all()
-        #     ],
-        #     "lookback_qty": 1,
-        #     "lookback_units": metric.granularity,
-        # }
-        # for continuous_agg_type in ["second"]:
-        #     sql_injection_data["cagg_name"] = (
-        #         metric.organization.organization_id[:22]
-        #         + "___"
-        #         + ("metric_" + metric.metric_id.hex)[:22]
-        #         + "___"
-        #         + continuous_agg_type
-        #     )
-        #     sql_injection_data["bucket_size"] = continuous_agg_type
-        #     query = Template(RATE_CAGG_QUERY).render(**sql_injection_data)
-        #     refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
-        #     compression_query = Template(CAGG_COMPRESSION).render(**sql_injection_data)
-        #     with connection.cursor() as cursor:
-        #         cursor.execute(query)
-        #         cursor.execute(refresh_query)
-        #         if continuous_agg_type == "second":
-        #             cursor.execute(compression_query)
-        pass
+        if refresh is True:
+            RateHandler.archive_metric(metric)
+        organization = Organization.objects.prefetch_related("settings").get(
+            id=metric.organization.id
+        )
+        try:
+            groupby = organization.settings.get(
+                setting_name=ORGANIZATION_SETTING_NAMES.SUBSCRIPTION_FILTER_KEYS
+            )
+            groupby = groupby.setting_values
+        except OrganizationSetting.DoesNotExist:
+            organization.provision_subscription_filter_settings()
+            groupby = []
+        sql_injection_data = {
+            "query_type": metric.usage_aggregation_type,
+            "property_name": metric.property_name,
+            "group_by": groupby,
+            "event_name": metric.event_name,
+            "organization_id": metric.organization.id,
+            "numeric_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.numeric_filters.all()
+            ],
+            "categorical_filters": [
+                (x.property_name, x.operator, x.comparison_value)
+                for x in metric.categorical_filters.all()
+            ],
+            "lookback_qty": 1,
+            "lookback_units": metric.granularity,
+        }
+        sql_injection_data["cagg_name"] = (
+            ("org_" + organization.organization_id.hex)[:22]
+            + "___"
+            + ("metric_" + metric.metric_id.hex)[:22]
+            + "___"
+            + "rate_cagg"
+        )
+        query = Template(RATE_CAGG_QUERY).render(**sql_injection_data)
+        refresh_query = Template(CAGG_REFRESH).render(**sql_injection_data)
+        compression_query = Template(CAGG_COMPRESSION).render(**sql_injection_data)
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            cursor.execute(refresh_query)
+            cursor.execute(compression_query)
 
     @staticmethod
     def archive_metric(metric: Metric) -> Metric:
-        # from metering_billing.models import Organization
+        from metering_billing.models import Organization
 
-        # from .common_query_templates import CAGG_DROP
+        from .common_query_templates import CAGG_DROP
 
-        # organization = Organization.objects.prefetch_related("settings").get(
-        #     id=metric.organization.id
-        # )
-        # sql_injection_data = {
-        #     "cagg_name": (
-        #         organization.organization_id[:22]
-        #         + "___"
-        #         + ("metric_" + metric.metric_id.hex)[:22]
-        #         + "___"
-        #         + "second"
-        #     ),
-        # }
-        # query = Template(CAGG_DROP).render(**sql_injection_data)
-        # with connection.cursor() as cursor:
-        #     cursor.execute(query)
-        # return metric
-        pass
+        organization = Organization.objects.prefetch_related("settings").get(
+            id=metric.organization.id
+        )
+        sql_injection_data = {
+            "cagg_name": (
+                ("org_" + organization.organization_id.hex)[:22]
+                + "___"
+                + ("metric_" + metric.metric_id.hex)[:22]
+                + "___"
+                + "rate_cagg"
+            ),
+        }
+        query = Template(CAGG_DROP).render(**sql_injection_data)
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+        return metric
 
     @staticmethod
     def _rate_cagg_total_results(
@@ -1499,7 +1534,7 @@ class RateHandler(MetricHandler):
             + "___"
             + ("metric_" + metric.metric_id.hex)[:22]
             + "___"
-            + "second",
+            + "rate_cagg",
             "lookback_qty": 1,
             "lookback_units": metric.granularity,
             "property_name": metric.property_name,

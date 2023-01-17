@@ -47,7 +47,7 @@ WHERE
         {{ comparison }}
     {%- endfor %}
     {%- for property_name, operator, comparison in categorical_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+    AND (COALESCE("metering_billing_usageevent"."properties" ->> '{{ property_name }}', ''))
         {% if operator == "isnotin" %}
         NOT
         {% endif %}
@@ -153,7 +153,7 @@ WHERE
         {{ comparison }}
     {%- endfor %}
     {%- for property_name, operator, comparison in categorical_filters %}
-    AND ("metering_billing_usageevent"."properties" ->> '{{ property_name }}')
+    AND (COALESCE("metering_billing_usageevent"."properties" ->> '{{ property_name }}', ''))
         {% if operator == "isnotin" %}
         NOT
         {% endif %}

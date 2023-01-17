@@ -145,7 +145,6 @@ class TestStripeIntegration:
             ~Q(integrations__stripe__id=stripe_customer.id)
         ).delete()
         assert stripe_connector.import_customers(setup_dict["org"]) > 0
-        print(Customer.objects.all().values())
         new_cust = Customer.objects.get(email=stripe_customer.email)
 
         # now lets generate an invoice + for this customer
