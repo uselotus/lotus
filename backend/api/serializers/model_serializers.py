@@ -13,6 +13,7 @@ from metering_billing.serializers.serializer_utils import (
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
     SubscriptionUUIDField,
+    UsageAlertUUIDField,
 )
 from metering_billing.utils.enums import *
 from rest_framework import serializers
@@ -142,17 +143,14 @@ class CategoricalFilterSerializer(
     class Meta:
         model = CategoricalFilter
         fields = ("property_name", "operator", "comparison_value")
-        extra_kwargs = {
-            "property_name": {"required": True, "read_only": True},
-            "operator": {"required": True, "read_only": True},
-            "comparison_value": {"required": True, "read_only": True},
-        }
 
     comparison_value = serializers.ListField(child=serializers.CharField())
 
 
-class SubscriptionCategoricalFilterSerializer(CategoricalFilterSerializer):
-    class Meta(CategoricalFilterSerializer.Meta):
+class SubscriptionCategoricalFilterSerializer(
+    ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
+):
+    class Meta:
         model = CategoricalFilter
         fields = ("value", "property_name")
         extra_kwargs = {
@@ -344,7 +342,10 @@ class InvoiceSerializer(
         }
 
     external_payment_obj_type = serializers.ChoiceField(
-        choices=PAYMENT_PROVIDERS.choices, allow_null=True, required=True
+        choices=PAYMENT_PROVIDERS.choices,
+        allow_null=True,
+        required=True,
+        allow_blank=False,
     )
     currency = PricingUnitSerializer()
     customer = LightweightCustomerSerializerForInvoice()
@@ -1488,3 +1489,18 @@ class CustomerBalanceAdjustmentFilterSerializer(serializers.Serializer):
         source="pricing_unit",
         help_text="Filter to adjustments in a specific currency",
     )
+
+
+class UsageAlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsageAlert
+        fields = (
+            "usage_alert_id",
+            "metric",
+            "plan_version",
+            "threshold",
+        )
+
+    usage_alert_id = UsageAlertUUIDField(read_only=True)
+    metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
