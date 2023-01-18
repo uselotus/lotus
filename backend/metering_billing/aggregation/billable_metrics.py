@@ -151,7 +151,7 @@ class MetricHandler(abc.ABC):
         injection_dict = {
             "query_type": metric.usage_aggregation_type,
             "filter_properties": {},
-            "customer_id": customer.id,
+            "customer_id": customer.id if customer else None,
             "top_n": top_n if top_n else "ALL",
             "property_name": metric.property_name,
             "event_name": metric.event_name,
