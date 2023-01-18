@@ -22,7 +22,6 @@ class DayMetricUsageSerializer(serializers.Serializer):
 
 class PeriodSingleMetricUsageSerializer(serializers.Serializer):
     data = DayMetricUsageSerializer(many=True)
-    total_usage = serializers.DecimalField(decimal_places=10, max_digits=20)
 
 
 class PeriodMetricUsageResponseSerializer(serializers.Serializer):
