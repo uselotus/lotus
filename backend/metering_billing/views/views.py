@@ -252,11 +252,15 @@ class PeriodSubscriptionsView(APIView):
 
         return_dict = {}
         for i, (p_start, p_end) in enumerate([[p1_start, p1_end], [p2_start, p2_end]]):
-            p_subs = SubscriptionRecord.objects.filter(
-                Q(start_date__range=[p_start, p_end])
-                | Q(end_date__range=[p_start, p_end]),
-                organization=organization,
-            ).values(customer_name=F("customer__customer_name"), new=F("is_new"))
+            p_subs = (
+                SubscriptionRecord.objects.filter(
+                    Q(start_date__range=[p_start, p_end])
+                    | Q(end_date__range=[p_start, p_end]),
+                    organization=organization,
+                )
+                .select_related("customer")
+                .values(customer_name=F("customer__customer_name"), new=F("is_new"))
+            )
             seen_dict = {}
             for sub in p_subs:
                 if (
@@ -265,6 +269,7 @@ class PeriodSubscriptionsView(APIView):
                     seen_dict[sub["customer_name"]] = False
                 else:
                     seen_dict[sub["customer_name"]] = sub["new"]
+                print("seen_dict", seen_dict)
             return_dict[f"period_{i+1}_total_subscriptions"] = len(seen_dict)
             return_dict[f"period_{i+1}_new_subscriptions"] = sum(
                 [1 for k, v in seen_dict.items() if v]

@@ -37,7 +37,8 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -59,6 +60,8 @@ from metering_billing.models import (
     CustomerBalanceAdjustment,
     Event,
     Invoice,
+    Metric,
+    NumericFilter,
     Plan,
     PlanComponent,
     PriceTier,
@@ -212,45 +215,71 @@ class PlanViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
 
         now = now_utc()
         organization = self.request.organization
-        qs = Plan.objects.filter(
-            organization=organization, status=PLAN_STATUS.ACTIVE
-        ).prefetch_related(
+        qs = Plan.objects.filter(organization=organization, status=PLAN_STATUS.ACTIVE)
+        # first go for the ones that are one away (FK) and not nested
+        qs = qs.select_related(
             "organization",
-            "organization__pricing_units",
+            "target_customer",
+            "created_by",
+            "parent_plan",
+            "display_version",
+        )
+        # then for many to many / reverse FK but still have
+        qs = qs.prefetch_related("tags", "external_links")
+        # then come the really deep boys
+        # we need to construct the prefetch objects so that we are prefetching the more
+        # deeply nested objectsd as part of the call:
+        # https://forum.djangoproject.com/t/drf-and-nested-serialisers-optimisation-with-prefect-related/4272
+        active_subscriptions_subquery = SubscriptionRecord.objects.filter(
+            billing_plan=OuterRef("pk"),
+            start_date__lte=now,
+            end_date__gte=now,
+        ).annotate(active_subscriptions=Count("*"))
+        qs = qs.prefetch_related(
             Prefetch(
                 "versions",
                 queryset=PlanVersion.objects.filter(
                     organization=organization,
-                ).annotate(
-                    active_subscriptions=Count(
-                        "subscription_record",
-                        filter=Q(
-                            subscription_record__start_date__lte=now,
-                            subscription_record__end_date__gte=now,
+                )
+                .annotate(
+                    active_subscriptions=Coalesce(
+                        Subquery(
+                            active_subscriptions_subquery.values(
+                                "active_subscriptions"
+                            )[:1]
                         ),
-                        output_field=models.IntegerField(),
+                        Value(0),
                     )
+                )
+                .select_related("price_adjustment", "created_by", "pricing_unit")
+                .prefetch_related(
+                    "subscription_records",
+                    "usage_alerts",
+                    "features",
+                )
+                .prefetch_related(
+                    Prefetch(
+                        "plan_components",
+                        queryset=PlanComponent.objects.filter(
+                            organization=organization,
+                        )
+                        .select_related("pricing_unit")
+                        .prefetch_related("tiers")
+                        .prefetch_related(
+                            Prefetch(
+                                "billable_metric",
+                                queryset=Metric.objects.filter(
+                                    organization=organization,
+                                    status=METRIC_STATUS.ACTIVE,
+                                ).prefetch_related(
+                                    "numeric_filters",
+                                    "categorical_filters",
+                                ),
+                            ),
+                        ),
+                    ),
                 ),
-            ),
-            "versions__subscription_records",
-            "versions__usage_alerts",
-            "versions__features",
-            "versions__price_adjustment",
-            "versions__created_by",
-            "versions__pricing_unit",
-            "versions__plan_components",
-            "versions__plan_components__pricing_unit",
-            "versions__plan_components__billable_metric",
-            "versions__plan_components__billable_metric__usage_alerts",
-            "versions__plan_components__billable_metric__numeric_filters",
-            "versions__plan_components__billable_metric__categorical_filters",
-            "versions__plan_components__tiers",
-            "created_by",
-            "display_version",
-            "external_links",
-            "parent_plan",
-            "target_customer",
-            "tags",
+            )
         )
         return qs
 
