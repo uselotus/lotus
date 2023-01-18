@@ -269,7 +269,6 @@ class PeriodSubscriptionsView(APIView):
                     seen_dict[sub["customer_name"]] = False
                 else:
                     seen_dict[sub["customer_name"]] = sub["new"]
-                print("seen_dict", seen_dict)
             return_dict[f"period_{i+1}_total_subscriptions"] = len(seen_dict)
             return_dict[f"period_{i+1}_new_subscriptions"] = sum(
                 [1 for k, v in seen_dict.items() if v]

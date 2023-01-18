@@ -164,6 +164,8 @@ class MetricHandler(abc.ABC):
                 (x.property_name, x.operator, x.comparison_value)
                 for x in metric.categorical_filters.all()
             ],
+            "lookback_qty": 1,
+            "lookback_units": metric.granularity,
         }
         injection_dict["start_date"] = start_date
         injection_dict["end_date"] = end_date
