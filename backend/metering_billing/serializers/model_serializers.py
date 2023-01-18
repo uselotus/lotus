@@ -13,7 +13,6 @@ from metering_billing.serializers.serializer_utils import (
     PlanUUIDField,
     PlanVersionUUIDField,
     SlugRelatedFieldWithOrganization,
-    UsageAlertUUIDField,
     WebhookEndpointUUIDField,
     WebhookSecretUUIDField,
 )
@@ -663,6 +662,8 @@ class MetricCreateSerializer(serializers.ModelSerializer):
             "properties",
             "is_cost_metric",
             "custom_sql",
+            "categorical_filters",
+            "numeric_filters",
         )
         extra_kwargs = {
             "event_name": {"write_only": True, "required": False, "allow_blank": False},
@@ -685,18 +686,13 @@ class MetricCreateSerializer(serializers.ModelSerializer):
                 "allow_null": True,
                 "allow_blank": False,
             },
+            "categorical_filters": {"write_only": True, "required": False},
+            "numeric_filters": {"write_only": True, "required": False},
         }
 
     metric_name = serializers.CharField(source="billable_metric_name")
-    # granularity = serializers.ChoiceField(
-    #     choices=METRIC_GRANULARITY.choices,
-    #     required=False,
-    # )
-    # event_type = serializers.ChoiceField(
-    #     choices=EVENT_TYPE.choices,
-    #     required=False,
-    # )
-    # properties = serializers.JSONField(allow_null=True, required=False)
+    numeric_filters = NumericFilterSerializer(many=True, required=False)
+    categorical_filters = CategoricalFilterSerializer(many=True, required=False)
 
     def validate(self, data):
         data = super().validate(data)
@@ -1117,19 +1113,9 @@ class LightweightPlanVersionSerializer(
         fields = api_serializers.LightweightPlanVersionSerializer.Meta.fields
 
 
-class UsageAlertSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UsageAlert
-        fields = (
-            "usage_alert_id",
-            "metric",
-            "plan_version",
-            "threshold",
-        )
-
-    usage_alert_id = UsageAlertUUIDField(read_only=True)
-    metric = MetricSerializer()
-    plan_version = LightweightPlanVersionSerializer()
+class UsageAlertSerializer(api_serializers.UsageAlertSerializer):
+    class Meta(api_serializers.UsageAlertSerializer.Meta):
+        fields = api_serializers.UsageAlertSerializer.Meta.fields
 
 
 class PlanVersionDetailSerializer(api_serializers.PlanVersionSerializer):

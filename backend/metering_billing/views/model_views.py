@@ -3,11 +3,16 @@ import api.views as api_views
 # import lotus_python
 import posthog
 from actstream.models import Action
+from api.serializers.webhook_serializers import (
+    InvoiceCreatedSerializer,
+    InvoicePaidSerializer,
+    UsageAlertTriggeredSerializer,
+)
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Count, Prefetch, Q
 from django.db.utils import IntegrityError
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiCallback, extend_schema, inline_serializer
 from metering_billing.exceptions import DuplicateMetric, DuplicateWebhookEndpoint
 from metering_billing.models import (
     Backtest,
@@ -221,6 +226,37 @@ class WebhookViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
         "partial_update": [IsAuthenticated & ValidOrganization],
     }
     queryset = WebhookEndpoint.objects.all()
+
+    @extend_schema(
+        callbacks=[
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Invoice created webhook",
+                    responses={200: InvoiceCreatedSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.INVOICE_PAID.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Invoice paid webhook",
+                    responses={200: InvoicePaidSerializer},
+                ),
+            ),
+            OpenApiCallback(
+                WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED.value,
+                "{$request.body#/webhook_url}",
+                extend_schema(
+                    description="Usage alert triggered webhook",
+                    responses={200: UsageAlertTriggeredSerializer},
+                ),
+            ),
+        ]
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
 
     def get_object(self):
         string_uuid = self.kwargs[self.lookup_field]

@@ -283,6 +283,12 @@ WITH rate_per_bucket AS (
         {% endif %}
         AND time_bucket >= '{{ start_date }}'::timestamptz
         AND time_bucket <= '{{ end_date }}'::timestamptz
+    GROUP BY
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+        , time_bucket
 )
 , per_customer AS (
     SELECT
