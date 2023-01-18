@@ -331,7 +331,6 @@ class TestStripeIntegration:
             billing_plan=setup_dict["plan"].display_version,
         ).delete()
         subs = stripe_connector.transfer_subscriptions(setup_dict["org"], end_now=True)
-        stripe_sub = subs[0]
         assert (
             SubscriptionRecord.objects.filter(
                 organization=setup_dict["org"],

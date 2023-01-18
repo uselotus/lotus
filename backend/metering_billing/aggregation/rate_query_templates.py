@@ -259,10 +259,12 @@ WITH rate_per_bucket AS (
     FROM
         {{ cagg_name }}
     WHERE
-        customer_id = {{ customer_id }}
-        AND bucket >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
+        bucket >= '{{ start_date }}'::timestamptz - INTERVAL '{{ lookback_qty }} {{ lookback_units }}'
         AND bucket <= '{{ end_date }}'::timestamptz
         AND bucket <= NOW()
+        {% if customer_id is not none %}
+        customer_id = {{ customer_id }}
+        {% endif %}
 )
 , per_groupby AS (   
     SELECT
