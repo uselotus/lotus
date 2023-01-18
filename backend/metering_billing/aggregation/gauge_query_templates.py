@@ -628,6 +628,171 @@ FULL OUTER JOIN
 USING (customer_id {%- for group_by_field in group_by %}, {{ group_by_field }}{% endfor %});
 """
 
+GAUGE_DELTA_TOTAL_PER_DAY = """
+WITH prev_value AS (
+    SELECT
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+        , SUM(day_net_state_change) AS prev_usage_qty
+    FROM
+        {{ cagg_name }}
+    WHERE
+        time_bucket <= CURRENT_DATE
+        {% if customer_id is not none %}
+        AND customer_id = {{ customer_id }}
+        {% endif %}
+        AND time_bucket < '{{ start_date }}'::timestamptz
+    GROUP BY
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+)
+, cumulative_sum_per_event AS (
+    SELECT
+        event_table.customer_id AS customer_id
+        {%- for group_by_field in group_by %}
+        , event_table.properties ->> '{{ group_by_field }}' AS {{ group_by_field }}
+        {%- endfor %}
+        , COALESCE(prev_value.prev_usage_qty,0) + SUM(cast(event_table.properties ->> '{{ property_name }}' AS decimal))
+            OVER (
+                PARTITION BY event_table.customer_id
+                {%- for group_by_field in group_by %}
+                , event_table.properties ->> '{{ group_by_field }}'
+                {%- endfor %}
+                ORDER BY event_table.time_created
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            ) AS cumulative_usage_qty
+        , event_table.time_created AS time_bucket
+    FROM
+        "metering_billing_usageevent" AS event_table
+    LEFT JOIN prev_value
+        ON event_table.customer_id = prev_value.customer_id
+        {%- for group_by_field in group_by %}
+        AND event_table.properties ->> '{{ group_by_field }}' = prev_value.{{ group_by_field }}
+        {%- endfor %}
+    WHERE
+        event_table.event_name = '{{ event_name }}'
+        AND event_table.organization_id = {{ organization_id }}
+        AND event_table.time_created <= NOW()
+        AND event_table.time_created >= '{{ start_date }}'::timestamptz
+        AND event_table.time_created <= '{{ end_date }}'::timestamptz
+        {%- for property_name, operator, comparison in numeric_filters %}
+        AND (event_table.properties ->> '{{ property_name }}')::text::decimal
+            {% if operator == "gt" %}
+            >
+            {% elif operator == "gte" %}
+            >=
+            {% elif operator == "lt" %}
+            <
+            {% elif operator == "lte" %}
+            <=
+            {% elif operator == "eq" %}
+            =
+            {% endif %}
+            {{ comparison }}
+        {%- endfor %}
+        {%- for property_name, operator, comparison in categorical_filters %}
+        AND (event_table.properties ->> '{{ property_name }}')
+            {% if operator == "isnotin" %}
+            NOT
+            {% endif %}
+            IN (
+                {%- for pval in comparison %}
+                '{{ pval }}'
+                {%- if not loop.last %},{% endif %}
+                {%- endfor %}
+            )
+        {%- endfor %}
+)
+, proration_level_query AS (
+    SELECT
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+        , time_bucket_gapfill('1 day', time_bucket) AS time_bucket
+        , locf(
+            value => MAX(cumulative_usage_qty),
+            prev => (
+                SELECT COALESCE(
+                    (select prev_usage_qty from prev_value limit 1),
+                    0
+                ) AS prev_usage_qty
+            )
+        ) AS usage_qty
+    FROM
+        cumulative_sum_per_event
+    WHERE
+        time_bucket <= NOW()
+        AND time_bucket >= '{{ start_date }}'::timestamptz
+        AND time_bucket <= '{{ end_date }}'::timestamptz
+        {%- if customer_id is not none %}
+        customer_id = {{ customer_id }}
+        {%- endif %}
+        {%- for property_name, property_values in filter_properties.items() %}
+        AND {{ property_name }}
+            IN (
+                {%- for pval in property_values %}
+                '{{ pval }}'
+                {%- if not loop.last %},{% endif %}
+                {%- endfor %}
+            )
+        {%- endfor %} 
+    GROUP BY
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+        , time_bucket_gapfill('1 day', time_bucket)
+)
+, per_customer AS (
+    SELECT
+        customer_id
+        , time_bucket
+        , SUM(usage_qty) AS usage_qty_per_day
+    FROM
+        proration_level_query
+    WHERE
+        time_bucket <= NOW()
+        {% if customer_id is not none %}
+        AND customer_id = {{ customer_id }}
+        {% endif %}
+        AND time_bucket >= '{{ start_date }}'::timestamptz
+        AND time_bucket <= '{{ end_date }}'::timestamptz
+    GROUP BY
+        customer_id
+        , time_bucket
+    ORDER BY
+        usage_qty_per_day DESC
+), top_n AS (
+    SELECT 
+        customer_id
+        , SUM(usage_qty_per_day) AS total_usage_qty
+    FROM
+        per_customer
+    GROUP BY
+        customer_id
+    ORDER BY
+        total_usage_qty DESC
+    LIMIT {{ top_n }}
+)
+SELECT 
+    COALESCE(top_n.customer_id, -1) AS customer_id
+    , SUM(per_customer.usage_qty_per_day) AS usage_qty
+    , per_customer.time_bucket AS time_bucket
+FROM 
+    per_customer
+LEFT JOIN
+    top_n
+ON
+    per_customer.customer_id = top_n.customer_id
+GROUP BY
+    COALESCE(top_n.customer_id, -1)
+    , per_customer.time_bucket
+"""
 
 ### THEN ALL TOTAL QUERIES
 GAUGE_TOTAL_CUMULATIVE_SUM = """
@@ -967,4 +1132,124 @@ SELECT
     , time
 FROM
     normalized_query
+"""
+
+GAUGE_TOTAL_TOTAL_PER_DAY = """
+WITH prev_value AS (
+    SELECT
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+        , last(cumulative_usage_qty, time_bucket) AS prev_usage_qty
+    FROM
+        {{ cagg_name }}
+    WHERE
+        time_bucket <= CURRENT_DATE
+        {% if customer_id is not none %}
+        AND customer_id = {{ customer_id }}
+        {% endif %}
+        AND time_bucket < '{{ start_date }}'::timestamptz
+    GROUP BY
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+)
+, proration_level_query AS (
+    SELECT
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+        , time_bucket_gapfill('1 day', time_bucket) AS time_bucket
+        , locf(
+            value => MAX(cumulative_usage_qty),
+            prev => (
+                SELECT COALESCE(
+                    (
+                    select 
+                        prev_usage_qty 
+                    from 
+                        prev_value 
+                    where 
+                        customer_id = {{ cagg_name }}.customer_id
+                        {%- for group_by_field in group_by %}
+                        AND {{ group_by_field }} = {{ cagg_name }}.{{ group_by_field }}
+                        {%- endfor %}
+                    limit 1
+                    ),
+                    0
+                ) AS prev_usage_qty
+            )
+        ) AS usage_qty
+    FROM
+        {{ cagg_name }}
+    WHERE
+        time_bucket <= NOW()
+        AND time_bucket >= '{{ start_date }}'::timestamptz
+        AND time_bucket <= '{{ end_date }}'::timestamptz
+        {% if customer_id is not none %}
+        customer_id = {{ customer_id }}
+        {%- endif %}
+        {%- for property_name, property_values in filter_properties.items() %}
+        AND {{ property_name }}
+            IN (
+                {%- for pval in property_values %}
+                '{{ pval }}'
+                {%- if not loop.last %},{% endif %}
+                {%- endfor %}
+            )
+        {%- endfor %}
+    GROUP BY
+        customer_id
+        {%- for group_by_field in group_by %}
+        , {{ group_by_field }}
+        {%- endfor %}
+        , time_bucket_gapfill('1 day', time_bucket)
+)
+, per_customer AS (
+    SELECT
+        customer_id
+        , time_bucket
+        , SUM(usage_qty) AS usage_qty_per_day
+    FROM
+        proration_level_query
+    WHERE
+        time_bucket <= NOW()
+        {% if customer_id is not none %}
+        AND customer_id = {{ customer_id }}
+        {% endif %}
+        AND time_bucket >= '{{ start_date }}'::timestamptz
+        AND time_bucket <= '{{ end_date }}'::timestamptz
+    GROUP BY
+        customer_id
+        , time_bucket
+    ORDER BY
+        usage_qty_per_day DESC
+), top_n AS (
+    SELECT 
+        customer_id
+        , SUM(usage_qty_per_day) AS total_usage_qty
+    FROM
+        per_customer
+    GROUP BY
+        customer_id
+    ORDER BY
+        total_usage_qty DESC
+    LIMIT {{ top_n }}
+)
+SELECT 
+    COALESCE(top_n.customer_id, -1) AS customer_id
+    , SUM(per_customer.usage_qty_per_day) AS usage_qty
+    , per_customer.time_bucket AS time_bucket
+FROM 
+    per_customer
+LEFT JOIN
+    top_n
+ON
+    per_customer.customer_id = top_n.customer_id
+GROUP BY
+    COALESCE(top_n.customer_id, -1)
+    , per_customer.time_bucket
 """

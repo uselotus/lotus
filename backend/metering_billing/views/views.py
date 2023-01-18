@@ -23,10 +23,7 @@ from metering_billing.utils import (
     make_all_decimals_floats,
     periods_bwn_twodates,
 )
-from metering_billing.utils.enums import (
-    PAYMENT_PROVIDERS,
-    USAGE_CALC_GRANULARITY,
-)
+from metering_billing.utils.enums import PAYMENT_PROVIDERS, USAGE_CALC_GRANULARITY
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -157,14 +154,15 @@ class CostAnalysisView(APIView):
                 "cost_data": {},
                 "revenue": Decimal(0),
             }
-        Metric.objects.filter(organization=organization, is_cost_metric=True)
-        for metric in []:
-            usage_ret = metric.get_usage(
+        cost_metrics = Metric.objects.filter(
+            organization=organization, is_cost_metric=True, status=METRIC_STATUS.ACTIVE
+        )
+        for metric in cost_metrics:
+            usage_ret = metric.get_daily_total_usage(
                 start_date,
                 end_date,
-                granularity=USAGE_CALC_GRANULARITY.DAILY,
                 customer=customer,
-            ).get(customer.customer_name, {})
+            ).get(customer, {})
             for date, usage in usage_ret.items():
                 date = convert_to_date(date)
                 usage = convert_to_decimal(usage)
@@ -299,112 +297,31 @@ class PeriodMetricUsageView(APIView):
         ]
         q_start = convert_to_datetime(q_start, date_behavior="min")
         q_end = convert_to_datetime(q_end, date_behavior="max")
-        subscription_records = (
-            SubscriptionRecord.objects.filter(
-                Q(start_date__range=[q_start, q_end])
-                | Q(end_date__range=[q_start, q_end])
-                | Q(start_date__lte=q_start, end_date__gte=q_end),
-                organization=organization,
-            )
-            .select_related("billing_plan")
-            .select_related("customer")
-            .prefetch_related("billing_plan__plan_components")
-            .prefetch_related("billing_plan__plan_components__billable_metric")
-            .prefetch_related("billing_plan__plan_components__tiers")
+        final_results = {}
+        metrics = organization.metrics.filter(
+            ~Q(metric_type=METRIC_TYPE.CUSTOM), status=METRIC_STATUS.ACTIVE
         )
-        return_dict = {}
-        allowed_periods = set(
-            convert_to_date(period)
-            for period in periods_bwn_twodates(
-                USAGE_CALC_GRANULARITY.DAILY, q_start, q_end
+        for metric in metrics:
+            metric_dict = {}
+            per_customer_usage = metric.get_daily_total_usage(
+                start_date=q_start, end_date=q_end, customer=None, top_n=top_n
             )
-        )
-        for sr in subscription_records:
-            for pc in sr.billing_plan.plan_components.all():
-                metric = pc.billable_metric
-                if metric.billable_metric_name not in return_dict:
-                    return_dict[metric.billable_metric_name] = {
-                        "data": {},
-                        "total_usage": 0,
-                        "top_n_customers": {},
-                    }
-                res = pc.billable_metric.get_subscription_record_daily_billable_usage(
-                    sr
+            for customer, customer_dict in per_customer_usage.items():
+                for date, usage in customer_dict.items():
+                    if date not in metric_dict:
+                        metric_dict[date] = {}
+                    metric_dict[date][customer.customer_name] = convert_to_decimal(
+                        usage
+                    )
+            final_results[metric.billable_metric_name] = {
+                "data": sorted(
+                    [{"date": k, "customer_usages": v} for k, v in metric_dict.items()],
+                    key=lambda x: x["date"],
                 )
-                for date, usage in res.items():
-                    if date not in allowed_periods:
-                        continue
-                    usage = convert_to_decimal(usage)
-                    return_dict[metric.billable_metric_name]["total_usage"] += usage
-                    if date not in return_dict[metric.billable_metric_name]["data"]:
-                        return_dict[metric.billable_metric_name]["data"][date] = {
-                            "total_usage": Decimal(0),
-                            "customer_usages": {},
-                        }
-                    return_dict[metric.billable_metric_name]["data"][date][
-                        "total_usage"
-                    ] += usage
-                    if (  # add custoemr to date customer usages
-                        sr.customer.customer_name
-                        not in return_dict[metric.billable_metric_name]["data"][date][
-                            "customer_usages"
-                        ]
-                    ):
-                        return_dict[metric.billable_metric_name]["data"][date][
-                            "customer_usages"
-                        ][sr.customer.customer_name] = Decimal(0)
-                    return_dict[metric.billable_metric_name]["data"][date][
-                        "customer_usages"
-                    ][
-                        sr.customer.customer_name
-                    ] += usage  # add usage to individual customer on day
-                    if (
-                        sr.customer.customer_name
-                        not in return_dict[metric.billable_metric_name][
-                            "top_n_customers"
-                        ]
-                    ):
-                        return_dict[metric.billable_metric_name]["top_n_customers"][
-                            sr.customer.customer_name
-                        ] = 0
-                    return_dict[metric.billable_metric_name]["top_n_customers"][
-                        sr.customer.customer_name
-                    ] += usage
-        if top_n:
-            for metric, metric_dict in return_dict.items():
-                top_n_customers = sorted(
-                    metric_dict["top_n_customers"].items(),
-                    key=lambda x: x[1],
-                    reverse=True,
-                )[:top_n]
-                metric_dict["top_n_customers"] = [x[0] for x in top_n_customers]
-                metric_dict["top_n_customers_usage"] = [x[1] for x in top_n_customers]
-        else:
-            for metric, metric_dict in return_dict.items():
-                del metric_dict["top_n_customers"]
-        for metric, metric_dict in return_dict.items():
-            metric_dict["data"] = [
-                {
-                    "date": convert_to_date(k),
-                    "total_usage": v["total_usage"],
-                    "customer_usages": v["customer_usages"],
-                }
-                for k, v in metric_dict["data"].items()
-            ]
-            if "top_n_customers" in metric_dict:
-                for date_dict in metric_dict["data"]:
-                    new_dict = {}
-                    for customer, usage in date_dict["customer_usages"].items():
-                        if customer not in metric_dict["top_n_customers"]:
-                            if "Other" not in new_dict:
-                                new_dict["Other"] = 0
-                            new_dict["Other"] += usage
-                        else:
-                            new_dict[customer] = usage
-                    date_dict["customer_usages"] = new_dict
-            metric_dict["data"] = sorted(metric_dict["data"], key=lambda x: x["date"])
-        return_dict = {"metrics": return_dict}
-        serializer = PeriodMetricUsageResponseSerializer(data=return_dict)
+            }
+        serializer = PeriodMetricUsageResponseSerializer(
+            data={"metrics": final_results}
+        )
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         ret = make_all_decimals_floats(ret)

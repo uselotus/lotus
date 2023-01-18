@@ -4,7 +4,7 @@ import logging
 import math
 import uuid
 from decimal import Decimal
-from typing import TypedDict
+from typing import Literal, Optional, TypedDict, Union
 
 # import lotus_python
 from dateutil.relativedelta import relativedelta
@@ -1090,6 +1090,22 @@ class Metric(models.Model):
 
         handler = METRIC_HANDLER_MAP[self.metric_type]
         usage = handler.get_subscription_record_current_usage(self, subscription_record)
+
+        return usage
+
+    def get_daily_total_usage(
+        self,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        customer: Optional[Customer] = None,
+        top_n: Optional[int] = None,
+    ) -> dict[Union[Customer, Literal["Other"]], dict[datetime.date, Decimal]]:
+        from metering_billing.aggregation.billable_metrics import METRIC_HANDLER_MAP
+
+        handler = METRIC_HANDLER_MAP[self.metric_type]
+        usage = handler.get_daily_total_usage(
+            self, start_date, end_date, customer, top_n
+        )
 
         return usage
 
