@@ -278,7 +278,6 @@ class PeriodSubscriptionsView(APIView):
         serializer.is_valid(raise_exception=True)
         ret = serializer.validated_data
         ret = make_all_decimals_floats(ret)
-        print("ret", ret)
         return Response(ret, status=status.HTTP_200_OK)
 
 
