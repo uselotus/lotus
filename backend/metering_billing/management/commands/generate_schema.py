@@ -25,16 +25,10 @@ class Command(BaseCommand):
         lst = list(data_public["paths"].keys())
         for x in lst:
             if x.startswith("/api/"):
-                print("deleting", x, "from private schema")
                 del data_private["paths"][x]
             else:
-                print("deleting", x, "from public schema")
                 del data_public["paths"][x]
         with open("../docs/openapi.yaml", "w") as fp:
             yaml.dump(data_public, fp)
         with open("../docs/openapi_private.yaml", "w") as fp:
-            yaml.dump(data_private, fp)
-            yaml.dump(data_private, fp)
-            yaml.dump(data_private, fp)
-            yaml.dump(data_private, fp)
             yaml.dump(data_private, fp)
