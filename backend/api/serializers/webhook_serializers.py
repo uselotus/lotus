@@ -9,14 +9,16 @@ from rest_framework import serializers
 
 class InvoiceCreatedSerializer(serializers.Serializer):
     payload = InvoiceSerializer()
-    event_type = serializers.ReadOnlyField(
-        default=WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED
+    event_type = serializers.CharField(
+        default=WEBHOOK_TRIGGER_EVENTS.INVOICE_CREATED, read_only=True
     )
 
 
 class InvoicePaidSerializer(serializers.Serializer):
     payload = InvoiceSerializer()
-    event_type = serializers.ReadOnlyField(default=WEBHOOK_TRIGGER_EVENTS.INVOICE_PAID)
+    event_type = serializers.CharField(
+        default=WEBHOOK_TRIGGER_EVENTS.INVOICE_PAID, read_only=True
+    )
 
 
 class UsageAlertPayload(serializers.Serializer):
@@ -27,7 +29,7 @@ class UsageAlertPayload(serializers.Serializer):
 
 
 class UsageAlertTriggeredSerializer(serializers.Serializer):
-    event_type = serializers.ReadOnlyField(
-        default=WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED
+    event_type = serializers.CharField(
+        default=WEBHOOK_TRIGGER_EVENTS.USAGE_ALERT_TRIGGERED, read_only=True
     )
     payload = UsageAlertPayload()

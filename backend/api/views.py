@@ -37,7 +37,7 @@ from api.serializers.nonmodel_serializers import (
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 from django.conf import settings
-from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.db.utils import IntegrityError
 from django.http import HttpRequest, HttpResponseBadRequest, JsonResponse
@@ -832,13 +832,16 @@ class CustomerBalanceAdjustmentViewSet(
         "post",
     ]
     serializer_class = CustomerBalanceAdjustmentSerializer
-    lookup_field = "adjustment_id"
+    lookup_field = "credit_id"
     queryset = CustomerBalanceAdjustment.objects.all()
 
     def get_object(self):
+        if self.lookup_field == "credit_id":
+            self.lookup_field = "adjustment_id"
         string_uuid = self.kwargs[self.lookup_field]
         uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
+        self.lookup_field == "credit_id"
         return super().get_object()
 
     def get_serializer_class(self):
@@ -858,6 +861,12 @@ class CustomerBalanceAdjustmentViewSet(
         qs = qs.filter(organization=organization)
         context = self.get_serializer_context()
         context["organization"] = organization
+        qs = qs.filter(amount__gt=0)
+        qs = qs.select_related("customer", "pricing_unit", "amount_paid_currency")
+        qs = qs.prefetch_related("drawdowns")
+        qs = qs.annotate(
+            total_drawdowns=Sum("drawdowns__amount"),
+        )
         if self.action == "list":
             args = []
             serializer = CustomerBalanceAdjustmentFilterSerializer(
@@ -1473,4 +1482,5 @@ def track_event(request):
             status=status.HTTP_201_CREATED,
         )
     else:
+        return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)
         return JsonResponse({"success": "all"}, status=status.HTTP_201_CREATED)

@@ -1364,35 +1364,81 @@ class InvoiceListFilterSerializer(serializers.Serializer):
         return data
 
 
+class CreditDrawdownSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerBalanceAdjustment
+        fields = (
+            "credit_id",
+            "amount",
+            "description",
+            "applied_at",
+        )
+
+    extra_kwargs = {
+        "credit_id": {"read_only": True, "required": True},
+        "amount": {"required": True, "read_only": True},
+        "description": {"required": True, "read_only": True},
+        "applied_at": {"required": True, "read_only": True},
+    }
+
+    credit_id = BalanceAdjustmentUUIDField(source="adjustment_id")
+    applied_at = serializers.DateTimeField(source="effective_at")
+    amount = serializers.DecimalField(max_value=0, decimal_places=10, max_digits=20)
+
+
 class CustomerBalanceAdjustmentSerializer(
     ConvertEmptyStringToSerializerMixin, serializers.ModelSerializer
 ):
     class Meta:
         model = CustomerBalanceAdjustment
         fields = (
-            "adjustment_id",
+            "credit_id",
             "customer",
             "amount",
-            "pricing_unit",
+            "amount_remaining",
+            "currency",
             "description",
             "effective_at",
             "expires_at",
             "status",
-            "parent_adjustment_id",
             "amount_paid",
             "amount_paid_currency",
+            "drawdowns",
         )
+        extra_kwargs = {
+            "credit_id": {"read_only": True, "required": True},
+            "customer": {"read_only": True, "required": True},
+            "amount": {"required": True, "read_only": True},
+            "amount_remaining": {"read_only": True, "required": True},
+            "currency": {"read_only": True, "required": True},
+            "description": {"required": True, "read_only": True},
+            "effective_at": {"required": True, "read_only": True},
+            "expires_at": {"required": True, "read_only": True, "allow_null": True},
+            "status": {"read_only": True, "required": True},
+            "amount_paid": {"read_only": True, "required": True},
+            "amount_paid_currency": {
+                "read_only": True,
+                "required": True,
+                "allow_null": True,
+            },
+            "drawdowns": {"read_only": True, "required": True},
+        }
 
-    adjustment_id = BalanceAdjustmentUUIDField()
-    customer = LightweightCustomerSerializer(read_only=True)
-    pricing_unit = PricingUnitSerializer(read_only=True)
-    parent_adjustment_id = SlugRelatedFieldWithOrganization(
-        slug_field="adjustment_id",
-        required=False,
-        source="parent_adjustment",
-        read_only=True,
-    )
-    amount_paid_currency = PricingUnitSerializer(read_only=True)
+    credit_id = BalanceAdjustmentUUIDField(source="adjustment_id")
+    customer = LightweightCustomerSerializer()
+    currency = PricingUnitSerializer(source="pricing_unit")
+    amount_paid_currency = PricingUnitSerializer()
+    drawdowns = serializers.SerializerMethodField()
+    amount = serializers.DecimalField(min_value=0, max_digits=20, decimal_places=10)
+    amount_remaining = serializers.SerializerMethodField()
+
+    def get_drawdowns(self, obj) -> CreditDrawdownSerializer(many=True):
+        return CreditDrawdownSerializer(obj.drawdowns, many=True).data
+
+    def get_amount_remaining(
+        self, obj
+    ) -> serializers.DecimalField(min_value=0, max_digits=20, decimal_places=10):
+        return obj.get_remaining_balance()
 
 
 class CustomerBalanceAdjustmentCreateSerializer(
@@ -1403,7 +1449,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
         fields = (
             "customer_id",
             "amount",
-            "pricing_unit_code",
+            "currency_code",
             "description",
             "effective_at",
             "expires_at",
@@ -1413,7 +1459,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
         extra_kwargs = {
             "customer_id": {"required": True, "write_only": True},
             "amount": {"required": True, "write_only": True},
-            "pricing_unit_code": {"required": True, "write_only": True},
+            "currency_code": {"required": True, "write_only": True},
             "description": {"required": False, "write_only": True},
             "effective_at": {"required": False, "write_only": True},
             "expires_at": {"required": False, "write_only": True},
@@ -1427,7 +1473,7 @@ class CustomerBalanceAdjustmentCreateSerializer(
         required=True,
         source="customer",
     )
-    pricing_unit_code = SlugRelatedFieldWithOrganization(
+    currency_code = SlugRelatedFieldWithOrganization(
         slug_field="code",
         queryset=PricingUnit.objects.all(),
         required=True,
@@ -1441,14 +1487,16 @@ class CustomerBalanceAdjustmentCreateSerializer(
         source="amount_paid_currency",
         write_only=True,
     )
+    amount_paid = serializers.DecimalField(
+        min_value=0, max_digits=20, decimal_places=10, required=False
+    )
 
     def validate(self, data):
         data = super().validate(data)
         amount = data.get("amount", 0)
-        data["customer"]
         if amount <= 0:
             raise serializers.ValidationError("Amount must be greater than 0")
-        if data.get("amount_paid") and data.get("amount_paid") <= 0:
+        if data.get("amount_paid_currency_code") and data.get("amount_paid") <= 0:
             raise serializers.ValidationError("Amount paid must be greater than 0")
         return data
 
@@ -1539,5 +1587,7 @@ class UsageAlertSerializer(serializers.ModelSerializer):
         )
 
     usage_alert_id = UsageAlertUUIDField(read_only=True)
+    metric = MetricSerializer()
+    plan_version = LightweightPlanVersionSerializer()
     metric = MetricSerializer()
     plan_version = LightweightPlanVersionSerializer()

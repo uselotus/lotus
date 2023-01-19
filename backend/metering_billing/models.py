@@ -713,7 +713,12 @@ class CustomerBalanceAdjustment(models.Model):
         super(CustomerBalanceAdjustment, self).save(*args, **kwargs)
 
     def get_remaining_balance(self):
-        dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))["drawdowns"]
+        try:
+            dd_aggregate = self.total_drawdowns
+        except AttributeError:
+            dd_aggregate = self.drawdowns.aggregate(drawdowns=Sum("amount"))[
+                "drawdowns"
+            ]
         drawdowns = dd_aggregate or 0
         return self.amount + drawdowns
 
