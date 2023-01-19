@@ -941,7 +941,7 @@ class CustomerBalanceAdjustmentViewSet(
 
     @extend_schema(responses=CustomerBalanceAdjustmentSerializer)
     @action(detail=True, methods=["post"])
-    def void(self, request, adjustment_id=None):
+    def void(self, request, credit_id=None):
         adjustment = self.get_object()
         if adjustment.status != CUSTOMER_BALANCE_ADJUSTMENT_STATUS.ACTIVE:
             raise ValidationError("Cannot void an adjustment that is not active.")
