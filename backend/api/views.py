@@ -384,12 +384,12 @@ class SubscriptionViewSet(
             if serializer.validated_data.get("customer"):
                 args.append(Q(customer=serializer.validated_data["customer"]))
             status_combo = []
-            for status in allowed_status:
-                if status == SUBSCRIPTION_STATUS.ACTIVE:
+            for sub_status in allowed_status:
+                if sub_status == SUBSCRIPTION_STATUS.ACTIVE:
                     status_combo.append(Q(start_date__lte=now, end_date__gte=now))
-                elif status == SUBSCRIPTION_STATUS.ENDED:
+                elif sub_status == SUBSCRIPTION_STATUS.ENDED:
                     status_combo.append(Q(end_date__lt=now))
-                elif status == SUBSCRIPTION_STATUS.NOT_STARTED:
+                elif sub_status == SUBSCRIPTION_STATUS.NOT_STARTED:
                     status_combo.append(Q(start_date__gt=now))
             args.append(reduce(operator.or_, status_combo))
             qs = qs.filter(
@@ -892,8 +892,8 @@ class CustomerBalanceAdjustmentViewSet(
                 args.append(Q(effective_at__lte=effective_before))
             args.append(Q(customer=serializer.validated_data["customer"]))
             status_combo = []
-            for status in allowed_status:
-                status_combo.append(Q(status=status))
+            for baladj_status in allowed_status:
+                status_combo.append(Q(status=baladj_status))
             args.append(reduce(operator.or_, status_combo))
             if serializer.validated_data.get("pricing_unit"):
                 args.append(Q(pricing_unit=serializer.validated_data["pricing_unit"]))
