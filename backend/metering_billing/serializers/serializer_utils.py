@@ -132,6 +132,12 @@ class PlanUUIDField(UUIDPrefixField):
         super().__init__("plan_", *args, **kwargs)
 
 
+@extend_schema_field(serializers.RegexField(regex=r"invoice_[0-9a-f]{32}"))
+class InvoiceUUIDField(UUIDPrefixField):
+    def __init__(self, *args, **kwargs):
+        super().__init__("invoice_", *args, **kwargs)
+
+
 @extend_schema_field(serializers.RegexField(regex=r"plan_version_[0-9a-f]{32}"))
 class PlanVersionUUIDField(UUIDPrefixField):
     def __init__(self, *args, **kwargs):

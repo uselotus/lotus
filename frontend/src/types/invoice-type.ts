@@ -2,6 +2,7 @@ import { LightweightCustomerType } from "./customer-type";
 import { PricingUnit } from "./pricing-unit-type";
 
 export interface InvoiceType {
+  invoice_id: string;
   invoice_number: string;
   cost_due: number;
   currency: PricingUnit;
@@ -51,6 +52,6 @@ export interface LineItem {
 }
 
 export interface MarkPaymentStatusAsPaid {
-  invoice_number: string;
+  invoice_id: string;
   payment_status: "paid" | "unpaid" | "voided";
 }
