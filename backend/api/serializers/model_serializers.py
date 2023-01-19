@@ -292,17 +292,24 @@ class InvoiceLineItemSerializer(
             "subtotal": {"required": True},
             "billing_type": {"required": True, "allow_blank": False},
             "metadata": {"required": True},
-            "plan": {"required": True},
-            "subscription_filters": {"required": True},
+            "plan": {"required": True, "allow_null": True},
+            "subscription_filters": {"required": True, "allow_null": True},
         }
 
-    plan = serializers.SerializerMethodField()
-    subscription_filters = SubscriptionCategoricalFilterSerializer(
-        source="associated_subscription_record.filters",
-        many=True,
-    )
+    plan = serializers.SerializerMethodField(allow_null=True)
+    subscription_filters = serializers.SerializerMethodField(allow_null=True)
 
-    def get_plan(self, obj) -> Optional[LightweightPlanVersionSerializer]:
+    def get_subscription_filters(
+        self, obj
+    ) -> SubscriptionCategoricalFilterSerializer(many=True, allow_null=True):
+        ass_sub_record = obj.associated_subscription_record
+        if ass_sub_record:
+            return SubscriptionCategoricalFilterSerializer(
+                ass_sub_record.filters.all(), many=True
+            ).data
+        return None
+
+    def get_plan(self, obj) -> LightweightPlanVersionSerializer(allow_null=True):
         ass_sub_record = obj.associated_subscription_record
         if ass_sub_record:
             return LightweightPlanVersionSerializer(ass_sub_record.billing_plan).data
@@ -313,14 +320,6 @@ class LightweightInvoiceLineItemSerializer(InvoiceLineItemSerializer):
     class Meta(InvoiceLineItemSerializer.Meta):
         fields = tuple(set(InvoiceLineItemSerializer.Meta.fields) - {"metadata"})
         extra_kwargs = {**InvoiceLineItemSerializer.Meta.extra_kwargs}
-
-    plan = serializers.SerializerMethodField()
-
-    def get_plan(self, obj) -> Optional[serializers.CharField]:
-        ass_sub_record = obj.associated_subscription_record
-        if ass_sub_record:
-            return ass_sub_record.billing_plan.plan.plan_name
-        return None
 
 
 class SellerSerializer(
@@ -1368,7 +1367,6 @@ class InvoiceListFilterSerializer(serializers.Serializer):
         slug_field="customer_id",
         queryset=Customer.objects.all(),
         required=False,
-        source="customer",
         help_text="A filter for invoices for a specific customer",
     )
     payment_status = serializers.MultipleChoiceField(

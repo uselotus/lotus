@@ -755,7 +755,9 @@ class InvoiceViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
             Q(organization=self.request.organization),
         ]
         if self.action == "list":
-            serializer = InvoiceListFilterSerializer(data=self.request.query_params)
+            serializer = InvoiceListFilterSerializer(
+                data=self.request.query_params, context=self.get_serializer_context()
+            )
             serializer.is_valid(raise_exception=True)
             args.append(
                 Q(payment_status__in=serializer.validated_data["payment_status"])
