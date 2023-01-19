@@ -847,13 +847,14 @@ class CustomerBalanceAdjustmentViewSet(
     queryset = CustomerBalanceAdjustment.objects.all()
 
     def get_object(self):
+        string_uuid = self.kwargs.pop(self.lookup_field, None)
+        uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
         if self.lookup_field == "credit_id":
             self.lookup_field = "adjustment_id"
-        string_uuid = self.kwargs[self.lookup_field]
-        uuid = BalanceAdjustmentUUIDField().to_internal_value(string_uuid)
         self.kwargs[self.lookup_field] = uuid
-        self.lookup_field == "credit_id"
-        return super().get_object()
+        obj = super().get_object()
+        self.lookup_field = "credit_id"
+        return obj
 
     def get_serializer_class(self):
         if self.action == "list":
